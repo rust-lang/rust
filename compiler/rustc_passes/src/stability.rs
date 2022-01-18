@@ -89,13 +89,40 @@ impl InheritStability {
     }
 }
 
+fn inherit_deprecation(def_kind: DefKind) -> InheritDeprecation {
+    match def_kind {
+        DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => InheritDeprecation::No,
+        _ => InheritDeprecation::Yes,
+    }
+}
+
+fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
+    let depr = attrs::find_attr!(attrs,
+        AttributeKind::Deprecation { deprecation, span: _ } => *deprecation
+    );
+
+    let Some(depr) = depr else {
+        if inherit_deprecation(tcx.def_kind(def_id)).yes() {
+            let parent_id = tcx.opt_local_parent(def_id)?;
+            let parent_depr = tcx.lookup_deprecation_entry(parent_id)?;
+            info!("tagging child {:?} as deprecated from parent", def_id);
+            return Some(parent_depr);
+        }
+
+        return None;
+    };
+
+    // `Deprecation` is just two pointers, no need to intern it
+    Some(DeprecationEntry::local(depr, def_id))
+}
+
 /// A private tree-walker for producing an `Index`.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     index: &'a mut Index,
     parent_stab: Option<Stability>,
     parent_const_stab: Option<ConstStability>,
-    parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
 
@@ -119,23 +146,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
-        let depr = attrs::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
+        let depr = self.tcx.lookup_deprecation_entry(def_id);
         let const_stability_indirect = find_attr!(attrs, AttributeKind::ConstStabilityIndirect);
-
-        let mut is_deprecated = false;
-        if let Some((depr, _)) = &depr {
-            is_deprecated = true;
-
-            // `Deprecation` is just two pointers, no need to intern it
-            let depr_entry = DeprecationEntry::local(*depr, def_id);
-            self.index.depr_map.insert(def_id, depr_entry);
-        } else if let Some(parent_depr) = self.parent_depr {
-            if inherit_deprecation.yes() {
-                is_deprecated = true;
-                info!("tagging child {:?} as deprecated from parent", def_id);
-                self.index.depr_map.insert(def_id, parent_depr);
-            }
-        }
 
         if !self.tcx.features().staged_api() {
             // Propagate unstability. This can happen even for non-staged-api crates in case
@@ -152,12 +164,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 }
             }
 
-            self.recurse_with_stability_attrs(
-                depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
-                None,
-                None,
-                visit_children,
-            );
+            self.recurse_with_stability_attrs(None, None, visit_children);
             return;
         }
 
@@ -166,11 +173,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let body_stab =
             attrs::find_attr!(attrs, AttributeKind::BodyStability { stability, .. } => *stability);
 
-        if let Some((depr, span)) = &depr
-            && depr.is_since_rustc_version()
+        if let Some(depr) = &depr
+            && depr.attr.is_since_rustc_version()
             && stab.is_none()
+            && let Some(depr_span) = attrs::find_attr!(attrs,
+                AttributeKind::Deprecation { span, .. } => *span
+            )
         {
-            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span: *span });
+            self.tcx.dcx().emit_err(errors::DeprecatedAttribute { span: depr_span });
         }
 
         if let Some(body_stab) = body_stab {
@@ -183,7 +193,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let stab = stab.map(|(stab, span)| {
             // Error if prohibited, or can't inherit anything from a container.
             if kind == AnnotationKind::Prohibited
-                || (kind == AnnotationKind::Container && stab.level.is_stable() && is_deprecated)
+                || (kind == AnnotationKind::Container && stab.level.is_stable() && depr.is_some())
             {
                 self.tcx.dcx().emit_err(errors::UselessStability { span, item_sp });
             }
@@ -195,7 +205,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if let (
                 &Some(DeprecatedSince::RustcVersion(dep_since)),
                 &attrs::StabilityLevel::Stable { since: stab_since, .. },
-            ) = (&depr.as_ref().map(|(d, _)| d.since), &stab.level)
+            ) = (&depr.as_ref().map(|d| d.attr.since), &stab.level)
             {
                 match stab_since {
                     StableSince::Current => {
@@ -343,7 +353,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         self.recurse_with_stability_attrs(
-            depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
             stab,
             inherit_const_stability.yes().then_some(const_stab).flatten(),
             visit_children,
@@ -352,19 +361,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
     fn recurse_with_stability_attrs(
         &mut self,
-        depr: Option<DeprecationEntry>,
         stab: Option<Stability>,
         const_stab: Option<ConstStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
-        let mut replaced_parent_depr = None;
         let mut replaced_parent_stab = None;
         let mut replaced_parent_const_stab = None;
 
-        if let Some(depr) = depr {
-            replaced_parent_depr = Some(replace(&mut self.parent_depr, Some(depr)));
-        }
         if let Some(stab) = stab {
             replaced_parent_stab = Some(replace(&mut self.parent_stab, Some(stab)));
         }
@@ -375,9 +379,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
         f(self);
 
-        if let Some(orig_parent_depr) = replaced_parent_depr {
-            self.parent_depr = orig_parent_depr;
-        }
         if let Some(orig_parent_stab) = replaced_parent_stab {
             self.parent_stab = orig_parent_stab;
         }
@@ -679,7 +680,6 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
         stab_map: Default::default(),
         const_stab_map: Default::default(),
         default_body_stab_map: Default::default(),
-        depr_map: Default::default(),
         implications: Default::default(),
     };
 
@@ -689,7 +689,6 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             index: &mut index,
             parent_stab: None,
             parent_const_stab: None,
-            parent_depr: None,
             in_trait_impl: false,
         };
 
@@ -741,7 +740,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         lookup_stability: |tcx, id| tcx.stability().local_stability(id),
         lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id),
         lookup_default_body_stability: |tcx, id| tcx.stability().local_default_body_stability(id),
-        lookup_deprecation_entry: |tcx, id| tcx.stability().local_deprecation_entry(id),
+        lookup_deprecation_entry,
         ..*providers
     };
 }
