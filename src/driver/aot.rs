@@ -56,6 +56,9 @@ fn emit_module(
 
     let tmp_file = tcx.output_filenames(()).temp_path(OutputType::Object, Some(&name));
     let obj = product.object.write().unwrap();
+
+    tcx.sess.prof.artifact_size("object_file", name.clone(), obj.len().try_into().unwrap());
+
     if let Err(err) = std::fs::write(&tmp_file, obj) {
         tcx.sess.fatal(&format!("error writing object file: {}", err));
     }
