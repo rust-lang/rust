@@ -3741,7 +3741,6 @@ Function *EnzymeLogic::CreateForwardDiff(
   assert(retType != DIFFE_TYPE::OUT_DIFF);
 
   assert(mode == DerivativeMode::ForwardMode ||
-         mode == DerivativeMode::ForwardModeVector ||
          mode == DerivativeMode::ForwardModeSplit);
 
   FnTypeInfo oldTypeInfo = preventTypeAnalysisLoops(oldTypeInfo_, todiff);

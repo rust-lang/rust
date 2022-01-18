@@ -410,13 +410,10 @@ public:
                      Value *mask = nullptr, Value *orig_maskInit = nullptr) {
     auto &DL = gutils->newFunc->getParent()->getDataLayout();
 
+    assert(Mode == DerivativeMode::ForwardMode || gutils->can_modref_map);
     assert(Mode == DerivativeMode::ForwardMode ||
-           Mode == DerivativeMode::ForwardModeVector || gutils->can_modref_map);
-    assert(Mode == DerivativeMode::ForwardMode ||
-           Mode == DerivativeMode::ForwardModeVector ||
            gutils->can_modref_map->find(&I) != gutils->can_modref_map->end());
-    bool can_modref = Mode == DerivativeMode::ForwardMode ||
-                              Mode == DerivativeMode::ForwardModeVector
+    bool can_modref = Mode == DerivativeMode::ForwardMode
                           ? false
                           : gutils->can_modref_map->find(&I)->second;
 
@@ -886,8 +883,6 @@ public:
     case DerivativeMode::ReverseModeCombined: {
       return;
     }
-    case DerivativeMode::ForwardModeVector:
-      assert("vector forward not yet implemented");
     case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       break;
@@ -1491,8 +1486,6 @@ public:
     // TODO type analysis handle structs
 
     switch (Mode) {
-    case DerivativeMode::ForwardModeVector:
-      assert("vector forward not yet implemented");
     case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&IVI);
@@ -1636,8 +1629,6 @@ public:
     case DerivativeMode::ReverseModeCombined:
       createBinaryOperatorAdjoint(BO);
       break;
-    case DerivativeMode::ForwardModeVector:
-      assert("vector forward not yet implemented");
     case DerivativeMode::ForwardMode:
     case DerivativeMode::ForwardModeSplit:
       createBinaryOperatorDual(BO);
@@ -6236,8 +6227,7 @@ public:
     BuilderZ.setFastMathFlags(getFast());
 
     if (uncacheable_args_map.find(&call) == uncacheable_args_map.end() &&
-        Mode != DerivativeMode::ForwardMode &&
-        Mode != DerivativeMode::ForwardModeVector) {
+        Mode != DerivativeMode::ForwardMode) {
       llvm::errs() << " call: " << call << "\n";
       for (auto &pair : uncacheable_args_map) {
         llvm::errs() << " + " << *pair.first << "\n";
@@ -6245,8 +6235,7 @@ public:
     }
 
     assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end() ||
-           Mode == DerivativeMode::ForwardMode ||
-           Mode == DerivativeMode::ForwardModeVector);
+           Mode == DerivativeMode::ForwardMode);
     const std::map<Argument *, bool> &uncacheable_args =
         uncacheable_args_map.find(&call)->second;
 
@@ -6275,8 +6264,7 @@ public:
       subretType = DIFFE_TYPE::CONSTANT;
     } else {
       if (Mode == DerivativeMode::ForwardMode ||
-          Mode == DerivativeMode::ForwardModeSplit ||
-          Mode == DerivativeMode::ForwardModeVector) {
+          Mode == DerivativeMode::ForwardModeSplit) {
         subretType = DIFFE_TYPE::DUP_ARG;
       } else {
         if (!orig->getType()->isFPOrFPVectorTy() &&
@@ -8030,8 +8018,7 @@ public:
       // may load uncacheable data)
       //    Store and reload it
       if (Mode != DerivativeMode::ReverseModeCombined &&
-          Mode != DerivativeMode::ForwardMode &&
-          Mode != DerivativeMode::ForwardModeVector && subretused &&
+          Mode != DerivativeMode::ForwardMode && subretused &&
           (orig->mayWriteToMemory() ||
            !gutils->legalRecompute(orig, ValueToValueMapTy(), nullptr))) {
         if (!gutils->unnecessaryIntermediates.count(orig)) {

@@ -114,6 +114,7 @@ typedef enum {
   DEM_ReverseModePrimal = 1,
   DEM_ReverseModeGradient = 2,
   DEM_ReverseModeCombined = 3,
+  DEM_ForwardModeSplit = 4,
 } CDerivativeMode;
 
 LLVMValueRef EnzymeCreateForwardDiff(

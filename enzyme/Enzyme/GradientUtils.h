@@ -1546,8 +1546,7 @@ class DiffeGradientUtils : public GradientUtils {
                       mode, width, omp) {
     assert(reverseBlocks.size() == 0);
     if (mode == DerivativeMode::ForwardMode ||
-        mode == DerivativeMode::ForwardModeSplit ||
-        mode == DerivativeMode::ForwardModeVector) {
+        mode == DerivativeMode::ForwardModeSplit) {
       return;
     }
     for (BasicBlock *BB : originalBlocks) {
@@ -1966,9 +1965,6 @@ public:
     Value *ptr;
 
     switch (mode) {
-    case DerivativeMode::ForwardModeVector:
-      assert(false && "Unimplemented derivative mode (ForwardModeVector)");
-      break;
     case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode:
       ptr = invertPointerM(origptr, BuilderM);

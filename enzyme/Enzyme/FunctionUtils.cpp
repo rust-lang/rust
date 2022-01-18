@@ -876,8 +876,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 
   if (mode == DerivativeMode::ReverseModeGradient)
     mode = DerivativeMode::ReverseModePrimal;
-  if (mode == DerivativeMode::ForwardModeVector ||
-      mode == DerivativeMode::ForwardModeSplit)
+  if (mode == DerivativeMode::ForwardModeSplit)
     mode = DerivativeMode::ForwardMode;
 
   // If we've already processed this, return the previous version
