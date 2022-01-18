@@ -199,7 +199,7 @@ do not get shared. They will still be cloned multiple times.
 
 [worktrees]: https://git-scm.com/docs/git-worktree
 
-Given you are inside the root directory for your rust repository, you can
+Given you are inside the root directory for your Rust repository, you can
 create a "linked working tree" in a new "rust2" directory by running
 the following command:
 

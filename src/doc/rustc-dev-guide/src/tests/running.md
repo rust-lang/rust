@@ -124,7 +124,7 @@ may invoke `x.py` with the `--test-args` option:
 ./x.py test src/test/ui --test-args issue-1234
 ```
 
-Under the hood, the test runner invokes the standard rust test runner
+Under the hood, the test runner invokes the standard Rust test runner
 (the same one you get with `#[test]`), so this command would wind up
 filtering for tests that include "issue-1234" in the name. (Thus
 `--test-args` is a good way to run a collection of related tests.)

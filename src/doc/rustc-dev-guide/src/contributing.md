@@ -214,7 +214,7 @@ is modified to move the files from the specified directory to the tool repo root
 
 A `subtree pull` takes all changes since the last `subtree pull`
 from the tool repo and adds these commits to the rustc repo along with a merge commit that moves
-the tool changes into the specified directory in the rust repository.
+the tool changes into the specified directory in the Rust repository.
 
 It is recommended that you always do a push first and get that merged to the tool master branch.
 Then, when you do a pull, the merge works without conflicts.

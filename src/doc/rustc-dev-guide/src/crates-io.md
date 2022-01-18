@@ -1,6 +1,6 @@
 # crates.io Dependencies
 
-The rust compiler supports building with some dependencies from `crates.io`.
+The Rust compiler supports building with some dependencies from `crates.io`.
 For example, `log` and `env_logger` come from `crates.io`.
 
 In general, you should avoid adding dependencies to the compiler for several

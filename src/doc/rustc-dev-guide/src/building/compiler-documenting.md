@@ -50,6 +50,6 @@ documentation for internal compiler items will also be built.
 
 ### Compiler Documentation
 
-The documentation for the rust components are found at [rustc doc].
+The documentation for the Rust components are found at [rustc doc].
 
 [rustc doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/

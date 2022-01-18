@@ -216,7 +216,7 @@ handle names defined _within a macro_. In particular, a hygienic macro system
 prevents errors due to names introduced within a macro. Rust macros are hygienic
 in that they do not allow one to write the sorts of bugs above.
 
-At a high level, hygiene within the rust compiler is accomplished by keeping
+At a high level, hygiene within the Rust compiler is accomplished by keeping
 track of the context where a name is introduced and used. We can then
 disambiguate names based on that context. Future iterations of the macro system
 will allow greater control to the macro author to use that context. For example,

@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-There are _a lot_ of ways to contribute to the rust compiler, including fixing
+There are _a lot_ of ways to contribute to the Rust compiler, including fixing
 bugs, improving performance, helping design features, providing feedback on
 existing features, etc. This chapter does not claim to scratch the surface.
 Instead, it walks through the design and implementation of a new feature. Not
@@ -38,7 +38,7 @@ fn main() {
 So basically, the `$(pat)?` matcher in the macro means "this pattern can occur
 0 or 1 times", similar to other regex syntaxes.
 
-There were a number of steps to go from an idea to stable rust feature. Here is
+There were a number of steps to go from an idea to stable Rust feature. Here is
 a quick list.  We will go through each of these in order below. As I mentioned
 before, not all of these are needed for every type of contribution.
 
@@ -55,9 +55,9 @@ before, not all of these are needed for every type of contribution.
   feature on the nightly compiler and in `std`, there may be additional
   feedback about design choice that might be adjusted. This particular feature
   went [through][impl2] a [number][impl3] of [iterations][impl4].
-- **Stabilization** When your feature has baked enough, a rust team member may
+- **Stabilization** When your feature has baked enough, a Rust team member may
   [propose to stabilize it][merge]. If there is consensus, this is done.
-- **Relax** Your feature is now a stable rust feature!
+- **Relax** Your feature is now a stable Rust feature!
 
 [prerfc]: https://internals.rust-lang.org/t/pre-rfc-at-most-one-repetition-macro-patterns/6557
 [rfc]: https://github.com/rust-lang/rfcs/pull/2298
@@ -70,7 +70,7 @@ before, not all of these are needed for every type of contribution.
 ## Pre-RFC and RFC
 
 > NOTE: In general, if you are not proposing a _new_ feature or substantial
-> change to rust or the ecosystem, you don't need to follow the RFC process.
+> change to Rust or the ecosystem, you don't need to follow the RFC process.
 > Instead, you can just jump to [implementation](#impl).
 >
 > You can find the official guidelines for when to open an RFC [here][rfcwhen].
@@ -79,7 +79,7 @@ before, not all of these are needed for every type of contribution.
 
 An RFC is a document that describes the feature or change you are proposing in
 detail. Anyone can write an RFC; the process is the same for everyone,
-including rust team members.
+including Rust team members.
 
 To open an RFC, open a PR on the
 [rust-lang/rfcs](https://github.com/rust-lang/rfcs) repo on GitHub. You can
@@ -122,7 +122,7 @@ itself to reflect the course of the discussion (e.g. new alternatives or prior
 work may be added or you may decide to change parts of the proposal itself).
 
 In the end, when the discussion seems to reach a consensus and die down a bit,
-a rust team member may propose to move to "final comment period" (FCP) with one
+a Rust team member may propose to move to "final comment period" (FCP) with one
 of three possible dispositions. This means that they want the other members of
 the appropriate teams to review and comment on the RFC. More discussion may
 ensue, which may result in more changes or unresolved questions being added. At
@@ -137,7 +137,7 @@ disposition is adopted. Here are the three possible dispositions:
   This is not a reflection on you, but rather a community decision that rust
   will go a different direction.
 - _Postpone_: there is interest in going this direction but not at the moment.
-  This happens most often because the appropriate rust team doesn't have the
+  This happens most often because the appropriate Rust team doesn't have the
   bandwidth to shepherd the feature through the process to stabilization. Often
   this is the case when the feature doesn't fit into the team's roadmap.
   Postponed ideas may be revisited later.
@@ -181,7 +181,7 @@ gate is removed when the feature is stabilized.
 make your changes/improvements.
 
 When you open a PR on the [rust-lang/rust], a bot will assign your PR to a
-review. If there is a particular rust team member you are working with, you can
+review. If there is a particular Rust team member you are working with, you can
 request that reviewer by leaving a comment on the thread with `r?
 @reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
 don't request anyone; the bot will assign someone automatically based on which files you changed.
@@ -224,7 +224,7 @@ be proposed and unresolved questions may become resolved. Updates/changes go
 through the same process for implementing any other changes, as described
 above (i.e. submit a PR, go through review, wait for `@bors`, etc).
 
-Some changes may be major enough to require an FCP and some review by rust team
+Some changes may be major enough to require an FCP and some review by Rust team
 members.
 
 For the `?` macro feature, we went through a few different iterations after the

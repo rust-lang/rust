@@ -76,7 +76,7 @@ crates, just like a normal Rust crate.
 
 One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
 During bootstrapping, LLVM is built and the [`compiler/rustc_llvm`] crate
-contains rust wrappers around LLVM (which is written in C++), so that the
+contains Rust wrappers around LLVM (which is written in C++), so that the
 compiler can interface with it.
 
 Most of this book is about the compiler, so we won't have any further
@@ -183,7 +183,7 @@ from `src/tools/`, such as [`tidy`] or [`compiletest`].
 ## Other
 
 There are a lot of other things in the `rust-lang/rust` repo that are related
-to building a full rust distribution. Most of the time you don't need to worry
+to building a full Rust distribution. Most of the time you don't need to worry
 about them.
 
 These include:

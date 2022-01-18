@@ -120,7 +120,7 @@ Options:
         --on-fail CMD   command to run on failure
         --stage N       stage to build
         --keep-stage N  stage to keep without recompiling
-        --src DIR       path to the root of the rust checkout
+        --src DIR       path to the root of the Rust checkout
     -j, --jobs JOBS     number of jobs to run in parallel
     -h, --help          print this help message
 ```
@@ -128,7 +128,7 @@ Options:
 For hacking, often building the stage 1 compiler is enough, which saves a lot
 of time. But for final testing and release, the stage 2 compiler is used.
 
-`./x.py check` is really fast to build the rust compiler.
+`./x.py check` is really fast to build the Rust compiler.
 It is, in particular, very useful when you're doing some kind of
 "type-based refactoring", like renaming a method, or changing the
 signature of some function.
@@ -150,7 +150,7 @@ What this command does is the following:
 - Build `std` using the stage1 compiler (cannot use incremental)
 
 This final product (stage1 compiler + libs built using that compiler)
-is what you need to build other rust programs (unless you use `#![no_std]` or
+is what you need to build other Rust programs (unless you use `#![no_std]` or
 `#![no_core]`).
 
 The command includes the `-i` switch which enables incremental compilation.

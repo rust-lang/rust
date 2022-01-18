@@ -59,8 +59,8 @@ please see the corresponding [subsection on writing documentation in this guide]
 You might also find the following sites useful:
 
 - [rustc API docs] -- rustdoc documentation for the compiler
-- [Forge] -- contains documentation about rust infrastructure, team procedures, and more
-- [compiler-team] -- the home-base for the rust compiler team, with description
+- [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
+- [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
 

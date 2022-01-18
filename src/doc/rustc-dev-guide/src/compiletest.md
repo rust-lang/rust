@@ -178,7 +178,7 @@ function found in the `TestCx` implementation block, located in
      }
 
      fn check_correct_failure_status(&self, proc_res: &ProcRes) {
--        // The value the rust runtime returns on failure
+-        // The value the Rust runtime returns on failure
 -        const RUST_ERR: i32 = 101;
 -        if proc_res.status.code() != Some(RUST_ERR) {
 +        let expected_status = Some(self.props.failure_status);

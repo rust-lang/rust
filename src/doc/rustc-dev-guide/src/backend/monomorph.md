@@ -2,7 +2,7 @@
 
 <!-- toc -->
 
-As you probably know, rust has a very expressive type system that has extensive
+As you probably know, Rust has a very expressive type system that has extensive
 support for generic types. But of course, assembly is not generic, so we need
 to figure out the concrete types of all the generics before the code can
 execute.
@@ -23,7 +23,7 @@ The result is fast programs, but it comes at the cost of compile time (creating
 all those copies can take a while) and binary size (all those copies might take
 a lot of space).
 
-Monomorphization is the first step in the backend of the rust compiler.
+Monomorphization is the first step in the backend of the Rust compiler.
 
 ## Collection
 

@@ -149,7 +149,7 @@ start a bash shell in the container, run `src/ci/docker/run.sh --dev <IMAGE>`
 where `<IMAGE>` is one of the directory names in `src/ci/docker` (for example
 `x86_64-gnu` is a fairly standard Ubuntu environment).
 
-The docker script will mount your local rust source tree in read-only mode,
+The docker script will mount your local Rust source tree in read-only mode,
 and an `obj` directory in read-write mode. All of the compiler artifacts will
 be stored in the `obj` directory. The shell will start out in the `obj`
 directory. From there, you can run `../src/ci/run.sh` which will run the build
@@ -301,7 +301,7 @@ or could cause breakage. If you are unsure, feel free to ask your PR's reviewer.
 
 ### Requesting Crater Runs
 
-The rust team maintains a few machines that can be used for running crater runs
+The Rust team maintains a few machines that can be used for running crater runs
 on the changes introduced by a PR. If your PR needs a crater run, leave a
 comment for the triage team in the PR thread. Please inform the team whether
 you require a "check-only" crater run, a "build only" crater run, or a
