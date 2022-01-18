@@ -105,18 +105,18 @@ pub(crate) fn codegen_fn<'tcx>(
 
     fx.constants_cx.finalize(fx.tcx, &mut *fx.module);
 
-    // Store function in context
-    let context = &mut cx.cached_context;
-    context.func = func;
-
     crate::pretty_clif::write_clif_file(
         tcx,
         "unopt",
         module.isa(),
         instance,
-        &context,
+        &func,
         &clif_comments,
     );
+
+    // Store function in context
+    let context = &mut cx.cached_context;
+    context.func = func;
 
     // Verify function
     verify_func(tcx, &clif_comments, &context.func);
@@ -156,7 +156,7 @@ pub(crate) fn codegen_fn<'tcx>(
         "opt",
         module.isa(),
         instance,
-        &context,
+        &context.func,
         &clif_comments,
     );
 
