@@ -1,0 +1,45 @@
+// run-rustfix
+#![warn(clippy::iter_overeager_cloned, clippy::redundant_clone, clippy::filter_next)]
+
+fn main() {
+    let vec = vec!["1".to_string(), "2".to_string(), "3".to_string()];
+
+    let _: Option<String> = vec.iter().last().cloned();
+
+    let _: Option<String> = vec.iter().chain(vec.iter()).next().cloned();
+
+    let _: usize = vec.iter().filter(|x| x == &"2").count();
+
+    let _: Vec<_> = vec.iter().take(2).cloned().collect();
+
+    let _: Vec<_> = vec.iter().skip(2).cloned().collect();
+
+    let _ = vec.iter().filter(|x| x == &"2").nth(2).cloned();
+
+    let _ = [Some(Some("str".to_string())), Some(Some("str".to_string()))]
+        .iter().flatten().cloned();
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().filter(|x| x.starts_with('2'));
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().map(|x| x.len());
+
+    // This would fail if changed.
+    let _ = vec.iter().cloned().map(|x| x + "2");
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().find(|x| x == "2");
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().for_each(|x| assert!(!x.is_empty()));
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().all(|x| x.len() == 1);
+
+    // Not implemented yet
+    let _ = vec.iter().cloned().any(|x| x.len() == 1);
+
+    // Should probably stay as it is.
+    let _ = [0, 1, 2, 3, 4].iter().cloned().take(10);
+}
