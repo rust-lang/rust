@@ -567,7 +567,7 @@ impl<T> Option<T> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "none")]
+    #[unstable(feature = "is_some_with", issue = "93050")]
     pub fn is_some_with(&self, f: impl FnOnce(&T) -> bool) -> bool {
         matches!(self, Some(x) if f(x))
     }

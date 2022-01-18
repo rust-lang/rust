@@ -558,7 +558,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "none")]
+    #[unstable(feature = "is_some_with", issue = "93050")]
     pub fn is_ok_with(&self, f: impl FnOnce(&T) -> bool) -> bool {
         matches!(self, Ok(x) if f(x))
     }
@@ -600,7 +600,7 @@ impl<T, E> Result<T, E> {
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "is_some_with", issue = "none")]
+    #[unstable(feature = "is_some_with", issue = "93050")]
     pub fn is_err_with(&self, f: impl FnOnce(&E) -> bool) -> bool {
         matches!(self, Err(x) if f(x))
     }
