@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod tests;
 
+mod arc;
+mod rc;
+
 use crate::alloc::Allocator;
 use crate::cmp;
 use crate::fmt;
