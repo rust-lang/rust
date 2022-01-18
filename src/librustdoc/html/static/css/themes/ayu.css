@@ -299,7 +299,8 @@ details.undocumented > summary::before {
 	border-color: #5c6773;
 }
 
-.since {
+.rightside,
+.out-of-band {
 	color: grey;
 }
 

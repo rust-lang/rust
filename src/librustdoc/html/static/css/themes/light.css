@@ -243,6 +243,11 @@ details.undocumented > summary::before {
 	border-color: #bfbfbf;
 }
 
+.rightside,
+.out-of-band {
+	color: grey;
+}
+
 .result-name .primitive > i, .result-name .keyword > i {
 	color: black;
 }

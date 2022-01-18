@@ -288,9 +288,6 @@ function hideThemeButtonState() {
                 loadSearch();
             }
 
-            // `crates{version}.js` should always be loaded before this script, so we can use it
-            // safely.
-            searchState.addCrateDropdown(window.ALL_CRATES);
             var params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
                 var search = searchState.outputElement();
@@ -298,30 +295,6 @@ function hideThemeButtonState() {
                     searchState.loadingText + "</h3>";
                 searchState.showResults(search);
                 loadSearch();
-            }
-        },
-        addCrateDropdown: function(crates) {
-            var elem = document.getElementById("crate-search");
-
-            if (!elem) {
-                return;
-            }
-            var savedCrate = getSettingValue("saved-filter-crate");
-            for (var i = 0, len = crates.length; i < len; ++i) {
-                var option = document.createElement("option");
-                option.value = crates[i];
-                option.innerText = crates[i];
-                elem.appendChild(option);
-                // Set the crate filter from saved storage, if the current page has the saved crate
-                // filter.
-                //
-                // If not, ignore the crate filter -- we want to support filtering for crates on
-                // sites like doc.rust-lang.org where the crates may differ from page to page while
-                // on the
-                // same domain.
-                if (crates[i] === savedCrate) {
-                    elem.value = savedCrate;
-                }
             }
         },
     };
