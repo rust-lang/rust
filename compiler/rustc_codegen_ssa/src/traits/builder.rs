@@ -279,32 +279,6 @@ pub trait BuilderMethods<'a, 'tcx>:
             assert!(rounded_max.value.is_finite());
             (rounded_min.value.to_bits(), rounded_max.value.to_bits())
         };
-
-        let maybe_splat = |bx: &mut Self, val| {
-            if bx.cx().type_kind(dest_ty) == TypeKind::Vector {
-                bx.vector_splat(bx.vector_length(dest_ty), val)
-            } else {
-                val
-            }
-        };
-
-        let float_bits_to_llval = |bx: &mut Self, bits| {
-            let bits_llval = match float_width {
-                32 => bx.cx().const_u32(bits as u32),
-                64 => bx.cx().const_u64(bits as u64),
-                n => bug!("unsupported float width {}", n),
-            };
-            bx.bitcast(bits_llval, float_ty)
-        };
-        let (f_min, f_max) = match float_width {
-            32 => compute_clamp_bounds_single(signed, int_width),
-            64 => compute_clamp_bounds_double(signed, int_width),
-            n => bug!("unsupported float width {}", n),
-        };
-        let f_min = float_bits_to_llval(self, f_min);
-        let f_max = float_bits_to_llval(self, f_max);
-        let f_min = maybe_splat(self, f_min);
-        let f_max = maybe_splat(self, f_max);
         // To implement saturation, we perform the following steps:
         //
         // 1. Cast x to an integer with fpto[su]i. This may result in undef.
@@ -332,9 +306,37 @@ pub trait BuilderMethods<'a, 'tcx>:
         //     int_ty::MIN and therefore the return value of int_ty::MIN is correct.
         // QED.
 
+        let float_bits_to_llval = |bx: &mut Self, bits| {
+            let bits_llval = match float_width {
+                32 => bx.cx().const_u32(bits as u32),
+                64 => bx.cx().const_u64(bits as u64),
+                n => bug!("unsupported float width {}", n),
+            };
+            bx.bitcast(bits_llval, float_ty)
+        };
+        let (f_min, f_max) = match float_width {
+            32 => compute_clamp_bounds_single(signed, int_width),
+            64 => compute_clamp_bounds_double(signed, int_width),
+            n => bug!("unsupported float width {}", n),
+        };
+        let f_min = float_bits_to_llval(self, f_min);
+        let f_max = float_bits_to_llval(self, f_max);
         let int_max = self.cx().const_uint_big(int_ty, int_max(signed, int_width));
         let int_min = self.cx().const_uint_big(int_ty, int_min(signed, int_width) as u128);
         let zero = self.cx().const_uint(int_ty, 0);
+
+        // If we're working with vectors, constants must be "splatted": the constant is duplicated
+        // into each lane of the vector.  The algorithm stays the same, we are just using the
+        // same constant across all lanes.
+        let maybe_splat = |bx: &mut Self, val| {
+            if bx.cx().type_kind(dest_ty) == TypeKind::Vector {
+                bx.vector_splat(bx.vector_length(dest_ty), val)
+            } else {
+                val
+            }
+        };
+        let f_min = maybe_splat(self, f_min);
+        let f_max = maybe_splat(self, f_max);
         let int_max = maybe_splat(self, int_max);
         let int_min = maybe_splat(self, int_min);
         let zero = maybe_splat(self, zero);
