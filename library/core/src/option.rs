@@ -556,14 +556,16 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(is_some_with)]
+    ///
     /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.is_some_with(|x| x > 1), true);
+    /// assert_eq!(x.is_some_with(|&x| x > 1), true);
     ///
     /// let x: Option<u32> = Some(0);
-    /// assert_eq!(x.is_some_with(|x| x > 1), false);
+    /// assert_eq!(x.is_some_with(|&x| x > 1), false);
     ///
     /// let x: Option<u32> = None;
-    /// assert_eq!(x.is_some_with(|x| x > 1), false);
+    /// assert_eq!(x.is_some_with(|&x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
