@@ -62,7 +62,6 @@ pub struct Index {
     pub stab_map: FxHashMap<LocalDefId, Stability>,
     pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
     pub default_body_stab_map: FxHashMap<LocalDefId, DefaultBodyStability>,
-    pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
     /// exists, then this map will have a `impliee -> implier` entry.
@@ -89,10 +88,6 @@ impl Index {
 
     pub fn local_default_body_stability(&self, def_id: LocalDefId) -> Option<DefaultBodyStability> {
         self.default_body_stab_map.get(&def_id).copied()
-    }
-
-    pub fn local_deprecation_entry(&self, def_id: LocalDefId) -> Option<DeprecationEntry> {
-        self.depr_map.get(&def_id).cloned()
     }
 }
 

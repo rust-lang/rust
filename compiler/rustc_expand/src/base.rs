@@ -814,7 +814,7 @@ impl SyntaxExtension {
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
                 .then(|| allow_internal_unstable.into()),
             stability: stability.map(|(s, _)| s),
-            deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
+            deprecation: attr::find_deprecation(&sess, attrs.iter()).map(|(d, _)| d),
             helper_attrs,
             edition,
             builtin_name,

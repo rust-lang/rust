@@ -797,11 +797,7 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
-    find_deprecation_generic(sess, attrs.iter())
-}
-
-fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
+pub fn find_deprecation<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
 where
     I: Iterator<Item = &'a Attribute>,
 {
