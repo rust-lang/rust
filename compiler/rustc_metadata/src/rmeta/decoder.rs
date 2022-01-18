@@ -263,7 +263,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        T::decode(&mut dcx).unwrap()
+        T::decode(&mut dcx)
     }
 }
 
@@ -274,7 +274,7 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
     ) -> impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        (0..self.meta).map(move |_| T::decode(&mut dcx).unwrap())
+        (0..self.meta).map(move |_| T::decode(&mut dcx))
     }
 }
 
@@ -300,11 +300,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
     }
 
-    fn read_lazy_with_meta<T: ?Sized + LazyMeta>(
-        &mut self,
-        meta: T::Meta,
-    ) -> Result<Lazy<T>, <Self as Decoder>::Error> {
-        let distance = self.read_usize()?;
+    fn read_lazy_with_meta<T: ?Sized + LazyMeta>(&mut self, meta: T::Meta) -> Lazy<T> {
+        let distance = self.read_usize();
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
             LazyState::NodeStart(start) => {
@@ -315,7 +312,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             LazyState::Previous(last_pos) => last_pos.get() + distance,
         };
         self.lazy_state = LazyState::Previous(NonZeroUsize::new(position).unwrap());
-        Ok(Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta))
+        Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta)
     }
 
     #[inline]
@@ -342,25 +339,21 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         self.opaque.position()
     }
 
-    fn cached_ty_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<Ty<'tcx>, Self::Error>
+    fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
-        F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
+        F: FnOnce(&mut Self) -> Ty<'tcx>,
     {
         let tcx = self.tcx();
 
         let key = ty::CReaderCacheKey { cnum: Some(self.cdata().cnum), pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&key) {
-            return Ok(ty);
+            return ty;
         }
 
-        let ty = or_insert_with(self)?;
+        let ty = or_insert_with(self);
         tcx.ty_rcache.borrow_mut().insert(key, ty);
-        Ok(ty)
+        ty
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
@@ -376,7 +369,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
         r
     }
 
-    fn decode_alloc_id(&mut self) -> Result<rustc_middle::mir::interpret::AllocId, Self::Error> {
+    fn decode_alloc_id(&mut self) -> rustc_middle::mir::interpret::AllocId {
         if let Some(alloc_decoding_session) = self.alloc_decoding_session {
             alloc_decoding_session.decode_alloc_id(self)
         } else {
@@ -386,48 +379,48 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<CrateNum, String> {
-        let cnum = CrateNum::from_u32(d.read_u32()?);
-        Ok(d.map_encoded_cnum_to_current(cnum))
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> CrateNum {
+        let cnum = CrateNum::from_u32(d.read_u32());
+        d.map_encoded_cnum_to_current(cnum)
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefIndex, String> {
-        Ok(DefIndex::from_u32(d.read_u32()?))
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefIndex {
+        DefIndex::from_u32(d.read_u32())
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnIndex, String> {
-        Ok(ExpnIndex::from_u32(d.read_u32()?))
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
+        ExpnIndex::from_u32(d.read_u32())
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<SyntaxContext, String> {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
         let cdata = decoder.cdata();
         let sess = decoder.sess.unwrap();
         let cname = cdata.root.name;
         rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
-            Ok(cdata
+            cdata
                 .root
                 .syntax_contexts
                 .get(cdata, id)
                 .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
-                .decode((cdata, sess)))
+                .decode((cdata, sess))
         })
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<ExpnId, String> {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> ExpnId {
         let local_cdata = decoder.cdata();
         let sess = decoder.sess.unwrap();
 
-        let cnum = CrateNum::decode(decoder)?;
-        let index = u32::decode(decoder)?;
+        let cnum = CrateNum::decode(decoder);
+        let index = u32::decode(decoder);
 
         let expn_id = rustc_span::hygiene::decode_expn_id(cnum, index, |expn_id| {
             let ExpnId { krate: cnum, local_id: index } = expn_id;
@@ -453,23 +446,23 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
                 .decode((crate_data, sess));
             (expn_data, expn_hash)
         });
-        Ok(expn_id)
+        expn_id
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Span, String> {
-        let ctxt = SyntaxContext::decode(decoder)?;
-        let tag = u8::decode(decoder)?;
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
+        let ctxt = SyntaxContext::decode(decoder);
+        let tag = u8::decode(decoder);
 
         if tag == TAG_PARTIAL_SPAN {
-            return Ok(DUMMY_SP.with_ctxt(ctxt));
+            return DUMMY_SP.with_ctxt(ctxt);
         }
 
         debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
 
-        let lo = BytePos::decode(decoder)?;
-        let len = BytePos::decode(decoder)?;
+        let lo = BytePos::decode(decoder);
+        let len = BytePos::decode(decoder);
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
@@ -512,7 +505,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             if decoder.cdata().root.is_proc_macro_crate() {
                 // Decode `CrateNum` as u32 - using `CrateNum::decode` will ICE
                 // since we don't have `cnum_map` populated.
-                let cnum = u32::decode(decoder)?;
+                let cnum = u32::decode(decoder);
                 panic!(
                     "Decoding of crate {:?} tried to access proc-macro dep {:?}",
                     decoder.cdata().root.name,
@@ -520,7 +513,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
                 );
             }
             // tag is TAG_VALID_SPAN_FOREIGN, checked by `debug_assert` above
-            let cnum = CrateNum::decode(decoder)?;
+            let cnum = CrateNum::decode(decoder);
             debug!(
                 "SpecializedDecoder<Span>::specialized_decode: loading source files from cnum {:?}",
                 cnum
@@ -582,18 +575,18 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
             (hi + source_file.translated_source_file.start_pos) - source_file.original_start_pos;
 
         // Do not try to decode parent for foreign spans.
-        Ok(Span::new(lo, hi, ctxt, None))
+        Span::new(lo, hi, ctxt, None)
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
         ty::codec::RefDecodable::decode(d)
     }
 }
@@ -601,7 +594,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx
 impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
     for Lazy<T>
 {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         decoder.read_lazy_with_meta(())
     }
 }
@@ -609,9 +602,9 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a
 impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
     for Lazy<[T]>
 {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
-        let len = decoder.read_usize()?;
-        if len == 0 { Ok(Lazy::empty()) } else { decoder.read_lazy_with_meta(len) }
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+        let len = decoder.read_usize();
+        if len == 0 { Lazy::empty() } else { decoder.read_lazy_with_meta(len) }
     }
 }
 
@@ -620,8 +613,8 @@ impl<'a, 'tcx, I: Idx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeCo
 where
     Option<T>: FixedSizeEncoding,
 {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Result<Self, String> {
-        let len = decoder.read_usize()?;
+    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
+        let len = decoder.read_usize();
         decoder.read_lazy_with_meta(len)
     }
 }

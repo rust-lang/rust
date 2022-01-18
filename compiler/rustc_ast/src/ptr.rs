@@ -115,8 +115,8 @@ impl<T> fmt::Pointer for P<T> {
 }
 
 impl<D: Decoder, T: 'static + Decodable<D>> Decodable<D> for P<T> {
-    fn decode(d: &mut D) -> Result<P<T>, D::Error> {
-        Decodable::decode(d).map(P)
+    fn decode(d: &mut D) -> P<T> {
+        P(Decodable::decode(d))
     }
 }
 
@@ -204,8 +204,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
-    fn decode(d: &mut D) -> Result<P<[T]>, D::Error> {
-        Ok(P::from_vec(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> P<[T]> {
+        P::from_vec(Decodable::decode(d))
     }
 }
 

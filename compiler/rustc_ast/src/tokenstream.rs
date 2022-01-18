@@ -163,7 +163,7 @@ impl<S: Encoder> Encodable<S> for LazyTokenStream {
 }
 
 impl<D: Decoder> Decodable<D> for LazyTokenStream {
-    fn decode(_d: &mut D) -> Result<Self, D::Error> {
+    fn decode(_d: &mut D) -> Self {
         panic!("Attempted to decode LazyTokenStream");
     }
 }

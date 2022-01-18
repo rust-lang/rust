@@ -975,12 +975,12 @@ impl<E: Encoder> Encodable<E> for Span {
     }
 }
 impl<D: Decoder> Decodable<D> for Span {
-    default fn decode(s: &mut D) -> Result<Span, D::Error> {
+    default fn decode(s: &mut D) -> Span {
         s.read_struct(|d| {
-            let lo = d.read_struct_field("lo", Decodable::decode)?;
-            let hi = d.read_struct_field("hi", Decodable::decode)?;
+            let lo = d.read_struct_field("lo", Decodable::decode);
+            let hi = d.read_struct_field("hi", Decodable::decode);
 
-            Ok(Span::new(lo, hi, SyntaxContext::root(), None))
+            Span::new(lo, hi, SyntaxContext::root(), None)
         })
     }
 }
@@ -1448,30 +1448,30 @@ impl<S: Encoder> Encodable<S> for SourceFile {
 }
 
 impl<D: Decoder> Decodable<D> for SourceFile {
-    fn decode(d: &mut D) -> Result<SourceFile, D::Error> {
+    fn decode(d: &mut D) -> SourceFile {
         d.read_struct(|d| {
-            let name: FileName = d.read_struct_field("name", |d| Decodable::decode(d))?;
+            let name: FileName = d.read_struct_field("name", |d| Decodable::decode(d));
             let src_hash: SourceFileHash =
-                d.read_struct_field("src_hash", |d| Decodable::decode(d))?;
-            let start_pos: BytePos = d.read_struct_field("start_pos", |d| Decodable::decode(d))?;
-            let end_pos: BytePos = d.read_struct_field("end_pos", |d| Decodable::decode(d))?;
+                d.read_struct_field("src_hash", |d| Decodable::decode(d));
+            let start_pos: BytePos = d.read_struct_field("start_pos", |d| Decodable::decode(d));
+            let end_pos: BytePos = d.read_struct_field("end_pos", |d| Decodable::decode(d));
             let lines: Vec<BytePos> = d.read_struct_field("lines", |d| {
-                let num_lines: u32 = Decodable::decode(d)?;
+                let num_lines: u32 = Decodable::decode(d);
                 let mut lines = Vec::with_capacity(num_lines as usize);
 
                 if num_lines > 0 {
                     // Read the number of bytes used per diff.
-                    let bytes_per_diff: u8 = Decodable::decode(d)?;
+                    let bytes_per_diff: u8 = Decodable::decode(d);
 
                     // Read the first element.
-                    let mut line_start: BytePos = Decodable::decode(d)?;
+                    let mut line_start: BytePos = Decodable::decode(d);
                     lines.push(line_start);
 
                     for _ in 1..num_lines {
                         let diff = match bytes_per_diff {
-                            1 => d.read_u8()? as u32,
-                            2 => d.read_u16()? as u32,
-                            4 => d.read_u32()?,
+                            1 => d.read_u8() as u32,
+                            2 => d.read_u16() as u32,
+                            4 => d.read_u32(),
                             _ => unreachable!(),
                         };
 
@@ -1481,17 +1481,17 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                     }
                 }
 
-                Ok(lines)
-            })?;
+                lines
+            });
             let multibyte_chars: Vec<MultiByteChar> =
-                d.read_struct_field("multibyte_chars", |d| Decodable::decode(d))?;
+                d.read_struct_field("multibyte_chars", |d| Decodable::decode(d));
             let non_narrow_chars: Vec<NonNarrowChar> =
-                d.read_struct_field("non_narrow_chars", |d| Decodable::decode(d))?;
-            let name_hash: u128 = d.read_struct_field("name_hash", |d| Decodable::decode(d))?;
+                d.read_struct_field("non_narrow_chars", |d| Decodable::decode(d));
+            let name_hash: u128 = d.read_struct_field("name_hash", |d| Decodable::decode(d));
             let normalized_pos: Vec<NormalizedPos> =
-                d.read_struct_field("normalized_pos", |d| Decodable::decode(d))?;
-            let cnum: CrateNum = d.read_struct_field("cnum", |d| Decodable::decode(d))?;
-            Ok(SourceFile {
+                d.read_struct_field("normalized_pos", |d| Decodable::decode(d));
+            let cnum: CrateNum = d.read_struct_field("cnum", |d| Decodable::decode(d));
+            SourceFile {
                 name,
                 start_pos,
                 end_pos,
@@ -1506,7 +1506,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 normalized_pos,
                 name_hash,
                 cnum,
-            })
+            }
         })
     }
 }
@@ -1949,8 +1949,8 @@ impl<S: rustc_serialize::Encoder> Encodable<S> for BytePos {
 }
 
 impl<D: rustc_serialize::Decoder> Decodable<D> for BytePos {
-    fn decode(d: &mut D) -> Result<BytePos, D::Error> {
-        Ok(BytePos(d.read_u32()?))
+    fn decode(d: &mut D) -> BytePos {
+        BytePos(d.read_u32())
     }
 }
 

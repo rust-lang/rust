@@ -47,8 +47,8 @@ impl<E: Encoder> Encodable<E> for CrateNum {
 }
 
 impl<D: Decoder> Decodable<D> for CrateNum {
-    default fn decode(d: &mut D) -> Result<CrateNum, D::Error> {
-        Ok(CrateNum::from_u32(d.read_u32()?))
+    default fn decode(d: &mut D) -> CrateNum {
+        CrateNum::from_u32(d.read_u32())
     }
 }
 
@@ -209,7 +209,7 @@ impl<E: Encoder> Encodable<E> for DefIndex {
 }
 
 impl<D: Decoder> Decodable<D> for DefIndex {
-    default fn decode(_: &mut D) -> Result<DefIndex, D::Error> {
+    default fn decode(_: &mut D) -> DefIndex {
         panic!("cannot decode `DefIndex` with `{}`", std::any::type_name::<D>());
     }
 }
@@ -298,12 +298,10 @@ impl<E: Encoder> Encodable<E> for DefId {
 }
 
 impl<D: Decoder> Decodable<D> for DefId {
-    default fn decode(d: &mut D) -> Result<DefId, D::Error> {
-        d.read_struct(|d| {
-            Ok(DefId {
-                krate: d.read_struct_field("krate", Decodable::decode)?,
-                index: d.read_struct_field("index", Decodable::decode)?,
-            })
+    default fn decode(d: &mut D) -> DefId {
+        d.read_struct(|d| DefId {
+            krate: d.read_struct_field("krate", Decodable::decode),
+            index: d.read_struct_field("index", Decodable::decode),
         })
     }
 }
@@ -378,8 +376,8 @@ impl<E: Encoder> Encodable<E> for LocalDefId {
 }
 
 impl<D: Decoder> Decodable<D> for LocalDefId {
-    fn decode(d: &mut D) -> Result<LocalDefId, D::Error> {
-        DefId::decode(d).map(|d| d.expect_local())
+    fn decode(d: &mut D) -> LocalDefId {
+        DefId::decode(d).expect_local()
     }
 }
 

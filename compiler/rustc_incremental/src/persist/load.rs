@@ -158,14 +158,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             // Decode the list of work_products
             let mut work_product_decoder = Decoder::new(&work_products_data[..], start_pos);
             let work_products: Vec<SerializedWorkProduct> =
-                Decodable::decode(&mut work_product_decoder).unwrap_or_else(|e| {
-                    let msg = format!(
-                        "Error decoding `work-products` from incremental \
-                                    compilation session directory: {}",
-                        e
-                    );
-                    sess.fatal(&msg)
-                });
+                Decodable::decode(&mut work_product_decoder);
 
             for swp in work_products {
                 let mut all_files_exist = true;
@@ -203,8 +196,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
             LoadResult::Error { message } => LoadResult::Error { message },
             LoadResult::Ok { data: (bytes, start_pos) } => {
                 let mut decoder = Decoder::new(&bytes, start_pos);
-                let prev_commandline_args_hash = u64::decode(&mut decoder)
-                    .expect("Error reading commandline arg hash from cached dep-graph");
+                let prev_commandline_args_hash = u64::decode(&mut decoder);
 
                 if prev_commandline_args_hash != expected_hash {
                     if report_incremental_info {
@@ -220,8 +212,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                     return LoadResult::DataOutOfDate;
                 }
 
-                let dep_graph = SerializedDepGraph::decode(&mut decoder)
-                    .expect("Error reading cached dep-graph");
+                let dep_graph = SerializedDepGraph::decode(&mut decoder);
 
                 LoadResult::Ok { data: (dep_graph, prev_work_products) }
             }

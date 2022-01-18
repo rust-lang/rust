@@ -619,20 +619,20 @@ impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate
 }
 impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
-    fn decode(d: &mut D) -> Result<ClearCrossCrate<T>, D::Error> {
+    fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {
-            return Ok(ClearCrossCrate::Clear);
+            return ClearCrossCrate::Clear;
         }
 
-        let discr = u8::decode(d)?;
+        let discr = u8::decode(d);
 
         match discr {
-            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(ClearCrossCrate::Clear),
+            TAG_CLEAR_CROSS_CRATE_CLEAR => ClearCrossCrate::Clear,
             TAG_CLEAR_CROSS_CRATE_SET => {
-                let val = T::decode(d)?;
-                Ok(ClearCrossCrate::Set(val))
+                let val = T::decode(d);
+                ClearCrossCrate::Set(val)
             }
-            tag => Err(d.error(&format!("Invalid tag for ClearCrossCrate: {:?}", tag))),
+            tag => panic!("Invalid tag for ClearCrossCrate: {:?}", tag),
         }
     }
 }

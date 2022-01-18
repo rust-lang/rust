@@ -163,15 +163,12 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
             // Decode the *position* of the footer, which can be found in the
             // last 8 bytes of the file.
             decoder.set_position(data.len() - IntEncodedWithFixedSize::ENCODED_SIZE);
-            let footer_pos = IntEncodedWithFixedSize::decode(&mut decoder)
-                .expect("error while trying to decode footer position")
-                .0 as usize;
+            let footer_pos = IntEncodedWithFixedSize::decode(&mut decoder).0 as usize;
 
             // Decode the file footer, which contains all the lookup tables, etc.
             decoder.set_position(footer_pos);
 
             decode_tagged(&mut decoder, TAG_FILE_FOOTER)
-                .expect("error while trying to decode footer position")
         };
 
         Self {
@@ -372,7 +369,7 @@ impl<'sess> OnDiskCache<'sess> {
         dep_node_index: SerializedDepNodeIndex,
     ) -> QuerySideEffects {
         let side_effects: Option<QuerySideEffects> =
-            self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index, "side_effects");
+            self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index);
 
         side_effects.unwrap_or_default()
     }
@@ -398,7 +395,7 @@ impl<'sess> OnDiskCache<'sess> {
     where
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
-        self.load_indexed(tcx, dep_node_index, &self.query_result_index, "query result")
+        self.load_indexed(tcx, dep_node_index, &self.query_result_index)
     }
 
     /// Stores side effect emitted during computation of an anonymous query.
@@ -423,17 +420,13 @@ impl<'sess> OnDiskCache<'sess> {
         tcx: TyCtxt<'tcx>,
         dep_node_index: SerializedDepNodeIndex,
         index: &FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
-        debug_tag: &'static str,
     ) -> Option<T>
     where
         T: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
     {
         let pos = index.get(&dep_node_index).cloned()?;
 
-        self.with_decoder(tcx, pos, |decoder| match decode_tagged(decoder, dep_node_index) {
-            Ok(v) => Some(v),
-            Err(e) => bug!("could not decode cached {}: {}", debug_tag, e),
-        })
+        self.with_decoder(tcx, pos, |decoder| Some(decode_tagged(decoder, dep_node_index)))
     }
 
     fn with_decoder<'a, 'tcx, T, F: for<'s> FnOnce(&mut CacheDecoder<'s, 'tcx>) -> T>(
@@ -535,7 +528,7 @@ impl<'a, 'tcx> DecoderWithPosition for CacheDecoder<'a, 'tcx> {
 
 // Decodes something that was encoded with `encode_tagged()` and verify that the
 // tag matches and the correct amount of bytes was read.
-fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> Result<V, D::Error>
+fn decode_tagged<D, T, V>(decoder: &mut D, expected_tag: T) -> V
 where
     T: Decodable<D> + Eq + std::fmt::Debug,
     V: Decodable<D>,
@@ -543,15 +536,15 @@ where
 {
     let start_pos = decoder.position();
 
-    let actual_tag = T::decode(decoder)?;
+    let actual_tag = T::decode(decoder);
     assert_eq!(actual_tag, expected_tag);
-    let value = V::decode(decoder)?;
+    let value = V::decode(decoder);
     let end_pos = decoder.position();
 
-    let expected_len: u64 = Decodable::decode(decoder)?;
+    let expected_len: u64 = Decodable::decode(decoder);
     assert_eq!((end_pos - start_pos) as u64, expected_len);
 
-    Ok(value)
+    value
 }
 
 impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
@@ -572,26 +565,22 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         self.opaque.data[self.opaque.position()]
     }
 
-    fn cached_ty_for_shorthand<F>(
-        &mut self,
-        shorthand: usize,
-        or_insert_with: F,
-    ) -> Result<Ty<'tcx>, Self::Error>
+    fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
-        F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>,
+        F: FnOnce(&mut Self) -> Ty<'tcx>,
     {
         let tcx = self.tcx();
 
         let cache_key = ty::CReaderCacheKey { cnum: None, pos: shorthand };
 
         if let Some(&ty) = tcx.ty_rcache.borrow().get(&cache_key) {
-            return Ok(ty);
+            return ty;
         }
 
-        let ty = or_insert_with(self)?;
+        let ty = or_insert_with(self);
         // This may overwrite the entry, but it should overwrite with the same value.
         tcx.ty_rcache.borrow_mut().insert_same(cache_key, ty);
-        Ok(ty)
+        ty
     }
 
     fn with_position<F, R>(&mut self, pos: usize, f: F) -> R
@@ -607,7 +596,7 @@ impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
         r
     }
 
-    fn decode_alloc_id(&mut self) -> Result<interpret::AllocId, Self::Error> {
+    fn decode_alloc_id(&mut self) -> interpret::AllocId {
         let alloc_decoding_session = self.alloc_decoding_session;
         alloc_decoding_session.decode_alloc_id(self)
     }
@@ -619,35 +608,35 @@ rustc_middle::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
 // into specializations this way, given how `CacheDecoder` and the decoding traits currently work.
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         Decodable::decode(&mut d.opaque)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
-    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
         let syntax_contexts = decoder.syntax_contexts;
         rustc_span::hygiene::decode_syntax_context(decoder, decoder.hygiene_context, |this, id| {
             // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT)?;
-                Ok(data)
+                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                data
             })
         })
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
-    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
-        let hash = ExpnHash::decode(decoder)?;
+    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        let hash = ExpnHash::decode(decoder);
         if hash.is_root() {
-            return Ok(ExpnId::root());
+            return ExpnId::root();
         }
 
         if let Some(expn_id) = ExpnId::from_hash(hash) {
-            return Ok(expn_id);
+            return expn_id;
         }
 
         let krate = decoder.tcx.stable_crate_id_to_crate_num(hash.stable_crate_id());
@@ -660,7 +649,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
                 .unwrap_or_else(|| panic!("Bad hash {:?} (map {:?})", hash, decoder.expn_data));
 
             let data: ExpnData = decoder
-                .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA))?;
+                .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA));
             let expn_id = rustc_span::hygiene::register_local_expn_id(data, hash);
 
             #[cfg(debug_assertions)]
@@ -687,21 +676,21 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
         };
 
         debug_assert_eq!(expn_id.krate, krate);
-        Ok(expn_id)
+        expn_id
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
-    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
-        let ctxt = SyntaxContext::decode(decoder)?;
-        let parent = Option::<LocalDefId>::decode(decoder)?;
-        let tag: u8 = Decodable::decode(decoder)?;
+    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        let ctxt = SyntaxContext::decode(decoder);
+        let parent = Option::<LocalDefId>::decode(decoder);
+        let tag: u8 = Decodable::decode(decoder);
 
         if tag == TAG_PARTIAL_SPAN {
-            return Ok(Span::new(BytePos(0), BytePos(0), ctxt, parent));
+            return Span::new(BytePos(0), BytePos(0), ctxt, parent);
         } else if tag == TAG_RELATIVE_SPAN {
-            let dlo = u32::decode(decoder)?;
-            let dto = u32::decode(decoder)?;
+            let dlo = u32::decode(decoder);
+            let dto = u32::decode(decoder);
 
             let enclosing =
                 decoder.tcx.definitions_untracked().def_span(parent.unwrap()).data_untracked();
@@ -712,29 +701,29 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Span {
                 parent,
             );
 
-            return Ok(span);
+            return span;
         } else {
             debug_assert_eq!(tag, TAG_FULL_SPAN);
         }
 
-        let file_lo_index = SourceFileIndex::decode(decoder)?;
-        let line_lo = usize::decode(decoder)?;
-        let col_lo = BytePos::decode(decoder)?;
-        let len = BytePos::decode(decoder)?;
+        let file_lo_index = SourceFileIndex::decode(decoder);
+        let line_lo = usize::decode(decoder);
+        let col_lo = BytePos::decode(decoder);
+        let len = BytePos::decode(decoder);
 
         let file_lo = decoder.file_index_to_file(file_lo_index);
         let lo = file_lo.lines[line_lo - 1] + col_lo;
         let hi = lo + len;
 
-        Ok(Span::new(lo, hi, ctxt, parent))
+        Span::new(lo, hi, ctxt, parent)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
-        let stable_id = StableCrateId::decode(d)?;
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        let stable_id = StableCrateId::decode(d);
         let cnum = d.tcx.stable_crate_id_to_crate_num(stable_id);
-        Ok(cnum)
+        cnum
     }
 }
 
@@ -743,8 +732,8 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
 // because we would not know how to transform the `DefIndex` to the current
 // context.
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefIndex {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<DefIndex, String> {
-        Err(d.error("trying to decode `DefIndex` outside the context of a `DefId`"))
+    fn decode(_d: &mut CacheDecoder<'a, 'tcx>) -> DefIndex {
+        panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
 }
 
@@ -752,23 +741,23 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefIndex {
 // compilation sessions. We use the `DefPathHash`, which is stable across
 // sessions, to map the old `DefId` to the new one.
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         // Load the `DefPathHash` which is was we encoded the `DefId` as.
-        let def_path_hash = DefPathHash::decode(d)?;
+        let def_path_hash = DefPathHash::decode(d);
 
         // Using the `DefPathHash`, we can lookup the new `DefId`.
         // Subtle: We only encode a `DefId` as part of a query result.
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        Ok(d.tcx().def_path_hash_to_def_id(def_path_hash, &mut || {
+        d.tcx().def_path_hash_to_def_id(def_path_hash, &mut || {
             panic!("Failed to convert DefPathHash {:?}", def_path_hash)
-        }))
+        })
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId> {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
@@ -776,31 +765,31 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx FxHashSet<LocalDefId>
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
 {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [thir::abstract_const::Node<'tcx>] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsmTemplatePiece] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Result<Self, String> {
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)
     }
 }

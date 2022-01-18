@@ -27,7 +27,7 @@ struct B {
 fn main() {
     let obj = B { foo: Cell::new(true), bar: RefCell::new(A { baz: 2 }) };
     let s = json::encode(&obj).unwrap();
-    let obj2: B = json::decode(&s).unwrap();
+    let obj2: B = json::decode(&s);
     assert_eq!(obj.foo.get(), obj2.foo.get());
     assert_eq!(obj.bar.borrow().baz, obj2.bar.borrow().baz);
 }

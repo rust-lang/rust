@@ -1,14 +1,10 @@
 #![allow(rustc::internal)]
 
-use json::DecoderError::*;
 use json::ErrorCode::*;
 use json::Json::*;
 use json::JsonEvent::*;
 use json::ParserError::*;
-use json::{
-    from_str, DecodeResult, Decoder, DecoderError, Encoder, EncoderError, Json, JsonEvent, Parser,
-    StackElement,
-};
+use json::{from_str, Decoder, Encoder, EncoderError, Json, JsonEvent, Parser, StackElement};
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::json;
 use rustc_serialize::{Decodable, Encodable};
@@ -26,27 +22,27 @@ struct OptionData {
 #[test]
 fn test_decode_option_none() {
     let s = "{}";
-    let obj: OptionData = json::decode(s).unwrap();
+    let obj: OptionData = json::decode(s);
     assert_eq!(obj, OptionData { opt: None });
 }
 
 #[test]
 fn test_decode_option_some() {
     let s = "{ \"opt\": 10 }";
-    let obj: OptionData = json::decode(s).unwrap();
+    let obj: OptionData = json::decode(s);
     assert_eq!(obj, OptionData { opt: Some(10) });
 }
 
 #[test]
-fn test_decode_option_malformed() {
-    check_err::<OptionData>(
-        "{ \"opt\": [] }",
-        ExpectedError("Number".to_string(), "[]".to_string()),
-    );
-    check_err::<OptionData>(
-        "{ \"opt\": false }",
-        ExpectedError("Number".to_string(), "false".to_string()),
-    );
+#[should_panic(expected = r#"ExpectedError("Number", "[]")"#)]
+fn test_decode_option_malformed1() {
+    check_err::<OptionData>(r#"{ "opt": [] }"#);
+}
+
+#[test]
+#[should_panic(expected = r#"ExpectedError("Number", "false")"#)]
+fn test_decode_option_malformed2() {
+    check_err::<OptionData>(r#"{ "opt": false }"#);
 }
 
 #[derive(PartialEq, Encodable, Decodable, Debug)]
@@ -329,13 +325,13 @@ fn test_read_identifiers() {
 
 #[test]
 fn test_decode_identifiers() {
-    let v: () = json::decode("null").unwrap();
+    let v: () = json::decode("null");
     assert_eq!(v, ());
 
-    let v: bool = json::decode("true").unwrap();
+    let v: bool = json::decode("true");
     assert_eq!(v, true);
 
-    let v: bool = json::decode("false").unwrap();
+    let v: bool = json::decode("false");
     assert_eq!(v, false);
 }
 
@@ -368,42 +364,42 @@ fn test_read_number() {
 }
 
 #[test]
+#[should_panic(expected = r#"ExpectedError("Integer", "765.25")"#)]
 fn test_decode_numbers() {
-    let v: f64 = json::decode("3").unwrap();
+    let v: f64 = json::decode("3");
     assert_eq!(v, 3.0);
 
-    let v: f64 = json::decode("3.1").unwrap();
+    let v: f64 = json::decode("3.1");
     assert_eq!(v, 3.1);
 
-    let v: f64 = json::decode("-1.2").unwrap();
+    let v: f64 = json::decode("-1.2");
     assert_eq!(v, -1.2);
 
-    let v: f64 = json::decode("0.4").unwrap();
+    let v: f64 = json::decode("0.4");
     assert_eq!(v, 0.4);
 
-    let v: f64 = json::decode("0.4e5").unwrap();
+    let v: f64 = json::decode("0.4e5");
     assert_eq!(v, 0.4e5);
 
-    let v: f64 = json::decode("0.4e15").unwrap();
+    let v: f64 = json::decode("0.4e15");
     assert_eq!(v, 0.4e15);
 
-    let v: f64 = json::decode("0.4e-01").unwrap();
+    let v: f64 = json::decode("0.4e-01");
     assert_eq!(v, 0.4e-01);
 
-    let v: u64 = json::decode("0").unwrap();
+    let v: u64 = json::decode("0");
     assert_eq!(v, 0);
 
-    let v: u64 = json::decode("18446744073709551615").unwrap();
+    let v: u64 = json::decode("18446744073709551615");
     assert_eq!(v, u64::MAX);
 
-    let v: i64 = json::decode("-9223372036854775808").unwrap();
+    let v: i64 = json::decode("-9223372036854775808");
     assert_eq!(v, i64::MIN);
 
-    let v: i64 = json::decode("9223372036854775807").unwrap();
+    let v: i64 = json::decode("9223372036854775807");
     assert_eq!(v, i64::MAX);
 
-    let res: DecodeResult<i64> = json::decode("765.25");
-    assert_eq!(res, Err(ExpectedError("Integer".to_string(), "765.25".to_string())));
+    json::decode::<i64>("765.25");
 }
 
 #[test]
@@ -438,7 +434,7 @@ fn test_decode_str() {
     ];
 
     for (i, o) in s {
-        let v: string::String = json::decode(i).unwrap();
+        let v: string::String = json::decode(i);
         assert_eq!(v, o);
     }
 }
@@ -463,39 +459,41 @@ fn test_read_array() {
 
 #[test]
 fn test_decode_array() {
-    let v: Vec<()> = json::decode("[]").unwrap();
+    let v: Vec<()> = json::decode("[]");
     assert_eq!(v, []);
 
-    let v: Vec<()> = json::decode("[null]").unwrap();
+    let v: Vec<()> = json::decode("[null]");
     assert_eq!(v, [()]);
 
-    let v: Vec<bool> = json::decode("[true]").unwrap();
+    let v: Vec<bool> = json::decode("[true]");
     assert_eq!(v, [true]);
 
-    let v: Vec<isize> = json::decode("[3, 1]").unwrap();
+    let v: Vec<isize> = json::decode("[3, 1]");
     assert_eq!(v, [3, 1]);
 
-    let v: Vec<Vec<usize>> = json::decode("[[3], [1, 2]]").unwrap();
+    let v: Vec<Vec<usize>> = json::decode("[[3], [1, 2]]");
     assert_eq!(v, [vec![3], vec![1, 2]]);
 }
 
 #[test]
 fn test_decode_tuple() {
-    let t: (usize, usize, usize) = json::decode("[1, 2, 3]").unwrap();
+    let t: (usize, usize, usize) = json::decode("[1, 2, 3]");
     assert_eq!(t, (1, 2, 3));
 
-    let t: (usize, string::String) = json::decode("[1, \"two\"]").unwrap();
+    let t: (usize, string::String) = json::decode("[1, \"two\"]");
     assert_eq!(t, (1, "two".to_string()));
 }
 
 #[test]
+#[should_panic]
 fn test_decode_tuple_malformed_types() {
-    assert!(json::decode::<(usize, string::String)>("[1, 2]").is_err());
+    json::decode::<(usize, string::String)>("[1, 2]");
 }
 
 #[test]
+#[should_panic]
 fn test_decode_tuple_malformed_length() {
-    assert!(json::decode::<(usize, usize)>("[1, 2, 3]").is_err());
+    json::decode::<(usize, usize)>("[1, 2, 3]");
 }
 
 #[test]
@@ -562,7 +560,7 @@ fn test_decode_struct() {
         ]
     }";
 
-    let v: Outer = json::decode(s).unwrap();
+    let v: Outer = json::decode(s);
     assert_eq!(
         v,
         Outer { inner: vec![Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }] }
@@ -577,7 +575,7 @@ struct FloatStruct {
 #[test]
 fn test_decode_struct_with_nan() {
     let s = "{\"f\":null,\"a\":[null,123]}";
-    let obj: FloatStruct = json::decode(s).unwrap();
+    let obj: FloatStruct = json::decode(s);
     assert!(obj.f.is_nan());
     assert!(obj.a[0].is_nan());
     assert_eq!(obj.a[1], 123f64);
@@ -585,20 +583,20 @@ fn test_decode_struct_with_nan() {
 
 #[test]
 fn test_decode_option() {
-    let value: Option<string::String> = json::decode("null").unwrap();
+    let value: Option<string::String> = json::decode("null");
     assert_eq!(value, None);
 
-    let value: Option<string::String> = json::decode("\"jodhpurs\"").unwrap();
+    let value: Option<string::String> = json::decode("\"jodhpurs\"");
     assert_eq!(value, Some("jodhpurs".to_string()));
 }
 
 #[test]
 fn test_decode_enum() {
-    let value: Animal = json::decode("\"Dog\"").unwrap();
+    let value: Animal = json::decode("\"Dog\"");
     assert_eq!(value, Dog);
 
     let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
-    let value: Animal = json::decode(s).unwrap();
+    let value: Animal = json::decode(s);
     assert_eq!(value, Frog("Henry".to_string(), 349));
 }
 
@@ -606,7 +604,7 @@ fn test_decode_enum() {
 fn test_decode_map() {
     let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
               \"fields\":[\"Henry\", 349]}}";
-    let mut map: BTreeMap<string::String, Animal> = json::decode(s).unwrap();
+    let mut map: BTreeMap<string::String, Animal> = json::decode(s);
 
     assert_eq!(map.remove(&"a".to_string()), Some(Dog));
     assert_eq!(map.remove(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
@@ -630,59 +628,65 @@ enum DecodeEnum {
     A(f64),
     B(string::String),
 }
-fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected: DecoderError) {
-    let res: DecodeResult<T> = match from_str(to_parse) {
-        Err(e) => Err(ParseError(e)),
-        Ok(json) => Decodable::decode(&mut Decoder::new(json)),
-    };
-    match res {
-        Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`", to_parse, expected),
-        Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}", to_parse, e),
-        Err(e) => {
-            assert_eq!(e, expected);
-        }
-    }
+fn check_err<T: Decodable<Decoder>>(to_parse: &str) {
+    let json = from_str(to_parse).unwrap();
+    let _: T = Decodable::decode(&mut Decoder::new(json));
 }
 #[test]
-fn test_decode_errors_struct() {
-    check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
-    check_err::<DecodeStruct>(
-        "{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-        ExpectedError("Number".to_string(), "true".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-        ExpectedError("Boolean".to_string(), "[]".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-        ExpectedError("String".to_string(), "{}".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-        ExpectedError("Array".to_string(), "null".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": \"\"}",
-        MissingFieldError("w".to_string()),
-    );
+#[should_panic(expected = r#"ExpectedError("Object", "[]")"#)]
+fn test_decode_errors_struct1() {
+    check_err::<DecodeStruct>("[]");
 }
 #[test]
-fn test_decode_errors_enum() {
-    check_err::<DecodeEnum>("{}", MissingFieldError("variant".to_string()));
-    check_err::<DecodeEnum>(
-        "{\"variant\": 1}",
-        ExpectedError("String".to_string(), "1".to_string()),
-    );
-    check_err::<DecodeEnum>("{\"variant\": \"A\"}", MissingFieldError("fields".to_string()));
-    check_err::<DecodeEnum>(
-        "{\"variant\": \"A\", \"fields\": null}",
-        ExpectedError("Array".to_string(), "null".to_string()),
-    );
-    check_err::<DecodeEnum>(
-        "{\"variant\": \"C\", \"fields\": []}",
-        UnknownVariantError("C".to_string()),
-    );
+#[should_panic(expected = r#"ExpectedError("Number", "true")"#)]
+fn test_decode_errors_struct2() {
+    check_err::<DecodeStruct>(r#"{"x": true, "y": true, "z": "", "w": []}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("Boolean", "[]")"#)]
+fn test_decode_errors_struct3() {
+    check_err::<DecodeStruct>(r#"{"x": 1, "y": [], "z": "", "w": []}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("String", "{}")"#)]
+fn test_decode_errors_struct4() {
+    check_err::<DecodeStruct>(r#"{"x": 1, "y": true, "z": {}, "w": []}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("Array", "null")"#)]
+fn test_decode_errors_struct5() {
+    check_err::<DecodeStruct>(r#"{"x": 1, "y": true, "z": "", "w": null}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("Array", "null")"#)]
+fn test_decode_errors_struct6() {
+    check_err::<DecodeStruct>(r#"{"x": 1, "y": true, "z": ""}"#);
+}
+
+#[test]
+#[should_panic(expected = r#"MissingFieldError("variant")"#)]
+fn test_decode_errors_enum1() {
+    check_err::<DecodeEnum>(r#"{}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("String", "1")"#)]
+fn test_decode_errors_enum2() {
+    check_err::<DecodeEnum>(r#"{"variant": 1}"#);
+}
+#[test]
+#[should_panic(expected = r#"MissingFieldError("fields")"#)]
+fn test_decode_errors_enum3() {
+    check_err::<DecodeEnum>(r#"{"variant": "A"}"#);
+}
+#[test]
+#[should_panic(expected = r#"ExpectedError("Array", "null")"#)]
+fn test_decode_errors_enum4() {
+    check_err::<DecodeEnum>(r#"{"variant": "A", "fields": null}"#);
+}
+#[test]
+#[should_panic(expected = r#"UnknownVariantError("C")"#)]
+fn test_decode_errors_enum5() {
+    check_err::<DecodeEnum>(r#"{"variant": "C", "fields": []}"#);
 }
 
 #[test]
@@ -944,7 +948,7 @@ fn test_hashmap_with_enum_key() {
     map.insert(Enum::Foo, 0);
     let result = json::encode(&map).unwrap();
     assert_eq!(&result[..], r#"{"Foo":0}"#);
-    let decoded: HashMap<Enum, _> = json::decode(&result).unwrap();
+    let decoded: HashMap<Enum, _> = json::decode(&result);
     assert_eq!(map, decoded);
 }
 
@@ -957,10 +961,11 @@ fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
         Ok(o) => o,
     };
     let mut decoder = Decoder::new(json_obj);
-    let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder).unwrap();
+    let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder);
 }
 
 #[test]
+#[should_panic(expected = r#"ExpectedError("Number", "a")"#)]
 fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
     use std::collections::HashMap;
     let json_str = "{\"a\":true}";
@@ -969,8 +974,7 @@ fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
         Ok(o) => o,
     };
     let mut decoder = Decoder::new(json_obj);
-    let result: Result<HashMap<usize, bool>, DecoderError> = Decodable::decode(&mut decoder);
-    assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
+    let _: HashMap<usize, bool> = Decodable::decode(&mut decoder);
 }
 
 fn assert_stream_equal(src: &str, expected: Vec<(JsonEvent, Vec<StackElement<'_>>)>) {
