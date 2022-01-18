@@ -566,7 +566,7 @@ pub enum ImplSource<'tcx, N> {
     TraitAlias(ImplSourceTraitAliasData<'tcx, N>),
 
     /// ImplSource for a `const Drop` implementation.
-    ConstDrop(ImplSourceConstDropData),
+    ConstDrop(ImplSourceConstDropData<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -581,10 +581,10 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Object(d) => d.nested,
             ImplSource::FnPointer(d) => d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData)
-            | ImplSource::ConstDrop(ImplSourceConstDropData) => Vec::new(),
+            | ImplSource::Pointee(ImplSourcePointeeData) => Vec::new(),
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
+            ImplSource::ConstDrop(i) => i.nested,
         }
     }
 
@@ -599,10 +599,10 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             ImplSource::Object(d) => &d.nested,
             ImplSource::FnPointer(d) => &d.nested,
             ImplSource::DiscriminantKind(ImplSourceDiscriminantKindData)
-            | ImplSource::Pointee(ImplSourcePointeeData)
-            | ImplSource::ConstDrop(ImplSourceConstDropData) => &[],
+            | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
+            ImplSource::ConstDrop(i) => &i.nested,
         }
     }
 
@@ -661,9 +661,9 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                     nested: d.nested.into_iter().map(f).collect(),
                 })
             }
-            ImplSource::ConstDrop(ImplSourceConstDropData) => {
-                ImplSource::ConstDrop(ImplSourceConstDropData)
-            }
+            ImplSource::ConstDrop(i) => ImplSource::ConstDrop(ImplSourceConstDropData {
+                nested: i.nested.into_iter().map(f).collect(),
+            }),
         }
     }
 }
@@ -755,8 +755,10 @@ pub struct ImplSourceDiscriminantKindData;
 #[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct ImplSourcePointeeData;
 
-#[derive(Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
-pub struct ImplSourceConstDropData;
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
+pub struct ImplSourceConstDropData<N> {
+    pub nested: Vec<N>,
+}
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
 pub struct ImplSourceTraitAliasData<'tcx, N> {

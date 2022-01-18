@@ -146,8 +146,8 @@ pub enum SelectionCandidate<'tcx> {
 
     BuiltinUnsizeCandidate,
 
-    /// Implementation of `const Drop`.
-    ConstDropCandidate,
+    /// Implementation of `const Drop`, optionally from a custom `impl const Drop`.
+    ConstDropCandidate(Option<DefId>),
 }
 
 /// The result of trait evaluation. The order is important
