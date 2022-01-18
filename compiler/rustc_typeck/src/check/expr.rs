@@ -31,7 +31,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{ExprKind, QPath};
+use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
@@ -1948,7 +1948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, expr_ty={:?}",
             field, base, expr, expr_t
         );
-        let mut err = self.no_such_field_err(field, expr_t);
+        let mut err = self.no_such_field_err(field, expr_t, base.hir_id);
 
         match *expr_t.peel_refs().kind() {
             ty::Array(_, len) => {
@@ -2186,6 +2186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         field: Ident,
         expr_t: &'tcx ty::TyS<'tcx>,
+        id: HirId,
     ) -> DiagnosticBuilder<'_> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
@@ -2203,9 +2204,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         if let Some((fields, substs)) = self.get_field_candidates(span, &expr_t) {
             for candidate_field in fields.iter() {
-                if let Some(field_path) =
-                    self.check_for_nested_field(span, field, candidate_field, substs, vec![])
-                {
+                if let Some(field_path) = self.check_for_nested_field(
+                    span,
+                    field,
+                    candidate_field,
+                    substs,
+                    vec![],
+                    self.tcx.parent_module(id).to_def_id(),
+                ) {
                     let field_path_str = field_path
                         .iter()
                         .map(|id| id.name.to_ident_string())
@@ -2257,6 +2263,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         candidate_field: &ty::FieldDef,
         subst: SubstsRef<'tcx>,
         mut field_path: Vec<Ident>,
+        id: DefId,
     ) -> Option<Vec<Ident>> {
         debug!(
             "check_for_nested_field(span: {:?}, candidate_field: {:?}, field_path: {:?}",
@@ -2276,10 +2283,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let field_ty = candidate_field.ty(self.tcx, subst);
             if let Some((nested_fields, subst)) = self.get_field_candidates(span, &field_ty) {
                 for field in nested_fields.iter() {
-                    let ident = field.ident(self.tcx).normalize_to_macros_2_0();
-                    if ident == target_field {
-                        return Some(field_path);
-                    } else {
+                    let accessible = field.vis.is_accessible_from(id, self.tcx);
+                    if accessible {
+                        let ident = field.ident(self.tcx).normalize_to_macros_2_0();
+                        if ident == target_field {
+                            return Some(field_path);
+                        }
                         let field_path = field_path.clone();
                         if let Some(path) = self.check_for_nested_field(
                             span,
@@ -2287,6 +2296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             field,
                             subst,
                             field_path,
+                            id,
                         ) {
                             return Some(path);
                         }
