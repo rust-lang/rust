@@ -1,43 +1,42 @@
-# Implement New Feature
+# Implementing new features
 
 When you want to implement a new significant feature in the compiler,
 you need to go through this process to make sure everything goes
 smoothly.
 
-## The @rfcbot (p)FCP process
+## The @rfcbot FCP process
 
 When the change is small and uncontroversial, then it can be done
-with just writing a PR and getting r+ from someone who knows that
+with just writing a PR and getting an r+ from someone who knows that
 part of the code. However, if the change is potentially controversial,
 it would be a bad idea to push it without consensus from the rest
 of the team (both in the "distributed system" sense to make sure
 you don't break anything you don't know about, and in the social
 sense to avoid PR fights).
 
-If such a change seems to be too small to require a full formal RFC
-process (e.g. a big refactoring of the code, or a
-"technically-breaking" change, or a "big bugfix" that basically
-amounts to a small feature) but is still too controversial or
-big to get by with a single r+, you can start a pFCP (or, if you
-don't have r+ rights, ask someone who has them to start one - and
-unless they have a concern themselves, they should). pFCP stands for
-"proposed final comment period".
+If such a change seems to be too small to require a full formal RFC process
+(e.g., a small standard library addition, a big refactoring of the code, a
+"technically-breaking" change, or a "big bugfix" that basically amounts to a
+small feature) but is still too controversial or big to get by with a single r+,
+you can propose a final comment period (FCP). Or, if you're not on the relevant
+team (and thus don't have @rfcbot permissions), ask someone who is to start one;
+unless they have a concern themselves, they should.
 
-Again, the pFCP process is only needed if you need consensus - if you
-don't think anyone would have a problem with your change, it's ok to
+Again, the FCP process is only needed if you need consensus – if you
+don't think anyone would have a problem with your change, it's OK to
 get by with only an r+. For example, it is OK to add or modify
-unstable command-line flags or attributes without a pFCP for
+unstable command-line flags or attributes without an FCP for
 compiler development or standard library use, as long as you don't
 expect them to be in wide use in the nightly ecosystem.
 
-You don't need to have the implementation fully ready for r+ to ask
-for a pFCP, but it is generally a good idea to have at least a proof
+You don't need to have the implementation fully ready for r+ to propose an FCP,
+but it is generally a good idea to have at least a proof
 of concept so that people can see what you are talking about.
 
-When a pFCP is started, it requires all members of the team to sign off
-the FCP. After they all do so, there's a 10 day long "final comment
-period" where everybody can comment, and if no new concerns are raised,
-the PR/issue gets FCP approval.
+When an FCP is proposed, it requires all members of the team to sign off the
+FCP. After they all do so, there's a 10-day-long "final comment period" (hence
+the name) where everybody can comment, and if no concerns are raised, the
+PR/issue gets FCP approval.
 
 ## The logistics of writing features
 
@@ -79,7 +78,6 @@ feature can be changed, or the feature might be completely
 rewritten or removed. Features are not supposed to gain tenure
 by being unstable and unchanged for a year.
 
-<a name = "tracking-issue"></a>
 ###  Tracking Issues
 
 To keep track of the status of an unstable feature, the
@@ -111,7 +109,6 @@ for stabilization in a checklist, e.g.,
 - [ ] Stabilize the feature. ([See instructions on rustc-dev-guide.](https://rustc-dev-guide.rust-lang.org/stabilization_guide.html#stabilization-pr))
 ```
 
-<a name="stability-in-code"></a>
 ##  Stability in code
 
 The below steps needs to be followed in order to implement
