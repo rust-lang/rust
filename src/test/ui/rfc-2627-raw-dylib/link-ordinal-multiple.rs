@@ -1,4 +1,4 @@
-// only-windows-msvc
+// only-windows
 #![feature(raw_dylib)]
 //~^ WARN the feature `raw_dylib` is incomplete
 

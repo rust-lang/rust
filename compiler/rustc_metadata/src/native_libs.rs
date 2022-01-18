@@ -274,11 +274,6 @@ impl Collector<'_> {
                     span,
                     "`#[link(...)]` with `kind = \"raw-dylib\"` only supported on Windows",
                 );
-            } else if !self.tcx.sess.target.options.is_like_msvc {
-                self.tcx.sess.span_warn(
-                    span,
-                    "`#[link(...)]` with `kind = \"raw-dylib\"` not supported on windows-gnu",
-                );
             }
 
             if lib_name.as_str().contains('\0') {
