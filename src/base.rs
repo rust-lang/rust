@@ -6,8 +6,11 @@ use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 
+use indexmap::IndexSet;
+
 use crate::constant::ConstantCx;
 use crate::prelude::*;
+use crate::pretty_clif::CommentWriter;
 
 pub(crate) fn codegen_fn<'tcx>(
     cx: &mut crate::CodegenCx<'tcx>,
@@ -99,7 +102,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let instance = fx.instance;
-    let mut clif_comments = fx.clif_comments;
+    let clif_comments = fx.clif_comments;
     let source_info_set = fx.source_info_set;
     let local_map = fx.local_map;
 
@@ -114,12 +117,39 @@ pub(crate) fn codegen_fn<'tcx>(
         &clif_comments,
     );
 
+    // Verify function
+    verify_func(tcx, &clif_comments, &func);
+
+    compile_fn(
+        cx,
+        module,
+        instance,
+        symbol_name.name,
+        func_id,
+        func,
+        clif_comments,
+        source_info_set,
+        local_map,
+    );
+}
+
+fn compile_fn<'tcx>(
+    cx: &mut crate::CodegenCx<'tcx>,
+    module: &mut dyn Module,
+    instance: Instance<'tcx>,
+    symbol_name: &str,
+    func_id: FuncId,
+    func: Function,
+    mut clif_comments: CommentWriter,
+    source_info_set: IndexSet<SourceInfo>,
+    local_map: IndexVec<mir::Local, CPlace<'tcx>>,
+) {
+    let tcx = cx.tcx;
+
     // Store function in context
     let context = &mut cx.cached_context;
+    context.clear();
     context.func = func;
-
-    // Verify function
-    verify_func(tcx, &clif_comments, &context.func);
 
     // If the return block is not reachable, then the SSA builder may have inserted an `iconst.i128`
     // instruction, which doesn't have an encoding.
@@ -177,7 +207,7 @@ pub(crate) fn codegen_fn<'tcx>(
             debug_context.define_function(
                 instance,
                 func_id,
-                symbol_name.name,
+                symbol_name,
                 isa,
                 context,
                 &source_info_set,
@@ -186,9 +216,6 @@ pub(crate) fn codegen_fn<'tcx>(
         }
         unwind_context.add_function(func_id, &context, isa);
     });
-
-    // Clear context to make it usable for the next function
-    context.clear();
 }
 
 pub(crate) fn verify_func(
