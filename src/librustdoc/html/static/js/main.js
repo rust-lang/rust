@@ -902,6 +902,9 @@ function hideThemeButtonState() {
     handleClick("help-button", function(ev) {
         displayHelp(true, ev);
     });
+    handleClick(MAIN_ID, function() {
+        hideSidebar();
+    });
 
     onEachLazy(document.getElementsByTagName("a"), function(el) {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
@@ -910,6 +913,7 @@ function hideThemeButtonState() {
         if (el.hash) {
             el.addEventListener("click", function() {
                 expandSection(el.hash.slice(1));
+                hideSidebar();
             });
         }
     });
