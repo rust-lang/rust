@@ -603,109 +603,114 @@ impl File {
         })?;
         Ok(())
     }
+}
 
-    /// Fill the given buffer with as many directory entries as will fit.
+/// A buffer that holds the contents of a directory.
+///
+/// FIXME: This in the effect doing the same thing as `ReadDir` above but using
+/// a different API. The two implementations should be merged as much as possible.
+///
+/// # Symlinks and other reparse points
+///
+/// On Windows a file is either a directory or a non-directory.
+/// A symlink directory is simply an empty directory with some "reparse" metadata attached.
+/// So if you open a link (not its target) and iterate the directory,
+/// you will always iterate an empty directory regardless of the target.
+struct DirBuff {
+    dir: File,
+    cursor: usize,
+    buffer: [u8; Self::BUFFER_SIZE],
+    is_empty: bool,
+}
+impl DirBuff {
+    const BUFFER_SIZE: usize = 1024;
+
+    fn new(dir: File) -> io::Result<Self> {
+        let mut this = Self { dir, cursor: 0, buffer: [0; Self::BUFFER_SIZE], is_empty: false };
+        this.refill(true)?;
+
+        // Skip `.` and `..` pseudo entries.
+        const DOT: u16 = b'.' as u16;
+        while let (false, [DOT] | [DOT, DOT]) = (this.is_empty(), this.entry()) {
+            this.advance()?;
+        }
+        Ok(this)
+    }
+    fn is_empty(&self) -> bool {
+        self.is_empty
+    }
+    fn open_entry(&mut self) -> Option<io::Result<File>> {
+        if self.is_empty {
+            return None;
+        }
+        let mut result = open_link_no_reparse(
+            &self.dir,
+            self.entry(),
+            c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
+        );
+        if matches!(&result, Err(e) if e.kind() == io::ErrorKind::PermissionDenied) {
+            result = open_link_no_reparse(&self.dir, self.entry(), c::SYNCHRONIZE | c::DELETE);
+        }
+        Some(result)
+    }
+    /// Get a raw pointer to the current entry information.
+    unsafe fn info(&self) -> *const c::FILE_ID_BOTH_DIR_INFO {
+        self.buffer.as_ptr().add(self.cursor).cast::<c::FILE_ID_BOTH_DIR_INFO>()
+    }
+
+    /// Get the current entry's filename.
+    fn entry(&self) -> &[u16] {
+        // SAFETY: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the
+        // last field (the file name) is unsized. So we don't use references here.
+        unsafe {
+            let info = self.info();
+            crate::slice::from_raw_parts(
+                (*info).FileName.as_ptr().cast::<u16>(),
+                (*info).FileNameLength as usize / crate::mem::size_of::<u16>(),
+            )
+        }
+    }
+    /// Advance the cursor to the next entry. Returns `Ok(false)` if there
+    /// are no more entries.
+    fn advance(&mut self) -> io::Result<()> {
+        // Safety: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct.
+        unsafe {
+            let info = &*self.info();
+            let next_entry = info.NextEntryOffset as usize;
+            if next_entry == 0 {
+                self.refill(false)
+            } else {
+                self.cursor += next_entry;
+                Ok(())
+            }
+        }
+    }
+    /// Fill the  buffer with as many directory entries as will fit.
     /// This will remember its position and continue from the last call unless
     /// `restart` is set to `true`.
-    ///
-    /// The returned bool indicates if there are more entries or not.
-    /// It is an error if `self` is not a directory.
-    ///
-    /// # Symlinks and other reparse points
-    ///
-    /// On Windows a file is either a directory or a non-directory.
-    /// A symlink directory is simply an empty directory with some "reparse" metadata attached.
-    /// So if you open a link (not its target) and iterate the directory,
-    /// you will always iterate an empty directory regardless of the target.
-    fn fill_dir_buff(&self, buffer: &mut DirBuff, restart: bool) -> io::Result<bool> {
+    fn refill(&mut self, restart: bool) -> io::Result<()> {
         let class =
             if restart { c::FileIdBothDirectoryRestartInfo } else { c::FileIdBothDirectoryInfo };
 
         unsafe {
             let result = cvt(c::GetFileInformationByHandleEx(
-                self.handle.as_raw_handle(),
+                self.dir.as_raw_handle(),
                 class,
-                buffer.as_mut_ptr().cast(),
-                buffer.capacity() as _,
+                self.buffer.as_mut_ptr().cast(),
+                self.buffer.len() as _,
             ));
             match result {
-                Ok(_) => Ok(true),
-                Err(e) if e.raw_os_error() == Some(c::ERROR_NO_MORE_FILES as _) => Ok(false),
-                Err(e) => Err(e),
+                Ok(_) => {
+                    // The buffer has been refiled, reset the cursor.
+                    self.cursor = 0;
+                }
+                Err(e) if e.raw_os_error() == Some(c::ERROR_NO_MORE_FILES as _) => {
+                    // No more entries
+                    self.is_empty = true;
+                }
+                Err(e) => Err(e)?,
             }
-        }
-    }
-}
-
-/// A buffer for holding directory entries.
-struct DirBuff {
-    buffer: Vec<u8>,
-}
-impl DirBuff {
-    fn new() -> Self {
-        const BUFFER_SIZE: usize = 1024;
-        Self { buffer: vec![0_u8; BUFFER_SIZE] }
-    }
-    fn capacity(&self) -> usize {
-        self.buffer.len()
-    }
-    fn as_mut_ptr(&mut self) -> *mut u8 {
-        self.buffer.as_mut_ptr().cast()
-    }
-    /// Returns a `DirBuffIter`.
-    fn iter(&self) -> DirBuffIter<'_> {
-        DirBuffIter::new(self)
-    }
-}
-impl AsRef<[u8]> for DirBuff {
-    fn as_ref(&self) -> &[u8] {
-        &self.buffer
-    }
-}
-
-/// An iterator over entries stored in a `DirBuff`.
-///
-/// Currently only returns file names (UTF-16 encoded).
-struct DirBuffIter<'a> {
-    buffer: Option<&'a [u8]>,
-    cursor: usize,
-}
-impl<'a> DirBuffIter<'a> {
-    fn new(buffer: &'a DirBuff) -> Self {
-        Self { buffer: Some(buffer.as_ref()), cursor: 0 }
-    }
-}
-impl<'a> Iterator for DirBuffIter<'a> {
-    type Item = &'a [u16];
-    fn next(&mut self) -> Option<Self::Item> {
-        use crate::mem::size_of;
-        let buffer = &self.buffer?[self.cursor..];
-
-        // Get the name and next entry from the buffer.
-        // SAFETY: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the
-        // last field (the file name) is unsized. So an offset has to be
-        // used to get the file name slice.
-        let (name, next_entry) = unsafe {
-            let info = buffer.as_ptr().cast::<c::FILE_ID_BOTH_DIR_INFO>();
-            let next_entry = (*info).NextEntryOffset as usize;
-            let name = crate::slice::from_raw_parts(
-                (*info).FileName.as_ptr().cast::<u16>(),
-                (*info).FileNameLength as usize / size_of::<u16>(),
-            );
-            (name, next_entry)
-        };
-
-        if next_entry == 0 {
-            self.buffer = None
-        } else {
-            self.cursor += next_entry
-        }
-
-        // Skip `.` and `..` pseudo entries.
-        const DOT: u16 = b'.' as u16;
-        match name {
-            [DOT] | [DOT, DOT] => self.next(),
-            _ => Some(name),
+            Ok(())
         }
     }
 }
@@ -985,89 +990,82 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     if (file.basic_info()?.FileAttributes & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
         return Err(io::Error::from_raw_os_error(c::ERROR_DIRECTORY as _));
     }
-    let mut delete: fn(&File) -> io::Result<()> = File::posix_delete;
-    let result = match delete(&file) {
+    match file.posix_delete() {
         Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
-            match remove_dir_all_recursive(&file, delete) {
-                // Return unexpected errors.
-                Err(e) if e.kind() != io::ErrorKind::DirectoryNotEmpty => return Err(e),
-                result => result,
-            }
+            remove_dir_all_loop(&file, File::posix_delete)
         }
         // If POSIX delete is not supported for this filesystem then fallback to win32 delete.
         Err(e)
             if e.raw_os_error() == Some(c::ERROR_NOT_SUPPORTED as i32)
                 || e.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as i32) =>
         {
-            delete = File::win32_delete;
-            Err(e)
+            remove_dir_all_loop(&file, File::win32_delete)
         }
         result => result,
-    };
-    if result.is_ok() {
-        Ok(())
-    } else {
-        // This is a fallback to make sure the directory is actually deleted.
-        // Otherwise this function is prone to failing with `DirectoryNotEmpty`
-        // due to possible delays between marking a file for deletion and the
-        // file actually being deleted from the filesystem.
-        //
-        // So we retry a few times before giving up.
-        for _ in 0..5 {
-            match remove_dir_all_recursive(&file, delete) {
-                Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {}
-                result => return result,
-            }
-        }
-        // Try one last time.
-        delete(&file)
     }
 }
 
-fn remove_dir_all_recursive(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Result<()> {
-    let mut buffer = DirBuff::new();
-    let mut restart = true;
-    // Fill the buffer and iterate the entries.
-    while f.fill_dir_buff(&mut buffer, restart)? {
-        for name in buffer.iter() {
-            // Open the file without following symlinks and try deleting it.
-            // We try opening will all needed permissions and if that is denied
-            // fallback to opening without `FILE_LIST_DIRECTORY` permission.
-            // Note `SYNCHRONIZE` permission is needed for synchronous access.
-            let mut result =
-                open_link_no_reparse(&f, name, c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY);
-            if matches!(&result, Err(e) if e.kind() == io::ErrorKind::PermissionDenied) {
-                result = open_link_no_reparse(&f, name, c::SYNCHRONIZE | c::DELETE);
-            }
+/// Delete all files in directories and subdirectories.
+///
+/// `delete` is a function that will try to delete the file.
+fn remove_dir_all_loop(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Result<()> {
+    // This is the number of times we retry to make sure files and directories
+    // are actually deleted. Otherwise this function is prone to failing
+    // due to file locks and possible delays between marking a file for deletion
+    // and the file actually being deleted from the filesystem.
+    //
+    // So we retry a few times before giving up.
+    const RETRIES: usize = 5;
+
+    let mut stack = Vec::new();
+    // Push the file on the stack. We duplicate it here so we can keep hold of
+    // the original for later retries.
+    stack.push(DirBuff::new(f.duplicate()?)?);
+
+    while let Some(mut directory) = stack.pop() {
+        let mut retry_count = RETRIES;
+        while let Some(result) = directory.open_entry() {
+            retry_count -= 1;
             match result {
                 Ok(file) => match delete(&file) {
                     Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {
-                        // Iterate the directory's files.
-                        // Ignore `DirectoryNotEmpty` errors here. They will be
-                        // caught when `remove_dir_all` tries to delete the top
-                        // level directory. It can then decide if to retry or not.
-                        match remove_dir_all_recursive(&file, delete) {
-                            Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty => {}
-                            result => result?,
-                        }
+                        directory.advance()?;
+                        retry_count = RETRIES;
+
+                        stack.push(directory);
+                        directory = DirBuff::new(file)?;
+
+                        continue; // Recursion.
                     }
                     result => result?,
                 },
-                // Ignore error if a delete is already in progress or the file
-                // has already been deleted. It also ignores sharing violations
-                // (where a file is locked by another process) as these are
-                // usually temporary.
+                // Already deleted.
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                // Retry if a delete is already in progress or the file is
+                // locked by another process as these are usually temporary.
                 Err(e)
-                    if e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
-                        || e.kind() == io::ErrorKind::NotFound
-                        || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _) => {}
+                    if (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
+                        || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _))
+                        && retry_count != 0 =>
+                {
+                    continue; // Retry.
+                }
                 Err(e) => return Err(e),
             }
+            directory.advance()?;
+            retry_count = RETRIES;
         }
-        // Continue reading directory entries without restarting from the beginning,
-        restart = false;
+        for retry_count in (0..RETRIES).rev() {
+            match delete(&directory.dir) {
+                Err(e) if e.kind() == io::ErrorKind::DirectoryNotEmpty && retry_count != 0 => {
+                    continue; // Retry.
+                }
+                result => result?,
+            }
+            break;
+        }
     }
-    delete(&f)
+    Ok(())
 }
 
 pub fn readlink(path: &Path) -> io::Result<PathBuf> {
