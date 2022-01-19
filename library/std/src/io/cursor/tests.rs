@@ -105,6 +105,18 @@ fn test_box_slice_writer_vectored() {
 }
 
 #[test]
+fn test_array_writer() {
+    let mut writer = Cursor::new([0u8; 9]);
+    test_slice_writer(&mut writer);
+}
+
+#[test]
+fn test_array_writer_vectored() {
+    let mut writer = Cursor::new([0u8; 9]);
+    test_slice_writer_vectored(&mut writer);
+}
+
+#[test]
 fn test_buf_writer() {
     let mut buf = [0 as u8; 9];
     let mut writer = Cursor::new(&mut buf[..]);

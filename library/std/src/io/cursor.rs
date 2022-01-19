@@ -525,3 +525,26 @@ impl Write for Cursor<Box<[u8]>> {
         Ok(())
     }
 }
+
+#[stable(feature = "cursor_array", since = "1.60.0")]
+impl<const N: usize> Write for Cursor<[u8; N]> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        slice_write(&mut self.pos, &mut self.inner, buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        slice_write_vectored(&mut self.pos, &mut self.inner, bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
