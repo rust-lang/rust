@@ -436,12 +436,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         };
 
-        unchecked_add | unchecked_sub | unchecked_div | exact_div | unchecked_rem
+        unchecked_add | unchecked_sub | unchecked_mul | unchecked_div | exact_div | unchecked_rem
         | unchecked_shl | unchecked_shr, (c x, c y) {
             // FIXME trap on overflow
             let bin_op = match intrinsic {
                 sym::unchecked_add => BinOp::Add,
                 sym::unchecked_sub => BinOp::Sub,
+                sym::unchecked_mul => BinOp::Mul,
                 sym::unchecked_div | sym::exact_div => BinOp::Div,
                 sym::unchecked_rem => BinOp::Rem,
                 sym::unchecked_shl => BinOp::Shl,
