@@ -315,8 +315,8 @@ impl Printer {
         } else {
             self.right += 1;
             self.buf.advance_right();
+            self.check_stack(0);
         }
-        self.check_stack(0);
         self.buf[self.right] = BufEntry { token: Token::Break(b), size: -self.right_total };
         self.scan_stack.push_front(self.right);
         self.right_total += b.blank_space;
