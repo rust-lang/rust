@@ -570,14 +570,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
                     err.note(str_concat_note);
                     if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             lhs_expr.span.until(lhs_inner_expr.span),
                             rm_borrow_msg,
                             "".to_owned(),
                             Applicability::MachineApplicable
                         );
                     } else {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             lhs_expr.span.shrink_to_hi(),
                             to_owned_msg,
                             ".to_owned()".to_owned(),
@@ -608,7 +608,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_sugg,
                             (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
                         ];
-                        err.multipart_suggestion(sugg_msg, suggestions, Applicability::MachineApplicable);
+                        err.multipart_suggestion_verbose(
+                            sugg_msg,
+                            suggestions,
+                            Applicability::MachineApplicable,
+                        );
                     }
                     IsAssign::Yes => {
                         err.note(str_concat_note);
