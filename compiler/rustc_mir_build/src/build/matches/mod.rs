@@ -47,6 +47,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = expr.span;
 
         match expr.kind {
+            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
+                let lhs_then_block = unpack!(this.then_else_break(
+                    block,
+                    &this.thir[lhs],
+                    temp_scope_override,
+                    break_scope,
+                    variable_scope_span,
+                ));
+
+                let rhs_then_block = unpack!(this.then_else_break(
+                    lhs_then_block,
+                    &this.thir[rhs],
+                    temp_scope_override,
+                    break_scope,
+                    variable_scope_span,
+                ));
+
+                rhs_then_block.unit()
+            }
             ExprKind::Scope { region_scope, lint_level, value } => {
                 let region_scope = (region_scope, this.source_info(expr_span));
                 this.in_scope(region_scope, lint_level, |this| {

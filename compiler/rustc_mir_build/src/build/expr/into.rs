@@ -90,17 +90,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
 
                 let join_block = this.cfg.start_new_block();
-                this.cfg.terminate(
-                    then_blk,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-                this.cfg.terminate(
-                    else_blk,
-                    source_info,
-                    TerminatorKind::Goto { target: join_block },
-                );
-
+                this.cfg.goto(then_blk, source_info, join_block);
+                this.cfg.goto(else_blk, source_info, join_block);
                 join_block.unit()
             }
             ExprKind::Let { expr, ref pat } => {
@@ -108,8 +99,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (true_block, false_block) = this.in_if_then_scope(scope, |this| {
                     this.lower_let_expr(block, &this.thir[expr], pat, scope, expr_span)
                 });
-
-                let join_block = this.cfg.start_new_block();
 
                 this.cfg.push_assign_constant(
                     true_block,
@@ -133,6 +122,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
+                let join_block = this.cfg.start_new_block();
                 this.cfg.goto(true_block, source_info, join_block);
                 this.cfg.goto(false_block, source_info, join_block);
                 join_block.unit()

@@ -392,13 +392,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // If `cond` kind is `let`, returns `let`. Otherwise, wraps and returns `cond`
     // in a temporary block.
     fn manage_let_cond(&mut self, cond: &'hir hir::Expr<'hir>) -> &'hir hir::Expr<'hir> {
-        match cond.kind {
-            hir::ExprKind::Let(..) => cond,
-            _ => {
-                let span_block =
-                    self.mark_span_with_reason(DesugaringKind::CondTemporary, cond.span, None);
-                self.expr_drop_temps(span_block, cond, AttrVec::new())
+        fn has_let_expr<'hir>(expr: &'hir hir::Expr<'hir>) -> bool {
+            match expr.kind {
+                hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                hir::ExprKind::Let(..) => true,
+                _ => false,
             }
+        }
+        if has_let_expr(cond) {
+            cond
+        } else {
+            let reason = DesugaringKind::CondTemporary;
+            let span_block = self.mark_span_with_reason(reason, cond.span, None);
+            self.expr_drop_temps(span_block, cond, AttrVec::new())
         }
     }
 

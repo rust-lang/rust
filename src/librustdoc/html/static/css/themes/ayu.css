@@ -194,9 +194,6 @@ pre, .rustdoc.source .example-wrap {
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
 
-nav:not(.sidebar) {
-	border-bottom-color: #424c57;
-}
 nav.main .current {
 	border-top-color: #5c6773;
 	border-bottom-color: #5c6773;
