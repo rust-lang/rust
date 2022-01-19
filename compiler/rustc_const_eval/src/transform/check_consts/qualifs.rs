@@ -146,15 +146,10 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
-    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
-        // Avoid selecting for simple cases.
-        match ty::util::needs_drop_components(ty, &cx.tcx.data_layout).as_deref() {
-            Ok([]) => return false,
-            Err(ty::util::AlwaysRequiresDrop) => return true,
-            // If we've got a single component, select with that
-            // to increase the chance that we hit the selection cache.
-            Ok([t]) => ty = t,
-            Ok([..]) => {}
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        // Avoid selecting for simple cases, such as builtin types.
+        if ty::util::trivial_const_drop(ty) {
+            return false;
         }
 
         let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
@@ -187,9 +182,13 @@ impl Qualif for NeedsNonConstDrop {
                 impl_src,
                 ImplSource::ConstDrop(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
             ) {
-                // If our const drop candidate is not ConstDrop or implied by param,
+                // If our const drop candidate is not ConstDrop or implied by the param env,
                 // then it's bad
                 return true;
+            }
+
+            if impl_src.borrow_nested_obligations().is_empty() {
+                return false;
             }
 
             // If we successfully found one, then select all of the predicates
