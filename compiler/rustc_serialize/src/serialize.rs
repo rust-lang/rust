@@ -177,7 +177,7 @@ pub trait Decoder {
     type Error;
 
     // Primitive types:
-    fn read_nil(&mut self) -> Result<(), Self::Error>;
+    fn read_unit(&mut self) -> Result<(), Self::Error>;
     fn read_usize(&mut self) -> Result<usize, Self::Error>;
     fn read_u128(&mut self) -> Result<u128, Self::Error>;
     fn read_u64(&mut self) -> Result<u64, Self::Error>;
@@ -436,7 +436,7 @@ impl<S: Encoder> Encodable<S> for () {
 
 impl<D: Decoder> Decodable<D> for () {
     fn decode(d: &mut D) -> Result<(), D::Error> {
-        d.read_nil()
+        d.read_unit()
     }
 }
 
@@ -448,7 +448,7 @@ impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
     fn decode(d: &mut D) -> Result<PhantomData<T>, D::Error> {
-        d.read_nil()?;
+        d.read_unit()?;
         Ok(PhantomData)
     }
 }

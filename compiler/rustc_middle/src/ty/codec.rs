@@ -459,7 +459,7 @@ macro_rules! implement_ty_decoder {
                 type Error = String;
 
                 $crate::__impl_decoder_methods! {
-                    read_nil -> ();
+                    read_unit -> ();
 
                     read_u128 -> u128;
                     read_u64 -> u64;

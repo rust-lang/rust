@@ -2240,7 +2240,7 @@ macro_rules! read_primitive {
 impl crate::Decoder for Decoder {
     type Error = DecoderError;
 
-    fn read_nil(&mut self) -> DecodeResult<()> {
+    fn read_unit(&mut self) -> DecodeResult<()> {
         expect!(self.pop(), Null)
     }
 
