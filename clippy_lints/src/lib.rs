@@ -505,6 +505,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         store.register_late_pass(|| Box::new(utils::internal_lints::LintWithoutLintPass::default()));
         store.register_late_pass(|| Box::new(utils::internal_lints::MatchTypeOnDiagItem));
         store.register_late_pass(|| Box::new(utils::internal_lints::OuterExpnDataPass));
+        store.register_late_pass(|| Box::new(utils::internal_lints::MsrvAttrImpl));
     }
 
     store.register_late_pass(|| Box::new(utils::author::Author));
