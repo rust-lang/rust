@@ -337,7 +337,7 @@ impl Printer {
     fn check_stream(&mut self) {
         if self.right_total - self.left_total > self.space {
             if Some(&self.left) == self.scan_stack.back() {
-                let scanned = self.scan_pop_bottom();
+                let scanned = self.scan_stack.pop_back().unwrap();
                 self.buf[scanned].size = SIZE_INFINITY;
             }
             self.advance_left();
@@ -345,10 +345,6 @@ impl Printer {
                 self.check_stream();
             }
         }
-    }
-
-    fn scan_pop_bottom(&mut self) -> usize {
-        self.scan_stack.pop_back().unwrap()
     }
 
     fn advance_left(&mut self) {
