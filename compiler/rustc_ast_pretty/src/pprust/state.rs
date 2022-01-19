@@ -328,9 +328,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             CommentStyle::BlankLine => {
                 // We need to do at least one, possibly two hardbreaks.
                 let twice = match self.last_token() {
-                    pp::Token::String(s) => ";" == s,
-                    pp::Token::Begin(_) => true,
-                    pp::Token::End => true,
+                    Some(pp::Token::String(s)) => ";" == s,
+                    Some(pp::Token::Begin(_)) => true,
+                    Some(pp::Token::End) => true,
                     _ => false,
                 };
                 if twice {
@@ -686,11 +686,15 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
         if !self.is_beginning_of_line() {
             self.break_offset(n, off)
-        } else if off != 0 && self.last_token().is_hardbreak_tok() {
-            // We do something pretty sketchy here: tuck the nonzero
-            // offset-adjustment we were going to deposit along with the
-            // break into the previous hardbreak.
-            self.replace_last_token(pp::Printer::hardbreak_tok_offset(off));
+        } else if off != 0 {
+            if let Some(last_token) = self.last_token_still_buffered() {
+                if last_token.is_hardbreak_tok() {
+                    // We do something pretty sketchy here: tuck the nonzero
+                    // offset-adjustment we were going to deposit along with the
+                    // break into the previous hardbreak.
+                    self.replace_last_token_still_buffered(pp::Printer::hardbreak_tok_offset(off));
+                }
+            }
         }
     }
 

@@ -167,14 +167,9 @@ pub enum Token {
     Break(BreakToken),
     Begin(BeginToken),
     End,
-    Eof,
 }
 
 impl Token {
-    crate fn is_eof(&self) -> bool {
-        matches!(self, Token::Eof)
-    }
-
     pub fn is_hardbreak_tok(&self) -> bool {
         matches!(self, Token::Break(BreakToken { offset: 0, blank_space: SIZE_INFINITY }))
     }
@@ -187,7 +182,6 @@ impl fmt::Display for Token {
             Token::Break(_) => f.write_str("BREAK"),
             Token::Begin(_) => f.write_str("BEGIN"),
             Token::End => f.write_str("END"),
-            Token::Eof => f.write_str("EOF"),
         }
     }
 }
@@ -212,10 +206,6 @@ pub struct Printer {
     margin: isize,
     /// Number of spaces left on line
     space: isize,
-    /// Index of left side of input stream
-    left: usize,
-    /// Index of right side of input stream
-    right: usize,
     /// Ring-buffer of tokens and calculated sizes
     buf: RingBuffer<BufEntry>,
     /// Running size of stream "...left"
@@ -233,6 +223,9 @@ pub struct Printer {
     print_stack: Vec<PrintStackElem>,
     /// Buffered indentation to avoid writing trailing whitespace
     pending_indentation: isize,
+    /// The token most recently popped from the left boundary of the
+    /// ring-buffer for printing
+    last_printed: Option<Token>,
 }
 
 #[derive(Clone)]
@@ -241,39 +234,34 @@ struct BufEntry {
     size: isize,
 }
 
-impl Default for BufEntry {
-    fn default() -> Self {
-        BufEntry { token: Token::Eof, size: 0 }
-    }
-}
-
 impl Printer {
     pub fn new() -> Self {
         let linewidth = 78;
-        let mut buf = RingBuffer::new();
-        buf.advance_right();
         Printer {
             out: String::new(),
             margin: linewidth as isize,
             space: linewidth as isize,
-            left: 0,
-            right: 0,
-            buf,
+            buf: RingBuffer::new(),
             left_total: 0,
             right_total: 0,
             scan_stack: VecDeque::new(),
             print_stack: Vec::new(),
             pending_indentation: 0,
+            last_printed: None,
         }
     }
 
-    pub fn last_token(&self) -> Token {
-        self.buf[self.right].token.clone()
+    pub fn last_token(&self) -> Option<&Token> {
+        self.last_token_still_buffered().or_else(|| self.last_printed.as_ref())
+    }
+
+    pub fn last_token_still_buffered(&self) -> Option<&Token> {
+        self.buf.last().map(|last| &last.token)
     }
 
     /// Be very careful with this!
-    pub fn replace_last_token(&mut self, t: Token) {
-        self.buf[self.right].token = t;
+    pub fn replace_last_token_still_buffered(&mut self, t: Token) {
+        self.buf.last_mut().unwrap().token = t;
     }
 
     fn scan_eof(&mut self) {
@@ -287,20 +275,18 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
-            self.right = self.left;
-            self.buf.truncate(1);
-        } else {
-            self.advance_right();
+            self.buf.clear();
         }
-        self.scan_push(BufEntry { token: Token::Begin(b), size: -self.right_total });
+        let right = self.buf.push(BufEntry { token: Token::Begin(b), size: -self.right_total });
+        self.scan_stack.push_front(right);
     }
 
     fn scan_end(&mut self) {
         if self.scan_stack.is_empty() {
             self.print_end();
         } else {
-            self.advance_right();
-            self.scan_push(BufEntry { token: Token::End, size: -1 });
+            let right = self.buf.push(BufEntry { token: Token::End, size: -1 });
+            self.scan_stack.push_front(right);
         }
     }
 
@@ -308,68 +294,44 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.left_total = 1;
             self.right_total = 1;
-            self.right = self.left;
-            self.buf.truncate(1);
+            self.buf.clear();
         } else {
-            self.advance_right();
+            self.check_stack(0);
         }
-        self.check_stack(0);
-        self.scan_push(BufEntry { token: Token::Break(b), size: -self.right_total });
+        let right = self.buf.push(BufEntry { token: Token::Break(b), size: -self.right_total });
+        self.scan_stack.push_front(right);
         self.right_total += b.blank_space;
     }
 
     fn scan_string(&mut self, s: Cow<'static, str>) {
         if self.scan_stack.is_empty() {
-            self.print_string(s);
+            self.print_string(&s);
         } else {
-            self.advance_right();
             let len = s.len() as isize;
-            self.buf[self.right] = BufEntry { token: Token::String(s), size: len };
+            self.buf.push(BufEntry { token: Token::String(s), size: len });
             self.right_total += len;
             self.check_stream();
         }
     }
 
     fn check_stream(&mut self) {
-        if self.right_total - self.left_total > self.space {
-            if Some(&self.left) == self.scan_stack.back() {
-                let scanned = self.scan_pop_bottom();
-                self.buf[scanned].size = SIZE_INFINITY;
+        while self.right_total - self.left_total > self.space {
+            if *self.scan_stack.back().unwrap() == self.buf.index_of_first() {
+                self.scan_stack.pop_back().unwrap();
+                self.buf.first_mut().unwrap().size = SIZE_INFINITY;
             }
             self.advance_left();
-            if self.left != self.right {
-                self.check_stream();
+            if self.buf.is_empty() {
+                break;
             }
         }
     }
 
-    fn scan_push(&mut self, entry: BufEntry) {
-        self.buf[self.right] = entry;
-        self.scan_stack.push_front(self.right);
-    }
-
-    fn scan_pop(&mut self) -> usize {
-        self.scan_stack.pop_front().unwrap()
-    }
-
-    fn scan_top(&self) -> usize {
-        *self.scan_stack.front().unwrap()
-    }
-
-    fn scan_pop_bottom(&mut self) -> usize {
-        self.scan_stack.pop_back().unwrap()
-    }
-
-    fn advance_right(&mut self) {
-        self.right += 1;
-        self.buf.advance_right();
-    }
-
     fn advance_left(&mut self) {
-        let mut left_size = self.buf[self.left].size;
+        let mut left_size = self.buf.first().unwrap().size;
 
         while left_size >= 0 {
-            let left = self.buf[self.left].token.clone();
+            let left = self.buf.first().unwrap().token.clone();
 
             let len = match left {
                 Token::Break(b) => b.blank_space,
@@ -385,39 +347,38 @@ impl Printer {
 
             self.left_total += len;
 
-            if self.left == self.right {
+            self.buf.advance_left();
+            if self.buf.is_empty() {
                 break;
             }
 
-            self.buf.advance_left();
-            self.left += 1;
-
-            left_size = self.buf[self.left].size;
+            left_size = self.buf.first().unwrap().size;
         }
     }
 
-    fn check_stack(&mut self, k: usize) {
-        if !self.scan_stack.is_empty() {
-            let x = self.scan_top();
-            match self.buf[x].token {
+    fn check_stack(&mut self, mut k: usize) {
+        while let Some(&x) = self.scan_stack.front() {
+            let mut entry = &mut self.buf[x];
+            match entry.token {
                 Token::Begin(_) => {
-                    if k > 0 {
-                        self.scan_pop();
-                        self.buf[x].size += self.right_total;
-                        self.check_stack(k - 1);
+                    if k == 0 {
+                        break;
                     }
+                    self.scan_stack.pop_front().unwrap();
+                    entry.size += self.right_total;
+                    k -= 1;
                 }
                 Token::End => {
                     // paper says + not =, but that makes no sense.
-                    self.scan_pop();
-                    self.buf[x].size = 1;
-                    self.check_stack(k + 1);
+                    self.scan_stack.pop_front().unwrap();
+                    entry.size = 1;
+                    k += 1;
                 }
                 _ => {
-                    self.scan_pop();
-                    self.buf[x].size += self.right_total;
-                    if k > 0 {
-                        self.check_stack(k);
+                    self.scan_stack.pop_front().unwrap();
+                    entry.size += self.right_total;
+                    if k == 0 {
+                        break;
                     }
                 }
             }
@@ -477,7 +438,7 @@ impl Printer {
         }
     }
 
-    fn print_string(&mut self, s: Cow<'static, str>) {
+    fn print_string(&mut self, s: &str) {
         let len = s.len() as isize;
         // assert!(len <= space);
         self.space -= len;
@@ -491,21 +452,21 @@ impl Printer {
         self.out.reserve(self.pending_indentation as usize);
         self.out.extend(std::iter::repeat(' ').take(self.pending_indentation as usize));
         self.pending_indentation = 0;
-        self.out.push_str(&s);
+        self.out.push_str(s);
     }
 
     fn print(&mut self, token: Token, l: isize) {
-        match token {
-            Token::Begin(b) => self.print_begin(b, l),
+        match &token {
+            Token::Begin(b) => self.print_begin(*b, l),
             Token::End => self.print_end(),
-            Token::Break(b) => self.print_break(b, l),
+            Token::Break(b) => self.print_break(*b, l),
             Token::String(s) => {
                 let len = s.len() as isize;
                 assert_eq!(len, l);
                 self.print_string(s);
             }
-            Token::Eof => panic!(), // Eof should never get here.
         }
+        self.last_printed = Some(token);
     }
 
     // Convenience functions to talk to the printer.
@@ -560,7 +521,10 @@ impl Printer {
     }
 
     pub fn is_beginning_of_line(&self) -> bool {
-        self.last_token().is_eof() || self.last_token().is_hardbreak_tok()
+        match self.last_token() {
+            Some(last_token) => last_token.is_hardbreak_tok(),
+            None => true,
+        }
     }
 
     pub fn hardbreak_tok_offset(off: isize) -> Token {

@@ -22,11 +22,14 @@ impl<T> RingBuffer<T> {
         RingBuffer { data: VecDeque::new(), offset: 0 }
     }
 
-    pub fn advance_right(&mut self)
-    where
-        T: Default,
-    {
-        self.data.push_back(T::default());
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    pub fn push(&mut self, value: T) -> usize {
+        let index = self.offset + self.data.len();
+        self.data.push_back(value);
+        index
     }
 
     pub fn advance_left(&mut self) {
@@ -34,8 +37,28 @@ impl<T> RingBuffer<T> {
         self.offset += 1;
     }
 
-    pub fn truncate(&mut self, len: usize) {
-        self.data.truncate(len);
+    pub fn clear(&mut self) {
+        self.data.clear();
+    }
+
+    pub fn index_of_first(&self) -> usize {
+        self.offset
+    }
+
+    pub fn first(&self) -> Option<&T> {
+        self.data.front()
+    }
+
+    pub fn first_mut(&mut self) -> Option<&mut T> {
+        self.data.front_mut()
+    }
+
+    pub fn last(&self) -> Option<&T> {
+        self.data.back()
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        self.data.back_mut()
     }
 }
 
