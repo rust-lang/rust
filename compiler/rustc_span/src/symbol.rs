@@ -611,6 +611,7 @@ symbols! {
         enclosing_scope,
         encode,
         end,
+        enhanced_binary_op,
         env,
         env_macro,
         eprint_macro,

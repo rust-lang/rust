@@ -153,27 +153,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 //
                 // [block: If(lhs)] -true-> [else_block: dest = (rhs)]
                 //        | (false)
-                //  [shortcurcuit_block: dest = false]
+                //  [shortcircuit_block: dest = false]
                 //
                 // Or:
                 //
                 // [block: If(lhs)] -false-> [else_block: dest = (rhs)]
                 //        | (true)
-                //  [shortcurcuit_block: dest = true]
+                // [shortcircuit_block: dest = true]
 
-                let (shortcircuit_block, mut else_block, join_block) = (
-                    this.cfg.start_new_block(),
-                    this.cfg.start_new_block(),
-                    this.cfg.start_new_block(),
-                );
+                let (shortcircuit_block, mut else_block, join_block) =
+                    if this.tcx.features().enhanced_binary_op {
+                        let local_scope = this.local_scope();
 
-                let lhs = unpack!(block = this.as_local_operand(block, &this.thir[lhs]));
-                let blocks = match op {
-                    LogicalOp::And => (else_block, shortcircuit_block),
-                    LogicalOp::Or => (shortcircuit_block, else_block),
-                };
-                let term = TerminatorKind::if_(this.tcx, lhs, blocks.0, blocks.1);
-                this.cfg.terminate(block, source_info, term);
+                        let blocks = this.in_if_then_scope(local_scope, |this| {
+                            this.then_else_break(
+                                block,
+                                &this.thir[lhs],
+                                Some(local_scope),
+                                local_scope,
+                                this.thir[lhs].span,
+                            )
+                        });
+
+                        let (shortcircuit_block, else_block) = match op {
+                            LogicalOp::And => (blocks.1, blocks.0),
+                            LogicalOp::Or => (blocks.0, blocks.1),
+                        };
+
+                        (shortcircuit_block, else_block, this.cfg.start_new_block())
+                    } else {
+                        let (shortcircuit_block, else_block, join_block) = (
+                            this.cfg.start_new_block(),
+                            this.cfg.start_new_block(),
+                            this.cfg.start_new_block(),
+                        );
+
+                        let lhs = unpack!(block = this.as_local_operand(block, &this.thir[lhs]));
+                        let blocks = match op {
+                            LogicalOp::And => (else_block, shortcircuit_block),
+                            LogicalOp::Or => (shortcircuit_block, else_block),
+                        };
+                        let term = TerminatorKind::if_(this.tcx, lhs, blocks.0, blocks.1);
+                        this.cfg.terminate(block, source_info, term);
+
+                        (shortcircuit_block, else_block, join_block)
+                    };
 
                 this.cfg.push_assign_constant(
                     shortcircuit_block,
@@ -188,12 +212,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         },
                     },
                 );
-                this.cfg.goto(shortcircuit_block, source_info, join_block);
 
                 let rhs = unpack!(else_block = this.as_local_operand(else_block, &this.thir[rhs]));
                 this.cfg.push_assign(else_block, source_info, destination, Rvalue::Use(rhs));
+                this.cfg.goto(shortcircuit_block, source_info, join_block);
                 this.cfg.goto(else_block, source_info, join_block);
-
                 join_block.unit()
             }
             ExprKind::Loop { body } => {
