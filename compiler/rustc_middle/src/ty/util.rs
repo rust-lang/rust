@@ -1054,7 +1054,8 @@ pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::FnDef(..)
-        | ty::FnPtr(_) => true,
+        | ty::FnPtr(_)
+        | ty::Never => true,
 
         ty::Opaque(..)
         | ty::Dynamic(..)
@@ -1062,7 +1063,6 @@ pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::Bound(..)
         | ty::Param(_)
         | ty::Placeholder(_)
-        | ty::Never
         | ty::Foreign(_)
         | ty::Projection(_)
         | ty::Infer(_) => false,

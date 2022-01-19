@@ -3,6 +3,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
+#![feature(never_type)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 struct S<'a>(&'a mut u8);
@@ -77,6 +78,7 @@ implements_const_drop! {
     &1,
     &1 as *const i32,
     ConstDropWithBound::<()>,
+    Result::<i32, !>::Ok(1),
 }
 
 fn main() {
