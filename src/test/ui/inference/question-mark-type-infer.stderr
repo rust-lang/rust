@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed
-  --> $DIR/question-mark-type-infer.rs:12:21
+  --> $DIR/question-mark-type-infer.rs:10:21
    |
 LL |     l.iter().map(f).collect()?
    |                     ^^^^^^^ cannot infer type
