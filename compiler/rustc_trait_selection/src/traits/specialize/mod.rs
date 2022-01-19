@@ -484,7 +484,7 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
     let mut types_without_default_bounds = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
-    if !substs.is_noop() {
+    if !substs.is_empty() {
         types_without_default_bounds.extend(substs.types());
         w.push('<');
         w.push_str(
