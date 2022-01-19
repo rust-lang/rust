@@ -290,7 +290,8 @@ impl Printer {
             self.right = self.left;
             self.buf.truncate(1);
         } else {
-            self.advance_right();
+            self.right += 1;
+            self.buf.advance_right();
         }
         self.scan_push(BufEntry { token: Token::Begin(b), size: -self.right_total });
     }
@@ -299,7 +300,8 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.print_end();
         } else {
-            self.advance_right();
+            self.right += 1;
+            self.buf.advance_right();
             self.scan_push(BufEntry { token: Token::End, size: -1 });
         }
     }
@@ -311,7 +313,8 @@ impl Printer {
             self.right = self.left;
             self.buf.truncate(1);
         } else {
-            self.advance_right();
+            self.right += 1;
+            self.buf.advance_right();
         }
         self.check_stack(0);
         self.scan_push(BufEntry { token: Token::Break(b), size: -self.right_total });
@@ -322,7 +325,8 @@ impl Printer {
         if self.scan_stack.is_empty() {
             self.print_string(s);
         } else {
-            self.advance_right();
+            self.right += 1;
+            self.buf.advance_right();
             let len = s.len() as isize;
             self.buf[self.right] = BufEntry { token: Token::String(s), size: len };
             self.right_total += len;
@@ -358,11 +362,6 @@ impl Printer {
 
     fn scan_pop_bottom(&mut self) -> usize {
         self.scan_stack.pop_back().unwrap()
-    }
-
-    fn advance_right(&mut self) {
-        self.right += 1;
-        self.buf.advance_right();
     }
 
     fn advance_left(&mut self) {
