@@ -347,10 +347,6 @@ impl Printer {
         }
     }
 
-    fn scan_top(&self) -> usize {
-        *self.scan_stack.front().unwrap()
-    }
-
     fn scan_pop_bottom(&mut self) -> usize {
         self.scan_stack.pop_back().unwrap()
     }
@@ -388,7 +384,7 @@ impl Printer {
 
     fn check_stack(&mut self, k: usize) {
         if !self.scan_stack.is_empty() {
-            let x = self.scan_top();
+            let x = *self.scan_stack.front().unwrap();
             match self.buf[x].token {
                 Token::Begin(_) => {
                     if k > 0 {
