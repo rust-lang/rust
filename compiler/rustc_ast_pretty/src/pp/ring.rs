@@ -26,13 +26,6 @@ impl<T> RingBuffer<T> {
         self.data.push_back(value);
     }
 
-    pub fn advance_right(&mut self)
-    where
-        T: Default,
-    {
-        self.data.push_back(T::default());
-    }
-
     pub fn advance_left(&mut self) {
         self.data.pop_front().unwrap();
         self.offset += 1;
@@ -40,6 +33,14 @@ impl<T> RingBuffer<T> {
 
     pub fn clear(&mut self) {
         self.data.clear();
+    }
+
+    pub fn last(&self) -> Option<&T> {
+        self.data.back()
+    }
+
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        self.data.back_mut()
     }
 }
 

@@ -167,14 +167,9 @@ pub enum Token {
     Break(BreakToken),
     Begin(BeginToken),
     End,
-    Eof,
 }
 
 impl Token {
-    crate fn is_eof(&self) -> bool {
-        matches!(self, Token::Eof)
-    }
-
     pub fn is_hardbreak_tok(&self) -> bool {
         matches!(self, Token::Break(BreakToken { offset: 0, blank_space: SIZE_INFINITY }))
     }
@@ -187,7 +182,6 @@ impl fmt::Display for Token {
             Token::Break(_) => f.write_str("BREAK"),
             Token::Begin(_) => f.write_str("BEGIN"),
             Token::End => f.write_str("END"),
-            Token::Eof => f.write_str("EOF"),
         }
     }
 }
@@ -233,6 +227,9 @@ pub struct Printer {
     print_stack: Vec<PrintStackElem>,
     /// Buffered indentation to avoid writing trailing whitespace
     pending_indentation: isize,
+    /// The token most recently popped from the left boundary of the
+    /// ring-buffer for printing
+    last_printed: Option<Token>,
 }
 
 #[derive(Clone)]
@@ -241,39 +238,36 @@ struct BufEntry {
     size: isize,
 }
 
-impl Default for BufEntry {
-    fn default() -> Self {
-        BufEntry { token: Token::Eof, size: 0 }
-    }
-}
-
 impl Printer {
     pub fn new() -> Self {
         let linewidth = 78;
-        let mut buf = RingBuffer::new();
-        buf.advance_right();
         Printer {
             out: String::new(),
             margin: linewidth as isize,
             space: linewidth as isize,
             left: 0,
             right: 0,
-            buf,
+            buf: RingBuffer::new(),
             left_total: 0,
             right_total: 0,
             scan_stack: VecDeque::new(),
             print_stack: Vec::new(),
             pending_indentation: 0,
+            last_printed: None,
         }
     }
 
-    pub fn last_token(&self) -> Token {
-        self.buf[self.right].token.clone()
+    pub fn last_token(&self) -> Option<&Token> {
+        self.last_token_still_buffered().or_else(|| self.last_printed.as_ref())
+    }
+
+    pub fn last_token_still_buffered(&self) -> Option<&Token> {
+        self.buf.last().map(|last| &last.token)
     }
 
     /// Be very careful with this!
-    pub fn replace_last_token(&mut self, t: Token) {
-        self.buf[self.right].token = t;
+    pub fn replace_last_token_still_buffered(&mut self, t: Token) {
+        self.buf.last_mut().unwrap().token = t;
     }
 
     fn scan_eof(&mut self) {
@@ -323,7 +317,7 @@ impl Printer {
 
     fn scan_string(&mut self, s: Cow<'static, str>) {
         if self.scan_stack.is_empty() {
-            self.print_string(s);
+            self.print_string(&s);
         } else {
             self.right += 1;
             let len = s.len() as isize;
@@ -459,7 +453,7 @@ impl Printer {
         }
     }
 
-    fn print_string(&mut self, s: Cow<'static, str>) {
+    fn print_string(&mut self, s: &str) {
         let len = s.len() as isize;
         // assert!(len <= space);
         self.space -= len;
@@ -473,21 +467,21 @@ impl Printer {
         self.out.reserve(self.pending_indentation as usize);
         self.out.extend(std::iter::repeat(' ').take(self.pending_indentation as usize));
         self.pending_indentation = 0;
-        self.out.push_str(&s);
+        self.out.push_str(s);
     }
 
     fn print(&mut self, token: Token, l: isize) {
-        match token {
-            Token::Begin(b) => self.print_begin(b, l),
+        match &token {
+            Token::Begin(b) => self.print_begin(*b, l),
             Token::End => self.print_end(),
-            Token::Break(b) => self.print_break(b, l),
+            Token::Break(b) => self.print_break(*b, l),
             Token::String(s) => {
                 let len = s.len() as isize;
                 assert_eq!(len, l);
                 self.print_string(s);
             }
-            Token::Eof => panic!(), // Eof should never get here.
         }
+        self.last_printed = Some(token);
     }
 
     // Convenience functions to talk to the printer.
@@ -542,7 +536,10 @@ impl Printer {
     }
 
     pub fn is_beginning_of_line(&self) -> bool {
-        self.last_token().is_eof() || self.last_token().is_hardbreak_tok()
+        match self.last_token() {
+            Some(last_token) => last_token.is_hardbreak_tok(),
+            None => true,
+        }
     }
 
     pub fn hardbreak_tok_offset(off: isize) -> Token {
