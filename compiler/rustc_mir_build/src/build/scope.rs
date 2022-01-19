@@ -498,7 +498,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// if let Some(x) = a && let Some(y) = b && let Some(z) = c { ... }
     ///
-    /// there are three possible ways the condition can be false and we may have
+    /// There are three possible ways the condition can be false and we may have
     /// to drop `x`, `x` and `y`, or neither depending on which binding fails.
     /// To handle this correctly we use a `DropTree` in a similar way to a
     /// `loop` expression and 'break' out on all of the 'else' paths.

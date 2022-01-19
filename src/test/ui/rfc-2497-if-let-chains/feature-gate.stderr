@@ -7,7 +7,7 @@ LL |     macro_rules! use_expr {
 LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:14:9
    |
 LL |     if (let 0 = 1) {}
@@ -15,9 +15,8 @@ LL |     if (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:17:11
    |
 LL |     if (((let 0 = 1))) {}
@@ -25,9 +24,8 @@ LL |     if (((let 0 = 1))) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:20:16
    |
 LL |     if true && let 0 = 1 {}
@@ -35,9 +33,8 @@ LL |     if true && let 0 = 1 {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:23:8
    |
 LL |     if let 0 = 1 && true {}
@@ -45,9 +42,8 @@ LL |     if let 0 = 1 && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:26:9
    |
 LL |     if (let 0 = 1) && true {}
@@ -55,9 +51,8 @@ LL |     if (let 0 = 1) && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:29:17
    |
 LL |     if true && (let 0 = 1) {}
@@ -65,9 +60,8 @@ LL |     if true && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:32:9
    |
 LL |     if (let 0 = 1) && (let 0 = 1) {}
@@ -75,9 +69,8 @@ LL |     if (let 0 = 1) && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:32:24
    |
 LL |     if (let 0 = 1) && (let 0 = 1) {}
@@ -85,9 +78,8 @@ LL |     if (let 0 = 1) && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:36:8
    |
 LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -95,9 +87,8 @@ LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:36:21
    |
 LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -105,9 +96,8 @@ LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:36:35
    |
 LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -115,9 +105,8 @@ LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:36:48
    |
 LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -125,9 +114,8 @@ LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:36:61
    |
 LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -135,9 +123,8 @@ LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:43:8
    |
 LL |     if let Range { start: _, end: _ } = (true..true) && false {}
@@ -145,9 +132,8 @@ LL |     if let Range { start: _, end: _ } = (true..true) && false {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:50:12
    |
 LL |     while (let 0 = 1) {}
@@ -155,9 +141,8 @@ LL |     while (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:53:14
    |
 LL |     while (((let 0 = 1))) {}
@@ -165,9 +150,8 @@ LL |     while (((let 0 = 1))) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:56:19
    |
 LL |     while true && let 0 = 1 {}
@@ -175,9 +159,8 @@ LL |     while true && let 0 = 1 {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:59:11
    |
 LL |     while let 0 = 1 && true {}
@@ -185,9 +168,8 @@ LL |     while let 0 = 1 && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:62:12
    |
 LL |     while (let 0 = 1) && true {}
@@ -195,9 +177,8 @@ LL |     while (let 0 = 1) && true {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:65:20
    |
 LL |     while true && (let 0 = 1) {}
@@ -205,9 +186,8 @@ LL |     while true && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:68:12
    |
 LL |     while (let 0 = 1) && (let 0 = 1) {}
@@ -215,9 +195,8 @@ LL |     while (let 0 = 1) && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:68:27
    |
 LL |     while (let 0 = 1) && (let 0 = 1) {}
@@ -225,9 +204,8 @@ LL |     while (let 0 = 1) && (let 0 = 1) {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:72:11
    |
 LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -235,9 +213,8 @@ LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:72:24
    |
 LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -245,9 +222,8 @@ LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:72:38
    |
 LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -255,9 +231,8 @@ LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:72:51
    |
 LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -265,9 +240,8 @@ LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:72:64
    |
 LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
@@ -275,9 +249,8 @@ LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:79:11
    |
 LL |     while let Range { start: _, end: _ } = (true..true) && false {}
@@ -285,9 +258,8 @@ LL |     while let Range { start: _, end: _ } = (true..true) && false {}
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:99:20
    |
 LL |     #[cfg(FALSE)] (let 0 = 1);
@@ -295,9 +267,8 @@ LL |     #[cfg(FALSE)] (let 0 = 1);
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:86:17
    |
 LL |     noop_expr!((let 0 = 1));
@@ -305,9 +276,8 @@ LL |     noop_expr!((let 0 = 1));
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:95:16
    |
 LL |     use_expr!((let 0 = 1 && 0 == 0));
@@ -315,9 +285,8 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
-error[E0658]: `let` expressions in this position are experimental
+error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:97:16
    |
 LL |     use_expr!((let 0 = 1));
@@ -325,7 +294,6 @@ LL |     use_expr!((let 0 = 1));
    |
    = note: see issue #53667 <https://github.com/rust-lang/rust/issues/53667> for more information
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
-   = help: you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`
 
 error: aborting due to 33 previous errors
 

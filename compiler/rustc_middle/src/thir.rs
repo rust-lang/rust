@@ -213,7 +213,7 @@ pub struct Expr<'tcx> {
 
 #[derive(Debug, HashStable)]
 pub enum ExprKind<'tcx> {
-    /// `Scope`s are used to explicitely mark destruction scopes,
+    /// `Scope`s are used to explicitly mark destruction scopes,
     /// and to track the `HirId` of the expressions within the scope.
     Scope {
         region_scope: region::Scope,

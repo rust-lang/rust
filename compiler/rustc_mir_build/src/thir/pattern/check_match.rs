@@ -17,6 +17,7 @@ use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
 use rustc_session::Session;
+use rustc_span::source_map::Spanned;
 use rustc_span::{DesugaringKind, ExpnKind, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -445,6 +446,10 @@ fn check_let_reachability<'p, 'tcx>(
     pat: &'p DeconstructedPat<'p, 'tcx>,
     span: Span,
 ) {
+    if is_let_chain(cx.tcx, pat_id) {
+        return;
+    }
+
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
 
@@ -764,8 +769,11 @@ pub enum LetSource {
 
 fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     let hir = tcx.hir();
+
     let parent = hir.get_parent_node(pat_id);
-    match hir.get(parent) {
+    let parent_node = hir.get(parent);
+
+    match parent_node {
         hir::Node::Arm(hir::Arm {
             guard: Some(hir::Guard::IfLet(&hir::Pat { hir_id, .. }, _)),
             ..
@@ -780,6 +788,7 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
         }
         _ => {}
     }
+
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
 
@@ -792,12 +801,30 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
         ..
     }) = parent_parent_parent_parent_node
     {
-        LetSource::WhileLet
-    } else if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. }) =
-        parent_parent_node
-    {
-        LetSource::IfLet
-    } else {
-        LetSource::GenericLet
+        return LetSource::WhileLet;
     }
+
+    if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If(..), .. }) = parent_parent_node {
+        return LetSource::IfLet;
+    }
+
+    LetSource::GenericLet
+}
+
+// Since this function is called within a let context, it is reasonable to assume that any parent
+// `&&` infers a let chain
+fn is_let_chain(tcx: TyCtxt<'_>, pat_id: HirId) -> bool {
+    let hir = tcx.hir();
+    let parent = hir.get_parent_node(pat_id);
+    let parent_parent = hir.get_parent_node(parent);
+    matches!(
+        hir.get(parent_parent),
+        hir::Node::Expr(
+            hir::Expr {
+                kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, ..),
+                ..
+            },
+            ..
+        )
+    )
 }
