@@ -335,14 +335,14 @@ impl Printer {
     }
 
     fn check_stream(&mut self) {
-        if self.right_total - self.left_total > self.space {
+        while self.right_total - self.left_total > self.space {
             if self.scan_stack.back() == Some(&self.left) {
                 self.scan_stack.pop_back().unwrap();
                 self.buf[self.left].size = SIZE_INFINITY;
             }
             self.advance_left();
-            if self.left != self.right {
-                self.check_stream();
+            if self.left == self.right {
+                break;
             }
         }
     }
