@@ -41,10 +41,6 @@ impl<T> RingBuffer<T> {
     pub fn clear(&mut self) {
         self.data.clear();
     }
-
-    pub fn truncate(&mut self, len: usize) {
-        self.data.truncate(len);
-    }
 }
 
 impl<T> Index<usize> for RingBuffer<T> {
