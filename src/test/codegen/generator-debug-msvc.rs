@@ -21,7 +21,7 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 // FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator$0"
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator_env$0"
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant0", scope: [[GEN]],
 // For brevity, we only check the struct name and members of the last variant.
 // CHECK-SAME: file: [[FILE:![0-9]*]], line: 14,
