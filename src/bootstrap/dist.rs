@@ -1483,11 +1483,10 @@ impl Step for Extended {
             };
             prepare("rustc");
             prepare("cargo");
-            prepare("rust-docs");
             prepare("rust-std");
             prepare("rust-analysis");
             prepare("clippy");
-            for tool in &["rust-demangler", "rls", "rust-analyzer", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "rls", "rust-analyzer", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }

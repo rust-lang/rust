@@ -496,6 +496,7 @@ jobs:
                 --enable-full-tools
                 --enable-sanitizers
                 --enable-profiler
+                --disable-docs
                 --set rust.jemalloc
                 --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1

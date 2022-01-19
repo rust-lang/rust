@@ -155,17 +155,19 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-hermit",
 ];
 
-static DOCS_TARGETS: &[&str] = &[
-    "aarch64-unknown-linux-gnu",
-    "i686-apple-darwin",
-    "i686-pc-windows-gnu",
-    "i686-pc-windows-msvc",
-    "i686-unknown-linux-gnu",
-    "x86_64-apple-darwin",
-    "x86_64-pc-windows-gnu",
-    "x86_64-pc-windows-msvc",
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-linux-musl",
+/// This allows the manifest to contain rust-docs for hosts that don't build
+/// docs.
+///
+/// Tuples of `(host_partial, host_instead)`. If the host does not have the
+/// rust-docs component available, then if the host name contains
+/// `host_partial`, it will use the docs from `host_instead` instead.
+///
+/// The order here matters, more specific entries should be first.
+static DOCS_FALLBACK: &[(&str, &str)] = &[
+    ("-apple-", "x86_64-apple-darwin"),
+    ("aarch64", "aarch64-unknown-linux-gnu"),
+    ("arm-", "aarch64-unknown-linux-gnu"),
+    ("", "x86_64-unknown-linux-gnu"),
 ];
 
 static MSI_INSTALLERS: &[&str] = &[
@@ -301,23 +303,27 @@ impl Builder {
     }
 
     fn add_packages_to(&mut self, manifest: &mut Manifest) {
-        let mut package = |name, targets| self.package(name, &mut manifest.pkg, targets);
-        package("rustc", HOSTS);
-        package("rustc-dev", HOSTS);
-        package("reproducible-artifacts", HOSTS);
-        package("rustc-docs", HOSTS);
-        package("cargo", HOSTS);
-        package("rust-mingw", MINGW);
-        package("rust-std", TARGETS);
-        package("rust-docs", DOCS_TARGETS);
-        package("rust-src", &["*"]);
-        package("rls-preview", HOSTS);
-        package("rust-analyzer-preview", HOSTS);
-        package("clippy-preview", HOSTS);
-        package("miri-preview", HOSTS);
-        package("rustfmt-preview", HOSTS);
-        package("rust-analysis", TARGETS);
-        package("llvm-tools-preview", TARGETS);
+        macro_rules! package {
+            ($name:expr, $targets:expr) => {
+                self.package($name, &mut manifest.pkg, $targets, &[])
+            };
+        }
+        package!("rustc", HOSTS);
+        package!("rustc-dev", HOSTS);
+        package!("reproducible-artifacts", HOSTS);
+        package!("rustc-docs", HOSTS);
+        package!("cargo", HOSTS);
+        package!("rust-mingw", MINGW);
+        package!("rust-std", TARGETS);
+        self.package("rust-docs", &mut manifest.pkg, HOSTS, DOCS_FALLBACK);
+        package!("rust-src", &["*"]);
+        package!("rls-preview", HOSTS);
+        package!("rust-analyzer-preview", HOSTS);
+        package!("clippy-preview", HOSTS);
+        package!("miri-preview", HOSTS);
+        package!("rustfmt-preview", HOSTS);
+        package!("rust-analysis", TARGETS);
+        package!("llvm-tools-preview", TARGETS);
     }
 
     fn add_artifacts_to(&mut self, manifest: &mut Manifest) {
@@ -500,7 +506,13 @@ impl Builder {
             .extend(pkgs.iter().map(|s| (*s).to_owned()));
     }
 
-    fn package(&mut self, pkgname: &str, dst: &mut BTreeMap<String, Package>, targets: &[&str]) {
+    fn package(
+        &mut self,
+        pkgname: &str,
+        dst: &mut BTreeMap<String, Package>,
+        targets: &[&str],
+        fallback: &[(&str, &str)],
+    ) {
         let version_info = self
             .versions
             .version(&PkgType::from_component(pkgname))
@@ -512,16 +524,32 @@ impl Builder {
             is_present = false; // Pretend the component is entirely missing.
         }
 
+        macro_rules! tarball_name {
+            ($target_name:expr) => {
+                self.versions.tarball_name(&PkgType::from_component(pkgname), $target_name).unwrap()
+            };
+        }
+        let mut target_from_compressed_tar = |target_name| {
+            let target = Target::from_compressed_tar(self, &tarball_name!(target_name));
+            if target.available {
+                return target;
+            }
+            for (substr, fallback_target) in fallback {
+                if target_name.contains(substr) {
+                    let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
+                    // Fallbacks must always be available.
+                    assert!(t.available);
+                    return t;
+                }
+            }
+            Target::unavailable()
+        };
+
         let targets = targets
             .iter()
             .map(|name| {
                 let target = if is_present {
-                    let filename = self
-                        .versions
-                        .tarball_name(&PkgType::from_component(pkgname), name)
-                        .unwrap();
-
-                    Target::from_compressed_tar(self, &filename)
+                    target_from_compressed_tar(name)
                 } else {
                     // If the component is not present for this build add it anyway but mark it as
                     // unavailable -- this way rustup won't allow upgrades without --force
