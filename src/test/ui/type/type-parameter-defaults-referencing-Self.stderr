@@ -1,5 +1,5 @@
 error[E0393]: the type parameter `T` must be explicitly specified
-  --> $DIR/type-parameter-defaults-referencing-Self.rs:10:16
+  --> $DIR/type-parameter-defaults-referencing-Self.rs:8:16
    |
 LL | / trait Foo<T=Self> {
 LL | |     fn method(&self);
