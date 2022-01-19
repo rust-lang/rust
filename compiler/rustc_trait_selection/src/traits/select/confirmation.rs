@@ -1103,6 +1103,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
 
+        // Skip binder here (*)
         let nested_tys = match *self_ty.skip_binder().kind() {
             ty::Bool
             | ty::Char
@@ -1116,7 +1117,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Ref(..)
             | ty::FnDef(..)
             | ty::FnPtr(_)
-            | ty::Projection(_) => vec![],
+            | ty::Never => vec![],
 
             ty::Adt(def, substs) => def.all_fields().map(|f| f.ty(tcx, substs)).collect(),
 
@@ -1138,8 +1139,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Bound(_, _)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Never
             | ty::Foreign(_)
+            | ty::Projection(_)
             | ty::Infer(_) => {
                 unreachable!();
             }
@@ -1165,6 +1166,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     cause.clone(),
                     obligation.recursion_depth + 1,
+                    // Rebinding here (*)
                     self_ty
                         .rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef {
