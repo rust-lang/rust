@@ -7,7 +7,6 @@ pub fn run(filename: &str) {
         .args(["-Z", "no-codegen"])
         .args(["--edition", "2021"])
         .arg(filename)
-        .env("__CLIPPY_INTERNAL_TESTS", "true")
         .status()
         .expect("failed to run cargo")
         .code();

@@ -331,11 +331,10 @@ pub fn main() {
         // - IF Clippy is run on the main crate, not on deps (`!cap_lints_allow`) THEN
         //    - IF `--no-deps` is not set (`!no_deps`) OR
         //    - IF `--no-deps` is set and Clippy is run on the specified primary package
-        let clippy_tests_set = env::var("__CLIPPY_INTERNAL_TESTS").map_or(false, |val| val == "true");
         let cap_lints_allow = arg_value(&orig_args, "--cap-lints", |val| val == "allow").is_some();
         let in_primary_package = env::var("CARGO_PRIMARY_PACKAGE").is_ok();
 
-        let clippy_enabled = clippy_tests_set || (!cap_lints_allow && (!no_deps || in_primary_package));
+        let clippy_enabled = !cap_lints_allow && (!no_deps || in_primary_package);
         if clippy_enabled {
             args.extend(clippy_args);
         }
