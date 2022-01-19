@@ -169,7 +169,7 @@ impl Versions {
     }
 
     pub(crate) fn archive_name(
-        &mut self,
+        &self,
         package: &PkgType,
         target: &str,
         extension: &str,
@@ -189,11 +189,7 @@ impl Versions {
         }
     }
 
-    pub(crate) fn tarball_name(
-        &mut self,
-        package: &PkgType,
-        target: &str,
-    ) -> Result<String, Error> {
+    pub(crate) fn tarball_name(&self, package: &PkgType, target: &str) -> Result<String, Error> {
         self.archive_name(package, target, "tar.gz")
     }
 
