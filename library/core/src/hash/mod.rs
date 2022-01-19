@@ -602,7 +602,7 @@ pub trait BuildHasher {
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
 /// [zero-sized]: https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts
 #[stable(since = "1.7.0", feature = "build_hasher")]
-pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
+pub struct BuildHasherDefault<H>(marker::PhantomData<fn() -> H>);
 
 #[stable(since = "1.9.0", feature = "core_impl_debug")]
 impl<H> fmt::Debug for BuildHasherDefault<H> {
