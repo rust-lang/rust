@@ -75,11 +75,16 @@ impl LateLintPass<'_> for QueryStability {
         }
 
         let (span, def_id, substs) = match expr.kind {
-            ExprKind::MethodCall(_, span, _, _) if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) => {
+            ExprKind::MethodCall(_, span, _, _)
+                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
+            {
                 (span, def_id, cx.typeck_results().node_substs(expr.hir_id))
             },
             _ => {
-                let &ty::FnDef(def_id, substs) = cx.typeck_results().node_type(expr.hir_id).kind() else { return };
+                let &ty::FnDef(def_id, substs) =
+                    cx.typeck_results()
+                        .node_type(expr.hir_id)
+                        .kind() else { return };
                 (expr.span, def_id, substs)
             }
         };
