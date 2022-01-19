@@ -2021,7 +2021,7 @@ extern "C" {
         PointeeTy: &'a DIType,
         SizeInBits: u64,
         AlignInBits: u32,
-        AddressSpace: c_uint,
+        AddressSpace: Option<&c_uint>,
         Name: *const c_char,
         NameLen: size_t,
     ) -> &'a DIDerivedType;

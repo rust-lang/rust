@@ -38,6 +38,7 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileNameDisplayPreference;
 use rustc_span::{self, SourceFile, SourceFileHash};
+use rustc_target::abi::AddressSpace;
 use rustc_target::abi::{Align, Size};
 use smallvec::smallvec;
 use tracing::debug;
@@ -174,6 +175,9 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
         cx.size_and_align_of(cx.tcx.mk_imm_ptr(cx.tcx.types.unit));
     let ptr_type_debuginfo_name = compute_debuginfo_type_name(cx.tcx, ptr_type, true);
 
+    let ptr_ty_layout = cx.layout_of(ptr_type);
+    let address_space = address_space_of(cx, ptr_ty_layout);
+
     match fat_pointer_kind(cx, pointee_type) {
         None => {
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
@@ -191,7 +195,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     pointee_type_di_node,
                     thin_pointer_size.bits(),
                     thin_pointer_align.bits() as u32,
-                    0, // Ignore DWARF address space.
+                    address_space.as_ref(),
                     ptr_type_debuginfo_name.as_ptr().cast(),
                     ptr_type_debuginfo_name.len(),
                 )
@@ -212,9 +216,8 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     DIFlags::FlagZero,
                 ),
                 |cx, owner| {
-                    let layout = cx.layout_of(ptr_type);
-                    let addr_field = layout.field(cx, abi::FAT_PTR_ADDR);
-                    let extra_field = layout.field(cx, abi::FAT_PTR_EXTRA);
+                    let addr_field = ptr_ty_layout.field(cx, abi::FAT_PTR_ADDR);
+                    let extra_field = ptr_ty_layout.field(cx, abi::FAT_PTR_EXTRA);
 
                     let (addr_field_name, extra_field_name) = match fat_pointer_kind {
                         FatPtrKind::Dyn => ("pointer", "vtable"),
@@ -232,7 +235,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             pointee_type_di_node,
                             addr_field.size.bits(),
                             addr_field.align.abi.bits() as u32,
-                            0, // Ignore DWARF address space.
+                            address_space.as_ref(),
                             std::ptr::null(),
                             0,
                         )
@@ -244,7 +247,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             owner,
                             addr_field_name,
                             (addr_field.size, addr_field.align.abi),
-                            layout.fields.offset(abi::FAT_PTR_ADDR),
+                            ptr_ty_layout.fields.offset(abi::FAT_PTR_ADDR),
                             DIFlags::FlagZero,
                             data_ptr_type_di_node,
                         ),
@@ -253,7 +256,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             owner,
                             extra_field_name,
                             (extra_field.size, extra_field.align.abi),
-                            layout.fields.offset(abi::FAT_PTR_EXTRA),
+                            ptr_ty_layout.fields.offset(abi::FAT_PTR_EXTRA),
                             DIFlags::FlagZero,
                             type_di_node(cx, extra_field.ty),
                         ),
@@ -318,6 +321,8 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         )
     };
 
+    let address_space = address_space_of(cx, cx.layout_of(fn_ty));
+
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let di_node = unsafe {
@@ -326,7 +331,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
             fn_di_node,
             cx.tcx.data_layout.pointer_size.bits(),
             cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-            0, // Ignore DWARF address space.
+            address_space.as_ref(),
             name.as_ptr().cast(),
             name.len(),
         )
@@ -1478,4 +1483,20 @@ pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
         .get(field_index)
         .map(|s| Cow::from(*s))
         .unwrap_or_else(|| Cow::from(format!("__{}", field_index)))
+}
+
+fn address_space_of<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    ptr_ty_layout: TyAndLayout<'tcx>,
+) -> Option<c_uint> {
+    ptr_ty_layout.pointee_info_at(cx, Size::ZERO).map(|pi| pi.address_space).and_then(
+        |address_space| {
+            if address_space == AddressSpace::DATA {
+                // Don't emit the DW_AT_address_class attribute for things with AddressSpace::DATA
+                None
+            } else {
+                Some(address_space.0 as c_uint)
+            }
+        },
+    )
 }

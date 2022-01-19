@@ -763,11 +763,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateTypedef(
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
     LLVMRustDIBuilderRef Builder, LLVMMetadataRef PointeeTy,
-    uint64_t SizeInBits, uint32_t AlignInBits, unsigned AddressSpace,
+    uint64_t SizeInBits, uint32_t AlignInBits, const unsigned* AddressSpace,
     const char *Name, size_t NameLen) {
+
+  auto OptAddressSpace = AddressSpace ? Optional<unsigned>(*AddressSpace) : None;
+
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
                                          SizeInBits, AlignInBits,
-                                         AddressSpace,
+                                         OptAddressSpace,
                                          StringRef(Name, NameLen)));
 }
 
