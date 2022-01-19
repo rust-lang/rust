@@ -1467,6 +1467,7 @@ fn make_body(
                 .filter(|it| text_range.contains_range(it.text_range()))
                 .map(|it| match it {
                     syntax::NodeOrToken::Node(n) => {
+                        println!("Found node: {:?}", n);
                         return syntax::NodeOrToken::try_from(rewrite_body_segment(
                             ctx,
                             &fun.params,
@@ -1476,6 +1477,7 @@ fn make_body(
                         .unwrap()
                     }
                     syntax::NodeOrToken::Token(t) => {
+                        println!("Found token: {:?}", t);
                         return syntax::NodeOrToken::try_from(t).unwrap()
                     }
                 })
@@ -1487,7 +1489,11 @@ fn make_body(
                         elements.push(node);
                         None
                     })
-                }
+                },
+                Some(token) if token.as_token().is_some() && token.as_token().unwrap().kind() == COMMENT => {
+                    elements.push(token);
+                    None
+                },
                 _ => None,
             };
 
