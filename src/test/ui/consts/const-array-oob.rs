@@ -1,5 +1,3 @@
-#![feature(const_indexing)]
-
 const FOO: [usize; 3] = [1, 2, 3];
 const BAR: usize = FOO[5]; // no error, because the error below occurs before regular const eval
 

@@ -1,7 +1,5 @@
 // #29924
 
-#![feature(associated_consts)]
-
 trait Trait {
     const N: usize;
 }

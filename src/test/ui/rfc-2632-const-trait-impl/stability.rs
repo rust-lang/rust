@@ -2,7 +2,9 @@
 #![feature(const_add)]
 #![feature(const_trait_impl)]
 #![feature(staged_api)]
+#![stable(feature = "rust1", since = "1.0.0")]
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Int(i32);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -16,6 +18,7 @@ impl const std::ops::Sub for Int {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_add", issue = "none")]
 impl const std::ops::Add for Int {
     type Output = Self;

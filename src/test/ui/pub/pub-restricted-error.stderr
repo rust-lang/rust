@@ -1,5 +1,5 @@
 error: expected identifier, found `(`
-  --> $DIR/pub-restricted-error.rs:6:16
+  --> $DIR/pub-restricted-error.rs:4:16
    |
 LL |     pub(crate) () foo: usize,
    |                ^ expected identifier

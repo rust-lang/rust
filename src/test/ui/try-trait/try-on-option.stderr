@@ -1,5 +1,5 @@
 error[E0277]: the `?` operator can only be used on `Result`s, not `Option`s, in a function that returns `Result`
-  --> $DIR/try-on-option.rs:7:6
+  --> $DIR/try-on-option.rs:5:6
    |
 LL | / fn foo() -> Result<u32, ()> {
 LL | |     let x: Option<u32> = None;
@@ -12,7 +12,7 @@ LL | | }
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
-  --> $DIR/try-on-option.rs:13:6
+  --> $DIR/try-on-option.rs:11:6
    |
 LL | / fn bar() -> u32 {
 LL | |     let x: Option<u32> = None;

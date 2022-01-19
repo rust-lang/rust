@@ -1,5 +1,5 @@
 error: const-stable function cannot use `#[feature(const_fn_fn_ptr_basics)]`
-  --> $DIR/allow_const_fn_ptr.rs:6:16
+  --> $DIR/allow_const_fn_ptr.rs:7:16
    |
 LL | const fn error(_: fn()) {}
    |                ^
