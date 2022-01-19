@@ -275,10 +275,6 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
         }
     }
 
-    pub fn is_noop(&self) -> bool {
-        self.is_empty()
-    }
-
     #[inline]
     pub fn types(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         self.iter()

@@ -90,7 +90,7 @@ macro call_intrinsic_match {
         match $intrinsic {
             $(
                 sym::$name => {
-                    assert!($substs.is_noop());
+                    assert!($substs.is_empty());
                     if let [$(ref $arg),*] = *$args {
                         let ($($arg,)*) = (
                             $(codegen_operand($fx, $arg),)*

@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `foo.bar::<u32>(...)` -- the `Self` type here will be the
         // type of `foo` (possibly adjusted), but we don't want to
         // include that. We want just the `[_, u32]` part.
-        if !method.substs.is_noop() {
+        if !method.substs.is_empty() {
             let method_generics = self.tcx.generics_of(method.def_id);
             if !method_generics.params.is_empty() {
                 let user_type_annotation = self.infcx.probe(|_| {
@@ -211,7 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {
-        if !substs.is_noop() {
+        if !substs.is_empty() {
             debug!("write_substs({:?}, {:?}) in fcx {}", node_id, substs, self.tag());
 
             self.typeck_results.borrow_mut().node_substs_mut().insert(node_id, substs);
