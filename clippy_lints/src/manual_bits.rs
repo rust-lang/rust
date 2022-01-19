@@ -4,7 +4,7 @@ use clippy_utils::{match_def_path, meets_msrv, msrvs, paths};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -72,6 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn get_one_size_of_ty<'tcx>(
