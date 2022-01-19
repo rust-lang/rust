@@ -378,27 +378,28 @@ impl Printer {
         }
     }
 
-    fn check_stack(&mut self, k: usize) {
-        if let Some(&x) = self.scan_stack.front() {
+    fn check_stack(&mut self, mut k: usize) {
+        while let Some(&x) = self.scan_stack.front() {
             match self.buf[x].token {
                 Token::Begin(_) => {
-                    if k > 0 {
-                        self.scan_stack.pop_front().unwrap();
-                        self.buf[x].size += self.right_total;
-                        self.check_stack(k - 1);
+                    if k == 0 {
+                        break;
                     }
+                    self.scan_stack.pop_front().unwrap();
+                    self.buf[x].size += self.right_total;
+                    k -= 1;
                 }
                 Token::End => {
                     // paper says + not =, but that makes no sense.
                     self.scan_stack.pop_front().unwrap();
                     self.buf[x].size = 1;
-                    self.check_stack(k + 1);
+                    k += 1;
                 }
                 _ => {
                     self.scan_stack.pop_front().unwrap();
                     self.buf[x].size += self.right_total;
-                    if k > 0 {
-                        self.check_stack(k);
+                    if k == 0 {
+                        break;
                     }
                 }
             }
