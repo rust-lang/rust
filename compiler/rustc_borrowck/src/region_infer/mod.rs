@@ -612,7 +612,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
-            constraints.sort();
+            constraints.sort_by_key(|c| (c.sup, c.sub));
             constraints
                 .into_iter()
                 .map(|c| (c, self.constraint_sccs.scc(c.sup), self.constraint_sccs.scc(c.sub)))
