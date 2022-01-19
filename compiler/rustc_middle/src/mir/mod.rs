@@ -162,7 +162,7 @@ impl MirPhase {
 }
 
 /// Where a specific `mir::Body` comes from.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceDef<'tcx>,
@@ -1255,17 +1255,7 @@ pub enum AssertKind<O> {
     ResumedAfterPanic(GeneratorKind),
 }
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    PartialOrd,
-    TyEncodable,
-    TyDecodable,
-    Hash,
-    HashStable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -1747,7 +1737,7 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
 pub struct Place<'tcx> {
     pub local: Local,
 
@@ -2072,7 +2062,7 @@ pub struct SourceScopeLocalData {
 
 /// These are values that can appear inside an rvalue. They are intentionally
 /// limited to prevent rvalues from being nested in one another.
-#[derive(Clone, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
     /// Copy: The value must be available for use afterwards.
     ///
@@ -2500,7 +2490,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are `==` in Rust. In
 /// particular, one must be wary of `NaN`!
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2514,7 +2504,7 @@ pub struct Constant<'tcx> {
     pub literal: ConstantKind<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
 #[derive(Lift)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
