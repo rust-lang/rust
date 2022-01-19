@@ -742,6 +742,12 @@ impl Error {
         }
     }
 }
+#[stable(feature = "io_error_eq_errorkind", since = "1.60.0")]
+impl PartialEq<ErrorKind> for Error {
+    fn eq(&self, other: &ErrorKind) -> bool {
+        self.kind() == *other
+    }
+}
 
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

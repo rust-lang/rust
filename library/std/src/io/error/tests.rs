@@ -67,3 +67,9 @@ fn test_const() {
     assert!(format!("{:?}", E).contains("\"hello\""));
     assert!(format!("{:?}", E).contains("NotFound"));
 }
+
+#[test]
+fn test_eq_errorkind() {
+    let error = Error::new(ErrorKind::NotFound, "hello");
+    assert_eq!(error, ErrorKind::NotFound);
+}
