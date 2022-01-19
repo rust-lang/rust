@@ -242,12 +242,8 @@ pub(crate) fn write_clif_file<'tcx>(
         || format!("{}.{}.clif", tcx.symbol_name(instance).name, postfix),
         |file| {
             let mut clif = String::new();
-            cranelift_codegen::write::decorate_function(
-                &mut clif_comments,
-                &mut clif,
-                func,
-            )
-            .unwrap();
+            cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func)
+                .unwrap();
 
             for flag in isa.flags().iter() {
                 writeln!(file, "set {}", flag)?;
