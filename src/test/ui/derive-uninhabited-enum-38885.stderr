@@ -5,6 +5,12 @@ LL |     Void(Void),
    |     ^^^^^^^^^^
    |
    = note: `-W dead-code` implied by `-W unused`
+note: `Foo` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+  --> $DIR/derive-uninhabited-enum-38885.rs:10:10
+   |
+LL | #[derive(Debug)]
+   |          ^^^^^
+   = note: this warning originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted
 
