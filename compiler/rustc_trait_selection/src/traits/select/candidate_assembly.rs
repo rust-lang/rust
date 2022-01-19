@@ -625,15 +625,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
 
-                // Only consider auto impls if there are no manual impls for the root of `self_ty`.
-                //
-                // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
-                // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
-                // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
-                //
-                // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
-                // which may define impls for that type is either the crate defining the type
-                // or the trait. This should be guaranteed by the orphan check.
+                ty::Opaque(_, _)
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) =>
+                {
+                    // We do not generate an auto impl candidate for `impl Trait`s which already
+                    // reference our auto trait.
+                    //
+                    // For example during candidate assembly for `impl Send: Send`, we don't have
+                    // to look at the constituent types for this opaque types to figure out that this
+                    // trivially holds.
+                    //
+                    // Note that this is only sound as projection candidates of opaque types
+                    // are always applicable for auto traits.
+                }
+
                 ty::Bool
                 | ty::Char
                 | ty::Int(_)
@@ -653,6 +658,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Tuple(_)
                 | ty::Opaque(_, _)
                 | ty::GeneratorWitness(_) => {
+                    // Only consider auto impls if there are no manual impls for the root of `self_ty`.
+                    //
+                    // For example, we only consider auto candidates for `&i32: Auto` if no explicit impl
+                    // for `&SomeType: Auto` exists. Due to E0321 the only crate where impls
+                    // for `&SomeType: Auto` can be defined is the crate where `Auto` has been defined.
+                    //
+                    // Generally, we have to guarantee that for all `SimplifiedType`s the only crate
+                    // which may define impls for that type is either the crate defining the type
+                    // or the trait. This should be guaranteed by the orphan check.
                     if self.tcx().find_map_relevant_impl(def_id, self_ty, |_| Some(())).is_none() {
                         candidates.vec.push(AutoImplCandidate(def_id))
                     }

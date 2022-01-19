@@ -89,6 +89,7 @@ fn mutual_recursion() -> impl Sync {
 }
 
 fn mutual_recursion_b() -> impl Sized {
+    //~^ ERROR
     mutual_recursion()
 }
 
