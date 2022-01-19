@@ -970,7 +970,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         };
 
         match (res, source) {
-            (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+            (
+                Res::Def(DefKind::Macro(MacroKind::Bang), _),
+                PathSource::Expr(Some(Expr {
+                    kind: ExprKind::Index(..) | ExprKind::Call(..), ..
+                }))
+                | PathSource::Struct,
+            ) => {
                 err.span_label(span, fallback_label);
                 err.span_suggestion_verbose(
                     span.shrink_to_hi(),
@@ -981,6 +987,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 if path_str == "try" && span.rust_2015() {
                     err.note("if you want the `try` keyword, you need Rust 2018 or later");
                 }
+            }
+            (Res::Def(DefKind::Macro(MacroKind::Bang), _), _) => {
+                err.span_label(span, fallback_label);
             }
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
