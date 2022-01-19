@@ -13,9 +13,9 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
@@ -102,14 +102,14 @@ fn push_debuginfo_type_name<'tcx>(
         ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
             if cpp_like_debuginfo {
                 match mutbl {
-                    hir::Mutability::Not => output.push_str("ptr_const$<"),
-                    hir::Mutability::Mut => output.push_str("ptr_mut$<"),
+                    Mutability::Not => output.push_str("ptr_const$<"),
+                    Mutability::Mut => output.push_str("ptr_mut$<"),
                 }
             } else {
                 output.push('*');
                 match mutbl {
-                    hir::Mutability::Not => output.push_str("const "),
-                    hir::Mutability::Mut => output.push_str("mut "),
+                    Mutability::Not => output.push_str("const "),
+                    Mutability::Mut => output.push_str("mut "),
                 }
             }
 
@@ -131,8 +131,8 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push_str(mutbl.prefix_str());
             } else if !is_slice_or_str {
                 match mutbl {
-                    hir::Mutability::Not => output.push_str("ref$<"),
-                    hir::Mutability::Mut => output.push_str("ref_mut$<"),
+                    Mutability::Not => output.push_str("ref$<"),
+                    Mutability::Mut => output.push_str("ref_mut$<"),
                 }
             }
 
@@ -345,14 +345,39 @@ fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(t);
         }
-        ty::Closure(def_id, ..) | ty::Generator(def_id, ..) => {
-            let key = tcx.def_key(def_id);
+        ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
+            // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
+            // "{async_fn_env#0}<T1, T2, ...>", etc.
+            let def_key = tcx.def_key(def_id);
+
             if qualified {
-                let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
+                let parent_def_id = DefId { index: def_key.parent.unwrap(), ..def_id };
                 push_item_name(tcx, parent_def_id, true, output);
                 output.push_str("::");
             }
-            push_unqualified_item_name(tcx, def_id, key.disambiguated_data, output);
+
+            let mut label = String::with_capacity(20);
+            write!(&mut label, "{}_env", generator_kind_label(tcx.generator_kind(def_id))).unwrap();
+
+            push_disambiguated_special_name(
+                &label,
+                def_key.disambiguated_data.disambiguator,
+                cpp_like_debuginfo,
+                output,
+            );
+
+            // We also need to add the generic arguments of the async fn/generator or
+            // the enclosing function (for closures or async blocks), so that we end
+            // up with a unique name for every instantiation.
+
+            // Find the generics of the enclosing function, as defined in the source code.
+            let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
+            let generics = tcx.generics_of(enclosing_fn_def_id);
+
+            // Truncate the substs to the length of the above generics. This will cut off
+            // anything closure- or generator-specific.
+            let substs = substs.truncate_to(tcx, generics);
+            push_generic_params_internal(tcx, substs, output, visited);
         }
         // Type parameters from polymorphized functions.
         ty::Param(_) => {
@@ -509,6 +534,29 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
     push_unqualified_item_name(tcx, def_id, def_key.disambiguated_data, output);
 }
 
+fn generator_kind_label(generator_kind: Option<GeneratorKind>) -> &'static str {
+    match generator_kind {
+        Some(GeneratorKind::Async(AsyncGeneratorKind::Block)) => "async_block",
+        Some(GeneratorKind::Async(AsyncGeneratorKind::Closure)) => "async_closure",
+        Some(GeneratorKind::Async(AsyncGeneratorKind::Fn)) => "async_fn",
+        Some(GeneratorKind::Gen) => "generator",
+        None => "closure",
+    }
+}
+
+fn push_disambiguated_special_name(
+    label: &str,
+    disambiguator: u32,
+    cpp_like_debuginfo: bool,
+    output: &mut String,
+) {
+    if cpp_like_debuginfo {
+        write!(output, "{}${}", label, disambiguator).unwrap();
+    } else {
+        write!(output, "{{{}#{}}}", label, disambiguator).unwrap();
+    }
+}
+
 fn push_unqualified_item_name(
     tcx: TyCtxt<'_>,
     def_id: DefId,
@@ -519,42 +567,32 @@ fn push_unqualified_item_name(
         DefPathData::CrateRoot => {
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
-        DefPathData::ClosureExpr if tcx.generator_kind(def_id).is_some() => {
-            let key = match tcx.generator_kind(def_id).unwrap() {
-                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "async_block",
-                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "async_closure",
-                hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "async_fn",
-                hir::GeneratorKind::Gen => "generator",
-            };
-            // Generators look like closures, but we want to treat them differently
-            // in the debug info.
-            if cpp_like_debuginfo(tcx) {
-                write!(output, "{}${}", key, disambiguated_data.disambiguator).unwrap();
-            } else {
-                write!(output, "{{{}#{}}}", key, disambiguated_data.disambiguator).unwrap();
-            }
+        DefPathData::ClosureExpr => {
+            let label = generator_kind_label(tcx.generator_kind(def_id));
+
+            push_disambiguated_special_name(
+                label,
+                disambiguated_data.disambiguator,
+                cpp_like_debuginfo(tcx),
+                output,
+            );
         }
         _ => match disambiguated_data.data.name() {
             DefPathDataName::Named(name) => {
                 output.push_str(name.as_str());
             }
             DefPathDataName::Anon { namespace } => {
-                if cpp_like_debuginfo(tcx) {
-                    write!(output, "{}${}", namespace, disambiguated_data.disambiguator).unwrap();
-                } else {
-                    write!(output, "{{{}#{}}}", namespace, disambiguated_data.disambiguator)
-                        .unwrap();
-                }
+                push_disambiguated_special_name(
+                    namespace.as_str(),
+                    disambiguated_data.disambiguator,
+                    cpp_like_debuginfo(tcx),
+                    output,
+                );
             }
         },
     };
 }
 
-// Pushes the generic parameters in the given `InternalSubsts` to the output string.
-// This ignores region parameters, since they can't reliably be
-// reconstructed for items from non-local crates. For local crates, this
-// would be possible but with inlining and LTO we have to use the least
-// common denominator - otherwise we would run into conflicts.
 fn push_generic_params_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
     substs: SubstsRef<'tcx>,

@@ -27,9 +27,9 @@
 
 // Closure
 // gdb-command:info functions -q function_names::.*::{closure.*
-// gdb-check:[...]static fn function_names::generic_func::{closure#0}<i32>(*mut function_names::generic_func::{closure#0});
-// gdb-check:[...]static fn function_names::main::{closure#0}(*mut function_names::main::{closure#0});
-// gdb-check:[...]static fn function_names::{impl#2}::impl_function::{closure#0}<i32, i32>(*mut function_names::{impl#2}::impl_function::{closure#0});
+// gdb-check:[...]static fn function_names::generic_func::{closure#0}<i32>(*mut function_names::generic_func::{closure_env#0}<i32>);
+// gdb-check:[...]static fn function_names::main::{closure#0}(*mut function_names::main::{closure_env#0});
+// gdb-check:[...]static fn function_names::{impl#2}::impl_function::{closure#0}<i32, i32>(*mut function_names::{impl#2}::impl_function::{closure_env#0}<i32, i32>);
 
 // Generator
 // Generators don't seem to appear in GDB's symbol table.
@@ -86,9 +86,9 @@
 #![feature(adt_const_params, generators, generator_trait)]
 #![allow(incomplete_features)]
 
-use Mod1::TestTrait2;
 use std::ops::Generator;
 use std::pin::Pin;
+use Mod1::TestTrait2;
 
 fn main() {
     // Implementations
@@ -107,16 +107,19 @@ fn main() {
     let _ = generic_func(42i32);
 
     // Closure
-    let closure = || { TestStruct1 };
+    let closure = || TestStruct1;
     closure();
 
     // Generator
-    let mut generator = || { yield; return; };
+    let mut generator = || {
+        yield;
+        return;
+    };
     Pin::new(&mut generator).resume(());
 
     // Const generic functions
     const_generic_fn_bool::<false>();
-    const_generic_fn_non_int::<{()}>();
+    const_generic_fn_non_int::<{ () }>();
     const_generic_fn_signed_int::<-7>();
     const_generic_fn_unsigned_int::<14>();
 }
@@ -158,7 +161,7 @@ struct GenericStruct<T1, T2>(std::marker::PhantomData<(T1, T2)>);
 impl<T1, T2> GenericStruct<T1, T2> {
     pub fn impl_function() {
         // Closure in a generic implementation
-        let closure = || { TestStruct1 };
+        let closure = || TestStruct1;
         closure();
     }
 }
@@ -190,7 +193,7 @@ impl<T, const N: usize> TestTrait1 for GenericStruct<[T; N], f32> {
 // Generic function
 fn generic_func<T>(value: T) -> T {
     // Closure in a generic function
-    let closure = || { TestStruct1 };
+    let closure = || TestStruct1;
     closure();
 
     value

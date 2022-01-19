@@ -108,7 +108,7 @@
 // cdb-command: dx closure_local
 // cdb-check:closure_local    : 8 [Type: [...]]
 // cdb-command: dx nested_closure
-// cdb-check:nested_closure   [Type: var_captured_in_nested_closure::main::closure$0::closure$0]
+// cdb-check:nested_closure   [Type: var_captured_in_nested_closure::main::closure$0::closure_env$0]
 
 // cdb-command: g
 

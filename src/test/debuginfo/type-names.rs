@@ -122,7 +122,6 @@
 // gdb-command:whatis has_associated_type_trait
 // gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)
 
-
 // BARE FUNCTIONS
 // gdb-command:whatis rust_fn
 // gdb-check:type = (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
@@ -153,10 +152,10 @@
 
 // CLOSURES
 // gdb-command:whatis closure1
-// gdb-check:type = (type_names::main::{closure#0}, usize)
+// gdb-check:type = (type_names::main::{closure_env#0}, usize)
 
 // gdb-command:whatis closure2
-// gdb-check:type = (type_names::main::{closure#1}, usize)
+// gdb-check:type = (type_names::main::{closure_env#1}, usize)
 
 // FOREIGN TYPES
 // gdb-command:whatis foreign1
@@ -254,8 +253,8 @@
 
 // CLOSURES
 // cdb-command:dv /t closure*
-// cdb-check:struct tuple$<type_names::main::closure$1,usize> closure2 = [...]
-// cdb-check:struct tuple$<type_names::main::closure$0,usize> closure1 = [...]
+// cdb-check:struct tuple$<type_names::main::closure_env$1,usize> closure2 = [...]
+// cdb-check:struct tuple$<type_names::main::closure_env$0,usize> closure1 = [...]
 
 // FOREIGN TYPES
 // cdb-command:dv /t foreign*
@@ -279,7 +278,9 @@ enum Enum1 {
     Variant2(isize),
 }
 
-extern { type ForeignType1; }
+extern "C" {
+    type ForeignType1;
+}
 
 mod mod1 {
     pub use self::Enum2::{Variant1, Variant2};
@@ -300,7 +301,9 @@ mod mod1 {
         }
     }
 
-    extern { pub type ForeignType2; }
+    extern "C" {
+        pub type ForeignType2;
+    }
 }
 
 trait Trait1 {
@@ -311,7 +314,9 @@ trait Trait2<T1, T2> {
 }
 trait Trait3<T> {
     type AssocType;
-    fn dummy(&self) -> T { panic!() }
+    fn dummy(&self) -> T {
+        panic!()
+    }
 }
 
 impl Trait1 for isize {}
@@ -441,8 +446,8 @@ fn main() {
     let closure2 = (|x: i8, y: f32| (x as f32) + y, 0_usize);
 
     // Foreign Types
-    let foreign1 = unsafe{ 0 as *const ForeignType1 };
-    let foreign2 = unsafe{ 0 as *const mod1::ForeignType2 };
+    let foreign1 = unsafe { 0 as *const ForeignType1 };
+    let foreign2 = unsafe { 0 as *const mod1::ForeignType2 };
 
     zzz(); // #break
 }

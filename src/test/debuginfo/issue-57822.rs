@@ -11,20 +11,20 @@
 // gdb-command:run
 
 // gdb-command:print g
-// gdb-check:$1 = issue_57822::main::{closure#1} {f: issue_57822::main::{closure#0} {x: 1}}
+// gdb-check:$1 = issue_57822::main::{closure_env#1} {f: issue_57822::main::{closure_env#0} {x: 1}}
 
 // gdb-command:print b
-// gdb-check:$2 = issue_57822::main::{generator#3}::Unresumed{a: issue_57822::main::{generator#2}::Unresumed{y: 2}}
+// gdb-check:$2 = issue_57822::main::{generator_env#3}::Unresumed{a: issue_57822::main::{generator_env#2}::Unresumed{y: 2}}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 
 // lldb-command:print g
-// lldbg-check:(issue_57822::main::{closure#1}) $0 = { f = { x = 1 } }
+// lldbg-check:(issue_57822::main::{closure_env#1}) $0 = { f = { x = 1 } }
 
 // lldb-command:print b
-// lldbg-check:(issue_57822::main::{generator#3}) $1 =
+// lldbg-check:(issue_57822::main::{generator_env#3}) $1 =
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
@@ -50,4 +50,6 @@ fn main() {
     zzz(); // #break
 }
 
-fn zzz() { () }
+fn zzz() {
+    ()
+}
