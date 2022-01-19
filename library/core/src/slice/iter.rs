@@ -304,6 +304,47 @@ impl<'a, T> IterMut<'a, T> {
     pub fn as_slice(&self) -> &[T] {
         self.make_slice()
     }
+
+    /// Views the underlying data as a mutable subslice of the original data.
+    ///
+    /// To avoid creating `&mut [T]` references that alias, the returned slice
+    /// borrows its lifetime from the iterator the method is applied on.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(slice_iter_mut_as_mut_slice)]
+    ///
+    /// let mut slice: &mut [usize] = &mut [1, 2, 3];
+    ///
+    /// // First, we get the iterator:
+    /// let mut iter = slice.iter_mut();
+    /// // Then, we get a mutable slice from it:
+    /// let mut_slice = iter.as_mut_slice();
+    /// // So if we check what the `as_mut_slice` method returned, we have "[1, 2, 3]":
+    /// assert_eq!(mut_slice, &mut [1, 2, 3]);
+    ///
+    /// // We can use it to mutate the slice:
+    /// mut_slice[0] = 4;
+    /// mut_slice[2] = 5;
+    ///
+    /// // Next, we can move to the second element of the slice, checking that
+    /// // it yields the value we just wrote:
+    /// assert_eq!(iter.next(), Some(&mut 4));
+    /// // Now `as_mut_slice` returns "[2, 5]":
+    /// assert_eq!(iter.as_mut_slice(), &mut [2, 5]);
+    /// ```
+    #[must_use]
+    // FIXME: Uncomment the `AsMut<[T]>` impl when this gets stabilized.
+    #[unstable(feature = "slice_iter_mut_as_mut_slice", issue = "93079")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: the iterator was created from a mutable slice with pointer
+        // `self.ptr` and length `len!(self)`. This guarantees that all the prerequisites
+        // for `from_raw_parts_mut` are fulfilled.
+        unsafe { from_raw_parts_mut(self.ptr.as_ptr(), len!(self)) }
+    }
 }
 
 #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
@@ -312,6 +353,13 @@ impl<T> AsRef<[T]> for IterMut<'_, T> {
         self.as_slice()
     }
 }
+
+// #[stable(feature = "slice_iter_mut_as_mut_slice", since = "FIXME")]
+// impl<T> AsMut<[T]> for IterMut<'_, T> {
+//     fn as_mut(&mut self) -> &mut [T] {
+//         self.as_mut_slice()
+//     }
+// }
 
 iterator! {struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
 
