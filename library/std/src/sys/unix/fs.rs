@@ -1672,55 +1672,90 @@ mod remove_dir_impl {
         }
     }
 
-    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
-        let pcstr = cstr(p)?;
-
-        // entry is expected to be a directory, open as such
-        let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
-
-        // open the directory passing ownership of the fd
-        let (dir, fd) = fdreaddir(fd)?;
-        for child in dir {
-            let child = child?;
-            match is_dir(&child) {
-                Some(true) => {
-                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
-                }
-                Some(false) => {
-                    cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) })?;
-                }
-                None => match cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) }) {
+    fn unlink_direntry(ent: &DirEntry, parent_fd: RawFd) -> io::Result<bool> {
+        match is_dir(&ent) {
+            Some(true) => Ok(false),
+            Some(false) => {
+                cvt(unsafe { unlinkat(parent_fd, ent.name_cstr().as_ptr(), 0) })?;
+                Ok(true)
+            }
+            None => {
+                match cvt(unsafe { unlinkat(parent_fd, ent.name_cstr().as_ptr(), 0) }) {
                     // type unknown - try to unlink
                     Err(err)
                         if err.raw_os_error() == Some(libc::EISDIR)
                             || err.raw_os_error() == Some(libc::EPERM) =>
                     {
-                        // if the file is a directory unlink fails with EISDIR on Linux and EPERM everyhwere else
-                        remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
+                        // if the file is a directory unlink fails with EISDIR on Linux
+                        // and EPERM everyhwere else
+                        Ok(false)
                     }
-                    result => {
-                        result?;
-                    }
-                },
+                    result => result.map(|_| true),
+                }
+            }
+        }
+    }
+
+    fn remove_dir_all_loop(p: &Path) -> io::Result<()> {
+        use crate::ffi::CString;
+
+        struct State {
+            dir: ReadDir,
+            fd: RawFd,
+            parent_fd: Option<RawFd>,
+            pcstr: CString,
+        }
+
+        impl State {
+            fn new(parent_fd: Option<RawFd>, pcstr: CString) -> io::Result<Self> {
+                // entry is expected to be a directory, open as such
+                let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
+
+                // open the directory passing ownership of the fd
+                let (dir, fd) = fdreaddir(fd)?;
+
+                Ok(Self { dir, fd, parent_fd, pcstr })
             }
         }
 
-        // unlink the directory after removing its contents
-        cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), pcstr.as_ptr(), libc::AT_REMOVEDIR)
-        })?;
-        Ok(())
+        let mut parents = Vec::<State>::new();
+        let mut current = State::new(None, cstr(p)?)?;
+        loop {
+            while let Some(child) = current.dir.next() {
+                let child = child?;
+                if !unlink_direntry(&child, current.fd)? {
+                    // Descend into this child directory
+                    let parent = current;
+                    current = State::new(Some(parent.fd), child.name_cstr().into())?;
+                    parents.push(parent);
+                }
+            }
+
+            // unlink the directory after removing its contents
+            cvt(unsafe {
+                unlinkat(
+                    current.parent_fd.unwrap_or(libc::AT_FDCWD),
+                    current.pcstr.as_ptr(),
+                    libc::AT_REMOVEDIR,
+                )
+            })?;
+
+            match parents.pop() {
+                Some(parent) => current = parent,
+                None => return Ok(()),
+            }
+        }
     }
 
     pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
-        // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
+        // We cannot just call remove_dir_all_loop() here because that would not delete a passed
+        // symlink. No need to worry about races, because remove_dir_all_loop() does not descend
         // into symlinks.
         let attr = lstat(p)?;
         if attr.file_type().is_symlink() {
             crate::fs::remove_file(p)
         } else {
-            remove_dir_all_recursive(None, p)
+            remove_dir_all_loop(p)
         }
     }
 }
