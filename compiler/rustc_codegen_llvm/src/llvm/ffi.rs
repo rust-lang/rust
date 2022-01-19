@@ -61,6 +61,26 @@ pub enum LLVMMachineType {
     ARM = 0x01c0,
 }
 
+/// LLVM's Module::ModFlagBehavior, defined in llvm/include/llvm/IR/Module.h.
+///
+/// When merging modules (e.g. during LTO), their metadata flags are combined. Conflicts are
+/// resolved according to the merge behaviors specified here. Flags differing only in merge
+/// behavior are still considered to be in conflict.
+///
+/// In order for Rust-C LTO to work, we must specify behaviors compatible with Clang. Notably,
+/// 'Error' and 'Warning' cannot be mixed for a given flag.
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum LLVMModFlagBehavior {
+    Error = 1,
+    Warning = 2,
+    Require = 3,
+    Override = 4,
+    Append = 5,
+    AppendUnique = 6,
+    Max = 7,
+}
+
 // Consts for the LLVM CallConv type, pre-cast to usize.
 
 /// LLVM CallingConv::ID. Should we wrap this?
@@ -1895,7 +1915,16 @@ extern "C" {
 
     pub fn LLVMRustIsRustLLVM() -> bool;
 
-    pub fn LLVMRustAddModuleFlag(M: &Module, name: *const c_char, value: u32);
+    /// Add LLVM module flags.
+    ///
+    /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
+    /// "compatible" means depends on the merge behaviors involved.
+    pub fn LLVMRustAddModuleFlag(
+        M: &Module,
+        merge_behavior: LLVMModFlagBehavior,
+        name: *const c_char,
+        value: u32,
+    );
 
     pub fn LLVMRustMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
