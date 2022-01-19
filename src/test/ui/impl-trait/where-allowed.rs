@@ -31,44 +31,38 @@ fn in_fn_return_in_return() -> fn() -> impl Debug { panic!() }
 fn in_dyn_Fn_parameter_in_parameters(_: &dyn Fn(impl Debug)) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and method return types
 
-// Disallowed
+// Allowed
 fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
-//~^ ERROR `impl Trait` not allowed outside of function and method return types
 
 // Disallowed
 fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and method return types
 
-// Disallowed
+// Allowed
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
-//~^ ERROR `impl Trait` not allowed outside of function and method return types
 
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and method return types
 //~^^ ERROR nested `impl Trait` is not allowed
 
-// Disallowed
+// Allowed
 fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
-//~^ ERROR `impl Trait` not allowed outside of function and method return types
 
 // Disallowed
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and method return types
 //~| ERROR nested `impl Trait` is not allowed
 
-// Disallowed
+// Allowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
-//~^ ERROR `impl Trait` not allowed outside of function and method return types
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and method return types
 
-// Disallowed
+// Allowed
 fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
-//~^ ERROR `impl Trait` not allowed outside of function and method return types
-
 
 // Allowed
 fn in_impl_Trait_in_parameters(_: impl Iterator<Item = impl Iterator>) { panic!() }
