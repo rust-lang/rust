@@ -1103,90 +1103,111 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
 
-        // Skip binder here (*)
-        let nested_tys = match *self_ty.skip_binder().kind() {
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Uint(_)
-            | ty::Float(_)
-            | ty::Infer(ty::IntVar(_))
-            | ty::Infer(ty::FloatVar(_))
-            | ty::Str
-            | ty::RawPtr(_)
-            | ty::Ref(..)
-            | ty::FnDef(..)
-            | ty::FnPtr(_)
-            | ty::Never => vec![],
-
-            ty::Adt(def, substs) => def.all_fields().map(|f| f.ty(tcx, substs)).collect(),
-
-            ty::Array(ty, _) | ty::Slice(ty) => vec![ty],
-
-            ty::Tuple(tys) => tys.iter().map(|ty| ty.expect_ty()).collect(),
-
-            ty::Closure(_, substs) => vec![substs.as_closure().tupled_upvars_ty()],
-
-            ty::Generator(_, substs, _) => {
-                vec![substs.as_generator().tupled_upvars_ty(), substs.as_generator().witness()]
-            }
-
-            ty::GeneratorWitness(tys) => tcx.erase_late_bound_regions(tys).to_vec(),
-
-            ty::Opaque(_, _)
-            | ty::Dynamic(_, _)
-            | ty::Error(_)
-            | ty::Bound(_, _)
-            | ty::Param(_)
-            | ty::Placeholder(_)
-            | ty::Foreign(_)
-            | ty::Projection(_)
-            | ty::Infer(_) => {
-                unreachable!();
-            }
-        };
-
-        info!(
-            "confirm_const_drop_candidate: self_ty={:?}, nested_tys={:?} impl_def_id={:?}",
-            self_ty, nested_tys, impl_def_id
-        );
-
-        let cause = obligation.derived_cause(BuiltinDerivedObligation);
         let mut nested = vec![];
+        let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
-        // If we have a custom `impl const Drop`, then check it like a regular impl candidate.
+        // If we have a custom `impl const Drop`, then
+        // first check it like a regular impl candidate
         if let Some(impl_def_id) = impl_def_id {
             nested.extend(self.confirm_impl_candidate(obligation, impl_def_id).nested);
         }
 
-        for ty in nested_tys {
-            let predicate = self.infcx.commit_unconditionally(|_| {
-                normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    cause.clone(),
-                    obligation.recursion_depth + 1,
-                    // Rebinding here (*)
-                    self_ty
+        // We want to confirm the ADT's fields if we have an ADT
+        let mut stack = match *self_ty.skip_binder().kind() {
+            ty::Adt(def, substs) => def.all_fields().map(|f| f.ty(tcx, substs)).collect(),
+            _ => vec![self_ty.skip_binder()],
+        };
+
+        while let Some(nested_ty) = stack.pop() {
+            match *nested_ty.kind() {
+                // We know these types are trivially drop
+                ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Infer(ty::IntVar(_))
+                | ty::Infer(ty::FloatVar(_))
+                | ty::Str
+                | ty::RawPtr(_)
+                | ty::Ref(..)
+                | ty::FnDef(..)
+                | ty::FnPtr(_)
+                | ty::Never => {}
+
+                // These types are built-in, so we can fast-track by registering
+                // nested predicates for their constituient type(s)
+                ty::Array(ty, _) | ty::Slice(ty) => {
+                    stack.push(ty);
+                }
+                ty::Tuple(tys) => {
+                    stack.extend(tys.iter().map(|ty| ty.expect_ty()));
+                }
+                ty::Closure(_, substs) => {
+                    stack.push(substs.as_closure().tupled_upvars_ty());
+                }
+                ty::Generator(_, substs, _) => {
+                    let generator = substs.as_generator();
+                    stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
+                }
+                ty::GeneratorWitness(tys) => {
+                    stack.extend(tcx.erase_late_bound_regions(tys).to_vec());
+                }
+
+                // If we have a projection type, make sure to normalize it so we replace it
+                // with a fresh infer variable
+                ty::Projection(..) => {
+                    self.infcx.commit_unconditionally(|_| {
+                        let predicate = normalize_with_depth_to(
+                            self,
+                            obligation.param_env,
+                            cause.clone(),
+                            obligation.recursion_depth + 1,
+                            self_ty
+                                .rebind(ty::TraitPredicate {
+                                    trait_ref: ty::TraitRef {
+                                        def_id: self.tcx().require_lang_item(LangItem::Drop, None),
+                                        substs: self.tcx().mk_substs_trait(nested_ty, &[]),
+                                    },
+                                    constness: ty::BoundConstness::ConstIfConst,
+                                    polarity: ty::ImplPolarity::Positive,
+                                })
+                                .to_predicate(tcx),
+                            &mut nested,
+                        );
+
+                        nested.push(Obligation::with_depth(
+                            cause.clone(),
+                            obligation.recursion_depth + 1,
+                            obligation.param_env,
+                            predicate,
+                        ));
+                    });
+                }
+
+                // If we have any other type (e.g. an ADT), just register a nested obligation
+                // since it's either not `const Drop` (and we raise an error during selection),
+                // or it's an ADT (and we need to check for a custom impl during selection)
+                _ => {
+                    let predicate = self_ty
                         .rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef {
                                 def_id: self.tcx().require_lang_item(LangItem::Drop, None),
-                                substs: self.tcx().mk_substs_trait(ty, &[]),
+                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
                             },
                             constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         })
-                        .to_predicate(tcx),
-                    &mut nested,
-                )
-            });
+                        .to_predicate(tcx);
 
-            nested.push(Obligation::with_depth(
-                cause.clone(),
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                predicate,
-            ));
+                    nested.push(Obligation::with_depth(
+                        cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        predicate,
+                    ));
+                }
+            }
         }
 
         Ok(ImplSourceConstDropData { nested })
