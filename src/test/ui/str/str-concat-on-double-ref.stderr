@@ -2,18 +2,13 @@ error[E0369]: cannot add `&str` to `&String`
   --> $DIR/str-concat-on-double-ref.rs:4:15
    |
 LL |     let c = a + b;
-   |             - ^ - &str
-   |             | |
-   |             | `+` cannot be used to concatenate two `&str` strings
+   |             --^ - &str
+   |             |||
+   |             ||`+` cannot be used to concatenate two `&str` strings
+   |             |help: create an owned `String` from a string reference: `.to_owned()`
    |             &String
    |
-   = note: String concatenation appends the string on the right to the
-           string on the left and may require reallocation.
-           This requires ownership of the string on the left.
-help: use `to_owned()` to create an owned `String` from a string reference
-   |
-LL |     let c = a.to_owned() + b;
-   |              +++++++++++
+   = note: string concatenation requires an owned `String` on the left
 
 error: aborting due to previous error
 

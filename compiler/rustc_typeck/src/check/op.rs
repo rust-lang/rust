@@ -549,11 +549,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let str_concat_note = "String concatenation appends the string on the right to the
-string on the left and may require reallocation.
-This requires ownership of the string on the left.";
+        let str_concat_note = "string concatenation requires an owned `String` on the left";
         let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
-        let to_owned_msg = "use `to_owned()` to create an owned `String` from a string reference";
+        let to_owned_msg = "create an owned `String` from a string reference";
 
         let string_type = self.tcx.get_diagnostic_item(sym::String);
         let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
@@ -603,7 +601,7 @@ This requires ownership of the string on the left.";
                             sugg_msg = "remove the borrow on the left and add one on the right";
                             (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
                         } else {
-                            sugg_msg = "call `.to_owned()` on the left and add a borrow on the right";
+                            sugg_msg = "create an owned `String` on the left and add a borrow on the right";
                             (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
                         };
                         let suggestions = vec![
