@@ -536,7 +536,10 @@ impl Builder {
             }
             for (substr, fallback_target) in fallback {
                 if target_name.contains(substr) {
-                    return Target::from_compressed_tar(self, &tarball_name!(fallback_target));
+                    let t = Target::from_compressed_tar(self, &tarball_name!(fallback_target));
+                    // Fallbacks must always be available.
+                    assert!(t.available);
+                    return t;
                 }
             }
             Target::unavailable()
