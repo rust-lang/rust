@@ -2296,7 +2296,6 @@ impl crate::Decoder for Decoder {
         for c in s.iter_mut() {
             *c = self.read_u8();
         }
-        ()
     }
 
     fn read_enum<T, F>(&mut self, f: F) -> T

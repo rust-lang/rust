@@ -676,11 +676,10 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     #[inline]
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> () {
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]) {
         let start = self.position;
         self.position += s.len();
         s.copy_from_slice(&self.data[start..self.position]);
-        ()
     }
 }
 

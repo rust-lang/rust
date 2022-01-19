@@ -475,7 +475,7 @@ macro_rules! implement_ty_decoder {
                 }
 
                 #[inline]
-                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) -> () {
+                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) {
                     self.opaque.read_raw_bytes_into(bytes)
                 }
             }

@@ -2792,9 +2792,9 @@ impl<T, R> InternIteratorElement<T, R> for T {
     ) -> Self::Output {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. We assume
-        // that if the upper and lower bounds from `size_hint` agree they are
-        // correct.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`.
         match iter.size_hint() {
             (0, Some(0)) => {
                 assert!(iter.next().is_none());
@@ -2835,9 +2835,10 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     ) -> Self::Output {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
-        // Lengths 0, 1, and 2 typically account for ~95% of cases. We assume
-        // that if the upper and lower bounds from `size_hint` agree they are
-        // correct.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`, unless a failure happens first, in which case the result
+        // will be an error anyway.
         Ok(match iter.size_hint() {
             (0, Some(0)) => {
                 assert!(iter.next().is_none());

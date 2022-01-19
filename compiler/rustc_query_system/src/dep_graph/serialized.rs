@@ -142,7 +142,6 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
                         let end = edge_list_data.len().try_into().unwrap();
                         let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
                         debug_assert_eq!(_i.index(), _index);
-                        ()
                     })
                 })
             });
