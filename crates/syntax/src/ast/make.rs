@@ -329,6 +329,29 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {}", buf))
 }
 
+pub fn block_expr_full(
+    stmts: impl IntoIterator<Item = crate::SyntaxElement>,
+    tail_expr: Option<ast::Expr>,
+) -> ast::BlockExpr {
+    let mut buf = "{\n".to_string();
+    for stmt in stmts.into_iter() {
+        
+        match stmt {
+            rowan::NodeOrToken::Node(n) => {
+                println!("Node: {:?}", n.text());
+                format_to!(buf, "    {}\n", n)
+            },
+            rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => format_to!(buf, "    {}\n", t),
+            _ => ()
+        }
+    }
+    if let Some(tail_expr) = tail_expr {
+        format_to!(buf, "    {}\n", tail_expr);
+    }
+    buf += "}";
+    ast_from_text(&format!("fn f() {}", buf))
+}
+
 pub fn expr_unit() -> ast::Expr {
     expr_from_text("()")
 }
