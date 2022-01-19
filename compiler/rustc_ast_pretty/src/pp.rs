@@ -379,8 +379,7 @@ impl Printer {
     }
 
     fn check_stack(&mut self, k: usize) {
-        if !self.scan_stack.is_empty() {
-            let x = *self.scan_stack.front().unwrap();
+        if let Some(&x) = self.scan_stack.front() {
             match self.buf[x].token {
                 Token::Begin(_) => {
                     if k > 0 {
