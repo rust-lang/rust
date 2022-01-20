@@ -308,7 +308,7 @@ pub struct ScopeTree {
     /// The reason is that semantically, until the `box` expression returns,
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
-    pub yield_in_scope: FxHashMap<Scope, YieldData>,
+    pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
@@ -423,8 +423,8 @@ impl ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some(YieldData)`. If not, returns `None`.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<YieldData> {
-        self.yield_in_scope.get(&scope).cloned()
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<&Vec<YieldData>> {
+        self.yield_in_scope.get(&scope)
     }
 
     /// Gives the number of expressions visited in a body.
