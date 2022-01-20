@@ -531,17 +531,17 @@ impl Drop for Dir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.dir.root.join(OsStr::from_bytes(self.name_bytes()))
+        self.dir.root.join(self.file_name_os_str())
     }
 
     pub fn file_name(&self) -> OsString {
-        OsStr::from_bytes(self.name_bytes()).to_os_string()
+        self.file_name_os_str().to_os_string()
     }
 
     #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "android"))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-        let name = self.entry.d_name.as_ptr();
+        let name = self.name_cstr().as_ptr();
 
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
@@ -639,26 +639,16 @@ impl DirEntry {
             )
         }
     }
-    #[cfg(any(
-        target_os = "android",
-        target_os = "linux",
-        target_os = "emscripten",
-        target_os = "l4re",
-        target_os = "haiku",
-        target_os = "vxworks",
-        target_os = "espidf"
-    ))]
+    #[cfg(not(any(
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "freebsd",
+        target_os = "dragonfly"
+    )))]
     fn name_bytes(&self) -> &[u8] {
-        unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes() }
-    }
-    #[cfg(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox"
-    ))]
-    fn name_bytes(&self) -> &[u8] {
-        self.name.as_bytes()
+        self.name_cstr().to_bytes()
     }
 
     #[cfg(not(any(
@@ -670,7 +660,12 @@ impl DirEntry {
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
-    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "fuchsia"))]
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "fuchsia",
+        target_os = "redox"
+    ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
