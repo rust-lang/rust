@@ -55,6 +55,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
+        let post_attr_lo = self.token.span;
         let mut items = vec![];
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
@@ -71,7 +72,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((attrs, items, ModSpans { inner_span: lo.to(self.prev_token.span) }))
+        let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
+        let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
+        Ok((attrs, items, mod_spans))
     }
 }
 
