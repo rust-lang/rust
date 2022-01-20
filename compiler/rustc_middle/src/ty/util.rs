@@ -1041,7 +1041,7 @@ pub fn needs_drop_components<'tcx>(
     }
 }
 
-pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
+pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
     match *ty.kind() {
         ty::Bool
         | ty::Char
@@ -1055,7 +1055,8 @@ pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::Ref(..)
         | ty::FnDef(..)
         | ty::FnPtr(_)
-        | ty::Never => true,
+        | ty::Never
+        | ty::Foreign(_) => true,
 
         ty::Opaque(..)
         | ty::Dynamic(..)
@@ -1063,7 +1064,6 @@ pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::Bound(..)
         | ty::Param(_)
         | ty::Placeholder(_)
-        | ty::Foreign(_)
         | ty::Projection(_)
         | ty::Infer(_) => false,
 
@@ -1071,9 +1071,9 @@ pub fn trivial_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         // we'll just perform trait selection.
         ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(_) | ty::Adt(..) => false,
 
-        ty::Array(ty, _) | ty::Slice(ty) => trivial_const_drop(ty),
+        ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
 
-        ty::Tuple(tys) => tys.iter().all(|ty| trivial_const_drop(ty.expect_ty())),
+        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty.expect_ty())),
     }
 }
 

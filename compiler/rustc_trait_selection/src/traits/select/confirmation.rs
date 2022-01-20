@@ -1133,7 +1133,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Ref(..)
                 | ty::FnDef(..)
                 | ty::FnPtr(_)
-                | ty::Never => {}
+                | ty::Never
+                | ty::Foreign(_) => {}
 
                 // These types are built-in, so we can fast-track by registering
                 // nested predicates for their constituient type(s)

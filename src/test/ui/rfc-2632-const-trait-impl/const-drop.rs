@@ -53,12 +53,24 @@ mod t {
     impl const SomeTrait for () {
         fn foo() {}
     }
+    // non-const impl
+    impl SomeTrait for i32 {
+        fn foo() {}
+    }
 
     pub struct ConstDropWithBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
 
     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {
             T::foo();
+        }
+    }
+
+    pub struct ConstDropWithNonconstBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
+
+    impl<T: SomeTrait> const Drop for ConstDropWithNonconstBound<T> {
+        fn drop(&mut self) {
+            // Note: we DON'T use the `T: SomeTrait` bound
         }
     }
 }
@@ -78,6 +90,7 @@ implements_const_drop! {
     &1,
     &1 as *const i32,
     ConstDropWithBound::<()>,
+    ConstDropWithNonconstBound::<i32>,
     Result::<i32, !>::Ok(1),
 }
 

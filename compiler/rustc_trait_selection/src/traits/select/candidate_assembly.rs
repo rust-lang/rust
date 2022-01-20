@@ -932,7 +932,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Bound(..)
             | ty::Param(_)
             | ty::Placeholder(_)
-            | ty::Foreign(_)
             | ty::Projection(_) => {
                 // We don't know if these are `~const Drop`, at least
                 // not structurally... so don't push a candidate.
@@ -951,6 +950,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnDef(..)
             | ty::FnPtr(_)
             | ty::Never
+            | ty::Foreign(_)
             | ty::Array(..)
             | ty::Slice(_)
             | ty::Closure(..)

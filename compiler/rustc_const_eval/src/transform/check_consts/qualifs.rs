@@ -148,7 +148,7 @@ impl Qualif for NeedsNonConstDrop {
 
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::trivial_const_drop(ty) {
+        if ty::util::is_trivially_const_drop(ty) {
             return false;
         }
 
