@@ -1,3 +1,18 @@
+Version 1.58.1 (2022-01-19)
+===========================
+
+* Fix race condition in `std::fs::remove_dir_all` ([CVE-2022-21658])
+* [Handle captured arguments in the `useless_format` Clippy lint][clippy/8295]
+* [Move `non_send_fields_in_send_ty` Clippy lint to nursery][clippy/8075]
+* [Fix wrong error message displayed when some imports are missing][91254]
+* [Fix rustfmt not formatting generated files from stdin][92912]
+
+[CVE-2022-21658]: https://www.cve.org/CVERecord?id=CVE-2022-21658]
+[91254]: https://github.com/rust-lang/rust/pull/91254
+[92912]: https://github.com/rust-lang/rust/pull/92912
+[clippy/8075]: https://github.com/rust-lang/rust-clippy/pull/8075
+[clippy/8295]: https://github.com/rust-lang/rust-clippy/pull/8295
+
 Version 1.58.0 (2022-01-13)
 ==========================
 
