@@ -33,7 +33,7 @@ where
 
 macro_rules! unsafe_base {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $($_:tt)*) => {
-        unsafe { $crate::intrinsics::$simd_call($lhs, $rhs) }
+        unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
     };
 }
 
@@ -49,7 +49,10 @@ macro_rules! unsafe_base {
 macro_rules! wrap_bitshift {
     ($lhs:ident, $rhs:ident, {$simd_call:ident}, $int:ident) => {
         unsafe {
-            $crate::intrinsics::$simd_call($lhs, $rhs.bitand(Simd::splat(<$int>::BITS as $int - 1)))
+            $crate::simd::intrinsics::$simd_call(
+                $lhs,
+                $rhs.bitand(Simd::splat(<$int>::BITS as $int - 1)),
+            )
         }
     };
 }
@@ -70,11 +73,13 @@ macro_rules! int_divrem_guard {
         if $rhs.lanes_eq(Simd::splat(0)).any() {
             panic!($zero);
         } else if <$int>::MIN != 0
-            && ($lhs.lanes_eq(Simd::splat(<$int>::MIN)) & $rhs.lanes_eq(Simd::splat(-1 as _))).any()
+            && ($lhs.lanes_eq(Simd::splat(<$int>::MIN))
+                // type inference can break here, so cut an SInt to size
+                & $rhs.lanes_eq(Simd::splat(-1i64 as _))).any()
         {
             panic!($overflow);
         } else {
-            unsafe { $crate::intrinsics::$simd_call($lhs, $rhs) }
+            unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
         }
     };
 }
