@@ -1582,7 +1582,7 @@ mod remove_dir_impl {
 // Modern implementation using openat(), unlinkat() and fdopendir()
 #[cfg(not(any(all(target_os = "macos", target_arch = "x86_64"), target_os = "redox")))]
 mod remove_dir_impl {
-    use super::{cstr, lstat, Dir, InnerReadDir, ReadDir};
+    use super::{cstr, lstat, Dir, DirEntry, InnerReadDir, ReadDir};
     use crate::ffi::CStr;
     use crate::io;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
@@ -1629,6 +1629,30 @@ mod remove_dir_impl {
         ))
     }
 
+    #[cfg(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    ))]
+    fn is_dir(_ent: &DirEntry) -> Option<bool> {
+        None
+    }
+
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks"
+    )))]
+    fn is_dir(ent: &DirEntry) -> Option<bool> {
+        match ent.entry.d_type {
+            libc::DT_UNKNOWN => None,
+            libc::DT_DIR => Some(true),
+            _ => Some(false),
+        }
+    }
+
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
         let pcstr = cstr(p)?;
 
@@ -1639,22 +1663,7 @@ mod remove_dir_impl {
         let (dir, fd) = fdreaddir(fd)?;
         for child in dir {
             let child = child?;
-            let child_is_dir = if cfg!(any(
-                target_os = "solaris",
-                target_os = "illumos",
-                target_os = "haiku",
-                target_os = "vxworks"
-            )) {
-                // no d_type in dirent
-                None
-            } else {
-                match child.entry.d_type {
-                    libc::DT_UNKNOWN => None,
-                    libc::DT_DIR => Some(true),
-                    _ => Some(false),
-                }
-            };
-            match child_is_dir {
+            match is_dir(&child) {
                 Some(true) => {
                     remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
                 }
