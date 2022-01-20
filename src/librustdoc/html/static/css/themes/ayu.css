@@ -233,22 +233,14 @@ details.undocumented > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search {
-	color: #c5c5c5;
+#crate-search, .search-input {
 	background-color: #141920;
-	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
 	border-color: #424c57;
+	color: #c5c5c5;
 }
 
 .search-input {
 	color: #ffffff;
-	background-color: #141920;
-	box-shadow: 0 0 0 1px #424c57,0 0 0 2px transparent;
-	transition: box-shadow 150ms ease-in-out;
-}
-
-#crate-search+.search-input:focus {
-	box-shadow: 0 0 0 1px #148099,0 0 0 2px transparent;
 }
 
 .module-item .stab,
