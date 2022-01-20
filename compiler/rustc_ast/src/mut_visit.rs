@@ -1009,7 +1009,7 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(unsafety, mod_kind) => {
             visit_unsafety(unsafety, vis);
             match mod_kind {
-                ModKind::Loaded(items, _inline, inner_span) => {
+                ModKind::Loaded(items, _inline, ModSpans { inner_span }) => {
                     vis.visit_span(inner_span);
                     items.flat_map_in_place(|item| vis.flat_map_item(item));
                 }

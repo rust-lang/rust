@@ -26,7 +26,8 @@ use tracing::debug;
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
-        let (attrs, items, span) = self.parse_mod(&token::Eof)?;
+        let (attrs, items, spans) = self.parse_mod(&token::Eof)?;
+        let span = spans.inner_span;
         Ok(ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false })
     }
 
@@ -51,7 +52,7 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, Span)> {
+    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
@@ -71,7 +72,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        Ok((attrs, items, lo.to(self.prev_token.span)))
+        Ok((attrs, items, ModSpans { inner_span: lo.to(self.prev_token.span) }))
     }
 }
 

@@ -2317,9 +2317,22 @@ pub enum ModKind {
     /// or with definition outlined to a separate file `mod foo;` and already loaded from it.
     /// The inner span is from the first token past `{` to the last token until `}`,
     /// or from the first to the last token in the loaded file.
-    Loaded(Vec<P<Item>>, Inline, Span),
+    Loaded(Vec<P<Item>>, Inline, ModSpans),
     /// Module with definition outlined to a separate file `mod foo;` but not yet loaded from it.
     Unloaded,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct ModSpans {
+    /// `inner_span` covers the body of the module; for a file module, its the whole file.
+    /// For an inline module, its the span inside the `{ ... }`, not including the curly braces.
+    pub inner_span: Span,
+}
+
+impl Default for ModSpans {
+    fn default() -> ModSpans {
+        ModSpans { inner_span: Default::default() }
+    }
 }
 
 /// Foreign module declaration.
