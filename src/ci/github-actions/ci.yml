@@ -206,6 +206,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/verify-backported-commits.sh
         <<: *step
 
+      - name: ensure the stable version number is correct
+        run: src/ci/scripts/verify-stable-version-number.sh
+        <<: *step
+
       - name: run the build
         run: src/ci/scripts/run-build-from-ci.sh
         env:
