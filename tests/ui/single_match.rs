@@ -145,6 +145,56 @@ fn if_suggestion() {
     };
 }
 
+// See: issue #8282
+fn ranges() {
+    enum E {
+        V,
+    }
+    let x = (Some(E::V), Some(42));
+
+    // don't lint
+    match x {
+        (Some(E::V), _) => {},
+        (None, _) => {},
+    }
+
+    // lint
+    match x {
+        (Some(_), _) => {},
+        (None, _) => {},
+    }
+
+    // lint
+    match x {
+        (Some(E::V), _) => todo!(),
+        (_, _) => {},
+    }
+
+    // lint
+    match (Some(42), Some(E::V), Some(42)) {
+        (.., Some(E::V), _) => {},
+        (..) => {},
+    }
+
+    // don't lint
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (.., Some(E::V), _) => {},
+        (.., None, _) => {},
+    }
+
+    // don't lint
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (Some(E::V), ..) => {},
+        (None, ..) => {},
+    }
+
+    // don't lint
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (_, Some(E::V), ..) => {},
+        (_, None, ..) => {},
+    }
+}
+
 macro_rules! single_match {
     ($num:literal) => {
         match $num {

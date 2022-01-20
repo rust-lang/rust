@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::{
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     get_parent_expr, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
@@ -31,7 +31,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::sym;
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
@@ -741,7 +741,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
         let ty = cx.typeck_results().expr_ty(ex);
         if *ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
-            check_single_match_opt_like(cx, ex, arms, expr, ty, els);
+            check_single_match_opt_like(cx, ex, arms, expr, els);
         }
     }
 }
@@ -835,7 +835,6 @@ fn check_single_match_opt_like(
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
-    ty: Ty<'_>,
     els: Option<&Expr<'_>>,
 ) {
     // list of candidate `Enum`s we know will never get any more members
@@ -849,25 +848,135 @@ fn check_single_match_opt_like(
         (&paths::RESULT, "Ok"),
     ];
 
-    let path = match arms[1].pat.kind {
-        PatKind::TupleStruct(ref path, inner, _) => {
-            // Contains any non wildcard patterns (e.g., `Err(err)`)?
-            if !inner.iter().all(is_wild) {
-                return;
-            }
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
-        },
-        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => ident.to_string(),
-        PatKind::Path(ref path) => {
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
-        },
-        _ => return,
-    };
+    // We want to suggest to exclude an arm that contains only wildcards or forms the ehaustive
+    // match with the second branch.
+    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_tuples(arms[0].pat, arms[1].pat) {
+        return;
+    }
 
-    for &(ty_path, pat_path) in candidates {
-        if path == *pat_path && match_type(cx, ty, ty_path) {
-            report_single_match_single_pattern(cx, ex, arms, expr, els);
+    let mut paths = Vec::new();
+    if !collect_pat_paths(&mut paths, arms[1].pat) {
+        return;
+    }
+
+    let in_candidate_enum = |path: &String| -> bool {
+        for &(_, pat_path) in candidates {
+            if path == pat_path {
+                return true;
+            }
         }
+        false
+    };
+    if paths.iter().all(in_candidate_enum) {
+        report_single_match_single_pattern(cx, ex, arms, expr, els);
+    }
+}
+
+/// Collects paths from the given paths. Returns true if the given pattern could be simplified,
+/// false otherwise.
+fn collect_pat_paths(acc: &mut Vec<String>, pat: &Pat<'_>) -> bool {
+    match pat.kind {
+        PatKind::Wild => true,
+        PatKind::Tuple(inner, _) => {
+            for p in inner {
+                if !collect_pat_paths(acc, p) {
+                    return false;
+                }
+            }
+            true
+        },
+        PatKind::TupleStruct(ref path, ..) => {
+            acc.push(rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(path, false);
+            }));
+            true
+        },
+        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => {
+            acc.push(ident.to_string());
+            true
+        },
+        PatKind::Path(ref path) => {
+            acc.push(rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(path, false);
+            }));
+            true
+        },
+        _ => false,
+    }
+}
+
+/// Returns true if the given arm of pattern matching contains wildcard patterns.
+fn contains_only_wilds(pat: &Pat<'_>) -> bool {
+    match pat.kind {
+        PatKind::Wild => true,
+        PatKind::Tuple(inner, _) | PatKind::TupleStruct(_, inner, ..) => inner.iter().all(contains_only_wilds),
+        _ => false,
+    }
+}
+
+/// Returns true if the given patterns form the tuples that exhaustively matches all possible
+/// parameters.
+///
+/// Here are some examples:
+///
+/// ```
+/// // Doesn't form exhaustive match, because the first arm may contain not only E::V.
+/// match x {
+///     (Some(E::V), _) => todo!(),
+///     (None, _) => {}
+/// }
+///
+/// // Forms exhaustive match, because the patterns cover all possible cases at the same positions.
+/// match x {
+///     (Some(_), _) => todo!(),
+///     (None, _) => {}
+/// }
+/// ```
+fn form_exhaustive_tuples(left: &Pat<'_>, right: &Pat<'_>) -> bool {
+    match (&left.kind, &right.kind) {
+        (PatKind::Wild, _) | (_, PatKind::Wild) => true,
+        (PatKind::Tuple(left_in, left_pos), PatKind::Tuple(right_in, right_pos)) => {
+            // We don't actually know the position and presence of the `..` (dotdot) operator in
+            // the arms, so we need to evaluate the correct offsets here in order to iterate in
+            // both arms at the same time.
+            let len = max(
+                left_in.len() + {
+                    if left_pos.is_some() { 1 } else { 0 }
+                },
+                right_in.len() + {
+                    if right_pos.is_some() { 1 } else { 0 }
+                },
+            );
+            let mut left_pos = left_pos.unwrap_or(usize::MAX);
+            let mut right_pos = right_pos.unwrap_or(usize::MAX);
+            let mut left_span = 0;
+            let mut right_span = 0;
+            for i in 0..len {
+                let mut found_dotdot = false;
+                if i == left_pos {
+                    left_span += 1;
+                    if left_span < len - left_in.len() {
+                        left_pos += 1;
+                    }
+                    found_dotdot = true;
+                }
+                if i == right_pos {
+                    right_span += 1;
+                    if right_span < len - right_in.len() {
+                        right_pos += 1;
+                    }
+                    found_dotdot = true;
+                }
+                if found_dotdot {
+                    continue;
+                }
+                if !contains_only_wilds(&left_in[i - left_span]) && !contains_only_wilds(&right_in[i - right_span]) {
+                    return false;
+                }
+            }
+            true
+        },
+        _ => false,
     }
 }
 
