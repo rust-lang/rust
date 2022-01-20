@@ -1210,11 +1210,25 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(Error(DelaySpanBugEmitted(())))
     }
 
-    /// Like `err` but for constants.
+    /// Like [TyCtxt::ty_error] but for constants.
     #[track_caller]
     pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.sess
-            .delay_span_bug(DUMMY_SP, "ty::ConstKind::Error constructed but no error reported.");
+        self.const_error_with_message(
+            ty,
+            DUMMY_SP,
+            "ty::ConstKind::Error constructed but no error reported",
+        )
+    }
+
+    /// Like [TyCtxt::ty_error_with_message] but for constants.
+    #[track_caller]
+    pub fn const_error_with_message<S: Into<MultiSpan>>(
+        self,
+        ty: Ty<'tcx>,
+        span: S,
+        msg: &str,
+    ) -> &'tcx Const<'tcx> {
+        self.sess.delay_span_bug(span, msg);
         self.mk_const(ty::Const { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
     }
 

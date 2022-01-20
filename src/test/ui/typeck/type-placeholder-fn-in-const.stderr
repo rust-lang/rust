@@ -1,16 +1,16 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/type-placeholder-fn-in-const.rs:4:25
    |
 LL |     const TEST: fn() -> _;
    |                         ^ not allowed in type signatures
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/type-placeholder-fn-in-const.rs:4:25
    |
 LL |     const TEST: fn() -> _;
    |                         ^ not allowed in type signatures
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/type-placeholder-fn-in-const.rs:10:25
    |
 LL |     const TEST: fn() -> _ = 42;
