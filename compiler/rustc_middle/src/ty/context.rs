@@ -113,6 +113,12 @@ pub struct CtxtInterners<'tcx> {
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, Layout>,
     adt_def: InternedSet<'tcx, AdtDef>,
+
+    /// `#[stable]` and `#[unstable]` attributes
+    stability: InternedSet<'tcx, attr::Stability>,
+
+    /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
+    const_stability: InternedSet<'tcx, attr::ConstStability>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -134,6 +140,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
             adt_def: Default::default(),
+            stability: Default::default(),
+            const_stability: Default::default(),
         }
     }
 
@@ -1035,12 +1043,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    /// `#[stable]` and `#[unstable]` attributes
-    stability_interner: ShardedHashMap<&'tcx attr::Stability, ()>,
-
-    /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
-    const_stability_interner: ShardedHashMap<&'tcx attr::ConstStability, ()>,
-
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: Lock<interpret::AllocMap<'tcx>>,
 
@@ -1090,16 +1092,6 @@ impl<'tcx> TyCtxt<'tcx> {
         let alloc = interpret::Allocation::from_bytes_byte_aligned_immutable(bytes);
         let alloc = self.intern_const_alloc(alloc);
         self.create_memory_alloc(alloc)
-    }
-
-    // FIXME(eddyb) move to `direct_interners!`.
-    pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
-        self.stability_interner.intern(stab, |stab| self.arena.alloc(stab))
-    }
-
-    // FIXME(eddyb) move to `direct_interners!`.
-    pub fn intern_const_stability(self, stab: attr::ConstStability) -> &'tcx attr::ConstStability {
-        self.const_stability_interner.intern(stab, |stab| self.arena.alloc(stab))
     }
 
     /// Returns a range of the start/end indices specified with the
@@ -1185,8 +1177,6 @@ impl<'tcx> TyCtxt<'tcx> {
             evaluation_cache: Default::default(),
             crate_name: Symbol::intern(crate_name),
             data_layout,
-            stability_interner: Default::default(),
-            const_stability_interner: Default::default(),
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
@@ -1935,11 +1925,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
                 writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
-                writeln!(fmt, "Stability interner: #{}", self.0.stability_interner.len())?;
+                writeln!(fmt, "Stability interner: #{}", self.0.interners.stability.len())?;
                 writeln!(
                     fmt,
                     "Const Stability interner: #{}",
-                    self.0.const_stability_interner.len()
+                    self.0.interners.const_stability.len()
                 )?;
                 writeln!(
                     fmt,
@@ -2072,6 +2062,8 @@ direct_interners! {
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
     adt_def: intern_adt_def(AdtDef),
+    stability: intern_stability(attr::Stability),
+    const_stability: intern_const_stability(attr::ConstStability),
 }
 
 macro_rules! slice_interners {
