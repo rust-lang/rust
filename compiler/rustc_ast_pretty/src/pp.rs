@@ -385,26 +385,21 @@ impl Printer {
     }
 
     fn print_break(&mut self, token: BreakToken, size: isize) {
-        match self.get_top() {
-            PrintFrame::Fits => {
-                self.pending_indentation += token.blank_space;
-                self.space -= token.blank_space;
-            }
-            PrintFrame::Broken { offset, breaks: Breaks::Consistent } => {
-                self.out.push('\n');
-                self.pending_indentation = offset + token.offset;
-                self.space = self.margin - (offset + token.offset);
-            }
-            PrintFrame::Broken { offset, breaks: Breaks::Inconsistent } => {
-                if size > self.space {
-                    self.out.push('\n');
-                    self.pending_indentation = offset + token.offset;
-                    self.space = self.margin - (offset + token.offset);
-                } else {
-                    self.pending_indentation += token.blank_space;
-                    self.space -= token.blank_space;
+        let break_offset =
+            match self.get_top() {
+                PrintFrame::Fits => None,
+                PrintFrame::Broken { offset, breaks: Breaks::Consistent } => Some(offset),
+                PrintFrame::Broken { offset, breaks: Breaks::Inconsistent } => {
+                    if size > self.space { Some(offset) } else { None }
                 }
-            }
+            };
+        if let Some(offset) = break_offset {
+            self.out.push('\n');
+            self.pending_indentation = offset + token.offset;
+            self.space = self.margin - (offset + token.offset);
+        } else {
+            self.pending_indentation += token.blank_space;
+            self.space -= token.blank_space;
         }
     }
 
