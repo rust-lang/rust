@@ -77,7 +77,7 @@ All pull requests are reviewed by another person. We have a bot,
 to review your request based on which files you changed.
 
 If you want to request that a specific person reviews your pull request, you
-can add an `r?` to the pull request description. For example,
+can add an `r?` to the pull request description or in a comment. For example,
 [Steve][steveklabnik] usually reviews documentation changes. So if you were to
 make a documentation change, add
 
