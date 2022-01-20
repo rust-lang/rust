@@ -789,6 +789,7 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(set.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn insert(&mut self, value: T) -> bool
     where
         T: Ord,

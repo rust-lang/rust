@@ -853,6 +853,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use]
     pub fn insert(&mut self, key: K, value: V) -> Option<V>
     where
         K: Ord,
