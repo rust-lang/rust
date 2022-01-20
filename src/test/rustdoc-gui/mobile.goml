@@ -1,0 +1,17 @@
+// Test various properties of the mobile UI
+goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+size: (400, 600)
+
+// The out-of-band info (source, stable version, collapse) should be below the
+// h1 when the screen gets narrow enough.
+assert-css: (".main-heading", {
+  "display": "flex",
+  "flex-direction": "column"
+})
+
+// Note: We can't use assert-text here because the 'Since' is set by CSS and
+// is therefore not part of the DOM.
+assert-css: (".content .out-of-band .since::before", { "content": "\"Since \"" })
+
+size: (1000, 1000)
+assert-css-false: (".content .out-of-band .since::before", { "content": "\"Since \"" })
