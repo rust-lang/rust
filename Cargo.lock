@@ -1601,9 +1601,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.11.0"
+version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "362385356d610bd1e5a408ddf8d022041774b683f345a1d2cfcb4f60f8ae2db5"
+checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
  "ahash",
  "compiler_builtins",
@@ -2430,23 +2430,12 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67ac1d3f9a1d3616fd9a60c8d74296f22406a238b6a72f5cc1e6f314df4ffbf9"
-dependencies = [
- "crc32fast",
- "flate2",
- "indexmap",
- "memchr",
-]
-
-[[package]]
-name = "object"
 version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ce8b38d41f9f3618fc23f908faae61510f8d8ce2d99cbe910641e8f1971f084"
 dependencies = [
  "crc32fast",
+ "flate2",
  "hashbrown",
  "indexmap",
  "memchr",
@@ -5390,13 +5379,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "039d1fc0bfdb73910c2702893515580e38c192f47a987bc98ddd38a36f2d953a"
+checksum = "dd95b4559c196987c8451b4e14d08a4c796c2844f9adf4d2a2dbc9b3142843be"
 dependencies = [
  "gimli 0.26.1",
- "indexmap",
- "object 0.27.1",
+ "hashbrown",
+ "object 0.28.1",
  "tracing",
 ]
 
