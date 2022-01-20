@@ -305,16 +305,15 @@ crate enum FragmentKind {
 
 impl ItemFragment {
     /// Create a fragment for an associated item.
-    ///
-    /// `is_prototype` is whether this associated item is a trait method
-    /// without a default definition.
-    fn from_assoc_item(def_id: DefId, kind: ty::AssocKind, is_prototype: bool) -> Self {
-        match kind {
+    #[instrument(level = "debug")]
+    fn from_assoc_item(item: &ty::AssocItem) -> Self {
+        let def_id = item.def_id;
+        match item.kind {
             ty::AssocKind::Fn => {
-                if is_prototype {
-                    ItemFragment(FragmentKind::TyMethod, def_id)
-                } else {
+                if item.defaultness.has_value() {
                     ItemFragment(FragmentKind::Method, def_id)
+                } else {
+                    ItemFragment(FragmentKind::TyMethod, def_id)
                 }
             }
             ty::AssocKind::Const => ItemFragment(FragmentKind::AssociatedConstant, def_id),
@@ -473,8 +472,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             tcx.associated_items(impl_)
                 .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
                 .map(|item| {
-                    let kind = item.kind;
-                    let fragment = ItemFragment::from_assoc_item(item.def_id, kind, false);
+                    let fragment = ItemFragment::from_assoc_item(item);
                     (Res::Primitive(prim_ty), fragment)
                 })
         })
@@ -726,8 +724,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         .flatten();
 
                     assoc_item.map(|item| {
-                        let kind = item.kind;
-                        let fragment = ItemFragment::from_assoc_item(item.def_id, kind, false);
+                        let fragment = ItemFragment::from_assoc_item(&item);
                         (root_res, fragment)
                     })
                 })
@@ -765,20 +762,19 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     // To handle that properly resolve() would have to support
                     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
                     .or_else(|| {
-                        let item = resolve_associated_trait_item(
+                        resolve_associated_trait_item(
                             tcx.type_of(did),
                             module_id,
                             item_name,
                             ns,
                             self.cx,
-                        );
-                        debug!("got associated item {:?}", item);
-                        item
+                        )
                     });
 
+                debug!("got associated item {:?}", assoc_item);
+
                 if let Some(item) = assoc_item {
-                    let kind = item.kind;
-                    let fragment = ItemFragment::from_assoc_item(item.def_id, kind, false);
+                    let fragment = ItemFragment::from_assoc_item(&item);
                     return Some((root_res, fragment));
                 }
 
@@ -813,11 +809,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 .associated_items(did)
                 .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, did)
                 .map(|item| {
-                    let fragment = ItemFragment::from_assoc_item(
-                        item.def_id,
-                        item.kind,
-                        !item.defaultness.has_value(),
-                    );
+                    let fragment = ItemFragment::from_assoc_item(item);
                     let res = Res::Def(item.kind.as_def_kind(), item.def_id);
                     (res, fragment)
                 }),
@@ -883,30 +875,56 @@ fn resolve_associated_trait_item<'a>(
 
     // Next consider explicit impls: `impl MyTrait for MyType`
     // Give precedence to inherent impls.
-    let traits = traits_implemented_by(cx, ty, module);
+    let traits = trait_impls_for(cx, ty, module);
     debug!("considering traits {:?}", traits);
-    let mut candidates = traits.iter().filter_map(|&trait_| {
-        cx.tcx.associated_items(trait_).find_by_name_and_namespace(
-            cx.tcx,
-            Ident::with_dummy_span(item_name),
-            ns,
-            trait_,
-        )
+    let mut candidates = traits.iter().filter_map(|&(impl_, trait_)| {
+        cx.tcx
+            .associated_items(trait_)
+            .find_by_name_and_namespace(cx.tcx, Ident::with_dummy_span(item_name), ns, trait_)
+            .map(|trait_assoc| {
+                trait_assoc_to_impl_assoc_item(cx.tcx, impl_, trait_assoc.def_id)
+                    .unwrap_or(trait_assoc)
+            })
     });
     // FIXME(#74563): warn about ambiguity
     debug!("the candidates were {:?}", candidates.clone().collect::<Vec<_>>());
     candidates.next().copied()
 }
 
-/// Given a type, return all traits in scope in `module` implemented by that type.
+/// Find the associated item in the impl `impl_id` that corresponds to the
+/// trait associated item `trait_assoc_id`.
+///
+/// This function returns `None` if no associated item was found in the impl.
+/// This can occur when the trait associated item has a default value that is
+/// not overriden in the impl.
+///
+/// This is just a wrapper around [`TyCtxt::impl_item_implementor_ids()`] and
+/// [`TyCtxt::associated_item()`] (with some helpful logging added).
+#[instrument(level = "debug", skip(tcx))]
+fn trait_assoc_to_impl_assoc_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_id: DefId,
+    trait_assoc_id: DefId,
+) -> Option<&'tcx ty::AssocItem> {
+    let trait_to_impl_assoc_map = tcx.impl_item_implementor_ids(impl_id);
+    debug!(?trait_to_impl_assoc_map);
+    let impl_assoc_id = *trait_to_impl_assoc_map.get(&trait_assoc_id)?;
+    debug!(?impl_assoc_id);
+    let impl_assoc = tcx.associated_item(impl_assoc_id);
+    debug!(?impl_assoc);
+    Some(impl_assoc)
+}
+
+/// Given a type, return all trait impls in scope in `module` for that type.
+/// Returns a set of pairs of `(impl_id, trait_id)`.
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
-fn traits_implemented_by<'a>(
+fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,
     module: DefId,
-) -> FxHashSet<DefId> {
+) -> FxHashSet<(DefId, DefId)> {
     let mut resolver = cx.resolver.borrow_mut();
     let in_scope_traits = cx.module_trait_cache.entry(module).or_insert_with(|| {
         resolver.access(|resolver| {
@@ -948,7 +966,7 @@ fn traits_implemented_by<'a>(
                     _ => false,
                 };
 
-            if saw_impl { Some(trait_) } else { None }
+            if saw_impl { Some((impl_, trait_)) } else { None }
         })
     });
     iter.collect()
