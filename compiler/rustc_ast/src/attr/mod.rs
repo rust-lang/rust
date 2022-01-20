@@ -242,6 +242,17 @@ impl Attribute {
         }
     }
 
+    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        match self.kind {
+            AttrKind::DocComment(kind, data) => Some((data, kind)),
+            AttrKind::Normal(ref item, _) if item.path == sym::doc => item
+                .meta_kind()
+                .and_then(|kind| kind.value_str())
+                .map(|data| (data, CommentKind::Line)),
+            _ => None,
+        }
+    }
+
     pub fn doc_str(&self) -> Option<Symbol> {
         match self.kind {
             AttrKind::DocComment(.., data) => Some(data),
