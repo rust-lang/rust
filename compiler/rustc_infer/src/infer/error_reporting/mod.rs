@@ -65,11 +65,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self,
+    error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
-    Region, Ty, TyCtxt, TypeFoldable,
+    Binder, Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
 use rustc_target::spec::abi;
@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.note_error_origin(diag, cause, exp_found, terr);
     }
 
-    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
         if let ty::Opaque(def_id, substs) = ty.kind() {
             let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
             // Future::Output
@@ -1775,13 +1775,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             for (predicate, _) in bounds {
                 let predicate = predicate.subst(self.tcx, substs);
-                if let ty::PredicateKind::Projection(projection_predicate) =
-                    predicate.kind().skip_binder()
-                {
-                    if projection_predicate.projection_ty.item_def_id == item_def_id {
-                        // We don't account for multiple `Future::Output = Ty` contraints.
-                        return projection_predicate.term.ty();
-                    }
+                let output = predicate
+                    .kind()
+                    .map_bound(|kind| match kind {
+                        ty::PredicateKind::Projection(projection_predicate)
+                            if projection_predicate.projection_ty.item_def_id == item_def_id =>
+                        {
+                            projection_predicate.term.ty()
+                        }
+                        _ => None,
+                    })
+                    .transpose();
+                if output.is_some() {
+                    // We don't account for multiple `Future::Output = Ty` contraints.
+                    return output;
                 }
             }
         }
@@ -1823,8 +1830,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         match (
-            self.get_impl_future_output_ty(exp_found.expected),
-            self.get_impl_future_output_ty(exp_found.found),
+            self.get_impl_future_output_ty(exp_found.expected).map(Binder::skip_binder),
+            self.get_impl_future_output_ty(exp_found.found).map(Binder::skip_binder),
         ) {
             (Some(exp), Some(found)) if same_type_modulo_infer(exp, found) => match cause.code() {
                 ObligationCauseCode::IfExpression(box IfExpressionCause { then, .. }) => {
