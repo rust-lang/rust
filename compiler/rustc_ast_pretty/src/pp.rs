@@ -137,7 +137,6 @@ mod ring;
 use ring::RingBuffer;
 use std::borrow::Cow;
 use std::collections::VecDeque;
-use std::fmt;
 
 /// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]
@@ -172,17 +171,6 @@ pub enum Token {
 impl Token {
     pub fn is_hardbreak_tok(&self) -> bool {
         matches!(self, Token::Break(BreakToken { offset: 0, blank_space: SIZE_INFINITY }))
-    }
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Token::String(ref s) => write!(f, "STR({},{})", s, s.len()),
-            Token::Break(_) => f.write_str("BREAK"),
-            Token::Begin(_) => f.write_str("BEGIN"),
-            Token::End => f.write_str("END"),
-        }
     }
 }
 
