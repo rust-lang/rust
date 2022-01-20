@@ -500,7 +500,19 @@ impl<'test> TestCx<'test> {
             expected = expected.replace(&cr, "");
         }
 
-        self.compare_source(&expected, &actual);
+        if !self.config.bless {
+            self.compare_source(&expected, &actual);
+        } else if expected != actual {
+            let filepath_buf;
+            let filepath = match &self.props.pp_exact {
+                Some(file) => {
+                    filepath_buf = self.testpaths.file.parent().unwrap().join(file);
+                    &filepath_buf
+                }
+                None => &self.testpaths.file,
+            };
+            fs::write(filepath, &actual).unwrap();
+        }
 
         // If we're only making sure that the output matches then just stop here
         if self.props.pretty_compare_only {
