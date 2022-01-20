@@ -645,9 +645,9 @@ impl RustcDefaultCalls {
         temps_dir: &Option<PathBuf>,
     ) -> Compilation {
         use rustc_session::config::PrintRequest::*;
-        // PrintRequest::NativeStaticLibs is special - printed during linking
+        // NativeStaticLibs and LinkArgs are special - printed during linking
         // (empty iterator returns true)
-        if sess.opts.prints.iter().all(|&p| p == PrintRequest::NativeStaticLibs) {
+        if sess.opts.prints.iter().all(|&p| p == NativeStaticLibs || p == LinkArgs) {
             return Compilation::Continue;
         }
 
@@ -738,7 +738,8 @@ impl RustcDefaultCalls {
                     codegen_backend.print(*req, sess);
                 }
                 // Any output here interferes with Cargo's parsing of other printed output
-                PrintRequest::NativeStaticLibs => {}
+                NativeStaticLibs => {}
+                LinkArgs => {}
             }
         }
         Compilation::Stop

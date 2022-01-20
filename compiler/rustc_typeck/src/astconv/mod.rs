@@ -6,7 +6,7 @@ mod errors;
 mod generics;
 
 use crate::bounds::Bounds;
-use crate::collect::PlaceholderHirTyCollector;
+use crate::collect::HirPlaceholderCollector;
 use crate::errors::{
     AmbiguousLifetimeBound, MultipleRelaxedDefaultBounds, TraitObjectDeclaredWithNoTraits,
     TypeofReservedKeywordUsed, ValueOfAssociatedStructAlreadySpecified,
@@ -2504,7 +2504,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!(?bound_vars);
 
         // We proactively collect all the inferred type params to emit a single error per fn def.
-        let mut visitor = PlaceholderHirTyCollector::default();
+        let mut visitor = HirPlaceholderCollector::default();
         for ty in decl.inputs {
             visitor.visit_ty(ty);
         }

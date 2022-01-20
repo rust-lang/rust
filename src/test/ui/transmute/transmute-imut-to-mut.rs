@@ -4,5 +4,5 @@ use std::mem::transmute;
 
 fn main() {
     let _a: &mut u8 = unsafe { transmute(&1u8) };
-    //~^ ERROR mutating transmuted &mut T from &T may cause undefined behavior
+    //~^ ERROR transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
 }

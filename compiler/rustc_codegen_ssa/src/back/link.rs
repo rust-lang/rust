@@ -667,7 +667,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         cmd.env_remove(k);
     }
 
-    if sess.opts.debugging_opts.print_link_args {
+    if sess.opts.prints.contains(&PrintRequest::LinkArgs) {
         println!("{:?}", &cmd);
     }
 

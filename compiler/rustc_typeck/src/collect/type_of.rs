@@ -20,9 +20,6 @@ use super::{bad_placeholder, is_suggestable_infer_ty};
 /// This should be called using the query `tcx.opt_const_param_of`.
 #[instrument(level = "debug", skip(tcx))]
 pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DefId> {
-    // FIXME(generic_arg_infer): allow for returning DefIds of inference of
-    // GenericArg::Infer below. This may require a change where GenericArg::Infer has some flag
-    // for const or type.
     use hir::*;
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
@@ -753,7 +750,7 @@ fn infer_placeholder_type<'a>(
             err.emit();
         }
         None => {
-            let mut diag = bad_placeholder(tcx, "type", vec![span], kind);
+            let mut diag = bad_placeholder(tcx, vec![span], kind);
 
             if !ty.references_error() {
                 let mut mk_nameable = MakeNameable::new(tcx);

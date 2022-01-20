@@ -4,9 +4,8 @@ error[E0623]: lifetime mismatch
 LL | async fn async_ret_impl_trait3<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
    |                                                      ------     ^^^^^^^^^^^^^^^^^^^
    |                                                      |          |
-   |                                                      |          ...but data from `a` is held across an await point here
-   |                                                      |          this `async fn` implicitly returns an `impl Future<Output = impl Trait<'a> + 'b>`
-   |                                                      this parameter and the returned future are declared with different lifetimes...
+   |                                                      |          ...but data from `a` is returned here
+   |                                                      this parameter and the return type are declared with different lifetimes...
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
   --> $DIR/ret-impl-trait-one.rs:16:65

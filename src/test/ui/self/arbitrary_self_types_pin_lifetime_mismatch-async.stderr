@@ -2,28 +2,25 @@ error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:8:52
    |
 LL |     async fn a(self: Pin<&Foo>, f: &Foo) -> &Foo { f }
-   |                          ----               ----   ^ ...but data from `f` is held across an await point here
-   |                          |                  |
-   |                          |                  this `async fn` implicitly returns an `impl Future<Output = &Foo>`
-   |                          this parameter and the returned future are declared with different lifetimes...
+   |                                    ----     ----   ^ ...but data from `f` is returned here
+   |                                    |
+   |                                    this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:11:82
    |
 LL |     async fn c(self: Pin<&Self>, f: &Foo, g: &Foo) -> (Pin<&Foo>, &Foo) { (self, f) }
-   |                          -----                        -----------------          ^ ...but data from `f` is held across an await point here
-   |                          |                            |
-   |                          |                            this `async fn` implicitly returns an `impl Future<Output = (Pin<&Foo>, &Foo)>`
-   |                          this parameter and the returned future are declared with different lifetimes...
+   |                                     ----              -----------------          ^ ...but data from `f` is returned here
+   |                                     |
+   |                                     this parameter and the return type are declared with different lifetimes...
 
 error[E0623]: lifetime mismatch
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:64
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
-   |                                  -----                   ---   ^^^ ...but data from `arg` is held across an await point here
-   |                                  |                       |
-   |                                  |                       this `async fn` implicitly returns an `impl Future<Output = &()>`
-   |                                  this parameter and the returned future are declared with different lifetimes...
+   |                                               ------     ---   ^^^ ...but data from `arg` is returned here
+   |                                               |
+   |                                               this parameter and the return type are declared with different lifetimes...
 
 error: aborting due to 3 previous errors
 
