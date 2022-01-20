@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
         let result = catch_unwind(AssertUnwindSafe(|| {
             let mut parser = new_parser_from_file(sess.inner(), path, Some(span));
             match parser.parse_mod(&TokenKind::Eof) {
-                Ok((a, i, ast::ModSpans { inner_span })) => Some((a, i, inner_span)),
+                Ok((a, i, ast::ModSpans { inner_span, inject_use_span: _ })) => Some((a, i, inner_span)),
                 Err(mut e) => {
                     e.emit();
                     if sess.can_reset_errors() {
