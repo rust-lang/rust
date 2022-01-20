@@ -821,9 +821,9 @@ impl<'tcx> SaveContext<'tcx> {
         let mut result = String::new();
 
         for attr in attrs {
-            if let Some(val) = attr.doc_str() {
+            if let Some((val, kind)) = attr.doc_str_and_comment_kind() {
                 // FIXME: Should save-analysis beautify doc strings itself or leave it to users?
-                result.push_str(beautify_doc_string(val).as_str());
+                result.push_str(beautify_doc_string(val, kind).as_str());
                 result.push('\n');
             }
         }
