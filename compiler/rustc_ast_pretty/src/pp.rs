@@ -366,12 +366,7 @@ impl Printer {
 
     fn print_newline(&mut self, amount: isize) {
         self.out.push('\n');
-        self.pending_indentation = 0;
-        self.indent(amount);
-    }
-
-    fn indent(&mut self, amount: isize) {
-        self.pending_indentation += amount;
+        self.pending_indentation = amount;
     }
 
     fn get_top(&self) -> PrintFrame {
@@ -397,7 +392,7 @@ impl Printer {
     fn print_break(&mut self, token: BreakToken, size: isize) {
         match self.get_top() {
             PrintFrame::Fits => {
-                self.indent(token.blank_space);
+                self.pending_indentation += token.blank_space;
                 self.space -= token.blank_space;
             }
             PrintFrame::Broken { offset, breaks: Breaks::Consistent } => {
@@ -409,7 +404,7 @@ impl Printer {
                     self.print_newline(offset + token.offset);
                     self.space = self.margin - (offset + token.offset);
                 } else {
-                    self.indent(token.blank_space);
+                    self.pending_indentation += token.blank_space;
                     self.space -= token.blank_space;
                 }
             }
