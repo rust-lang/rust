@@ -320,16 +320,16 @@ impl Printer {
             let left = self.buf.pop_first().unwrap();
 
             match &left.token {
-                Token::Break(b) => self.left_total += b.blank_space,
-                Token::String(s) => self.left_total += s.len() as isize,
-                _ => {}
-            }
-
-            match &left.token {
+                Token::String(s) => {
+                    self.left_total += s.len() as isize;
+                    self.print_string(s);
+                }
+                Token::Break(b) => {
+                    self.left_total += b.blank_space;
+                    self.print_break(*b, left.size);
+                }
                 Token::Begin(b) => self.print_begin(*b, left.size),
                 Token::End => self.print_end(),
-                Token::Break(b) => self.print_break(*b, left.size),
-                Token::String(s) => self.print_string(s),
             }
 
             self.last_printed = Some(left.token);
