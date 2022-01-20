@@ -321,19 +321,13 @@ impl Printer {
         while left_size >= 0 {
             let left = self.buf.pop_first().unwrap().token;
 
-            let len = match left {
-                Token::Break(b) => b.blank_space,
-                Token::String(ref s) => {
-                    let len = s.len() as isize;
-                    assert_eq!(len, left_size);
-                    len
-                }
-                _ => 0,
-            };
+            match &left {
+                Token::Break(b) => self.left_total += b.blank_space,
+                Token::String(s) => self.left_total += s.len() as isize,
+                _ => {}
+            }
 
             self.print(left, left_size);
-
-            self.left_total += len;
 
             if self.buf.is_empty() {
                 break;
@@ -447,11 +441,7 @@ impl Printer {
             Token::Begin(b) => self.print_begin(*b, l),
             Token::End => self.print_end(),
             Token::Break(b) => self.print_break(*b, l),
-            Token::String(s) => {
-                let len = s.len() as isize;
-                assert_eq!(len, l);
-                self.print_string(s);
-            }
+            Token::String(s) => self.print_string(s),
         }
         self.last_printed = Some(token);
     }
