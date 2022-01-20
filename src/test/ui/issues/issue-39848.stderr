@@ -1,17 +1,22 @@
-error: expected `{`, found `foo`
+error: unexpected macro fragment: foo
   --> $DIR/issue-39848.rs:3:21
    |
 LL |         if $tgt.has_$field() {}
-   |         --          ^^^^^^--
-   |         |           |
-   |         |           expected `{`
-   |         |           help: try placing this code inside a block: `{ $field() }`
-   |         this `if` expression has a condition, but no block
+   |                     ^^^^^^ unexpected macro fragment
 ...
 LL |     get_opt!(bar, foo);
    |     ------------------ in this macro invocation
    |
    = note: this error originates in the macro `get_opt` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: the nightly only `std::concat_idents` macro can be used to synthesize identifiers
+   |
+LL |         if $tgt.concat_idents!(has_, $field)() {}
+   |                 +++++++++++++++    +       +
+help: the `paste` crate can be used to synthesize identifiers in macros
+   |
+LL -         if $tgt.has_$field() {}
+LL +         if $tgt.paste! { [<has_ $field]> }() {}
+   | 
 
 error: aborting due to previous error
 

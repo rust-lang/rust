@@ -23,6 +23,7 @@ use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
 
 use std::mem::take;
+use std::ops::Deref;
 
 use tracing::{debug, trace};
 
@@ -711,6 +712,56 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// Check if a method call or field access was written trying to interpolate with a macro
+    /// substitution. For example, `foo.bar_$baz()`.
+    pub(super) fn check_bad_macro_interpolation(
+        &mut self,
+        segment: &PathSegment,
+    ) -> Result<(), PResult<'a, P<Expr>>> {
+        if let token::Interpolated(nonterminal) = &self.token.kind {
+            if let (token::NtIdent(..), true) = (
+                nonterminal.deref(),
+                self.look_ahead(1, |t| matches!(t.kind, token::OpenDelim(_) | token::Semi)),
+            ) {
+                // Complain about trying to interpolate a field name.
+                let msg = "unexpected macro fragment";
+                let span = self.token.span;
+                let token_str = pprust::token_kind_to_string(&self.token.kind);
+                let mut err = self.struct_span_err(span, &format!("{}: {}", msg, token_str));
+                err.span_label(span, msg);
+                if self.sess.unstable_features.is_nightly_build() {
+                    err.multipart_suggestion(
+                        "the nightly only `std::concat_idents` macro can be used to synthesize \
+                         identifiers",
+                        vec![
+                            (segment.ident.span.shrink_to_lo(), "concat_idents!(".to_string()),
+                            (segment.ident.span.shrink_to_hi().until(span), ", ".to_string()),
+                            (span.shrink_to_hi(), ")".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                err.multipart_suggestion(
+                    "the `paste` crate can be used to synthesize identifiers in macros",
+                    vec![
+                        (segment.ident.span.shrink_to_lo(), "paste! { [<".to_string()),
+                        (segment.ident.span.shrink_to_hi().until(span), " ".to_string()),
+                        (span.shrink_to_hi(), "]> }".to_string()),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+                self.bump();
+                if self.check(&token::OpenDelim(token::Paren)) {
+                    // Method call `expr.f()`
+                    self.parse_paren_expr_seq().map_err(|e| Err(e))?;
+                }
+                return Err(Ok(self.mk_expr_err(segment.ident.span.to(self.prev_token.span))));
+            }
+        }
+        Ok(())
     }
 
     /// When writing a turbofish with multiple type parameters missing the leading `::`, we will

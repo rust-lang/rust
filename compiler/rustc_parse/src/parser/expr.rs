@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a sequence of expressions delimited by parentheses.
-    fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
+    pub(super) fn parse_paren_expr_seq(&mut self) -> PResult<'a, Vec<P<Expr>>> {
         self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore()).map(|(r, _)| r)
     }
 
@@ -1192,6 +1192,9 @@ impl<'a> Parser<'a> {
         let mut segment = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&segment, &[&token::OpenDelim(token::Paren)]);
         self.check_turbofish_missing_angle_brackets(&mut segment);
+        if let Err(err) = self.check_bad_macro_interpolation(&segment) {
+            return err;
+        }
 
         if self.check(&token::OpenDelim(token::Paren)) {
             // Method call `expr.f()`
