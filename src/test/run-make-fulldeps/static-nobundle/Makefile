@@ -13,9 +13,9 @@ all: $(call NATIVE_STATICLIB,aaa)
 	nm $(TMPDIR)/libbbb.rlib | $(CGREP) -e "U _*native_func"
 
 	# Check that aaa gets linked (either as `-l aaa` or `aaa.lib`) when building ccc.
-	$(RUSTC) ccc.rs -C prefer-dynamic --crate-type=dylib -Z print-link-args | $(CGREP) -e '-l[" ]*aaa|aaa\.lib'
+	$(RUSTC) ccc.rs -C prefer-dynamic --crate-type=dylib --print link-args | $(CGREP) -e '-l[" ]*aaa|aaa\.lib'
 
 	# Check that aaa does NOT get linked when building ddd.
-	$(RUSTC) ddd.rs -Z print-link-args | $(CGREP) -ve '-l[" ]*aaa|aaa\.lib'
+	$(RUSTC) ddd.rs --print link-args | $(CGREP) -ve '-l[" ]*aaa|aaa\.lib'
 
 	$(call RUN,ddd)

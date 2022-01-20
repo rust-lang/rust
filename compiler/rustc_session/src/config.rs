@@ -565,6 +565,7 @@ pub enum PrintRequest {
     TargetSpec,
     NativeStaticLibs,
     StackProtectorStrategies,
+    LinkArgs,
 }
 
 #[derive(Copy, Clone)]
@@ -1187,7 +1188,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
             "Compiler information to print on stdout",
             "[crate-name|file-names|sysroot|target-libdir|cfg|target-list|\
              target-cpus|target-features|relocation-models|code-models|\
-             tls-models|target-spec-json|native-static-libs|stack-protector-strategies]",
+             tls-models|target-spec-json|native-static-libs|stack-protector-strategies\
+             link-args]",
         ),
         opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
@@ -1619,6 +1621,7 @@ fn collect_print_requests(
                 );
             }
         }
+        "link-args" => PrintRequest::LinkArgs,
         req => early_error(error_format, &format!("unknown print request `{}`", req)),
     }));
 

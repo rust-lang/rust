@@ -170,6 +170,12 @@ The valid types of print values are:
   include a diagnostic note that indicates the linker flags to use when
   linking the resulting static library. The note starts with the text
   `native-static-libs:` to make it easier to fetch the output.
+- `link-args` — This flag does not disable the `--emit` step. When linking,
+  this flag causes `rustc` to print the full linker invocation in a
+  human-readable form. This can be useful when debugging linker options. The
+  exact format of this debugging output is not a stable guarantee, other than
+  that it will include the linker executable and the text of each command-line
+  argument passed to the linker.
 
 [conditional compilation]: ../reference/conditional-compilation.html
 
