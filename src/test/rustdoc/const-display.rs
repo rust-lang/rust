@@ -67,3 +67,20 @@ impl Foo {
     #[rustc_const_stable(feature = "rust1", since = "1.2.0")]
     pub const fn stable_impl() -> u32 { 42 }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Bar;
+
+impl Bar {
+    // Do not show non-const stabilities that are the same as the enclosing item.
+    // @matches 'foo/struct.Bar.html' '//span[@class="since"]' '^const: 1.2.0$'
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "rust1", since = "1.2.0")]
+    pub const fn stable_impl() -> u32 { 42 }
+
+    // Show const-stability even for unstable functions.
+    // @matches 'foo/struct.Bar.html' '//span[@class="since"]' '^const: 1.3.0$'
+    #[unstable(feature = "foo2", issue = "none")]
+    #[rustc_const_stable(feature = "rust1", since = "1.3.0")]
+    pub const fn const_stable_unstable() -> u32 { 42 }
+}

@@ -13,7 +13,7 @@ pub struct Bar;
 
 impl Bar {
     // @has - '//*[@id="method.len"]' 'pub const fn len(&self) -> usize'
-    // @has - '//*[@id="method.len"]//span[@class="since"]' '1.0.0 (const: 1.0.0)'
+    // @has - '//*[@id="method.len"]//span[@class="since"]' 'const: 1.0.0'
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
     pub const fn len(&self) -> usize { 0 }
