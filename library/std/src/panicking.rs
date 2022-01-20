@@ -263,7 +263,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
     let backtrace_env = if panic_count::get_count() >= 2 {
-        RustBacktrace::Print(crate::backtrace_rs::PrintFmt::Full)
+        backtrace::rust_backtrace_print_full()
     } else {
         backtrace::rust_backtrace_env()
     };
