@@ -266,7 +266,7 @@ impl Printer {
             self.buf.clear();
         }
         let right = self.buf.push(BufEntry { token: Token::Begin(b), size: -self.right_total });
-        self.scan_stack.push_front(right);
+        self.scan_stack.push_back(right);
     }
 
     fn scan_end(&mut self) {
@@ -274,7 +274,7 @@ impl Printer {
             self.print_end();
         } else {
             let right = self.buf.push(BufEntry { token: Token::End, size: -1 });
-            self.scan_stack.push_front(right);
+            self.scan_stack.push_back(right);
         }
     }
 
@@ -287,7 +287,7 @@ impl Printer {
             self.check_stack(0);
         }
         let right = self.buf.push(BufEntry { token: Token::Break(b), size: -self.right_total });
-        self.scan_stack.push_front(right);
+        self.scan_stack.push_back(right);
         self.right_total += b.blank_space;
     }
 
@@ -304,8 +304,8 @@ impl Printer {
 
     fn check_stream(&mut self) {
         while self.right_total - self.left_total > self.space {
-            if *self.scan_stack.back().unwrap() == self.buf.index_of_first() {
-                self.scan_stack.pop_back().unwrap();
+            if *self.scan_stack.front().unwrap() == self.buf.index_of_first() {
+                self.scan_stack.pop_front().unwrap();
                 self.buf.first_mut().unwrap().size = SIZE_INFINITY;
             }
             self.advance_left();
@@ -345,25 +345,25 @@ impl Printer {
     }
 
     fn check_stack(&mut self, mut k: usize) {
-        while let Some(&x) = self.scan_stack.front() {
+        while let Some(&x) = self.scan_stack.back() {
             let mut entry = &mut self.buf[x];
             match entry.token {
                 Token::Begin(_) => {
                     if k == 0 {
                         break;
                     }
-                    self.scan_stack.pop_front().unwrap();
+                    self.scan_stack.pop_back().unwrap();
                     entry.size += self.right_total;
                     k -= 1;
                 }
                 Token::End => {
                     // paper says + not =, but that makes no sense.
-                    self.scan_stack.pop_front().unwrap();
+                    self.scan_stack.pop_back().unwrap();
                     entry.size = 1;
                     k += 1;
                 }
                 _ => {
-                    self.scan_stack.pop_front().unwrap();
+                    self.scan_stack.pop_back().unwrap();
                     entry.size += self.right_total;
                     if k == 0 {
                         break;
