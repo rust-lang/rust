@@ -8,6 +8,7 @@ use std::mem;
 use std::ops;
 
 use rustc_ast::{LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_feature::Features;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{sym, Symbol};
@@ -43,11 +44,68 @@ crate struct InvalidCfgError {
 
 impl Cfg {
     /// Parses a `NestedMetaItem` into a `Cfg`.
-    fn parse_nested(nested_cfg: &NestedMetaItem) -> Result<Cfg, InvalidCfgError> {
+    fn parse_nested(
+        nested_cfg: &NestedMetaItem,
+        exclude: &FxHashSet<Cfg>,
+    ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
-            NestedMetaItem::MetaItem(ref cfg) => Cfg::parse(cfg),
+            NestedMetaItem::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
             NestedMetaItem::Literal(ref lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
+            }
+        }
+    }
+
+    crate fn parse_without(
+        cfg: &MetaItem,
+        exclude: &FxHashSet<Cfg>,
+    ) -> Result<Option<Cfg>, InvalidCfgError> {
+        let name = match cfg.ident() {
+            Some(ident) => ident.name,
+            None => {
+                return Err(InvalidCfgError {
+                    msg: "expected a single identifier",
+                    span: cfg.span,
+                });
+            }
+        };
+        match cfg.kind {
+            MetaItemKind::Word => {
+                let cfg = Cfg::Cfg(name, None);
+                if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+            }
+            MetaItemKind::NameValue(ref lit) => match lit.kind {
+                LitKind::Str(value, _) => {
+                    let cfg = Cfg::Cfg(name, Some(value));
+                    if exclude.contains(&cfg) { Ok(None) } else { Ok(Some(cfg)) }
+                }
+                _ => Err(InvalidCfgError {
+                    // FIXME: if the main #[cfg] syntax decided to support non-string literals,
+                    // this should be changed as well.
+                    msg: "value of cfg option should be a string literal",
+                    span: lit.span,
+                }),
+            },
+            MetaItemKind::List(ref items) => {
+                let sub_cfgs =
+                    items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
+                let ret = match name {
+                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
+                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::not => {
+                        let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
+                        if sub_cfgs.len() == 1 {
+                            Ok(!sub_cfgs.pop().unwrap()?)
+                        } else {
+                            Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
+                        }
+                    }
+                    _ => Err(InvalidCfgError { msg: "invalid predicate", span: cfg.span }),
+                };
+                match ret {
+                    Ok(c) => Ok(Some(c)),
+                    Err(e) => Err(e),
+                }
             }
         }
     }
@@ -60,42 +118,7 @@ impl Cfg {
     /// If the content is not properly formatted, it will return an error indicating what and where
     /// the error is.
     crate fn parse(cfg: &MetaItem) -> Result<Cfg, InvalidCfgError> {
-        let name = match cfg.ident() {
-            Some(ident) => ident.name,
-            None => {
-                return Err(InvalidCfgError {
-                    msg: "expected a single identifier",
-                    span: cfg.span,
-                });
-            }
-        };
-        match cfg.kind {
-            MetaItemKind::Word => Ok(Cfg::Cfg(name, None)),
-            MetaItemKind::NameValue(ref lit) => match lit.kind {
-                LitKind::Str(value, _) => Ok(Cfg::Cfg(name, Some(value))),
-                _ => Err(InvalidCfgError {
-                    // FIXME: if the main #[cfg] syntax decided to support non-string literals,
-                    // this should be changed as well.
-                    msg: "value of cfg option should be a string literal",
-                    span: lit.span,
-                }),
-            },
-            MetaItemKind::List(ref items) => {
-                let mut sub_cfgs = items.iter().map(Cfg::parse_nested);
-                match name {
-                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
-                    sym::not => {
-                        if sub_cfgs.len() == 1 {
-                            Ok(!sub_cfgs.next().unwrap()?)
-                        } else {
-                            Err(InvalidCfgError { msg: "expected 1 cfg-pattern", span: cfg.span })
-                        }
-                    }
-                    _ => Err(InvalidCfgError { msg: "invalid predicate", span: cfg.span }),
-                }
-            }
-        }
+        Self::parse_without(cfg, &FxHashSet::default()).map(|ret| ret.unwrap())
     }
 
     /// Checks whether the given configuration can be matched in the current session.
