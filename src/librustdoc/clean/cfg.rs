@@ -87,11 +87,8 @@ impl Cfg {
                 }),
             },
             MetaItemKind::List(ref items) => {
-                let sub_cfgs = items.iter().filter_map(|i| match Cfg::parse_nested(i, exclude) {
-                    Ok(Some(c)) => Some(Ok(c)),
-                    Err(e) => Some(Err(e)),
-                    _ => None,
-                });
+                let sub_cfgs =
+                    items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
                     sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
                     sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
