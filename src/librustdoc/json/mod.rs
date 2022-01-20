@@ -7,7 +7,7 @@
 mod conversions;
 
 use std::cell::RefCell;
-use std::fs::File;
+use std::fs::{create_dir_all, File};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -18,13 +18,14 @@ use rustc_session::Session;
 
 use rustdoc_json_types as types;
 
-use crate::clean;
 use crate::clean::types::{ExternalCrate, ExternalLocation};
 use crate::config::RenderOptions;
+use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::FormatRenderer;
 use crate::json::conversions::{from_item_id, IntoWithTcx};
+use crate::{clean, try_err};
 
 #[derive(Clone)]
 crate struct JsonRenderer<'tcx> {
@@ -269,10 +270,13 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .collect(),
             format_version: types::FORMAT_VERSION,
         };
-        let mut p = self.out_path.clone();
+        let out_dir = self.out_path.clone();
+        try_err!(create_dir_all(&out_dir), out_dir);
+
+        let mut p = out_dir;
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
         p.set_extension("json");
-        let file = File::create(&p).map_err(|error| Error { error: error.to_string(), file: p })?;
+        let file = try_err!(File::create(&p), p);
         serde_json::ser::to_writer(&file, &output).unwrap();
         Ok(())
     }
