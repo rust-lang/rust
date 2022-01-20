@@ -670,12 +670,7 @@ impl DirEntry {
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
     }
-    #[cfg(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox"
-    ))]
+    #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "fuchsia"))]
     fn name_cstr(&self) -> &CStr {
         &self.name
     }
@@ -1631,7 +1626,8 @@ mod remove_dir_impl {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "haiku",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "fuchsia"
     ))]
     fn is_dir(_ent: &DirEntry) -> Option<bool> {
         None
@@ -1641,7 +1637,8 @@ mod remove_dir_impl {
         target_os = "solaris",
         target_os = "illumos",
         target_os = "haiku",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "fuchsia"
     )))]
     fn is_dir(ent: &DirEntry) -> Option<bool> {
         match ent.entry.d_type {
