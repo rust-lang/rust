@@ -1907,8 +1907,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if x.kind.namespace() != Namespace::ValueNS {
                             return false;
                         }
-                        let dist = lev_distance(name.as_str(), x.name.as_str());
-                        dist > 0 && dist <= max_dist
+                        match lev_distance(name.as_str(), x.name.as_str(), max_dist) {
+                            Some(d) => d > 0,
+                            None => false,
+                        }
                     })
                     .copied()
                     .collect()
