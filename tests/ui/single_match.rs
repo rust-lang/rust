@@ -152,7 +152,9 @@ fn ranges() {
     }
     let x = (Some(E::V), Some(42));
 
-    // don't lint
+    // Don't lint, because the `E` enum can be extended with additional fields later. Thus, the
+    // proposed replacement to `if let Some(E::V)` may hide non-exhaustive warnings that appeared
+    // because of `match` construction.
     match x {
         (Some(E::V), _) => {},
         (None, _) => {},
@@ -176,19 +178,19 @@ fn ranges() {
         (..) => {},
     }
 
-    // don't lint
+    // Don't lint, see above.
     match (Some(E::V), Some(E::V), Some(E::V)) {
         (.., Some(E::V), _) => {},
         (.., None, _) => {},
     }
 
-    // don't lint
+    // Don't lint, see above.
     match (Some(E::V), Some(E::V), Some(E::V)) {
         (Some(E::V), ..) => {},
         (None, ..) => {},
     }
 
-    // don't lint
+    // Don't lint, see above.
     match (Some(E::V), Some(E::V), Some(E::V)) {
         (_, Some(E::V), ..) => {},
         (_, None, ..) => {},
