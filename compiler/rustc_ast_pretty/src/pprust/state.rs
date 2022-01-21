@@ -655,7 +655,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         // Outer-box is consistent.
         self.cbox(INDENT_UNIT);
         // Head-box is inconsistent.
-        self.ibox(w.len() + 1);
+        self.ibox(0);
         // Keyword that starts the head.
         if !w.is_empty() {
             self.word_nbsp(w);
