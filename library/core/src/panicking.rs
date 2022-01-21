@@ -56,6 +56,14 @@ pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
 
+#[cfg(not(bootstrap))]
+#[inline]
+#[track_caller]
+#[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
+pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
+    panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
+}
+
 #[inline]
 #[track_caller]
 #[lang = "panic_display"] // needed for const-evaluated panics

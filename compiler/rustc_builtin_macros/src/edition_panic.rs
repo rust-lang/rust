@@ -20,8 +20,29 @@ pub fn expand_panic<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn MacResult + 'cx> {
-    let panic = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
+    let mac = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
+    expand(mac, cx, sp, tts)
+}
 
+// This expands to either
+// - `$crate::panic::unreachable_2015!(...)` or
+// - `$crate::panic::unreachable_2021!(...)`
+// depending on the edition.
+pub fn expand_unreachable<'cx>(
+    cx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: TokenStream,
+) -> Box<dyn MacResult + 'cx> {
+    let mac = if use_panic_2021(sp) { sym::unreachable_2021 } else { sym::unreachable_2015 };
+    expand(mac, cx, sp, tts)
+}
+
+fn expand<'cx>(
+    mac: rustc_span::Symbol,
+    cx: &'cx mut ExtCtxt<'_>,
+    sp: Span,
+    tts: TokenStream,
+) -> Box<dyn MacResult + 'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
     MacEager::expr(
@@ -31,7 +52,7 @@ pub fn expand_panic<'cx>(
                 path: Path {
                     span: sp,
                     segments: cx
-                        .std_path(&[sym::panic, panic])
+                        .std_path(&[sym::panic, mac])
                         .into_iter()
                         .map(|ident| PathSegment::from_ident(ident))
                         .collect(),
