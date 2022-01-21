@@ -4,10 +4,12 @@
 // @has blanket_with_local.json "$.index[*][?(@.name=='Load')]"
 pub trait Load {
     fn load() {}
+    fn write(self) {}
 }
 
 impl<P> Load for P {
     fn load() {}
+    fn write(self) {}
 }
 
 // @has - "$.index[*][?(@.name=='Wrapper')]"
