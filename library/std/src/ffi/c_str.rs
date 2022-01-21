@@ -973,7 +973,8 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
-    /// Converts a [`CString`] into an <code>[Arc]<[CStr]></code> without copying or allocating.
+    /// Converts a [`CString`] into an <code>[Arc]<[CStr]></code> by moving the [`CString`]
+    /// data into a new [`Arc`] buffer.
     #[inline]
     fn from(s: CString) -> Arc<CStr> {
         let arc: Arc<[u8]> = Arc::from(s.into_inner());
@@ -992,7 +993,8 @@ impl From<&CStr> for Arc<CStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
-    /// Converts a [`CString`] into an <code>[Rc]<[CStr]></code> without copying or allocating.
+    /// Converts a [`CString`] into an <code>[Rc]<[CStr]></code> by moving the [`CString`]
+    /// data into a new [`Arc`] buffer.
     #[inline]
     fn from(s: CString) -> Rc<CStr> {
         let rc: Rc<[u8]> = Rc::from(s.into_inner());
