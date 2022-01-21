@@ -522,10 +522,18 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
             getConstant(ConstantInt::get(
                 cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
         EL.ExactNotTaken = getAddExpr(sv);
+        if (Pred == ICmpInst::ICMP_SLE)
+          EL.ExactNotTaken = getSMaxExpr(
+              EL.ExactNotTaken, getConstant(ConstantInt::get(
+                                    cast<IntegerType>(sv[0]->getType()), 0)));
         SmallVector<const SCEV *, 2> sv2 = {
             EL.MaxNotTaken,
             getConstant(ConstantInt::get(
                 cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
+        if (Pred == ICmpInst::ICMP_SLE)
+          EL.MaxNotTaken = getSMaxExpr(
+              EL.MaxNotTaken, getConstant(ConstantInt::get(
+                                  cast<IntegerType>(sv[0]->getType()), 0)));
         EL.MaxNotTaken = getAddExpr(sv2);
       }
       return EL;
@@ -546,11 +554,19 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
             EL.ExactNotTaken,
             getConstant(ConstantInt::get(
                 cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
+        if (Pred == ICmpInst::ICMP_SGE)
+          EL.ExactNotTaken = getSMaxExpr(
+              EL.ExactNotTaken, getConstant(ConstantInt::get(
+                                    cast<IntegerType>(sv[0]->getType()), 0)));
         EL.ExactNotTaken = getAddExpr(sv, SCEV::NoWrapMask);
         SmallVector<const SCEV *, 2> sv2 = {
             EL.MaxNotTaken,
             getConstant(ConstantInt::get(
                 cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
+        if (Pred == ICmpInst::ICMP_SGE)
+          EL.MaxNotTaken = getSMaxExpr(
+              EL.MaxNotTaken, getConstant(ConstantInt::get(
+                                  cast<IntegerType>(sv[0]->getType()), 0)));
         EL.MaxNotTaken = getAddExpr(sv2, SCEV::NoWrapMask);
       }
       return EL;
