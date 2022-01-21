@@ -454,6 +454,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
+name = "hashbrown"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
+
+[[package]]
 name = "heck"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -532,7 +538,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "hashbrown",
+ "hashbrown 0.12.0",
  "itertools",
  "la-arena",
  "limit",
@@ -736,7 +742,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg",
- "hashbrown",
+ "hashbrown 0.11.2",
 ]
 
 [[package]]
@@ -1331,7 +1337,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71ea8fec43656b71f8bf4a0351ab18604488ee13b0bf72cad2965f5bb2ca9dc6"
 dependencies = [
  "countme",
- "hashbrown",
+ "hashbrown 0.11.2",
  "memoffset",
  "rustc-hash",
  "text-size",

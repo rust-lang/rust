@@ -16,7 +16,9 @@ either = "1.5.3"
 rustc-hash = "1.0.0"
 la-arena = { version = "0.3.0", path = "../../lib/arena" }
 itertools = "0.10.0"
-hashbrown = { version = "0.11", features = ["inline-more"], default-features = false }
+hashbrown = { version = "0.12", features = [
+    "inline-more",
+], default-features = false }
 
 base_db = { path = "../base_db", version = "0.0.0" }
 cfg = { path = "../cfg", version = "0.0.0" }
