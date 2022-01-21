@@ -206,14 +206,19 @@ fn overlap_within_probe<'cx, 'tcx>(
             }
         }
         OverlapMode::Strict => {
-            if strict_disjoint(selcx, param_env, &impl1_header, impl2_header) {
+            if strict_disjoint(selcx, impl1_def_id, impl2_def_id) {
                 return None;
             }
+
+            // Equate for error reporting
+            let _ = selcx
+                .infcx()
+                .at(&ObligationCause::dummy(), param_env)
+                .eq_impl_headers(&impl1_header, &impl2_header);
         }
         OverlapMode::WithNegative => {
             if stable_disjoint(selcx, param_env, &impl1_header, impl2_header)
-                || explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
-                || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
+                || strict_disjoint(selcx, impl1_def_id, impl2_def_id)
             {
                 return None;
             }
@@ -255,13 +260,11 @@ fn stable_disjoint<'cx, 'tcx>(
 
 fn strict_disjoint<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: ty::ImplHeader<'tcx>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
 ) -> bool {
-    disjoint_with_filter(selcx, param_env, impl1_header, impl2_header, |selcx, o| {
-        strict_check(selcx, o)
-    })
+    explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
+        || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
 }
 
 fn disjoint_with_filter<'cx, 'tcx>(
