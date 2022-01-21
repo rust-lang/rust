@@ -376,15 +376,28 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
+/// Represents a type.
+///
+/// IMPORTANT: Every `TyS` is *required* to have unique contents. The type's
+/// correctness relies on this, *but it does not enforce it*. Therefore, any
+/// code that creates a `TyS` must ensure uniqueness itself. In practice this
+/// is achieved by interning.
 #[allow(rustc::usage_of_ty_tykind)]
 pub struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
     /// Use `TyS::kind()` instead.
     kind: TyKind<'tcx>,
+
+    /// This field provides fast access to information that is also contained
+    /// in `kind`.
+    ///
     /// This field shouldn't be used directly and may be removed in the future.
     /// Use `TyS::flags()` instead.
     flags: TypeFlags,
 
+    /// This field provides fast access to information that is also contained
+    /// in `kind`.
+    ///
     /// This is a kind of confusing thing: it stores the smallest
     /// binder such that
     ///
@@ -436,6 +449,8 @@ impl<'tcx> PartialOrd for TyS<'tcx> {
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
+        // Pointer equality implies equality (due to the unique contents
+        // assumption).
         ptr::eq(self, other)
     }
 }
@@ -443,6 +458,8 @@ impl<'tcx> Eq for TyS<'tcx> {}
 
 impl<'tcx> Hash for TyS<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
+        // Pointer hashing is sufficient (due to the unique contents
+        // assumption).
         (self as *const TyS<'_>).hash(s)
     }
 }

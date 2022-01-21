@@ -1946,7 +1946,10 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// An entry in an interner.
+// This type holds a `T` in the interner. The `T` is stored in the arena and
+// this type just holds a pointer to it, but it still effectively owns it. It
+// impls `Borrow` so that it can be looked up using the original
+// (non-arena-memory-owning) types.
 struct Interned<'tcx, T: ?Sized>(&'tcx T);
 
 impl<'tcx, T: 'tcx + ?Sized> Clone for Interned<'tcx, T> {
@@ -1954,25 +1957,12 @@ impl<'tcx, T: 'tcx + ?Sized> Clone for Interned<'tcx, T> {
         Interned(self.0)
     }
 }
+
 impl<'tcx, T: 'tcx + ?Sized> Copy for Interned<'tcx, T> {}
 
 impl<'tcx, T: 'tcx + ?Sized> IntoPointer for Interned<'tcx, T> {
     fn into_pointer(&self) -> *const () {
         self.0 as *const _ as *const ()
-    }
-}
-// N.B., an `Interned<Ty>` compares and hashes as a `TyKind`.
-impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
-    fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
-        self.0.kind() == other.0.kind()
-    }
-}
-
-impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
-
-impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.kind().hash(s)
     }
 }
 
@@ -1982,18 +1972,21 @@ impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
         &self.0.kind()
     }
 }
-// N.B., an `Interned<PredicateInner>` compares and hashes as a `PredicateKind`.
-impl<'tcx> PartialEq for Interned<'tcx, PredicateInner<'tcx>> {
-    fn eq(&self, other: &Interned<'tcx, PredicateInner<'tcx>>) -> bool {
-        self.0.kind == other.0.kind
+
+impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
+    fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
+        // `x == y`.
+        self.0.kind() == other.0.kind()
     }
 }
 
-impl<'tcx> Eq for Interned<'tcx, PredicateInner<'tcx>> {}
+impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
 
-impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
+impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0.kind.hash(s)
+        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
+        self.0.kind().hash(s)
     }
 }
 
@@ -2003,18 +1996,20 @@ impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for Interned<'tcx, Predicat
     }
 }
 
-// N.B., an `Interned<List<T>>` compares and hashes as its elements.
-impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
-    fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
-        self.0[..] == other.0[..]
+impl<'tcx> PartialEq for Interned<'tcx, PredicateInner<'tcx>> {
+    fn eq(&self, other: &Interned<'tcx, PredicateInner<'tcx>>) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
+        // `x == y`.
+        self.0.kind == other.0.kind
     }
 }
 
-impl<'tcx, T: Eq> Eq for Interned<'tcx, List<T>> {}
+impl<'tcx> Eq for Interned<'tcx, PredicateInner<'tcx>> {}
 
-impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
+impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        self.0[..].hash(s)
+        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
+        self.0.kind.hash(s)
     }
 }
 
@@ -2024,10 +2019,35 @@ impl<'tcx, T> Borrow<[T]> for Interned<'tcx, List<T>> {
     }
 }
 
+impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
+    fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
+        // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
+        // `x == y`.
+        self.0[..] == other.0[..]
+    }
+}
+
+impl<'tcx, T: Eq> Eq for Interned<'tcx, List<T>> {}
+
+impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
+        self.0[..].hash(s)
+    }
+}
+
 macro_rules! direct_interners {
     ($($name:ident: $method:ident($ty:ty),)+) => {
-        $(impl<'tcx> PartialEq for Interned<'tcx, $ty> {
+        $(impl<'tcx> Borrow<$ty> for Interned<'tcx, $ty> {
+            fn borrow<'a>(&'a self) -> &'a $ty {
+                &self.0
+            }
+        }
+
+        impl<'tcx> PartialEq for Interned<'tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
+                // The `Borrow` trait requires that `x.borrow() == y.borrow()`
+                // equals `x == y`.
                 self.0 == other.0
             }
         }
@@ -2036,13 +2056,9 @@ macro_rules! direct_interners {
 
         impl<'tcx> Hash for Interned<'tcx, $ty> {
             fn hash<H: Hasher>(&self, s: &mut H) {
+                // The `Borrow` trait requires that `x.borrow().hash(s) ==
+                // x.hash(s)`.
                 self.0.hash(s)
-            }
-        }
-
-        impl<'tcx> Borrow<$ty> for Interned<'tcx, $ty> {
-            fn borrow<'a>(&'a self) -> &'a $ty {
-                &self.0
             }
         }
 
