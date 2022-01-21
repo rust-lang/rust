@@ -282,13 +282,8 @@ impl DocCommentToken {
     }
 }
 
-fn broken_link_clone_cb<'a, 'b>(link: BrokenLink<'a>) -> Option<(CowStr<'b>, CowStr<'b>)> {
-    // These allocations are actually unnecessary but the lifetimes on BrokenLinkCallback are wrong
-    // this is fixed in the repo but not on the crates.io release yet
-    Some((
-        /*url*/ link.reference.to_owned().into(),
-        /*title*/ link.reference.to_owned().into(),
-    ))
+fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<'a>)> {
+    Some((/*url*/ link.reference.clone(), /*title*/ link.reference))
 }
 
 // FIXME:
