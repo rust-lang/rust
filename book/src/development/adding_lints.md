@@ -11,21 +11,24 @@ because that's clearly a non-descriptive name.
   - [Setup](#setup)
   - [Getting Started](#getting-started)
   - [Testing](#testing)
+    - [Cargo lints](#cargo-lints)
   - [Rustfix tests](#rustfix-tests)
   - [Edition 2018 tests](#edition-2018-tests)
   - [Testing manually](#testing-manually)
   - [Lint declaration](#lint-declaration)
+  - [Lint registration](#lint-registration)
   - [Lint passes](#lint-passes)
   - [Emitting a lint](#emitting-a-lint)
   - [Adding the lint logic](#adding-the-lint-logic)
   - [Specifying the lint's minimum supported Rust version (MSRV)](#specifying-the-lints-minimum-supported-rust-version-msrv)
   - [Author lint](#author-lint)
+  - [Print HIR lint](#print-hir-lint)
   - [Documentation](#documentation)
   - [Running rustfmt](#running-rustfmt)
   - [Debugging](#debugging)
   - [PR Checklist](#pr-checklist)
   - [Adding configuration to a lint](#adding-configuration-to-a-lint)
-  - [Cheatsheet](#cheatsheet)
+  - [Cheat Sheet](#cheat-sheet)
 
 ## Setup
 
@@ -42,9 +45,9 @@ take a look at our [lint naming guidelines][lint_naming]. To get started on this
 lint you can run `cargo dev new_lint --name=foo_functions --pass=early
 --category=pedantic` (category will default to nursery if not provided). This
 command will create two files: `tests/ui/foo_functions.rs` and
-`clippy_lints/src/foo_functions.rs`, as well as run `cargo dev update_lints` to
-register the new lint. For cargo lints, two project hierarchies (fail/pass) will
-be created by default under `tests/ui-cargo`.
+`clippy_lints/src/foo_functions.rs`, as well as
+[registering the lint](#lint-registration). For cargo lints, two project
+hierarchies (fail/pass) will be created by default under `tests/ui-cargo`.
 
 Next, we'll open up these files and add our lint!
 
@@ -155,7 +158,7 @@ Manually testing against an example file can be useful if you have added some
 your local modifications, run
 
 ```
-env __CLIPPY_INTERNAL_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs
+cargo dev lint input.rs
 ```
 
 from the working copy root. With tests in place, let's have a look at
@@ -179,17 +182,15 @@ the auto-generated lint declaration to have a real description, something like t
 
 ```rust
 declare_clippy_lint! {
-    /// **What it does:**
+    /// ### What it does
     ///
-    /// **Why is this bad?**
+    /// ### Why is this bad?
     ///
-    /// **Known problems:** None.
-    ///
-    /// **Example:**
-    ///
+    /// ### Example
     /// ```rust
     /// // example code
     /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
@@ -200,6 +201,10 @@ declare_clippy_lint! {
   section. This is the default documentation style and will be displayed
   [like this][example_lint_page]. To render and open this documentation locally
   in a browser, run `cargo dev serve`.
+* The `#[clippy::version]` attribute will be rendered as part of the lint documentation.
+  The value should be set to the current Rust version that the lint is developed in,
+  it can be retrieved by running `rustc -vV` in the rust-clippy directory. The version
+  is listed under *release*. (Use the version without the `-nightly`) suffix.
 * `FOO_FUNCTIONS` is the name of our lint. Be sure to follow the
   [lint naming guidelines][lint_naming] here when naming your lint.
   In short, the name should state the thing that is being checked for and
@@ -222,32 +227,34 @@ declare_lint_pass!(FooFunctions => [FOO_FUNCTIONS]);
 impl EarlyLintPass for FooFunctions {}
 ```
 
-Normally after declaring the lint, we have to run `cargo dev update_lints`,
-which updates some files, so Clippy knows about the new lint. Since we used
-`cargo dev new_lint ...` to generate the lint declaration, this was done
-automatically. While `update_lints` automates most of the things, it doesn't
-automate everything. We will have to register our lint pass manually in the
-`register_plugins` function in `clippy_lints/src/lib.rs`:
+[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
+[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
+[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
+[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
+
+## Lint registration
+
+When using `cargo dev new_lint`, the lint is automatically registered and
+nothing more has to be done.
+
+When declaring a new lint by hand and `cargo dev update_lints` is used, the lint
+pass may have to be registered manually in the `register_plugins` function in
+`clippy_lints/src/lib.rs`:
 
 ```rust
-store.register_early_pass(|| box foo_functions::FooFunctions);
+store.register_early_pass(|| Box::new(foo_functions::FooFunctions));
 ```
 
 As one may expect, there is a corresponding `register_late_pass` method
 available as well. Without a call to one of `register_early_pass` or
 `register_late_pass`, the lint pass in question will not be run.
 
-One reason that `cargo dev` does not automate this step is that multiple lints
-can use the same lint pass, so registering the lint pass may already be done
-when adding a new lint. Another reason that this step is not automated is that
-the order that the passes are registered determines the order the passes
-actually run, which in turn affects the order that any emitted lints are output
-in.
-
-[declare_clippy_lint]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L60
-[example_lint_page]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
-[lint_naming]: https://rust-lang.github.io/rfcs/0344-conventions-galore.html#lints
-[category_level_mapping]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/lib.rs#L110
+One reason that `cargo dev update_lints` does not automate this step is that
+multiple lints can use the same lint pass, so registering the lint pass may
+already be done when adding a new lint. Another reason that this step is not
+automated is that the order that the passes are registered determines the order
+the passes actually run, which in turn affects the order that any emitted lints
+are output in.
 
 ## Lint passes
 
@@ -425,7 +432,7 @@ The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `meets_msrv` utility function.
 
 ``` rust
-if !meets_msrv(self.msrv.as_ref(), &msrvs::STR_STRIP_PREFIX) {
+if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
@@ -478,6 +485,19 @@ you are implementing your lint.
 
 [author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
 
+## Print HIR lint
+
+To implement a lint, it's helpful to first understand the internal representation
+that rustc uses. Clippy has the `#[clippy::dump]` attribute that prints the
+[_High-Level Intermediate Representation (HIR)_] of the item, statement, or 
+expression that the attribute is attached to. To attach the attribute to expressions
+you often need to enable `#![feature(stmt_expr_attributes)]`.
+
+[Here][print_hir_example] you can find an example, just select _Tools_ and run _Clippy_.
+
+[_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
+[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=daf14db3a7f39ca467cd1b86c34b9afb
+
 ## Documentation
 
 The final thing before submitting our PR is to add some documentation to our
@@ -487,21 +507,23 @@ Please document your lint with a doc comment akin to the following:
 
 ```rust
 declare_clippy_lint! {
-    /// **What it does:** Checks for ... (describe what the lint matches).
+    /// ### What it does
+    /// Checks for ... (describe what the lint matches).
     ///
-    /// **Why is this bad?** Supply the reason for linting the code.
+    /// ### Why is this bad?
+    /// Supply the reason for linting the code.
     ///
-    /// **Known problems:** None. (Or describe where it could go wrong.)
-    ///
-    /// **Example:**
+    /// ### Example
     ///
     /// ```rust,ignore
-    /// // Bad
-    /// Insert a short example of code that triggers the lint
-    ///
-    /// // Good
-    /// Insert a short example of improved code that doesn't trigger the lint
+    /// // A short example of code that triggers the lint
     /// ```
+    /// 
+    /// Use instead:
+    /// ```rust,ignore
+    /// // A short example of improved code that doesn't trigger the lint
+    /// ```
+    #[clippy::version = "1.29.0"]
     pub FOO_FUNCTIONS,
     pedantic,
     "function named `foo`, which is not a descriptive name"
@@ -558,14 +580,16 @@ directory. Adding a configuration to a lint can be useful for thresholds or to c
 behavior that can be seen as a false positive for some users. Adding a configuration is done
 in the following steps:
 
-1. Adding a new configuration entry to [clippy_utils::conf](/clippy_utils/src/conf.rs)
+1. Adding a new configuration entry to [clippy_lints::utils::conf](/clippy_lints/src/utils/conf.rs)
     like this:
     ```rust
-    /// Lint: LINT_NAME. <The configuration field doc comment>
+    /// Lint: LINT_NAME.
+    ///
+    /// <The configuration field doc comment>
     (configuration_ident: Type = DefaultValue),
     ```
-    The configuration value and identifier should usually be the same. The doc comment will be
-    automatically added to the lint documentation.
+    The doc comment is automatically added to the documentation of the listed lints. The default
+    value will be formatted using the `Debug` implementation of the type.
 2. Adding the configuration value to the lint impl struct:
     1. This first requires the definition of a lint impl struct. Lint impl structs are usually
         generated with the `declare_lint_pass!` macro. This struct needs to be defined manually
@@ -626,14 +650,14 @@ in the following steps:
         with the configuration value and a rust file that should be linted by Clippy. The test can
         otherwise be written as usual.
 
-## Cheatsheet
+## Cheat Sheet
 
 Here are some pointers to things you are likely going to need for every lint:
 
 * [Clippy utils][utils] - Various helper functions. Maybe the function you need
-  is already in here (`implements_trait`, `match_def_path`, `snippet`, etc)
+  is already in here ([`is_type_diagnostic_item`], [`implements_trait`], [`snippet`], etc)
 * [Clippy diagnostics][diagnostics]
-* [The `if_chain` macro][if_chain]
+* [Let chains][let-chains]
 * [`from_expansion`][from_expansion] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
@@ -657,8 +681,11 @@ documentation currently. This is unfortunate, but in most cases you can probably
 get away with copying things from existing similar lints. If you are stuck,
 don't hesitate to ask on [Zulip] or in the issue/PR.
 
-[utils]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/lib.rs
-[if_chain]: https://docs.rs/if_chain/*/if_chain/
+[utils]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/index.html
+[`is_type_diagnostic_item`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.is_type_diagnostic_item.html
+[`implements_trait`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html
+[`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
+[let-chains]: https://github.com/rust-lang/rust/pull/94927
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
