@@ -16,7 +16,6 @@
 - [Continuous Integration](continuous_integration/README.md)
     - [Travis CI](continuous_integration/travis.md)
     - [GitHub Actions](continuous_integration/github_actions.md)
-    - [Gitlab](continuous_integration/gitlab.md)
 - [Development](development/README.md)
     - [Basics](development/basics.md)
     - [Adding Lints](development/adding_lints.md)

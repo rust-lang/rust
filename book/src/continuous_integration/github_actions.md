@@ -1,9 +1,7 @@
 # GitHub Actions
 
-## actions-rs
-
-An easy way to get started with adding Clippy to GitHub Actions is
-the [actions-rs](https://github.com/actions-rs) [clippy-check](https://github.com/actions-rs/clippy-check):
+On the GitHub hosted runners, Clippy from the latest stable Rust version comes
+pre-installed. So all you have to do is to run `cargo clippy`.
 
 ```yml
 on: push
