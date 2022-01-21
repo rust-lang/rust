@@ -42,7 +42,7 @@ macro_rules! register_builtin {
                 db: &dyn AstDatabase,
                 arg_id: MacroCallId,
                 tt: &tt::Subtree,
-            ) -> ExpandResult<Option<ExpandedEager>> {
+            ) -> ExpandResult<ExpandedEager> {
                 let expander = match *self {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
@@ -60,7 +60,7 @@ macro_rules! register_builtin {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ExpandedEager {
     pub(crate) subtree: tt::Subtree,
     /// The included file ID of the include macro.
@@ -362,7 +362,7 @@ fn compile_error_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let err = match &*tt.token_trees {
         [tt::TokenTree::Leaf(tt::Leaf::Literal(it))] => {
             let text = it.text.as_str();
@@ -376,14 +376,14 @@ fn compile_error_expand(
         _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
     };
 
-    ExpandResult { value: Some(ExpandedEager::new(quote! {})), err: Some(err) }
+    ExpandResult { value: ExpandedEager::new(quote! {}), err: Some(err) }
 }
 
 fn concat_expand(
     _db: &dyn AstDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let mut err = None;
     let mut text = String::new();
     for (i, mut t) in tt.token_trees.iter().enumerate() {
@@ -418,14 +418,14 @@ fn concat_expand(
             }
         }
     }
-    ExpandResult { value: Some(ExpandedEager::new(quote!(#text))), err }
+    ExpandResult { value: ExpandedEager::new(quote!(#text)), err }
 }
 
 fn concat_idents_expand(
     _db: &dyn AstDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let mut err = None;
     let mut ident = String::new();
     for (i, t) in tt.token_trees.iter().enumerate() {
@@ -440,7 +440,7 @@ fn concat_idents_expand(
         }
     }
     let ident = tt::Ident { text: ident.into(), id: tt::TokenId::unspecified() };
-    ExpandResult { value: Some(ExpandedEager::new(quote!(#ident))), err }
+    ExpandResult { value: ExpandedEager::new(quote!(#ident)), err }
 }
 
 fn relative_file(
@@ -476,7 +476,7 @@ fn include_expand(
     db: &dyn AstDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let res = (|| {
         let path = parse_string(tt)?;
         let file_id = relative_file(db, arg_id, &path, false)?;
@@ -488,7 +488,7 @@ fn include_expand(
 
     match res {
         Ok((subtree, file_id)) => {
-            ExpandResult::ok(Some(ExpandedEager { subtree, included_file: Some(file_id) }))
+            ExpandResult::ok(ExpandedEager { subtree, included_file: Some(file_id) })
         }
         Err(e) => ExpandResult::only_err(e),
     }
@@ -498,7 +498,7 @@ fn include_bytes_expand(
     _db: &dyn AstDatabase,
     _arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     if let Err(e) = parse_string(tt) {
         return ExpandResult::only_err(e);
     }
@@ -511,14 +511,14 @@ fn include_bytes_expand(
             id: tt::TokenId::unspecified(),
         }))],
     };
-    ExpandResult::ok(Some(ExpandedEager::new(res)))
+    ExpandResult::ok(ExpandedEager::new(res))
 }
 
 fn include_str_expand(
     db: &dyn AstDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let path = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -531,14 +531,14 @@ fn include_str_expand(
     let file_id = match relative_file(db, arg_id, &path, true) {
         Ok(file_id) => file_id,
         Err(_) => {
-            return ExpandResult::ok(Some(ExpandedEager::new(quote!(""))));
+            return ExpandResult::ok(ExpandedEager::new(quote!("")));
         }
     };
 
     let text = db.file_text(file_id);
     let text = &*text;
 
-    ExpandResult::ok(Some(ExpandedEager::new(quote!(#text))))
+    ExpandResult::ok(ExpandedEager::new(quote!(#text)))
 }
 
 fn get_env_inner(db: &dyn AstDatabase, arg_id: MacroCallId, key: &str) -> Option<String> {
@@ -550,7 +550,7 @@ fn env_expand(
     db: &dyn AstDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -574,14 +574,14 @@ fn env_expand(
     });
     let expanded = quote! { #s };
 
-    ExpandResult { value: Some(ExpandedEager::new(expanded)), err }
+    ExpandResult { value: ExpandedEager::new(expanded), err }
 }
 
 fn option_env_expand(
     db: &dyn AstDatabase,
     arg_id: MacroCallId,
     tt: &tt::Subtree,
-) -> ExpandResult<Option<ExpandedEager>> {
+) -> ExpandResult<ExpandedEager> {
     let key = match parse_string(tt) {
         Ok(it) => it,
         Err(e) => return ExpandResult::only_err(e),
@@ -592,5 +592,5 @@ fn option_env_expand(
         Some(s) => quote! { std::option::Some(#s) },
     };
 
-    ExpandResult::ok(Some(ExpandedEager::new(expanded)))
+    ExpandResult::ok(ExpandedEager::new(expanded))
 }
