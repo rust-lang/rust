@@ -877,14 +877,7 @@ fn check_single_match_opt_like(
 fn collect_pat_paths(acc: &mut Vec<String>, pat: &Pat<'_>) -> bool {
     match pat.kind {
         PatKind::Wild => true,
-        PatKind::Tuple(inner, _) => {
-            for p in inner {
-                if !collect_pat_paths(acc, p) {
-                    return false;
-                }
-            }
-            true
-        },
+        PatKind::Tuple(inner, _) => inner.iter().all(|p| collect_pat_paths(acc, p)),
         PatKind::TupleStruct(ref path, ..) => {
             acc.push(rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(path, false);
