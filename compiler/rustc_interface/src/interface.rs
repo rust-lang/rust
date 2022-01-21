@@ -124,7 +124,16 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                     Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
                 }
 
-                error!(r#"expected `key` or `key="value"`"#);
+                // If the user tried to use a key="value" flag, but is missing the quotes, provide
+                // a hint about how to resolve this.
+                if s.contains("=") && !s.contains("=\"") && !s.ends_with("\"") {
+                    error!(concat!(
+                        r#"expected `key` or `key="value"`, ensure escaping is appropriate"#,
+                        r#" for your shell, try 'key="value"' or key=\"value\""#
+                    ));
+                } else {
+                    error!(r#"expected `key` or `key="value"`"#);
+                }
             })
             .collect::<CrateConfig>();
         cfg.into_iter().map(|(a, b)| (a.to_string(), b.map(|b| b.to_string()))).collect()
