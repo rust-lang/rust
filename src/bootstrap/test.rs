@@ -1540,6 +1540,9 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
         cmd.env("RUSTC_BOOTSTRAP", "1");
+        // Override the rustc version used in symbol hashes to reduce the amount of normalization
+        // needed when diffing test output.
+        cmd.env("RUSTC_FORCE_RUSTC_VERSION", "compiletest");
         cmd.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
         builder.add_rust_test_threads(&mut cmd);
 

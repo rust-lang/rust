@@ -4,7 +4,7 @@ error: symbol-name(_RNvCsCRATE_HASH_5basic4main)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(basic[HASH]::main)
+error: demangling(basic[b751b4a00e2291d9]::main)
   --> $DIR/basic.rs:8:1
    |
 LL | #[rustc_symbol_name]

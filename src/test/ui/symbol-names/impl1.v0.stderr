@@ -4,7 +4,7 @@ error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13fooNtB<REF>_3Foo3bar)
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<impl1[HASH]::foo::Foo>::bar)
+error: demangling(<impl1[2c09c4f1c7c8e90c]::foo::Foo>::bar)
   --> $DIR/impl1.rs:14:9
    |
 LL |         #[rustc_symbol_name]
@@ -28,7 +28,7 @@ error: symbol-name(_RNvMNtCsCRATE_HASH_5impl13barNtNtB<REF>_3foo3Foo3baz)
 LL |         #[rustc_symbol_name]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<impl1[HASH]::foo::Foo>::baz)
+error: demangling(<impl1[2c09c4f1c7c8e90c]::foo::Foo>::baz)
   --> $DIR/impl1.rs:32:9
    |
 LL |         #[rustc_symbol_name]
@@ -52,7 +52,7 @@ error: symbol-name(_RNvXNCNvCsCRATE_HASH_5impl14mains_0ARDNtB<REF>_3Foop5AssocFG
 LL |             #[rustc_symbol_name]
    |             ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<[&dyn impl1[HASH]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[HASH]::AutoTrait; 3usize] as impl1[HASH]::main::{closure#1}::Bar>::method)
+error: demangling(<[&dyn impl1[2c09c4f1c7c8e90c]::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1[2c09c4f1c7c8e90c]::AutoTrait; 3usize] as impl1[2c09c4f1c7c8e90c]::main::{closure#1}::Bar>::method)
   --> $DIR/impl1.rs:62:13
    |
 LL |             #[rustc_symbol_name]

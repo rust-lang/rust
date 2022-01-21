@@ -3498,10 +3498,12 @@ impl<'test> TestCx<'test> {
         // with placeholders as we do not want tests needing updated when compiler source code
         // changes.
         // eg. $SRC_DIR/libcore/mem.rs:323:14 becomes $SRC_DIR/libcore/mem.rs:LL:COL
-        normalized = Regex::new("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?")
-            .unwrap()
-            .replace_all(&normalized, "SRC_DIR$1:LL:COL")
-            .into_owned();
+        lazy_static! {
+            static ref SRC_DIR_RE: Regex =
+                Regex::new("SRC_DIR(.+):\\d+:\\d+(: \\d+:\\d+)?").unwrap();
+        }
+
+        normalized = SRC_DIR_RE.replace_all(&normalized, "SRC_DIR$1:LL:COL").into_owned();
 
         normalized = Self::normalize_platform_differences(&normalized);
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
@@ -3510,73 +3512,38 @@ impl<'test> TestCx<'test> {
         // since they duplicate actual errors and make the output hard to read.
         // This mirrors the regex in src/tools/tidy/src/style.rs, please update
         // both if either are changed.
-        normalized =
-            Regex::new("\\s*//(\\[.*\\])?~.*").unwrap().replace_all(&normalized, "").into_owned();
+        lazy_static! {
+            static ref ANNOTATION_RE: Regex = Regex::new("\\s*//(\\[.*\\])?~.*").unwrap();
+        }
 
-        // This code normalizes various hashes in both
-        // v0 and legacy symbol names that are emitted in
-        // the ui and mir-opt tests.
-        //
-        // Some tests still require normalization with headers.
-        const DEFID_HASH_REGEX: &str = r"\[[0-9a-z]{4}\]";
-        const DEFID_HASH_PLACEHOLDER: &str = r"[HASH]";
-        const V0_DEMANGLING_HASH_REGEX: &str = r"\[[0-9a-z]+\]";
-        const V0_DEMANGLING_HASH_PLACEHOLDER: &str = r"[HASH]";
-        const V0_CRATE_HASH_PREFIX_REGEX: &str = r"_R.*?Cs[0-9a-zA-Z]+_";
-        const V0_CRATE_HASH_REGEX: &str = r"Cs[0-9a-zA-Z]+_";
+        normalized = ANNOTATION_RE.replace_all(&normalized, "").into_owned();
+
+        // This code normalizes various hashes in v0 symbol mangling that is
+        // emitted in the ui and mir-opt tests.
+        lazy_static! {
+            static ref V0_CRATE_HASH_PREFIX_RE: Regex =
+                Regex::new(r"_R.*?Cs[0-9a-zA-Z]+_").unwrap();
+            static ref V0_CRATE_HASH_RE: Regex = Regex::new(r"Cs[0-9a-zA-Z]+_").unwrap();
+        }
+
         const V0_CRATE_HASH_PLACEHOLDER: &str = r"CsCRATE_HASH_";
-        const V0_BACK_REF_PREFIX_REGEX: &str = r"\(_R.*?B[0-9a-zA-Z]_";
-        const V0_BACK_REF_REGEX: &str = r"B[0-9a-zA-Z]_";
-        const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
-        const LEGACY_SYMBOL_HASH_REGEX: &str = r"h[\w]{16}E?\)";
-        const LEGACY_SYMBOL_HASH_PLACEHOLDER: &str = r"h<SYMBOL_HASH>)";
-        let test_name = self
-            .output_testname_unique()
-            .into_os_string()
-            .into_string()
-            .unwrap()
-            .split('.')
-            .next()
-            .unwrap()
-            .replace("-", "_");
-        // Normalize `DefId` hashes
-        let defid_regex = format!("{}{}", test_name, DEFID_HASH_REGEX);
-        let defid_placeholder = format!("{}{}", test_name, DEFID_HASH_PLACEHOLDER);
-        normalized = Regex::new(&defid_regex)
-            .unwrap()
-            .replace_all(&normalized, defid_placeholder)
-            .into_owned();
-        // Normalize v0 demangling hashes
-        let demangling_regex = format!("{}{}", test_name, V0_DEMANGLING_HASH_REGEX);
-        let demangling_placeholder = format!("{}{}", test_name, V0_DEMANGLING_HASH_PLACEHOLDER);
-        normalized = Regex::new(&demangling_regex)
-            .unwrap()
-            .replace_all(&normalized, demangling_placeholder)
-            .into_owned();
-        // Normalize v0 crate hashes (see RFC 2603)
-        let symbol_mangle_prefix_re = Regex::new(V0_CRATE_HASH_PREFIX_REGEX).unwrap();
-        if symbol_mangle_prefix_re.is_match(&normalized) {
+        if V0_CRATE_HASH_PREFIX_RE.is_match(&normalized) {
             // Normalize crate hash
-            normalized = Regex::new(V0_CRATE_HASH_REGEX)
-                .unwrap()
-                .replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER)
-                .into_owned();
+            normalized =
+                V0_CRATE_HASH_RE.replace_all(&normalized, V0_CRATE_HASH_PLACEHOLDER).into_owned();
         }
-        let back_ref_prefix_re = Regex::new(V0_BACK_REF_PREFIX_REGEX).unwrap();
-        if back_ref_prefix_re.is_match(&normalized) {
+
+        lazy_static! {
+            static ref V0_BACK_REF_PREFIX_RE: Regex = Regex::new(r"\(_R.*?B[0-9a-zA-Z]_").unwrap();
+            static ref V0_BACK_REF_RE: Regex = Regex::new(r"B[0-9a-zA-Z]_").unwrap();
+        }
+
+        const V0_BACK_REF_PLACEHOLDER: &str = r"B<REF>_";
+        if V0_BACK_REF_PREFIX_RE.is_match(&normalized) {
             // Normalize back references (see RFC 2603)
-            let back_ref_regex = format!("{}", V0_BACK_REF_REGEX);
-            let back_ref_placeholder = format!("{}", V0_BACK_REF_PLACEHOLDER);
-            normalized = Regex::new(&back_ref_regex)
-                .unwrap()
-                .replace_all(&normalized, back_ref_placeholder)
-                .into_owned();
+            normalized =
+                V0_BACK_REF_RE.replace_all(&normalized, V0_BACK_REF_PLACEHOLDER).into_owned();
         }
-        // Normalize legacy mangled symbols
-        normalized = Regex::new(LEGACY_SYMBOL_HASH_REGEX)
-            .unwrap()
-            .replace_all(&normalized, LEGACY_SYMBOL_HASH_PLACEHOLDER)
-            .into_owned();
 
         // Custom normalization rules
         for rule in custom_rules {
