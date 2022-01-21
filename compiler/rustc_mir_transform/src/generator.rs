@@ -749,9 +749,15 @@ fn sanitize_witness<'tcx>(
         }
         let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
 
+        let is_uninhabited = tcx.is_ty_uninhabited_from(
+            tcx.parent_module(tcx.hir().local_def_id_to_hir_id(did.expect_local())).to_def_id(),
+            decl_ty,
+            param_env,
+        );
+
         // Sanity check that typeck knows about the type of locals which are
         // live across a suspension point
-        if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
+        if !is_uninhabited && !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
             span_bug!(
                 body.span,
                 "Broken MIR: generator contains type {} in MIR, \
