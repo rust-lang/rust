@@ -1,19 +1,13 @@
 error[E0601]: `main` function not found in crate `imported_main_const_fn_item_type_forbidden`
-  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:1:1
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:13:22
    |
-LL | / #![feature(imported_main)]
-LL | | #![feature(type_alias_impl_trait)]
-LL | | #![allow(incomplete_features)]
-LL | |
-...  |
-LL | |
-LL | | use foo::BAR as main;
-   | |_____----------------^ consider adding a `main` function to `$DIR/imported_main_const_fn_item_type_forbidden.rs`
-   |       |
-   |       non-function item at `crate::main` is found
+LL | use foo::BAR as main;
+   |     ---------------- ^ consider adding a `main` function to `$DIR/imported_main_const_fn_item_type_forbidden.rs`
+   |     |
+   |     non-function item at `crate::main` is found
 
 error[E0308]: mismatched types
-  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:10:29
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:9:29
    |
 LL |     type MainFn = impl Fn();
    |                   --------- the expected opaque type
@@ -25,7 +19,7 @@ LL |     pub const BAR: MainFn = bar;
                   found fn item `fn() {bar}`
 
 error: could not find defining uses
-  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:6:19
+  --> $DIR/imported_main_const_fn_item_type_forbidden.rs:5:19
    |
 LL |     type MainFn = impl Fn();
    |                   ^^^^^^^^^
