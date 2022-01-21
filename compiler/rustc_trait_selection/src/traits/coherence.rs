@@ -250,33 +250,6 @@ fn stable_disjoint<'cx, 'tcx>(
     impl1_header: &ty::ImplHeader<'tcx>,
     impl2_header: ty::ImplHeader<'tcx>,
 ) -> bool {
-    let infcx = selcx.infcx();
-    let tcx = infcx.tcx;
-
-    disjoint_with_filter(selcx, param_env, impl1_header, impl2_header, |selcx, o| {
-        loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
-    })
-}
-
-fn strict_disjoint<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_def_id: DefId,
-    impl2_def_id: DefId,
-) -> bool {
-    explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
-        || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
-}
-
-fn disjoint_with_filter<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl1_header: &ty::ImplHeader<'tcx>,
-    impl2_header: ty::ImplHeader<'tcx>,
-    mut filter: impl FnMut(
-        &mut SelectionContext<'cx, 'tcx>,
-        &rustc_infer::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
-    ) -> bool,
-) -> bool {
     debug!("overlap: impl1_header={:?}", impl1_header);
     debug!("overlap: impl2_header={:?}", impl2_header);
 
@@ -316,6 +289,7 @@ fn disjoint_with_filter<'cx, 'tcx>(
     // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
     // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
     let opt_failing_obligation = impl1_header
         .predicates
         .iter()
@@ -329,7 +303,7 @@ fn disjoint_with_filter<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| filter(selcx, o));
+        .find(|o| loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o));
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
@@ -344,6 +318,15 @@ fn disjoint_with_filter<'cx, 'tcx>(
 
 /// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
 /// where-clauses) If so, return true, they are disjoint and false otherwise.
+fn strict_disjoint<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+) -> bool {
+    explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
+        || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
+}
+
 fn explicit_disjoint<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     impl1_def_id: DefId,
