@@ -140,21 +140,21 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 fn overlap<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     skip_leak_check: SkipLeakCheck,
-    a_def_id: DefId,
-    b_def_id: DefId,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
+    debug!("overlap(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, skip_leak_check, a_def_id, b_def_id, snapshot)
+        overlap_within_probe(selcx, skip_leak_check, impl1_def_id, impl2_def_id, snapshot)
     })
 }
 
 fn overlap_within_probe<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     skip_leak_check: SkipLeakCheck,
-    a_def_id: DefId,
-    b_def_id: DefId,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
     fn loose_check<'cx, 'tcx>(
@@ -182,17 +182,17 @@ fn overlap_within_probe<'cx, 'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
-    let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);
+    let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
+    let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    debug!("overlap: a_impl_header={:?}", a_impl_header);
-    debug!("overlap: b_impl_header={:?}", b_impl_header);
+    debug!("overlap: impl1_header={:?}", impl1_header);
+    debug!("overlap: impl2_header={:?}", impl2_header);
 
     // Do `a` and `b` unify? If not, no overlap.
     let obligations = match selcx
         .infcx()
         .at(&ObligationCause::dummy(), param_env)
-        .eq_impl_headers(&a_impl_header, &b_impl_header)
+        .eq_impl_headers(&impl1_header, &impl2_header)
     {
         Ok(InferOk { obligations, value: () }) => obligations,
         Err(_) => {
@@ -225,11 +225,11 @@ fn overlap_within_probe<'cx, 'tcx>(
     // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
     let tcx = infcx.tcx;
-    let opt_failing_obligation = a_impl_header
+    let opt_failing_obligation = impl1_header
         .predicates
         .iter()
         .copied()
-        .chain(b_impl_header.predicates)
+        .chain(impl2_header.predicates)
         .map(|p| infcx.resolve_vars_if_possible(p))
         .map(|p| Obligation {
             cause: ObligationCause::dummy(),
@@ -241,8 +241,8 @@ fn overlap_within_probe<'cx, 'tcx>(
         .find(|o| {
             // if both impl headers are set to strict coherence it means that this will be accepted
             // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
-            if tcx.has_attr(a_def_id, sym::rustc_strict_coherence)
-                && tcx.has_attr(b_def_id, sym::rustc_strict_coherence)
+            if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
+                && tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
             {
                 strict_check(selcx, o)
             } else {
@@ -265,7 +265,7 @@ fn overlap_within_probe<'cx, 'tcx>(
         }
     }
 
-    let impl_header = selcx.infcx().resolve_vars_if_possible(a_impl_header);
+    let impl_header = selcx.infcx().resolve_vars_if_possible(impl1_header);
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
 
