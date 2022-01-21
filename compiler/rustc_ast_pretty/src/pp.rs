@@ -147,6 +147,22 @@ pub enum Breaks {
 }
 
 #[derive(Clone, Copy)]
+enum IndentStyle {
+    /// Vertically aligned under whatever column this block begins at.
+    ///
+    ///     fn demo(arg1: usize,
+    ///             arg2: usize);
+    Visual,
+    /// Indented relative to the indentation level of the previous line.
+    ///
+    ///     fn demo(
+    ///         arg1: usize,
+    ///         arg2: usize,
+    ///     );
+    Block { offset: isize },
+}
+
+#[derive(Clone, Copy)]
 pub struct BreakToken {
     offset: isize,
     blank_space: isize,
@@ -154,7 +170,7 @@ pub struct BreakToken {
 
 #[derive(Clone, Copy)]
 pub struct BeginToken {
-    offset: isize,
+    indent: IndentStyle,
     breaks: Breaks,
 }
 
@@ -377,7 +393,10 @@ impl Printer {
     fn print_begin(&mut self, token: BeginToken, size: isize) {
         if size > self.space {
             self.print_stack.push(PrintFrame::Broken { indent: self.indent, breaks: token.breaks });
-            self.indent = (self.indent as isize + token.offset) as usize;
+            self.indent = match token.indent {
+                IndentStyle::Block { offset } => (self.indent as isize + offset) as usize,
+                IndentStyle::Visual => (self.margin - self.space) as usize,
+            };
         } else {
             self.print_stack.push(PrintFrame::Fits);
         }
@@ -425,7 +444,10 @@ impl Printer {
 
     /// "raw box"
     pub fn rbox(&mut self, indent: usize, breaks: Breaks) {
-        self.scan_begin(BeginToken { offset: indent as isize, breaks })
+        self.scan_begin(BeginToken {
+            indent: IndentStyle::Block { offset: indent as isize },
+            breaks,
+        })
     }
 
     /// Inconsistent breaking box
@@ -436,6 +458,10 @@ impl Printer {
     /// Consistent breaking box
     pub fn cbox(&mut self, indent: usize) {
         self.rbox(indent, Breaks::Consistent)
+    }
+
+    pub fn visual_align(&mut self) {
+        self.scan_begin(BeginToken { indent: IndentStyle::Visual, breaks: Breaks::Consistent });
     }
 
     pub fn break_offset(&mut self, n: usize, off: isize) {
