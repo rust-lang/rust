@@ -1,6 +1,10 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
+// FIXME(eholk): temporarily disabled while drop range tracking is disabled
+// (see generator_interior.rs:27)
+// ignore-test
+
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
 fn non_sync() -> impl Debug {
