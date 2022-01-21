@@ -3,7 +3,11 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use std::convert::TryInto;
 use std::ops::ControlFlow;
 
-/// Returns `true` if a used generic parameter requires substitution.
+/// Checks whether a type contains generic parameters which require substitution.
+///
+/// In case it does, returns a `TooGeneric` const eval error. Note that due to polymorphization
+/// types may be "concrete enough" even though they still contain generic parameters in
+/// case these parameters are unused.
 crate fn ensure_monomorphic_enough<'tcx, T>(tcx: TyCtxt<'tcx>, ty: T) -> InterpResult<'tcx>
 where
     T: TypeFoldable<'tcx>,

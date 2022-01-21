@@ -266,7 +266,9 @@ impl DepNodeExt for DepNode {
     /// has been removed.
     fn extract_def_id<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<DefId> {
         if self.kind.fingerprint_style(tcx) == FingerprintStyle::DefPathHash {
-            Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into())))
+            Some(tcx.def_path_hash_to_def_id(DefPathHash(self.hash.into()), &mut || {
+                panic!("Failed to extract DefId: {:?} {}", self.kind, self.hash)
+            }))
         } else {
             None
         }

@@ -1731,12 +1731,19 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 }
 
 @media (max-width: 700px) {
+	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
+	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
+	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
+	*/
+	*[id] {
+		scroll-margin-top: 45px;
+	}
+
 	.rustdoc {
 		padding-top: 0px;
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
 		display: block;
-		scroll-margin-top: 45px;
 	}
 
 	main {

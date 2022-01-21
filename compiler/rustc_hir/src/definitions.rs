@@ -449,13 +449,17 @@ impl Definitions {
     }
 
     #[inline(always)]
-    pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> LocalDefId {
+    pub fn local_def_path_hash_to_def_id(
+        &self,
+        hash: DefPathHash,
+        err: &mut dyn FnMut() -> !,
+    ) -> LocalDefId {
         debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
         self.table
             .def_path_hash_to_index
             .get(&hash)
             .map(|local_def_index| LocalDefId { local_def_index })
-            .unwrap()
+            .unwrap_or_else(|| err())
     }
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {

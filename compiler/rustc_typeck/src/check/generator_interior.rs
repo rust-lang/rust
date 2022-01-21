@@ -3,6 +3,7 @@
 //! is calculated in `rustc_const_eval::transform::generator` and may be a subset of the
 //! types computed here.
 
+use self::drop_ranges::DropRanges;
 use super::FnCtxt;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::pluralize;
@@ -19,6 +20,8 @@ use rustc_span::Span;
 use smallvec::SmallVec;
 use tracing::debug;
 
+mod drop_ranges;
+
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
@@ -34,6 +37,7 @@ struct InteriorVisitor<'a, 'tcx> {
     guard_bindings: SmallVec<[SmallVec<[HirId; 4]>; 1]>,
     guard_bindings_set: HirIdSet,
     linted_values: HirIdSet,
+    drop_ranges: DropRanges,
 }
 
 impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
@@ -48,9 +52,11 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
     ) {
         use rustc_span::DUMMY_SP;
 
+        let ty = self.fcx.resolve_vars_if_possible(ty);
+
         debug!(
-            "generator_interior: attempting to record type {:?} {:?} {:?} {:?}",
-            ty, scope, expr, source_span
+            "attempting to record type ty={:?}; hir_id={:?}; scope={:?}; expr={:?}; source_span={:?}; expr_count={:?}",
+            ty, hir_id, scope, expr, source_span, self.expr_count,
         );
 
         let live_across_yield = scope
@@ -63,21 +69,27 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     //
                     // See the mega-comment at `yield_in_scope` for a proof.
 
-                    debug!(
-                        "comparing counts yield: {} self: {}, source_span = {:?}",
-                        yield_data.expr_and_pat_count, self.expr_count, source_span
-                    );
+                    yield_data
+                        .iter()
+                        .find(|yield_data| {
+                            debug!(
+                                "comparing counts yield: {} self: {}, source_span = {:?}",
+                                yield_data.expr_and_pat_count, self.expr_count, source_span
+                            );
 
-                    // If it is a borrowing happening in the guard,
-                    // it needs to be recorded regardless because they
-                    // do live across this yield point.
-                    if guard_borrowing_from_pattern
-                        || yield_data.expr_and_pat_count >= self.expr_count
-                    {
-                        Some(yield_data)
-                    } else {
-                        None
-                    }
+                            if self.drop_ranges.is_dropped_at(hir_id, yield_data.expr_and_pat_count)
+                            {
+                                debug!("value is dropped at yield point; not recording");
+                                return false;
+                            }
+
+                            // If it is a borrowing happening in the guard,
+                            // it needs to be recorded regardless because they
+                            // do live across this yield point.
+                            guard_borrowing_from_pattern
+                                || yield_data.expr_and_pat_count >= self.expr_count
+                        })
+                        .cloned()
                 })
             })
             .unwrap_or_else(|| {
@@ -85,7 +97,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
             });
 
         if let Some(yield_data) = live_across_yield {
-            let ty = self.fcx.resolve_vars_if_possible(ty);
             debug!(
                 "type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
                 expr, scope, ty, self.expr_count, yield_data.span
@@ -154,7 +165,6 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                 self.expr_count,
                 expr.map(|e| e.span)
             );
-            let ty = self.fcx.resolve_vars_if_possible(ty);
             if let Some((unresolved_type, unresolved_type_span)) =
                 self.fcx.unresolved_type_vars(&ty)
             {
@@ -186,6 +196,7 @@ pub fn resolve_interior<'a, 'tcx>(
         guard_bindings: <_>::default(),
         guard_bindings_set: <_>::default(),
         linted_values: <_>::default(),
+        drop_ranges: drop_ranges::compute_drop_ranges(fcx, def_id, body),
     };
     intravisit::walk_body(&mut visitor, body);
 
@@ -313,6 +324,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut guard_borrowing_from_pattern = false;
+
         match &expr.kind {
             ExprKind::Call(callee, args) => match &callee.kind {
                 ExprKind::Path(qpath) => {
