@@ -59,10 +59,8 @@ LL |         &(true, false) => ()
 error[E0618]: expected function, found `(char, char)`
   --> $DIR/issue-5100.rs:48:14
    |
-LL |       let v = [('a', 'b')
-   |  ______________-^^^^^^^^^
-LL | |              ('c', 'd'),
-   | |_______________________- call expression requires function
+LL |     let v = [('a', 'b')
+   |              ^^^^^^^^^^- help: consider separating array elements with a comma: `,`
 
 error[E0308]: mismatched types
   --> $DIR/issue-5100.rs:55:19
