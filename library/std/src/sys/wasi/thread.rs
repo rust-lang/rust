@@ -41,8 +41,7 @@ impl Thread {
 
         let in_ = wasi::Subscription {
             userdata: USERDATA,
-            r#type: wasi::EVENTTYPE_CLOCK,
-            u: wasi::SubscriptionU { clock },
+            u: wasi::SubscriptionU { tag: 0, u: wasi::SubscriptionUU { clock } },
         };
         unsafe {
             let mut event: wasi::Event = mem::zeroed();
@@ -51,7 +50,10 @@ impl Thread {
                 (
                     Ok(1),
                     wasi::Event {
-                        userdata: USERDATA, error: 0, r#type: wasi::EVENTTYPE_CLOCK, ..
+                        userdata: USERDATA,
+                        error: wasi::ERRNO_SUCCESS,
+                        type_: wasi::EVENTTYPE_CLOCK,
+                        ..
                     },
                 ) => {}
                 _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
