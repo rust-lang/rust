@@ -315,7 +315,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.word(cmnt.lines[0].clone());
                     self.hardbreak()
                 } else {
-                    self.ibox(0);
+                    self.visual_align();
                     for line in &cmnt.lines {
                         if !line.is_empty() {
                             self.word(line.clone());
