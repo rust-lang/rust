@@ -27,8 +27,7 @@ fn main() {
                         crate::TokenStream::from(crate::TokenTree::Literal({
                                     let mut iter =
                                         "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
-                                    if let (Some(crate::TokenTree::Literal(mut lit)),
-                                                None) =
+                                    if let (Some(crate::TokenTree::Literal(mut lit)), None) =
                                                 (iter.next(), iter.next()) {
                                             lit.set_span(crate::Span::recover_proc_macro_span(2));
                                             lit
