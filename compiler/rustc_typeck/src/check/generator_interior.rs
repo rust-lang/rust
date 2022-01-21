@@ -23,7 +23,8 @@ use tracing::debug;
 mod drop_ranges;
 
 // FIXME(eholk): This flag is here to give a quick way to disable drop tracking in case we find
-// unexpected breakages while it's still new. It should be removed before too long.
+// unexpected breakages while it's still new. It should be removed before too long. For example,
+// see #93161.
 const ENABLE_DROP_TRACKING: bool = false;
 
 struct InteriorVisitor<'a, 'tcx> {
