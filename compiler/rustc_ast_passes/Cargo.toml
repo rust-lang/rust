@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-itertools = "0.9"
+itertools = "0.10"
 tracing = "0.1"
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }

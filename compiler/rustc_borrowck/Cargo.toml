@@ -8,7 +8,7 @@ doctest = false
 
 [dependencies]
 either = "1.5.0"
-itertools = "0.9"
+itertools = "0.10"
 tracing = "0.1"
 polonius-engine = "0.13.0"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }

@@ -9,12 +9,12 @@ test = false
 [dependencies]
 bitflags = "1.2.1"
 cc = "1.0.69"
-itertools = "0.9"
+itertools = "0.10"
 tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
 tempfile = "3.2"
-thorin-dwp = "0.1.1"
+thorin-dwp = "0.2"
 pathdiff = "0.2.0"
 snap = "1"
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
