@@ -157,6 +157,9 @@ fn overlap_within_probe<'cx, 'tcx>(
     impl2_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
+    let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
+
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -166,6 +169,39 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
+    let strict_coherence = tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
+        && tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence);
+
+    if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, strict_coherence) {
+        return None;
+    }
+
+    if !skip_leak_check.is_yes() {
+        if infcx.leak_check(true, snapshot).is_err() {
+            debug!("overlap: leak check failed");
+            return None;
+        }
+    }
+
+    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
+
+    let involves_placeholder =
+        matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
+
+    let impl_header = selcx.infcx().resolve_vars_if_possible(impl1_header);
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+}
+
+/// Given impl1 and impl2 check if both impls can be satisfied by a common type (including
+/// where-clauses) If so, return false, otherwise return true, they are disjoint.
+fn stable_disjoint<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: ty::ImplHeader<'tcx>,
+    strict_coherence: bool,
+) -> bool {
     debug!("overlap: impl1_header={:?}", impl1_header);
     debug!("overlap: impl2_header={:?}", impl2_header);
 
@@ -177,7 +213,7 @@ fn overlap_within_probe<'cx, 'tcx>(
     {
         Ok(InferOk { obligations, value: () }) => obligations,
         Err(_) => {
-            return None;
+            return true;
         }
     };
 
@@ -222,9 +258,7 @@ fn overlap_within_probe<'cx, 'tcx>(
         .find(|o| {
             // if both impl headers are set to strict coherence it means that this will be accepted
             // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
-            if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
-                && tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
-            {
+            if strict_coherence {
                 strict_check(selcx, o)
             } else {
                 loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
@@ -236,24 +270,10 @@ fn overlap_within_probe<'cx, 'tcx>(
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        return None;
+        true
+    } else {
+        false
     }
-
-    if !skip_leak_check.is_yes() {
-        if infcx.leak_check(true, snapshot).is_err() {
-            debug!("overlap: leak check failed");
-            return None;
-        }
-    }
-
-    let impl_header = selcx.infcx().resolve_vars_if_possible(impl1_header);
-    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
-    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
-
-    let involves_placeholder =
-        matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
-
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
 fn loose_check<'cx, 'tcx>(
