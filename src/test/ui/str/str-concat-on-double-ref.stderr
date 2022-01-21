@@ -7,10 +7,11 @@ LL |     let c = a + b;
    |             | `+` cannot be used to concatenate two `&str` strings
    |             &String
    |
-help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   = note: string concatenation requires an owned `String` on the left
+help: create an owned `String` from a string reference
    |
 LL |     let c = a.to_owned() + b;
-   |             ~~~~~~~~~~~~
+   |              +++++++++++
 
 error: aborting due to previous error
 
