@@ -7,9 +7,11 @@
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
+use crate::traits::util::impl_trait_ref_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext,
+    self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
+    SelectionContext,
 };
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
@@ -137,6 +139,7 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
 
 enum OverlapMode {
     Stable,
+    WithNegative,
     Strict,
 }
 
@@ -147,8 +150,16 @@ fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefI
         bug!("Use strict coherence on both impls",);
     }
 
+    if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence)
+        != tcx.has_attr(impl2_def_id, sym::rustc_with_negative_coherence)
+    {
+        bug!("Use with negative coherence on both impls",);
+    }
+
     if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence) {
         OverlapMode::Strict
+    } else if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence) {
+        OverlapMode::WithNegative
     } else {
         OverlapMode::Stable
     }
@@ -188,9 +199,25 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    let overlap_mode = overlap_mode(tcx, impl1_def_id, impl2_def_id);
-    if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, overlap_mode) {
-        return None;
+    match overlap_mode(tcx, impl1_def_id, impl2_def_id) {
+        OverlapMode::Stable => {
+            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Stable) {
+                return None;
+            }
+        }
+        OverlapMode::Strict => {
+            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Strict) {
+                return None;
+            }
+        }
+        OverlapMode::WithNegative => {
+            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Stable)
+                || explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
+                || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
+            {
+                return None;
+            }
+        }
     }
 
     if !skip_leak_check.is_yes() {
@@ -280,6 +307,7 @@ fn stable_disjoint<'cx, 'tcx>(
                     loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
                 }
                 OverlapMode::Strict => strict_check(selcx, o),
+                OverlapMode::WithNegative => loose_check(selcx, o),
             }
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
@@ -292,6 +320,69 @@ fn stable_disjoint<'cx, 'tcx>(
     } else {
         false
     }
+}
+
+/// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
+/// where-clauses) If so, return true, they are disjoint and false otherwise.
+fn explicit_disjoint<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+) -> bool {
+    let tcx = selcx.infcx().tcx;
+
+    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+    let impl1_env = tcx.param_env(impl1_def_id);
+    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
+
+    // Create an infcx, taking the predicates of impl1 as assumptions:
+    tcx.infer_ctxt().enter(|infcx| {
+        // Normalize the trait reference. The WF rules ought to ensure
+        // that this always succeeds.
+        let impl1_trait_ref = match traits::fully_normalize(
+            &infcx,
+            FulfillmentContext::new(),
+            ObligationCause::dummy(),
+            impl1_env,
+            impl1_trait_ref,
+        ) {
+            Ok(impl1_trait_ref) => impl1_trait_ref,
+            Err(err) => {
+                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+            }
+        };
+
+        // Attempt to prove that impl2 applies, given all of the above.
+        let selcx = &mut SelectionContext::new(&infcx);
+        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+        let (impl2_trait_ref, obligations) =
+            impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+
+        // do the impls unify? If not, not disjoint.
+        let more_obligations = match infcx
+            .at(&ObligationCause::dummy(), impl1_env)
+            .eq(impl1_trait_ref, impl2_trait_ref)
+        {
+            Ok(InferOk { obligations, .. }) => obligations,
+            Err(_) => {
+                debug!(
+                    "explicit_disjoint: {:?} does not unify with {:?}",
+                    impl1_trait_ref, impl2_trait_ref
+                );
+                return false;
+            }
+        };
+
+        let opt_failing_obligation =
+            obligations.into_iter().chain(more_obligations).find(|o| strict_check(selcx, o));
+
+        if let Some(failing_obligation) = opt_failing_obligation {
+            debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+            true
+        } else {
+            false
+        }
+    })
 }
 
 fn loose_check<'cx, 'tcx>(
