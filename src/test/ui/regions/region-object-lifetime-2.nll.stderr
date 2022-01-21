@@ -6,7 +6,7 @@ LL | fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a dyn Foo) -> &'b () {
    |                                          |
    |                                          lifetime `'a` defined here
 LL |     x.borrowed()
-   |     ^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |     ^^^^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

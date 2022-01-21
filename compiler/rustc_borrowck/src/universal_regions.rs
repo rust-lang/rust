@@ -180,8 +180,9 @@ pub enum RegionClassification {
     /// anywhere. There is only one, `'static`.
     Global,
 
-    /// An **external** region is only relevant for closures. In that
-    /// case, it refers to regions that are free in the closure type
+    /// An **external** region is only relevant for
+    /// closures, generators, and inline consts. In that
+    /// case, it refers to regions that are free in the type
     /// -- basically, something bound in the surrounding context.
     ///
     /// Consider this example:
@@ -198,8 +199,8 @@ pub enum RegionClassification {
     /// Here, the lifetimes `'a` and `'b` would be **external** to the
     /// closure.
     ///
-    /// If we are not analyzing a closure, there are no external
-    /// lifetimes.
+    /// If we are not analyzing a closure/generator/inline-const,
+    /// there are no external lifetimes.
     External,
 
     /// A **local** lifetime is one about which we know the full set
@@ -424,22 +425,30 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        // If this is a closure or generator, then the late-bound regions from the enclosing
-        // function are actually external regions to us. For example, here, 'a is not local
-        // to the closure c (although it is local to the fn foo):
-        // fn foo<'a>() {
-        //     let c = || { let x: &'a u32 = ...; }
-        // }
-        if self.mir_def.did.to_def_id() != typeck_root_def_id {
+        // If this is is a 'root' body (not a closure/generator/inline const), then
+        // there are no extern regions, so the local regions start at the same
+        // position as the (empty) sub-list of extern regions
+        let first_local_index = if self.mir_def.did.to_def_id() == typeck_root_def_id {
+            first_extern_index
+        } else {
+            // If this is a closure, generator, or inline-const, then the late-bound regions from the enclosing
+            // function are actually external regions to us. For example, here, 'a is not local
+            // to the closure c (although it is local to the fn foo):
+            // fn foo<'a>() {
+            //     let c = || { let x: &'a u32 = ...; }
+            // }
             self.infcx
-                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices)
-        }
-
-        let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
+                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
+            // Any regions created during the execution of `defining_ty` or during the above
+            // late-bound region replacement are all considered 'extern' regions
+            self.infcx.num_region_vars()
+        };
 
         // "Liberate" the late-bound regions. These correspond to
         // "local" free regions.
-        let first_local_index = self.infcx.num_region_vars();
+
+        let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
+
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
             FR,
             self.mir_def.did,

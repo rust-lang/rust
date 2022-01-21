@@ -717,57 +717,57 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
     }
 
     fn should_ignore_fn(ret_ty: &ast::FnRetTy) -> bool {
-        if let ast::FnRetTy::Ty(ref ty) = ret_ty {
-            fn involves_impl_trait(ty: &ast::Ty) -> bool {
-                match ty.kind {
-                    ast::TyKind::ImplTrait(..) => true,
-                    ast::TyKind::Slice(ref subty)
-                    | ast::TyKind::Array(ref subty, _)
-                    | ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. })
-                    | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
-                    | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                    ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
-                    ast::TyKind::Path(_, ref path) => {
-                        path.segments.iter().any(|seg| match seg.args.as_deref() {
-                            None => false,
-                            Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
-                                data.args.iter().any(|arg| match arg {
-                                    ast::AngleBracketedArg::Arg(arg) => match arg {
-                                        ast::GenericArg::Type(ty) => involves_impl_trait(ty),
-                                        ast::GenericArg::Lifetime(_)
-                                        | ast::GenericArg::Const(_) => false,
-                                    },
-                                    ast::AngleBracketedArg::Constraint(c) => match c.kind {
-                                        ast::AssocConstraintKind::Bound { .. } => true,
-                                        ast::AssocConstraintKind::Equality { ref term } => {
-                                            match term {
-                                                Term::Ty(ty) => involves_impl_trait(ty),
-                                                // FIXME(...): This should check if the constant
-                                                // involves a trait impl, but for now ignore.
-                                                Term::Const(_) => false,
-                                            }
+        let ast::FnRetTy::Ty(ref ty) = ret_ty else {
+            return false;
+        };
+        fn involves_impl_trait(ty: &ast::Ty) -> bool {
+            match ty.kind {
+                ast::TyKind::ImplTrait(..) => true,
+                ast::TyKind::Slice(ref subty)
+                | ast::TyKind::Array(ref subty, _)
+                | ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. })
+                | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
+                | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
+                ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
+                ast::TyKind::Path(_, ref path) => {
+                    path.segments.iter().any(|seg| match seg.args.as_deref() {
+                        None => false,
+                        Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
+                            data.args.iter().any(|arg| match arg {
+                                ast::AngleBracketedArg::Arg(arg) => match arg {
+                                    ast::GenericArg::Type(ty) => involves_impl_trait(ty),
+                                    ast::GenericArg::Lifetime(_) | ast::GenericArg::Const(_) => {
+                                        false
+                                    }
+                                },
+                                ast::AngleBracketedArg::Constraint(c) => match c.kind {
+                                    ast::AssocConstraintKind::Bound { .. } => true,
+                                    ast::AssocConstraintKind::Equality { ref term } => {
+                                        match term {
+                                            Term::Ty(ty) => involves_impl_trait(ty),
+                                            // FIXME(...): This should check if the constant
+                                            // involves a trait impl, but for now ignore.
+                                            Term::Const(_) => false,
                                         }
-                                    },
-                                })
-                            }
-                            Some(&ast::GenericArgs::Parenthesized(ref data)) => {
-                                any_involves_impl_trait(data.inputs.iter())
-                                    || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
-                            }
-                        })
-                    }
-                    _ => false,
+                                    }
+                                },
+                            })
+                        }
+                        Some(&ast::GenericArgs::Parenthesized(ref data)) => {
+                            any_involves_impl_trait(data.inputs.iter())
+                                || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
+                        }
+                    })
                 }
+                _ => false,
             }
-
-            fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
-                it.any(|subty| involves_impl_trait(subty))
-            }
-
-            involves_impl_trait(ty)
-        } else {
-            false
         }
+
+        fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
+            it.any(|subty| involves_impl_trait(subty))
+        }
+
+        involves_impl_trait(ty)
     }
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {

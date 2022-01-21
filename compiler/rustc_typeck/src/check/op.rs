@@ -549,16 +549,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let source_map = self.tcx.sess.source_map();
-        let remove_borrow_msg = "String concatenation appends the string on the right to the \
-                                 string on the left and may require reallocation. This \
-                                 requires ownership of the string on the left";
-
-        let msg = "`to_owned()` can be used to create an owned `String` \
-                   from a string reference. String concatenation \
-                   appends the string on the right to the string \
-                   on the left and may require reallocation. This \
-                   requires ownership of the string on the left";
+        let str_concat_note = "string concatenation requires an owned `String` on the left";
+        let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
+        let to_owned_msg = "create an owned `String` from a string reference";
 
         let string_type = self.tcx.get_diagnostic_item(sym::String);
         let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
@@ -574,31 +567,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
-                    err.span_label(
-                        op.span,
-                        "`+` cannot be used to concatenate two `&str` strings",
-                    );
-                    match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => {
-                            err.span_suggestion(
-                                lhs_expr.span,
-                                if lstring.starts_with('&') {
-                                    remove_borrow_msg
-                                } else {
-                                    msg
-                                },
-                                if let Some(stripped) = lstring.strip_prefix('&') {
-                                    // let a = String::new();
-                                    // let _ = &a + "bar";
-                                    stripped.to_string()
-                                } else {
-                                    format!("{}.to_owned()", lstring)
-                                },
-                                Applicability::MachineApplicable,
-                            )
-                        }
-                        _ => err.help(msg),
-                    };
+                    err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
+                    err.note(str_concat_note);
+                    if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.until(lhs_inner_expr.span),
+                            rm_borrow_msg,
+                            "".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    } else {
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.shrink_to_hi(),
+                            to_owned_msg,
+                            ".to_owned()".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    }
                 }
                 true
             }
@@ -609,32 +594,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     op.span,
                     "`+` cannot be used to concatenate a `&str` with a `String`",
                 );
-                match (
-                    source_map.span_to_snippet(lhs_expr.span),
-                    source_map.span_to_snippet(rhs_expr.span),
-                    is_assign,
-                ) {
-                    (Ok(l), Ok(r), IsAssign::No) => {
-                        let to_string = if let Some(stripped) = l.strip_prefix('&') {
-                            // let a = String::new(); let b = String::new();
-                            // let _ = &a + b;
-                            stripped.to_string()
+                match is_assign {
+                    IsAssign::No => {
+                        let sugg_msg;
+                        let lhs_sugg = if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                            sugg_msg = "remove the borrow on the left and add one on the right";
+                            (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
                         } else {
-                            format!("{}.to_owned()", l)
+                            sugg_msg = "create an owned `String` on the left and add a borrow on the right";
+                            (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
                         };
-                        err.multipart_suggestion(
-                            msg,
-                            vec![
-                                (lhs_expr.span, to_string),
-                                (rhs_expr.span, format!("&{}", r)),
-                            ],
+                        let suggestions = vec![
+                            lhs_sugg,
+                            (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
+                        ];
+                        err.multipart_suggestion_verbose(
+                            sugg_msg,
+                            suggestions,
                             Applicability::MachineApplicable,
                         );
                     }
-                    _ => {
-                        err.help(msg);
+                    IsAssign::Yes => {
+                        err.note(str_concat_note);
                     }
-                };
+                }
                 true
             }
             _ => false,

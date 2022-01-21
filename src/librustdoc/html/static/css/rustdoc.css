@@ -671,7 +671,6 @@ nav.sub {
 	margin: .5em 0;
 	width: calc(100% - 2px);
 	overflow-x: auto;
-	overflow-wrap: normal;
 	display: block;
 }
 
@@ -857,6 +856,31 @@ h2.small-section-header > .anchor {
 }
 
 .block a.current.crate { font-weight: 500; }
+
+/*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
+	as much as needed on mobile (see
+	src/test/rustdoc-gui/type-declaration-overflow.goml for an example of why
+	this matters). The `anywhere` value means:
+
+	"Soft wrap opportunities introduced by the word break are considered when
+	 calculating min-content intrinsic sizes."
+
+	https://developer.mozilla.org/en-US/docs/Web/CSS/overflow-wrap#values
+
+	For table layouts, that becomes a problem: the browser tries to make each
+	column as narrow as possible, and `overflow-wrap: anywhere` means it can do
+	so by breaking words - even if some other column could be shrunk without
+	breaking words! This shows up, for instance, in the `Structs` / `Modules` /
+	`Functions` (etcetera) sections of a module page, and when a docblock
+	contains a table.
+
+	So, for table layouts, override the default with break-word, which does
+	_not_ affect min-content intrinsic sizes.
+*/
+table,
+.item-table {
+	overflow-wrap: break-word;
+}
 
 .item-table {
 	display: table;
@@ -2056,10 +2080,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	.docblock code {
 		overflow-wrap: break-word;
 		overflow-wrap: anywhere;
-	}
-
-	.docblock table code {
-		overflow-wrap: normal;
 	}
 
 	.sub-container {

@@ -20,7 +20,7 @@ LL | pub unsafe extern "C" fn no_escape0<'f>(_: usize, ap: ...) -> VaListImpl<'f
    |                                     |
    |                                     lifetime `'f` defined here
 LL |     ap
-   |     ^^ returning this value requires that `'1` must outlive `'f`
+   |     ^^ function was supposed to return data with lifetime `'f` but it is returning data with lifetime `'1`
    |
    = note: requirement occurs because of the type VaListImpl<'_>, which makes the generic argument '_ invariant
    = note: the struct VaListImpl<'f> is invariant over the parameter 'f

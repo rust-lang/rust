@@ -6,7 +6,7 @@ LL | fn f<'a, 'b>(s: &'b str, _: <&'a &'b () as Trait>::Type) -> &'a str {
    |      |
    |      lifetime `'a` defined here
 LL |     s
-   |     ^ returning this value requires that `'b` must outlive `'a`
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 

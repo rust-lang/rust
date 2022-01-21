@@ -1347,23 +1347,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut otherwise = None;
         for match_pair in match_pairs {
-            if let PatKind::Or { ref pats } = *match_pair.pattern.kind {
-                let or_span = match_pair.pattern.span;
-                let place = match_pair.place;
-
-                first_candidate.visit_leaves(|leaf_candidate| {
-                    self.test_or_pattern(
-                        leaf_candidate,
-                        &mut otherwise,
-                        pats,
-                        or_span,
-                        place.clone(),
-                        fake_borrows,
-                    );
-                });
-            } else {
+            let PatKind::Or { ref pats } = &*match_pair.pattern.kind else {
                 bug!("Or-patterns should have been sorted to the end");
-            }
+            };
+            let or_span = match_pair.pattern.span;
+            let place = match_pair.place;
+
+            first_candidate.visit_leaves(|leaf_candidate| {
+                self.test_or_pattern(
+                    leaf_candidate,
+                    &mut otherwise,
+                    pats,
+                    or_span,
+                    place.clone(),
+                    fake_borrows,
+                );
+            });
         }
 
         let remainder_start = otherwise.unwrap_or_else(|| self.cfg.start_new_block());

@@ -7,7 +7,7 @@ LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
    |                       lifetime `'a` defined here
 LL |     match (&t,) {
 LL |         ((u,),) => u,
-   |                    ^ returning this value requires that `'a` must outlive `'b`
+   |                    ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
