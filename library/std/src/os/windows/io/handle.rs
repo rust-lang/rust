@@ -164,12 +164,22 @@ impl OwnedHandle {
         inherit: bool,
         options: c::DWORD,
     ) -> io::Result<Self> {
+        let handle = self.as_raw_handle();
+
+        // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
+        // in a process with a detached console. `DuplicateHandle` would fail
+        // if we passed it a null handle, but we can treat null as a valid
+        // handle which doesn't do any I/O, and allow it to be duplicated.
+        if handle.is_null() {
+            return unsafe { Ok(Handle::from_raw_handle(handle)) };
+        }
+
         let mut ret = 0 as c::HANDLE;
         cvt(unsafe {
             let cur_proc = c::GetCurrentProcess();
             c::DuplicateHandle(
                 cur_proc,
-                self.as_raw_handle(),
+                handle,
                 cur_proc,
                 &mut ret,
                 access,
