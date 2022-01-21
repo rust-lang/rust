@@ -7,6 +7,10 @@ assert-property: ("body", {"scrollWidth": "1100"})
 // However, since there is overflow in the type declaration, its scroll width is bigger.
 assert-property: (".item-decl pre", {"scrollWidth": "1324"})
 
+// In the table-ish view on the module index, the name should not be wrapped more than necessary.
+goto: file://|DOC_PATH|/lib2/too_long/index.html
+assert-property: (".item-table .struct", {"offsetWidth": "684"})
+
 // We now make the same check on type declaration...
 goto: file://|DOC_PATH|/lib2/too_long/type.ReallyLongTypeNameLongLongLong.html
 assert-property: ("body", {"scrollWidth": "1100"})
