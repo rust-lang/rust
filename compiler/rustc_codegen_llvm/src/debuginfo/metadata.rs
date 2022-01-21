@@ -555,8 +555,8 @@ fn subroutine_type_metadata<'ll, 'tcx>(
     )
 }
 
-// Create debuginfo for `dyn SomeTrait` types. Currently these are empty structs
-// we with the correct type name (e.g. "dyn SomeTrait<Foo, Item=u32> + Sync").
+/// Create debuginfo for `dyn SomeTrait` types. Currently these are empty structs
+/// we with the correct type name (e.g. "dyn SomeTrait<Foo, Item=u32> + Sync").
 fn dyn_type_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     dyn_type: Ty<'tcx>,
@@ -570,23 +570,23 @@ fn dyn_type_metadata<'ll, 'tcx>(
     }
 }
 
-// Create debuginfo for `[T]` and `str`. These are unsized.
-//
-// Note: We currently emit just emit the debuginfo for the element type here
-//       (i.e. `T` for slices and `u8` for `str`), so that we end up with
-//       `*const T` for the `data_ptr` field of the corresponding fat-pointer
-//       debuginfo of `&[T]`.
-//
-//       It would be preferable and more accurate if we emitted a DIArray of T
-//       without an upper bound instead. That is, LLVM already supports emitting
-//       debuginfo of arrays of unknown size. But GDB currently seems to end up
-//       in an infinite loop when confronted with such a type.
-//
-//       As a side effect of the current encoding every instance of a type like
-//       `struct Foo { unsized_field: [u8] }` will look like
-//       `struct Foo { unsized_field: u8 }` in debuginfo. If the length of the
-//       slice is zero, then accessing `unsized_field` in the debugger would
-//       result in an out-of-bounds access.
+/// Create debuginfo for `[T]` and `str`. These are unsized.
+///
+/// Note: We currently emit just emit the debuginfo for the element type here
+///       (i.e. `T` for slices and `u8` for `str`), so that we end up with
+///       `*const T` for the `data_ptr` field of the corresponding fat-pointer
+///       debuginfo of `&[T]`.
+///
+///       It would be preferable and more accurate if we emitted a DIArray of T
+///       without an upper bound instead. That is, LLVM already supports emitting
+///       debuginfo of arrays of unknown size. But GDB currently seems to end up
+///       in an infinite loop when confronted with such a type.
+///
+///       As a side effect of the current encoding every instance of a type like
+///       `struct Foo { unsized_field: [u8] }` will look like
+///       `struct Foo { unsized_field: u8 }` in debuginfo. If the length of the
+///       slice is zero, then accessing `unsized_field` in the debugger would
+///       result in an out-of-bounds access.
 fn slice_type_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     slice_type: Ty<'tcx>,
