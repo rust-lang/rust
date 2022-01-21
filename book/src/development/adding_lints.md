@@ -147,13 +147,6 @@ the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
 
-## Edition 2018 tests
-
-Some features require the 2018 edition to work (e.g. `async_await`), but
-compile-test tests run on the 2015 edition by default. To change this behavior
-add `// edition:2018` at the top of the test file (note that it's
-space-sensitive).
-
 ## Testing manually
 
 Manually testing against an example file can be useful if you have added some
