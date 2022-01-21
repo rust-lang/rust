@@ -149,7 +149,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             }
             print_expr(cx, init, indent + 1);
         },
-        hir::ExprKind::MethodCall(path, _, args, _) => {
+        hir::ExprKind::MethodCall(path, args, _) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {

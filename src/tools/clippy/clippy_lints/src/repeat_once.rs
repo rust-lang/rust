@@ -46,7 +46,7 @@ declare_lint_pass!(RepeatOnce => [REPEAT_ONCE]);
 impl<'tcx> LateLintPass<'tcx> for RepeatOnce {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _, [receiver, count], _) = &expr.kind;
+            if let ExprKind::MethodCall(path, [receiver, count], _) = &expr.kind;
             if path.ident.name == sym!(repeat);
             if constant_context(cx, cx.typeck_results()).expr(count) == Some(Constant::Int(1));
             if !receiver.span.from_expansion();

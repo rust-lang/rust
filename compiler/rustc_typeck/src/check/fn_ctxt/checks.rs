@@ -148,8 +148,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::Call(hir::Expr { span, .. }, args) => {
                     (*span, *span, &args[..], None)
                 }
-                hir::ExprKind::MethodCall(path_segment, span, args, _) => (
-                    *span,
+                hir::ExprKind::MethodCall(path_segment, args, _) => (
+                    path_segment.ident.span,
                     // `sp` doesn't point at the whole `foo.bar()`, only at `bar`.
                     path_segment
                         .args
@@ -161,7 +161,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 .source_map()
                                 .next_point(tcx.sess.source_map().next_point(arg.span()))
                         })
-                        .unwrap_or(*span),
+                        .unwrap_or(path_segment.ident.span),
                     &args[1..], // Skip the receiver.
                     None,       // methods are never ctors
                 ),

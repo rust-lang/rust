@@ -121,8 +121,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
                 }
             }
         }
-        if let ExprKind::MethodCall(_, call_span, exprs, _) = expr.kind {
-            if call_span == self.target_span
+        if let ExprKind::MethodCall(segment, exprs, _) = expr.kind {
+            if segment.ident.span == self.target_span
                 && Some(self.target)
                     == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
                         typeck_results
@@ -531,7 +531,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // 3 |     let _ = x.sum() as f64;
             //   |               ^^^ cannot infer type for `S`
             span
-        } else if let Some(ExprKind::MethodCall(_, call_span, _, _)) =
+        } else if let Some(ExprKind::MethodCall(segment, ..)) =
             local_visitor.found_method_call.map(|e| &e.kind)
         {
             // Point at the call instead of the whole expression:
@@ -542,7 +542,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             //   |                         ^^^^^^^ cannot infer type
             //   |
             //   = note: cannot resolve `<_ as std::ops::Try>::Ok == _`
-            if span.contains(*call_span) { *call_span } else { span }
+            if span.contains(segment.ident.span) { segment.ident.span } else { span }
         } else {
             span
         };
@@ -709,7 +709,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
-            if let ExprKind::MethodCall(segment, _, exprs, _) = &e.kind {
+            if let ExprKind::MethodCall(segment, exprs, _) = &e.kind {
                 // Suggest impl candidates:
                 //
                 // error[E0283]: type annotations needed

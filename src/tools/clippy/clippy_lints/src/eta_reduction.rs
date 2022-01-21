@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
         );
 
         if_chain!(
-            if let ExprKind::MethodCall(path, _, args, _) = body.value.kind;
+            if let ExprKind::MethodCall(path, args, _) = body.value.kind;
             if check_inputs(cx, body.params, args);
             let method_def_id = cx.typeck_results().type_dependent_def_id(body.value.hir_id).unwrap();
             let substs = cx.typeck_results().node_substs(body.value.hir_id);

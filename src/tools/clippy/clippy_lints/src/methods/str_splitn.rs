@@ -132,7 +132,7 @@ fn parse_iter_usage<'tcx>(
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let (name, args) = if let ExprKind::MethodCall(name, _, [_, args @ ..], _) = e.kind {
+            let (name, args) = if let ExprKind::MethodCall(name, [_, args @ ..], _) = e.kind {
                 (name, args)
             } else {
                 return None;
@@ -173,7 +173,7 @@ fn parse_iter_usage<'tcx>(
                         } else {
                             if_chain! {
                                 if let Some((_, Node::Expr(next_expr))) = iter.next();
-                                if let ExprKind::MethodCall(next_name, _, [_], _) = next_expr.kind;
+                                if let ExprKind::MethodCall(next_name, [_], _) = next_expr.kind;
                                 if next_name.ident.name == sym::next;
                                 if next_expr.span.ctxt() == ctxt;
                                 if let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id);
@@ -217,7 +217,7 @@ fn parse_iter_usage<'tcx>(
                 }
             },
             _ if e.span.ctxt() != ctxt => (None, span),
-            ExprKind::MethodCall(name, _, [_], _)
+            ExprKind::MethodCall(name, [_], _)
                 if name.ident.name == sym::unwrap
                     && cx
                         .typeck_results()
@@ -289,7 +289,7 @@ fn check_iter<'tcx>(
 ) -> bool {
     match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let (name, args) = if let ExprKind::MethodCall(name, _, [_, args @ ..], _) = e.kind {
+            let (name, args) = if let ExprKind::MethodCall(name, [_, args @ ..], _) = e.kind {
                 (name, args)
             } else {
                 return false;

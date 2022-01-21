@@ -87,7 +87,7 @@ struct LintDetection {
 
 fn detect_stable_sort_primitive(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<LintDetection> {
     if_chain! {
-        if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
+        if let ExprKind::MethodCall(method_name, args, _) = &expr.kind;
         if let Some(slice) = &args.get(0);
         if let Some(method) = SortingKind::from_stable_name(method_name.ident.name.as_str());
         if let Some(slice_type) = is_slice_of_primitives(cx, slice);

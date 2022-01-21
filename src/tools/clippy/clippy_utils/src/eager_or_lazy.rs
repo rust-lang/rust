@@ -141,7 +141,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                     return;
                 },
-                ExprKind::MethodCall(name, _, args, _) => {
+                ExprKind::MethodCall(name, args, _) => {
                     self.eagerness |= self
                         .cx
                         .typeck_results()

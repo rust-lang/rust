@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
 ) {
     let arg_expr = match arg.kind {
         ExprKind::AddrOf(BorrowKind::Ref, _, ref_arg) => ref_arg,
-        ExprKind::MethodCall(method, _, args, _) if args.len() == 1 && method.ident.name == rustc_span::sym::iter => {
+        ExprKind::MethodCall(method, args, _) if args.len() == 1 && method.ident.name == rustc_span::sym::iter => {
             &args[0]
         },
         _ => return,

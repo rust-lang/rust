@@ -1363,9 +1363,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 let res = self.save_ctxt.get_path_res(hir_expr.hir_id);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_res(res), *rest)
             }
-            hir::ExprKind::MethodCall(ref seg, _, args, _) => {
-                self.process_method_call(ex, seg, args)
-            }
+            hir::ExprKind::MethodCall(ref seg, args, _) => self.process_method_call(ex, seg, args),
             hir::ExprKind::Field(ref sub_ex, _) => {
                 self.visit_expr(&sub_ex);
 

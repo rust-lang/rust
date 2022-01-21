@@ -131,7 +131,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 }
             },
 
-            ExprKind::MethodCall(_, _, args, _) => {
+            ExprKind::MethodCall(_, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
                     for (expr, bound) in iter::zip(*args, fn_sig.inputs()) {

@@ -130,7 +130,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
-        if let ExprKind::MethodCall(segment, method_span, _, _) = expr.kind {
+        if let ExprKind::MethodCall(segment, ..) = expr.kind {
             if let Some(hir_id) = segment.hir_id {
                 let hir = self.tcx.hir();
                 let body_id = hir.enclosing_body_owner(hir_id);
@@ -141,7 +141,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                 });
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
                     self.matches.insert(
-                        method_span,
+                        segment.ident.span,
                         match hir.span_if_local(def_id) {
                             Some(span) => LinkFromSrc::Local(clean::Span::new(span)),
                             None => LinkFromSrc::External(def_id),

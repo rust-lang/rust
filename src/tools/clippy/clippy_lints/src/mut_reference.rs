@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                     );
                 }
             },
-            ExprKind::MethodCall(path, _, arguments, _) => {
+            ExprKind::MethodCall(path, arguments, _) => {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
                 let substs = cx.typeck_results().node_substs(e.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);

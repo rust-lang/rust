@@ -1203,9 +1203,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, span, _, _) => {
+            hir::ExprKind::MethodCall(segment, ..) => {
                 // Method calls have to be checked specially.
-                self.span = span;
+                self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
                     if self.visit(self.tcx.type_of(def_id)).is_break() {
                         return;
