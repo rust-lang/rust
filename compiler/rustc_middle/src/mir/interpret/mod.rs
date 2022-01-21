@@ -108,13 +108,11 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathData;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_serialize::{Decodable, Encodable};
-use rustc_span::{Pos, Span};
+use rustc_span::Span;
 use rustc_target::abi::Endian;
 
 use crate::mir;
@@ -451,40 +449,6 @@ impl<'tcx> AllocMap<'tcx> {
     }
 }
 
-/// What we store about a frame in an interpreter backtrace.
-#[derive(Debug)]
-pub struct FrameInfo<'tcx> {
-    pub instance: ty::Instance<'tcx>,
-    pub span: Span,
-    pub lint_root: Option<hir::HirId>,
-}
-
-impl<'tcx> fmt::Display for FrameInfo<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
-                == DefPathData::ClosureExpr
-            {
-                write!(f, "inside closure")?;
-            } else {
-                write!(f, "inside `{}`", self.instance)?;
-            }
-            if !self.span.is_dummy() {
-                let sm = tcx.sess.source_map();
-                let lo = sm.lookup_char_pos(self.span.lo());
-                write!(
-                    f,
-                    " at {}:{}:{}",
-                    sm.filename_for_diagnostics(&lo.file.name),
-                    lo.line,
-                    lo.col.to_usize() + 1
-                )?;
-            }
-            Ok(())
-        })
-    }
-}
-
 /// Used to store results of calls to `eval_to_allocation_raw` and
 /// `eval_to_const_value_raw`.
 #[derive(Debug)]
@@ -650,88 +614,13 @@ impl<'tcx> TyCtxt<'tcx> {
         key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
         opt_span: Option<Span>,
     ) -> EvalToAllocationRawResult<'tcx> {
-        let (param_env, id) = key.into_parts();
-        let dedup_const_map = self.dedup_const_map.lock();
-        debug!("dedup_const_map: {:#?}", dedup_const_map);
-        let alloc_map = dedup_const_map.alloc_map.borrow();
-        debug!("alloc_map: {:#?}", alloc_map);
-
-        let dedup_reveal = alloc_map.get(&id);
-        debug!(?dedup_reveal);
-
-        match param_env.reveal() {
-            Reveal::Selection => match dedup_reveal {
-                Some(Reveal::Selection) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    // Use cached result of query
-                    return self.eval_to_allocation_raw(key);
-                }
-                Some(Reveal::UserFacing) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    // can deduplicate query with Reveal::Selection from Reveal::UserFacing
-                    // since these only differ in the way errors are reported, but successful
-                    // query calls are equivalent.
-                    let new_key = param_env.with_user_facing().and(id);
-                    return self.eval_to_allocation_raw(new_key);
-                }
-                _ => {}
-            },
-            Reveal::UserFacing => match dedup_reveal {
-                Some(Reveal::UserFacing) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    return self.eval_to_allocation_raw(key);
-                }
-                Some(Reveal::Selection) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    let new_key = param_env.with_reveal_selection().and(id);
-                    return self.eval_to_allocation_raw(new_key);
-                }
-                _ => {}
-            },
-            Reveal::All => match dedup_reveal {
-                Some(Reveal::Selection) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    let new_key = param_env.with_reveal_selection().and(id);
-                    return self.eval_to_allocation_raw(new_key);
-                }
-                Some(Reveal::UserFacing) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    let new_key = param_env.with_user_facing().and(id);
-                    return self.eval_to_allocation_raw(new_key);
-                }
-                Some(Reveal::All) => {
-                    drop(alloc_map);
-                    drop(dedup_const_map);
-
-                    return self.eval_to_allocation_raw(key);
-                }
-                _ => {}
-            },
-        }
-
-        // Important to drop the lock here
-        drop(alloc_map);
-        drop(dedup_const_map);
-
-        debug!("unable to deduplicate");
-
-        // We weren't able to deduplicate
-        match opt_span {
-            Some(span) => self.at(span).eval_to_allocation_raw(key),
-            None => self.eval_to_allocation_raw(key),
-        }
+        self.dedup_eval(
+            key,
+            opt_span,
+            EvalCtxt::Alloc,
+            |key| self.eval_to_allocation_raw(key),
+            |key, span| self.at(span).eval_to_allocation_raw(key),
+        )
     }
 
     /// Tries to deduplicate a call to `eval_to_const_value_raw`. If deduplication isn't
@@ -742,89 +631,126 @@ impl<'tcx> TyCtxt<'tcx> {
         key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
         opt_span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
+        self.dedup_eval(
+            key,
+            opt_span,
+            EvalCtxt::ConstVal,
+            |key| self.eval_to_const_value_raw(key),
+            |key, span| self.at(span).eval_to_const_value_raw(key),
+        )
+    }
+
+    /// Deduplicates the result of a query call.
+    ///
+    /// Explanation for why we can deduplicate query calls in certain situations:
+    ///
+    /// If we have stored a successful query result with `Reveal::Selection` then we can
+    /// deduplicate that result on calls of the `dedup` version of the query with both
+    /// `Reveal::Selection` and `Reveal::UserFacing` (since `Selection` and `UserFacing`
+    /// only differ in that we keep certain errors silent with `Selection`, but successful
+    /// allocations are always equivalent). This is also the reason why we can deduplicate
+    /// from saved calls with `UserFacing`on calls with both `Selection` and `UserFacing`.
+    ///
+    /// If we try to deduplicate with `Reveal::All` we are able to deduplicate
+    /// from saved query results with both `Selection` and `UserFacing`, since `All`
+    /// will always succeed if either `UserFacing` or `Selection` have succeeded.
+    /// On the other hand if we have a saved result with `Reveal::All`, it's not
+    /// guaranteed that query calls with `Reveal::Selection` or `Reveal::UserFacing`
+    /// succeed, so we can't deduplicate from those.
+    fn dedup_eval<T: Copy>(
+        self,
+        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
+        opt_span: Option<Span>,
+        eval_ctxt: EvalCtxt,
+        query_call: impl Fn(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>) -> T,
+        query_call_span: impl Fn(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>, Span) -> T,
+    ) -> T {
         let (param_env, id) = key.into_parts();
         let dedup_const_map = self.dedup_const_map.lock();
-        debug!("dedup_const_map: {:#?}", dedup_const_map);
-        let const_val_map = dedup_const_map.const_val_map.borrow();
-        debug!("const_val_map: {:#?}", const_val_map);
+        let dedup_query_map = match eval_ctxt {
+            EvalCtxt::Alloc => dedup_const_map.alloc_map.borrow(),
+            EvalCtxt::ConstVal => dedup_const_map.const_val_map.borrow(),
+        };
 
-        let dedup_reveal = const_val_map.get(&id);
+        let dedup_reveal = dedup_query_map.get(&id);
         debug!(?dedup_reveal);
 
         match param_env.reveal() {
             Reveal::Selection => match dedup_reveal {
                 Some(Reveal::Selection) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
                     // Use cached result of query
-                    return self.eval_to_const_value_raw(key);
+                    return query_call(key);
                 }
                 Some(Reveal::UserFacing) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
-                    // can deduplicate query with Reveal::Selection from Reveal::UserFacing
-                    // since these only differ in the way errors are reported, but successful
-                    // query calls are equivalent.
                     let new_key = param_env.with_user_facing().and(id);
-                    return self.eval_to_const_value_raw(new_key);
+                    return query_call(new_key);
                 }
                 _ => {}
             },
             Reveal::UserFacing => match dedup_reveal {
                 Some(Reveal::UserFacing) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
-                    return self.eval_to_const_value_raw(key);
+                    return query_call(key);
                 }
                 Some(Reveal::Selection) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
                     let new_key = param_env.with_reveal_selection().and(id);
-                    return self.eval_to_const_value_raw(new_key);
+                    return query_call(new_key);
                 }
                 _ => {}
             },
             Reveal::All => match dedup_reveal {
                 Some(Reveal::Selection) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
                     let new_key = param_env.with_reveal_selection().and(id);
-                    return self.eval_to_const_value_raw(new_key);
+                    return query_call(new_key);
                 }
                 Some(Reveal::UserFacing) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
                     let new_key = param_env.with_user_facing().and(id);
-                    return self.eval_to_const_value_raw(new_key);
+                    return query_call(new_key);
                 }
                 Some(Reveal::All) => {
-                    drop(const_val_map);
+                    drop(dedup_query_map);
                     drop(dedup_const_map);
 
-                    return self.eval_to_const_value_raw(key);
+                    return query_call(key);
                 }
                 _ => {}
             },
         }
 
         // Important to drop the lock here
-        drop(const_val_map);
+        drop(dedup_query_map);
         drop(dedup_const_map);
 
         debug!("unable to deduplicate");
 
         // We weren't able to deduplicate
         match opt_span {
-            Some(span) => self.at(span).eval_to_const_value_raw(key),
-            None => self.eval_to_const_value_raw(key),
+            Some(span) => query_call_span(key, span),
+            None => query_call(key),
         }
     }
+}
+
+enum EvalCtxt {
+    Alloc,
+    ConstVal,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
