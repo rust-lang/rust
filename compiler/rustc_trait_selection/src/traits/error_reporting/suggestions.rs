@@ -840,39 +840,38 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
             for refs_remaining in 0..refs_number {
-                if let ty::Ref(_, inner_ty, _) = suggested_ty.kind() {
-                    suggested_ty = inner_ty;
+                let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
+                    break;
+                };
+                suggested_ty = inner_ty;
 
-                    let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-                        obligation.param_env,
-                        trait_ref,
-                        suggested_ty,
+                let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                    obligation.param_env,
+                    trait_ref,
+                    suggested_ty,
+                );
+
+                if self.predicate_may_hold(&new_obligation) {
+                    let sp = self
+                        .tcx
+                        .sess
+                        .source_map()
+                        .span_take_while(span, |c| c.is_whitespace() || *c == '&');
+
+                    let remove_refs = refs_remaining + 1;
+
+                    let msg = if remove_refs == 1 {
+                        "consider removing the leading `&`-reference".to_string()
+                    } else {
+                        format!("consider removing {} leading `&`-references", remove_refs)
+                    };
+
+                    err.span_suggestion_short(
+                        sp,
+                        &msg,
+                        String::new(),
+                        Applicability::MachineApplicable,
                     );
-
-                    if self.predicate_may_hold(&new_obligation) {
-                        let sp = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-
-                        let remove_refs = refs_remaining + 1;
-
-                        let msg = if remove_refs == 1 {
-                            "consider removing the leading `&`-reference".to_string()
-                        } else {
-                            format!("consider removing {} leading `&`-references", remove_refs)
-                        };
-
-                        err.span_suggestion_short(
-                            sp,
-                            &msg,
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        );
-                        break;
-                    }
-                } else {
                     break;
                 }
             }
