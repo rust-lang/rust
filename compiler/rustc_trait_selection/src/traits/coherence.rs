@@ -157,25 +157,6 @@ fn overlap_within_probe<'cx, 'tcx>(
     impl2_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
-    fn loose_check<'cx, 'tcx>(
-        selcx: &mut SelectionContext<'cx, 'tcx>,
-        o: &PredicateObligation<'tcx>,
-    ) -> bool {
-        !selcx.predicate_may_hold_fatal(o)
-    }
-
-    fn strict_check<'cx, 'tcx>(
-        selcx: &SelectionContext<'cx, 'tcx>,
-        o: &PredicateObligation<'tcx>,
-    ) -> bool {
-        let infcx = selcx.infcx();
-        let tcx = infcx.tcx;
-        o.flip_polarity(tcx)
-            .as_ref()
-            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
-            .unwrap_or(false)
-    }
-
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -273,6 +254,25 @@ fn overlap_within_probe<'cx, 'tcx>(
         matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
 
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+}
+
+fn loose_check<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
+    !selcx.predicate_may_hold_fatal(o)
+}
+
+fn strict_check<'cx, 'tcx>(
+    selcx: &SelectionContext<'cx, 'tcx>,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
+    let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
+    o.flip_polarity(tcx)
+        .as_ref()
+        .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+        .unwrap_or(false)
 }
 
 pub fn trait_ref_is_knowable<'tcx>(
