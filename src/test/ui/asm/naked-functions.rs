@@ -5,7 +5,7 @@
 
 #![feature(naked_functions)]
 #![feature(or_patterns)]
-#![feature(asm_const, asm_sym)]
+#![feature(asm_const, asm_sym, asm_unwind)]
 #![crate_type = "lib"]
 
 use std::arch::asm;
@@ -112,6 +112,12 @@ unsafe extern "C" fn invalid_options_continued() {
     //~^ ERROR asm with the `pure` option must have at least one output
     //~| ERROR asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
     //~| ERROR asm in naked functions must use `noreturn` option
+}
+
+#[naked]
+unsafe extern "C" fn invalid_may_unwind() {
+    asm!("", options(noreturn, may_unwind));
+    //~^ ERROR asm options unsupported in naked functions: `may_unwind`
 }
 
 #[naked]

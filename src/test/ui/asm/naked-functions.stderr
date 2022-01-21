@@ -199,8 +199,14 @@ error[E0787]: asm in naked functions must use `noreturn` option
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0787]: asm options unsupported in naked functions: `may_unwind`
+  --> $DIR/naked-functions.rs:119:5
+   |
+LL |     asm!("", options(noreturn, may_unwind));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:118:15
+  --> $DIR/naked-functions.rs:124:15
    |
 LL | pub unsafe fn default_abi() {
    |               ^^^^^^^^^^^
@@ -208,47 +214,47 @@ LL | pub unsafe fn default_abi() {
    = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:124:15
+  --> $DIR/naked-functions.rs:130:15
    |
 LL | pub unsafe fn rust_abi() {
    |               ^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:164:1
+  --> $DIR/naked-functions.rs:170:1
    |
 LL | #[inline]
    | ^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:171:1
+  --> $DIR/naked-functions.rs:177:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:178:1
+  --> $DIR/naked-functions.rs:184:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:185:1
+  --> $DIR/naked-functions.rs:191:1
    |
 LL | #[inline]
    | ^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:187:1
+  --> $DIR/naked-functions.rs:193:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:189:1
+  --> $DIR/naked-functions.rs:195:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 29 previous errors; 2 warnings emitted
+error: aborting due to 30 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0787`.

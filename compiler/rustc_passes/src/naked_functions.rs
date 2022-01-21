@@ -251,6 +251,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         }
 
         let unsupported_options: Vec<&'static str> = [
+            (InlineAsmOptions::MAY_UNWIND, "`may_unwind`"),
             (InlineAsmOptions::NOMEM, "`nomem`"),
             (InlineAsmOptions::NOSTACK, "`nostack`"),
             (InlineAsmOptions::PRESERVES_FLAGS, "`preserves_flags`"),
