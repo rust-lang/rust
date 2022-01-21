@@ -135,6 +135,25 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     header
 }
 
+enum OverlapMode {
+    Stable,
+    Strict,
+}
+
+fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
+    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
+        != tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
+    {
+        bug!("Use strict coherence on both impls",);
+    }
+
+    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence) {
+        OverlapMode::Strict
+    } else {
+        OverlapMode::Stable
+    }
+}
+
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'tcx>(
@@ -169,10 +188,8 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    let strict_coherence = tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
-        && tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence);
-
-    if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, strict_coherence) {
+    let overlap_mode = overlap_mode(tcx, impl1_def_id, impl2_def_id);
+    if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, overlap_mode) {
         return None;
     }
 
@@ -200,7 +217,7 @@ fn stable_disjoint<'cx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl1_header: &ty::ImplHeader<'tcx>,
     impl2_header: ty::ImplHeader<'tcx>,
-    strict_coherence: bool,
+    overlap_mode: OverlapMode,
 ) -> bool {
     debug!("overlap: impl1_header={:?}", impl1_header);
     debug!("overlap: impl2_header={:?}", impl2_header);
@@ -258,10 +275,11 @@ fn stable_disjoint<'cx, 'tcx>(
         .find(|o| {
             // if both impl headers are set to strict coherence it means that this will be accepted
             // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
-            if strict_coherence {
-                strict_check(selcx, o)
-            } else {
-                loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
+            match overlap_mode {
+                OverlapMode::Stable => {
+                    loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
+                }
+                OverlapMode::Strict => strict_check(selcx, o),
             }
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
