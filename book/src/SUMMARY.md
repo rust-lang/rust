@@ -22,6 +22,7 @@
     - [Adding Lints](development/adding_lints.md)
     - [Common Tools](development/common_tools_writing_lints.md)
 - [Infrastructure](infrastructure/README.md)
+    - [Syncing changes between Clippy and rust-lang/rust](infrastructure/sync.md)
     - [Backporting Changes](infrastructure/backport.md)
     - [Updating the Changelog](infrastructure/changelog_update.md)
     - [Release a New Version](infrastructure/release.md)
