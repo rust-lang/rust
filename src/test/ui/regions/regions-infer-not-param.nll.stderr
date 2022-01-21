@@ -2,7 +2,7 @@ error: lifetime may not live long enough
   --> $DIR/regions-infer-not-param.rs:15:54
    |
 LL | fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
-   |                -- -- lifetime `'b` defined here      ^ returning this value requires that `'a` must outlive `'b`
+   |                -- -- lifetime `'b` defined here      ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |                |
    |                lifetime `'a` defined here
    |
@@ -25,7 +25,7 @@ error: lifetime may not live long enough
   --> $DIR/regions-infer-not-param.rs:19:63
    |
 LL | fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
-   |                   -- -- lifetime `'b` defined here            ^ returning this value requires that `'a` must outlive `'b`
+   |                   -- -- lifetime `'b` defined here            ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |                   |
    |                   lifetime `'a` defined here
    |

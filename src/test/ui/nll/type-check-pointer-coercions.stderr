@@ -6,7 +6,7 @@ LL | fn shared_to_const<'a, 'b>(x: &&'a i32) -> *const &'b i32 {
    |                    |
    |                    lifetime `'a` defined here
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -18,7 +18,7 @@ LL | fn unique_to_const<'a, 'b>(x: &mut &'a i32) -> *const &'b i32 {
    |                    |
    |                    lifetime `'a` defined here
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -47,7 +47,7 @@ LL | fn unique_to_mut<'a, 'b>(x: &mut &'a i32) -> *mut &'b i32 {
    |                  lifetime `'a` defined here
 LL |     // Two errors because *mut is invariant
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
    = note: requirement occurs because of a mutable pointer to &i32
@@ -64,7 +64,7 @@ LL | fn mut_to_const<'a, 'b>(x: *mut &'a i32) -> *const &'b i32 {
    |                 |
    |                 lifetime `'a` defined here
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -77,7 +77,7 @@ LL | fn array_elem<'a, 'b>(x: &'a i32) -> *const &'b i32 {
    |               lifetime `'a` defined here
 ...
 LL |     y
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -90,7 +90,7 @@ LL | fn array_coerce<'a, 'b>(x: &'a i32) -> *const [&'b i32; 3] {
    |                 lifetime `'a` defined here
 ...
 LL |     y
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 
@@ -103,7 +103,7 @@ LL | fn nested_array<'a, 'b>(x: &'a i32) -> *const [&'b i32; 2] {
    |                 lifetime `'a` defined here
 ...
 LL |     y
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

@@ -7,7 +7,7 @@ LL | fn bar<'a, 'b>() -> fn(&'a u32, &'b u32) -> &'a u32 {
    |        lifetime `'a` defined here
 LL |     let g: fn(_, _) -> _ = |_x, y| y;
 LL |     g
-   |     ^ returning this value requires that `'b` must outlive `'a`
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
 
