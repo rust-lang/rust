@@ -201,17 +201,17 @@ fn overlap_within_probe<'cx, 'tcx>(
 
     match overlap_mode(tcx, impl1_def_id, impl2_def_id) {
         OverlapMode::Stable => {
-            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Stable) {
+            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header) {
                 return None;
             }
         }
         OverlapMode::Strict => {
-            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Strict) {
+            if strict_disjoint(selcx, param_env, &impl1_header, impl2_header) {
                 return None;
             }
         }
         OverlapMode::WithNegative => {
-            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header, OverlapMode::Stable)
+            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header)
                 || explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
                 || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
             {
@@ -244,7 +244,35 @@ fn stable_disjoint<'cx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     impl1_header: &ty::ImplHeader<'tcx>,
     impl2_header: ty::ImplHeader<'tcx>,
-    overlap_mode: OverlapMode,
+) -> bool {
+    let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
+
+    disjoint_with_filter(selcx, param_env, impl1_header, impl2_header, |selcx, o| {
+        loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
+    })
+}
+
+fn strict_disjoint<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: ty::ImplHeader<'tcx>,
+) -> bool {
+    disjoint_with_filter(selcx, param_env, impl1_header, impl2_header, |selcx, o| {
+        strict_check(selcx, o)
+    })
+}
+
+fn disjoint_with_filter<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: ty::ImplHeader<'tcx>,
+    mut filter: impl FnMut(
+        &mut SelectionContext<'cx, 'tcx>,
+        &rustc_infer::traits::Obligation<'tcx, rustc_middle::ty::Predicate<'tcx>>,
+    ) -> bool,
 ) -> bool {
     debug!("overlap: impl1_header={:?}", impl1_header);
     debug!("overlap: impl2_header={:?}", impl2_header);
@@ -285,7 +313,6 @@ fn stable_disjoint<'cx, 'tcx>(
     // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
     // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
-    let tcx = infcx.tcx;
     let opt_failing_obligation = impl1_header
         .predicates
         .iter()
@@ -299,17 +326,7 @@ fn stable_disjoint<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| {
-            // if both impl headers are set to strict coherence it means that this will be accepted
-            // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
-            match overlap_mode {
-                OverlapMode::Stable => {
-                    loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
-                }
-                OverlapMode::Strict => strict_check(selcx, o),
-                OverlapMode::WithNegative => loose_check(selcx, o),
-            }
-        });
+        .find(|o| filter(selcx, o));
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
