@@ -1,3 +1,4 @@
+mod delimited;
 mod expr;
 mod item;
 
@@ -22,6 +23,8 @@ use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
 use std::borrow::Cow;
+
+pub use self::delimited::IterDelimited;
 
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),

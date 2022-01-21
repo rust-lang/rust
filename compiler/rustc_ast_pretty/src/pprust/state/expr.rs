@@ -1,5 +1,5 @@
-use crate::pp::Breaks::{Consistent, Inconsistent};
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use crate::pp::Breaks::Inconsistent;
+use crate::pprust::state::{AnnNode, IterDelimited, PrintState, State, INDENT_UNIT};
 
 use rustc_ast::ptr::P;
 use rustc_ast::util::parser::{self, AssocOp, Fixity};
@@ -117,38 +117,46 @@ impl<'a> State<'a> {
         } else {
             self.print_path(path, true, 0);
         }
+        self.nbsp();
         self.word("{");
-        self.commasep_cmnt(
-            Consistent,
-            fields,
-            |s, field| {
-                s.print_outer_attributes(&field.attrs);
-                s.ibox(INDENT_UNIT);
-                if !field.is_shorthand {
-                    s.print_ident(field.ident);
-                    s.word_space(":");
-                }
-                s.print_expr(&field.expr);
-                s.end();
-            },
-            |f| f.span,
-        );
-        match rest {
-            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => {
-                self.ibox(INDENT_UNIT);
-                if !fields.is_empty() {
-                    self.word(",");
-                    self.space();
-                }
-                self.word("..");
-                if let ast::StructRest::Base(ref expr) = *rest {
-                    self.print_expr(expr);
-                }
-                self.end();
-            }
-            ast::StructRest::None if !fields.is_empty() => self.word(","),
-            _ => {}
+        let has_rest = match rest {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => true,
+            ast::StructRest::None => false,
+        };
+        if fields.is_empty() && !has_rest {
+            self.word("}");
+            return;
         }
+        self.cbox(0);
+        for field in fields.iter().delimited() {
+            self.maybe_print_comment(field.span.hi());
+            self.print_outer_attributes(&field.attrs);
+            if field.is_first {
+                self.space_if_not_bol();
+            }
+            if !field.is_shorthand {
+                self.print_ident(field.ident);
+                self.word_nbsp(":");
+            }
+            self.print_expr(&field.expr);
+            if !field.is_last || has_rest {
+                self.word_space(",");
+            } else {
+                self.trailing_comma();
+            }
+        }
+        if has_rest {
+            if fields.is_empty() {
+                self.space();
+            }
+            self.word("..");
+            if let ast::StructRest::Base(expr) = rest {
+                self.print_expr(expr);
+            }
+            self.space();
+        }
+        self.offset(-INDENT_UNIT);
+        self.end();
         self.word("}");
     }
 
