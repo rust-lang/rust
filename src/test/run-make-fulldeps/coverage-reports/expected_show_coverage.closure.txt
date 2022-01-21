@@ -29,8 +29,8 @@
    29|      1|    some_string = Some(String::from("the string content"));
    30|      1|    let
    31|      1|        a
-   32|      1|    =
-   33|      1|        ||
+   32|       |    =
+   33|       |        ||
    34|      0|    {
    35|      0|        let mut countdown = 0;
    36|      0|        if is_false {
@@ -173,7 +173,7 @@
   169|       |    ;
   170|       |
   171|      1|    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
-  172|      1|        | _unused_arg: u8 |
+  172|       |        | _unused_arg: u8 |
   173|      0|            println!(
   174|      0|                "not called: {}",
   175|      0|                if is_true { "check" } else { "me" }

@@ -11,6 +11,7 @@ use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{MultiSpan, Span};
+use smallvec::SmallVec;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
@@ -744,78 +745,95 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually builds the expression which the format_args! block will be
     /// expanded to.
     fn into_expr(self) -> P<ast::Expr> {
-        let mut args = Vec::with_capacity(
+        let mut original_args = self.args;
+        let mut fmt_args = Vec::with_capacity(
             self.arg_unique_types.iter().map(|v| v.len()).sum::<usize>() + self.count_args.len(),
         );
-        let mut heads = Vec::with_capacity(self.args.len());
 
         // First, build up the static array which will become our precompiled
         // format "string"
         let pieces = self.ecx.expr_vec_slice(self.fmtsp, self.str_pieces);
 
-        // Before consuming the expressions, we have to remember spans for
-        // count arguments as they are now generated separate from other
-        // arguments, hence have no access to the `P<ast::Expr>`'s.
-        let spans_pos: Vec<_> = self.args.iter().map(|e| e.span).collect();
-
-        // Right now there is a bug such that for the expression:
-        //      foo(bar(&1))
-        // the lifetime of `1` doesn't outlast the call to `bar`, so it's not
-        // valid for the call to `foo`. To work around this all arguments to the
-        // format! string are shoved into locals. Furthermore, we shove the address
-        // of each variable because we don't want to move out of the arguments
-        // passed to this function.
-        for (i, e) in self.args.into_iter().enumerate() {
-            for arg_ty in self.arg_unique_types[i].iter() {
-                args.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, i));
-            }
-            // use the arg span for `&arg` so that borrowck errors
-            // point to the specific expression passed to the macro
-            // (the span is otherwise unavailable in MIR)
-            heads.push(self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e));
+        // We need to construct a &[ArgumentV1] to pass into the fmt::Arguments
+        // constructor. In general the expressions in this slice might be
+        // permuted from their order in original_args (such as in the case of
+        // "{1} {0}"), or may have multiple entries referring to the same
+        // element of original_args ("{0} {0}").
+        //
+        // The following vector has one item per element of our output slice,
+        // identifying the index of which element of original_args it's passing,
+        // and that argument's type.
+        let mut fmt_arg_index_and_ty = SmallVec::<[(usize, &ArgumentType); 8]>::new();
+        for (i, unique_types) in self.arg_unique_types.iter().enumerate() {
+            fmt_arg_index_and_ty.extend(unique_types.iter().map(|ty| (i, ty)));
         }
-        for index in self.count_args {
-            let span = spans_pos[index];
-            args.push(Context::format_arg(self.ecx, self.macsp, span, &Count, index));
+        fmt_arg_index_and_ty.extend(self.count_args.iter().map(|&i| (i, &Count)));
+
+        // Figure out whether there are permuted or repeated elements. If not,
+        // we can generate simpler code.
+        //
+        // The sequence has no indices out of order or repeated if: for every
+        // adjacent pair of elements, the first one's index is less than the
+        // second one's index.
+        let nicely_ordered =
+            fmt_arg_index_and_ty.array_windows().all(|[(i, _i_ty), (j, _j_ty)]| i < j);
+
+        // We want to emit:
+        //
+        //     [ArgumentV1::new(&$arg0, …), ArgumentV1::new(&$arg1, …), …]
+        //
+        // However, it's only legal to do so if $arg0, $arg1, … were written in
+        // exactly that order by the programmer. When arguments are permuted, we
+        // want them evaluated in the order written by the programmer, not in
+        // the order provided to fmt::Arguments. When arguments are repeated, we
+        // want the expression evaluated only once.
+        //
+        // Thus in the not nicely ordered case we emit the following instead:
+        //
+        //     match (&$arg0, &$arg1, …) {
+        //         _args => [ArgumentV1::new(_args.$i, …), ArgumentV1::new(_args.$j, …), …]
+        //     }
+        //
+        // for the sequence of indices $i, $j, … governed by fmt_arg_index_and_ty.
+        for (arg_index, arg_ty) in fmt_arg_index_and_ty {
+            let e = &mut original_args[arg_index];
+            let span = e.span;
+            let arg = if nicely_ordered {
+                let expansion_span = e.span.with_ctxt(self.macsp.ctxt());
+                // The indices are strictly ordered so e has not been taken yet.
+                self.ecx.expr_addr_of(expansion_span, P(e.take()))
+            } else {
+                let def_site = self.ecx.with_def_site_ctxt(span);
+                let args_tuple = self.ecx.expr_ident(def_site, Ident::new(sym::_args, def_site));
+                let member = Ident::new(sym::integer(arg_index), def_site);
+                self.ecx.expr(def_site, ast::ExprKind::Field(args_tuple, member))
+            };
+            fmt_args.push(Context::format_arg(self.ecx, self.macsp, span, arg_ty, arg));
         }
 
-        let args_array = self.ecx.expr_vec(self.macsp, args);
+        let args_array = self.ecx.expr_vec(self.macsp, fmt_args);
+        let args_slice = self.ecx.expr_addr_of(
+            self.macsp,
+            if nicely_ordered {
+                args_array
+            } else {
+                // In the !nicely_ordered case, none of the exprs were moved
+                // away in the previous loop.
+                //
+                // This uses the arg span for `&arg` so that borrowck errors
+                // point to the specific expression passed to the macro (the
+                // span is otherwise unavailable in the MIR used by borrowck).
+                let heads = original_args
+                    .into_iter()
+                    .map(|e| self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e))
+                    .collect();
 
-        // Constructs an AST equivalent to:
-        //
-        //      match (&arg0, &arg1) {
-        //          (tmp0, tmp1) => args_array
-        //      }
-        //
-        // It was:
-        //
-        //      let tmp0 = &arg0;
-        //      let tmp1 = &arg1;
-        //      args_array
-        //
-        // Because of #11585 the new temporary lifetime rule, the enclosing
-        // statements for these temporaries become the let's themselves.
-        // If one or more of them are RefCell's, RefCell borrow() will also
-        // end there; they don't last long enough for args_array to use them.
-        // The match expression solves the scope problem.
-        //
-        // Note, it may also very well be transformed to:
-        //
-        //      match arg0 {
-        //          ref tmp0 => {
-        //              match arg1 => {
-        //                  ref tmp1 => args_array } } }
-        //
-        // But the nested match expression is proved to perform not as well
-        // as series of let's; the first approach does.
-        let args_match = {
-            let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::_args, self.macsp));
-            let arm = self.ecx.arm(self.macsp, pat, args_array);
-            let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
-            self.ecx.expr_match(self.macsp, head, vec![arm])
-        };
-
-        let args_slice = self.ecx.expr_addr_of(self.macsp, args_match);
+                let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::_args, self.macsp));
+                let arm = self.ecx.arm(self.macsp, pat, args_array);
+                let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
+                self.ecx.expr_match(self.macsp, head, vec![arm])
+            },
+        );
 
         // Now create the fmt::Arguments struct with all our locals we created.
         let (fn_name, fn_args) = if self.all_pieces_simple {
@@ -848,11 +866,9 @@ impl<'a, 'b> Context<'a, 'b> {
         macsp: Span,
         mut sp: Span,
         ty: &ArgumentType,
-        arg_index: usize,
+        arg: P<ast::Expr>,
     ) -> P<ast::Expr> {
         sp = ecx.with_def_site_ctxt(sp);
-        let arg = ecx.expr_ident(sp, Ident::new(sym::_args, sp));
-        let arg = ecx.expr(sp, ast::ExprKind::Field(arg, Ident::new(sym::integer(arg_index), sp)));
         let trait_ = match *ty {
             Placeholder(trait_) if trait_ == "<invalid>" => return DummyResult::raw_expr(sp, true),
             Placeholder(trait_) => trait_,

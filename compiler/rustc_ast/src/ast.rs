@@ -39,6 +39,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
+use std::mem;
 
 #[cfg(test)]
 mod tests;
@@ -1275,6 +1276,19 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Err => ExprPrecedence::Err,
         }
+    }
+
+    pub fn take(&mut self) -> Self {
+        mem::replace(
+            self,
+            Expr {
+                id: DUMMY_NODE_ID,
+                kind: ExprKind::Err,
+                span: DUMMY_SP,
+                attrs: ThinVec::new(),
+                tokens: None,
+            },
+        )
     }
 }
 
