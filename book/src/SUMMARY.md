@@ -2,7 +2,8 @@
 
 [Introduction](README.md)
 
-- [Installation and Usage](installation_and_usage.md)
+- [Installation](installation.md)
+- [Usage](usage.md)
 - [Configuration](configuration.md)
 - [Clippy's Lints](lints/README.md)
     - [Correctness]()

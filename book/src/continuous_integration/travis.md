@@ -18,8 +18,3 @@ script:
   - cargo test
   # etc.
 ```
-
-Note that adding `-D warnings` will cause your build to fail if **any** warnings are found in your code.
-That includes warnings found by rustc (e.g. `dead_code`, etc.). If you want to avoid this and only cause
-an error for Clippy warnings, use `#![deny(clippy::all)]` in your code or `-D clippy::all` on the command
-line. (You can swap `clippy::all` with the specific lint category you are targeting.)
