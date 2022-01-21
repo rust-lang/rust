@@ -92,7 +92,7 @@ pub struct State<'a> {
     ann: &'a (dyn PpAnn + 'a),
 }
 
-crate const INDENT_UNIT: usize = 4;
+crate const INDENT_UNIT: isize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.

@@ -3,20 +3,17 @@ use std::borrow::Cow;
 
 impl Printer {
     /// "raw box"
-    pub fn rbox(&mut self, indent: usize, breaks: Breaks) {
-        self.scan_begin(BeginToken {
-            indent: IndentStyle::Block { offset: indent as isize },
-            breaks,
-        })
+    pub fn rbox(&mut self, indent: isize, breaks: Breaks) {
+        self.scan_begin(BeginToken { indent: IndentStyle::Block { offset: indent }, breaks })
     }
 
     /// Inconsistent breaking box
-    pub fn ibox(&mut self, indent: usize) {
+    pub fn ibox(&mut self, indent: isize) {
         self.rbox(indent, Breaks::Inconsistent)
     }
 
     /// Consistent breaking box
-    pub fn cbox(&mut self, indent: usize) {
+    pub fn cbox(&mut self, indent: isize) {
         self.rbox(indent, Breaks::Consistent)
     }
 
