@@ -1,14 +1,8 @@
 error[E0601]: `main` function not found in crate `ice_6250`
-  --> $DIR/ice-6250.rs:4:1
+  --> $DIR/ice-6250.rs:16:2
    |
-LL | / pub struct Cache {
-LL | |     data: Vec<i32>,
-LL | | }
-LL | |
-...  |
-LL | |     }
-LL | | }
-   | |_^ consider adding a `main` function to `$DIR/ice-6250.rs`
+LL | }
+   |  ^ consider adding a `main` function to `$DIR/ice-6250.rs`
 
 error[E0308]: mismatched types
   --> $DIR/ice-6250.rs:12:14
