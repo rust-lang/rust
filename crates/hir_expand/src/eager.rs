@@ -145,14 +145,16 @@ pub fn expand_eager_macro(
 
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
+        if let Some(err) = res.err {
+            diagnostic_sink(err);
+        }
 
-        let expanded = diagnostic_sink.expand_result_option(res)?;
         let loc = MacroCallLoc {
             def,
             krate,
             eager: Some(EagerCallInfo {
-                arg_or_expansion: Arc::new(expanded.subtree),
-                included_file: expanded.included_file,
+                arg_or_expansion: Arc::new(res.value.subtree),
+                included_file: res.value.included_file,
             }),
             kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
         };
