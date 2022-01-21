@@ -17,9 +17,9 @@ mac! {
 
 mac! {
     a(aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-      aaaaaaaa aaaaaaaa) a
+    aaaaaaaa aaaaaaaa) a
     [aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-     aaaaaaaa aaaaaaaa] a
+    aaaaaaaa aaaaaaaa] a
     {
         aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
         aaaaaaaa aaaaaaaa aaaaaaaa
@@ -27,22 +27,22 @@ mac! {
 }
 
 mac!(aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-     aaaaaaaa aaaaaaaa);
+aaaaaaaa aaaaaaaa);
 mac![aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-     aaaaaaaa aaaaaaaa];
+aaaaaaaa aaaaaaaa];
 mac! {
     aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
     aaaaaaaa aaaaaaaa
 }
 
 #[rustc_dummy(aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-              aaaaaaaa aaaaaaaa aaaaaaaa)]
+aaaaaaaa aaaaaaaa aaaaaaaa)]
 #[rustc_dummy[aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-              aaaaaaaa aaaaaaaa aaaaaaaa]]
+aaaaaaaa aaaaaaaa aaaaaaaa]]
 #[rustc_dummy {
-      aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
-      aaaaaaaa aaaaaaaa
-  }]
+    aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa
+    aaaaaaaa aaaaaaaa
+}]
 #[rustc_dummy =
-  "aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa"]
+"aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa aaaaaaaa"]
 fn main() {}
