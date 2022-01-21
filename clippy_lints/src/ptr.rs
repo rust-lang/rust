@@ -385,87 +385,91 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
     hir_tys: &'tcx [hir::Ty<'_>],
     params: &'tcx [Param<'_>],
 ) -> impl Iterator<Item = PtrArg<'tcx>> + 'cx {
-    tys.iter().enumerate().filter_map(|(i, ty)| {
-        if_chain! {
-            if let ty::Ref(_, ty, mutability) = *ty.kind();
-            if let ty::Adt(adt, substs) = *ty.kind();
+    tys.iter()
+        .zip(hir_tys.iter())
+        .enumerate()
+        .filter_map(|(i, (ty, hir_ty))| {
+            if_chain! {
+                if let ty::Ref(_, ty, mutability) = *ty.kind();
+                if let ty::Adt(adt, substs) = *ty.kind();
 
-            let hir_ty = &hir_tys[i];
-            if let TyKind::Rptr(lt, ref ty) = hir_ty.kind;
-            if let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind;
+                if let TyKind::Rptr(lt, ref ty) = hir_ty.kind;
+                if let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind;
 
-            if let [.., name] = path.segments;
-            if cx.tcx.item_name(adt.did) == name.ident.name;
+                // Check that the name as typed matches the actual name of the type.
+                // e.g. `fn foo(_: &Foo)` shouldn't trigger the lint when `Foo` is an alias for `Vec`
+                if let [.., name] = path.segments;
+                if cx.tcx.item_name(adt.did) == name.ident.name;
 
-            if !is_lint_allowed(cx, PTR_ARG, hir_ty.hir_id);
-            if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
+                if !is_lint_allowed(cx, PTR_ARG, hir_ty.hir_id);
+                if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
 
-            then {
-                let (method_renames, deref_ty, deref_impl_id) = match cx.tcx.get_diagnostic_name(adt.did) {
-                    Some(sym::Vec) => (
-                        [("clone", ".to_owned()")].as_slice(),
-                        DerefTy::Slice(
-                            name.args
-                                .and_then(|args| args.args.first())
-                                .and_then(|arg| if let GenericArg::Type(ty) = arg {
-                                    Some(ty.span)
-                                } else {
-                                    None
-                                }),
-                            substs.type_at(0),
+                then {
+                    let (method_renames, deref_ty, deref_impl_id) = match cx.tcx.get_diagnostic_name(adt.did) {
+                        Some(sym::Vec) => (
+                            [("clone", ".to_owned()")].as_slice(),
+                            DerefTy::Slice(
+                                name.args
+                                    .and_then(|args| args.args.first())
+                                    .and_then(|arg| if let GenericArg::Type(ty) = arg {
+                                        Some(ty.span)
+                                    } else {
+                                        None
+                                    }),
+                                substs.type_at(0),
+                            ),
+                            cx.tcx.lang_items().slice_impl()
                         ),
-                        cx.tcx.lang_items().slice_impl()
-                    ),
-                    Some(sym::String) => (
-                        [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
-                        DerefTy::Str,
-                        cx.tcx.lang_items().str_impl()
-                    ),
-                    Some(sym::PathBuf) => (
-                        [("clone", ".to_path_buf()"), ("as_path", "")].as_slice(),
-                        DerefTy::Path,
-                        None,
-                    ),
-                    Some(sym::Cow) => {
-                        let ty_name = name.args
-                            .and_then(|args| {
-                                args.args.iter().find_map(|a| match a {
-                                    GenericArg::Type(x) => Some(x),
-                                    _ => None,
+                        Some(sym::String) => (
+                            [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
+                            DerefTy::Str,
+                            cx.tcx.lang_items().str_impl()
+                        ),
+                        Some(sym::PathBuf) => (
+                            [("clone", ".to_path_buf()"), ("as_path", "")].as_slice(),
+                            DerefTy::Path,
+                            None,
+                        ),
+                        Some(sym::Cow) => {
+                            let ty_name = name.args
+                                .and_then(|args| {
+                                    args.args.iter().find_map(|a| match a {
+                                        GenericArg::Type(x) => Some(x),
+                                        _ => None,
+                                    })
                                 })
-                            })
-                            .and_then(|arg| snippet_opt(cx, arg.span))
-                            .unwrap_or_else(|| substs.type_at(1).to_string());
-                        span_lint_and_sugg(
-                            cx,
-                            PTR_ARG,
-                            hir_ty.span,
-                            "using a reference to `Cow` is not recommended",
-                            "change this to",
-                            format!("&{}{}", mutability.prefix_str(), ty_name),
-                            Applicability::Unspecified,
-                        );
-                        return None;
-                    },
-                    _ => return None,
-                };
-                return Some(PtrArg {
-                    idx: i,
-                    span: hir_ty.span,
-                    ty_did: adt.did,
-                    ty_name: name.ident.name,
-                    method_renames,
-                    ref_prefix: RefPrefix {
-                        lt: lt.name,
-                        mutability,
-                    },
-                    deref_ty,
-                    deref_assoc_items: deref_impl_id.map(|id| (id, cx.tcx.associated_items(id))),
-                });
+                                .and_then(|arg| snippet_opt(cx, arg.span))
+                                .unwrap_or_else(|| substs.type_at(1).to_string());
+                            span_lint_and_sugg(
+                                cx,
+                                PTR_ARG,
+                                hir_ty.span,
+                                "using a reference to `Cow` is not recommended",
+                                "change this to",
+                                format!("&{}{}", mutability.prefix_str(), ty_name),
+                                Applicability::Unspecified,
+                            );
+                            return None;
+                        },
+                        _ => return None,
+                    };
+                    return Some(PtrArg {
+                        idx: i,
+                        span: hir_ty.span,
+                        ty_did: adt.did,
+                        ty_name: name.ident.name,
+                        method_renames,
+                        ref_prefix: RefPrefix {
+                            lt: lt.name,
+                            mutability,
+                        },
+                        deref_ty,
+                        deref_assoc_items: deref_impl_id.map(|id| (id, cx.tcx.associated_items(id))),
+                    });
+                }
             }
-        }
-        None
-    })
+            None
+        })
 }
 
 fn check_mut_from_ref(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
@@ -504,7 +508,7 @@ fn check_mut_from_ref(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
 fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
-        /// Map from a local id to which argument it cam from (index into `Self::args` and
+        /// Map from a local id to which argument it came from (index into `Self::args` and
         /// `Self::results`)
         bindings: HirIdMap<usize>,
         /// The arguments being checked.

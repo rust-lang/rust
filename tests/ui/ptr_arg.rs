@@ -169,13 +169,13 @@ fn fn_requires_vec(v: &Vec<u32>) -> bool {
     vec_contains(v)
 }
 
-// fn impl_fn_requires_vec(v: &Vec<u32>, f: impl Fn(&Vec<u32>)) {
-//     f(v);
-// }
+fn impl_fn_requires_vec(v: &Vec<u32>, f: impl Fn(&Vec<u32>)) {
+    f(v);
+}
 
-// fn dyn_fn_requires_vec(v: &Vec<u32>, f: &dyn Fn(&Vec<u32>)) {
-//     f(v);
-// }
+fn dyn_fn_requires_vec(v: &Vec<u32>, f: &dyn Fn(&Vec<u32>)) {
+    f(v);
+}
 
 // No error for types behind an alias (#7699)
 type A = Vec<u8>;
