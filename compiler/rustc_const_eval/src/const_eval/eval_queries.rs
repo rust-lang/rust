@@ -10,7 +10,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ConstDedupResult, ErrorHandled};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::pretty::display_allocation;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -235,8 +235,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         match eval_nullary_intrinsic(tcx, param_env, def_id, substs) {
             Ok(val) => {
                 // store result for deduplication
-                let res = ConstDedupResult::new(reveal, val);
-                tcx.save_const_value_for_dedup(id, res);
+                tcx.save_const_value_for_dedup(id, reveal);
 
                 return Ok(val);
             }
@@ -251,17 +250,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         }
     }
 
-    let result =
-        tcx.dedup_eval_alloc_raw(key, None).map(|val| turn_into_const_value(tcx, val, key));
-
-    match result {
-        Ok(val) => {
-            tcx.save_const_value_for_dedup(id, ConstDedupResult::new(reveal, val));
-        }
-        _ => {}
-    }
-
-    result
+    tcx.dedup_eval_alloc_raw(key, None).map(|val| turn_into_const_value(tcx, val, key))
 }
 
 #[instrument(skip(tcx), level = "debug")]
@@ -431,10 +420,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             } else {
                 // Convert to raw constant
                 let const_alloc = ConstAlloc { alloc_id, ty: mplace.layout.ty };
-                let val = ConstDedupResult::new(reveal, const_alloc);
 
-                // store result in order to deduplicate later
-                tcx.save_alloc_for_dedup(cid, val);
+                // store information that allows deduplication
+                tcx.save_alloc_for_dedup(cid, reveal);
 
                 Ok(const_alloc)
             }

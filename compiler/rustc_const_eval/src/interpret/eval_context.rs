@@ -810,7 +810,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// cause us to continue unwinding.
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
-            "popping stack frame ({})",
+            "popping following stack frame ({})",
             if unwinding { "during unwinding" } else { "returning from function" }
         );
 
