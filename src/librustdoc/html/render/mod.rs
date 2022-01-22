@@ -175,7 +175,7 @@ crate struct StylePath {
 }
 
 impl StylePath {
-    pub fn basename(&self) -> Result<String, Error> {
+    crate fn basename(&self) -> Result<String, Error> {
         Ok(try_none!(try_none!(self.path.file_stem(), &self.path).to_str(), &self.path).to_string())
     }
 }
