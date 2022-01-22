@@ -4437,8 +4437,7 @@ fn $0fun_name() {
             extract_function,
             r#"
 fn func() {
-    let i = 0;
-    $0
+    let i = 0;$0
     let a = 0;
     // comment here!
     let x = 0;$0
@@ -4447,7 +4446,6 @@ fn func() {
             r#"
 fn func() {
     let i = 0;
-
     fun_name();
 }
 
@@ -4572,9 +4570,9 @@ fn $0fun_name() {
             r#"
 fn func() {
     let i = 0;
-    $0/* 
-    a 
-    comment 
+    $0/*
+    a
+    comment
     */
     let x = 0;$0
 }
@@ -4586,9 +4584,9 @@ fn func() {
 }
 
 fn $0fun_name() {
-    /* 
-    a 
-    comment 
+    /*
+    a
+    comment
     */
     let x = 0;
 }
@@ -4603,9 +4601,9 @@ fn $0fun_name() {
             r#"
 fn func() {
     let i = 0;
-    $0/* 
-    a 
-    comment 
+    $0/*
+    a
+    comment
     */
     $0let x = 0;
 }
@@ -4618,9 +4616,9 @@ fn func() {
 }
 
 fn $0fun_name() {
-    /* 
-    a 
-    comment 
+    /*
+    a
+    comment
     */
 }
 "#,
