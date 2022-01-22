@@ -11,7 +11,7 @@ use crate::traits::util::impl_trait_ref_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
-    SelectionContext,
+    PredicateObligations, SelectionContext,
 };
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
@@ -137,10 +137,21 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     header
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 enum OverlapMode {
     Stable,
     WithNegative,
     Strict,
+}
+
+impl OverlapMode {
+    fn use_negative_impl(&self) -> bool {
+        *self == OverlapMode::Strict || *self == OverlapMode::WithNegative
+    }
+
+    fn use_implicit_negative(&self) -> bool {
+        *self == OverlapMode::Stable || *self == OverlapMode::WithNegative
+    }
 }
 
 fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
@@ -190,6 +201,16 @@ fn overlap_within_probe<'cx, 'tcx>(
     let infcx = selcx.infcx();
     let tcx = infcx.tcx;
 
+    let overlap_mode = overlap_mode(tcx, impl1_def_id, impl2_def_id);
+
+    if overlap_mode.use_negative_impl() {
+        if negative_impl(selcx, impl1_def_id, impl2_def_id)
+            || negative_impl(selcx, impl2_def_id, impl1_def_id)
+        {
+            return None;
+        }
+    }
+
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -199,29 +220,15 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    match overlap_mode(tcx, impl1_def_id, impl2_def_id) {
-        OverlapMode::Stable => {
-            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header) {
-                return None;
-            }
-        }
-        OverlapMode::Strict => {
-            if strict_disjoint(selcx, impl1_def_id, impl2_def_id) {
-                return None;
-            }
+    debug!("overlap: impl1_header={:?}", impl1_header);
+    debug!("overlap: impl2_header={:?}", impl2_header);
 
-            // Equate for error reporting
-            let _ = selcx
-                .infcx()
-                .at(&ObligationCause::dummy(), param_env)
-                .eq_impl_headers(&impl1_header, &impl2_header);
-        }
-        OverlapMode::WithNegative => {
-            if stable_disjoint(selcx, param_env, &impl1_header, impl2_header)
-                || strict_disjoint(selcx, impl1_def_id, impl2_def_id)
-            {
-                return None;
-            }
+    let obligations = equate_impl_headers(selcx, &impl1_header, &impl2_header)?;
+    debug!("overlap: unification check succeeded");
+
+    if overlap_mode.use_implicit_negative() {
+        if implicit_negative(selcx, param_env, &impl1_header, impl2_header, obligations) {
+            return None;
         }
     }
 
@@ -242,31 +249,29 @@ fn overlap_within_probe<'cx, 'tcx>(
     Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
+fn equate_impl_headers<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: &ty::ImplHeader<'tcx>,
+) -> Option<PredicateObligations<'tcx>> {
+    // Do `a` and `b` unify? If not, no overlap.
+    selcx
+        .infcx()
+        .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+        .eq_impl_headers(impl1_header, impl2_header)
+        .map(|infer_ok| infer_ok.obligations)
+        .ok()
+}
+
 /// Given impl1 and impl2 check if both impls can be satisfied by a common type (including
 /// where-clauses) If so, return false, otherwise return true, they are disjoint.
-fn stable_disjoint<'cx, 'tcx>(
+fn implicit_negative<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     impl1_header: &ty::ImplHeader<'tcx>,
     impl2_header: ty::ImplHeader<'tcx>,
+    obligations: PredicateObligations<'tcx>,
 ) -> bool {
-    debug!("overlap: impl1_header={:?}", impl1_header);
-    debug!("overlap: impl2_header={:?}", impl2_header);
-
-    // Do `a` and `b` unify? If not, no overlap.
-    let obligations = match selcx
-        .infcx()
-        .at(&ObligationCause::dummy(), param_env)
-        .eq_impl_headers(&impl1_header, &impl2_header)
-    {
-        Ok(InferOk { obligations, value: () }) => obligations,
-        Err(_) => {
-            return true;
-        }
-    };
-
-    debug!("overlap: unification check succeeded");
-
     // There's no overlap if obligations are unsatisfiable or if the obligation negated is
     // satisfied.
     //
@@ -318,16 +323,7 @@ fn stable_disjoint<'cx, 'tcx>(
 
 /// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
 /// where-clauses) If so, return true, they are disjoint and false otherwise.
-fn strict_disjoint<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    impl1_def_id: DefId,
-    impl2_def_id: DefId,
-) -> bool {
-    explicit_disjoint(selcx, impl1_def_id, impl2_def_id)
-        || explicit_disjoint(selcx, impl2_def_id, impl1_def_id)
-}
-
-fn explicit_disjoint<'cx, 'tcx>(
+fn negative_impl<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
