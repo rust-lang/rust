@@ -150,7 +150,6 @@ h1.fqn {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
-	border-bottom: 1px dashed #DDDDDD;
 	padding-bottom: 6px;
 	margin-bottom: 15px;
 }
