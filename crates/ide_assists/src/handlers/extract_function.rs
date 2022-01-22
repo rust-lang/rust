@@ -1476,25 +1476,21 @@ fn make_body(
                 })
                 .collect();
 
-            let mut tail_expr = match elements.pop() {
+            let mut tail_expr = match &elements.last() {
                 Some(element) => match element {
-                    syntax::NodeOrToken::Node(node) => {
-                        ast::Expr::cast(node.clone()).or_else(|| {
-                            elements.push(syntax::NodeOrToken::Node(node));
-                            None
-                        })
-                    }
-                    syntax::NodeOrToken::Token(token) if token.kind() == COMMENT => {
-                        elements.push(syntax::NodeOrToken::Token(token));
-                        None
+                    syntax::NodeOrToken::Node(node) if ast::Expr::can_cast(node.kind()) => {
+                        ast::Expr::cast(node.clone())
                     }
                     _ => None,
                 },
                 None => None,
             };
 
-            if tail_expr.is_none() {
-                match fun.outliving_locals.as_slice() {
+            match tail_expr {
+                Some(_) => {
+                    elements.pop();
+                }
+                None => match fun.outliving_locals.as_slice() {
                     [] => {}
                     [var] => {
                         tail_expr = Some(path_expr_from_local(ctx, var.local));
@@ -1504,8 +1500,8 @@ fn make_body(
                         let expr = make::expr_tuple(exprs);
                         tail_expr = Some(expr);
                     }
-                }
-            }
+                },
+            };
 
             let body_indent = IndentLevel(1);
             let elements: Vec<SyntaxElement> = elements
