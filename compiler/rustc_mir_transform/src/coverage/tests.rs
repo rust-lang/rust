@@ -31,6 +31,7 @@ use super::spans;
 
 use coverage_test_macros::let_bcb;
 
+use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
@@ -232,11 +233,9 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
                         mir_body
                             .successors(bb)
                             .map(|successor| { format!("    {:?} -> {:?};", bb, successor) })
-                            .collect::<Vec<_>>()
                             .join("\n")
                     )
                 })
-                .collect::<Vec<_>>()
                 .join("\n")
         );
     }
@@ -262,11 +261,9 @@ fn print_coverage_graphviz(
                         basic_coverage_blocks
                             .successors(bcb)
                             .map(|successor| { format!("    {:?} -> {:?};", bcb, successor) })
-                            .collect::<Vec<_>>()
                             .join("\n")
                     )
                 })
-                .collect::<Vec<_>>()
                 .join("\n")
         );
     }
