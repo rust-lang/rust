@@ -180,10 +180,10 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
-#[unstable(feature = "scoped_threads", issue = "none")]
+#[unstable(feature = "scoped_threads", issue = "93203")]
 mod scoped;
 
-#[unstable(feature = "scoped_threads", issue = "none")]
+#[unstable(feature = "scoped_threads", issue = "93203")]
 pub use scoped::{scope, Scope, ScopedJoinHandle};
 
 #[stable(feature = "rust1", since = "1.0.0")]
