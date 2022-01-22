@@ -279,7 +279,24 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                 clause.push_str(" <span class=\"where\">where");
             }
         }
-        for (i, pred) in gens.where_predicates.iter().enumerate() {
+
+        #[derive(Clone, Copy)]
+        enum Print<'a> {
+            Predicate(&'a clean::WherePredicate),
+            Comma,
+        }
+
+        for pred in gens.where_predicates.iter().filter(|pred| {
+            !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
+        }).map(Print::Predicate).intersperse(Print::Comma) {
+            let pred = match pred {
+                Print::Predicate(pred) => pred,
+                Print::Comma => {
+                    clause.push(',');
+                    continue;
+                }
+            };
+
             if f.alternate() {
                 clause.push(' ');
             } else {
@@ -338,13 +355,10 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                     }
                 }
             }
-
-            if i < gens.where_predicates.len() - 1 || end_newline {
-                clause.push(',');
-            }
         }
 
         if end_newline {
+            clause.push(',');
             // add a space so stripping <br> tags and breaking spaces still renders properly
             if f.alternate() {
                 clause.push(' ');
