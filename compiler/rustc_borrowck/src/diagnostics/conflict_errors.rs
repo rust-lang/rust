@@ -235,11 +235,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
                             }
                         }
-                        FnSelfUseKind::Normal {
-                            self_arg,
-                            implicit_into_iter,
-                            is_option_or_result,
-                        } => {
+                        FnSelfUseKind::Normal { self_arg, implicit_into_iter, self_name } => {
                             if implicit_into_iter {
                                 err.span_label(
                                     fn_call_span,
@@ -287,14 +283,27 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     ),
                                 );
                             }
-                            if is_option_or_result && maybe_reinitialized_locations.is_empty() {
-                                err.span_suggestion_verbose(
-                                    fn_call_span.shrink_to_lo(),
-                                    "consider calling `.as_ref()` to borrow the type's contents",
-                                    "as_ref().".to_string(),
-                                    Applicability::MachineApplicable,
-                                );
+
+                            let borrow_method = match self_name {
+                                Some(sym::Option | sym::Result) => Some("as_ref"),
+                                Some(sym::Pin) => Some("as_mut"),
+                                _ => None,
+                            };
+
+                            if let Some(borrow_method) = borrow_method {
+                                if maybe_reinitialized_locations.is_empty() {
+                                    err.span_suggestion_verbose(
+                                        fn_call_span.shrink_to_lo(),
+                                        &format!(
+                                        "consider calling `.{}()` to borrow the type's contents",
+                                        borrow_method
+                                    ),
+                                        format!("{}().", borrow_method),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
                             }
+
                             // Avoid pointing to the same function in multiple different
                             // error messages.
                             if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span)

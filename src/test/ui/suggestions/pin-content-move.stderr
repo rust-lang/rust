@@ -1,0 +1,45 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/pin-content-move.rs:14:5
+   |
+LL |     let foo = Pin::new(&mut foo);
+   |         --- move occurs because `foo` has type `Pin<&mut Foo>`, which does not implement the `Copy` trait
+LL |     foo.foo();
+   |         ----- `foo` moved due to this method call
+LL |
+LL |     foo.foo();
+   |     ^^^ value used here after move
+   |
+note: this function takes ownership of the receiver `self`, which moves `foo`
+  --> $DIR/pin-content-move.rs:6:12
+   |
+LL |     fn foo(self: Pin<&mut Self>) {}
+   |            ^^^^
+help: consider calling `.as_mut()` to borrow the type's contents
+   |
+LL |     foo.as_mut().foo();
+   |         +++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/pin-content-move.rs:21:5
+   |
+LL |     let mut x = Pin::new(&mut x);
+   |         ----- move occurs because `x` has type `Pin<&mut i32>`, which does not implement the `Copy` trait
+LL |     x.get_mut();
+   |       --------- `x` moved due to this method call
+LL |
+LL |     x.get_mut();
+   |     ^ value used here after move
+   |
+note: this function takes ownership of the receiver `self`, which moves `x`
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+   |
+LL |     pub const fn get_mut(self) -> &'a mut T
+   |                          ^^^^
+help: consider calling `.as_mut()` to borrow the type's contents
+   |
+LL |     x.as_mut().get_mut();
+   |       +++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

@@ -13,7 +13,11 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
-use rustc_span::{hygiene::DesugaringKind, symbol::sym, Span};
+use rustc_span::{
+    hygiene::DesugaringKind,
+    symbol::{sym, Symbol},
+    Span,
+};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -577,9 +581,8 @@ pub(super) enum FnSelfUseKind<'tcx> {
     Normal {
         self_arg: Ident,
         implicit_into_iter: bool,
-        /// Whether the self type of the method call has an `.as_ref()` method.
         /// Used for better diagnostics.
-        is_option_or_result: bool,
+        self_name: Option<Symbol>,
     },
     /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
     FnOnceCall,
@@ -948,18 +951,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let kind = kind.unwrap_or_else(|| {
                 // This isn't a 'special' use of `self`
                 debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
+
                 let implicit_into_iter = Some(method_did) == tcx.lang_items().into_iter_fn()
                     && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop);
-                let parent_self_ty = parent
-                    .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
-                    .and_then(|did| match tcx.type_of(did).kind() {
-                        ty::Adt(def, ..) => Some(def.did),
-                        _ => None,
-                    });
-                let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-                    matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
-                });
-                FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
+
+                let self_name = self.body.local_decls[target_temp]
+                    .ty
+                    .ty_adt_def()
+                    .and_then(|def| tcx.get_diagnostic_name(def.did));
+
+                FnSelfUseKind::Normal { self_arg, implicit_into_iter, self_name }
             });
 
             return FnSelfUse {

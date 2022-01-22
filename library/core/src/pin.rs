@@ -402,6 +402,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 // See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311> for more details.
 #[stable(feature = "pin", since = "1.33.0")]
 #[lang = "pin"]
+#[rustc_diagnostic_item = "Pin"]
 #[fundamental]
 #[repr(transparent)]
 #[derive(Copy, Clone)]
