@@ -13,6 +13,19 @@ pub struct Scope<'env> {
     data: ScopeData,
     /// Invariance over 'env, to make sure 'env cannot shrink,
     /// which is necessary for soundness.
+    ///
+    /// Without invariance, this would compile fine but be unsound:
+    ///
+    /// ```compile_fail
+    /// #![feature(scoped_threads)]
+    ///
+    /// std::thread::scope(|s| {
+    ///     s.spawn(|s| {
+    ///         let a = String::from("abcd");
+    ///         s.spawn(|_| println!("{:?}", a)); // might run after `a` is dropped
+    ///     });
+    /// });
+    /// ```
     env: PhantomData<&'env mut &'env ()>,
 }
 
