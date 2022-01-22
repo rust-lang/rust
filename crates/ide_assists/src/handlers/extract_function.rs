@@ -484,9 +484,6 @@ impl FunctionBody {
         }
     }
 
-    // selection: 36..67
-    // resulting: 57..67
-
     fn from_range(parent: ast::StmtList, selected: TextRange) -> FunctionBody {
         let full_body = parent.syntax().children_with_tokens();
         for st in parent.syntax().children_with_tokens() {
@@ -1468,33 +1465,32 @@ fn make_body(
                 .map(|it| match it {
                     syntax::NodeOrToken::Node(n) => {
                         println!("Found node: {:?}", n);
-                        return syntax::NodeOrToken::try_from(rewrite_body_segment(
-                            ctx,
-                            &fun.params,
-                            &handler,
-                            &n,
-                        ))
-                        .unwrap()
+                        let node_rewritten = rewrite_body_segment(ctx, &fun.params, &handler, &n);
+
+                        syntax::NodeOrToken::Node(node_rewritten)
                     }
                     syntax::NodeOrToken::Token(t) => {
                         println!("Found token: {:?}", t);
-                        return syntax::NodeOrToken::try_from(t).unwrap()
+                        syntax::NodeOrToken::Token(t)
                     }
                 })
                 .collect();
 
             let mut tail_expr = match elements.pop() {
-                Some(node) if node.as_node().is_some() => {
-                    ast::Expr::cast(node.as_node().unwrap().clone()).or_else(|| {
-                        elements.push(node);
+                Some(element) => match element {
+                    syntax::NodeOrToken::Node(node) => {
+                        ast::Expr::cast(node.clone()).or_else(|| {
+                            elements.push(syntax::NodeOrToken::Node(node));
+                            None
+                        })
+                    }
+                    syntax::NodeOrToken::Token(token) if token.kind() == COMMENT => {
+                        elements.push(syntax::NodeOrToken::Token(token));
                         None
-                    })
+                    }
+                    _ => None,
                 },
-                Some(token) if token.as_token().is_some() && token.as_token().unwrap().kind() == COMMENT => {
-                    elements.push(token);
-                    None
-                },
-                _ => None,
+                None => None,
             };
 
             if tail_expr.is_none() {
@@ -1510,19 +1506,20 @@ fn make_body(
                     }
                 }
             }
-            
+
             let body_indent = IndentLevel(1);
-            let elements: Vec<SyntaxElement> = elements.into_iter().map(|stmt| {
-                match stmt {
+            let elements: Vec<SyntaxElement> = elements
+                .into_iter()
+                .map(|stmt| match stmt {
                     syntax::NodeOrToken::Node(n) => {
                         let ast_element = ast::Stmt::cast(n).unwrap();
                         let indented = ast_element.dedent(old_indent).indent(body_indent);
                         let ast_node = indented.syntax().clone_subtree();
                         syntax::NodeOrToken::try_from(ast_node).unwrap()
-                    },
-                    syntax::NodeOrToken::Token(t) => syntax::NodeOrToken::try_from(t).unwrap()
-                }
-            }).collect::<Vec<SyntaxElement>>();
+                    }
+                    syntax::NodeOrToken::Token(t) => syntax::NodeOrToken::try_from(t).unwrap(),
+                })
+                .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
 
             for element in &elements {
@@ -1530,8 +1527,6 @@ fn make_body(
             }
 
             make::block_expr_full(elements, tail_expr)
-
-            
 
             // make::block_expr(parent.statements().into_iter(), tail_expr)
         }

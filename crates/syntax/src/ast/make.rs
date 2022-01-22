@@ -335,14 +335,15 @@ pub fn block_expr_full(
 ) -> ast::BlockExpr {
     let mut buf = "{\n".to_string();
     for stmt in stmts.into_iter() {
-        
         match stmt {
             rowan::NodeOrToken::Node(n) => {
                 println!("Node: {:?}", n.text());
                 format_to!(buf, "    {}\n", n)
-            },
-            rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => format_to!(buf, "    {}\n", t),
-            _ => ()
+            }
+            rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => {
+                format_to!(buf, "    {}\n", t)
+            }
+            _ => (),
         }
     }
     if let Some(tail_expr) = tail_expr {
