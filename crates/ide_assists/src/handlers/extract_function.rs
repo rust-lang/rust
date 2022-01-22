@@ -69,16 +69,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    println!("initial node: {:?}", node);
-
     let node = match node {
         syntax::NodeOrToken::Node(n) => n,
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
 
-    println!("next node: {:?}", node);
     let body = extraction_target(&node, range)?;
-    println!("body: {:?}", body);
     let container_info = body.analyze_container(&ctx.sema)?;
 
     let (locals_used, self_param) = body.analyze(&ctx.sema);
@@ -187,8 +183,6 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
         };
     }
 
-    println!("node: {:?}", node);
-
     // Covering element returned the parent block of one or multiple statements that have been selected
     if let Some(stmt_list) = ast::StmtList::cast(node.clone()) {
         if let Some(block_expr) = stmt_list.syntax().parent().and_then(ast::BlockExpr::cast) {
@@ -198,8 +192,6 @@ fn extraction_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Fu
         }
 
         // Extract the full statements.
-        println!("stmt_list: {:?}", stmt_list);
-        println!("selection_range: {:?}", selection_range);
         return Some(FunctionBody::from_range(stmt_list, selection_range));
     }
 
@@ -486,16 +478,12 @@ impl FunctionBody {
 
     fn from_range(parent: ast::StmtList, selected: TextRange) -> FunctionBody {
         let full_body = parent.syntax().children_with_tokens();
-        for st in parent.syntax().children_with_tokens() {
-            println!("Statement: {:?}", &st);
-        }
 
         let mut text_range = full_body
             .map(|stmt| stmt.text_range())
             .filter(|&stmt| selected.intersect(stmt).filter(|it| !it.is_empty()).is_some())
             .reduce(|acc, stmt| acc.cover(stmt));
 
-        println!("from_range text_range first: {:?}", text_range);
         if let Some(tail_range) = parent
             .tail_expr()
             .map(|it| it.syntax().text_range())
@@ -505,8 +493,6 @@ impl FunctionBody {
                 Some(text_range) => text_range.cover(tail_range),
                 None => tail_range,
             });
-
-            println!("from_range text_range second: {:?}", text_range);
         }
         Self::Span { parent, text_range: text_range.unwrap_or(selected) }
     }
@@ -1438,7 +1424,6 @@ fn make_body(
         FlowHandler::from_ret_ty(fun, &ret_ty)
     };
 
-    println!("making body: {:?}", fun.body);
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
             let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
@@ -1462,17 +1447,11 @@ fn make_body(
                 .syntax()
                 .children_with_tokens()
                 .filter(|it| text_range.contains_range(it.text_range()))
-                .map(|it| match it {
-                    syntax::NodeOrToken::Node(n) => {
-                        println!("Found node: {:?}", n);
-                        let node_rewritten = rewrite_body_segment(ctx, &fun.params, &handler, &n);
-
-                        syntax::NodeOrToken::Node(node_rewritten)
-                    }
-                    syntax::NodeOrToken::Token(t) => {
-                        println!("Found token: {:?}", t);
-                        syntax::NodeOrToken::Token(t)
-                    }
+                .map(|it| match &it {
+                    syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
+                        rewrite_body_segment(ctx, &fun.params, &handler, &n),
+                    ),
+                    syntax::NodeOrToken::Token(_) => it,
                 })
                 .collect();
 
@@ -1519,10 +1498,6 @@ fn make_body(
                 })
                 .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
-
-            for element in &elements {
-                println!("element: {:?}", element);
-            }
 
             make::hacky_block_expr_with_comments(elements, tail_expr)
         }

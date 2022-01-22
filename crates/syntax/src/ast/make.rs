@@ -331,7 +331,7 @@ pub fn block_expr(
 
 /// Ideally this function wouldn't exist since it involves manual indenting.
 /// It differs from `make::block_expr` by also supporting comments.
-/// 
+///
 /// FIXME: replace usages of this with the mutable syntax tree API
 pub fn hacky_block_expr_with_comments(
     elements: impl IntoIterator<Item = crate::SyntaxElement>,
