@@ -418,7 +418,7 @@ impl BasicCoverageBlockData {
     pub fn take_edge_counters(
         &mut self,
     ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
-        self.edge_from_bcbs.take().map_or(None, |m| Some(m.into_iter()))
+        self.edge_from_bcbs.take().map(|m| m.into_iter())
     }
 
     pub fn id(&self) -> String {
