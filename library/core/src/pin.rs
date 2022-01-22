@@ -406,7 +406,9 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct Pin<P> {
-    pointer: P,
+    #[unstable(feature = "unsafe_pin_internals", issue = "none")]
+    #[doc(hidden)]
+    pub pointer: P,
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -1074,6 +1076,8 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[unstable(feature = "pin_macro", issue = "93178")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(unsafe_pin_internals)]
 pub macro pin($value:expr $(,)?) {
     // This is `Pin::new_unchecked(&mut { $value })`, so, for starters, let's
     // review such a hypothetical macro (that any user-code could define):
@@ -1145,8 +1149,5 @@ pub macro pin($value:expr $(,)?) {
     //
     // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
     // for more info.
-    //
-    // Finally, we don't hit problems _w.r.t._ the privacy of the `pointer` field, or the
-    // unqualified `Pin` name, thanks to `decl_macro`s being _fully_ hygienic (`def_site` hygiene).
-    Pin::<&mut _> { pointer: &mut { $value } }
+    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
 }
