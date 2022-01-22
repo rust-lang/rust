@@ -12,9 +12,9 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, BitsOrPtr, InterpError, InterpResult, Pointer,
+    Provenance, ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo,
+    UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
 
@@ -396,11 +396,11 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
-            Err(val) => {
+            BitsOrPtr::Ptr(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))
             }
-            Ok(data) => (data, None),
+            BitsOrPtr::Bits(data) => (data, None),
         };
 
         let endian = cx.data_layout().endian;

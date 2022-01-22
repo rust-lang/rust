@@ -52,6 +52,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 
 use rustc_hir::{HirId, RangeEnd};
+use rustc_middle::mir::interpret::BitsOrPtr;
 use rustc_middle::mir::Field;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
@@ -146,7 +147,7 @@ impl IntRange {
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
                     // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size) {
+                    if let BitsOrPtr::Bits(bits) = scalar.to_bits_or_ptr_internal(target_size) {
                         return Some(bits);
                     }
                 }

@@ -1142,11 +1142,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 /// Machine pointer introspection.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
+        use rustc_middle::mir::interpret::BitsOrPtr::*;
+
         // We use `to_bits_or_ptr_internal` since we are just implementing the method people need to
         // call to force getting out a pointer.
         match scalar.to_bits_or_ptr_internal(self.pointer_size()) {
-            Err(ptr) => ptr.into(),
-            Ok(bits) => {
+            Ptr(ptr) => ptr.into(),
+            Bits(bits) => {
                 let addr = u64::try_from(bits).unwrap();
                 let ptr = M::ptr_from_addr(&self, addr);
                 if addr == 0 {

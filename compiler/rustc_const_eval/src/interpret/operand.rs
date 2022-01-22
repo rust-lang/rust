@@ -16,8 +16,8 @@ use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
     alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Provenance,
-    Scalar, ScalarMaybeUninit,
+    ImmediateOrMPlace, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy,
+    Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -290,25 +290,26 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Try returning an immediate for the operand.
+    /// Return an immediate or mplace for the operand.
     /// If the layout does not permit loading this as an immediate, return where in memory
     /// we can find the data.
-    /// Note that for a given layout, this operation will either always fail or always
-    /// succeed!  Whether it succeeds depends on whether the layout can be represented
+    /// Whether we return an immediate depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
-    pub fn try_read_immediate(
+    pub fn read_immediate_or_mplace(
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::PointerTag>, MPlaceTy<'tcx, M::PointerTag>>> {
-        Ok(match src.try_as_mplace() {
-            Ok(ref mplace) => {
+    ) -> InterpResult<'tcx, ImmediateOrMPlace<'tcx, M::PointerTag>> {
+        use ImmediateOrMPlace::*;
+
+        Ok(match src.as_mplace_or_imm() {
+            MPlace(ref mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
-                    Ok(val)
+                    Imm(val)
                 } else {
-                    Err(*mplace)
+                    MPlace(*mplace)
                 }
             }
-            Err(val) => Ok(val),
+            Imm(val) => Imm(val),
         })
     }
 
@@ -318,7 +319,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
-        if let Ok(imm) = self.try_read_immediate(op)? {
+        if let ImmediateOrMPlace::Imm(imm) = self.read_immediate_or_mplace(op)? {
             Ok(imm)
         } else {
             span_bug!(self.cur_span(), "primitive read failed for type: {:?}", op.layout.ty);
@@ -355,13 +356,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: &OpTy<'tcx, M::PointerTag>,
         field: usize,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base = match op.try_as_mplace() {
-            Ok(ref mplace) => {
+        let base = match op.as_mplace_or_imm() {
+            ImmediateOrMPlace::MPlace(ref mplace) => {
                 // We can reuse the mplace field computation logic for indirect operands.
                 let field = self.mplace_field(mplace, field)?;
                 return Ok(field.into());
             }
-            Err(value) => value,
+            ImmediateOrMPlace::Imm(value) => value,
         };
 
         let field_layout = op.layout.field(self, field);
@@ -409,9 +410,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        Ok(match op.try_as_mplace() {
-            Ok(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
-            Err(..) => {
+        Ok(match op.as_mplace_or_imm() {
+            ImmediateOrMPlace::MPlace(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
+            ImmediateOrMPlace::Imm(..) => {
                 let layout = op.layout.for_variant(self, variant);
                 OpTy { layout, ..*op }
             }

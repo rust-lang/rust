@@ -112,6 +112,11 @@ impl<'tcx> ConstValue<'tcx> {
     }
 }
 
+pub enum BitsOrPtr<Tag> {
+    Bits(u128),
+    Ptr(Pointer<Tag>),
+}
+
 /// A `Scalar` represents an immediate, primitive value existing outside of a
 /// `memory::Allocation`. It is in many ways like a small chunk of an `Allocation`, up to 16 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
@@ -292,13 +297,13 @@ impl<Tag> Scalar<Tag> {
     /// This method only exists for the benefit of low-level operations that truly need to treat the
     /// scalar in whatever form it is.
     #[inline]
-    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> Result<u128, Pointer<Tag>> {
+    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> BitsOrPtr<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         match self {
-            Scalar::Int(int) => Ok(int.assert_bits(target_size)),
+            Scalar::Int(int) => BitsOrPtr::Bits(int.assert_bits(target_size)),
             Scalar::Ptr(ptr, sz) => {
                 assert_eq!(target_size.bytes(), u64::from(sz));
-                Err(ptr)
+                BitsOrPtr::Ptr(ptr)
             }
         }
     }

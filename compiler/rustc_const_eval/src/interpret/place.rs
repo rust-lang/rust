@@ -97,6 +97,20 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for PlaceTy<'tcx, Tag> {
     }
 }
 
+pub enum ImmediateOrMPlace<'tcx, Tag: Provenance> {
+    Imm(ImmTy<'tcx, Tag>),
+    MPlace(MPlaceTy<'tcx, Tag>),
+}
+
+impl<'tcx, Tag: Provenance> ImmediateOrMPlace<'tcx, Tag> {
+    pub fn get_mplace(self) -> MPlaceTy<'tcx, Tag> {
+        match self {
+            ImmediateOrMPlace::MPlace(p) => p,
+            ImmediateOrMPlace::Imm(_) => bug!("expected MPlace"),
+        }
+    }
+}
+
 /// A MemPlace with its layout. Constructing it is only possible in this module.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
@@ -222,11 +236,17 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
     #[inline(always)]
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
-    pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Tag>, ImmTy<'tcx, Tag>> {
+    pub fn as_mplace_or_imm(&self) -> ImmediateOrMPlace<'tcx, Tag> {
         match **self {
-            Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
-            Operand::Immediate(_) if self.layout.is_zst() => Ok(MPlaceTy::dangling(self.layout)),
-            Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
+            Operand::Indirect(mplace) => {
+                ImmediateOrMPlace::MPlace(MPlaceTy { mplace, layout: self.layout })
+            }
+            Operand::Immediate(_) if self.layout.is_zst() => {
+                ImmediateOrMPlace::MPlace(MPlaceTy::dangling(self.layout))
+            }
+            Operand::Immediate(imm) => {
+                ImmediateOrMPlace::Imm(ImmTy::from_immediate(imm, self.layout))
+            }
         }
     }
 
@@ -234,7 +254,7 @@ impl<'tcx, Tag: Provenance> OpTy<'tcx, Tag> {
     /// Note: do not call `as_ref` on the resulting place. This function should only be used to
     /// read from the resulting mplace, not to get its address back.
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Tag> {
-        self.try_as_mplace().unwrap()
+        self.as_mplace_or_imm().get_mplace()
     }
 }
 
@@ -708,7 +728,7 @@ where
         }
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        // See if we can avoid an allocation. This is the counterpart to `try_read_immediate`,
+        // See if we can avoid an allocation. This is the counterpart to `read_immediate_or_mplace`,
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
@@ -831,15 +851,15 @@ where
         }
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
-        let src = match self.try_read_immediate(src)? {
-            Ok(src_val) => {
+        let src = match self.read_immediate_or_mplace(src)? {
+            ImmediateOrMPlace::Imm(src_val) => {
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
                 // FIXME: Add a check to make sure that if `src` is indirect,
                 // it does not overlap with `dest`.
                 return self.write_immediate_no_validate(*src_val, dest);
             }
-            Err(mplace) => mplace,
+            ImmediateOrMPlace::MPlace(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);

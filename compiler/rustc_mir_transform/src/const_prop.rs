@@ -32,8 +32,9 @@ use crate::MirPass;
 use rustc_const_eval::const_eval::ConstEvalErr;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
-    Operand as InterpOperand, PlaceTy, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
+    Immediate, ImmediateOrMPlace, InterpCx, InterpResult, LocalState, LocalValue, MemPlace,
+    MemoryKind, OpTy, Operand as InterpOperand, PlaceTy, Scalar, ScalarMaybeUninit,
+    StackPopCleanup, StackPopUnwind,
 };
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
@@ -431,8 +432,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // Try to read the local as an immediate so that if it is representable as a scalar, we can
         // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.try_read_immediate(&op) {
-            Ok(Ok(imm)) => imm.into(),
+        Some(match self.ecx.read_immediate_or_mplace(&op) {
+            Ok(ImmediateOrMPlace::Imm(imm)) => imm.into(),
             _ => op,
         })
     }
@@ -821,10 +822,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return;
         }
 
-        // FIXME> figure out what to do when try_read_immediate fails
-        let imm = self.use_ecx(|this| this.ecx.try_read_immediate(value));
+        // FIXME> figure out what to do when read_immediate_or_mplace fails
+        let imm = self.use_ecx(|this| this.ecx.read_immediate_or_mplace(value));
 
-        if let Some(Ok(imm)) = imm {
+        if let Some(ImmediateOrMPlace::Imm(imm)) = imm {
             match *imm {
                 interpret::Immediate::Scalar(ScalarMaybeUninit::Scalar(scalar)) => {
                     *rval = Rvalue::Use(self.operand_from_scalar(

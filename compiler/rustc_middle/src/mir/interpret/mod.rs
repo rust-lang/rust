@@ -123,7 +123,9 @@ pub use self::error::{
     ResourceExhaustionInfo, UndefinedBehaviorInfo, UninitBytesAccess, UnsupportedOpInfo,
 };
 
-pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
+pub use self::value::{
+    get_slice_bytes, BitsOrPtr, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit,
+};
 
 pub use self::allocation::{
     alloc_range, AllocRange, Allocation, InitChunk, InitChunkIter, InitMask, Relocations,

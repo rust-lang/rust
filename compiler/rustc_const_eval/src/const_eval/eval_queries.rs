@@ -2,8 +2,8 @@ use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr, Memory
 use crate::interpret::eval_nullary_intrinsic;
 use crate::interpret::{
     intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, Scalar,
-    ScalarMaybeUninit, StackPopCleanup,
+    Immediate, ImmediateOrMPlace, InternKind, InterpCx, InterpResult, MPlaceTy, MemoryKind, OpTy,
+    RefTracking, Scalar, ScalarMaybeUninit, StackPopCleanup,
 };
 
 use rustc_errors::ErrorReported;
@@ -132,15 +132,17 @@ pub(super) fn op_to_const<'tcx>(
         },
         _ => false,
     };
-    let immediate = if try_as_immediate {
-        Err(ecx.read_immediate(op).expect("normalization works on validated constants"))
+    let imm_or_mplace = if try_as_immediate {
+        ImmediateOrMPlace::Imm(
+            ecx.read_immediate(op).expect("normalization works on validated constants"),
+        )
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
         // by-val is if we are in destructure_const, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace()
+        op.as_mplace_or_imm()
     };
 
     // We know `offset` is relative to the allocation, so we can use `into_parts`.
@@ -160,10 +162,10 @@ pub(super) fn op_to_const<'tcx>(
             ConstValue::Scalar(Scalar::ZST)
         }
     };
-    match immediate {
-        Ok(ref mplace) => to_const_value(mplace),
+    match imm_or_mplace {
+        ImmediateOrMPlace::MPlace(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
-        Err(imm) => match *imm {
+        ImmediateOrMPlace::Imm(imm) => match *imm {
             Immediate::Scalar(x) => match x {
                 ScalarMaybeUninit::Scalar(s) => ConstValue::Scalar(s),
                 ScalarMaybeUninit::Uninit => to_const_value(&op.assert_mem_place()),
