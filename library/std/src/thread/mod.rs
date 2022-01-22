@@ -1270,18 +1270,16 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 // (the caller will never read this packet until the thread has exited).
 //
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
-// in `JoinHandle`. Due to the usage of `UnsafeCell` we need to manually worry
-// about impls like Send and Sync. The type `T` should already always be Send
-// (otherwise the thread could not have been created) and this type is
-// inherently Sync because no methods take &self. Regardless, however, we add
-// inheriting impls for Send/Sync to this type to ensure it's Send/Sync and
-// that future modifications will still appropriately classify it.
+// in `JoinHandle`.
 struct Packet<'scope, T> {
     scope: Option<&'scope scoped::ScopeData>,
     result: UnsafeCell<Option<Result<T>>>,
 }
 
-unsafe impl<'scope, T: Send> Send for Packet<'scope, T> {}
+// Due to the usage of `UnsafeCell` we need to manually implement Sync.
+// The type `T` should already always be Send (otherwise the thread could not
+// have been created) and the Packet is Sync because all access to the
+// `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
 unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
