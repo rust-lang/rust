@@ -2383,6 +2383,17 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
+        fn check_let_expr(expr: &Expr) -> (bool, bool) {
+            match expr.kind {
+                ExprKind::Binary(_, ref lhs, ref rhs) => {
+                    let lhs_rslt = check_let_expr(lhs);
+                    let rhs_rslt = check_let_expr(rhs);
+                    (lhs_rslt.0 || rhs_rslt.0, false)
+                }
+                ExprKind::Let(..) => (true, true),
+                _ => (false, true),
+            }
+        }
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
@@ -2390,9 +2401,12 @@ impl<'a> Parser<'a> {
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
                 let cond = this.parse_expr()?;
-                if let ExprKind::Let(..) = cond.kind {
-                    // Remove the last feature gating of a `let` expression since it's stable.
-                    this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
+                if has_let_expr {
+                    if does_not_have_bin_op {
+                        // Remove the last feature gating of a `let` expression since it's stable.
+                        this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+                    }
                     let span = if_span.to(cond.span);
                     this.sess.gated_spans.gate(sym::if_let_guard, span);
                 }
