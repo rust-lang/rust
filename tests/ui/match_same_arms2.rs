@@ -181,9 +181,26 @@ fn main() {
         Z(u32),
     }
 
+    // Don't lint. `Foo::X(0)` and `Foo::Z(_)` overlap with the arm in between.
     let _ = match Foo::X(0) {
         Foo::X(0) => 1,
         Foo::X(_) | Foo::Y(_) | Foo::Z(0) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
+
+    // Suggest moving `Foo::Z(_)` up.
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::X(_) | Foo::Y(_) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
+
+    // Suggest moving `Foo::X(0)` down.
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::Y(_) | Foo::Z(0) => 2,
         Foo::Z(_) => 1,
         _ => 0,
     };

@@ -4,6 +4,7 @@ use clippy_utils::{path_to_local, search_same, SpanlessEq, SpanlessHash};
 use core::iter;
 use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
+use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdSet, Pat, PatKind, RangeEnd};
 use rustc_lint::LateContext;
@@ -13,6 +14,7 @@ use std::collections::hash_map::Entry;
 
 use super::MATCH_SAME_ARMS;
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     let hash = |&(_, arm): &(usize, &Arm<'_>)| -> u64 {
         let mut h = SpanlessHash::new(cx);
@@ -96,42 +98,52 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     };
 
     let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
-    for (&(_, i), &(_, j)) in search_same(&indexed_arms, hash, eq) {
-        span_lint_and_then(
-            cx,
-            MATCH_SAME_ARMS,
-            j.body.span,
-            "this `match` has identical arm bodies",
-            |diag| {
-                diag.span_note(i.body.span, "same as this");
+    for (&(i, arm1), &(j, arm2)) in search_same(&indexed_arms, hash, eq) {
+        if matches!(arm2.pat.kind, PatKind::Wild) {
+            span_lint_and_then(
+                cx,
+                MATCH_SAME_ARMS,
+                arm1.span,
+                "this match arm has an identical body to the `_` wildcard arm",
+                |diag| {
+                    diag.span_suggestion(
+                        arm1.span,
+                        "try removing the arm",
+                        String::new(),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .help("or try changing either arm body")
+                    .span_note(arm2.span, "`_` wildcard arm here");
+                },
+            );
+        } else {
+            let back_block = backwards_blocking_idxs[j];
+            let (keep_arm, move_arm) = if back_block < i || (back_block == 0 && forwards_blocking_idxs[i] <= j) {
+                (arm1, arm2)
+            } else {
+                (arm2, arm1)
+            };
 
-                // Note: this does not use `span_suggestion` on purpose:
-                // there is no clean way
-                // to remove the other arm. Building a span and suggest to replace it to ""
-                // makes an even more confusing error message. Also in order not to make up a
-                // span for the whole pattern, the suggestion is only shown when there is only
-                // one pattern. The user should know about `|` if they are already using it…
+            span_lint_and_then(
+                cx,
+                MATCH_SAME_ARMS,
+                keep_arm.span,
+                "this match arm has an identical body to another arm",
+                |diag| {
+                    let move_pat_snip = snippet(cx, move_arm.pat.span, "<pat2>");
+                    let keep_pat_snip = snippet(cx, keep_arm.pat.span, "<pat1>");
 
-                let lhs = snippet(cx, i.pat.span, "<pat1>");
-                let rhs = snippet(cx, j.pat.span, "<pat2>");
-
-                if let PatKind::Wild = j.pat.kind {
-                    // if the last arm is _, then i could be integrated into _
-                    // note that i.pat cannot be _, because that would mean that we're
-                    // hiding all the subsequent arms, and rust won't compile
-                    diag.span_note(
-                        i.body.span,
-                        &format!(
-                            "`{}` has the same arm body as the `_` wildcard, consider removing it",
-                            lhs
-                        ),
-                    );
-                } else {
-                    diag.span_help(i.pat.span, &format!("consider refactoring into `{} | {}`", lhs, rhs,))
-                        .help("...or consider changing the match arm bodies");
-                }
-            },
-        );
+                    diag.span_suggestion(
+                        keep_arm.pat.span,
+                        "try merging the arm patterns",
+                        format!("{} | {}", keep_pat_snip, move_pat_snip),
+                        Applicability::MaybeIncorrect,
+                    )
+                    .help("or try changing either arm body")
+                    .span_note(move_arm.span, "other arm here");
+                },
+            );
+        }
     }
 }
 
