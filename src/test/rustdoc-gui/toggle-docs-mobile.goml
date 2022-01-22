@@ -1,3 +1,5 @@
+// Checks that the documentation toggles on mobile have the correct position, style and work
+// as expected.
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 size: (433, 600)
 assert-attribute: (".top-doc", {"open": ""})

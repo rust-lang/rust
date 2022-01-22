@@ -1,3 +1,4 @@
+// Checks that the documentation toggles have the correct position, style and work as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
 assert-attribute: ("#main-content > details.top-doc", {"open": ""})
 assert-text: ("#toggle-all-docs", "[−]")

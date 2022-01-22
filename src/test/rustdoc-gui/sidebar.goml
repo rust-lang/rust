@@ -1,3 +1,4 @@
+// Checks multiple things on the sidebar display (width of its elements, colors, etc).
 goto: file://|DOC_PATH|/test_docs/index.html
 show-text: true
 local-storage: {"rustdoc-theme": "light"}

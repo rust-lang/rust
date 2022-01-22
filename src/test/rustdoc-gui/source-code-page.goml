@@ -1,3 +1,4 @@
+// Checks that the interactions with the source code pages are workined as expected.
 goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
 // Check that we can click on the line number.
 click: ".line-numbers > span:nth-child(4)" // This is the span for line 4.
