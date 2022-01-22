@@ -33,12 +33,13 @@ use crate::{
 
 // Assist: extract_function
 //
-// Extracts selected statements into new function.
+// Extracts selected statements and comments into new function.
 //
 // ```
 // fn main() {
 //     let n = 1;
 //     $0let m = n + 2;
+//     // calculate
 //     let k = m + n;$0
 //     let g = 3;
 // }
@@ -53,6 +54,7 @@ use crate::{
 //
 // fn $0fun_name(n: i32) {
 //     let m = n + 2;
+//     // calculate
 //     let k = m + n;
 // }
 // ```
