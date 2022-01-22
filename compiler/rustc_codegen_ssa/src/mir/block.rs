@@ -477,6 +477,28 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup);
     }
 
+    fn codegen_abort_terminator(
+        &mut self,
+        helper: TerminatorCodegenHelper<'tcx>,
+        mut bx: Bx,
+        terminator: &mir::Terminator<'tcx>,
+    ) {
+        let span = terminator.source_info.span;
+        self.set_debug_loc(&mut bx, terminator.source_info);
+
+        // Get the location information.
+        let location = self.get_caller_location(&mut bx, terminator.source_info).immediate();
+
+        // Obtain the panic entry point.
+        let def_id = common::langcall(bx.tcx(), Some(span), "", LangItem::PanicNoUnwind);
+        let instance = ty::Instance::mono(bx.tcx(), def_id);
+        let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
+        let llfn = bx.get_fn_addr(instance);
+
+        // Codegen the actual panic invoke/call.
+        helper.do_call(self, &mut bx, fn_abi, llfn, &[location], None, None);
+    }
+
     /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
     fn codegen_panic_intrinsic(
         &mut self,
@@ -1014,10 +1036,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::TerminatorKind::Resume => self.codegen_resume_terminator(helper, bx),
 
             mir::TerminatorKind::Abort => {
-                bx.abort();
-                // `abort` does not terminate the block, so we still need to generate
-                // an `unreachable` terminator after it.
-                bx.unreachable();
+                self.codegen_abort_terminator(helper, bx, terminator);
             }
 
             mir::TerminatorKind::Goto { target } => {
