@@ -414,7 +414,7 @@ impl<T> Rc<T> {
     /// ```
     /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "arc_new_cyclic", since = "1.59.0")]
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
     pub fn new_cyclic<F>(data_fn: F) -> Rc<T>
     where
         F: FnOnce(&Weak<T>) -> T,

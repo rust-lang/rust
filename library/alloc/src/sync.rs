@@ -391,7 +391,7 @@ impl<T> Arc<T> {
     /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "arc_new_cyclic", since = "1.59.0")]
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
     pub fn new_cyclic<F>(data_fn: F) -> Arc<T>
     where
         F: FnOnce(&Weak<T>) -> T,
