@@ -576,9 +576,14 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     let msg = info.message().unwrap(); // The current implementation always returns Some
     crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
         if let Some(msg) = msg.as_str() {
-            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc);
+            rust_panic_with_hook(&mut StrPanicPayload(msg), info.message(), loc, info.can_unwind());
         } else {
-            rust_panic_with_hook(&mut PanicPayload::new(msg), info.message(), loc);
+            rust_panic_with_hook(
+                &mut PanicPayload::new(msg),
+                info.message(),
+                loc,
+                info.can_unwind(),
+            );
         }
     })
 }
@@ -602,7 +607,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
 
     let loc = Location::caller();
     return crate::sys_common::backtrace::__rust_end_short_backtrace(move || {
-        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc)
+        rust_panic_with_hook(&mut PanicPayload::new(msg), None, loc, true)
     });
 
     struct PanicPayload<A> {
@@ -647,6 +652,7 @@ fn rust_panic_with_hook(
     payload: &mut dyn BoxMeUp,
     message: Option<&fmt::Arguments<'_>>,
     location: &Location<'_>,
+    can_unwind: bool,
 ) -> ! {
     let (must_abort, panics) = panic_count::increase();
 
@@ -663,14 +669,14 @@ fn rust_panic_with_hook(
         } else {
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
-            let panicinfo = PanicInfo::internal_constructor(message, location);
+            let panicinfo = PanicInfo::internal_constructor(message, location, can_unwind);
             rtprintpanic!("{}\npanicked after panic::always_abort(), aborting.\n", panicinfo);
         }
-        intrinsics::abort()
+        crate::sys::abort_internal();
     }
 
     unsafe {
-        let mut info = PanicInfo::internal_constructor(message, location);
+        let mut info = PanicInfo::internal_constructor(message, location, can_unwind);
         let _guard = HOOK_LOCK.read();
         match HOOK {
             // Some platforms (like wasm) know that printing to stderr won't ever actually
@@ -691,13 +697,13 @@ fn rust_panic_with_hook(
         };
     }
 
-    if panics > 1 {
+    if panics > 1 || !can_unwind {
         // If a thread panics while it's already unwinding then we
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
         rtprintpanic!("thread panicked while panicking. aborting.\n");
-        intrinsics::abort()
+        crate::sys::abort_internal();
     }
 
     rust_panic(payload)
