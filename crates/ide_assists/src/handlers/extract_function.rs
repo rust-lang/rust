@@ -4447,7 +4447,7 @@ fn func() {
             r#"
 fn func() {
     let i = 0;
-    
+
     fun_name();
 }
 
