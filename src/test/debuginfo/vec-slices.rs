@@ -1,5 +1,4 @@
 // ignore-windows
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -13,21 +12,21 @@
 // gdb-command:print singleton.length
 // gdb-check:$2 = 1
 // gdbg-command:print *((i64[1]*)(singleton.data_ptr))
-// gdbr-command:print *(singleton.data_ptr as &[i64; 1])
+// gdbr-command:print *(singleton.data_ptr as *const [i64; 1])
 // gdbg-check:$3 = {1}
 // gdbr-check:$3 = [1]
 
 // gdb-command:print multiple.length
 // gdb-check:$4 = 4
 // gdbg-command:print *((i64[4]*)(multiple.data_ptr))
-// gdbr-command:print *(multiple.data_ptr as &[i64; 4])
+// gdbr-command:print *(multiple.data_ptr as *const [i64; 4])
 // gdbg-check:$5 = {2, 3, 4, 5}
 // gdbr-check:$5 = [2, 3, 4, 5]
 
 // gdb-command:print slice_of_slice.length
 // gdb-check:$6 = 2
 // gdbg-command:print *((i64[2]*)(slice_of_slice.data_ptr))
-// gdbr-command:print *(slice_of_slice.data_ptr as &[i64; 2])
+// gdbr-command:print *(slice_of_slice.data_ptr as *const [i64; 2])
 // gdbg-check:$7 = {3, 4}
 // gdbr-check:$7 = [3, 4]
 
@@ -53,16 +52,16 @@
 // gdbr-command:print MUT_VECT_SLICE.length
 // gdb-check:$14 = 2
 // gdbg-command:print *((i64[2]*)('vec_slices::MUT_VECT_SLICE'.data_ptr))
-// gdbr-command:print *(MUT_VECT_SLICE.data_ptr as &[i64; 2])
+// gdbr-command:print *(MUT_VECT_SLICE.data_ptr as *const [i64; 2])
 // gdbg-check:$15 = {64, 65}
 // gdbr-check:$15 = [64, 65]
 
-//gdb-command:print mut_slice.length
-//gdb-check:$16 = 5
-//gdbg-command:print *((i64[5]*)(mut_slice.data_ptr))
-//gdbr-command:print *(mut_slice.data_ptr as &[i64; 5])
-//gdbg-check:$17 = {1, 2, 3, 4, 5}
-//gdbr-check:$17 = [1, 2, 3, 4, 5]
+// gdb-command:print mut_slice.length
+// gdb-check:$16 = 5
+// gdbg-command:print *((i64[5]*)(mut_slice.data_ptr))
+// gdbr-command:print *(mut_slice.data_ptr as *const [i64; 5])
+// gdbg-check:$17 = {1, 2, 3, 4, 5}
+// gdbr-check:$17 = [1, 2, 3, 4, 5]
 
 
 // === LLDB TESTS ==================================================================================
