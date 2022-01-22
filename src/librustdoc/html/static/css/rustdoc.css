@@ -2038,15 +2038,14 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	font-family: 'Fira Sans';
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
-	overflow: hidden;
-	max-height: 240px;
-}
-
-.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+.scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
 	max-height: 240px;
 	padding-bottom: 0;
+}
+
+.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
+	overflow-x: hidden;
 }
 
 .scraped-example .code-wrapper .prev {

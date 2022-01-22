@@ -2717,6 +2717,30 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         // The output code is limited to that byte range.
         let contents_subset = &contents[(byte_min as usize)..(byte_max as usize)];
 
+        // Given a call-site range, return the set of sub-ranges that exclude leading whitespace
+        // when the range spans multiple lines.
+        let strip_leading_whitespace = |(lo, hi): (u32, u32)| -> Vec<(u32, u32)> {
+            let contents_range = &contents_subset[(lo as usize)..(hi as usize)];
+            let mut ignoring_whitespace = false;
+            let mut ranges = Vec::new();
+            let mut cur_lo = 0;
+            for (idx, chr) in contents_range.char_indices() {
+                let idx = idx as u32;
+                if ignoring_whitespace {
+                    if !chr.is_whitespace() {
+                        ignoring_whitespace = false;
+                        cur_lo = idx;
+                    }
+                } else if chr == '\n' {
+                    ranges.push((lo + cur_lo, lo + idx));
+                    cur_lo = idx;
+                    ignoring_whitespace = true;
+                }
+            }
+            ranges.push((lo + cur_lo, hi));
+            ranges
+        };
+
         // The call locations need to be updated to reflect that the size of the program has changed.
         // Specifically, the ranges are all subtracted by `byte_min` since that's the new zero point.
         let (mut byte_ranges, line_ranges): (Vec<_>, Vec<_>) = call_data
@@ -2726,10 +2750,12 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
                 let (byte_lo, byte_hi) = loc.call_expr.byte_span;
                 let (line_lo, line_hi) = loc.call_expr.line_span;
                 let byte_range = (byte_lo - byte_min, byte_hi - byte_min);
+                let byte_ranges = strip_leading_whitespace(byte_range);
+
                 let line_range = (line_lo - line_min, line_hi - line_min);
                 let (line_url, line_title) = link_to_loc(call_data, loc);
 
-                (byte_range, (line_range, line_url, line_title))
+                (byte_ranges, (line_range, line_url, line_title))
             })
             .unzip();
 
@@ -2784,8 +2810,8 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         let root_path = vec!["../"; cx.current.len() - 1].join("");
 
         let mut decoration_info = FxHashMap::default();
-        decoration_info.insert("highlight focus", vec![byte_ranges.remove(0)]);
-        decoration_info.insert("highlight", byte_ranges);
+        decoration_info.insert("highlight focus", byte_ranges.remove(0));
+        decoration_info.insert("highlight", byte_ranges.into_iter().flatten().collect());
 
         sources::print_src(
             w,
