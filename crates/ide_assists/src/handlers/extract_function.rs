@@ -1524,9 +1524,7 @@ fn make_body(
                 println!("element: {:?}", element);
             }
 
-            make::block_expr_full(elements, tail_expr)
-
-            // make::block_expr(parent.statements().into_iter(), tail_expr)
+            make::hacky_block_expr_with_comments(elements, tail_expr)
         }
     };
 
