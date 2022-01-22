@@ -22,9 +22,8 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         AstNode,
     },
-    match_ast, ted, SyntaxElement,
-    SyntaxKind::{self, COMMENT},
-    SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, WalkEvent, T,
+    match_ast, ted, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    TokenAtOffset, WalkEvent, T,
 };
 
 use crate::{
@@ -63,13 +62,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         return None;
     }
 
-    let node = ctx.covering_element();
-    if node.kind() == COMMENT {
-        cov_mark::hit!(extract_function_in_comment_is_not_applicable);
-        return None;
-    }
-
-    let node = match node {
+    let node = match ctx.covering_element() {
         syntax::NodeOrToken::Node(n) => n,
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
@@ -2205,12 +2198,6 @@ fn $0fun_name(n: u32) -> u32 {
 }
 "#,
         )
-    }
-
-    #[test]
-    fn in_comment_is_not_applicable() {
-        cov_mark::check!(extract_function_in_comment_is_not_applicable);
-        check_assist_not_applicable(extract_function, r"fn main() { 1 + /* $0comment$0 */ 1; }");
     }
 
     #[test]
@@ -4571,6 +4558,68 @@ fn func() {
 fn $0fun_name() {
     /* a comment */
     let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_long_form_comment_multiline() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0/* 
+    a 
+    comment 
+    */
+    let x = 0;$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    /* 
+    a 
+    comment 
+    */
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_long_form_comment_multiline_alone() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0/* 
+    a 
+    comment 
+    */
+    $0let x = 0;
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+    let x = 0;
+}
+
+fn $0fun_name() {
+    /* 
+    a 
+    comment 
+    */
 }
 "#,
         );
