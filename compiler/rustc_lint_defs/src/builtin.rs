@@ -2760,52 +2760,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_naked_functions` lint detects naked function
-    /// definitions that are unsupported but were previously accepted.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(naked_functions)]
-    ///
-    /// #[naked]
-    /// pub extern "C" fn f() -> u32 {
-    ///     42
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The naked functions must be defined using a single inline assembly
-    /// block.
-    ///
-    /// The execution must never fall through past the end of the assembly
-    /// code so the block must use `noreturn` option. The asm block can also
-    /// use `att_syntax` option, but other options are not allowed.
-    ///
-    /// The asm block must not contain any operands other than `const` and
-    /// `sym`. Additionally, naked function should specify a non-Rust ABI.
-    ///
-    /// Naked functions cannot be inlined. All forms of the `inline` attribute
-    /// are prohibited.
-    ///
-    /// While other definitions of naked functions were previously accepted,
-    /// they are unsupported and might not work reliably. This is a
-    /// [future-incompatible] lint that will transition into hard error in
-    /// the future.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub UNSUPPORTED_NAKED_FUNCTIONS,
-    Warn,
-    "unsupported naked function definitions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #32408 <https://github.com/rust-lang/rust/issues/32408>",
-    };
-}
-
-declare_lint! {
     /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
     ///
     /// ### Example
@@ -3070,7 +3024,6 @@ declare_lint_pass! {
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
-        UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         INVALID_DOC_ATTRIBUTES,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
