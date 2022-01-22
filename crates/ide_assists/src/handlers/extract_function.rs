@@ -1451,7 +1451,7 @@ fn make_body(
                     syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
                         rewrite_body_segment(ctx, &fun.params, &handler, &n),
                     ),
-                    syntax::NodeOrToken::Token(_) => it,
+                    _ => it,
                 })
                 .collect();
 
@@ -1462,7 +1462,7 @@ fn make_body(
                     }
                     _ => None,
                 },
-                None => None,
+                _ => None,
             };
 
             match tail_expr {
@@ -1492,7 +1492,7 @@ fn make_body(
                             let ast_node = indented.syntax().clone_subtree();
                             syntax::NodeOrToken::Node(ast_node)
                         }
-                        None => node_or_token,
+                        _ => node_or_token,
                     },
                     _ => node_or_token,
                 })
