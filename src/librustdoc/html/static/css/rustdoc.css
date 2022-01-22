@@ -896,11 +896,11 @@ table,
 
 .search-container {
 	position: relative;
-	max-width: 960px;
+	display: flex;
+	height: 34px;
 }
-.search-container > div {
-	display: inline-flex;
-	width: calc(100% - 63px);
+.search-container > * {
+	height: 100%;
 }
 .search-results-title {
 	display: inline;
@@ -931,10 +931,8 @@ table,
 	background-position: calc(100% - 1px) 56%;
 	background-image: /* AUTOREPLACE: */url("down-arrow.svg");
 }
-.search-container > .top-button {
-	position: absolute;
-	right: 0;
-	top: 10px;
+.search-container {
+	margin-top: 4px;
 }
 .search-input {
 	/* Override Normalize.css: it has a rule that sets
@@ -947,21 +945,12 @@ table,
 	-moz-box-sizing: border-box !important;
 	box-sizing: border-box !important;
 	outline: none;
-	border: none;
-	border-radius: 1px;
-	margin-top: 5px;
-	padding: 10px 16px;
+	border: 1px solid;
+	border-radius: 2px;
+	padding: 5px 8px;
 	font-size: 1.0625rem;
 	transition: border-color 300ms ease;
-	transition: border-radius 300ms ease-in-out;
-	transition: box-shadow 300ms ease-in-out;
 	width: 100%;
-}
-
-.search-input:focus {
-	border-radius: 2px;
-	border: 0;
-	outline: 0;
 }
 
 .search-results {
@@ -1436,8 +1425,8 @@ pre.rust {
 
 .theme-picker {
 	position: absolute;
-	left: -34px;
-	top: 9px;
+	left: -38px;
+	top: 4px;
 }
 
 .theme-picker button {
@@ -1445,34 +1434,27 @@ pre.rust {
 }
 
 #settings-menu, #help-button {
-	position: absolute;
-	top: 10px;
-}
-
-#settings-menu {
-	right: 0;
+	margin-left: 4px;
 	outline: none;
 }
 
+#theme-picker, #copy-path {
+	height: 34px;
+}
 #theme-picker, #settings-menu, #help-button, #copy-path {
-	padding: 4px;
-	/* Rare exception to specifying font sizes in rem. Since these are acting
-	   as icons, it's okay to specify their sizes in pixels. */
-	font-size: 16px;
-	width: 27px;
-	height: 29px;
+	padding: 5px;
+	width: 33px;
 	border: 1px solid;
-	border-radius: 3px;
+	border-radius: 2px;
 	cursor: pointer;
 }
 
 #help-button {
-	right: 30px;
 	font-family: "Fira Sans", Arial, sans-serif;
 	text-align: center;
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
-	font-size: 16px;
+	font-size: 20px;
 	padding-top: 2px;
 }
 
@@ -1909,10 +1891,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		display: none !important;
 	}
 
-	.theme-picker {
-		z-index: 1;
-	}
-
 	.notable-traits {
 		position: absolute;
 		left: -22px;
@@ -1999,10 +1977,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: 100%;
 	}
 
-	.search-container > div {
-		width: calc(100% - 32px);
-	}
-
 	/* Display an alternating layout on tablets and phones */
 	.search-results > a {
 		border-bottom: 1px solid #aaa9;
@@ -2047,28 +2021,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: 50%;
 	}
 
-	.search-container > div {
-		display: block;
-		width: calc(100% - 37px);
-	}
-
 	#crate-search {
 		border-radius: 4px;
 		border: 0;
-	}
-
-	#theme-picker, #settings-menu {
-		padding: 5px;
-		width: 31px;
-		height: 31px;
-	}
-
-	#theme-picker {
-		margin-top: -2px;
-	}
-
-	#settings-menu {
-		top: 7px;
 	}
 
 	.docblock {
