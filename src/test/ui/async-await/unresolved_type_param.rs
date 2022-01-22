@@ -3,6 +3,10 @@
 // (rather than give a general error message)
 // edition:2018
 
+// FIXME(eholk): temporarily disabled while drop range tracking is disabled
+// (see generator_interior.rs:27)
+// ignore-test
+
 async fn bar<T>() -> () {}
 
 async fn foo() {
