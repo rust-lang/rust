@@ -910,8 +910,9 @@ impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 
-/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning[^1] a `value: T` _locally_[^2]
-/// (≠ [in the heap][`Box::pin`]).
+/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning[^1] a `value: T` _locally_[^2].
+///
+/// Unlike [`Box::pin`], this does not involve a heap allocation.
 ///
 /// [^1]: If the (type `T` of the) given value does not implement [`Unpin`], then this
 /// effectively pins the `value` in memory, where it will be unable to be moved.
@@ -1043,8 +1044,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// <details><summary>Error message</summary>
 ///
-/// ```rust
-/// # const _IGNORE: &str = stringify! {
+/// ```console
 /// error[E0716]: temporary value dropped while borrowed
 ///   --> src/main.rs:9:28
 ///    |
@@ -1056,8 +1056,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// 11 | }; // <- Foo is dropped
 ///    | - temporary value is freed at the end of this statement
 ///    |
-///    = note: consider using a let binding to create a longer lived value
-/// # };
+///    = note: consider using a `let` binding to create a longer lived value
 /// ```
 ///
 /// </details>
