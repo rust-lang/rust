@@ -689,7 +689,7 @@ dependencies = [
  "clippy_utils",
  "if_chain",
  "itertools 0.10.1",
- "pulldown-cmark 0.9.0",
+ "pulldown-cmark",
  "quine-mc_cluskey",
  "regex-syntax",
  "rustc-semver",
@@ -2186,9 +2186,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.14"
+version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6e77253c46a90eb7e96b2807201dab941a4db5ea05eca5aaaf7027395f352b3"
+checksum = "241f10687eb3b4e0634b3b4e423f97c5f1efbd69dc9522e24a8b94583eeec3c6"
 dependencies = [
  "ammonia",
  "anyhow",
@@ -2201,7 +2201,7 @@ dependencies = [
  "log",
  "memchr",
  "opener",
- "pulldown-cmark 0.8.0",
+ "pulldown-cmark",
  "regex",
  "serde",
  "serde_derive",
@@ -2865,23 +2865,12 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.8.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffade02495f22453cd593159ea2f59827aae7f53fa8323f756799b670881dcf8"
+checksum = "34f197a544b0c9ab3ae46c359a7ec9cbbb5c7bf97054266fecb7ead794a181d6"
 dependencies = [
  "bitflags",
  "getopts",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acd16514d1af5f7a71f909a44ef253cdb712a376d7ebc8ae4a471a9be9743548"
-dependencies = [
- "bitflags",
  "memchr",
  "unicase",
 ]
@@ -4440,7 +4429,7 @@ dependencies = [
  "expect-test",
  "itertools 0.9.0",
  "minifier",
- "pulldown-cmark 0.9.0",
+ "pulldown-cmark",
  "rayon",
  "regex",
  "rustdoc-json-types",
