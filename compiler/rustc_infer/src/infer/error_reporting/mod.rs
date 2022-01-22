@@ -1448,6 +1448,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
         swap_secondary_and_primary: bool,
+        force_label: bool,
     ) {
         let span = cause.span(self.tcx);
         debug!("note_type_err cause={:?} values={:?}, terr={:?}", cause, values, terr);
@@ -1623,7 +1624,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             TypeError::ObjectUnsafeCoercion(_) => {}
             _ => {
                 let mut label_or_note = |span: Span, msg: &str| {
-                    if &[span] == diag.span.primary_spans() {
+                    if force_label || &[span] == diag.span.primary_spans() {
                         diag.span_label(span, msg);
                     } else {
                         diag.span_note(span, msg);
@@ -2171,7 +2172,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
             }
         };
-        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
+        self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
         diag
     }
 
@@ -2765,7 +2766,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-enum FailureCode {
+pub enum FailureCode {
     Error0038(DefId),
     Error0317(&'static str),
     Error0580(&'static str),
@@ -2773,7 +2774,7 @@ enum FailureCode {
     Error0644(&'static str),
 }
 
-trait ObligationCauseExt<'tcx> {
+pub trait ObligationCauseExt<'tcx> {
     fn as_failure_code(&self, terr: &TypeError<'tcx>) -> FailureCode;
     fn as_requirement_str(&self) -> &'static str;
 }

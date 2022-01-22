@@ -1654,7 +1654,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     }),
                 _ => None,
             };
-            self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
+            self.note_type_err(
+                &mut diag,
+                &obligation.cause,
+                secondary_span,
+                values,
+                err,
+                true,
+                false,
+            );
             self.note_obligation_cause(&mut diag, obligation);
             diag.emit();
         });

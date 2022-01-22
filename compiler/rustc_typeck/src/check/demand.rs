@@ -28,7 +28,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
-        error: TypeError<'tcx>,
+        error: Option<TypeError<'tcx>>,
     ) {
         self.annotate_expected_due_to_let_ty(err, expr, error);
         self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr);
@@ -150,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e.clone());
 
-        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, e);
+        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
 
         (expected, Some(err))
     }
@@ -159,7 +159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        error: TypeError<'_>,
+        error: Option<TypeError<'_>>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
         match (self.tcx.hir().find(parent), error) {
@@ -173,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Assign(lhs, rhs, _), ..
                 })),
-                TypeError::Sorts(ExpectedFound { expected, .. }),
+                Some(TypeError::Sorts(ExpectedFound { expected, .. })),
             ) if rhs.hir_id == expr.hir_id && !expected.is_closure() => {
                 // We ignore closures explicitly because we already point at them elsewhere.
                 // Point at the assigned-to binding.

@@ -384,6 +384,7 @@ fn compare_predicate_entailment<'tcx>(
                 })),
                 &terr,
                 false,
+                false,
             );
 
             return Err(diag.emit());
@@ -1073,6 +1074,7 @@ crate fn compare_const_impl<'tcx>(
                     found: impl_ty.into(),
                 })),
                 &terr,
+                false,
                 false,
             );
             diag.emit();

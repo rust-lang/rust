@@ -755,9 +755,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ret: Expectation<'tcx>,
         formal_ret: Ty<'tcx>,
         formal_args: &[Ty<'tcx>],
-    ) -> Vec<Ty<'tcx>> {
+    ) -> Option<Vec<Ty<'tcx>>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
+        let Some(ret_ty) = expected_ret.only_has_type(self) else { return None };
 
         // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
         // Without it, the inference
@@ -779,7 +779,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
                     if let ty::Opaque(def_id, _) = *ty.kind() {
                         if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
-                            return Vec::new();
+                            return None;
                         }
                     }
                 }
@@ -820,7 +820,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Record all the argument types, with the substitutions
                 // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect())
+                Ok(Some(formal_args.iter().map(|&ty| self.resolve_vars_if_possible(ty)).collect()))
             })
             .unwrap_or_default();
         debug!(?formal_args, ?formal_ret, ?expect_args, ?expected_ret);

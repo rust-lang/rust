@@ -1502,7 +1502,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         found,
                         expected,
                         None,
-                        coercion_error,
+                        Some(coercion_error),
                     );
                 }
 

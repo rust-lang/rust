@@ -5,7 +5,9 @@ LL |   type Closure = impl Fn() -> u64;
    |                  ---------------- the expected opaque type
 ...
 LL |       Anonymous(|| {
-   |  _______________^
+   |  _____---------_^
+   | |     |
+   | |     arguments to this struct are incorrect
 LL | |         3
 LL | |     })
    | |_____^ expected closure, found a different closure
@@ -14,6 +16,11 @@ LL | |     })
                   found closure `[closure@$DIR/issue-74282.rs:8:15: 10:6]`
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
+note: tuple struct defined here
+  --> $DIR/issue-74282.rs:4:8
+   |
+LL | struct Anonymous(Closure);
+   |        ^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/issue-74282.rs:8:5

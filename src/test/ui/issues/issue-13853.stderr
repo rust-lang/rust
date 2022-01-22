@@ -20,13 +20,19 @@ error[E0308]: mismatched types
   --> $DIR/issue-13853.rs:37:13
    |
 LL |     iterate(graph);
-   |             ^^^^^
-   |             |
-   |             expected reference, found struct `Vec`
-   |             help: consider borrowing here: `&graph`
+   |     ------- ^^^^^
+   |     |       |
+   |     |       expected reference, found struct `Vec`
+   |     |       help: consider borrowing here: `&graph`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `Vec<Stuff>`
+note: function defined here
+  --> $DIR/issue-13853.rs:26:4
+   |
+LL | fn iterate<N: Node, G: Graph<N>>(graph: &G) {
+   |    ^^^^^^^                       ---------
 
 error: aborting due to 3 previous errors
 

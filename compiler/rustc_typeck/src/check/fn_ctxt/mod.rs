@@ -1,9 +1,9 @@
 mod _impl;
+mod arg_matrix;
 mod checks;
 mod suggestions;
 
 pub use _impl::*;
-pub use checks::*;
 pub use suggestions::*;
 
 use crate::astconv::AstConv;

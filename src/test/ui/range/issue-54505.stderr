@@ -2,73 +2,109 @@ error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:14:16
    |
 LL |     take_range(0..1);
-   |                ^^^^
-   |                |
-   |                expected reference, found struct `std::ops::Range`
-   |                help: consider borrowing here: `&(0..1)`
+   |     ---------- ^^^^
+   |     |          |
+   |     |          expected reference, found struct `std::ops::Range`
+   |     |          help: consider borrowing here: `&(0..1)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `std::ops::Range<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:19:16
    |
 LL |     take_range(1..);
-   |                ^^^
-   |                |
-   |                expected reference, found struct `RangeFrom`
-   |                help: consider borrowing here: `&(1..)`
+   |     ---------- ^^^
+   |     |          |
+   |     |          expected reference, found struct `RangeFrom`
+   |     |          help: consider borrowing here: `&(1..)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `RangeFrom<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:24:16
    |
 LL |     take_range(..);
-   |                ^^
-   |                |
-   |                expected reference, found struct `RangeFull`
-   |                help: consider borrowing here: `&(..)`
+   |     ---------- ^^
+   |     |          |
+   |     |          expected reference, found struct `RangeFull`
+   |     |          help: consider borrowing here: `&(..)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `RangeFull`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:29:16
    |
 LL |     take_range(0..=1);
-   |                ^^^^^
-   |                |
-   |                expected reference, found struct `RangeInclusive`
-   |                help: consider borrowing here: `&(0..=1)`
+   |     ---------- ^^^^^
+   |     |          |
+   |     |          expected reference, found struct `RangeInclusive`
+   |     |          help: consider borrowing here: `&(0..=1)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `RangeInclusive<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:34:16
    |
 LL |     take_range(..5);
-   |                ^^^
-   |                |
-   |                expected reference, found struct `RangeTo`
-   |                help: consider borrowing here: `&(..5)`
+   |     ---------- ^^^
+   |     |          |
+   |     |          expected reference, found struct `RangeTo`
+   |     |          help: consider borrowing here: `&(..5)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `RangeTo<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error[E0308]: mismatched types
   --> $DIR/issue-54505.rs:39:16
    |
 LL |     take_range(..=42);
-   |                ^^^^^
-   |                |
-   |                expected reference, found struct `RangeToInclusive`
-   |                help: consider borrowing here: `&(..=42)`
+   |     ---------- ^^^^^
+   |     |          |
+   |     |          expected reference, found struct `RangeToInclusive`
+   |     |          help: consider borrowing here: `&(..=42)`
+   |     arguments to this function are incorrect
    |
    = note: expected reference `&_`
                  found struct `RangeToInclusive<{integer}>`
+note: function defined here
+  --> $DIR/issue-54505.rs:10:4
+   |
+LL | fn take_range(_r: &impl RangeBounds<i8>) {}
+   |    ^^^^^^^^^^ -------------------------
 
 error: aborting due to 6 previous errors
 

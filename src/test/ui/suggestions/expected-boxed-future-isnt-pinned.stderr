@@ -34,10 +34,16 @@ LL | fn baz<F: Future<Output=i32> + Send + 'static>(x: F) -> BoxFuture<'static, 
 LL |     Pin::new(x)
    |     -------- ^ expected struct `Box`, found type parameter `F`
    |     |
+   |     arguments to this function are incorrect
    |     help: use `Box::pin` to pin and box this expression: `Box::pin`
    |
    = note:      expected struct `Box<dyn Future<Output = i32> + Send>`
            found type parameter `F`
+note: associated function defined here
+  --> $SRC_DIR/core/src/pin.rs:LL:COL
+   |
+LL |     pub const fn new(pointer: P) -> Pin<P> {
+   |                  ^^^
 
 error[E0277]: `dyn Future<Output = i32> + Send` cannot be unpinned
   --> $DIR/expected-boxed-future-isnt-pinned.rs:19:5
