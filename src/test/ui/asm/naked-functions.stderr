@@ -1,5 +1,5 @@
 error: asm with the `pure` option must have at least one output
-  --> $DIR/naked-functions.rs:124:14
+  --> $DIR/naked-functions.rs:111:14
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
@@ -29,66 +29,54 @@ LL |     P { x, y }: P,
    |     ^^^^^^^^^^
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:37:5
+  --> $DIR/naked-functions.rs:36:5
    |
 LL |     a + 1
    |     ^
    |
    = help: follow the calling convention in asm block to use parameters
 
-warning: naked functions must contain a single asm block
+error[E0787]: naked functions must contain a single asm block
   --> $DIR/naked-functions.rs:34:1
    |
 LL | / pub unsafe extern "C" fn inc(a: u32) -> u32 {
-LL | |
 LL | |
 LL | |     a + 1
    | |     ----- non-asm is unsupported in naked functions
 LL | |
 LL | | }
    | |_^
-   |
-   = note: `#[warn(unsupported_naked_functions)]` on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:43:31
+  --> $DIR/naked-functions.rs:42:31
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                               ^
    |
    = help: follow the calling convention in asm block to use parameters
 
-warning: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:43:23
+error[E0787]: only `const` and `sym` operands are supported in naked functions
+  --> $DIR/naked-functions.rs:42:23
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                       ^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:50:1
+error[E0787]: naked functions must contain a single asm block
+  --> $DIR/naked-functions.rs:48:1
    |
 LL | / pub unsafe extern "C" fn inc_closure(a: u32) -> u32 {
-LL | |
 LL | |
 LL | |     (|| a + 1)()
    | |     ------------ non-asm is unsupported in naked functions
 LL | | }
    | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:70:10
+error[E0787]: only `const` and `sym` operands are supported in naked functions
+  --> $DIR/naked-functions.rs:65:10
    |
 LL |          in(reg) a,
    |          ^^^^^^^^^
-...
+LL |
 LL |          inlateout(reg) b,
    |          ^^^^^^^^^^^^^^^^
 LL |          inout(reg) c,
@@ -97,30 +85,23 @@ LL |          lateout(reg) d,
    |          ^^^^^^^^^^^^^^
 LL |          out(reg) e,
    |          ^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:67:5
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:63:5
    |
 LL | /     asm!("/* {0} {1} {2} {3} {4} {5} {6} */",
 LL | |
-LL | |
 LL | |          in(reg) a,
+LL | |
 ...  |
 LL | |          sym G,
 LL | |     );
    | |_____^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:57:1
+error[E0787]: naked functions must contain a single asm block
+  --> $DIR/naked-functions.rs:54:1
    |
 LL | / pub unsafe extern "C" fn unsupported_operands() {
-LL | |
 LL | |
 LL | |     let mut a = 0usize;
    | |     ------------------- non-asm is unsupported in naked functions
@@ -136,123 +117,96 @@ LL | |     let mut e = 0usize;
 LL | |     );
 LL | | }
    | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:83:1
+error[E0787]: naked functions must contain a single asm block
+  --> $DIR/naked-functions.rs:77:1
    |
 LL | / pub extern "C" fn missing_assembly() {
 LL | |
-LL | |
 LL | | }
    | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:92:5
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:84:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:95:5
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:86:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:98:5
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:88:5
    |
 LL |     asm!("");
    |     ^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:89:1
+error[E0787]: naked functions must contain a single asm block
+  --> $DIR/naked-functions.rs:82:1
    |
 LL | / pub extern "C" fn too_many_asm_blocks() {
 LL | |
+LL | |     asm!("");
 LL | |
 LL | |     asm!("");
-...  |
+   | |     -------- multiple asm blocks are unsupported in naked functions
+LL | |
 LL | |     asm!("");
    | |     -------- multiple asm blocks are unsupported in naked functions
-...  |
-LL | |     asm!("");
-   | |     -------- multiple asm blocks are unsupported in naked functions
-...  |
+LL | |
 LL | |     asm!("", options(noreturn));
    | |     --------------------------- multiple asm blocks are unsupported in naked functions
 LL | | }
    | |_^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:109:11
+  --> $DIR/naked-functions.rs:97:11
    |
 LL |         *&y
    |           ^
    |
    = help: follow the calling convention in asm block to use parameters
 
-warning: naked functions must contain a single asm block
-  --> $DIR/naked-functions.rs:106:5
+error[E0787]: naked functions must contain a single asm block
+  --> $DIR/naked-functions.rs:95:5
    |
 LL | /     pub extern "C" fn inner(y: usize) -> usize {
-LL | |
 LL | |
 LL | |         *&y
    | |         --- non-asm is unsupported in naked functions
 LL | |
 LL | |     }
    | |_____^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm options unsupported in naked functions: `nomem`, `preserves_flags`
-  --> $DIR/naked-functions.rs:117:5
+error[E0787]: asm options unsupported in naked functions: `nomem`, `preserves_flags`
+  --> $DIR/naked-functions.rs:105:5
    |
 LL |     asm!("", options(nomem, preserves_flags, noreturn));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
-  --> $DIR/naked-functions.rs:124:5
+error[E0787]: asm options unsupported in naked functions: `nostack`, `pure`, `readonly`
+  --> $DIR/naked-functions.rs:111:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: asm in naked functions must use `noreturn` option
-  --> $DIR/naked-functions.rs:124:5
+error[E0787]: asm in naked functions must use `noreturn` option
+  --> $DIR/naked-functions.rs:111:5
    |
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0787]: asm options unsupported in naked functions: `may_unwind`
+  --> $DIR/naked-functions.rs:119:5
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+LL |     asm!("", options(noreturn, may_unwind));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:133:15
+  --> $DIR/naked-functions.rs:124:15
    |
 LL | pub unsafe fn default_abi() {
    |               ^^^^^^^^^^^
@@ -260,64 +214,47 @@ LL | pub unsafe fn default_abi() {
    = note: `#[warn(undefined_naked_function_abi)]` on by default
 
 warning: Rust ABI is unsupported in naked functions
-  --> $DIR/naked-functions.rs:139:15
+  --> $DIR/naked-functions.rs:130:15
    |
 LL | pub unsafe fn rust_abi() {
    |               ^^^^^^^^
 
-warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:179:1
+error: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:170:1
    |
 LL | #[inline]
    | ^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:187:1
+error: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:177:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions cannot be inlined
+error: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:184:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^
+
+error: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:191:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+
+error: naked functions cannot be inlined
+  --> $DIR/naked-functions.rs:193:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: naked functions cannot be inlined
   --> $DIR/naked-functions.rs:195:1
    |
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
 
-warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:203:1
-   |
-LL | #[inline]
-   | ^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
+error: aborting due to 30 previous errors; 2 warnings emitted
 
-warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:206:1
-   |
-LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
-
-warning: naked functions cannot be inlined
-  --> $DIR/naked-functions.rs:209:1
-   |
-LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #32408 <https://github.com/rust-lang/rust/issues/32408>
-
-error: aborting due to 8 previous errors; 23 warnings emitted
-
+For more information about this error, try `rustc --explain E0787`.

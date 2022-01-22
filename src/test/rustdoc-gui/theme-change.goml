@@ -1,3 +1,4 @@
+// Ensures that the theme change is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
 click: "#theme-picker"
 click: "#theme-choices > button:first-child"

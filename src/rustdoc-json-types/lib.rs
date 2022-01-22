@@ -8,6 +8,9 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+/// rustdoc format-version.
+pub const FORMAT_VERSION: u32 = 10;
+
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
 /// tools to find or link to them.
@@ -516,9 +519,6 @@ pub struct Static {
     pub mutable: bool,
     pub expr: String,
 }
-
-/// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 9;
 
 #[cfg(test)]
 mod tests;
