@@ -507,6 +507,7 @@ fn doctest_extract_function() {
 fn main() {
     let n = 1;
     $0let m = n + 2;
+    // calculate
     let k = m + n;$0
     let g = 3;
 }
@@ -520,6 +521,7 @@ fn main() {
 
 fn $0fun_name(n: i32) {
     let m = n + 2;
+    // calculate
     let k = m + n;
 }
 "#####,
