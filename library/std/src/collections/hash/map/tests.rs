@@ -817,6 +817,7 @@ fn test_retain() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android used in CI has a broken dlmalloc
 fn test_try_reserve() {
     let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 
