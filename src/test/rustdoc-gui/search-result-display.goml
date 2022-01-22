@@ -1,3 +1,4 @@
+// Checks that the search results have the expected width.
 goto: file://|DOC_PATH|/test_docs/index.html
 size: (900, 1000)
 write: (".search-input", "test")

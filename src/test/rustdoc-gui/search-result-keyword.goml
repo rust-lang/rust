@@ -1,3 +1,4 @@
+// Checks that the "keyword" results have the expected text alongside them.
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "CookieMonster")
 // Waiting for the search results to appear...
