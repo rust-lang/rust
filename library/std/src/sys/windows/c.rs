@@ -88,6 +88,7 @@ pub const FILE_SHARE_DELETE: DWORD = 0x4;
 pub const FILE_SHARE_READ: DWORD = 0x1;
 pub const FILE_SHARE_WRITE: DWORD = 0x2;
 
+pub const FILE_OPEN: ULONG = 0x00000001;
 pub const FILE_OPEN_REPARSE_POINT: ULONG = 0x200000;
 pub const OBJ_DONT_REPARSE: ULONG = 0x1000;
 
@@ -1228,15 +1229,20 @@ compat_fn! {
 
 compat_fn! {
     "ntdll":
-    pub fn NtOpenFile(
+    pub fn NtCreateFile(
         FileHandle: *mut HANDLE,
         DesiredAccess: ACCESS_MASK,
         ObjectAttributes: *const OBJECT_ATTRIBUTES,
         IoStatusBlock: *mut IO_STATUS_BLOCK,
+        AllocationSize: *mut i64,
+        FileAttributes: ULONG,
         ShareAccess: ULONG,
-        OpenOptions: ULONG
+        CreateDisposition: ULONG,
+        CreateOptions: ULONG,
+        EaBuffer: *mut c_void,
+        EaLength: ULONG
     ) -> NTSTATUS {
-        panic!("`NtOpenFile` not available");
+        panic!("`NtCreateFile` not available");
     }
     pub fn RtlNtStatusToDosError(
         Status: NTSTATUS
