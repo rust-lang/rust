@@ -1794,6 +1794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .1;
                 field.vis.is_accessible_from(def_scope, self.tcx)
             })
+            .filter(|field| !self.tcx.is_doc_hidden(field.did))
             .map(|field| field.name)
             .collect()
     }
