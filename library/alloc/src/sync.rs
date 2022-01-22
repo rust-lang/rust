@@ -351,30 +351,51 @@ impl<T> Arc<T> {
         unsafe { Self::from_inner(Box::leak(x).into()) }
     }
 
-    /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function returns will result
-    /// in a `None` value. However, the weak reference may be cloned freely and
-    /// stored for use at a later time.
+    /// Constructs a new `Arc<T>` using a closure `data_fn` that has access to
+    /// a weak reference to the constructing `Arc<T>`.
     ///
-    /// # Examples
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to prevent a memory leak.
+    /// In `data_fn`, initialization of `T` can make use of the weak reference
+    /// by cloning and storing it inside `T` for use at a later time.
+    ///
+    /// Since the new `Arc<T>` is not fully-constructed until
+    /// `Arc<T>::new_cyclic` returns, calling [`upgrade`] on the weak
+    /// reference inside `data_fn` will fail and result in a `None` value.
+    ///
+    /// # Panics
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T>`] is dropped normally.
+    ///
+    /// # Example
     /// ```
-    /// #![feature(arc_new_cyclic)]
     /// #![allow(dead_code)]
-    ///
     /// use std::sync::{Arc, Weak};
     ///
-    /// struct Foo {
-    ///     me: Weak<Foo>,
+    /// struct Gadget {
+    ///     me: Weak<Gadget>,
     /// }
     ///
-    /// let foo = Arc::new_cyclic(|me| Foo {
-    ///     me: me.clone(),
-    /// });
+    /// impl Gadget {
+    ///     /// Construct a reference counted Gadget.
+    ///     fn new() -> Arc<Self> {
+    ///         Arc::new_cyclic(|me| Gadget { me: me.clone() })
+    ///     }
+    ///
+    ///     /// Return a reference counted pointer to Self.
+    ///     fn me(&self) -> Arc<Self> {
+    ///         self.me.upgrade().unwrap()
+    ///     }
+    /// }
     /// ```
+    /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
+    pub fn new_cyclic<F>(data_fn: F) -> Arc<T>
+    where
+        F: FnOnce(&Weak<T>) -> T,
+    {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
