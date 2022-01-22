@@ -1483,7 +1483,7 @@ fn make_body(
             };
 
             let body_indent = IndentLevel(1);
-            let elements: Vec<SyntaxElement> = elements
+            let elements = elements
                 .into_iter()
                 .map(|node_or_token| match &node_or_token {
                     syntax::NodeOrToken::Node(node) => match ast::Stmt::cast(node.clone()) {
