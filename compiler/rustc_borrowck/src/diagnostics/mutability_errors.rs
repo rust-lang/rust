@@ -488,12 +488,32 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     // don't create labels for compiler-generated spans
                                     Some(_) => None,
                                     None => {
-                                        let (span, suggestion) = suggest_ampmut(
-                                            self.infcx.tcx,
-                                            local_decl,
-                                            opt_assignment_rhs_span,
-                                            *opt_ty_info,
-                                        );
+                                        let (span, suggestion) = if name != kw::SelfLower {
+                                            suggest_ampmut(
+                                                self.infcx.tcx,
+                                                local_decl,
+                                                opt_assignment_rhs_span,
+                                                *opt_ty_info,
+                                            )
+                                        } else {
+                                            match local_decl.local_info.as_deref() {
+                                                Some(LocalInfo::User(ClearCrossCrate::Set(
+                                                    mir::BindingForm::Var(mir::VarBindingForm {
+                                                        opt_ty_info: None,
+                                                        ..
+                                                    }),
+                                                ))) => {
+                                                    suggest_ampmut_self(self.infcx.tcx, local_decl)
+                                                }
+                                                // explicit self (eg `self: &'a Self`)
+                                                _ => suggest_ampmut(
+                                                    self.infcx.tcx,
+                                                    local_decl,
+                                                    opt_assignment_rhs_span,
+                                                    *opt_ty_info,
+                                                ),
+                                            }
+                                        };
                                         Some((true, span, suggestion))
                                     }
                                 }
