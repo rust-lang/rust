@@ -1506,14 +1506,16 @@ fn make_body(
             let body_indent = IndentLevel(1);
             let elements: Vec<SyntaxElement> = elements
                 .into_iter()
-                .map(|stmt| match stmt {
-                    syntax::NodeOrToken::Node(n) => {
-                        let ast_element = ast::Stmt::cast(n).unwrap();
-                        let indented = ast_element.dedent(old_indent).indent(body_indent);
-                        let ast_node = indented.syntax().clone_subtree();
-                        syntax::NodeOrToken::try_from(ast_node).unwrap()
-                    }
-                    syntax::NodeOrToken::Token(t) => syntax::NodeOrToken::try_from(t).unwrap(),
+                .map(|node_or_token| match &node_or_token {
+                    syntax::NodeOrToken::Node(node) => match ast::Stmt::cast(node.clone()) {
+                        Some(stmt) => {
+                            let indented = stmt.dedent(old_indent).indent(body_indent);
+                            let ast_node = indented.syntax().clone_subtree();
+                            syntax::NodeOrToken::Node(ast_node)
+                        }
+                        None => node_or_token,
+                    },
+                    _ => node_or_token,
                 })
                 .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
