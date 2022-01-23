@@ -277,7 +277,6 @@ language_item_table! {
     Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
     PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
-    PanicStr,                sym::panic_str,           panic_str,                  Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;

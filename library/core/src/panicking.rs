@@ -50,7 +50,7 @@ pub const fn panic(expr: &'static str) -> ! {
 
 #[inline]
 #[track_caller]
-#[lang = "panic_str"] // needed for `non-fmt-panics` lint
+#[rustc_diagnostic_item = "panic_str"]
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
