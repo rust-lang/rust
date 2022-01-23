@@ -33,19 +33,15 @@
     }
 
     function showLightAndDark() {
-        addClass(document.getElementById("theme").parentElement.parentElement, "hidden");
-        removeClass(document.getElementById("preferred-light-theme").parentElement.parentElement,
-            "hidden");
-        removeClass(document.getElementById("preferred-dark-theme").parentElement.parentElement,
-            "hidden");
+        addClass(document.getElementById("theme").parentElement, "hidden");
+        removeClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
+        removeClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
     }
 
     function hideLightAndDark() {
-        addClass(document.getElementById("preferred-light-theme").parentElement.parentElement,
-            "hidden");
-        addClass(document.getElementById("preferred-dark-theme").parentElement.parentElement,
-            "hidden");
-        removeClass(document.getElementById("theme").parentElement.parentElement, "hidden");
+        addClass(document.getElementById("preferred-light-theme").parentElement, "hidden");
+        addClass(document.getElementById("preferred-dark-theme").parentElement, "hidden");
+        removeClass(document.getElementById("theme").parentElement, "hidden");
     }
 
     function updateLightAndDark() {
@@ -81,6 +77,19 @@
             select.onchange = function() {
                 changeSetting(this.id, this.value);
             };
+        });
+        onEachLazy(document.querySelectorAll("input[type=\"radio\"]"), function(elem) {
+            const settingId = elem.name;
+            const settingValue = getSettingValue(settingId);
+            if (settingValue !== null && settingValue !== "null") {
+                elem.checked = settingValue === elem.value;
+            }
+            elem.addEventListener("change", function(ev) {
+                changeSetting(ev.target.name, ev.target.value);
+            });
+        });
+        document.getElementById("back").addEventListener("click", function() {
+            history.back();
         });
     }
 
