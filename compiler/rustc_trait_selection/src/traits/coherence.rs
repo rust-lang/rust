@@ -137,10 +137,15 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     header
 }
 
+/// What kind of overlap check are we doing -- this exists just for testing and feature-gating
+/// purposes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 enum OverlapMode {
+    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for crate-local types)
     Stable,
+    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of the where-clauses.
     WithNegative,
+    /// Just check for negative impls, not for "where clause not implemented": used for testing.
     Strict,
 }
 
