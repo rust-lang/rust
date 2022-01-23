@@ -8,7 +8,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, QPath};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};

@@ -180,6 +180,12 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
+#[unstable(feature = "scoped_threads", issue = "93203")]
+mod scoped;
+
+#[unstable(feature = "scoped_threads", issue = "93203")]
+pub use scoped::{scope, Scope, ScopedJoinHandle};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
@@ -447,6 +453,20 @@ impl Builder {
         F: Send + 'a,
         T: Send + 'a,
     {
+        Ok(JoinHandle(unsafe { self.spawn_unchecked_(f, None) }?))
+    }
+
+    unsafe fn spawn_unchecked_<'a, 'scope, F, T>(
+        self,
+        f: F,
+        scope_data: Option<&'scope scoped::ScopeData>,
+    ) -> io::Result<JoinInner<'scope, T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'a,
+        T: Send + 'a,
+        'scope: 'a,
+    {
         let Builder { name, stack_size } = self;
 
         let stack_size = stack_size.unwrap_or_else(thread::min_stack);
@@ -456,7 +476,8 @@ impl Builder {
         }));
         let their_thread = my_thread.clone();
 
-        let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
+        let my_packet: Arc<Packet<'scope, T>> =
+            Arc::new(Packet { scope: scope_data, result: UnsafeCell::new(None) });
         let their_packet = my_packet.clone();
 
         let output_capture = crate::io::set_output_capture(None);
@@ -480,10 +501,14 @@ impl Builder {
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be
             // safe (not modify it and affect a value far away).
-            unsafe { *their_packet.get() = Some(try_result) };
+            unsafe { *their_packet.result.get() = Some(try_result) };
         };
 
-        Ok(JoinHandle(JoinInner {
+        if let Some(scope_data) = scope_data {
+            scope_data.increment_num_running_threads();
+        }
+
+        Ok(JoinInner {
             // SAFETY:
             //
             // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
@@ -506,8 +531,8 @@ impl Builder {
                 )?
             },
             thread: my_thread,
-            packet: Packet(my_packet),
-        }))
+            packet: my_packet,
+        })
     }
 }
 
@@ -1242,34 +1267,48 @@ impl fmt::Debug for Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
-// This packet is used to communicate the return value between the spawned thread
-// and the rest of the program. Memory is shared through the `Arc` within and there's
-// no need for a mutex here because synchronization happens with `join()` (the
-// caller will never read this packet until the thread has exited).
+// This packet is used to communicate the return value between the spawned
+// thread and the rest of the program. It is shared through an `Arc` and
+// there's no need for a mutex here because synchronization happens with `join()`
+// (the caller will never read this packet until the thread has exited).
 //
-// This packet itself is then stored into a `JoinInner` which in turns is placed
-// in `JoinHandle` and `JoinGuard`. Due to the usage of `UnsafeCell` we need to
-// manually worry about impls like Send and Sync. The type `T` should
-// already always be Send (otherwise the thread could not have been created) and
-// this type is inherently Sync because no methods take &self. Regardless,
-// however, we add inheriting impls for Send/Sync to this type to ensure it's
-// Send/Sync and that future modifications will still appropriately classify it.
-struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
-
-unsafe impl<T: Send> Send for Packet<T> {}
-unsafe impl<T: Sync> Sync for Packet<T> {}
-
-/// Inner representation for JoinHandle
-struct JoinInner<T> {
-    native: imp::Thread,
-    thread: Thread,
-    packet: Packet<T>,
+// An Arc to the packet is stored into a `JoinInner` which in turns is placed
+// in `JoinHandle`.
+struct Packet<'scope, T> {
+    scope: Option<&'scope scoped::ScopeData>,
+    result: UnsafeCell<Option<Result<T>>>,
 }
 
-impl<T> JoinInner<T> {
+// Due to the usage of `UnsafeCell` we need to manually implement Sync.
+// The type `T` should already always be Send (otherwise the thread could not
+// have been created) and the Packet is Sync because all access to the
+// `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
+unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
+
+impl<'scope, T> Drop for Packet<'scope, T> {
+    fn drop(&mut self) {
+        // Book-keeping so the scope knows when it's done.
+        if let Some(scope) = self.scope {
+            // If this packet was for a thread that ran in a scope, the thread
+            // panicked, and nobody consumed the panic payload, we make sure
+            // the scope function will panic.
+            let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+            scope.decrement_num_running_threads(unhandled_panic);
+        }
+    }
+}
+
+/// Inner representation for JoinHandle
+struct JoinInner<'scope, T> {
+    native: imp::Thread,
+    thread: Thread,
+    packet: Arc<Packet<'scope, T>>,
+}
+
+impl<'scope, T> JoinInner<'scope, T> {
     fn join(mut self) -> Result<T> {
         self.native.join();
-        Arc::get_mut(&mut self.packet.0).unwrap().get_mut().take().unwrap()
+        Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
     }
 }
 
@@ -1336,7 +1375,7 @@ impl<T> JoinInner<T> {
 /// [`thread::Builder::spawn`]: Builder::spawn
 /// [`thread::spawn`]: spawn
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle<T>(JoinInner<T>);
+pub struct JoinHandle<T>(JoinInner<'static, T>);
 
 #[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
 unsafe impl<T> Send for JoinHandle<T> {}
@@ -1404,13 +1443,13 @@ impl<T> JoinHandle<T> {
         self.0.join()
     }
 
-    /// Checks if the the associated thread is still running its main function.
+    /// Checks if the associated thread is still running its main function.
     ///
     /// This might return `false` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
     #[unstable(feature = "thread_is_running", issue = "90470")]
     pub fn is_running(&self) -> bool {
-        Arc::strong_count(&self.0.packet.0) > 1
+        Arc::strong_count(&self.0.packet) > 1
     }
 }
 

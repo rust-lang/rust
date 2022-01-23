@@ -16,10 +16,9 @@
 
 use self::TargetLint::*;
 
-use crate::levels::{is_known_lint_tool, LintLevelsBuilder};
+use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
-use ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
-use rustc_ast as ast;
+use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{struct_span_err, Applicability, SuggestionStyle};
@@ -32,13 +31,14 @@ use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, print::Printer, subst::GenericArg, Ty, TyCtxt};
+use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_serialize::json::Json;
 use rustc_session::lint::{BuiltinLintDiagnostics, ExternDepSpec};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
 use rustc_session::Session;
 use rustc_span::lev_distance::find_best_match_for_name;
-use rustc_span::{symbol::Symbol, BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 use rustc_target::abi;
 use tracing::debug;
 
@@ -313,7 +313,7 @@ impl LintStore {
         sess: &Session,
         lint_name: &str,
         level: Level,
-        crate_attrs: &[ast::Attribute],
+        registered_tools: &RegisteredTools,
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
         if lint_name_only == crate::WARNINGS.name_lower() && level == Level::ForceWarn {
@@ -326,7 +326,7 @@ impl LintStore {
             )
             .emit();
         }
-        let db = match self.check_lint_name(sess, lint_name_only, tool_name, crate_attrs) {
+        let db = match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
             CheckLintNameResult::Ok(_) => None,
             CheckLintNameResult::Warning(ref msg, _) => Some(sess.struct_warn(msg)),
             CheckLintNameResult::NoLint(suggestion) => {
@@ -397,13 +397,16 @@ impl LintStore {
     /// printing duplicate warnings.
     pub fn check_lint_name(
         &self,
-        sess: &Session,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        crate_attrs: &[ast::Attribute],
+        registered_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
         if let Some(tool_name) = tool_name {
-            if !is_known_lint_tool(tool_name, sess, crate_attrs) {
+            // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
+            if tool_name != sym::rustc
+                && tool_name != sym::rustdoc
+                && !registered_tools.contains(&Ident::with_dummy_span(tool_name))
+            {
                 return CheckLintNameResult::NoTool;
             }
         }
@@ -553,20 +556,9 @@ pub struct LateContext<'tcx> {
     pub only_module: bool,
 }
 
-/// Context for lint checking of the AST, after expansion, before lowering to
-/// HIR.
+/// Context for lint checking of the AST, after expansion, before lowering to HIR.
 pub struct EarlyContext<'a> {
-    /// Type context we're checking in.
-    pub sess: &'a Session,
-
-    /// The crate being checked.
-    pub krate: &'a ast::Crate,
-
     pub builder: LintLevelsBuilder<'a>,
-
-    /// The store of registered lints and the lint levels.
-    pub lint_store: &'a LintStore,
-
     pub buffered: LintBuffer,
 }
 
@@ -801,19 +793,20 @@ pub trait LintContext: Sized {
 }
 
 impl<'a> EarlyContext<'a> {
-    pub fn new(
+    pub(crate) fn new(
         sess: &'a Session,
-        lint_store: &'a LintStore,
-        krate: &'a ast::Crate,
-        crate_attrs: &'a [ast::Attribute],
-        buffered: LintBuffer,
         warn_about_weird_lints: bool,
+        lint_store: &'a LintStore,
+        registered_tools: &'a RegisteredTools,
+        buffered: LintBuffer,
     ) -> EarlyContext<'a> {
         EarlyContext {
-            sess,
-            krate,
-            lint_store,
-            builder: LintLevelsBuilder::new(sess, warn_about_weird_lints, lint_store, crate_attrs),
+            builder: LintLevelsBuilder::new(
+                sess,
+                warn_about_weird_lints,
+                lint_store,
+                registered_tools,
+            ),
             buffered,
         }
     }
@@ -851,11 +844,11 @@ impl LintContext for EarlyContext<'_> {
 
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.sess
+        &self.builder.sess()
     }
 
     fn lints(&self) -> &LintStore {
-        &*self.lint_store
+        self.builder.lint_store()
     }
 
     fn lookup<S: Into<MultiSpan>>(

@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream};
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
@@ -920,7 +920,24 @@ pub trait ResolverExpand {
     /// we generated proc macros harnesses, so that we can map
     /// HIR proc macros items back to their harness items.
     fn declare_proc_macro(&mut self, id: NodeId);
+
+    /// Tools registered with `#![register_tool]` and used by tool attributes and lints.
+    fn registered_tools(&self) -> &FxHashSet<Ident>;
 }
+
+pub trait LintStoreExpand {
+    fn pre_expansion_lint(
+        &self,
+        sess: &Session,
+        registered_tools: &FxHashSet<Ident>,
+        node_id: NodeId,
+        attrs: &[Attribute],
+        items: &[P<Item>],
+        name: &str,
+    );
+}
+
+type LintStoreExpandDyn<'a> = Option<&'a (dyn LintStoreExpand + 'a)>;
 
 #[derive(Clone, Default)]
 pub struct ModuleData {
@@ -956,9 +973,6 @@ pub struct ExpansionData {
     pub is_trailing_mac: bool,
 }
 
-type OnExternModLoaded<'a> =
-    Option<&'a dyn Fn(Ident, Vec<Attribute>, Vec<P<Item>>, Span) -> (Vec<Attribute>, Vec<P<Item>>)>;
-
 /// One of these is made during expansion and incrementally updated as we go;
 /// when a macro expansion occurs, the resulting nodes have the `backtrace()
 /// -> expn_data` of their expansion context stored into their span.
@@ -973,10 +987,8 @@ pub struct ExtCtxt<'a> {
     /// (or during eager expansion, but that's a hack).
     pub force_mode: bool,
     pub expansions: FxHashMap<Span, Vec<String>>,
-    /// Called directly after having parsed an external `mod foo;` in expansion.
-    ///
-    /// `Ident` is the module name.
-    pub(super) extern_mod_loaded: OnExternModLoaded<'a>,
+    /// Used for running pre-expansion lints on freshly loaded modules.
+    pub(super) lint_store: LintStoreExpandDyn<'a>,
     /// When we 'expand' an inert attribute, we leave it
     /// in the AST, but insert it here so that we know
     /// not to expand it again.
@@ -988,14 +1000,14 @@ impl<'a> ExtCtxt<'a> {
         sess: &'a Session,
         ecfg: expand::ExpansionConfig<'a>,
         resolver: &'a mut dyn ResolverExpand,
-        extern_mod_loaded: OnExternModLoaded<'a>,
+        lint_store: LintStoreExpandDyn<'a>,
     ) -> ExtCtxt<'a> {
         ExtCtxt {
             sess,
             ecfg,
             reduced_recursion_limit: None,
             resolver,
-            extern_mod_loaded,
+            lint_store,
             root_path: PathBuf::new(),
             current_expansion: ExpansionData {
                 id: LocalExpnId::ROOT,

@@ -912,7 +912,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if cx.sess.edition() != Edition::Edition2015 {
+        if cx.sess().edition() != Edition::Edition2015 {
             // This is a hard error in future editions; avoid linting and erroring
             return;
         }
@@ -921,7 +921,7 @@ impl EarlyLintPass for AnonymousParameters {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
                     if ident.name == kw::Empty {
                         cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
-                            let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+                            let ty_snip = cx.sess().source_map().span_to_snippet(arg.ty.span);
 
                             let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
                                 (snip.as_str(), Applicability::MachineApplicable)
@@ -1775,7 +1775,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 };
                 if join.edition() >= Edition::Edition2021 {
                     let mut err =
-                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
                     err.span_suggestion(
                         pat.span,
                         suggestion,
@@ -1799,7 +1799,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 let replace = "..=".to_owned();
                 if join.edition() >= Edition::Edition2021 {
                     let mut err =
-                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
                     err.span_suggestion_short(
                         join,
                         suggestion,
@@ -1983,7 +1983,7 @@ impl KeywordIdents {
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
     ) {
-        let next_edition = match cx.sess.edition() {
+        let next_edition = match cx.sess().edition() {
             Edition::Edition2015 => {
                 match ident.name {
                     kw::Async | kw::Await | kw::Try => Edition::Edition2018,
@@ -2011,7 +2011,7 @@ impl KeywordIdents {
         };
 
         // Don't lint `r#foo`.
-        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
+        if cx.sess().parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
             return;
         }
 
@@ -2379,7 +2379,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for IncompleteFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        let features = cx.sess.features_untracked();
+        let features = cx.sess().features_untracked();
         features
             .declared_lang_features
             .iter()

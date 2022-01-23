@@ -117,25 +117,15 @@ pub fn meets_msrv(msrv: Option<&RustcVersion>, lint_msrv: &RustcVersion) -> bool
 
 #[macro_export]
 macro_rules! extract_msrv_attr {
-    (LateContext) => {
-        extract_msrv_attr!(@LateContext, ());
-    };
-    (EarlyContext) => {
-        extract_msrv_attr!(@EarlyContext);
-    };
-    (@$context:ident$(, $call:tt)?) => {
+    ($context:ident) => {
         fn enter_lint_attrs(&mut self, cx: &rustc_lint::$context<'_>, attrs: &[rustc_ast::ast::Attribute]) {
-            use $crate::get_unique_inner_attr;
-            match get_unique_inner_attr(cx.sess$($call)?, attrs, "msrv") {
+            let sess = rustc_lint::LintContext::sess(cx);
+            match $crate::get_unique_inner_attr(sess, attrs, "msrv") {
                 Some(msrv_attr) => {
                     if let Some(msrv) = msrv_attr.value_str() {
-                        self.msrv = $crate::parse_msrv(
-                            &msrv.to_string(),
-                            Some(cx.sess$($call)?),
-                            Some(msrv_attr.span),
-                        );
+                        self.msrv = $crate::parse_msrv(&msrv.to_string(), Some(sess), Some(msrv_attr.span));
                     } else {
-                        cx.sess$($call)?.span_err(msrv_attr.span, "bad clippy attribute");
+                        sess.span_err(msrv_attr.span, "bad clippy attribute");
                     }
                 },
                 _ => (),

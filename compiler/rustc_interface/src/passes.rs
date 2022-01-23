@@ -3,7 +3,7 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use rustc_ast::mut_visit::MutVisitor;
-use rustc_ast::{self as ast, visit, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -11,16 +11,16 @@ use rustc_data_structures::parallel;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{Applicability, ErrorReported, PResult};
-use rustc_expand::base::ExtCtxt;
+use rustc_expand::base::{ExtCtxt, LintStoreExpand, ResolverExpand};
 use rustc_hir::def_id::{StableCrateId, LOCAL_CRATE};
 use rustc_hir::Crate;
-use rustc_lint::LintStore;
+use rustc_lint::{EarlyCheckNode, LintStore};
 use rustc_metadata::creader::CStore;
 use rustc_metadata::{encode_metadata, EncodedMetadata};
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::query::{ExternProviders, Providers};
-use rustc_middle::ty::{self, GlobalCtxt, ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, ResolverOutputs, TyCtxt};
 use rustc_mir_build as mir_build;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str, validate_attr};
 use rustc_passes::{self, hir_stats, layout_test};
@@ -34,7 +34,7 @@ use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
-use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{FileName, MultiSpan};
 use rustc_trait_selection::traits;
 use rustc_typeck as typeck;
@@ -233,24 +233,41 @@ pub fn register_plugins<'a>(
     Ok((krate, lint_store))
 }
 
-fn pre_expansion_lint(
+fn pre_expansion_lint<'a>(
     sess: &Session,
     lint_store: &LintStore,
-    krate: &ast::Crate,
-    crate_attrs: &[ast::Attribute],
-    crate_name: &str,
+    registered_tools: &RegisteredTools,
+    check_node: impl EarlyCheckNode<'a>,
+    node_name: &str,
 ) {
-    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", crate_name).run(|| {
-        rustc_lint::check_ast_crate(
+    sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name).run(|| {
+        rustc_lint::check_ast_node(
             sess,
-            lint_store,
-            krate,
-            crate_attrs,
             true,
+            lint_store,
+            registered_tools,
             None,
             rustc_lint::BuiltinCombinedPreExpansionLintPass::new(),
+            check_node,
         );
     });
+}
+
+// Cannot implement directly for `LintStore` due to trait coherence.
+struct LintStoreExpandImpl<'a>(&'a LintStore);
+
+impl LintStoreExpand for LintStoreExpandImpl<'_> {
+    fn pre_expansion_lint(
+        &self,
+        sess: &Session,
+        registered_tools: &RegisteredTools,
+        node_id: ast::NodeId,
+        attrs: &[ast::Attribute],
+        items: &[rustc_ast::ptr::P<ast::Item>],
+        name: &str,
+    ) {
+        pre_expansion_lint(sess, self.0, registered_tools, (node_id, attrs, items), name);
+    }
 }
 
 /// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
@@ -265,7 +282,7 @@ pub fn configure_and_expand(
     resolver: &mut Resolver<'_>,
 ) -> Result<ast::Crate> {
     tracing::trace!("configure_and_expand");
-    pre_expansion_lint(sess, lint_store, &krate, &krate.attrs, crate_name);
+    pre_expansion_lint(sess, lint_store, resolver.registered_tools(), &krate, crate_name);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
@@ -321,13 +338,8 @@ pub fn configure_and_expand(
             ..rustc_expand::expand::ExpansionConfig::default(crate_name.to_string())
         };
 
-        let crate_attrs = krate.attrs.clone();
-        let extern_mod_loaded = |ident: Ident, attrs, items, span| {
-            let krate = ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false };
-            pre_expansion_lint(sess, lint_store, &krate, &crate_attrs, ident.name.as_str());
-            (krate.attrs, krate.items)
-        };
-        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&extern_mod_loaded));
+        let lint_store = LintStoreExpandImpl(lint_store);
+        let mut ecx = ExtCtxt::new(sess, cfg, resolver, Some(&lint_store));
 
         // Expand macros now!
         let krate = sess.time("expand_crate", || ecx.monotonic_expander().expand_crate(krate));
@@ -499,14 +511,15 @@ pub fn lower_to_hir<'res, 'tcx>(
     );
 
     sess.time("early_lint_checks", || {
-        rustc_lint::check_ast_crate(
+        let lint_buffer = Some(std::mem::take(resolver.lint_buffer()));
+        rustc_lint::check_ast_node(
             sess,
-            lint_store,
-            &krate,
-            &krate.attrs,
             false,
-            Some(std::mem::take(resolver.lint_buffer())),
+            lint_store,
+            resolver.registered_tools(),
+            lint_buffer,
             rustc_lint::BuiltinCombinedEarlyLintPass::new(),
+            &*krate,
         )
     });
 

@@ -23,7 +23,7 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, RegisteredTools};
 use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, PROC_MACRO_DERIVE_RESOLUTION_FALLBACK};
 use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -446,6 +446,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
     fn declare_proc_macro(&mut self, id: NodeId) {
         self.proc_macros.push(id)
+    }
+
+    fn registered_tools(&self) -> &RegisteredTools {
+        &self.registered_tools
     }
 }
 

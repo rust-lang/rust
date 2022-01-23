@@ -3,7 +3,7 @@ use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -207,7 +207,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::If(_, then, Some(else_)) = &expr.kind;
         if is_block(else_) || is_if(else_);
         if !differing_macro_contexts(then.span, else_.span);
-        if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span);
+        if !then.span.from_expansion() && !in_external_macro(cx.sess(), expr.span);
 
         // workaround for rust-lang/rust#43081
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
@@ -259,7 +259,7 @@ fn has_unary_equivalent(bin_op: BinOpKind) -> bool {
 }
 
 fn indentation(cx: &EarlyContext<'_>, span: Span) -> usize {
-    cx.sess.source_map().lookup_char_pos(span.lo()).col.0
+    cx.sess().source_map().lookup_char_pos(span.lo()).col.0
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array

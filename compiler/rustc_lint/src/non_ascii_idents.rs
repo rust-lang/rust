@@ -166,7 +166,7 @@ impl EarlyLintPass for NonAsciiIdents {
         }
 
         let mut has_non_ascii_idents = false;
-        let symbols = cx.sess.parse_sess.symbol_gallery.symbols.lock();
+        let symbols = cx.sess().parse_sess.symbol_gallery.symbols.lock();
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
