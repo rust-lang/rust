@@ -588,7 +588,6 @@ impl<'a> Builder<'a> {
                 dist::RustcDev,
                 dist::Analysis,
                 dist::Src,
-                dist::PlainSourceTarball,
                 dist::Cargo,
                 dist::Rls,
                 dist::RustAnalyzer,
@@ -599,6 +598,11 @@ impl<'a> Builder<'a> {
                 dist::LlvmTools,
                 dist::RustDev,
                 dist::Extended,
+                // It seems that PlainSourceTarball somehow changes how some of the tools
+                // perceive their dependencies (see #93033) which would invaliate fingerprints
+                // and force us to rebuild tools after vendoring dependencies.
+                // To work around this, create the Tarball after building all the tools.
+                dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
             ),
