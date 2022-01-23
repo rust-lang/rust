@@ -572,7 +572,10 @@ fn stdin_generated_files_issue_5172() {
         assert!(session.has_no_errors());
     }
     // N.B. this should be changed once `format_generated_files` is supported with stdin
-    assert_eq!(buf, "stdin:\n\n//@generated\nfn main() {}\n".as_bytes());
+    assert_eq!(
+        String::from_utf8(buf).unwrap(),
+        "<stdin>:\n\n//@generated\nfn main() {}\n",
+    );
 }
 
 #[test]
