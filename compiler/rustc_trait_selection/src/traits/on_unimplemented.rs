@@ -1,7 +1,7 @@
 use rustc_ast::{MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
@@ -41,14 +41,14 @@ fn parse_error(
     message: &str,
     label: &str,
     note: Option<&str>,
-) -> ErrorReported {
+) -> ErrorGuaranteed {
     let mut diag = struct_span_err!(tcx.sess, span, E0232, "{}", message);
     diag.span_label(span, label);
     if let Some(note) = note {
         diag.note(note);
     }
     diag.emit();
-    ErrorReported
+    ErrorGuaranteed
 }
 
 impl<'tcx> OnUnimplementedDirective {
@@ -58,7 +58,7 @@ impl<'tcx> OnUnimplementedDirective {
         items: &[NestedMetaItem],
         span: Span,
         is_root: bool,
-    ) -> Result<Self, ErrorReported> {
+    ) -> Result<Self, ErrorGuaranteed> {
         let mut errored = false;
         let mut item_iter = items.iter();
 
@@ -164,7 +164,7 @@ impl<'tcx> OnUnimplementedDirective {
         }
 
         if errored {
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         } else {
             Ok(OnUnimplementedDirective {
                 condition,
@@ -182,7 +182,7 @@ impl<'tcx> OnUnimplementedDirective {
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
         impl_def_id: DefId,
-    ) -> Result<Option<Self>, ErrorReported> {
+    ) -> Result<Option<Self>, ErrorGuaranteed> {
         let attrs = tcx.get_attrs(impl_def_id);
 
         let Some(attr) = tcx.sess.find_by_name(&attrs, sym::rustc_on_unimplemented) else {
@@ -207,7 +207,7 @@ impl<'tcx> OnUnimplementedDirective {
                 append_const_msg: None,
             }))
         } else {
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         };
         debug!("of_item({:?}/{:?}) = {:?}", trait_def_id, impl_def_id, result);
         result
@@ -283,7 +283,7 @@ impl<'tcx> OnUnimplementedFormatString {
         trait_def_id: DefId,
         from: Symbol,
         err_sp: Span,
-    ) -> Result<Self, ErrorReported> {
+    ) -> Result<Self, ErrorGuaranteed> {
         let result = OnUnimplementedFormatString(from);
         result.verify(tcx, trait_def_id, err_sp)?;
         Ok(result)
@@ -294,7 +294,7 @@ impl<'tcx> OnUnimplementedFormatString {
         tcx: TyCtxt<'tcx>,
         trait_def_id: DefId,
         span: Span,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<(), ErrorGuaranteed> {
         let name = tcx.item_name(trait_def_id);
         let generics = tcx.generics_of(trait_def_id);
         let s = self.0.as_str();
@@ -334,7 +334,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     name
                                 )
                                 .emit();
-                                result = Err(ErrorReported);
+                                result = Err(ErrorGuaranteed);
                             }
                         }
                     }
@@ -347,7 +347,7 @@ impl<'tcx> OnUnimplementedFormatString {
                             "only named substitution parameters are allowed"
                         )
                         .emit();
-                        result = Err(ErrorReported);
+                        result = Err(ErrorGuaranteed);
                     }
                 },
             }

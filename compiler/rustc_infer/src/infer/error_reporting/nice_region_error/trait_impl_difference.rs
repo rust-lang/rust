@@ -4,7 +4,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, Subtype};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
@@ -19,7 +19,7 @@ use std::ops::ControlFlow;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
-    pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorGuaranteed> {
         let error = self.error.as_ref()?;
         debug!("try_report_impl_not_conforming_to_trait {:?}", error);
         if let RegionResolutionError::SubSupConflict(
@@ -46,7 +46,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             *sub_found,
                             *trait_item_def_id,
                         );
-                        return Some(ErrorReported);
+                        return Some(ErrorGuaranteed);
                     }
                 }
             }
@@ -66,7 +66,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     impl_item_def_id,
                     trait_item_def_id,
                 );
-                return Some(ErrorReported);
+                return Some(ErrorGuaranteed);
             }
         }
         None

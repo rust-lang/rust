@@ -8,7 +8,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported, PResult};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
@@ -678,7 +678,7 @@ impl<'a> Parser<'a> {
 
     fn fatal_unexpected_non_pat(
         &mut self,
-        err: DiagnosticBuilder<'a, ErrorReported>,
+        err: DiagnosticBuilder<'a, ErrorGuaranteed>,
         expected: Expected,
     ) -> PResult<'a, P<Pat>> {
         err.cancel();
@@ -914,7 +914,7 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
-        let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorReported>> = None;
+        let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
         let mut etc_span = None;
 
         while self.token != token::CloseDelim(token::Brace) {

@@ -1,7 +1,7 @@
 use crate::base::ModuleData;
 use rustc_ast::ptr::P;
 use rustc_ast::{token, Attribute, Inline, Item};
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
 use rustc_session::parse::ParseSess;
@@ -39,7 +39,7 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a, ErrorReported>),
+    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
 }
 
 crate fn parse_external_mod(
@@ -242,7 +242,7 @@ pub fn default_submod_path<'a>(
 }
 
 impl ModError<'_> {
-    fn report(self, sess: &Session, span: Span) -> ErrorReported {
+    fn report(self, sess: &Session, span: Span) -> ErrorGuaranteed {
         let diag = &sess.parse_sess.span_diagnostic;
         match self {
             ModError::CircularInclusion(file_paths) => {

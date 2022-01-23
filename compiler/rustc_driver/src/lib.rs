@@ -21,7 +21,7 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{ErrorReported, PResult};
+use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -73,7 +73,7 @@ const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename
 
 const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
-pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
+pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
     match result {
         Err(..) => {
             sess.abort_if_errors();
@@ -235,7 +235,7 @@ fn run_compiler(
     };
 
     match make_input(config.opts.error_format, &matches.free) {
-        Err(ErrorReported) => return Err(ErrorReported),
+        Err(ErrorGuaranteed) => return Err(ErrorGuaranteed),
         Ok(Some((input, input_file_path))) => {
             config.input = input;
             config.input_path = input_file_path;
@@ -457,7 +457,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>)
 fn make_input(
     error_format: ErrorOutputType,
     free_matches: &[String],
-) -> Result<Option<(Input, Option<PathBuf>)>, ErrorReported> {
+) -> Result<Option<(Input, Option<PathBuf>)>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0];
         if ifile == "-" {
@@ -469,7 +469,7 @@ fn make_input(
                     error_format,
                     "couldn't read from stdin, as it did not contain valid UTF-8",
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
@@ -1125,10 +1125,10 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 /// The compiler currently unwinds with a special sentinel value to abort
 /// compilation on fatal errors. This function catches that sentinel and turns
 /// the panic into a `Result` instead.
-pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuaranteed> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<rustc_errors::FatalErrorMarker>() {
-            ErrorReported
+            ErrorGuaranteed
         } else {
             panic::resume_unwind(value);
         }

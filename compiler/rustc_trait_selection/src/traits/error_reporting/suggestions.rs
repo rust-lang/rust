@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorReported, Style,
+    ErrorGuaranteed, Style,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -123,7 +123,7 @@ pub trait InferCtxtExt<'tcx> {
         found_span: Option<Span>,
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn suggest_fully_qualified_path(
         &self,
@@ -1260,7 +1260,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         found_span: Option<Span>,
         expected_ref: ty::PolyTraitRef<'tcx>,
         found: ty::PolyTraitRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         crate fn build_fn_sig_string<'tcx>(
             tcx: TyCtxt<'tcx>,
             trait_ref: ty::PolyTraitRef<'tcx>,

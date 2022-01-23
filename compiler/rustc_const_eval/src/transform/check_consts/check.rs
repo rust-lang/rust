@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc_errors::{Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
@@ -121,7 +121,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     fn in_return_place(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
@@ -181,7 +181,7 @@ pub struct Checker<'mir, 'tcx> {
     /// A set that stores for each local whether it has a `StorageDead` for it somewhere.
     local_has_storage_dead: Option<BitSet<Local>>,
 
-    error_emitted: Option<ErrorReported>,
+    error_emitted: Option<ErrorGuaranteed>,
     secondary_errors: Vec<Diagnostic>,
 }
 
@@ -329,7 +329,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = Some(ErrorReported);
+                self.error_emitted = Some(ErrorGuaranteed);
                 err.emit();
             }
 

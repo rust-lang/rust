@@ -15,7 +15,7 @@ use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::{DiagnosticBuilder, ErrorReported, FatalError};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
@@ -118,7 +118,7 @@ where
 fn mk_cycle<CTX, V, R>(
     tcx: CTX,
     error: CycleError,
-    handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorReported>) -> V,
+    handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where

@@ -7,14 +7,14 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::TypeVisitor;
 use rustc_span::MultiSpan;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorGuaranteed> {
         let error = self.error.as_ref()?;
         debug!("try_report_mismatched_static_lifetime {:?}", error);
 
@@ -99,6 +99,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 }

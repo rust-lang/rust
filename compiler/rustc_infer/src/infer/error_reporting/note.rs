@@ -1,6 +1,6 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
@@ -109,7 +109,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
@@ -401,7 +401,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         placeholder_origin: SubregionOrigin<'tcx>,
         sub: Region<'tcx>,
         sup: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // I can't think how to do better than this right now. -nikomatsakis
         debug!(?placeholder_origin, ?sub, ?sup, "report_placeholder_failure");
         match placeholder_origin {

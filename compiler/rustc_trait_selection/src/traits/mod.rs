@@ -26,7 +26,7 @@ use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{InferCtxt, RegionckMode, TyCtxtInferExt};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -206,7 +206,7 @@ fn do_normalize_predicates<'tcx>(
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
     predicates: Vec<ty::Predicate<'tcx>>,
-) -> Result<Vec<ty::Predicate<'tcx>>, ErrorReported> {
+) -> Result<Vec<ty::Predicate<'tcx>>, ErrorGuaranteed> {
     debug!(
         "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
         predicates, region_context, cause,
@@ -232,7 +232,7 @@ fn do_normalize_predicates<'tcx>(
                 Ok(predicates) => predicates,
                 Err(errors) => {
                     infcx.report_fulfillment_errors(&errors, None, false);
-                    return Err(ErrorReported);
+                    return Err(ErrorGuaranteed);
                 }
             };
 
@@ -259,12 +259,12 @@ fn do_normalize_predicates<'tcx>(
                 // unconstrained variable, and it seems better not to ICE,
                 // all things considered.
                 tcx.sess.span_err(span, &fixup_err.to_string());
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         };
         if predicates.needs_infer() {
             tcx.sess.delay_span_bug(span, "encountered inference variables after `fully_resolve`");
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         } else {
             Ok(predicates)
         }

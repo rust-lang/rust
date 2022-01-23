@@ -1,5 +1,5 @@
 use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_middle::ty::{Ty, TypeFoldable};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -20,7 +20,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
         rustc_errors::error_code!(E0617)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = self.sess.struct_span_fatal_with_code(
             self.span,
             &format!("can't pass `{}` to variadic function", self.ty),
@@ -47,8 +47,8 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
 
     fn diagnostic_extended(
         &self,
-        mut err: DiagnosticBuilder<'tcx, ErrorReported>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         err.note(&format!(
             "certain types, like `{}`, must be casted before passing them to a \
                 variadic function, because of arcane ABI rules dictated by the C \

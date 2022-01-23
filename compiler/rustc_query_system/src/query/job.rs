@@ -4,7 +4,9 @@ use crate::query::{QueryContext, QueryStackFrame};
 use rustc_hir::def::DefKind;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorReported, Handler, Level};
+use rustc_errors::{
+    struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, Level,
+};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -530,7 +532,7 @@ pub fn deadlock<CTX: QueryContext>(tcx: CTX, registry: &rayon_core::Registry) {
 pub(crate) fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: CycleError,
-) -> DiagnosticBuilder<'a, ErrorReported> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
     let fix_span = |span: Span, query: &QueryStackFrame| {

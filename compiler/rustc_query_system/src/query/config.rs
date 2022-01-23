@@ -7,7 +7,7 @@ use crate::query::caches::QueryCache;
 use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -27,7 +27,7 @@ pub struct QueryVtable<CTX: QueryContext, K, V> {
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorReported>) -> V,
+    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 

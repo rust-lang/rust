@@ -5,7 +5,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
@@ -20,7 +20,7 @@ use std::ops::ControlFlow;
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,
     /// `dyn Trait` or if a method call on a trait object introduces a static requirement.
-    pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorGuaranteed> {
         debug!("try_report_static_impl_trait(error={:?})", self.error);
         let tcx = self.tcx();
         let (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans) = match self.error.as_ref()? {
@@ -85,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     );
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
                         err.emit();
-                        return Some(ErrorReported);
+                        return Some(ErrorGuaranteed);
                     } else {
                         err.cancel();
                     }
@@ -280,7 +280,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
 
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 }
 

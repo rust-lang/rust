@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString, ErrorReported};
+use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString, ErrorGuaranteed};
 use crate::{Handler, Level, StashKey};
 use rustc_lint_defs::Applicability;
 
@@ -96,7 +96,7 @@ mod sealed_level_is_error {
     impl IsError<{ Level::Error { lint: false } }> for () {}
 }
 
-impl<'a> DiagnosticBuilder<'a, ErrorReported> {
+impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
     crate fn new_guaranteeing_error<const L: Level>(handler: &'a Handler, message: &str) -> Self
@@ -120,8 +120,8 @@ impl<'a> DiagnosticBuilder<'a, ErrorReported> {
     }
 }
 
-// FIXME(eddyb) make `ErrorReported` impossible to create outside `.emit()`.
-impl EmissionGuarantee for ErrorReported {
+// FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
+impl EmissionGuarantee for ErrorGuaranteed {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
             // First `.emit()` call, the `&Handler` is still available.
@@ -136,10 +136,10 @@ impl EmissionGuarantee for ErrorReported {
                 assert!(
                     db.inner.diagnostic.is_error(),
                     "emitted non-error ({:?}) diagnostic \
-                     from `DiagnosticBuilder<ErrorReported>`",
+                     from `DiagnosticBuilder<ErrorGuaranteed>`",
                     db.inner.diagnostic.level,
                 );
-                ErrorReported
+                ErrorGuaranteed
             }
             // `.emit()` was previously called, disallowed from repeating it,
             // but can take advantage of the previous `.emit()`'s guarantee
@@ -150,11 +150,11 @@ impl EmissionGuarantee for ErrorReported {
                 // can be overwritten with a new one, thanks to `DerefMut`.
                 assert!(
                     db.inner.diagnostic.is_error(),
-                    "`DiagnosticBuilder<ErrorReported>`'s diagnostic \
+                    "`DiagnosticBuilder<ErrorGuaranteed>`'s diagnostic \
                      became non-error ({:?}), after original `.emit()`",
                     db.inner.diagnostic.level,
                 );
-                ErrorReported
+                ErrorGuaranteed
             }
         }
     }
@@ -182,7 +182,7 @@ impl<'a> DiagnosticBuilder<'a, ()> {
     }
 }
 
-// FIXME(eddyb) should there be a `Option<ErrorReported>` impl as well?
+// FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
 impl EmissionGuarantee for () {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {

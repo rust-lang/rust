@@ -33,7 +33,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -369,7 +369,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
-    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorReported>>,
+    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -479,8 +479,8 @@ pub struct TypeckResults<'tcx> {
     pub used_trait_imports: Lrc<FxHashSet<LocalDefId>>,
 
     /// If any errors occurred while type-checking this body,
-    /// this field will be set to `Some(ErrorReported)`.
-    pub tainted_by_errors: Option<ErrorReported>,
+    /// this field will be set to `Some(ErrorGuaranteed)`.
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
@@ -569,7 +569,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn type_dependent_defs(
         &self,
-    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorReported>> {
+    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.type_dependent_defs }
     }
 
@@ -584,7 +584,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn type_dependent_defs_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorReported>> {
+    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
     }
 

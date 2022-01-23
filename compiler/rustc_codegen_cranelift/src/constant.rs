@@ -1,7 +1,7 @@
 //! Handling of `static`s, `const`s and promoted allocations
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
@@ -54,7 +54,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
                 {
                     all_constants_ok = false;
                     match err {
-                        ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                        ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
                             fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
                         }
                         ErrorHandled::TooGeneric => {

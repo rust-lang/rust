@@ -7,7 +7,7 @@ use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
-use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
@@ -82,7 +82,7 @@ pub fn feature_err<'a>(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: &str,
-) -> DiagnosticBuilder<'a, ErrorReported> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -96,7 +96,7 @@ pub fn feature_err_issue<'a>(
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
-) -> DiagnosticBuilder<'a, ErrorReported> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     let mut err = sess.span_diagnostic.struct_span_err_with_code(span, explain, error_code!(E0658));
 
     if let Some(n) = find_feature_issue(feature, issue) {

@@ -13,7 +13,7 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, ErrorReported, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, ErrorGuaranteed, PResult, StashKey};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -799,7 +799,7 @@ impl<'a> Parser<'a> {
         before_where_clause_span: Span,
         after_predicates: &[WherePredicate],
         after_where_clause_span: Span,
-    ) -> ErrorReported {
+    ) -> ErrorGuaranteed {
         let mut err =
             self.struct_span_err(after_where_clause_span, "where clause not allowed here");
         if !after_predicates.is_empty() {

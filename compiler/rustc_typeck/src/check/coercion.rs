@@ -37,7 +37,9 @@
 
 use crate::astconv::AstConv;
 use crate::check::FnCtxt;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1520,7 +1522,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
         expression: Option<(&'tcx hir::Expr<'tcx>, hir::HirId)>,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
         let mut pointing_at_return_type = false;

@@ -4,7 +4,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit as hir_visit;
@@ -1764,7 +1764,7 @@ fn report_bivariance(
     tcx: TyCtxt<'_>,
     param: &rustc_hir::GenericParam<'_>,
     has_explicit_bounds: bool,
-) -> ErrorReported {
+) -> ErrorGuaranteed {
     let span = param.span;
     let param_name = param.name.ident().name;
     let mut err = error_392(tcx, span, param_name);
@@ -1977,7 +1977,7 @@ fn error_392(
     tcx: TyCtxt<'_>,
     span: Span,
     param_name: Symbol,
-) -> DiagnosticBuilder<'_, ErrorReported> {
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     let mut err =
         struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");

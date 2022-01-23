@@ -8,7 +8,7 @@ use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
-        r: Result<(DefKind, DefId), ErrorReported>,
+        r: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
@@ -900,7 +900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorReported),
+                    _ => Err(ErrorGuaranteed),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register

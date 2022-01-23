@@ -15,7 +15,9 @@ use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported, FatalError};
+use rustc_errors::{
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -162,7 +164,7 @@ pub(crate) enum GenericArgPosition {
 #[derive(Clone, Default)]
 pub struct GenericArgCountMismatch {
     /// Indicates whether a fatal error was reported (`Some`), or just a lint (`None`).
-    pub reported: Option<ErrorReported>,
+    pub reported: Option<ErrorGuaranteed>,
     /// A list of spans of arguments provided that were not valid.
     pub invalid_args: Vec<Span>,
 }
@@ -733,7 +735,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
             // Specify type to assert that error was already reported in `Err` case.
-            let _: Result<_, ErrorReported> = self.add_predicates_for_ast_type_binding(
+            let _: Result<_, ErrorGuaranteed> = self.add_predicates_for_ast_type_binding(
                 hir_id,
                 poly_trait_ref,
                 binding,
@@ -742,7 +744,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 &mut dup_bindings,
                 binding_span.unwrap_or(binding.span),
             );
-            // Okay to ignore `Err` because of `ErrorReported` (see above).
+            // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
 
         arg_count
@@ -1096,7 +1098,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat
         // subtle in the event that `T` is defined in a supertrait of
@@ -1604,7 +1606,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty_param_def_id: LocalDefId,
         assoc_name: Ident,
         span: Span,
-    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported> {
+    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
         let tcx = self.tcx();
 
         debug!(
@@ -1646,7 +1648,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_name: Ident,
         span: Span,
         is_equality: impl Fn() -> Option<String>,
-    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
+    ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
@@ -1665,7 +1667,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     assoc_name,
                     span,
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         };
         debug!("one_bound_for_assoc_type: bound = {:?}", bound);
@@ -1752,7 +1754,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             err.emit();
             if !where_bounds.is_empty() {
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         }
 
@@ -1775,7 +1777,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         qself_res: Res,
         assoc_segment: &hir::PathSegment<'_>,
         permit_variants: bool,
-    ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorReported> {
+    ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
         let tcx = self.tcx();
         let assoc_ident = assoc_segment.ident;
 
@@ -1809,7 +1811,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    return Err(ErrorReported);
+                    return Err(ErrorGuaranteed);
                 };
 
                 self.one_bound_for_assoc_type(
@@ -1878,7 +1880,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         assoc_ident.name,
                     );
                 }
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         };
 
@@ -1897,7 +1899,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let Some(item) = item else {
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
             tcx.sess.struct_span_err(span, &msg).emit();
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         };
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
@@ -2617,7 +2619,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
         referenced_regions: FxHashSet<ty::BoundRegionKind>,
-        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx, ErrorReported>,
+        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {

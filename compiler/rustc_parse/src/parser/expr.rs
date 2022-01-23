@@ -17,7 +17,7 @@ use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported, PResult};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edition::LATEST_STABLE_EDITION;
@@ -2126,9 +2126,9 @@ impl<'a> Parser<'a> {
     fn error_missing_if_then_block(
         &self,
         if_span: Span,
-        err: Option<DiagnosticBuilder<'a, ErrorReported>>,
+        err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>>,
         binop_span: Option<Span>,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let msg = "this `if` expression has a condition, but no block";
 
         let mut err = if let Some(mut err) = err {

@@ -2,7 +2,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::subst::{InternalSubsts, Subst};
 use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
@@ -349,7 +349,7 @@ impl<'tcx> Instance<'tcx> {
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Ok(Some(instance))`.
     ///
-    /// Returns `Err(ErrorReported)` when the `Instance` resolution process
+    /// Returns `Err(ErrorGuaranteed)` when the `Instance` resolution process
     /// couldn't complete due to errors elsewhere - this is distinct
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
@@ -358,7 +358,7 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         Instance::resolve_opt_const_arg(
             tcx,
             param_env,
@@ -374,7 +374,7 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
-    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 

@@ -22,7 +22,7 @@ use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -1326,7 +1326,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
-                        .map_err(|ErrorReported| ())?;
+                        .map_err(|ErrorGuaranteed| ())?;
 
                 if node_item.is_final() {
                     // Non-specializable items are always projectable.
@@ -1918,7 +1918,7 @@ fn assoc_def(
     selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_def_id: DefId,
-) -> Result<specialization_graph::LeafDef, ErrorReported> {
+) -> Result<specialization_graph::LeafDef, ErrorGuaranteed> {
     let tcx = selcx.tcx();
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
     let trait_def = tcx.trait_def(trait_def_id);

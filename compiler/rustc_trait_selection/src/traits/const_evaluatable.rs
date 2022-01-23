@@ -9,7 +9,7 @@
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 use rustc_data_structures::intern::Interned;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
@@ -171,7 +171,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         }),
         Err(ErrorHandled::Linted) => {
             infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
-            Err(NotConstEvaluatable::Error(ErrorReported))
+            Err(NotConstEvaluatable::Error(ErrorGuaranteed))
         }
         Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
         Ok(_) => Ok(()),
@@ -194,7 +194,7 @@ impl<'tcx> AbstractConst<'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         uv: ty::Unevaluated<'tcx, ()>,
-    ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
+    ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         let inner = tcx.thir_abstract_const_opt_const_arg(uv.def)?;
         debug!("AbstractConst::new({:?}) = {:?}", uv, inner);
         Ok(inner.map(|inner| AbstractConst { inner, substs: uv.substs }))
@@ -203,10 +203,10 @@ impl<'tcx> AbstractConst<'tcx> {
     pub fn from_const(
         tcx: TyCtxt<'tcx>,
         ct: ty::Const<'tcx>,
-    ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
+    ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         match ct.val() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
-            ty::ConstKind::Error(_) => Err(ErrorReported),
+            ty::ConstKind::Error(_) => Err(ErrorGuaranteed),
             _ => Ok(None),
         }
     }
@@ -241,7 +241,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.body.exprs[self.body_id].span
     }
 
-    fn error(&mut self, span: Span, msg: &str) -> Result<!, ErrorReported> {
+    fn error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
         self.tcx
             .sess
             .struct_span_err(self.root_span(), "overly complex generic constant")
@@ -249,9 +249,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             .help("consider moving this anonymous constant into a `const` function")
             .emit();
 
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     }
-    fn maybe_supported_error(&mut self, span: Span, msg: &str) -> Result<!, ErrorReported> {
+    fn maybe_supported_error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
         self.tcx
             .sess
             .struct_span_err(self.root_span(), "overly complex generic constant")
@@ -260,13 +260,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             .note("this operation may be supported in the future")
             .emit();
 
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     }
 
     fn new(
         tcx: TyCtxt<'tcx>,
         (body, body_id): (&'a thir::Thir<'tcx>, thir::ExprId),
-    ) -> Result<Option<AbstractConstBuilder<'a, 'tcx>>, ErrorReported> {
+    ) -> Result<Option<AbstractConstBuilder<'a, 'tcx>>, ErrorGuaranteed> {
         let builder = AbstractConstBuilder { tcx, body_id, body, nodes: IndexVec::new() };
 
         struct IsThirPolymorphic<'a, 'tcx> {
@@ -330,7 +330,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
     /// Builds the abstract const by walking the thir and bailing out when
     /// encountering an unspported operation.
-    fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorReported> {
+    fn build(mut self) -> Result<&'tcx [Node<'tcx>], ErrorGuaranteed> {
         debug!("Abstractconstbuilder::build: body={:?}", &*self.body);
         self.recurse_build(self.body_id)?;
 
@@ -349,7 +349,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Ok(self.tcx.arena.alloc_from_iter(self.nodes.into_iter()))
     }
 
-    fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorReported> {
+    fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorGuaranteed> {
         use thir::ExprKind;
         let node = &self.body.exprs[node];
         debug!("recurse_build: node={:?}", node);
@@ -503,7 +503,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 pub(super) fn thir_abstract_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
+) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorGuaranteed> {
     if tcx.features().generic_const_exprs {
         match tcx.def_kind(def.did) {
             // FIXME(generic_const_exprs): We currently only do this for anonymous constants,
@@ -518,7 +518,7 @@ pub(super) fn thir_abstract_const<'tcx>(
         let body = tcx.thir_body(def);
         if body.0.borrow().exprs.is_empty() {
             // type error in constant, there is no thir
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
 
         AbstractConstBuilder::new(tcx, (&*body.0.borrow(), body.1))?
@@ -542,10 +542,10 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
 
         Ok(false)
     })()
-    .unwrap_or_else(|ErrorReported| true)
+    .unwrap_or_else(|ErrorGuaranteed| true)
     // FIXME(generic_const_exprs): We should instead have this
     // method return the resulting `ty::Const` and return `ConstKind::Error`
-    // on `ErrorReported`.
+    // on `ErrorGuaranteed`.
 }
 
 pub fn walk_abstract_const<'tcx, R, F>(

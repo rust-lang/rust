@@ -13,7 +13,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -286,7 +286,7 @@ pub struct Body<'tcx> {
     predecessor_cache: PredecessorCache,
     is_cyclic: GraphIsCyclicCache,
 
-    pub tainted_by_errors: Option<ErrorReported>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -300,7 +300,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         generator_kind: Option<GeneratorKind>,
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(

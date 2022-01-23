@@ -3,7 +3,7 @@ use rustc_ast as ast;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -100,7 +100,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
     }
 
@@ -818,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn emit_bad_pat_path<'b>(
         &self,
-        mut e: DiagnosticBuilder<'_, ErrorReported>,
+        mut e: DiagnosticBuilder<'_, ErrorGuaranteed>,
         pat_span: Span,
         res: Res,
         pat_res: Res,
@@ -1369,7 +1369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<DiagnosticBuilder<'_, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1442,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inexistent_fields: &[Ident],
         unmentioned_fields: &mut Vec<(&ty::FieldDef, Ident)>,
         variant: &ty::VariantDef,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if inexistent_fields.len() == 1 {
             (format!("a field named `{}`", inexistent_fields[0]), "this", "")
@@ -1538,7 +1538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(qpath, false)
@@ -1620,7 +1620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = self
             .tcx
             .sess
@@ -1712,7 +1712,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if unmentioned_fields.len() == 1 {
             format!("field `{}`{}", unmentioned_fields[0].1, inaccessible)

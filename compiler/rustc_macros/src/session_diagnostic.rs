@@ -232,7 +232,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                 fn into_diagnostic(
                     self,
                     #sess: &'__session_diagnostic_sess rustc_session::Session
-                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, rustc_errors::ErrorReported> {
+                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, rustc_errors::ErrorGuaranteed> {
                     #implementation
                 }
             }
