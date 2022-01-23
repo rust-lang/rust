@@ -79,6 +79,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             closure_expr(p)
         }
         T![if] => if_expr(p),
+        T![let] => let_expr(p),
 
         T![loop] => loop_expr(p, None),
         T![box] => box_expr(p, None),
@@ -286,7 +287,7 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![if]));
     let m = p.start();
     p.bump(T![if]);
-    condition(p);
+    expr_no_struct(p);
     block_expr(p);
     if p.at(T![else]) {
         p.bump(T![else]);
@@ -335,7 +336,7 @@ fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     assert!(p.at(T![while]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump(T![while]);
-    condition(p);
+    expr_no_struct(p);
     block_expr(p);
     m.complete(p, WHILE_EXPR)
 }
@@ -355,22 +356,18 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     m.complete(p, FOR_EXPR)
 }
 
-// test cond
-// fn foo() { if let Some(_) = None {} }
-// fn bar() {
-//     if let Some(_) | Some(_) = None {}
-//     if let | Some(_) = None {}
-//     while let Some(_) | Some(_) = None {}
-//     while let | Some(_) = None {}
+// test let_expr
+// fn foo() {
+//     if let Some(_) = None && true {}
+//     while 1 == 5 && (let None = None) {}
 // }
-fn condition(p: &mut Parser) {
+fn let_expr(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
-    if p.eat(T![let]) {
-        patterns::pattern_top(p);
-        p.expect(T![=]);
-    }
-    expr_no_struct(p);
-    m.complete(p, CONDITION);
+    p.bump(T![let]);
+    patterns::pattern_top(p);
+    p.expect(T![=]);
+    expr_let(p);
+    m.complete(p, LET_EXPR)
 }
 
 // test match_expr
@@ -482,10 +479,6 @@ fn match_guard(p: &mut Parser) -> CompletedMarker {
     assert!(p.at(T![if]));
     let m = p.start();
     p.bump(T![if]);
-    if p.eat(T![let]) {
-        patterns::pattern_top(p);
-        p.expect(T![=]);
-    }
     expr(p);
     m.complete(p, MATCH_GUARD)
 }

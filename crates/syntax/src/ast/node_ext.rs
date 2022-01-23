@@ -528,9 +528,39 @@ impl ast::Item {
     }
 }
 
-impl ast::Condition {
+impl ast::Expr {
+    /// Returns the `let` only if there is exactly one (that is, `let pat = expr`
+    /// or `((let pat = expr))`, but not `let pat = expr && expr` or `non_let_expr`).
+    pub fn single_let(&self) -> Option<ast::LetExpr> {
+        return get_pat(self.clone());
+
+        fn get_pat(expr: ast::Expr) -> Option<ast::LetExpr> {
+            match expr {
+                ast::Expr::ParenExpr(expr) => expr.expr().and_then(get_pat),
+                ast::Expr::LetExpr(expr) => Some(expr),
+                _ => None,
+            }
+        }
+    }
+
     pub fn is_pattern_cond(&self) -> bool {
-        self.let_token().is_some()
+        return contains_let(self.clone());
+
+        fn contains_let(expr: ast::Expr) -> bool {
+            match expr {
+                ast::Expr::BinExpr(expr)
+                    if expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And)) =>
+                {
+                    expr.lhs()
+                        .map(contains_let)
+                        .or_else(|| expr.rhs().map(contains_let))
+                        .unwrap_or(false)
+                }
+                ast::Expr::ParenExpr(expr) => expr.expr().map_or(false, contains_let),
+                ast::Expr::LetExpr(_) => true,
+                _ => false,
+            }
+        }
     }
 }
 
