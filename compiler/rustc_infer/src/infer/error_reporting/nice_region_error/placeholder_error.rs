@@ -4,7 +4,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -306,7 +306,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// due to the number of combinations we have to deal with.
     fn explain_actual_impl_that_was_found(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         has_sub: Option<usize>,

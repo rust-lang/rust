@@ -1,6 +1,6 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::{InferCtxt, Symbol};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
@@ -195,7 +195,7 @@ impl UseDiagnostic<'_> {
         }
     }
 
-    fn attach_note(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn attach_note(&self, err: &mut Diagnostic) {
         match *self {
             Self::TryConversion { pre_ty, post_ty, .. } => {
                 let intro = "`?` implicitly converts the error value";
@@ -224,7 +224,7 @@ impl UseDiagnostic<'_> {
 
 /// Suggest giving an appropriate return type to a closure expression.
 fn closure_return_type_suggestion(
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     output: &FnRetTy<'_>,
     body: &Body<'_>,
     ret: &str,
@@ -873,7 +873,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         segment: &hir::PathSegment<'_>,
         e: &Expr<'_>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         if let (Some(typeck_results), None) = (self.in_progress_typeck_results, &segment.args) {
             let borrow = typeck_results.borrow();

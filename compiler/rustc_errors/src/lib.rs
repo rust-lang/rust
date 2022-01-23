@@ -1319,9 +1319,10 @@ impl Level {
     }
 }
 
+// FIXME(eddyb) this doesn't belong here AFAICT, should be moved to callsite.
 pub fn add_elided_lifetime_in_path_suggestion(
     source_map: &SourceMap,
-    db: &mut DiagnosticBuilder<'_>,
+    diag: &mut Diagnostic,
     n: usize,
     path_span: Span,
     incl_angl_brckt: bool,
@@ -1353,7 +1354,7 @@ pub fn add_elided_lifetime_in_path_suggestion(
             (insertion_span, anon_lts)
         }
     };
-    db.span_suggestion(
+    diag.span_suggestion(
         replace_span,
         &format!("indicate the anonymous lifetime{}", pluralize!(n)),
         suggestion,

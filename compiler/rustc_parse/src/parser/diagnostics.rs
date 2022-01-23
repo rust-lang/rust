@@ -16,7 +16,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         match (&self.prev_token.kind, &self.token.kind) {
             (
                 TokenKind::Literal(Lit {
@@ -483,7 +483,7 @@ impl<'a> Parser<'a> {
 
     pub fn maybe_annotate_with_ascription(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         maybe_expected_semicolon: bool,
     ) {
         if let Some((sp, likely_path)) = self.last_type_ascription.take() {
@@ -767,7 +767,7 @@ impl<'a> Parser<'a> {
     /// parenthesising the leftmost comparison.
     fn attempt_chained_comparison_suggestion(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
@@ -890,7 +890,7 @@ impl<'a> Parser<'a> {
                     "comparison operators cannot be chained",
                 );
 
-                let suggest = |err: &mut DiagnosticBuilder<'_>| {
+                let suggest = |err: &mut Diagnostic| {
                     err.span_suggestion_verbose(
                         op.span.shrink_to_lo(),
                         TURBOFISH_SUGGESTION_STR,
@@ -1637,7 +1637,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parameter_without_type(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         pat: P<ast::Pat>,
         require_name: bool,
         first_param: bool,

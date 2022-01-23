@@ -19,7 +19,7 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorReported};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -478,9 +478,9 @@ impl Session {
 
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
-    fn diag_once<'a, 'b>(
-        &'a self,
-        diag_builder: &'b mut DiagnosticBuilder<'a>,
+    fn diag_once(
+        &self,
+        diag: &mut Diagnostic,
         method: DiagnosticBuilderMethod,
         msg_id: DiagnosticMessageId,
         message: &str,
@@ -491,39 +491,33 @@ impl Session {
         if fresh {
             match method {
                 DiagnosticBuilderMethod::Note => {
-                    diag_builder.note(message);
+                    diag.note(message);
                 }
                 DiagnosticBuilderMethod::SpanNote => {
                     let span = span_maybe.expect("`span_note` needs a span");
-                    diag_builder.span_note(span, message);
+                    diag.span_note(span, message);
                 }
             }
         }
     }
 
-    pub fn diag_span_note_once<'a, 'b>(
-        &'a self,
-        diag_builder: &'b mut DiagnosticBuilder<'a>,
+    pub fn diag_span_note_once(
+        &self,
+        diag: &mut Diagnostic,
         msg_id: DiagnosticMessageId,
         span: Span,
         message: &str,
     ) {
-        self.diag_once(
-            diag_builder,
-            DiagnosticBuilderMethod::SpanNote,
-            msg_id,
-            message,
-            Some(span),
-        );
+        self.diag_once(diag, DiagnosticBuilderMethod::SpanNote, msg_id, message, Some(span));
     }
 
-    pub fn diag_note_once<'a, 'b>(
-        &'a self,
-        diag_builder: &'b mut DiagnosticBuilder<'a>,
+    pub fn diag_note_once(
+        &self,
+        diag: &mut Diagnostic,
         msg_id: DiagnosticMessageId,
         message: &str,
     ) {
-        self.diag_once(diag_builder, DiagnosticBuilderMethod::Note, msg_id, message, None);
+        self.diag_once(diag, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
     #[inline]

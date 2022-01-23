@@ -1,5 +1,5 @@
 use rustc_const_eval::util::CallDesugaringKind;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
@@ -441,12 +441,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         err
     }
 
-    fn add_move_hints(
-        &self,
-        error: GroupedMoveError<'tcx>,
-        err: &mut DiagnosticBuilder<'a>,
-        span: Span,
-    ) {
+    fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diagnostic, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
                 if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
@@ -505,7 +500,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn add_move_error_suggestions(&self, err: &mut DiagnosticBuilder<'a>, binds_to: &[Local]) {
+    fn add_move_error_suggestions(&self, err: &mut Diagnostic, binds_to: &[Local]) {
         let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
@@ -541,7 +536,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn add_move_error_details(&self, err: &mut DiagnosticBuilder<'a>, binds_to: &[Local]) {
+    fn add_move_error_details(&self, err: &mut Diagnostic, binds_to: &[Local]) {
         for (j, local) in binds_to.iter().enumerate() {
             let bind_to = &self.body.local_decls[*local];
             let binding_span = bind_to.source_info.span;

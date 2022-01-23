@@ -16,7 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -49,11 +49,7 @@ crate struct ParserAnyMacro<'a> {
     is_local: bool,
 }
 
-crate fn annotate_err_with_kind(
-    err: &mut DiagnosticBuilder<'_>,
-    kind: AstFragmentKind,
-    span: Span,
-) {
+crate fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");

@@ -95,7 +95,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
-        let diag_trait = |mut err, self_ty: Ty<'_>, trait_id| {
+        let diag_trait = |err, self_ty: Ty<'_>, trait_id| {
             let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
 
             match self_ty.kind() {
@@ -115,7 +115,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         suggest_constraining_type_param(
                             tcx,
                             generics,
-                            &mut err,
+                            err,
                             &param_ty.name.as_str(),
                             &constraint,
                             None,
@@ -146,8 +146,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 }
                 _ => {}
             }
-
-            err
         };
 
         let call_kind = call_kind(tcx, ccx.param_env, callee, substs, span, from_hir_call, None);
@@ -162,7 +160,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     };
                 }
 
-                let err = match kind {
+                let mut err = match kind {
                     CallDesugaringKind::ForLoopIntoIter => {
                         error!("cannot convert `{}` into an iterator in {}s")
                     }
@@ -177,7 +175,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 };
 
-                diag_trait(err, self_ty, kind.trait_def_id(tcx))
+                diag_trait(&mut err, self_ty, kind.trait_def_id(tcx));
+                err
             }
             CallKind::FnCall { fn_trait_id, self_ty } => {
                 let mut err = struct_span_err!(
@@ -212,7 +211,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     _ => {}
                 }
 
-                diag_trait(err, self_ty, fn_trait_id)
+                diag_trait(&mut err, self_ty, fn_trait_id);
+                err
             }
             CallKind::Operator { trait_id, self_ty, .. } => {
                 let mut err = struct_span_err!(
@@ -262,7 +262,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     }
                 }
 
-                diag_trait(err, self_ty, trait_id)
+                diag_trait(&mut err, self_ty, trait_id);
+                err
             }
             CallKind::DerefCoercion { deref_target, deref_target_ty, self_ty } => {
                 let mut err = struct_span_err!(
@@ -281,7 +282,8 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     err.span_note(deref_target, "deref defined here");
                 }
 
-                diag_trait(err, self_ty, tcx.lang_items().deref_trait().unwrap())
+                diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
+                err
             }
             _ => struct_span_err!(
                 ccx.tcx.sess,

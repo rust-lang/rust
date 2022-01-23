@@ -1,6 +1,6 @@
 use crate::check::coercion::{AsCoercionSite, CoerceMany};
 use crate::check::{Diverges, Expectation, FnCtxt, Needs};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
@@ -132,7 +132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &cause,
                 Some(&arm.body),
                 arm_ty,
-                Some(&mut |err: &mut DiagnosticBuilder<'_>| {
+                Some(&mut |err: &mut Diagnostic| {
                     let can_coerce_to_return_ty = match self.ret_coercion.as_ref() {
                         Some(ret_coercion) if self.in_tail_expr => {
                             let ret_ty = ret_coercion.borrow().expected_ty();

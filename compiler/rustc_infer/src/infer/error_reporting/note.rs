@@ -1,16 +1,12 @@
 use crate::infer::error_reporting::{note_and_explain_region, ObligationCauseExt};
 use crate::infer::{self, InferCtxt, SubregionOrigin};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Region};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub(super) fn note_region_origin(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        origin: &SubregionOrigin<'tcx>,
-    ) {
+    pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
         let mut label_or_note = |span, msg| {
             let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();

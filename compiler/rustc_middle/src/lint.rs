@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
@@ -202,12 +202,12 @@ impl<'a> LintDiagnosticBuilder<'a> {
     }
 }
 
-pub fn explain_lint_level_source<'s>(
-    sess: &'s Session,
+pub fn explain_lint_level_source(
+    sess: &Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut DiagnosticBuilder<'s>,
+    err: &mut Diagnostic,
 ) {
     let name = lint.name_lower();
     match src {

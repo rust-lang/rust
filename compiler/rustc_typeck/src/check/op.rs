@@ -3,7 +3,7 @@
 use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
 use rustc_ast as ast;
-use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{self, struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::adjustment::{
@@ -483,7 +483,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest calling the function. Returns `true` if suggestion would apply (even if not given).
     fn add_type_neq_err_label(
         &self,
-        err: &mut rustc_errors::DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         span: Span,
         ty: Ty<'tcx>,
         other_ty: Ty<'tcx>,
@@ -545,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
@@ -937,7 +937,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 fn suggest_constraining_param(
     tcx: TyCtxt<'_>,
     body_id: hir::HirId,
-    mut err: &mut DiagnosticBuilder<'_>,
+    mut err: &mut Diagnostic,
     lhs_ty: Ty<'_>,
     rhs_ty: Ty<'_>,
     missing_trait: &str,

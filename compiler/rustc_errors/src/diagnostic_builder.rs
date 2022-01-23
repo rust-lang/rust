@@ -59,23 +59,6 @@ macro_rules! forward {
             self
         }
     };
-
-    // Forward pattern for &mut self -> &mut Self, with generic parameters.
-    (
-        $(#[$attrs:meta])*
-        pub fn $n:ident<$($generic:ident: $bound:path),*>(
-            &mut self,
-            $($name:ident: $ty:ty),*
-            $(,)?
-        ) -> &mut Self
-    ) => {
-        $(#[$attrs])*
-        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n<$($generic: $bound),*>(&mut self, $($name: $ty),*) -> &mut Self {
-            self.diagnostic.$n($($name),*);
-            self
-        }
-    };
 }
 
 impl<'a> Deref for DiagnosticBuilder<'a> {
@@ -172,6 +155,7 @@ impl<'a> DiagnosticBuilder<'a> {
         pub fn downgrade_to_delayed_bug(&mut self,) -> &mut Self
     );
 
+    forward!(
     /// Appends a labeled span to the diagnostic.
     ///
     /// Labels are used to convey additional context for the diagnostic's primary span. They will
@@ -184,24 +168,16 @@ impl<'a> DiagnosticBuilder<'a> {
     /// the diagnostic was constructed. However, the label span is *not* considered a
     /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
     /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self {
-        self.diagnostic.span_label(span, label);
-        self
-    }
+    pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self);
 
+    forward!(
     /// Labels all the given spans with the provided label.
     /// See [`Diagnostic::span_label()`] for more information.
     pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
         label: impl AsRef<str>,
-    ) -> &mut Self {
-        let label = label.as_ref();
-        for span in spans {
-            self.diagnostic.span_label(span, label);
-        }
-        self
-    }
+    ) -> &mut Self);
 
     forward!(pub fn note_expected_found(
         &mut self,
@@ -228,17 +204,17 @@ impl<'a> DiagnosticBuilder<'a> {
     ) -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn span_note<S: Into<MultiSpan>>(
+    forward!(pub fn span_note(
         &mut self,
-        sp: S,
+        sp: impl Into<MultiSpan>,
         msg: &str,
     ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
+    forward!(pub fn span_warn(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> &mut Self);
     forward!(pub fn help(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn span_help<S: Into<MultiSpan>>(
+    forward!(pub fn span_help(
         &mut self,
-        sp: S,
+        sp: impl Into<MultiSpan>,
         msg: &str,
     ) -> &mut Self);
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
@@ -312,8 +288,8 @@ impl<'a> DiagnosticBuilder<'a> {
         applicability: Applicability,
     ) -> &mut Self);
 
-    forward!(pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self);
-    forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
+    forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
+    forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
 
     /// Convenience function for internal use, clients should use one of the

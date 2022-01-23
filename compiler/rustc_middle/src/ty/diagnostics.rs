@@ -7,7 +7,7 @@ use crate::ty::{
     ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
 };
 
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
@@ -129,7 +129,7 @@ impl<'tcx> Ty<'tcx> {
 
 pub fn suggest_arbitrary_trait_bound(
     generics: &hir::Generics<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     param_name: &str,
     constraint: &str,
 ) -> bool {
@@ -159,7 +159,7 @@ pub fn suggest_arbitrary_trait_bound(
 
 fn suggest_removing_unsized_bound(
     generics: &hir::Generics<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     param_name: &str,
     param: &hir::GenericParam<'_>,
     def_id: Option<DefId>,
@@ -266,7 +266,7 @@ fn suggest_removing_unsized_bound(
 pub fn suggest_constraining_type_param(
     tcx: TyCtxt<'_>,
     generics: &hir::Generics<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     param_name: &str,
     constraint: &str,
     def_id: Option<DefId>,

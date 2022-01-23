@@ -3,7 +3,7 @@ use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Nonterminal};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{error_code, DiagnosticBuilder, PResult};
+use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::convert::TryInto;
 
@@ -147,7 +147,7 @@ impl<'a> Parser<'a> {
 
     fn annotate_following_item_if_applicable(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         span: Span,
         attr_type: OuterAttributeType,
     ) -> Option<Span> {

@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::iter;
 
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -98,7 +98,7 @@ impl RegionName {
         }
     }
 
-    crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
+    crate fn highlight_region_name(&self, diag: &mut Diagnostic) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
             | RegionNameSource::NamedEarlyBoundRegion(span) => {

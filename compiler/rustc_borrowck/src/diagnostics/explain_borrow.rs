@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
@@ -60,7 +60,7 @@ impl BorrowExplanation {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -275,7 +275,7 @@ impl BorrowExplanation {
     }
     pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         category: &ConstraintCategory,
         span: Span,
         region_name: &RegionName,
