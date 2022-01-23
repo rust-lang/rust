@@ -60,7 +60,7 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
+error[E0015]: cannot call non-const fn `<iter::loop_desugar::ForLoopDesugar<RangeFrom<usize>> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];

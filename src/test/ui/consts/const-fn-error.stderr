@@ -35,7 +35,7 @@ LL |     for i in 0..x {
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0015]: cannot call non-const fn `<std::ops::Range<usize> as Iterator>::next` in constant functions
+error[E0015]: cannot call non-const fn `<iter::loop_desugar::ForLoopDesugar<std::ops::Range<usize>> as Iterator>::next` in constant functions
   --> $DIR/const-fn-error.rs:5:14
    |
 LL |     for i in 0..x {

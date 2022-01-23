@@ -8,7 +8,7 @@ LL |         for _ in self.v {
    |                  move occurs because `self.v` has type `Vec<u32>`, which does not implement the `Copy` trait
    |
 note: this function takes ownership of the receiver `self`, which moves `self.v`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
@@ -41,7 +41,7 @@ LL |     for loader in *LOADERS {
    |                   move occurs because value has type `Vec<&u8>`, which does not implement the `Copy` trait
    |
 note: this function takes ownership of the receiver `self`, which moves value
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^

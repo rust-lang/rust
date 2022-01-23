@@ -16,7 +16,7 @@ LL |         for j in a {
    |                  ^ `a` moved due to this implicit call to `.into_iter()`, in previous iteration of loop
    |
 note: this function takes ownership of the receiver `self`, which moves `a`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^

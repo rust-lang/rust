@@ -11,7 +11,7 @@ LL |     let _closure = || orig;
    |                    value used here after move
    |
 note: this function takes ownership of the receiver `self`, which moves `orig`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  --> $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^

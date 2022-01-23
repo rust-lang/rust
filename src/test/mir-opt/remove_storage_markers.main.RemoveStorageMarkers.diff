@@ -4,32 +4,37 @@
   fn main() -> () {
       let mut _0: ();                      // return place in scope 0 at $DIR/remove_storage_markers.rs:6:11: 6:11
       let mut _1: i32;                     // in scope 0 at $DIR/remove_storage_markers.rs:7:9: 7:16
-      let mut _2: std::ops::Range<i32>;    // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
+      let mut _2: std::iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
       let mut _3: std::ops::Range<i32>;    // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
       let mut _5: ();                      // in scope 0 at $DIR/remove_storage_markers.rs:6:1: 11:2
       let _6: ();                          // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
       let mut _7: std::option::Option<i32>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
-      let mut _8: &mut std::ops::Range<i32>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
-      let mut _9: &mut std::ops::Range<i32>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
+      let mut _8: &mut std::iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
+      let mut _9: &mut std::iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>; // in scope 0 at $DIR/remove_storage_markers.rs:8:14: 8:19
       let mut _10: isize;                  // in scope 0 at $DIR/remove_storage_markers.rs:8:5: 10:6
       let mut _11: !;                      // in scope 0 at $DIR/remove_storage_markers.rs:8:5: 10:6
       let mut _13: i32;                    // in scope 0 at $DIR/remove_storage_markers.rs:9:16: 9:17
       scope 1 {
           debug sum => _1;                 // in scope 1 at $DIR/remove_storage_markers.rs:7:9: 7:16
-          let mut _4: std::ops::Range<i32>; // in scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
+          let mut _4: std::iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>; // in scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
           scope 2 {
               debug iter => _4;            // in scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
               let _12: i32;                // in scope 2 at $DIR/remove_storage_markers.rs:8:9: 8:10
               scope 3 {
                   debug i => _12;          // in scope 3 at $DIR/remove_storage_markers.rs:8:9: 8:10
               }
-              scope 5 (inlined iter::range::<impl Iterator for std::ops::Range<i32>>::next) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
-                  debug self => _8;        // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-                  let mut _14: &mut std::ops::Range<i32>; // in scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+              scope 6 (inlined <iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>> as Iterator>::next) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
+                  debug self => _8;        // in scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+                  let mut _16: &mut std::iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>; // in scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
               }
           }
-          scope 4 (inlined <std::ops::Range<i32> as IntoIterator>::into_iter) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
-              debug self => _3;            // in scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+          scope 4 (inlined <std::ops::Range<i32> as iter::loop_desugar::IntoIterator>::into_iter) { // at $DIR/remove_storage_markers.rs:8:14: 8:19
+              debug self => _3;            // in scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+              let mut _14: std::ops::Range<i32>; // in scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+              let mut _15: std::ops::Range<i32>; // in scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+              scope 5 (inlined <std::ops::Range<i32> as IntoIterator>::into_iter) { // at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+                  debug self => _15;       // in scope 5 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+              }
           }
       }
   
@@ -41,7 +46,14 @@
           Deinit(_3);                      // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
           (_3.0: i32) = const 0_i32;       // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
           (_3.1: i32) = const 10_i32;      // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
-          _2 = move _3;                    // scope 4 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+-         StorageLive(_14);                // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+-         StorageLive(_15);                // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          _15 = move _3;                   // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          _14 = move _15;                  // scope 5 at $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+-         StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          (_2.0: std::ops::Range<i32>) = move _14; // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          (_2.1: usize) = const 0_usize;   // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+-         StorageDead(_14);                // scope 4 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
 -         StorageDead(_3);                 // scope 1 at $DIR/remove_storage_markers.rs:8:18: 8:19
 -         StorageLive(_4);                 // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
           _4 = move _2;                    // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
@@ -55,12 +67,12 @@
 -         StorageLive(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
           _9 = &mut _4;                    // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
           _8 = &mut (*_9);                 // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
--         StorageLive(_14);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-          _14 = &mut (*_8);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
-          _7 = <std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next(move _14) -> bb4; // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+-         StorageLive(_16);                // scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          _16 = &mut (*_8);                // scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+          _7 = <iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>> as iter::loop_desugar::DesugarSpec<i32>>::next_spec(move _16) -> bb4; // scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> Option<<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next}, val: Value(Scalar(<ZST>)) }
+                                           // + span: $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
+                                           // + literal: Const { ty: for<'r> fn(&'r mut iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>>) -> Option<i32> {<iter::loop_desugar::ForLoopDesugar<std::ops::Range<i32>> as iter::loop_desugar::DesugarSpec<i32>>::next_spec}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {
@@ -91,7 +103,7 @@
       }
   
       bb4: {
--         StorageDead(_14);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
+-         StorageDead(_16);                // scope 6 at $SRC_DIR/core/src/iter/loop_desugar.rs:LL:COL
 -         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:8:18: 8:19
           _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
           switchInt(move _10) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19

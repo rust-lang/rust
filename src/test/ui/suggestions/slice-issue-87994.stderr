@@ -2,10 +2,10 @@ error[E0277]: the size for values of type `[i32]` cannot be known at compilation
   --> $DIR/slice-issue-87994.rs:3:12
    |
 LL |   for _ in v[1..] {
-   |            ^^^^^^ expected an implementor of trait `IntoIterator`
+   |            ^^^^^^ expected an implementor of trait `iter::loop_desugar::IntoIterator`
    |
-   = note: the trait bound `[i32]: IntoIterator` is not satisfied
-   = note: required because of the requirements on the impl of `IntoIterator` for `[i32]`
+   = note: the trait bound `[i32]: iter::loop_desugar::IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `iter::loop_desugar::IntoIterator` for `[i32]`
 help: consider borrowing here
    |
 LL |   for _ in &v[1..] {
@@ -32,10 +32,10 @@ error[E0277]: the size for values of type `[K]` cannot be known at compilation t
   --> $DIR/slice-issue-87994.rs:11:13
    |
 LL |   for i2 in v2[1..] {
-   |             ^^^^^^^ expected an implementor of trait `IntoIterator`
+   |             ^^^^^^^ expected an implementor of trait `iter::loop_desugar::IntoIterator`
    |
-   = note: the trait bound `[K]: IntoIterator` is not satisfied
-   = note: required because of the requirements on the impl of `IntoIterator` for `[K]`
+   = note: the trait bound `[K]: iter::loop_desugar::IntoIterator` is not satisfied
+   = note: required because of the requirements on the impl of `iter::loop_desugar::IntoIterator` for `[K]`
 help: consider borrowing here
    |
 LL |   for i2 in &v2[1..] {
