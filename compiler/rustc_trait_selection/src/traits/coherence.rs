@@ -313,7 +313,9 @@ fn implicit_negative<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o));
+        .find(|o| {
+            loose_check(selcx, o) || tcx.features().negative_impls && negative_impl_exists(selcx, o)
+        });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
@@ -377,8 +379,10 @@ fn negative_impl<'cx, 'tcx>(
             }
         };
 
-        let opt_failing_obligation =
-            obligations.into_iter().chain(more_obligations).find(|o| strict_check(selcx, o));
+        let opt_failing_obligation = obligations
+            .into_iter()
+            .chain(more_obligations)
+            .find(|o| negative_impl_exists(selcx, o));
 
         if let Some(failing_obligation) = opt_failing_obligation {
             debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -396,7 +400,7 @@ fn loose_check<'cx, 'tcx>(
     !selcx.predicate_may_hold_fatal(o)
 }
 
-fn strict_check<'cx, 'tcx>(
+fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
