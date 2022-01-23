@@ -19,12 +19,9 @@ use crate::slice::{Iter, IterMut};
 mod binops;
 mod equality;
 mod iter;
-mod zip_map;
 
 #[stable(feature = "array_value_iter", since = "1.51.0")]
 pub use iter::IntoIter;
-
-use zip_map::{ForwardIter, ZipMapIter};
 
 /// Creates an array `[T; N]` where each array element `T` is returned by the `cb` call.
 ///
@@ -534,17 +531,38 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T, U) -> R,
     {
-        let mut iter = ZipMapIter::new(self, rhs);
+        if core::mem::needs_drop::<T>()
+            || core::mem::needs_drop::<U>()
+            || core::mem::needs_drop::<O>()
+        {
+            let mut lhs = IntoIterator::into_iter(self);
+            let mut rhs = IntoIterator::into_iter(rhs);
+            let mut output = IntoIter::empty();
 
-        for _ in 0..N {
+            for _ in 0..N {
+                unsafe {
+                    let lhs = lhs.pop_front_unchecked();
+                    let rhs = rhs.pop_front_unchecked();
+                    output.push_unchecked(op(lhs, rhs));
+                }
+            }
+
+            unsafe { output.output() }
+        } else {
             // SAFETY:
-            // Will only be called a maximum of N times
-            unsafe { iter.step(&mut op) }
-        }
+            // we will not read from output, and caller ensures that O is non-drop
+            let mut output: [MaybeUninit<O>; N] = uninit_array();
 
-        // SAFETY:
-        // By this point, we are certain we have initialised all N elements
-        unsafe { iter.output() }
+            for i in 0..N {
+                unsafe {
+                    let lhs = core::ptr::read(&self[i]);
+                    let rhs = core::ptr::read(&rhs[i]);
+                    output[i].write(op(lhs, rhs));
+                }
+            }
+
+            unsafe { core::ptr::read(&output as *const [MaybeUninit<O>; N] as *const [O; N]) }
+        }
     }
 
     /// Applies the op over pairs of elements
@@ -569,13 +587,23 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(&mut T, U),
     {
-        let mut iter = ForwardIter::new(rhs);
-        let op = &mut op;
+        if needs_drop::<U>() {
+            let mut rhs = IntoIterator::into_iter(rhs);
 
-        for _ in 0..N {
-            // SAFETY:
-            // Will only be called a maximum of N times
-            unsafe { op(self.get_unchecked_mut(iter.index()), iter.next_unchecked()) }
+            for i in 0..N {
+                // SAFETY:
+                // Will only be called a maximum of N times
+                unsafe { op(self.0.get_unchecked_mut(i), rhs.pop_front_unchecked()) }
+            }
+        } else {
+            for i in 0..N {
+                // SAFETY:
+                // Will only be called a maximum of N times
+                unsafe {
+                    let rhs = core::ptr::read(&rhs[i]);
+                    op(self.get_unchecked_mut(i), rhs)
+                }
+            }
         }
     }
 

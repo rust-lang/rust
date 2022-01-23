@@ -233,6 +233,26 @@ impl<T, const N: usize> IntoIter<T, N> {
             MaybeUninit::slice_assume_init_mut(slice)
         }
     }
+
+    unsafe fn pop_front_unchecked(&mut self) -> T {
+        debug_assert!(!self.alive.is_empty());
+        debug_assert!(self.alive.start < N);
+
+        unsafe {
+            let front = take(self.data.get_unchecked_mut(self.alive.start));
+            self.alive.start += 1;
+            front
+        }
+    }
+
+    unsafe fn push_unchecked(&mut self, value: T) {
+        debug_assert!(self.alive.end < N);
+
+        unsafe {
+            self.array.get_unchecked_mut(self.alive.end).write(value);
+            self.alive.end += 1;
+        }
+    }
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
