@@ -182,6 +182,9 @@ a.test-arrow {
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
+.sidebar a {
+	color: #fdbf35;
+}
 
 details.rustdoc-toggle > summary.hideme > span,
 details.rustdoc-toggle > summary::before,

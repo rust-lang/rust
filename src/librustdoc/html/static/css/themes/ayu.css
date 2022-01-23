@@ -221,6 +221,9 @@ pre.rust a,
 body.source .example-wrap pre.rust a {
 	background: #333;
 }
+.sidebar a {
+	color: #53b1db;
+}
 
 details.rustdoc-toggle > summary.hideme > span,
 details.rustdoc-toggle > summary::before,
