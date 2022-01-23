@@ -62,7 +62,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext) ->
 
             let block =
                 make::ext::empty_block_expr().indent(IndentLevel::from_node(let_stmt.syntax()));
-            let if_ = make::expr_if(make::condition(init, Some(pat)), block, None);
+            let if_ = make::expr_if(make::expr_let(pat, init).into(), block, None);
             let stmt = make::expr_stmt(if_);
 
             edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));

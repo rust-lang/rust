@@ -811,10 +811,10 @@ impl ExpandTo {
             MACRO_TYPE => ExpandTo::Type,
 
             ARG_LIST | TRY_EXPR | TUPLE_EXPR | PAREN_EXPR | ARRAY_EXPR | FOR_EXPR | PATH_EXPR
-            | CLOSURE_EXPR | CONDITION | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM
-            | MATCH_GUARD | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR
-            | FIELD_EXPR | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR
-            | BIN_EXPR => ExpandTo::Expr,
+            | CLOSURE_EXPR | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM | MATCH_GUARD
+            | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR | FIELD_EXPR
+            | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR
+            | LET_EXPR => ExpandTo::Expr,
             LET_STMT => {
                 // FIXME: Handle LHS Pattern
                 ExpandTo::Expr

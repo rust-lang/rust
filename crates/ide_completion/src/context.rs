@@ -575,6 +575,14 @@ impl<'a> CompletionContext<'a> {
 
                         (ty, name)
                     },
+                    ast::LetExpr(it) => {
+                        cov_mark::hit!(expected_type_if_let_without_leading_char);
+                        let ty = it.pat()
+                            .and_then(|pat| self.sema.type_of_pat(&pat))
+                            .or_else(|| it.expr().and_then(|it| self.sema.type_of_expr(&it)))
+                            .map(TypeInfo::original);
+                        (ty, None)
+                    },
                     ast::ArgList(_) => {
                         cov_mark::hit!(expected_type_fn_param);
                         ActiveParameter::at_token(
@@ -641,9 +649,7 @@ impl<'a> CompletionContext<'a> {
                         (ty, None)
                     },
                     ast::IfExpr(it) => {
-                        cov_mark::hit!(expected_type_if_let_without_leading_char);
                         let ty = it.condition()
-                            .and_then(|cond| cond.expr())
                             .and_then(|e| self.sema.type_of_expr(&e))
                             .map(TypeInfo::original);
                         (ty, None)
@@ -939,7 +945,7 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
                         return (PatternRefutability::Irrefutable, has_type_ascription)
                     },
                     ast::MatchArm(_) => PatternRefutability::Refutable,
-                    ast::Condition(_) => PatternRefutability::Refutable,
+                    ast::LetExpr(_) => PatternRefutability::Refutable,
                     ast::ForExpr(_) => PatternRefutability::Irrefutable,
                     _ => PatternRefutability::Irrefutable,
                 }

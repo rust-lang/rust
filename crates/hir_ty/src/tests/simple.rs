@@ -2248,6 +2248,7 @@ fn generic_default_in_struct_literal() {
             176..193 'Thing ...1i32 }': Thing<i32>
             187..191 '1i32': i32
             199..240 'if let...     }': ()
+            202..221 'let Th... } = z': bool
             206..217 'Thing { t }': Thing<i32>
             214..215 't': i32
             220..221 'z': Thing<i32>

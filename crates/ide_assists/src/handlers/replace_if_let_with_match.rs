@@ -60,15 +60,22 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
             None
         }
     });
-    let scrutinee_to_be_expr = if_expr.condition()?.expr()?;
+    let scrutinee_to_be_expr = if_expr.condition()?;
+    let scrutinee_to_be_expr = match scrutinee_to_be_expr.single_let() {
+        Some(cond) => cond.expr()?,
+        None => scrutinee_to_be_expr,
+    };
 
     let mut pat_seen = false;
     let mut cond_bodies = Vec::new();
     for if_expr in if_exprs {
         let cond = if_expr.condition()?;
-        let expr = cond.expr()?;
-        let cond = match cond.pat() {
-            Some(pat) => {
+        let cond = match cond.single_let() {
+            Some(let_) => {
+                let pat = let_.pat()?;
+                let expr = let_.expr()?;
+                // FIXME: If one `let` is wrapped in parentheses and the second is not,
+                // we'll exit here.
                 if scrutinee_to_be_expr.syntax().text() != expr.syntax().text() {
                     // Only if all condition expressions are equal we can merge them into a match
                     return None;
@@ -76,7 +83,9 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 pat_seen = true;
                 Either::Left(pat)
             }
-            None => Either::Right(expr),
+            // Multiple `let`, unsupported.
+            None if cond.is_pattern_cond() => return None,
+            None => Either::Right(cond),
         };
         let body = if_expr.then_branch()?;
         cond_bodies.push((cond, body));
@@ -217,11 +226,11 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext) 
                 }
             }
 
-            let condition = make::condition(scrutinee, Some(if_let_pat));
+            let condition = make::expr_let(if_let_pat, scrutinee);
             let then_block = make_block_expr(then_expr.reset_indent());
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make::expr_if(
-                condition,
+                condition.into(),
                 then_block,
                 else_expr.map(make_block_expr).map(ast::ElseBranch::Block),
             )

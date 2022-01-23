@@ -48,25 +48,28 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     let cond = if_expr.condition()?;
 
     // Check if there is an IfLet that we can handle.
-    let if_let_pat = match cond.pat() {
-        None => None, // No IfLet, supported.
-        Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
-            let path = pat.path()?;
-            if path.qualifier().is_some() {
-                return None;
-            }
+    let (if_let_pat, cond_expr) = if cond.is_pattern_cond() {
+        let let_ = cond.single_let()?;
+        match let_.pat() {
+            Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
+                let path = pat.path()?;
+                if path.qualifier().is_some() {
+                    return None;
+                }
 
-            let bound_ident = pat.fields().next().unwrap();
-            if !ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
-                return None;
-            }
+                let bound_ident = pat.fields().next().unwrap();
+                if !ast::IdentPat::can_cast(bound_ident.syntax().kind()) {
+                    return None;
+                }
 
-            Some((path, bound_ident))
+                (Some((path, bound_ident)), let_.expr()?)
+            }
+            _ => return None, // Unsupported IfLet.
         }
-        Some(_) => return None, // Unsupported IfLet.
+    } else {
+        (None, cond)
     };
 
-    let cond_expr = cond.expr()?;
     let then_block = if_expr.then_branch()?;
     let then_block = then_block.stmt_list()?;
 
@@ -119,8 +122,7 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
                         let then_branch =
                             make::block_expr(once(make::expr_stmt(early_expression).into()), None);
                         let cond = invert_boolean_expression(cond_expr);
-                        make::expr_if(make::condition(cond, None), then_branch, None)
-                            .indent(if_indent_level)
+                        make::expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
                     new_expr.syntax().clone_for_update()
                 }

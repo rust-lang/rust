@@ -1,8 +1,5 @@
 use syntax::{
-    ast::{
-        edit::AstNodeEdit, make, AstNode, BlockExpr, Condition, ElseBranch, Expr, IfExpr, MatchArm,
-        Pat,
-    },
+    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat},
     SyntaxKind::WHITESPACE,
 };
 
@@ -44,18 +41,11 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext) -> 
     }
     let space_before_guard = guard.syntax().prev_sibling_or_token();
 
-    // FIXME: support `if let` guards too
-    if guard.let_token().is_some() {
-        return None;
-    }
-    let guard_condition = guard.expr()?;
+    let guard_condition = guard.condition()?;
     let arm_expr = match_arm.expr()?;
-    let if_expr = make::expr_if(
-        make::condition(guard_condition, None),
-        make::block_expr(None, Some(arm_expr.clone())),
-        None,
-    )
-    .indent(arm_expr.indent_level());
+    let if_expr =
+        make::expr_if(guard_condition, make::block_expr(None, Some(arm_expr.clone())), None)
+            .indent(arm_expr.indent_level());
 
     let target = guard.syntax().text_range();
     acc.add(
@@ -193,17 +183,13 @@ pub(crate) fn move_arm_cond_to_match_guard(acc: &mut Assists, ctx: &AssistContex
     )
 }
 
-// Parses an if-else-if chain to get the conditons and the then branches until we encounter an else
+// Parses an if-else-if chain to get the conditions and the then branches until we encounter an else
 // branch or the end.
-fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Condition, BlockExpr)>, Option<BlockExpr>)> {
+fn parse_if_chain(if_expr: IfExpr) -> Option<(Vec<(Expr, BlockExpr)>, Option<BlockExpr>)> {
     let mut conds_blocks = Vec::new();
     let mut curr_if = if_expr;
     let tail = loop {
         let cond = curr_if.condition()?;
-        // Not support moving if let to arm guard
-        if cond.is_pattern_cond() {
-            return None;
-        }
         conds_blocks.push((cond, curr_if.then_branch()?));
         match curr_if.else_branch() {
             Some(ElseBranch::IfExpr(e)) => {

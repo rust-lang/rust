@@ -1219,28 +1219,26 @@ impl FlowHandler {
                 let stmt = make::expr_stmt(action);
                 let block = make::block_expr(iter::once(stmt.into()), None);
                 let controlflow_break_path = make::path_from_text("ControlFlow::Break");
-                let condition = make::condition(
+                let condition = make::expr_let(
+                    make::tuple_struct_pat(
+                        controlflow_break_path,
+                        iter::once(make::wildcard_pat().into()),
+                    )
+                    .into(),
                     call_expr,
-                    Some(
-                        make::tuple_struct_pat(
-                            controlflow_break_path,
-                            iter::once(make::wildcard_pat().into()),
-                        )
-                        .into(),
-                    ),
                 );
-                make::expr_if(condition, block, None)
+                make::expr_if(condition.into(), block, None)
             }
             FlowHandler::IfOption { action } => {
                 let path = make::ext::ident_path("Some");
                 let value_pat = make::ext::simple_ident_pat(make::name("value"));
                 let pattern = make::tuple_struct_pat(path, iter::once(value_pat.into()));
-                let cond = make::condition(call_expr, Some(pattern.into()));
+                let cond = make::expr_let(pattern.into(), call_expr);
                 let value = make::expr_path(make::ext::ident_path("value"));
                 let action_expr = action.make_result_handler(Some(value));
                 let action_stmt = make::expr_stmt(action_expr);
                 let then = make::block_expr(iter::once(action_stmt.into()), None);
-                make::expr_if(cond, then, None)
+                make::expr_if(cond.into(), then, None)
             }
             FlowHandler::MatchOption { none } => {
                 let some_name = "value";
