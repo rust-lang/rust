@@ -476,10 +476,6 @@ impl Session {
         &self.parse_sess.span_diagnostic
     }
 
-    pub fn with_disabled_diagnostic<T, F: FnOnce() -> T>(&self, f: F) -> T {
-        self.parse_sess.span_diagnostic.with_disabled_diagnostic(f)
-    }
-
     /// Analogous to calling methods on the given `DiagnosticBuilder`, but
     /// deduplicates on lint ID, span (if any), and message for this `Session`
     fn diag_once<'a, 'b>(
