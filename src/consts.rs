@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -218,7 +218,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                         }
 
                         let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(&sym, llty, is_tls, fn_attrs.link_section);
+                        let global = self.declare_global(
+                            &sym,
+                            llty,
+                            GlobalKind::Exported,
+                            is_tls,
+                            fn_attrs.link_section,
+                        );
 
                         if !self.tcx.is_reachable_non_generic(def_id) {
                             // TODO(antoyo): set visibility.
@@ -389,6 +395,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, llty, is_tls, attrs.link_section)
+        cx.declare_global(&sym, llty, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }
