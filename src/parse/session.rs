@@ -60,7 +60,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         None
     }
     fn emit_diagnostic(&mut self, db: &Diagnostic) {
-        if db.level == DiagnosticLevel::Fatal {
+        if db.level() == DiagnosticLevel::Fatal {
             return self.handle_non_ignoreable_error(db);
         }
         if let Some(primary_span) = &db.span.primary_span() {
@@ -292,7 +292,7 @@ mod tests {
         use super::*;
         use crate::config::IgnoreList;
         use crate::utils::mk_sp;
-        use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName, DUMMY_SP};
+        use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName};
         use std::path::PathBuf;
         use std::sync::atomic::AtomicU32;
 
@@ -310,16 +310,12 @@ mod tests {
         }
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> Diagnostic {
-            Diagnostic {
-                level,
-                code: None,
-                message: vec![],
-                children: vec![],
-                suggestions: Ok(vec![]),
-                span: span.unwrap_or_else(MultiSpan::new),
-                sort_span: DUMMY_SP,
-                is_lint: false,
+            let mut diag = Diagnostic::new(level, "");
+            diag.message.clear();
+            if let Some(span) = span {
+                diag.span = span;
             }
+            diag
         }
 
         fn build_emitter(
