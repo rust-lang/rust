@@ -3,7 +3,9 @@
 
 // @has blanket_with_local.json "$.index[*][?(@.name=='Load')]"
 pub trait Load {
+    // @has - "$.index[*][?(@.name=='load')]"
     fn load() {}
+    // @has - "$.index[*][?(@.name=='write')]"
     fn write(self) {}
 }
 
