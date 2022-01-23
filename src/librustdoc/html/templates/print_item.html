@@ -16,7 +16,7 @@
     </h1> {#- -#}
     <span class="out-of-band"> {#- -#}
         {% if !stability_since_raw.is_empty() %}
-        {{- stability_since_raw|safe -}} · {# -#}
+        {{- stability_since_raw|safe }} · {# -#}
         {% endif %}
         {%- match src_href -%}
             {%- when Some with (href) -%}

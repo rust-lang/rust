@@ -232,3 +232,9 @@ fn deref_on_ref() {
     let y = deref(&mut x);
     assert_eq!(y, 4);
 }
+
+#[test]
+#[allow(unreachable_code)]
+fn test_not_never() {
+    if !return () {}
+}

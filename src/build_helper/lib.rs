@@ -55,12 +55,6 @@ pub fn restore_library_path() {
     }
 }
 
-/// Run the command, printing what we are running.
-pub fn run_verbose(cmd: &mut Command) {
-    println!("running: {:?}", cmd);
-    run(cmd);
-}
-
 pub fn run(cmd: &mut Command) {
     if !try_run(cmd) {
         std::process::exit(1);
@@ -106,16 +100,6 @@ pub fn try_run_suppressed(cmd: &mut Command) -> bool {
         );
     }
     output.status.success()
-}
-
-pub fn gnu_target(target: &str) -> &str {
-    match target {
-        "i686-pc-windows-msvc" => "i686-pc-win32",
-        "x86_64-pc-windows-msvc" => "x86_64-pc-win32",
-        "i686-pc-windows-gnu" => "i686-w64-mingw32",
-        "x86_64-pc-windows-gnu" => "x86_64-w64-mingw32",
-        s => s,
-    }
 }
 
 pub fn make(host: &str) -> PathBuf {
