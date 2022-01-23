@@ -105,7 +105,7 @@ macro_rules! impl_float_vector {
                 self.abs().lanes_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(<$type>::INFINITY).to_bits()).lanes_eq(Simd::splat(0))
             }
 
-            /// Returns true for each lane if its value is neither neither zero, infinite,
+            /// Returns true for each lane if its value is neither zero, infinite,
             /// subnormal, or `NaN`.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
