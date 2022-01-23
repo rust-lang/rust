@@ -12,5 +12,14 @@ LL | #![deny(absolute_paths_not_starting_with_crate)]
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
-error: aborting due to previous error
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/extern-crate-submod.rs:19:5
+   |
+LL | use m::edition_lint_paths::foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::m::edition_lint_paths::foo`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2018!
+   = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
+
+error: aborting due to 2 previous errors
 
