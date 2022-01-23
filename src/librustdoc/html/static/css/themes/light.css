@@ -201,9 +201,6 @@ a.test-arrow {
 body.source .example-wrap pre.rust a {
 	background: #eee;
 }
-.sidebar a {
-	color: #356da4;
-}
 
 details.rustdoc-toggle > summary.hideme > span,
 details.rustdoc-toggle > summary::before,
