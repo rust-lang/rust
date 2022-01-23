@@ -408,7 +408,10 @@ fn negative_impl_exists<'cx, 'tcx>(
     let tcx = infcx.tcx;
     o.flip_polarity(tcx)
         .as_ref()
-        .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
+        .map(|o| {
+            // FIXME This isn't quite correct, regions should be included
+            selcx.infcx().predicate_must_hold_modulo_regions(o)
+        })
         .unwrap_or(false)
 }
 
