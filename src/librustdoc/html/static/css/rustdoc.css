@@ -398,7 +398,7 @@ nav.sub {
 }
 
 .source .sidebar > *:not(:first-child) {
-	transition: opacity 0.5s, visibility 0.2s;
+	transition: opacity 0.5s;
 	opacity: 0;
 	visibility: hidden;
 }
