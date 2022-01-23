@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     body::Body,
     db::DefDatabase,
-    expr::{Expr, ExprId, LabelId, MatchGuard, Pat, PatId, Statement},
+    expr::{Expr, ExprId, LabelId, Pat, PatId, Statement},
     BlockId, DefWithBodyId,
 };
 
@@ -53,9 +53,9 @@ impl ExprScopes {
     fn new(body: &Body) -> ExprScopes {
         let mut scopes =
             ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
-        let root = scopes.root_scope();
+        let mut root = scopes.root_scope();
         scopes.add_params_bindings(body, root, &body.params);
-        compute_expr_scopes(body.body_expr, body, &mut scopes, root);
+        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
         scopes
     }
 
@@ -151,32 +151,32 @@ fn compute_block_scopes(
         match stmt {
             Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
-                    compute_expr_scopes(*expr, body, scopes, scope);
+                    compute_expr_scopes(*expr, body, scopes, &mut scope);
                 }
                 if let Some(expr) = else_branch {
-                    compute_expr_scopes(*expr, body, scopes, scope);
+                    compute_expr_scopes(*expr, body, scopes, &mut scope);
                 }
                 scope = scopes.new_scope(scope);
                 scopes.add_bindings(body, scope, *pat);
             }
             Statement::Expr { expr, .. } => {
-                compute_expr_scopes(*expr, body, scopes, scope);
+                compute_expr_scopes(*expr, body, scopes, &mut scope);
             }
         }
     }
     if let Some(expr) = tail {
-        compute_expr_scopes(expr, body, scopes, scope);
+        compute_expr_scopes(expr, body, scopes, &mut scope);
     }
 }
 
-fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: ScopeId) {
+fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope: &mut ScopeId) {
     let make_label =
         |label: &Option<LabelId>| label.map(|label| (label, body.labels[label].name.clone()));
 
-    scopes.set_scope(expr, scope);
+    scopes.set_scope(expr, *scope);
     match &body[expr] {
         Expr::Block { statements, tail, id, label } => {
-            let scope = scopes.new_block_scope(scope, *id, make_label(label));
+            let scope = scopes.new_block_scope(*scope, *id, make_label(label));
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
@@ -184,45 +184,48 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         }
         Expr::For { iterable, pat, body: body_expr, label } => {
             compute_expr_scopes(*iterable, body, scopes, scope);
-            let scope = scopes.new_labeled_scope(scope, make_label(label));
+            let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
             scopes.add_bindings(body, scope, *pat);
-            compute_expr_scopes(*body_expr, body, scopes, scope);
+            compute_expr_scopes(*body_expr, body, scopes, &mut scope);
         }
         Expr::While { condition, body: body_expr, label } => {
-            let scope = scopes.new_labeled_scope(scope, make_label(label));
-            compute_expr_scopes(*condition, body, scopes, scope);
-            compute_expr_scopes(*body_expr, body, scopes, scope);
+            let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
+            compute_expr_scopes(*condition, body, scopes, &mut scope);
+            compute_expr_scopes(*body_expr, body, scopes, &mut scope);
         }
         Expr::Loop { body: body_expr, label } => {
-            let scope = scopes.new_labeled_scope(scope, make_label(label));
-            compute_expr_scopes(*body_expr, body, scopes, scope);
+            let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
+            compute_expr_scopes(*body_expr, body, scopes, &mut scope);
         }
         Expr::Lambda { args, body: body_expr, .. } => {
-            let scope = scopes.new_scope(scope);
+            let mut scope = scopes.new_scope(*scope);
             scopes.add_params_bindings(body, scope, args);
-            compute_expr_scopes(*body_expr, body, scopes, scope);
+            compute_expr_scopes(*body_expr, body, scopes, &mut scope);
         }
         Expr::Match { expr, arms } => {
             compute_expr_scopes(*expr, body, scopes, scope);
             for arm in arms.iter() {
-                let mut scope = scopes.new_scope(scope);
+                let mut scope = scopes.new_scope(*scope);
                 scopes.add_bindings(body, scope, arm.pat);
-                match arm.guard {
-                    Some(MatchGuard::If { expr: guard }) => {
-                        scopes.set_scope(guard, scope);
-                        compute_expr_scopes(guard, body, scopes, scope);
-                    }
-                    Some(MatchGuard::IfLet { pat, expr: guard }) => {
-                        scopes.set_scope(guard, scope);
-                        compute_expr_scopes(guard, body, scopes, scope);
-                        scope = scopes.new_scope(scope);
-                        scopes.add_bindings(body, scope, pat);
-                    }
-                    _ => {}
-                };
-                scopes.set_scope(arm.expr, scope);
-                compute_expr_scopes(arm.expr, body, scopes, scope);
+                if let Some(guard) = arm.guard {
+                    scope = scopes.new_scope(scope);
+                    compute_expr_scopes(guard, body, scopes, &mut scope);
+                }
+                compute_expr_scopes(arm.expr, body, scopes, &mut scope);
             }
+        }
+        &Expr::If { condition, then_branch, else_branch } => {
+            let mut then_branch_scope = scopes.new_scope(*scope);
+            compute_expr_scopes(condition, body, scopes, &mut then_branch_scope);
+            compute_expr_scopes(then_branch, body, scopes, &mut then_branch_scope);
+            if let Some(else_branch) = else_branch {
+                compute_expr_scopes(else_branch, body, scopes, scope);
+            }
+        }
+        &Expr::Let { pat, expr } => {
+            compute_expr_scopes(expr, body, scopes, scope);
+            *scope = scopes.new_scope(*scope);
+            scopes.add_bindings(body, *scope, pat);
         }
         e => e.walk_child_exprs(|e| compute_expr_scopes(e, body, scopes, scope)),
     };
@@ -500,8 +503,7 @@ fn foo() {
     }
 
     #[test]
-    fn while_let_desugaring() {
-        cov_mark::check!(infer_resolve_while_let);
+    fn while_let_adds_binding() {
         do_check_local_name(
             r#"
 fn test() {
@@ -512,6 +514,32 @@ fn test() {
 }
 "#,
             75,
+        );
+        do_check_local_name(
+            r#"
+fn test() {
+    let foo: Option<f32> = None;
+    while (((let Option::Some(_) = foo))) && let Option::Some(spam) = foo {
+        spam$0
+    }
+}
+"#,
+            107,
+        );
+    }
+
+    #[test]
+    fn match_guard_if_let() {
+        do_check_local_name(
+            r#"
+fn test() {
+    let foo: Option<f32> = None;
+    match foo {
+        _ if let Option::Some(spam) = foo => spam$0,
+    }
+}
+"#,
+            93,
         );
     }
 }
