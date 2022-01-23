@@ -440,7 +440,7 @@ impl<'a> AstValidator<'a> {
                         attr.span,
                         "allow, cfg, cfg_attr, deny, \
                 forbid, and warn are the only allowed built-in attributes in function parameters",
-                    )
+                    );
                 }
             });
     }

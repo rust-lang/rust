@@ -169,7 +169,7 @@ impl CheckAttrVisitor<'_> {
                             }
                             ast::AttrStyle::Inner => "crate-level attribute should be in the root module",
                         };
-                        lint.build(msg).emit()
+                        lint.build(msg).emit();
                     });
                 }
             }
@@ -236,7 +236,7 @@ impl CheckAttrVisitor<'_> {
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             Target::Method(MethodKind::Trait { body: false }) | Target::ForeignFn => {
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("`#[inline]` is ignored on function prototypes").emit()
+                    lint.build("`#[inline]` is ignored on function prototypes").emit();
                 });
                 true
             }

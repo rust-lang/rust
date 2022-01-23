@@ -41,35 +41,30 @@ crate fn compare_impl_method<'tcx>(
 
     let impl_m_span = tcx.sess.source_map().guess_head_span(impl_m_span);
 
-    if let Err(ErrorGuaranteed) =
-        compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
-    {
+    if let Err(_) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref) {
         return;
     }
 
-    if let Err(ErrorGuaranteed) =
-        compare_number_of_generics(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
-    {
+    if let Err(_) = compare_number_of_generics(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
         return;
     }
 
-    if let Err(ErrorGuaranteed) =
+    if let Err(_) =
         compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
     {
         return;
     }
 
-    if let Err(ErrorGuaranteed) = compare_synthetic_generics(tcx, impl_m, trait_m) {
+    if let Err(_) = compare_synthetic_generics(tcx, impl_m, trait_m) {
         return;
     }
 
-    if let Err(ErrorGuaranteed) =
-        compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
+    if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
     {
         return;
     }
 
-    if let Err(ErrorGuaranteed) = compare_const_param_types(tcx, impl_m, trait_m, trait_item_span) {
+    if let Err(_) = compare_const_param_types(tcx, impl_m, trait_m, trait_item_span) {
         return;
     }
 }
@@ -385,16 +380,16 @@ fn compare_predicate_entailment<'tcx>(
                 &terr,
                 false,
             );
-            diag.emit();
-            return Err(ErrorGuaranteed);
+
+            return Err(diag.emit());
         }
 
         // Check that all obligations are satisfied by the implementation's
         // version.
         let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorGuaranteed);
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
         }
 
         // Finally, resolve all regions. This catches wily misuses of
@@ -450,13 +445,13 @@ fn check_region_bounds_on_impl_item<'tcx>(
                 .map_or(def_sp, |g| g.span)
         });
 
-        tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
+        let reported = tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
             item_kind,
             ident: impl_m.ident(tcx),
             generics_span,
         });
-        return Err(ErrorGuaranteed);
+        return Err(reported);
     }
 
     Ok(())
@@ -550,8 +545,8 @@ fn compare_self_type<'tcx>(
             } else {
                 err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
-            err.emit();
-            return Err(ErrorGuaranteed);
+            let reported = err.emit();
+            return Err(reported);
         }
 
         (true, false) => {
@@ -570,8 +565,8 @@ fn compare_self_type<'tcx>(
             } else {
                 err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
-            err.emit();
-            return Err(ErrorGuaranteed);
+            let reported = err.emit();
+            return Err(reported);
         }
     }
 
@@ -595,11 +590,9 @@ fn compare_number_of_generics<'tcx>(
 
     let item_kind = assoc_item_kind_str(impl_);
 
-    let mut err_occurred = false;
+    let mut err_occurred = None;
     for (kind, trait_count, impl_count) in matchings {
         if impl_count != trait_count {
-            err_occurred = true;
-
             let (trait_spans, impl_trait_spans) = if let Some(def_id) = trait_.def_id.as_local() {
                 let trait_item = tcx.hir().expect_trait_item(def_id);
                 if trait_item.generics.params.is_empty() {
@@ -690,11 +683,12 @@ fn compare_number_of_generics<'tcx>(
                 err.span_label(*span, "`impl Trait` introduces an implicit type parameter");
             }
 
-            err.emit();
+            let reported = err.emit();
+            err_occurred = Some(reported);
         }
     }
 
-    if err_occurred { Err(ErrorGuaranteed) } else { Ok(()) }
+    if let Some(reported) = err_occurred { Err(reported) } else { Ok(()) }
 }
 
 fn compare_number_of_method_arguments<'tcx>(
@@ -772,8 +766,8 @@ fn compare_number_of_method_arguments<'tcx>(
                 impl_number_args
             ),
         );
-        err.emit();
-        return Err(ErrorGuaranteed);
+        let reported = err.emit();
+        return Err(reported);
     }
 
     Ok(())
@@ -789,7 +783,7 @@ fn compare_synthetic_generics<'tcx>(
     //     2. Explanation as to what is going on
     // If we get here, we already have the same number of generics, so the zip will
     // be okay.
-    let mut error_found = false;
+    let mut error_found = None;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
     let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| match param.kind {
@@ -918,11 +912,11 @@ fn compare_synthetic_generics<'tcx>(
                 }
                 _ => unreachable!(),
             }
-            err.emit();
-            error_found = true;
+            let reported = err.emit();
+            error_found = Some(reported);
         }
     }
-    if error_found { Err(ErrorGuaranteed) } else { Ok(()) }
+    if let Some(reported) = error_found { Err(reported) } else { Ok(()) }
 }
 
 fn compare_const_param_types<'tcx>(
@@ -979,8 +973,8 @@ fn compare_const_param_types<'tcx>(
                     trait_ty
                 ),
             );
-            err.emit();
-            return Err(ErrorGuaranteed);
+            let reported = err.emit();
+            return Err(reported);
         }
     }
 
@@ -1203,8 +1197,8 @@ fn compare_type_predicate_entailment<'tcx>(
         // version.
         let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorGuaranteed);
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
         }
 
         // Finally, resolve all regions. This catches wily misuses of
@@ -1427,8 +1421,8 @@ pub fn check_type_bounds<'tcx>(
         // version.
         let errors = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx);
         if !errors.is_empty() {
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorGuaranteed);
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
         }
 
         // Finally, resolve all regions. This catches wily misuses of

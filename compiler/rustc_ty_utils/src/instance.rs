@@ -306,9 +306,9 @@ fn resolve_associated_item<'tcx>(
                         resolved_ty,
                     );
                     let span = tcx.def_span(leaf_def.item.def_id);
-                    tcx.sess.delay_span_bug(span, &msg);
+                    let reported = tcx.sess.delay_span_bug(span, &msg);
 
-                    return Err(ErrorGuaranteed);
+                    return Err(reported);
                 }
             }
 

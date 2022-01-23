@@ -147,8 +147,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut err);
 
-        err.emit();
-        Some(ErrorGuaranteed)
+        let reported = err.emit();
+        Some(reported)
     }
 
     fn suggest_adding_lifetime_params(

@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let impl_span = self.tcx().def_span(*impl_def_id);
             err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
-        err.emit();
-        Some(ErrorGuaranteed)
+        let reported = err.emit();
+        Some(reported)
     }
 }

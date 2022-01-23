@@ -178,7 +178,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(ErrorGuaranteed) = tables.tainted_by_errors {
+    if let Some(ErrorGuaranteed { .. }) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
         errors.set_tainted_by_errors();
     }
@@ -2274,6 +2274,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 }
 
 mod error {
+    use rustc_errors::ErrorGuaranteed;
+
     use super::*;
 
     pub struct BorrowckErrors<'tcx> {
@@ -2311,7 +2313,7 @@ mod error {
         // FIXME(eddyb) this is a suboptimal API because `tainted_by_errors` is
         // set before any emission actually happens (weakening the guarantee).
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
-            self.tainted_by_errors = Some(ErrorGuaranteed {});
+            self.tainted_by_errors = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             t.buffer(&mut self.buffered);
         }
 
@@ -2320,7 +2322,7 @@ mod error {
         }
 
         pub fn set_tainted_by_errors(&mut self) {
-            self.tainted_by_errors = Some(ErrorGuaranteed {});
+            self.tainted_by_errors = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
         }
     }
 

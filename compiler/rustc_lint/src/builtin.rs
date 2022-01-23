@@ -157,7 +157,7 @@ impl BoxPointers {
             if let GenericArgKind::Type(leaf_ty) = leaf.unpack() {
                 if leaf_ty.is_box() {
                     cx.struct_span_lint(BOX_POINTERS, span, |lint| {
-                        lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit()
+                        lint.build(&format!("type uses owned (Box type) pointers: {}", ty)).emit();
                     });
                 }
             }
@@ -318,7 +318,7 @@ impl UnsafeCode {
         &self,
         cx: &EarlyContext<'_>,
         span: Span,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         // This comes from a macro that has `#[allow_internal_unsafe]`.
         if span.allows_unsafe() {
@@ -350,7 +350,7 @@ impl EarlyLintPass for UnsafeCode {
                                                macros using unsafe without triggering \
                                                the `unsafe_code` lint at their call site",
                 )
-                .emit()
+                .emit();
             });
         }
     }
@@ -360,7 +360,7 @@ impl EarlyLintPass for UnsafeCode {
             // Don't warn about generated blocks; that'll just pollute the output.
             if blk.rules == ast::BlockCheckMode::Unsafe(ast::UserProvided) {
                 self.report_unsafe(cx, blk.span, |lint| {
-                    lint.build("usage of an `unsafe` block").emit()
+                    lint.build("usage of an `unsafe` block").emit();
                 });
             }
         }
@@ -370,12 +370,12 @@ impl EarlyLintPass for UnsafeCode {
         match it.kind {
             ast::ItemKind::Trait(box ast::Trait { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("declaration of an `unsafe` trait").emit()
+                    lint.build("declaration of an `unsafe` trait").emit();
                 }),
 
             ast::ItemKind::Impl(box ast::Impl { unsafety: ast::Unsafe::Yes(_), .. }) => self
                 .report_unsafe(cx, it.span, |lint| {
-                    lint.build("implementation of an `unsafe` trait").emit()
+                    lint.build("implementation of an `unsafe` trait").emit();
                 }),
 
             ast::ItemKind::Fn(..) => {
@@ -450,7 +450,9 @@ impl EarlyLintPass for UnsafeCode {
                 FnCtxt::Assoc(_) if body.is_none() => "declaration of an `unsafe` method",
                 FnCtxt::Assoc(_) => "implementation of an `unsafe` method",
             };
-            self.report_unsafe(cx, span, |lint| lint.build(msg).emit());
+            self.report_unsafe(cx, span, |lint| {
+                lint.build(msg).emit();
+            });
         }
     }
 }
@@ -559,7 +561,7 @@ impl MissingDoc {
                 MISSING_DOCS,
                 cx.tcx.sess.source_map().guess_head_span(sp),
                 |lint| {
-                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit()
+                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit();
                 },
             );
         }
@@ -777,7 +779,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     "type could implement `Copy`; consider adding `impl \
                           Copy`",
                 )
-                .emit()
+                .emit();
             })
         }
     }
@@ -858,7 +860,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
                      or a manual implementation",
                     cx.tcx.def_path_str(debug)
                 ))
-                .emit()
+                .emit();
             });
         }
     }
@@ -1278,7 +1280,9 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
                 let msg = "transmuting &T to &mut T is undefined behavior, \
                     even if the reference is unused, consider instead using an UnsafeCell";
-                cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
+                cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| {
+                    lint.build(msg).emit();
+                });
             }
         }
 
@@ -1328,7 +1332,7 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     cx.struct_span_lint(UNSTABLE_FEATURES, item.span(), |lint| {
-                        lint.build("unstable feature").emit()
+                        lint.build("unstable feature").emit();
                     });
                 }
             }
@@ -1680,7 +1684,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                                 or lifetime parameters",
                             predicate_kind_name, predicate
                         ))
-                        .emit()
+                        .emit();
                     });
                 }
             }
@@ -1915,7 +1919,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         if let Some(attr) = cx.sess().find_by_name(attrs, sym::rustc_test_marker) {
             cx.struct_span_lint(UNNAMEABLE_TEST_ITEMS, attr.span, |lint| {
-                lint.build("cannot test inner items").emit()
+                lint.build("cannot test inner items").emit();
             });
         }
     }
@@ -2040,7 +2044,7 @@ impl KeywordIdents {
                     format!("r#{}", ident),
                     Applicability::MachineApplicable,
                 )
-                .emit()
+                .emit();
         });
     }
 }
@@ -3055,7 +3059,7 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
                                 "this signature doesn't match the previous declaration",
                             )
                             .note_expected_found(&"", expected_str, &"", found_str)
-                            .emit()
+                            .emit();
                         },
                     );
                 }

@@ -118,7 +118,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
             };
 
             let body = tcx.hir().body(body_id);
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();
@@ -229,7 +231,9 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
 
             let return_ty = typeck_results.node_type(id);
 
-            let (thir, expr) = tcx.thir_body(def);
+            let (thir, expr) = tcx
+                .thir_body(def)
+                .unwrap_or_else(|_| (tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0)));
             // We ran all queries that depended on THIR at the beginning
             // of `mir_build`, so now we can steal it
             let thir = thir.steal();

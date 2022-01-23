@@ -202,7 +202,7 @@ pub(crate) fn emit_unescape_error(
             diag.emit();
         }
         EscapeError::TooShortHexEscape => {
-            handler.span_err(span, "numeric character escape is too short")
+            handler.span_err(span, "numeric character escape is too short");
         }
         EscapeError::InvalidCharInHexEscape | EscapeError::InvalidCharInUnicodeEscape => {
             let (c, span) = last_char();

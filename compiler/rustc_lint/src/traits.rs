@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         predicate,
                         cx.tcx.def_path_str(needs_drop)
                     );
-                    lint.build(&msg).emit()
+                    lint.build(&msg).emit();
                 });
             }
         }
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         instead using `{}` to detect whether a type is trivially dropped",
                         cx.tcx.def_path_str(needs_drop)
                     );
-                    lint.build(&msg).emit()
+                    lint.build(&msg).emit();
                 });
             }
         }

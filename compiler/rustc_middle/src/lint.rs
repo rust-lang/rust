@@ -2,7 +2,9 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{
+    Diagnostic, DiagnosticBuilder, DiagnosticId, EmissionGuarantee, ErrorGuaranteed,
+};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
@@ -220,19 +222,25 @@ impl LintExpectation {
     }
 }
 
-pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a, ()>);
+pub struct LintDiagnosticBuilder<'a, G: EmissionGuarantee>(DiagnosticBuilder<'a, G>);
 
-impl<'a> LintDiagnosticBuilder<'a> {
-    /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
-    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a, ()> {
+impl<'a, G: EmissionGuarantee> LintDiagnosticBuilder<'a, G> {
+    /// Return the inner `DiagnosticBuilder`, first setting the primary message to `msg`.
+    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a, G> {
         self.0.set_primary_message(msg);
         self.0.set_is_lint();
         self.0
     }
 
-    /// Create a LintDiagnosticBuilder from some existing DiagnosticBuilder.
-    pub fn new(err: DiagnosticBuilder<'a, ()>) -> LintDiagnosticBuilder<'a> {
+    /// Create a `LintDiagnosticBuilder` from some existing `DiagnosticBuilder`.
+    pub fn new(err: DiagnosticBuilder<'a, G>) -> LintDiagnosticBuilder<'a, G> {
         LintDiagnosticBuilder(err)
+    }
+}
+
+impl<'a> LintDiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn forget_guarantee(self) -> LintDiagnosticBuilder<'a, ()> {
+        LintDiagnosticBuilder(self.0.forget_guarantee())
     }
 }
 
@@ -316,7 +324,7 @@ pub fn struct_lint_level<'s, 'd>(
     level: Level,
     src: LintLevelSource,
     span: Option<MultiSpan>,
-    decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>) + 'd,
+    decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>) + 'd,
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -326,7 +334,7 @@ pub fn struct_lint_level<'s, 'd>(
         level: Level,
         src: LintLevelSource,
         span: Option<MultiSpan>,
-        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
+        decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b, ()>) + 'd>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;

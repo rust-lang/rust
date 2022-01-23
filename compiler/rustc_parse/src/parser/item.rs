@@ -212,10 +212,10 @@ impl<'a> Parser<'a> {
             if let Err(mut e) = self.expect_semi() {
                 match tree.kind {
                     UseTreeKind::Glob => {
-                        e.note("the wildcard token must be last on the path").emit();
+                        e.note("the wildcard token must be last on the path");
                     }
                     UseTreeKind::Nested(..) => {
-                        e.note("glob-like brace syntax must be last on the path").emit();
+                        e.note("glob-like brace syntax must be last on the path");
                     }
                     _ => (),
                 }
@@ -1485,7 +1485,7 @@ impl<'a> Parser<'a> {
                     // Make sure an error was emitted (either by recovering an angle bracket,
                     // or by finding an identifier as the next token), since we're
                     // going to continue parsing
-                    assert!(self.sess.span_diagnostic.has_errors());
+                    assert!(self.sess.span_diagnostic.has_errors().is_some());
                 } else {
                     return Err(err);
                 }

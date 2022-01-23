@@ -55,11 +55,11 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            tcx.sess.delay_span_bug(
+            let reported = tcx.sess.delay_span_bug(
                 span,
                 &format!("should have been rejected by coherence check: {}", dtor_self_type),
             );
-            Err(ErrorGuaranteed)
+            Err(reported)
         }
     }
 }
@@ -94,7 +94,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
             Err(_) => {
                 let item_span = tcx.def_span(self_type_did);
                 let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
-                struct_span_err!(
+                let reported = struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
                     E0366,
@@ -109,15 +109,15 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                     ),
                 )
                 .emit();
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
         }
 
         let errors = fulfillment_cx.select_all_or_error(&infcx);
         if !errors.is_empty() {
             // this could be reached when we get lazy normalization
-            infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorGuaranteed);
+            let reported = infcx.report_fulfillment_errors(&errors, None, false);
+            return Err(reported);
         }
 
         // NB. It seems a bit... suspicious to use an empty param-env
@@ -258,7 +258,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         if !assumptions_in_impl_context.iter().copied().any(predicate_matches_closure) {
             let item_span = tcx.def_span(self_type_did);
             let self_descr = tcx.def_kind(self_type_did).descr(self_type_did.to_def_id());
-            struct_span_err!(
+            let reported = struct_span_err!(
                 tcx.sess,
                 predicate_sp,
                 E0367,
@@ -268,7 +268,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             )
             .span_note(item_span, "the implementor must specify the same requirement")
             .emit();
-            result = Err(ErrorGuaranteed);
+            result = Err(reported);
         }
     }
 

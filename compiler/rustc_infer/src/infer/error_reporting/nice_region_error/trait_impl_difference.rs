@@ -33,13 +33,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ) = (sub_trace.values.ty(), sup_trace.values.ty(), sub_trace.cause.code())
             && sup_expected_found == sub_expected_found
         {
-            self.emit_err(
+            let guar = self.emit_err(
                 var_origin.span(),
                 sub_expected,
                 sub_found,
                 *trait_item_def_id,
             );
-            return Some(ErrorGuaranteed);
+            return Some(guar);
         }
         if let RegionResolutionError::ConcreteFailure(origin, _, _)
             | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
@@ -49,18 +49,24 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 trait_item_def_id,
             } = origin
         {
-            self.emit_associated_type_err(
+            let guar = self.emit_associated_type_err(
                 span,
                 self.infcx.tcx.item_name(impl_item_def_id),
                 impl_item_def_id,
                 trait_item_def_id,
             );
-            return Some(ErrorGuaranteed);
+            return Some(guar);
         }
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, trait_def_id: DefId) {
+    fn emit_err(
+        &self,
+        sp: Span,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        trait_def_id: DefId,
+    ) -> ErrorGuaranteed {
         let trait_sp = self.tcx().def_span(trait_def_id);
         let mut err = self
             .tcx()
@@ -142,7 +148,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                  argument, the other inputs and its output",
             );
         }
-        err.emit();
+        err.emit()
     }
 
     fn emit_associated_type_err(
@@ -151,7 +157,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         item_name: Symbol,
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
-    ) {
+    ) -> ErrorGuaranteed {
         let impl_sp = self.tcx().def_span(impl_item_def_id);
         let trait_sp = self.tcx().def_span(trait_item_def_id);
         let mut err = self
@@ -161,7 +167,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         err.span_label(impl_sp, "found");
         err.span_label(trait_sp, "expected");
 
-        err.emit();
+        err.emit()
     }
 }
 

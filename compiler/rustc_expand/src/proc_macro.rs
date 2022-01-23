@@ -31,8 +31,7 @@ impl base::ProcMacro for BangProcMacro {
             if let Some(s) = e.as_str() {
                 err.help(&format!("message: {}", s));
             }
-            err.emit();
-            ErrorGuaranteed
+            err.emit()
         })
     }
 }
@@ -58,8 +57,7 @@ impl base::AttrProcMacro for AttrProcMacro {
                 if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
-                err.emit();
-                ErrorGuaranteed
+                err.emit()
             })
     }
 }

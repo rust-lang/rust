@@ -63,7 +63,7 @@ pub trait InferCtxtExt<'tcx> {
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
         fallback_has_occurred: bool,
-    );
+    ) -> ErrorGuaranteed;
 
     fn report_overflow_error<T>(
         &self,
@@ -111,7 +111,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
         fallback_has_occurred: bool,
-    ) {
+    ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -190,6 +190,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }
         }
+
+        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -312,7 +314,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let predicate_is_const = ty::BoundConstness::ConstIfConst
                             == trait_predicate.skip_binder().constness;
 
-                        if self.tcx.sess.has_errors() && trait_predicate.references_error() {
+                        if self.tcx.sess.has_errors().is_some()
+                            && trait_predicate.references_error()
+                        {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
@@ -919,7 +923,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             // Already reported in the query.
-            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(ErrorGuaranteed)) => {
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) => {
                 // FIXME(eddyb) remove this once `ErrorGuaranteed` becomes a proof token.
                 self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
                 return;
@@ -1857,7 +1861,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
-                    || self.tcx.sess.has_errors()
+                    || self.tcx.sess.has_errors().is_some()
                     || self.is_tainted_by_errors()
                 {
                     return;
@@ -1868,7 +1872,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
             ty::PredicateKind::Subtype(data) => {
                 if data.references_error()
-                    || self.tcx.sess.has_errors()
+                    || self.tcx.sess.has_errors().is_some()
                     || self.is_tainted_by_errors()
                 {
                     // no need to overload user in such cases
@@ -1910,7 +1914,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             _ => {
-                if self.tcx.sess.has_errors() || self.is_tainted_by_errors() {
+                if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
                     return;
                 }
                 let mut err = struct_span_err!(

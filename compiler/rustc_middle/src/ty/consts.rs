@@ -264,7 +264,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.val().try_eval(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(ErrorGuaranteed) => tcx.const_error(self.ty()),
+                Err(ErrorGuaranteed { .. }) => tcx.const_error(self.ty()),
             }
         } else {
             self

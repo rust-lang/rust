@@ -31,12 +31,12 @@ pub struct Graph {
     pub children: DefIdMap<Children>,
 
     /// Whether an error was emitted while constructing the graph.
-    pub has_errored: bool,
+    pub has_errored: Option<ErrorGuaranteed>,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph { parent: Default::default(), children: Default::default(), has_errored: false }
+        Graph { parent: Default::default(), children: Default::default(), has_errored: None }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the
@@ -246,8 +246,10 @@ pub fn ancestors<'tcx>(
 ) -> Result<Ancestors<'tcx>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
 
-    if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
-        Err(ErrorGuaranteed)
+    if let Some(reported) = specialization_graph.has_errored {
+        Err(reported)
+    } else if let Some(reported) = tcx.type_of(start_from_impl).error_reported() {
+        Err(reported)
     } else {
         Ok(Ancestors {
             trait_def_id,

@@ -452,7 +452,7 @@ crate fn run_global_ctxt(
         }
     }
 
-    if tcx.sess.diagnostic().has_errors_or_lint_errors() {
+    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
     }
 
