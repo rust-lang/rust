@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !lhs.is_syntactic_place_expr() {
                     // We already emitted E0070 "invalid left-hand side of assignment", so we
                     // silence this.
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
             }
             _ => {}

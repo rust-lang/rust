@@ -66,7 +66,9 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
 /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
 fn annotation_type_for_level(level: Level) -> AnnotationType {
     match level {
-        Level::Bug | Level::Fatal | Level::Error { .. } => AnnotationType::Error,
+        Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error { .. } => {
+            AnnotationType::Error
+        }
         Level::Warning => AnnotationType::Warning,
         Level::Note => AnnotationType::Note,
         Level::Help => AnnotationType::Help,

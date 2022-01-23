@@ -1709,7 +1709,7 @@ impl Emitter for SharedEmitter {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: diag.message(),
             code: diag.code.clone(),
-            lvl: diag.level,
+            lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {

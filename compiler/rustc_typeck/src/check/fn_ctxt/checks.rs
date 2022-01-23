@@ -837,7 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             kind: hir::ExprKind::Loop(_, _, hir::LoopSource::While, _),
                                             ..
                                         })) => {
-                                            err.delay_as_bug();
+                                            err.downgrade_to_delayed_bug();
                                         }
                                         _ => {}
                                     }

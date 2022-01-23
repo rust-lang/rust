@@ -105,10 +105,9 @@ impl<'a> DiagnosticBuilder<'a> {
     /// See `emit` and `delay_as_bug` for details.
     pub fn emit_unless(&mut self, delay: bool) {
         if delay {
-            self.delay_as_bug();
-        } else {
-            self.emit();
+            self.downgrade_to_delayed_bug();
         }
+        self.emit();
     }
 
     /// Stashes diagnostic for possible later improvement in a different,
@@ -162,11 +161,16 @@ impl<'a> DiagnosticBuilder<'a> {
     ///
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
+    #[track_caller]
     pub fn delay_as_bug(&mut self) {
-        self.level = Level::Bug;
-        self.handler.delay_as_bug((*self.diagnostic).clone());
-        self.cancel();
+        self.downgrade_to_delayed_bug();
+        self.emit();
     }
+
+    forward!(
+        #[track_caller]
+        pub fn downgrade_to_delayed_bug(&mut self,) -> &mut Self
+    );
 
     /// Appends a labeled span to the diagnostic.
     ///

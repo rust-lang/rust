@@ -491,10 +491,15 @@ impl Drop for HandlerInner {
             self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
         }
 
+        // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
+        // They're `delayed_span_bugs` but for "require some diagnostic happened"
+        // instead of "require some error happened". Sadly that isn't ideal, as
+        // lints can be `#[allow]`'d, potentially leading to this triggering.
+        // Also, "good path" should be replaced with a better naming.
         if !self.has_any_message() {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
-                bugs.into_iter().map(DelayedDiagnostic::decorate).collect(),
+                bugs.into_iter().map(DelayedDiagnostic::decorate),
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
@@ -815,6 +820,8 @@ impl Handler {
         self.inner.borrow_mut().delay_span_bug(span, msg)
     }
 
+    // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
+    // where the explanation of what "good path" is (also, it should be renamed).
     pub fn delay_good_path_bug(&self, msg: &str) {
         self.inner.borrow_mut().delay_good_path_bug(msg)
     }
@@ -915,10 +922,6 @@ impl Handler {
     pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
         self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
     }
-
-    pub fn delay_as_bug(&self, diagnostic: Diagnostic) {
-        self.inner.borrow_mut().delay_as_bug(diagnostic)
-    }
 }
 
 impl HandlerInner {
@@ -936,9 +939,22 @@ impl HandlerInner {
         diags.iter().for_each(|diag| self.emit_diagnostic(diag));
     }
 
+    // FIXME(eddyb) this should ideally take `diagnostic` by value.
     fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
         if diagnostic.cancelled() {
             return;
+        }
+
+        if diagnostic.level == Level::DelayedBug {
+            // FIXME(eddyb) this should check for `has_errors` and stop pushing
+            // once *any* errors were emitted (and truncate `delayed_span_bugs`
+            // when an error is first emitted, also), but maybe there's a case
+            // in which that's not sound? otherwise this is really inefficient.
+            self.delayed_span_bugs.push(diagnostic.clone());
+
+            if !self.flags.report_delayed_bugs {
+                return;
+            }
         }
 
         if diagnostic.has_future_breakage() {
@@ -1119,14 +1135,16 @@ impl HandlerInner {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
-        let mut diagnostic = Diagnostic::new(Level::Bug, msg);
+        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp.into());
         diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
-        self.delay_as_bug(diagnostic)
+        self.emit_diagnostic(&diagnostic)
     }
 
+    // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
+    // where the explanation of what "good path" is (also, it should be renamed).
     fn delay_good_path_bug(&mut self, msg: &str) {
-        let diagnostic = Diagnostic::new(Level::Bug, msg);
+        let diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if self.flags.report_delayed_bugs {
             self.emit_diagnostic(&diagnostic);
         }
@@ -1160,20 +1178,34 @@ impl HandlerInner {
         panic::panic_any(ExplicitBug);
     }
 
-    fn delay_as_bug(&mut self, diagnostic: Diagnostic) {
-        if self.flags.report_delayed_bugs {
-            self.emit_diagnostic(&diagnostic);
-        }
-        self.delayed_span_bugs.push(diagnostic);
-    }
+    fn flush_delayed(&mut self, bugs: impl IntoIterator<Item = Diagnostic>, explanation: &str) {
+        let mut no_bugs = true;
+        for mut bug in bugs {
+            if no_bugs {
+                // Put the overall explanation before the `DelayedBug`s, to
+                // frame them better (e.g. separate warnings from them).
+                self.emit_diagnostic(&Diagnostic::new(Bug, explanation));
+                no_bugs = false;
+            }
 
-    fn flush_delayed(&mut self, bugs: Vec<Diagnostic>, explanation: &str) {
-        let has_bugs = !bugs.is_empty();
-        for bug in bugs {
+            // "Undelay" the `DelayedBug`s (into plain `Bug`s).
+            if bug.level != Level::DelayedBug {
+                // NOTE(eddyb) not panicking here because we're already producing
+                // an ICE, and the more information the merrier.
+                bug.note(&format!(
+                    "`flushed_delayed` got diagnostic with level {:?}, \
+                     instead of the expected `DelayedBug`",
+                    bug.level,
+                ));
+            }
+            bug.level = Level::Bug;
+
             self.emit_diagnostic(&bug);
         }
-        if has_bugs {
-            panic!("{}", explanation);
+
+        // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
+        if !no_bugs {
+            panic::panic_any(ExplicitBug);
         }
     }
 
@@ -1227,6 +1259,7 @@ impl DelayedDiagnostic {
 #[derive(Copy, PartialEq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
     Bug,
+    DelayedBug,
     Fatal,
     Error {
         /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is called.
@@ -1250,7 +1283,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | Fatal | Error { .. } => {
+            Bug | DelayedBug | Fatal | Error { .. } => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             Warning => {
@@ -1270,7 +1303,7 @@ impl Level {
 
     pub fn to_str(self) -> &'static str {
         match self {
-            Bug => "error: internal compiler error",
+            Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error { .. } => "error",
             Warning => "warning",
             Note => "note",

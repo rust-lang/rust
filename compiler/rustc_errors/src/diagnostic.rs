@@ -19,7 +19,10 @@ pub struct SuggestionsDisabled;
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
-    pub level: Level,
+    // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
+    // outside of what methods in this crate themselves allow.
+    crate level: Level,
+
     pub message: Vec<(String, Style)>,
     pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
@@ -117,9 +120,18 @@ impl Diagnostic {
         }
     }
 
+    #[inline(always)]
+    pub fn level(&self) -> Level {
+        self.level
+    }
+
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug | Level::Fatal | Level::Error { .. } | Level::FailureNote => true,
+            Level::Bug
+            | Level::DelayedBug
+            | Level::Fatal
+            | Level::Error { .. }
+            | Level::FailureNote => true,
 
             Level::Warning | Level::Note | Level::Help | Level::Cancelled | Level::Allow => false,
         }
@@ -148,6 +160,33 @@ impl Diagnostic {
     /// Check if this diagnostic [was cancelled][Self::cancel()].
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
+    }
+
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    #[track_caller]
+    pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
+        // FIXME(eddyb) this check is only necessary because cancellation exists,
+        // but hopefully that can be removed in the future, if enough callers
+        // of `.cancel()` can take `DiagnosticBuilder`, and by-value.
+        if !self.cancelled() {
+            assert!(
+                self.is_error(),
+                "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
+                self.level
+            );
+            self.level = Level::DelayedBug;
+        }
+
+        self
     }
 
     /// Adds a span/label to be included in the resulting snippet.

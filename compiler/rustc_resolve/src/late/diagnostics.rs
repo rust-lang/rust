@@ -1066,7 +1066,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     })
                     .unwrap_or(false)
                 {
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                     // We already suggested changing `:` into `::` during parsing.
                     return false;
                 }
@@ -1472,7 +1472,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                 .borrow_mut()
                                 .insert(colon_sp)
                             {
-                                err.delay_as_bug();
+                                err.downgrade_to_delayed_bug();
                             }
                         }
                         if let Ok(base_snippet) = base_snippet {

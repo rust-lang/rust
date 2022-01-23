@@ -2098,8 +2098,15 @@ fn resolution_failure(
                         )
                     }
                     ResolutionFailure::NoParentItem => {
-                        diag.level = rustc_errors::Level::Bug;
-                        "all intra-doc links should have a parent item".to_owned()
+                        // FIXME(eddyb) this doesn't belong here, whatever made
+                        // the `ResolutionFailure::NoParentItem` should emit an
+                        // immediate or delayed `span_bug` about the issue.
+                        tcx.sess.delay_span_bug(
+                            sp.unwrap_or(DUMMY_SP),
+                            "intra-doc link missing parent item",
+                        );
+
+                        "BUG: all intra-doc links should have a parent item".to_owned()
                     }
                     ResolutionFailure::MalformedGenerics(variant) => match variant {
                         MalformedGenerics::UnbalancedAngleBrackets => {
