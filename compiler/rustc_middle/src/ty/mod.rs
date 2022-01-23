@@ -119,6 +119,8 @@ mod sty;
 
 // Data types
 
+pub type RegisteredTools = FxHashSet<Ident>;
+
 #[derive(Debug)]
 pub struct ResolverOutputs {
     pub definitions: rustc_hir::definitions::Definitions,
@@ -141,6 +143,7 @@ pub struct ResolverOutputs {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
+    pub registered_tools: RegisteredTools,
 }
 
 #[derive(Clone, Copy, Debug)]

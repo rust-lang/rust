@@ -9,7 +9,7 @@ use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::Applicability;
 use rustc_lexer::unescape::{self, EscapeError};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_parse::parser;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, Symbol};
@@ -290,7 +290,7 @@ impl EarlyLintPass for Write {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &MacCall) {
         fn is_build_script(cx: &EarlyContext<'_>) -> bool {
             // Cargo sets the crate name for build scripts to `build_script_build`
-            cx.sess
+            cx.sess()
                 .opts
                 .crate_name
                 .as_ref()
@@ -529,7 +529,7 @@ impl Write {
     /// ```
     #[allow(clippy::too_many_lines)]
     fn check_tts<'a>(&self, cx: &EarlyContext<'a>, tts: TokenStream, is_write: bool) -> (Option<StrLit>, Option<Expr>) {
-        let mut parser = parser::Parser::new(&cx.sess.parse_sess, tts, false, None);
+        let mut parser = parser::Parser::new(&cx.sess().parse_sess, tts, false, None);
         let expr = if is_write {
             match parser
                 .parse_expr()

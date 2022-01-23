@@ -5,7 +5,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
-use rustc_hir::{intravisit, HirId, CRATE_HIR_ID};
+use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::LevelAndSource;
 use rustc_middle::lint::LintDiagnosticBuilder;
@@ -14,7 +14,7 @@ use rustc_middle::lint::{
     COMMAND_LINE,
 };
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
     Level, Lint, LintId,
@@ -27,14 +27,14 @@ use tracing::debug;
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
     let store = unerased_lint_store(tcx);
-    let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-    let levels = LintLevelsBuilder::new(tcx.sess, false, &store, crate_attrs);
-    let mut builder = LintLevelMapBuilder { levels, tcx, store };
+    let levels =
+        LintLevelsBuilder::new(tcx.sess, false, &store, &tcx.resolutions(()).registered_tools);
+    let mut builder = LintLevelMapBuilder { levels, tcx };
     let krate = tcx.hir().krate();
 
     builder.levels.id_to_set.reserve(krate.owners.len() + 1);
 
-    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), &store, true);
+    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), true);
     builder.levels.register_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
     builder.levels.pop(push);
@@ -49,7 +49,7 @@ pub struct LintLevelsBuilder<'s> {
     cur: LintStackIndex,
     warn_about_weird_lints: bool,
     store: &'s LintStore,
-    crate_attrs: &'s [ast::Attribute],
+    registered_tools: &'s RegisteredTools,
 }
 
 pub struct BuilderPush {
@@ -62,7 +62,7 @@ impl<'s> LintLevelsBuilder<'s> {
         sess: &'s Session,
         warn_about_weird_lints: bool,
         store: &'s LintStore,
-        crate_attrs: &'s [ast::Attribute],
+        registered_tools: &'s RegisteredTools,
     ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
@@ -71,11 +71,19 @@ impl<'s> LintLevelsBuilder<'s> {
             id_to_set: Default::default(),
             warn_about_weird_lints,
             store,
-            crate_attrs,
+            registered_tools,
         };
         builder.process_command_line(sess, store);
         assert_eq!(builder.sets.list.len(), 1);
         builder
+    }
+
+    pub(crate) fn sess(&self) -> &Session {
+        self.sess
+    }
+
+    pub(crate) fn lint_store(&self) -> &LintStore {
+        self.store
     }
 
     fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
@@ -83,7 +91,7 @@ impl<'s> LintLevelsBuilder<'s> {
         self.sets.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
         for &(ref lint_name, level) in &sess.opts.lint_opts {
-            store.check_lint_name_cmdline(sess, &lint_name, level, self.crate_attrs);
+            store.check_lint_name_cmdline(sess, &lint_name, level, self.registered_tools);
             let orig_level = level;
             let lint_flag_val = Symbol::intern(lint_name);
 
@@ -217,12 +225,7 @@ impl<'s> LintLevelsBuilder<'s> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub(crate) fn push(
-        &mut self,
-        attrs: &[ast::Attribute],
-        store: &LintStore,
-        is_crate_node: bool,
-    ) -> BuilderPush {
+    pub(crate) fn push(&mut self, attrs: &[ast::Attribute], is_crate_node: bool) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
@@ -310,7 +313,8 @@ impl<'s> LintLevelsBuilder<'s> {
                 };
                 let tool_name = tool_ident.map(|ident| ident.name);
                 let name = pprust::path_to_string(&meta_item.path);
-                let lint_result = store.check_lint_name(sess, &name, tool_name, self.crate_attrs);
+                let lint_result =
+                    self.store.check_lint_name(&name, tool_name, self.registered_tools);
                 match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintLevelSource::Node(
@@ -459,7 +463,7 @@ impl<'s> LintLevelsBuilder<'s> {
                     // Ignore any errors or warnings that happen because the new name is inaccurate
                     // NOTE: `new_name` already includes the tool name, so we don't have to add it again.
                     if let CheckLintNameResult::Ok(ids) =
-                        store.check_lint_name(sess, &new_name, None, self.crate_attrs)
+                        self.store.check_lint_name(&new_name, None, self.registered_tools)
                     {
                         let src = LintLevelSource::Node(Symbol::intern(&new_name), sp, reason);
                         for &id in ids {
@@ -562,34 +566,19 @@ impl<'s> LintLevelsBuilder<'s> {
     }
 }
 
-pub fn is_known_lint_tool(m_item: Symbol, sess: &Session, attrs: &[ast::Attribute]) -> bool {
-    if [sym::clippy, sym::rustc, sym::rustdoc].contains(&m_item) {
-        return true;
-    }
-    // Look for registered tools
-    // NOTE: does no error handling; error handling is done by rustc_resolve.
-    sess.filter_by_name(attrs, sym::register_tool)
-        .filter_map(|attr| attr.meta_item_list())
-        .flatten()
-        .filter_map(|nested_meta| nested_meta.ident())
-        .map(|ident| ident.name)
-        .any(|name| name == m_item)
-}
-
-struct LintLevelMapBuilder<'a, 'tcx> {
+struct LintLevelMapBuilder<'tcx> {
     levels: LintLevelsBuilder<'tcx>,
     tcx: TyCtxt<'tcx>,
-    store: &'a LintStore,
 }
 
-impl LintLevelMapBuilder<'_, '_> {
+impl LintLevelMapBuilder<'_> {
     fn with_lint_attrs<F>(&mut self, id: hir::HirId, f: F)
     where
         F: FnOnce(&mut Self),
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
         let attrs = self.tcx.hir().attrs(id);
-        let push = self.levels.push(attrs, self.store, is_crate_hir);
+        let push = self.levels.push(attrs, is_crate_hir);
         if push.changed {
             self.levels.register_id(id);
         }
@@ -598,7 +587,7 @@ impl LintLevelMapBuilder<'_, '_> {
     }
 }
 
-impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
+impl<'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'tcx> {
     type NestedFilter = nested_filter::All;
 
     fn nested_visit_map(&mut self) -> Self::Map {

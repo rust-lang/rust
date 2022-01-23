@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::{Lit, LitKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
@@ -51,7 +51,7 @@ declare_lint_pass!(OctalEscapes => [OCTAL_ESCAPES]);
 
 impl EarlyLintPass for OctalEscapes {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess, expr.span) {
+        if in_external_macro(cx.sess(), expr.span) {
             return;
         }
 

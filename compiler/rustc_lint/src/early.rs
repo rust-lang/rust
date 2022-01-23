@@ -16,9 +16,11 @@
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
-use rustc_ast as ast;
-use rustc_ast::visit as ast_visit;
+use rustc_ast::ptr::P;
+use rustc_ast::visit::{self as ast_visit, Visitor};
 use rustc_ast::AstLike;
+use rustc_ast::{self as ast, walk_list};
+use rustc_middle::ty::RegisteredTools;
 use rustc_session::lint::{BufferedEarlyLint, LintBuffer, LintPass};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
@@ -31,7 +33,7 @@ macro_rules! run_early_pass { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-struct EarlyContextAndPass<'a, T: EarlyLintPass> {
+pub struct EarlyContextAndPass<'a, T: EarlyLintPass> {
     context: EarlyContext<'a>,
     pass: T,
 }
@@ -57,7 +59,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
         F: FnOnce(&mut Self),
     {
         let is_crate_node = id == ast::CRATE_NODE_ID;
-        let push = self.context.builder.push(attrs, &self.context.lint_store, is_crate_node);
+        let push = self.context.builder.push(attrs, is_crate_node);
         self.check_id(id);
         self.enter_attrs(attrs);
         f(self);
@@ -325,48 +327,89 @@ macro_rules! early_lint_pass_impl {
 
 crate::early_lint_methods!(early_lint_pass_impl, []);
 
-fn early_lint_crate<T: EarlyLintPass>(
+/// Early lints work on different nodes - either on the crate root, or on freshly loaded modules.
+/// This trait generalizes over those nodes.
+pub trait EarlyCheckNode<'a>: Copy {
+    fn id(self) -> ast::NodeId;
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b;
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b;
+}
+
+impl<'a> EarlyCheckNode<'a> for &'a ast::Crate {
+    fn id(self) -> ast::NodeId {
+        ast::CRATE_NODE_ID
+    }
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b,
+    {
+        &self.attrs
+    }
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b,
+    {
+        run_early_pass!(cx, check_crate, self);
+        ast_visit::walk_crate(cx, self);
+        run_early_pass!(cx, check_crate_post, self);
+    }
+}
+
+impl<'a> EarlyCheckNode<'a> for (ast::NodeId, &'a [ast::Attribute], &'a [P<ast::Item>]) {
+    fn id(self) -> ast::NodeId {
+        self.0
+    }
+    fn attrs<'b>(self) -> &'b [ast::Attribute]
+    where
+        'a: 'b,
+    {
+        self.1
+    }
+    fn check<'b>(self, cx: &mut EarlyContextAndPass<'b, impl EarlyLintPass>)
+    where
+        'a: 'b,
+    {
+        walk_list!(cx, visit_attribute, self.1);
+        walk_list!(cx, visit_item, self.2);
+    }
+}
+
+fn early_lint_node<'a>(
     sess: &Session,
-    lint_store: &LintStore,
-    krate: &ast::Crate,
-    crate_attrs: &[ast::Attribute],
-    pass: T,
-    buffered: LintBuffer,
     warn_about_weird_lints: bool,
+    lint_store: &LintStore,
+    registered_tools: &RegisteredTools,
+    buffered: LintBuffer,
+    pass: impl EarlyLintPass,
+    check_node: impl EarlyCheckNode<'a>,
 ) -> LintBuffer {
     let mut cx = EarlyContextAndPass {
         context: EarlyContext::new(
             sess,
-            lint_store,
-            krate,
-            crate_attrs,
-            buffered,
             warn_about_weird_lints,
+            lint_store,
+            registered_tools,
+            buffered,
         ),
         pass,
     };
 
-    // Visit the whole crate.
-    cx.with_lint_attrs(ast::CRATE_NODE_ID, &krate.attrs, |cx| {
-        // since the root module isn't visited as an item (because it isn't an
-        // item), warn for it here.
-        run_early_pass!(cx, check_crate, krate);
-
-        ast_visit::walk_crate(cx, krate);
-
-        run_early_pass!(cx, check_crate_post, krate);
-    });
+    cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
     cx.context.buffered
 }
 
-pub fn check_ast_crate<T: EarlyLintPass>(
+pub fn check_ast_node<'a>(
     sess: &Session,
-    lint_store: &LintStore,
-    krate: &ast::Crate,
-    crate_attrs: &[ast::Attribute],
     pre_expansion: bool,
+    lint_store: &LintStore,
+    registered_tools: &RegisteredTools,
     lint_buffer: Option<LintBuffer>,
-    builtin_lints: T,
+    builtin_lints: impl EarlyLintPass,
+    check_node: impl EarlyCheckNode<'a>,
 ) {
     let passes =
         if pre_expansion { &lint_store.pre_expansion_passes } else { &lint_store.early_passes };
@@ -374,39 +417,39 @@ pub fn check_ast_crate<T: EarlyLintPass>(
     let mut buffered = lint_buffer.unwrap_or_default();
 
     if !sess.opts.debugging_opts.no_interleave_lints {
-        buffered = early_lint_crate(
+        buffered = early_lint_node(
             sess,
-            lint_store,
-            krate,
-            crate_attrs,
-            builtin_lints,
-            buffered,
             pre_expansion,
+            lint_store,
+            registered_tools,
+            buffered,
+            builtin_lints,
+            check_node,
         );
 
         if !passes.is_empty() {
-            buffered = early_lint_crate(
+            buffered = early_lint_node(
                 sess,
-                lint_store,
-                krate,
-                crate_attrs,
-                EarlyLintPassObjects { lints: &mut passes[..] },
-                buffered,
                 false,
+                lint_store,
+                registered_tools,
+                buffered,
+                EarlyLintPassObjects { lints: &mut passes[..] },
+                check_node,
             );
         }
     } else {
         for (i, pass) in passes.iter_mut().enumerate() {
             buffered =
                 sess.prof.extra_verbose_generic_activity("run_lint", pass.name()).run(|| {
-                    early_lint_crate(
+                    early_lint_node(
                         sess,
-                        lint_store,
-                        krate,
-                        crate_attrs,
-                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
-                        buffered,
                         pre_expansion && i == 0,
+                        lint_store,
+                        registered_tools,
+                        buffered,
+                        EarlyLintPassObjects { lints: slice::from_mut(pass) },
+                        check_node,
                     )
                 });
         }
