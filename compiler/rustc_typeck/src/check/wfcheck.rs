@@ -312,7 +312,7 @@ fn check_gat_where_clauses(
         // of  the function signature. In our example, the GAT in the return
         // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
         let (regions, types) =
-            GATSubstCollector::visit(trait_item.def_id.to_def_id(), sig.output());
+            GATSubstCollector::visit(tcx, trait_item.def_id.to_def_id(), sig.output());
 
         // If both regions and types are empty, then this GAT isn't in the
         // return type, and we shouldn't try to do clause analysis
@@ -602,6 +602,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
 /// the two vectors, `regions` and `types` (depending on their kind). For each
 /// parameter `Pi` also track the index `i`.
 struct GATSubstCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     gat: DefId,
     // Which region appears and which parameter index its subsituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
@@ -611,11 +612,16 @@ struct GATSubstCollector<'tcx> {
 
 impl<'tcx> GATSubstCollector<'tcx> {
     fn visit<T: TypeFoldable<'tcx>>(
+        tcx: TyCtxt<'tcx>,
         gat: DefId,
         t: T,
     ) -> (FxHashSet<(ty::Region<'tcx>, usize)>, FxHashSet<(Ty<'tcx>, usize)>) {
-        let mut visitor =
-            GATSubstCollector { gat, regions: FxHashSet::default(), types: FxHashSet::default() };
+        let mut visitor = GATSubstCollector {
+            tcx,
+            gat,
+            regions: FxHashSet::default(),
+            types: FxHashSet::default(),
+        };
         t.visit_with(&mut visitor);
         (visitor.regions, visitor.types)
     }
@@ -623,6 +629,13 @@ impl<'tcx> GATSubstCollector<'tcx> {
 
 impl<'tcx> TypeVisitor<'tcx> for GATSubstCollector<'tcx> {
     type BreakTy = !;
+
+    fn visit_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        self.tcx.liberate_late_bound_regions(self.gat, t.clone()).visit_with(self)
+    }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
