@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, iter, mem};
+use crate::{ascii, fmt, io, iter, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -125,6 +125,73 @@ impl SocketAddr {
         }
 
         Ok(SocketAddr { addr, len })
+    }
+
+    /// Constructs a `SockAddr` with the family `AF_UNIX` and the provided path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the path is longer than `SUN_LEN`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unix_socket_creation)]
+    /// use std::os::unix::net::SocketAddr;
+    /// use std::path::Path;
+    ///
+    /// # fn main() -> std::io::Result<()> {
+    /// let address = SocketAddr::unix("/path/to/socket")?;
+    /// assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "unix_socket_creation", issue = "65275")]
+    pub fn unix<P>(path: P) -> io::Result<SocketAddr>
+    where
+        P: AsRef<Path>,
+    {
+        // SAFETY: All zeros is a valid representation for `sockaddr_un`.
+        let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
+
+        let bytes = path.as_ref().as_os_str().as_bytes();
+        let too_long = match bytes.first() {
+            None => false,
+            // linux abstract namespaces aren't null-terminated.
+            Some(&0) => bytes.len() > storage.sun_path.len(),
+            Some(_) => bytes.len() >= storage.sun_path.len(),
+        };
+        if too_long {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "path must be shorter than SUN_LEN",
+            ));
+        }
+
+        storage.sun_family = libc::AF_UNIX as _;
+        // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
+        // both point to valid memory.
+        // NOTE: We zeroed the memory above, so the path is already null
+        // terminated.
+        unsafe {
+            ptr::copy_nonoverlapping(
+                bytes.as_ptr(),
+                storage.sun_path.as_mut_ptr().cast(),
+                bytes.len(),
+            )
+        };
+
+        let base = &storage as *const _ as usize;
+        let path = &storage.sun_path as *const _ as usize;
+        let sun_path_offset = path - base;
+        let length = sun_path_offset
+            + bytes.len()
+            + match bytes.first() {
+                Some(&0) | None => 0,
+                Some(_) => 1,
+            };
+
+        Ok(SocketAddr { addr: storage, len: length as _ })
     }
 
     /// Returns `true` if the address is unnamed.
