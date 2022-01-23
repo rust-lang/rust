@@ -567,6 +567,14 @@ fn fma() {
 }
 
 #[test]
+fn issue_93224() {
+    let r1 = Double::from_bits(0x000000000000002D as u128);
+    let r2 = Double::from_bits(0xC2D6C16C166666DE as u128);
+    let r3 = Double::from_bits(0x0000000000000055 as u128);
+
+    let _ = r1.mul_add_r(r2, r3, Round::NearestTiesToEven);
+}
+#[test]
 fn issue_69532() {
     let f = Double::from_bits(0x7FF0_0000_0000_0001u64 as u128);
     let mut loses_info = false;
