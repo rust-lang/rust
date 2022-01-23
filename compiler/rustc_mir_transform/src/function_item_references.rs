@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_middle::mir::visit::Visitor;
@@ -197,7 +198,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let ident = self.tcx.item_name(fn_id).to_ident_string();
         let ty_params = fn_substs.types().map(|ty| format!("{}", ty));
         let const_params = fn_substs.consts().map(|c| format!("{}", c));
-        let params = ty_params.chain(const_params).collect::<Vec<String>>().join(", ");
+        let params = ty_params.chain(const_params).join(", ");
         let num_args = fn_sig.inputs().map_bound(|inputs| inputs.len()).skip_binder();
         let variadic = if fn_sig.c_variadic() { ", ..." } else { "" };
         let ret = if fn_sig.output().skip_binder().is_unit() { "" } else { " -> _" };

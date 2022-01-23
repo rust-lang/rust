@@ -1,5 +1,6 @@
 use super::Error;
 
+use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
@@ -422,14 +423,7 @@ impl BasicCoverageBlockData {
     }
 
     pub fn id(&self) -> String {
-        format!(
-            "@{}",
-            self.basic_blocks
-                .iter()
-                .map(|bb| bb.index().to_string())
-                .collect::<Vec<_>>()
-                .join(ID_SEPARATOR)
-        )
+        format!("@{}", self.basic_blocks.iter().map(|bb| bb.index().to_string()).join(ID_SEPARATOR))
     }
 }
 

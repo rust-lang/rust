@@ -1,6 +1,7 @@
 use super::debug::term_type;
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB};
 
+use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_middle::mir::spanview::source_range_no_file;
 use rustc_middle::mir::{
@@ -169,11 +170,7 @@ impl CoverageSpan {
             CoverageStatement::Statement(bb, _, index) => (bb, index),
             CoverageStatement::Terminator(bb, _) => (bb, usize::MAX),
         });
-        sorted_coverage_statements
-            .iter()
-            .map(|covstmt| covstmt.format(tcx, mir_body))
-            .collect::<Vec<_>>()
-            .join("\n")
+        sorted_coverage_statements.iter().map(|covstmt| covstmt.format(tcx, mir_body)).join("\n")
     }
 
     /// If the span is part of a macro, returns the macro name symbol.
