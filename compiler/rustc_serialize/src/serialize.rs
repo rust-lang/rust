@@ -173,144 +173,145 @@ pub trait Encoder {
     }
 }
 
+// Note: all the methods in this trait are infallible, which may be surprising.
+// They used to be fallible (i.e. return a `Result`) but many of the impls just
+// panicked when something went wrong, and for the cases that didn't the
+// top-level invocation would also just panic on failure. Switching to
+// infallibility made things faster and lots of code a little simpler and more
+// concise.
 pub trait Decoder {
-    type Error;
-
     // Primitive types:
-    fn read_nil(&mut self) -> Result<(), Self::Error>;
-    fn read_usize(&mut self) -> Result<usize, Self::Error>;
-    fn read_u128(&mut self) -> Result<u128, Self::Error>;
-    fn read_u64(&mut self) -> Result<u64, Self::Error>;
-    fn read_u32(&mut self) -> Result<u32, Self::Error>;
-    fn read_u16(&mut self) -> Result<u16, Self::Error>;
-    fn read_u8(&mut self) -> Result<u8, Self::Error>;
-    fn read_isize(&mut self) -> Result<isize, Self::Error>;
-    fn read_i128(&mut self) -> Result<i128, Self::Error>;
-    fn read_i64(&mut self) -> Result<i64, Self::Error>;
-    fn read_i32(&mut self) -> Result<i32, Self::Error>;
-    fn read_i16(&mut self) -> Result<i16, Self::Error>;
-    fn read_i8(&mut self) -> Result<i8, Self::Error>;
-    fn read_bool(&mut self) -> Result<bool, Self::Error>;
-    fn read_f64(&mut self) -> Result<f64, Self::Error>;
-    fn read_f32(&mut self) -> Result<f32, Self::Error>;
-    fn read_char(&mut self) -> Result<char, Self::Error>;
-    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error>;
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), Self::Error>;
+    fn read_unit(&mut self) -> ();
+    fn read_usize(&mut self) -> usize;
+    fn read_u128(&mut self) -> u128;
+    fn read_u64(&mut self) -> u64;
+    fn read_u32(&mut self) -> u32;
+    fn read_u16(&mut self) -> u16;
+    fn read_u8(&mut self) -> u8;
+    fn read_isize(&mut self) -> isize;
+    fn read_i128(&mut self) -> i128;
+    fn read_i64(&mut self) -> i64;
+    fn read_i32(&mut self) -> i32;
+    fn read_i16(&mut self) -> i16;
+    fn read_i8(&mut self) -> i8;
+    fn read_bool(&mut self) -> bool;
+    fn read_f64(&mut self) -> f64;
+    fn read_f32(&mut self) -> f32;
+    fn read_char(&mut self) -> char;
+    fn read_str(&mut self) -> Cow<'_, str>;
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]);
 
     // Compound types:
     #[inline]
-    fn read_enum<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_enum<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> Result<T, Self::Error>
+    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> T
     where
-        F: FnMut(&mut Self, usize) -> Result<T, Self::Error>,
+        F: FnMut(&mut Self, usize) -> T,
     {
-        let disr = self.read_usize()?;
+        let disr = self.read_usize();
         f(self, disr)
     }
 
     #[inline]
-    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_struct<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_struct<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_struct_field<T, F>(&mut self, _f_name: &str, f: F) -> Result<T, Self::Error>
+    fn read_struct_field<T, F>(&mut self, _f_name: &str, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> Result<T, Self::Error>
+    fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_tuple_arg<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_tuple_arg<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     // Specialized types:
-    fn read_option<T, F>(&mut self, mut f: F) -> Result<T, Self::Error>
+    fn read_option<T, F>(&mut self, mut f: F) -> T
     where
-        F: FnMut(&mut Self, bool) -> Result<T, Self::Error>,
+        F: FnMut(&mut Self, bool) -> T,
     {
         self.read_enum(move |this| {
             this.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
                 0 => f(this, false),
                 1 => f(this, true),
-                _ => Err(this.error("read_option: expected 0 for None or 1 for Some")),
+                _ => panic!("read_option: expected 0 for None or 1 for Some"),
             })
         })
     }
 
-    fn read_seq<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_seq<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self, usize) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self, usize) -> T,
     {
-        let len = self.read_usize()?;
+        let len = self.read_usize();
         f(self, len)
     }
 
     #[inline]
-    fn read_seq_elt<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_seq_elt<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
-    fn read_map<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_map<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self, usize) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self, usize) -> T,
     {
-        let len = self.read_usize()?;
+        let len = self.read_usize();
         f(self, len)
     }
 
     #[inline]
-    fn read_map_elt_key<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_map_elt_key<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
 
     #[inline]
-    fn read_map_elt_val<T, F>(&mut self, f: F) -> Result<T, Self::Error>
+    fn read_map_elt_val<T, F>(&mut self, f: F) -> T
     where
-        F: FnOnce(&mut Self) -> Result<T, Self::Error>,
+        F: FnOnce(&mut Self) -> T,
     {
         f(self)
     }
-
-    // Failure
-    fn error(&mut self, err: &str) -> Self::Error;
 }
 
 /// Trait for types that can be serialized
@@ -340,7 +341,7 @@ pub trait Encodable<S: Encoder> {
 /// * `TyDecodable` should be used for types that are only serialized in crate
 ///   metadata or the incremental cache. This is most types in `rustc_middle`.
 pub trait Decodable<D: Decoder>: Sized {
-    fn decode(d: &mut D) -> Result<Self, D::Error>;
+    fn decode(d: &mut D) -> Self;
 }
 
 macro_rules! direct_serialize_impls {
@@ -353,7 +354,7 @@ macro_rules! direct_serialize_impls {
             }
 
             impl<D: Decoder> Decodable<D> for $ty {
-                fn decode(d: &mut D) -> Result<$ty, D::Error> {
+                fn decode(d: &mut D) -> $ty {
                     d.$read_method()
                 }
             }
@@ -387,7 +388,7 @@ impl<S: Encoder> Encodable<S> for ! {
 }
 
 impl<D: Decoder> Decodable<D> for ! {
-    fn decode(_d: &mut D) -> Result<!, D::Error> {
+    fn decode(_d: &mut D) -> ! {
         unreachable!()
     }
 }
@@ -399,8 +400,8 @@ impl<S: Encoder> Encodable<S> for ::std::num::NonZeroU32 {
 }
 
 impl<D: Decoder> Decodable<D> for ::std::num::NonZeroU32 {
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        d.read_u32().map(|d| ::std::num::NonZeroU32::new(d).unwrap())
+    fn decode(d: &mut D) -> Self {
+        ::std::num::NonZeroU32::new(d.read_u32()).unwrap()
     }
 }
 
@@ -423,8 +424,8 @@ impl<S: Encoder> Encodable<S> for String {
 }
 
 impl<D: Decoder> Decodable<D> for String {
-    fn decode(d: &mut D) -> Result<String, D::Error> {
-        Ok(d.read_str()?.into_owned())
+    fn decode(d: &mut D) -> String {
+        d.read_str().into_owned()
     }
 }
 
@@ -435,8 +436,8 @@ impl<S: Encoder> Encodable<S> for () {
 }
 
 impl<D: Decoder> Decodable<D> for () {
-    fn decode(d: &mut D) -> Result<(), D::Error> {
-        d.read_nil()
+    fn decode(d: &mut D) -> () {
+        d.read_unit()
     }
 }
 
@@ -447,16 +448,16 @@ impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
 }
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
-    fn decode(d: &mut D) -> Result<PhantomData<T>, D::Error> {
-        d.read_nil()?;
-        Ok(PhantomData)
+    fn decode(d: &mut D) -> PhantomData<T> {
+        d.read_unit();
+        PhantomData
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<[T]> {
-    fn decode(d: &mut D) -> Result<Box<[T]>, D::Error> {
-        let v: Vec<T> = Decodable::decode(d)?;
-        Ok(v.into_boxed_slice())
+    fn decode(d: &mut D) -> Box<[T]> {
+        let v: Vec<T> = Decodable::decode(d);
+        v.into_boxed_slice()
     }
 }
 
@@ -467,8 +468,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Rc<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<T> {
-    fn decode(d: &mut D) -> Result<Rc<T>, D::Error> {
-        Ok(Rc::new(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> Rc<T> {
+        Rc::new(Decodable::decode(d))
     }
 }
 
@@ -491,13 +492,22 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
-    default fn decode(d: &mut D) -> Result<Vec<T>, D::Error> {
+    default fn decode(d: &mut D) -> Vec<T> {
         d.read_seq(|d, len| {
-            let mut v = Vec::with_capacity(len);
-            for _ in 0..len {
-                v.push(d.read_seq_elt(|d| Decodable::decode(d))?);
+            // SAFETY: we set the capacity in advance, only write elements, and
+            // only set the length at the end once the writing has succeeded.
+            let mut vec = Vec::with_capacity(len);
+            unsafe {
+                let ptr: *mut T = vec.as_mut_ptr();
+                for i in 0..len {
+                    std::ptr::write(
+                        ptr.offset(i as isize),
+                        d.read_seq_elt(|d| Decodable::decode(d)),
+                    );
+                }
+                vec.set_len(len);
             }
-            Ok(v)
+            vec
         })
     }
 }
@@ -510,14 +520,14 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
 }
 
 impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
-    fn decode(d: &mut D) -> Result<[u8; N], D::Error> {
+    fn decode(d: &mut D) -> [u8; N] {
         d.read_seq(|d, len| {
             assert!(len == N);
             let mut v = [0u8; N];
             for i in 0..len {
-                v[i] = d.read_seq_elt(|d| Decodable::decode(d))?;
+                v[i] = d.read_seq_elt(|d| Decodable::decode(d));
             }
-            Ok(v)
+            v
         })
     }
 }
@@ -536,9 +546,9 @@ impl<D: Decoder, T: Decodable<D> + ToOwned> Decodable<D> for Cow<'static, [T]>
 where
     [T]: ToOwned<Owned = Vec<T>>,
 {
-    fn decode(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
-        let v: Vec<T> = Decodable::decode(d)?;
-        Ok(Cow::Owned(v))
+    fn decode(d: &mut D) -> Cow<'static, [T]> {
+        let v: Vec<T> = Decodable::decode(d);
+        Cow::Owned(v)
     }
 }
 
@@ -552,8 +562,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
-    fn decode(d: &mut D) -> Result<Option<T>, D::Error> {
-        d.read_option(|d, b| if b { Ok(Some(Decodable::decode(d)?)) } else { Ok(None) })
+    fn decode(d: &mut D) -> Option<T> {
+        d.read_option(|d, b| if b { Some(Decodable::decode(d)) } else { None })
     }
 }
 
@@ -571,17 +581,12 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 }
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
-    fn decode(d: &mut D) -> Result<Result<T1, T2>, D::Error> {
+    fn decode(d: &mut D) -> Result<T1, T2> {
         d.read_enum(|d| {
             d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
-                0 => Ok(Ok(d.read_enum_variant_arg(|d| T1::decode(d))?)),
-                1 => Ok(Err(d.read_enum_variant_arg(|d| T2::decode(d))?)),
-                _ => {
-                    panic!(
-                        "Encountered invalid discriminant while \
-                                decoding `Result`."
-                    );
-                }
+                0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
+                1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
+                _ => panic!("Encountered invalid discriminant while decoding `Result`."),
             })
         })
     }
@@ -609,13 +614,13 @@ macro_rules! tuple {
     ( $($name:ident,)+ ) => (
         impl<D: Decoder, $($name: Decodable<D>),+> Decodable<D> for ($($name,)+) {
             #[allow(non_snake_case)]
-            fn decode(d: &mut D) -> Result<($($name,)+), D::Error> {
+            fn decode(d: &mut D) -> ($($name,)+) {
                 let len: usize = count!($($name)+);
                 d.read_tuple(len, |d| {
-                    let ret = ($(d.read_tuple_arg(|d| -> Result<$name, D::Error> {
+                    let ret = ($(d.read_tuple_arg(|d| -> $name {
                         Decodable::decode(d)
-                    })?,)+);
-                    Ok(ret)
+                    }),)+);
+                    ret
                 })
             }
         }
@@ -651,9 +656,9 @@ impl<S: Encoder> Encodable<S> for path::PathBuf {
 }
 
 impl<D: Decoder> Decodable<D> for path::PathBuf {
-    fn decode(d: &mut D) -> Result<path::PathBuf, D::Error> {
-        let bytes: String = Decodable::decode(d)?;
-        Ok(path::PathBuf::from(bytes))
+    fn decode(d: &mut D) -> path::PathBuf {
+        let bytes: String = Decodable::decode(d);
+        path::PathBuf::from(bytes)
     }
 }
 
@@ -664,8 +669,8 @@ impl<S: Encoder, T: Encodable<S> + Copy> Encodable<S> for Cell<T> {
 }
 
 impl<D: Decoder, T: Decodable<D> + Copy> Decodable<D> for Cell<T> {
-    fn decode(d: &mut D) -> Result<Cell<T>, D::Error> {
-        Ok(Cell::new(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> Cell<T> {
+        Cell::new(Decodable::decode(d))
     }
 }
 
@@ -681,8 +686,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for RefCell<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for RefCell<T> {
-    fn decode(d: &mut D) -> Result<RefCell<T>, D::Error> {
-        Ok(RefCell::new(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> RefCell<T> {
+        RefCell::new(Decodable::decode(d))
     }
 }
 
@@ -693,8 +698,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Arc<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
-    fn decode(d: &mut D) -> Result<Arc<T>, D::Error> {
-        Ok(Arc::new(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> Arc<T> {
+        Arc::new(Decodable::decode(d))
     }
 }
 
@@ -704,7 +709,7 @@ impl<S: Encoder, T: ?Sized + Encodable<S>> Encodable<S> for Box<T> {
     }
 }
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Box<T> {
-    fn decode(d: &mut D) -> Result<Box<T>, D::Error> {
-        Ok(Box::new(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> Box<T> {
+        Box::new(Decodable::decode(d))
     }
 }

@@ -2794,8 +2794,33 @@ pub trait InternIteratorElement<T, R>: Sized {
 
 impl<T, R> InternIteratorElement<T, R> for T {
     type Output = R;
-    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
-        f(&iter.collect::<SmallVec<[_; 8]>>())
+    fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(
+        mut iter: I,
+        f: F,
+    ) -> Self::Output {
+        // This code is hot enough that it's worth specializing for the most
+        // common length lists, to avoid the overhead of `SmallVec` creation.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`.
+        match iter.size_hint() {
+            (0, Some(0)) => {
+                assert!(iter.next().is_none());
+                f(&[])
+            }
+            (1, Some(1)) => {
+                let t0 = iter.next().unwrap();
+                assert!(iter.next().is_none());
+                f(&[t0])
+            }
+            (2, Some(2)) => {
+                let t0 = iter.next().unwrap();
+                let t1 = iter.next().unwrap();
+                assert!(iter.next().is_none());
+                f(&[t0, t1])
+            }
+            _ => f(&iter.collect::<SmallVec<[_; 8]>>()),
+        }
     }
 }
 
@@ -2805,6 +2830,7 @@ where
 {
     type Output = R;
     fn intern_with<I: Iterator<Item = Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        // This code isn't hot.
         f(&iter.cloned().collect::<SmallVec<[_; 8]>>())
     }
 }
@@ -2817,10 +2843,15 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     ) -> Self::Output {
         // This code is hot enough that it's worth specializing for the most
         // common length lists, to avoid the overhead of `SmallVec` creation.
-        // The match arms are in order of frequency. The 1, 2, and 0 cases are
-        // typically hit in ~95% of cases. We assume that if the upper and
-        // lower bounds from `size_hint` agree they are correct.
+        // Lengths 0, 1, and 2 typically account for ~95% of cases. If
+        // `size_hint` is incorrect a panic will occur via an `unwrap` or an
+        // `assert`, unless a failure happens first, in which case the result
+        // will be an error anyway.
         Ok(match iter.size_hint() {
+            (0, Some(0)) => {
+                assert!(iter.next().is_none());
+                f(&[])
+            }
             (1, Some(1)) => {
                 let t0 = iter.next().unwrap()?;
                 assert!(iter.next().is_none());
@@ -2831,10 +2862,6 @@ impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
                 let t1 = iter.next().unwrap()?;
                 assert!(iter.next().is_none());
                 f(&[t0, t1])
-            }
-            (0, Some(0)) => {
-                assert!(iter.next().is_none());
-                f(&[])
             }
             _ => f(&iter.collect::<Result<SmallVec<[_; 8]>, _>>()?),
         })

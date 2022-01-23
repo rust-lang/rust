@@ -99,8 +99,8 @@ impl Hash for ToolMetadata {
 
 // Doesn't really need to round-trip
 impl<D: Decoder> Decodable<D> for ToolMetadata {
-    fn decode(_d: &mut D) -> Result<Self, D::Error> {
-        Ok(ToolMetadata(None))
+    fn decode(_d: &mut D) -> Self {
+        ToolMetadata(None)
     }
 }
 

@@ -597,10 +597,7 @@ impl RustcDefaultCalls {
                 let rlink_data = fs::read_to_string(file).unwrap_or_else(|err| {
                     sess.fatal(&format!("failed to read rlink file: {}", err));
                 });
-                let codegen_results: CodegenResults =
-                    json::decode(&rlink_data).unwrap_or_else(|err| {
-                        sess.fatal(&format!("failed to decode rlink: {}", err));
-                    });
+                let codegen_results: CodegenResults = json::decode(&rlink_data);
                 let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
                 abort_on_err(result, sess);
             } else {

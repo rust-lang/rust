@@ -18,6 +18,6 @@ struct A {
 fn main() {
     let obj = A { foo: Box::new([true, false]) };
     let s = json::encode(&obj).unwrap();
-    let obj2: A = json::decode(&s).unwrap();
+    let obj2: A = json::decode(&s);
     assert_eq!(obj.foo, obj2.foo);
 }

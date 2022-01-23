@@ -292,7 +292,7 @@ crate fn load_call_locations(
         for path in with_examples {
             let bytes = fs::read(&path).map_err(|e| format!("{} (for path {})", e, path))?;
             let mut decoder = Decoder::new(&bytes, 0);
-            let calls = AllCallLocations::decode(&mut decoder)?;
+            let calls = AllCallLocations::decode(&mut decoder);
 
             for (function, fn_calls) in calls.into_iter() {
                 all_calls.entry(function).or_default().extend(fn_calls.into_iter());

@@ -20,7 +20,7 @@ pub fn main() {
 
     let json_object = json::from_str(&json_str);
     let mut decoder = json::Decoder::new(json_object.unwrap());
-    let mut decoded_obj: UnitLikeStruct = Decodable::decode(&mut decoder).unwrap();
+    let mut decoded_obj: UnitLikeStruct = Decodable::decode(&mut decoder);
 
     assert_eq!(obj, decoded_obj);
 }

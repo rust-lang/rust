@@ -47,7 +47,7 @@ fn decodable_body(
             quote! {
                 ::rustc_serialize::Decoder::read_struct(
                     __decoder,
-                    |__decoder| { ::std::result::Result::Ok(#construct) },
+                    |__decoder| { #construct },
                 )
             }
         }
@@ -57,7 +57,7 @@ fn decodable_body(
                 .enumerate()
                 .map(|(idx, vi)| {
                     let construct = vi.construct(|field, index| decode_field(field, index, false));
-                    quote! { #idx => { ::std::result::Result::Ok(#construct) } }
+                    quote! { #idx => { #construct } }
                 })
                 .collect();
             let names: TokenStream = variants
@@ -82,8 +82,7 @@ fn decodable_body(
                             |__decoder, __variant_idx| {
                                 match __variant_idx {
                                     #match_inner
-                                    _ => return ::std::result::Result::Err(
-                                        ::rustc_serialize::Decoder::error(__decoder, #message)),
+                                    _ => panic!(#message),
                                 }
                             })
                     }
@@ -95,9 +94,7 @@ fn decodable_body(
     s.bound_impl(
         quote!(::rustc_serialize::Decodable<#decoder_ty>),
         quote! {
-            fn decode(
-                __decoder: &mut #decoder_ty,
-            ) -> ::std::result::Result<Self, <#decoder_ty as ::rustc_serialize::Decoder>::Error> {
+            fn decode(__decoder: &mut #decoder_ty) -> Self {
                 #decode_body
             }
         },
@@ -127,12 +124,7 @@ fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro
                 #__decoder, #opt_field_name #decode_inner_method)
     };
 
-    quote! {
-        match #decode_call  {
-            ::std::result::Result::Ok(__res) => __res,
-            ::std::result::Result::Err(__err) => return ::std::result::Result::Err(__err),
-        }
-    }
+    quote! { #decode_call }
 }
 
 pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {

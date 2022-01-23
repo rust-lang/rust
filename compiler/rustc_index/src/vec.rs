@@ -395,8 +395,8 @@ macro_rules! newtype_index {
 
     (@serializable $type:ident) => (
         impl<D: ::rustc_serialize::Decoder> ::rustc_serialize::Decodable<D> for $type {
-            fn decode(d: &mut D) -> Result<Self, D::Error> {
-                d.read_u32().map(Self::from_u32)
+            fn decode(d: &mut D) -> Self {
+                Self::from_u32(d.read_u32())
             }
         }
         impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for $type {
@@ -527,8 +527,8 @@ impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for &IndexVec<I, T> {
 }
 
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        Decodable::decode(d).map(|v| IndexVec { raw: v, _marker: PhantomData })
+    fn decode(d: &mut D) -> Self {
+        IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
     }
 }
 

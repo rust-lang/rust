@@ -17,15 +17,8 @@ impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
 }
 
 impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
-    fn decode(d: &mut D) -> Result<SmallVec<A>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut vec = SmallVec::with_capacity(len);
-            // FIXME(#48994) - could just be collected into a Result<SmallVec, D::Error>
-            for _ in 0..len {
-                vec.push(d.read_seq_elt(|d| Decodable::decode(d))?);
-            }
-            Ok(vec)
-        })
+    fn decode(d: &mut D) -> SmallVec<A> {
+        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
     }
 }
 
@@ -41,14 +34,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
-    fn decode(d: &mut D) -> Result<LinkedList<T>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut list = LinkedList::new();
-            for _ in 0..len {
-                list.push_back(d.read_seq_elt(|d| Decodable::decode(d))?);
-            }
-            Ok(list)
-        })
+    fn decode(d: &mut D) -> LinkedList<T> {
+        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
     }
 }
 
@@ -64,14 +51,8 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for VecDeque<T> {
-    fn decode(d: &mut D) -> Result<VecDeque<T>, D::Error> {
-        d.read_seq(|d, len| {
-            let mut deque: VecDeque<T> = VecDeque::with_capacity(len);
-            for _ in 0..len {
-                deque.push_back(d.read_seq_elt(|d| Decodable::decode(d))?);
-            }
-            Ok(deque)
-        })
+    fn decode(d: &mut D) -> VecDeque<T> {
+        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
     }
 }
 
@@ -96,15 +77,15 @@ where
     K: Decodable<D> + PartialEq + Ord,
     V: Decodable<D>,
 {
-    fn decode(d: &mut D) -> Result<BTreeMap<K, V>, D::Error> {
+    fn decode(d: &mut D) -> BTreeMap<K, V> {
         d.read_map(|d, len| {
             let mut map = BTreeMap::new();
             for _ in 0..len {
-                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
+                let key = d.read_map_elt_key(|d| Decodable::decode(d));
+                let val = d.read_map_elt_val(|d| Decodable::decode(d));
                 map.insert(key, val);
             }
-            Ok(map)
+            map
         })
     }
 }
@@ -127,13 +108,13 @@ impl<D: Decoder, T> Decodable<D> for BTreeSet<T>
 where
     T: Decodable<D> + PartialEq + Ord,
 {
-    fn decode(d: &mut D) -> Result<BTreeSet<T>, D::Error> {
+    fn decode(d: &mut D) -> BTreeSet<T> {
         d.read_seq(|d, len| {
             let mut set = BTreeSet::new();
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
             }
-            Ok(set)
+            set
         })
     }
 }
@@ -161,16 +142,16 @@ where
     V: Decodable<D>,
     S: BuildHasher + Default,
 {
-    fn decode(d: &mut D) -> Result<HashMap<K, V, S>, D::Error> {
+    fn decode(d: &mut D) -> HashMap<K, V, S> {
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = HashMap::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
+                let key = d.read_map_elt_key(|d| Decodable::decode(d));
+                let val = d.read_map_elt_val(|d| Decodable::decode(d));
                 map.insert(key, val);
             }
-            Ok(map)
+            map
         })
     }
 }
@@ -205,14 +186,14 @@ where
     T: Decodable<D> + Hash + Eq,
     S: BuildHasher + Default,
 {
-    fn decode(d: &mut D) -> Result<HashSet<T, S>, D::Error> {
+    fn decode(d: &mut D) -> HashSet<T, S> {
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = HashSet::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
             }
-            Ok(set)
+            set
         })
     }
 }
@@ -240,16 +221,16 @@ where
     V: Decodable<D>,
     S: BuildHasher + Default,
 {
-    fn decode(d: &mut D) -> Result<indexmap::IndexMap<K, V, S>, D::Error> {
+    fn decode(d: &mut D) -> indexmap::IndexMap<K, V, S> {
         d.read_map(|d, len| {
             let state = Default::default();
             let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                let key = d.read_map_elt_key(|d| Decodable::decode(d))?;
-                let val = d.read_map_elt_val(|d| Decodable::decode(d))?;
+                let key = d.read_map_elt_key(|d| Decodable::decode(d));
+                let val = d.read_map_elt_val(|d| Decodable::decode(d));
                 map.insert(key, val);
             }
-            Ok(map)
+            map
         })
     }
 }
@@ -274,14 +255,14 @@ where
     T: Decodable<D> + Hash + Eq,
     S: BuildHasher + Default,
 {
-    fn decode(d: &mut D) -> Result<indexmap::IndexSet<T, S>, D::Error> {
+    fn decode(d: &mut D) -> indexmap::IndexSet<T, S> {
         d.read_seq(|d, len| {
             let state = Default::default();
             let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d))?);
+                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
             }
-            Ok(set)
+            set
         })
     }
 }
@@ -294,9 +275,9 @@ impl<E: Encoder, T: Encodable<E>> Encodable<E> for Rc<[T]> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Rc<[T]> {
-    fn decode(d: &mut D) -> Result<Rc<[T]>, D::Error> {
-        let vec: Vec<T> = Decodable::decode(d)?;
-        Ok(vec.into())
+    fn decode(d: &mut D) -> Rc<[T]> {
+        let vec: Vec<T> = Decodable::decode(d);
+        vec.into()
     }
 }
 
@@ -308,8 +289,8 @@ impl<E: Encoder, T: Encodable<E>> Encodable<E> for Arc<[T]> {
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<[T]> {
-    fn decode(d: &mut D) -> Result<Arc<[T]>, D::Error> {
-        let vec: Vec<T> = Decodable::decode(d)?;
-        Ok(vec.into())
+    fn decode(d: &mut D) -> Arc<[T]> {
+        let vec: Vec<T> = Decodable::decode(d);
+        vec.into()
     }
 }

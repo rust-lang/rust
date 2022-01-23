@@ -560,134 +560,126 @@ impl<'a> Decoder<'a> {
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{ Ok(leb128::$fun($dec.data, &mut $dec.position)) }};
+    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
 }
 
 impl<'a> serialize::Decoder for Decoder<'a> {
-    type Error = String;
-
     #[inline]
-    fn read_nil(&mut self) -> Result<(), Self::Error> {
-        Ok(())
+    fn read_unit(&mut self) -> () {
+        ()
     }
 
     #[inline]
-    fn read_u128(&mut self) -> Result<u128, Self::Error> {
+    fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
     }
 
     #[inline]
-    fn read_u64(&mut self) -> Result<u64, Self::Error> {
+    fn read_u64(&mut self) -> u64 {
         read_leb128!(self, read_u64_leb128)
     }
 
     #[inline]
-    fn read_u32(&mut self) -> Result<u32, Self::Error> {
+    fn read_u32(&mut self) -> u32 {
         read_leb128!(self, read_u32_leb128)
     }
 
     #[inline]
-    fn read_u16(&mut self) -> Result<u16, Self::Error> {
+    fn read_u16(&mut self) -> u16 {
         let bytes = [self.data[self.position], self.data[self.position + 1]];
         let value = u16::from_le_bytes(bytes);
         self.position += 2;
-        Ok(value)
+        value
     }
 
     #[inline]
-    fn read_u8(&mut self) -> Result<u8, Self::Error> {
+    fn read_u8(&mut self) -> u8 {
         let value = self.data[self.position];
         self.position += 1;
-        Ok(value)
+        value
     }
 
     #[inline]
-    fn read_usize(&mut self) -> Result<usize, Self::Error> {
+    fn read_usize(&mut self) -> usize {
         read_leb128!(self, read_usize_leb128)
     }
 
     #[inline]
-    fn read_i128(&mut self) -> Result<i128, Self::Error> {
+    fn read_i128(&mut self) -> i128 {
         read_leb128!(self, read_i128_leb128)
     }
 
     #[inline]
-    fn read_i64(&mut self) -> Result<i64, Self::Error> {
+    fn read_i64(&mut self) -> i64 {
         read_leb128!(self, read_i64_leb128)
     }
 
     #[inline]
-    fn read_i32(&mut self) -> Result<i32, Self::Error> {
+    fn read_i32(&mut self) -> i32 {
         read_leb128!(self, read_i32_leb128)
     }
 
     #[inline]
-    fn read_i16(&mut self) -> Result<i16, Self::Error> {
+    fn read_i16(&mut self) -> i16 {
         let bytes = [self.data[self.position], self.data[self.position + 1]];
         let value = i16::from_le_bytes(bytes);
         self.position += 2;
-        Ok(value)
+        value
     }
 
     #[inline]
-    fn read_i8(&mut self) -> Result<i8, Self::Error> {
+    fn read_i8(&mut self) -> i8 {
         let as_u8 = self.data[self.position];
         self.position += 1;
-        unsafe { Ok(::std::mem::transmute(as_u8)) }
+        unsafe { ::std::mem::transmute(as_u8) }
     }
 
     #[inline]
-    fn read_isize(&mut self) -> Result<isize, Self::Error> {
+    fn read_isize(&mut self) -> isize {
         read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]
-    fn read_bool(&mut self) -> Result<bool, Self::Error> {
-        let value = self.read_u8()?;
-        Ok(value != 0)
+    fn read_bool(&mut self) -> bool {
+        let value = self.read_u8();
+        value != 0
     }
 
     #[inline]
-    fn read_f64(&mut self) -> Result<f64, Self::Error> {
-        let bits = self.read_u64()?;
-        Ok(f64::from_bits(bits))
+    fn read_f64(&mut self) -> f64 {
+        let bits = self.read_u64();
+        f64::from_bits(bits)
     }
 
     #[inline]
-    fn read_f32(&mut self) -> Result<f32, Self::Error> {
-        let bits = self.read_u32()?;
-        Ok(f32::from_bits(bits))
+    fn read_f32(&mut self) -> f32 {
+        let bits = self.read_u32();
+        f32::from_bits(bits)
     }
 
     #[inline]
-    fn read_char(&mut self) -> Result<char, Self::Error> {
-        let bits = self.read_u32()?;
-        Ok(std::char::from_u32(bits).unwrap())
+    fn read_char(&mut self) -> char {
+        let bits = self.read_u32();
+        std::char::from_u32(bits).unwrap()
     }
 
     #[inline]
-    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
-        let len = self.read_usize()?;
+    fn read_str(&mut self) -> Cow<'_, str> {
+        let len = self.read_usize();
         let sentinel = self.data[self.position + len];
         assert!(sentinel == STR_SENTINEL);
         let s = unsafe {
             std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
         };
         self.position += len + 1;
-        Ok(Cow::Borrowed(s))
+        Cow::Borrowed(s)
     }
 
     #[inline]
-    fn error(&mut self, err: &str) -> Self::Error {
-        err.to_string()
-    }
-
-    #[inline]
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), String> {
+    fn read_raw_bytes_into(&mut self, s: &mut [u8]) {
         let start = self.position;
         self.position += s.len();
         s.copy_from_slice(&self.data[start..self.position]);
-        Ok(())
     }
 }
 
@@ -715,9 +707,9 @@ impl serialize::Encodable<FileEncoder> for [u8] {
 // Specialize decoding `Vec<u8>`. This specialization also applies to decoding `Box<[u8]>`s, etc.,
 // since the default implementations call `decode` to produce a `Vec<u8>` internally.
 impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
-    fn decode(d: &mut Decoder<'a>) -> Result<Self, String> {
-        let len = serialize::Decoder::read_usize(d)?;
-        Ok(d.read_raw_bytes(len).to_owned())
+    fn decode(d: &mut Decoder<'a>) -> Self {
+        let len = serialize::Decoder::read_usize(d);
+        d.read_raw_bytes(len).to_owned()
     }
 }
 
@@ -752,13 +744,13 @@ impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
 
 impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
-    fn decode(decoder: &mut Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
+    fn decode(decoder: &mut Decoder<'a>) -> IntEncodedWithFixedSize {
         let _start_pos = decoder.position();
         let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
         let _end_pos = decoder.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
 
         let value = u64::from_le_bytes(bytes.try_into().unwrap());
-        Ok(IntEncodedWithFixedSize(value))
+        IntEncodedWithFixedSize(value)
     }
 }

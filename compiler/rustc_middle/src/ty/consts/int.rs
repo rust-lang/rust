@@ -147,8 +147,8 @@ impl<S: Encoder> Encodable<S> for ScalarInt {
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
-    fn decode(d: &mut D) -> Result<ScalarInt, D::Error> {
-        Ok(ScalarInt { data: d.read_u128()?, size: d.read_u8()? })
+    fn decode(d: &mut D) -> ScalarInt {
+        ScalarInt { data: d.read_u128(), size: d.read_u8() }
     }
 }
 

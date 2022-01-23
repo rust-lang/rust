@@ -100,7 +100,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
     for SerializedDepGraph<K>
 {
     #[instrument(level = "debug", skip(d))]
-    fn decode(d: &mut opaque::Decoder<'a>) -> Result<SerializedDepGraph<K>, String> {
+    fn decode(d: &mut opaque::Decoder<'a>) -> SerializedDepGraph<K> {
         let start_position = d.position();
 
         // The last 16 bytes are the node count and edge count.
@@ -108,8 +108,8 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
         d.set_position(d.data.len() - 2 * IntEncodedWithFixedSize::ENCODED_SIZE);
         debug!("position: {:?}", d.position());
 
-        let node_count = IntEncodedWithFixedSize::decode(d)?.0 as usize;
-        let edge_count = IntEncodedWithFixedSize::decode(d)?.0 as usize;
+        let node_count = IntEncodedWithFixedSize::decode(d).0 as usize;
+        let edge_count = IntEncodedWithFixedSize::decode(d).0 as usize;
         debug!(?node_count, ?edge_count);
 
         debug!("position: {:?}", d.position());
@@ -123,12 +123,12 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
 
         for _index in 0..node_count {
             d.read_struct(|d| {
-                let dep_node: DepNode<K> = d.read_struct_field("node", Decodable::decode)?;
+                let dep_node: DepNode<K> = d.read_struct_field("node", Decodable::decode);
                 let _i: SerializedDepNodeIndex = nodes.push(dep_node);
                 debug_assert_eq!(_i.index(), _index);
 
                 let fingerprint: Fingerprint =
-                    d.read_struct_field("fingerprint", Decodable::decode)?;
+                    d.read_struct_field("fingerprint", Decodable::decode);
                 let _i: SerializedDepNodeIndex = fingerprints.push(fingerprint);
                 debug_assert_eq!(_i.index(), _index);
 
@@ -136,22 +136,21 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
                     d.read_seq(|d, len| {
                         let start = edge_list_data.len().try_into().unwrap();
                         for _ in 0..len {
-                            let edge = d.read_seq_elt(Decodable::decode)?;
+                            let edge = d.read_seq_elt(Decodable::decode);
                             edge_list_data.push(edge);
                         }
                         let end = edge_list_data.len().try_into().unwrap();
                         let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
                         debug_assert_eq!(_i.index(), _index);
-                        Ok(())
                     })
                 })
-            })?;
+            });
         }
 
         let index: FxHashMap<_, _> =
             nodes.iter_enumerated().map(|(idx, &dep_node)| (dep_node, idx)).collect();
 
-        Ok(SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index })
+        SerializedDepGraph { nodes, fingerprints, edge_list_indices, edge_list_data, index }
     }
 }
 

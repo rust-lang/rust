@@ -180,8 +180,8 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
-    fn decode(d: &mut D) -> Result<GenericArg<'tcx>, D::Error> {
-        Ok(GenericArgKind::decode(d)?.pack())
+    fn decode(d: &mut D) -> GenericArg<'tcx> {
+        GenericArgKind::decode(d).pack()
     }
 }
 
