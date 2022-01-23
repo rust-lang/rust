@@ -33,8 +33,8 @@ use crate::passes::{self, Condition::*};
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
 crate struct ResolverCaches {
-    pub all_traits: Option<Vec<DefId>>,
-    pub all_trait_impls: Option<Vec<DefId>>,
+    crate all_traits: Option<Vec<DefId>>,
+    crate all_trait_impls: Option<Vec<DefId>>,
 }
 
 crate struct DocContext<'tcx> {
