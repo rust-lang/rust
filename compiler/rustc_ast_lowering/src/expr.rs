@@ -625,18 +625,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     }
     /// }
     /// ```
-    fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
-        let dot_await_span = expr.span.shrink_to_hi().to(await_span);
+    fn lower_expr_await(&mut self, dot_await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let full_span = expr.span.to(dot_await_span);
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
                 let mut err = struct_span_err!(
                     self.sess,
-                    await_span,
+                    dot_await_span,
                     E0728,
                     "`await` is only allowed inside `async` functions and blocks"
                 );
-                err.span_label(await_span, "only allowed inside `async` functions and blocks");
+                err.span_label(dot_await_span, "only allowed inside `async` functions and blocks");
                 if let Some(item_sp) = self.current_item {
                     err.span_label(item_sp, "this is not `async`");
                 }
@@ -646,7 +646,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let span = self.mark_span_with_reason(DesugaringKind::Await, dot_await_span, None);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
-            await_span,
+            full_span,
             self.allow_gen_future.clone(),
         );
         let expr = self.lower_expr_mut(expr);
@@ -699,9 +699,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let loop_hir_id = self.lower_node_id(loop_node_id);
         let ready_arm = {
             let x_ident = Ident::with_dummy_span(sym::result);
-            let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
-            let x_expr = self.expr_ident(span, x_ident, x_pat_hid);
-            let ready_field = self.single_pat_field(span, x_pat);
+            let (x_pat, x_pat_hid) = self.pat_ident(gen_future_span, x_ident);
+            let x_expr = self.expr_ident(gen_future_span, x_ident, x_pat_hid);
+            let ready_field = self.single_pat_field(gen_future_span, x_pat);
             let ready_pat = self.pat_lang_item_variant(
                 span,
                 hir::LangItem::PollReady,
@@ -711,7 +711,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let break_x = self.with_loop_scope(loop_node_id, move |this| {
                 let expr_break =
                     hir::ExprKind::Break(this.lower_loop_destination(None), Some(x_expr));
-                this.arena.alloc(this.expr(span, expr_break, ThinVec::new()))
+                this.arena.alloc(this.expr(gen_future_span, expr_break, ThinVec::new()))
             });
             self.arm(ready_pat, break_x)
         };
@@ -783,7 +783,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
-            await_span,
+            dot_await_span,
             self.allow_into_future.clone(),
         );
         let into_future_expr = self.expr_call_lang_item_fn(
