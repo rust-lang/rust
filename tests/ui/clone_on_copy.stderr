@@ -1,5 +1,5 @@
 error: using `clone` on type `i32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:24:5
+  --> $DIR/clone_on_copy.rs:25:5
    |
 LL |     42.clone();
    |     ^^^^^^^^^^ help: try removing the `clone` call: `42`
@@ -7,43 +7,43 @@ LL |     42.clone();
    = note: `-D clippy::clone-on-copy` implied by `-D warnings`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:28:5
+  --> $DIR/clone_on_copy.rs:29:5
    |
 LL |     (&42).clone();
    |     ^^^^^^^^^^^^^ help: try dereferencing it: `*(&42)`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:31:5
+  --> $DIR/clone_on_copy.rs:32:5
    |
 LL |     rc.borrow().clone();
    |     ^^^^^^^^^^^^^^^^^^^ help: try dereferencing it: `*rc.borrow()`
 
 error: using `clone` on type `u32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:34:5
+  --> $DIR/clone_on_copy.rs:35:5
    |
 LL |     x.clone().rotate_left(1);
    |     ^^^^^^^^^ help: try removing the `clone` call: `x`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:48:5
+  --> $DIR/clone_on_copy.rs:49:5
    |
 LL |     m!(42).clone();
    |     ^^^^^^^^^^^^^^ help: try removing the `clone` call: `m!(42)`
 
 error: using `clone` on type `[u32; 2]` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:58:5
+  --> $DIR/clone_on_copy.rs:59:5
    |
 LL |     x.clone()[0];
    |     ^^^^^^^^^ help: try dereferencing it: `(*x)`
 
 error: using `clone` on type `char` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:68:14
+  --> $DIR/clone_on_copy.rs:69:14
    |
 LL |     is_ascii('z'.clone());
    |              ^^^^^^^^^^^ help: try removing the `clone` call: `'z'`
 
 error: using `clone` on type `i32` which implements the `Copy` trait
-  --> $DIR/clone_on_copy.rs:72:14
+  --> $DIR/clone_on_copy.rs:73:14
    |
 LL |     vec.push(42.clone());
    |              ^^^^^^^^^^ help: try removing the `clone` call: `42`

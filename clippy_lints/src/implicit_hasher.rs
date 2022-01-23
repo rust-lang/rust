@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                             )
                             .and_then(|snip| {
                                 let i = snip.find("fn")?;
-                                Some(item.span.lo() + BytePos((i + (&snip[i..]).find('(')?) as u32))
+                                Some(item.span.lo() + BytePos((i + snip[i..].find('(')?) as u32))
                             })
                             .expect("failed to create span for type parameters");
                             Span::new(pos, pos, item.span.ctxt(), item.span.parent())
