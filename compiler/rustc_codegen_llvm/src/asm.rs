@@ -232,6 +232,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
+                InlineAsmArch::Msp430 => {
+                    constraints.push("~{sr}".to_string());
+                }
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
@@ -580,6 +583,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
+            InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
@@ -666,6 +670,7 @@ fn modifier_to_llvm(
         },
         InlineAsmRegClass::Avr(_) => None,
         InlineAsmRegClass::S390x(_) => None,
+        InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
@@ -734,6 +739,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
+        InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
