@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="utf-8"?>
+<checkstyle version="4.3"><file name="<stdin>"><error line="1" severity="warning" message="Should be `fn some() {}`" /><error line="2" severity="warning" message="Should be `fn main() {}`" /></file></checkstyle>
