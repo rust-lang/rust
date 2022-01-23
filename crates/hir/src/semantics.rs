@@ -931,7 +931,8 @@ impl<'db> SemanticsImpl<'db> {
                 file.with_value(derive.clone()),
             )?;
             let attrs = adt_def.attrs(self.db);
-            let mut derive_paths = attrs[attr_id].parse_path_comma_token_tree()?;
+            // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/11298
+            let mut derive_paths = attrs.get(attr_id)?.parse_path_comma_token_tree()?;
 
             let derive_idx = tt
                 .syntax()

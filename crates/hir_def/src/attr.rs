@@ -72,6 +72,11 @@ impl ops::Deref for RawAttrs {
         }
     }
 }
+impl Attrs {
+    pub fn get(&self, AttrId { ast_index, .. }: AttrId) -> Option<&Attr> {
+        (**self).get(ast_index as usize)
+    }
+}
 
 impl ops::Deref for Attrs {
     type Target = [Attr];
