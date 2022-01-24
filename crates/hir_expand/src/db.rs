@@ -202,8 +202,7 @@ pub fn expand_speculative(
     };
 
     let expand_to = macro_expand_to(db, actual_macro_call);
-    let (node, rev_tmap) =
-        token_tree_to_syntax_node(&speculative_expansion.value, expand_to).ok()?;
+    let (node, rev_tmap) = token_tree_to_syntax_node(&speculative_expansion.value, expand_to);
 
     let range = rev_tmap.first_range_by_token(token_id, token_to_map.kind())?;
     let token = node.syntax_node().covering_element(range).into_token()?;
@@ -264,17 +263,7 @@ fn parse_macro_expansion(
     tracing::debug!("expanded = {}", tt.as_debug_string());
     tracing::debug!("kind = {:?}", expand_to);
 
-    let (parse, rev_token_map) = match token_tree_to_syntax_node(&tt, expand_to) {
-        Ok(it) => it,
-        Err(err) => {
-            tracing::debug!(
-                "failed to parse expansion to {:?} = {}",
-                expand_to,
-                tt.as_debug_string()
-            );
-            return ExpandResult::only_err(err);
-        }
-    };
+    let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
 
     match result.err {
         Some(err) => {
@@ -502,7 +491,7 @@ fn macro_expand_to(db: &dyn AstDatabase, id: MacroCallId) -> ExpandTo {
 fn token_tree_to_syntax_node(
     tt: &tt::Subtree,
     expand_to: ExpandTo,
-) -> Result<(Parse<SyntaxNode>, mbe::TokenMap), ExpandError> {
+) -> (Parse<SyntaxNode>, mbe::TokenMap) {
     let entry_point = match expand_to {
         ExpandTo::Statements => mbe::TopEntryPoint::MacroStmts,
         ExpandTo::Items => mbe::TopEntryPoint::MacroItems,
