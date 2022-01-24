@@ -431,15 +431,11 @@ pub trait BuilderMethods<'a, 'tcx>:
         num_clauses: usize,
     ) -> Self::Value;
     fn set_cleanup(&mut self, landing_pad: Self::Value);
-    fn resume(&mut self, exn: Self::Value) -> Self::Value;
+    fn resume(&mut self, exn: Self::Value);
 
     // These are used only by msvc
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
-    fn cleanup_ret(
-        &mut self,
-        funclet: &Self::Funclet,
-        unwind: Option<Self::BasicBlock>,
-    ) -> Self::Value;
+    fn cleanup_ret(&mut self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>);
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
     fn catch_switch(
         &mut self,
