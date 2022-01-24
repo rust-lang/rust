@@ -962,25 +962,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn landing_pad(
-        &mut self,
-        ty: &'ll Type,
-        pers_fn: &'ll Value,
-        num_clauses: usize,
-    ) -> &'ll Value {
-        // Use LLVMSetPersonalityFn to set the personality. It supports arbitrary Consts while,
-        // LLVMBuildLandingPad requires the argument to be a Function (as of LLVM 12). The
-        // personality lives on the parent function anyway.
-        self.set_personality_fn(pers_fn);
-        unsafe {
-            llvm::LLVMBuildLandingPad(self.llbuilder, ty, None, num_clauses as c_uint, UNNAMED)
-        }
-    }
-
-    fn set_cleanup(&mut self, landing_pad: &'ll Value) {
+    fn cleanup_landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value) -> &'ll Value {
+        let landing_pad = self.landing_pad(ty, pers_fn, 1 /* FIXME should this be 0? */);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
+        landing_pad
     }
 
     fn resume(&mut self, exn: &'ll Value) {
@@ -1475,6 +1462,21 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
         } else {
             None
+        }
+    }
+
+    pub(crate) fn landing_pad(
+        &mut self,
+        ty: &'ll Type,
+        pers_fn: &'ll Value,
+        num_clauses: usize,
+    ) -> &'ll Value {
+        // Use LLVMSetPersonalityFn to set the personality. It supports arbitrary Consts while,
+        // LLVMBuildLandingPad requires the argument to be a Function (as of LLVM 12). The
+        // personality lives on the parent function anyway.
+        self.set_personality_fn(pers_fn);
+        unsafe {
+            llvm::LLVMBuildLandingPad(self.llbuilder, ty, None, num_clauses as c_uint, UNNAMED)
         }
     }
 }

@@ -424,13 +424,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn set_personality_fn(&mut self, personality: Self::Value);
 
     // These are used by everyone except msvc
-    fn landing_pad(
-        &mut self,
-        ty: Self::Type,
-        pers_fn: Self::Value,
-        num_clauses: usize,
-    ) -> Self::Value;
-    fn set_cleanup(&mut self, landing_pad: Self::Value);
+    fn cleanup_landing_pad(&mut self, ty: Self::Type, pers_fn: Self::Value) -> Self::Value;
     fn resume(&mut self, exn: Self::Value);
 
     // These are used only by msvc

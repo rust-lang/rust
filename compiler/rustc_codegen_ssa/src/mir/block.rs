@@ -1373,8 +1373,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
-            let lp = bx.landing_pad(llretty, llpersonality, 1);
-            bx.set_cleanup(lp);
+            let lp = bx.cleanup_landing_pad(llretty, llpersonality);
 
             let slot = self.get_personality_slot(&mut bx);
             slot.storage_live(&mut bx);
