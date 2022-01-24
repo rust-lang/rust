@@ -397,7 +397,7 @@ nav.sub {
 }
 
 .source .sidebar > *:not(:first-child) {
-	transition: opacity 0.5s, visibility 0.2s;
+	transition: opacity 0.5s;
 	opacity: 0;
 	visibility: hidden;
 }
@@ -1848,7 +1848,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		position: sticky;
 		z-index: 10;
 		font-size: 2rem;
-		cursor: pointer;
 		height: 45px;
 		width: 100%;
 		left: 0;
