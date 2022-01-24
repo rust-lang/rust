@@ -120,6 +120,12 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, 
     }
 }
 
+impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDropData<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ImplSourceConstDropData(nested={:?})", self.nested)
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations
 
@@ -127,5 +133,4 @@ TrivialTypeFoldableAndLiftImpls! {
     super::IfExpressionCause,
     super::ImplSourceDiscriminantKindData,
     super::ImplSourcePointeeData,
-    super::ImplSourceConstDropData,
 }

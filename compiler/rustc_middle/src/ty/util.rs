@@ -1041,6 +1041,42 @@ pub fn needs_drop_components<'tcx>(
     }
 }
 
+pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
+    match *ty.kind() {
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Infer(ty::IntVar(_))
+        | ty::Infer(ty::FloatVar(_))
+        | ty::Str
+        | ty::RawPtr(_)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Never
+        | ty::Foreign(_) => true,
+
+        ty::Opaque(..)
+        | ty::Dynamic(..)
+        | ty::Error(_)
+        | ty::Bound(..)
+        | ty::Param(_)
+        | ty::Placeholder(_)
+        | ty::Projection(_)
+        | ty::Infer(_) => false,
+
+        // Not trivial because they have components, and instead of looking inside,
+        // we'll just perform trait selection.
+        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(_) | ty::Adt(..) => false,
+
+        ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
+
+        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty.expect_ty())),
+    }
+}
+
 // Does the equivalent of
 // ```
 // let v = self.iter().map(|p| p.fold_with(folder)).collect::<SmallVec<[_; 8]>>();

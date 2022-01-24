@@ -4,11 +4,12 @@
 
 use rustc_errors::ErrorReported;
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
-    self, ImplSource, Obligation, ObligationCause, SelectionContext,
+    self, FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext,
 };
 
 use super::ConstCx;
@@ -145,15 +146,10 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
-    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, mut ty: Ty<'tcx>) -> bool {
-        // Avoid selecting for simple cases.
-        match ty::util::needs_drop_components(ty, &cx.tcx.data_layout).as_deref() {
-            Ok([]) => return false,
-            Err(ty::util::AlwaysRequiresDrop) => return true,
-            // If we've got a single component, select with that
-            // to increase the chance that we hit the selection cache.
-            Ok([t]) => ty = t,
-            Ok([..]) => {}
+    fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
+        // Avoid selecting for simple cases, such as builtin types.
+        if ty::util::is_trivially_const_drop(ty) {
+            return false;
         }
 
         let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
@@ -161,28 +157,50 @@ impl Qualif for NeedsNonConstDrop {
             // without having the lang item present.
             return false;
         };
-        let trait_ref =
-            ty::TraitRef { def_id: drop_trait, substs: cx.tcx.mk_substs_trait(ty, &[]) };
+
         let obligation = Obligation::new(
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
-                trait_ref,
+                trait_ref: ty::TraitRef {
+                    def_id: drop_trait,
+                    substs: cx.tcx.mk_substs_trait(ty, &[]),
+                },
                 constness: ty::BoundConstness::ConstIfConst,
                 polarity: ty::ImplPolarity::Positive,
             }),
         );
 
-        let implsrc = cx.tcx.infer_ctxt().enter(|infcx| {
+        cx.tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
-            selcx.select(&obligation)
-        });
-        !matches!(
-            implsrc,
-            Ok(Some(
+            let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
+                // If we couldn't select a const drop candidate, then it's bad
+                return true;
+            };
+
+            if !matches!(
+                impl_src,
                 ImplSource::ConstDrop(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
-            ))
-        )
+            ) {
+                // If our const drop candidate is not ConstDrop or implied by the param env,
+                // then it's bad
+                return true;
+            }
+
+            if impl_src.borrow_nested_obligations().is_empty() {
+                return false;
+            }
+
+            // If we successfully found one, then select all of the predicates
+            // implied by our const drop impl.
+            let mut fcx = FulfillmentContext::new();
+            for nested in impl_src.nested_obligations() {
+                fcx.register_predicate_obligation(&infcx, nested);
+            }
+
+            // If we had any errors, then it's bad
+            !fcx.select_all_or_error(&infcx).is_empty()
+        })
     }
 
     fn in_adt_inherently<'tcx>(

@@ -3,6 +3,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
+#![feature(never_type)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 struct S<'a>(&'a mut u8);
@@ -45,6 +46,33 @@ mod t {
 
     pub struct HasConstDrop(pub ConstDrop);
     pub struct TrivialFields(pub u8, pub i8, pub usize, pub isize);
+
+    pub trait SomeTrait {
+        fn foo();
+    }
+    impl const SomeTrait for () {
+        fn foo() {}
+    }
+    // non-const impl
+    impl SomeTrait for i32 {
+        fn foo() {}
+    }
+
+    pub struct ConstDropWithBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
+
+    impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
+        fn drop(&mut self) {
+            T::foo();
+        }
+    }
+
+    pub struct ConstDropWithNonconstBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
+
+    impl<T: SomeTrait> const Drop for ConstDropWithNonconstBound<T> {
+        fn drop(&mut self) {
+            // Note: we DON'T use the `T: SomeTrait` bound
+        }
+    }
 }
 
 use t::*;
@@ -61,6 +89,9 @@ implements_const_drop! {
     TrivialFields(1, 2, 3, 4),
     &1,
     &1 as *const i32,
+    ConstDropWithBound::<()>,
+    ConstDropWithNonconstBound::<i32>,
+    Result::<i32, !>::Ok(1),
 }
 
 fn main() {
