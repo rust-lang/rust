@@ -1455,6 +1455,7 @@ symbols! {
         unsafe_block_in_unsafe_fn,
         unsafe_cell,
         unsafe_no_drop_flag,
+        unsafe_pin_internals,
         unsize,
         unsized_fn_params,
         unsized_locals,
