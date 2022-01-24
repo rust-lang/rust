@@ -1275,7 +1275,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn resume(&mut self, _exn: RValue<'gcc>) -> RValue<'gcc> {
+    fn resume(&mut self, _exn: RValue<'gcc>) {
         unimplemented!();
     }
 
@@ -1283,7 +1283,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) -> RValue<'gcc> {
+    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) {
         unimplemented!();
     }
 
