@@ -145,7 +145,7 @@ function test_rustc() {
     echo
     echo "[TEST] rust-lang/rust"
 
-    rust_toolchain=$(cat rust-toolchain)
+    rust_toolchain=$(cat rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
 
     git clone https://github.com/rust-lang/rust.git || true
     cd rust
