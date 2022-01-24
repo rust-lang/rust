@@ -441,9 +441,8 @@ pub trait BuilderMethods<'a, 'tcx>:
         &mut self,
         parent: Option<Self::Value>,
         unwind: Option<Self::BasicBlock>,
-        num_handlers: usize,
+        handlers: &[Self::BasicBlock],
     ) -> Self::Value;
-    fn add_handler(&mut self, catch_switch: Self::Value, handler: Self::BasicBlock);
 
     fn atomic_cmpxchg(
         &mut self,

@@ -1291,11 +1291,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn catch_switch(&mut self, _parent: Option<RValue<'gcc>>, _unwind: Option<Block<'gcc>>, _num_handlers: usize) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
-    fn add_handler(&mut self, _catch_switch: RValue<'gcc>, _handler: Block<'gcc>) {
+    fn catch_switch(
+        &mut self,
+        _parent: Option<RValue<'gcc>>,
+        _unwind: Option<Block<'gcc>>,
+        _handlers: &[Block<'gcc>],
+    ) -> RValue<'gcc> {
         unimplemented!();
     }
 

@@ -1028,7 +1028,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         parent: Option<&'ll Value>,
         unwind: Option<&'ll BasicBlock>,
-        num_handlers: usize,
+        handlers: &[&'ll BasicBlock],
     ) -> &'ll Value {
         let name = cstr!("catchswitch");
         let ret = unsafe {
@@ -1036,17 +1036,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 self.llbuilder,
                 parent,
                 unwind,
-                num_handlers as c_uint,
+                handlers.len() as c_uint,
                 name.as_ptr(),
             )
         };
-        ret.expect("LLVM does not have support for catchswitch")
-    }
-
-    fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMRustAddHandler(catch_switch, handler);
+        let ret = ret.expect("LLVM does not have support for catchswitch");
+        for handler in handlers {
+            unsafe {
+                llvm::LLVMRustAddHandler(ret, handler);
+            }
         }
+        ret
     }
 
     // Atomic Operations
