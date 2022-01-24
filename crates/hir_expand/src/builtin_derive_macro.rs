@@ -72,7 +72,7 @@ struct BasicAdtInfo {
 }
 
 fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
-    let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MacroItems)?; // FragmentKind::Items doesn't parse attrs?
+    let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MacroItems); // FragmentKind::Items doesn't parse attrs?
     let macro_items = ast::MacroItems::cast(parsed.syntax_node()).ok_or_else(|| {
         debug!("derive node didn't parse");
         mbe::ExpandError::UnexpectedToken

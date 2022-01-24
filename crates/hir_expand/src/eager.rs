@@ -104,12 +104,13 @@ pub fn expand_eager_macro(
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
-    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
+    diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<MacroCallId, ErrorEmitted> {
-    let parsed_args = diagnostic_sink.option_with(
-        || Some(mbe::syntax_node_to_token_tree(macro_call.value.token_tree()?.syntax()).0),
-        || err("malformed macro invocation"),
-    )?;
+    let parsed_args = macro_call
+        .value
+        .token_tree()
+        .map(|tt| mbe::syntax_node_to_token_tree(tt.syntax()).0)
+        .unwrap_or_default();
 
     let ast_map = db.ast_id_map(macro_call.file_id);
     let call_id = InFile::new(macro_call.file_id, ast_map.ast_id(&macro_call.value));
@@ -130,9 +131,7 @@ pub fn expand_eager_macro(
     });
     let arg_file_id = arg_id;
 
-    let parsed_args = diagnostic_sink
-        .result(mbe::token_tree_to_syntax_node(&parsed_args, mbe::TopEntryPoint::Expr))?
-        .0;
+    let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, mbe::TopEntryPoint::Expr).0;
     let result = eager_macro_recur(
         db,
         InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
@@ -140,8 +139,7 @@ pub fn expand_eager_macro(
         resolver,
         diagnostic_sink,
     )?;
-    let subtree =
-        diagnostic_sink.option(to_subtree(&result), || err("failed to parse macro result"))?;
+    let subtree = to_subtree(&result);
 
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
@@ -165,10 +163,10 @@ pub fn expand_eager_macro(
     }
 }
 
-fn to_subtree(node: &SyntaxNode) -> Option<tt::Subtree> {
+fn to_subtree(node: &SyntaxNode) -> tt::Subtree {
     let mut subtree = mbe::syntax_node_to_token_tree(node).0;
     subtree.delimiter = None;
-    Some(subtree)
+    subtree
 }
 
 fn lazy_expand(
