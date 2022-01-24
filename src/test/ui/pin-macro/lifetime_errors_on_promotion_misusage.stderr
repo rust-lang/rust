@@ -1,0 +1,31 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/lifetime_errors_on_promotion_misusage.rs:12:35
+   |
+LL |     let phantom_pinned = identity(pin!(PhantomPinned));
+   |                                   ^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                   |
+   |                                   creates a temporary which is freed while still in use
+LL |
+LL |     stuff(phantom_pinned)
+   |           -------------- borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/lifetime_errors_on_promotion_misusage.rs:19:30
+   |
+LL |     let phantom_pinned = {
+   |         -------------- borrow later stored here
+LL |         let phantom_pinned = pin!(PhantomPinned);
+   |                              ^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+...
+LL |     };
+   |     - temporary value is freed at the end of this statement
+   |
+   = note: consider using a `let` binding to create a longer lived value
+   = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

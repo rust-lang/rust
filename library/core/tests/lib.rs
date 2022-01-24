@@ -45,6 +45,7 @@
 #![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(pattern)]
+#![feature(pin_macro)]
 #![feature(sort_internals)]
 #![feature(slice_take)]
 #![feature(maybe_uninit_uninit_array)]
@@ -122,6 +123,7 @@ mod ops;
 mod option;
 mod pattern;
 mod pin;
+mod pin_macro;
 mod ptr;
 mod result;
 mod simd;
