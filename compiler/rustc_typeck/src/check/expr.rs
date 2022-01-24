@@ -35,6 +35,7 @@ use rustc_hir::{ExprKind, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
+use rustc_middle::middle::stability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
@@ -1720,9 +1721,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {
                 // prevent all specified fields from being suggested
                 let skip_fields = skip_fields.iter().map(|x| x.ident.name);
-                if let Some(field_name) =
-                    Self::suggest_field_name(variant, field.ident.name, skip_fields.collect())
-                {
+                if let Some(field_name) = self.suggest_field_name(
+                    variant,
+                    field.ident.name,
+                    skip_fields.collect(),
+                    expr_span,
+                ) {
                     err.span_suggestion(
                         field.ident.span,
                         "a field with a similar name exists",
@@ -1743,7 +1747,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     format!("`{}` does not have this field", ty),
                                 );
                             }
-                            let available_field_names = self.available_field_names(variant);
+                            let available_field_names =
+                                self.available_field_names(variant, expr_span);
                             if !available_field_names.is_empty() {
                                 err.note(&format!(
                                     "available fields are: {}",
@@ -1759,19 +1764,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    // Return an hint about the closest match in field names
+    // Return a hint about the closest match in field names
     fn suggest_field_name(
+        &self,
         variant: &'tcx ty::VariantDef,
         field: Symbol,
         skip: Vec<Symbol>,
+        // The span where stability will be checked
+        span: Span,
     ) -> Option<Symbol> {
         let names = variant
             .fields
             .iter()
             .filter_map(|field| {
                 // ignore already set fields and private fields from non-local crates
+                // and unstable fields.
                 if skip.iter().any(|&x| x == field.name)
                     || (!variant.def_id.is_local() && !field.vis.is_public())
+                    || matches!(
+                        self.tcx.eval_stability(field.did, None, span, None),
+                        stability::EvalResult::Deny { .. }
+                    )
                 {
                     None
                 } else {
@@ -1783,7 +1796,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         find_best_match_for_name(&names, field, None)
     }
 
-    fn available_field_names(&self, variant: &'tcx ty::VariantDef) -> Vec<Symbol> {
+    fn available_field_names(
+        &self,
+        variant: &'tcx ty::VariantDef,
+        access_span: Span,
+    ) -> Vec<Symbol> {
         variant
             .fields
             .iter()
@@ -1793,6 +1810,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .adjust_ident_and_get_scope(field.ident(self.tcx), variant.def_id, self.body_id)
                     .1;
                 field.vis.is_accessible_from(def_scope, self.tcx)
+                    && !matches!(
+                        self.tcx.eval_stability(field.did, None, access_span, None),
+                        stability::EvalResult::Deny { .. }
+                    )
             })
             .filter(|field| !self.tcx.is_doc_hidden(field.did))
             .map(|field| field.name)
@@ -1959,7 +1980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.suggest_first_deref_field(&mut err, expr, base, field);
             }
             ty::Adt(def, _) if !def.is_enum() => {
-                self.suggest_fields_on_recordish(&mut err, def, field);
+                self.suggest_fields_on_recordish(&mut err, def, field, expr.span);
             }
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
@@ -2122,9 +2143,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         def: &'tcx ty::AdtDef,
         field: Ident,
+        access_span: Span,
     ) {
         if let Some(suggested_field_name) =
-            Self::suggest_field_name(def.non_enum_variant(), field.name, vec![])
+            self.suggest_field_name(def.non_enum_variant(), field.name, vec![], access_span)
         {
             err.span_suggestion(
                 field.span,
@@ -2135,7 +2157,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             err.span_label(field.span, "unknown field");
             let struct_variant_def = def.non_enum_variant();
-            let field_names = self.available_field_names(struct_variant_def);
+            let field_names = self.available_field_names(struct_variant_def, access_span);
             if !field_names.is_empty() {
                 err.note(&format!(
                     "available fields are: {}",
