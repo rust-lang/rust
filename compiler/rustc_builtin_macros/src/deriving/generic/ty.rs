@@ -200,12 +200,20 @@ fn mk_ty_param(
     bounds: &[Path],
     self_ident: Ident,
     self_generics: &Generics,
+    is_const: bool,
 ) -> ast::GenericParam {
     let bounds = bounds
         .iter()
-        .map(|b| {
-            let path = b.to_path(cx, span, self_ident, self_generics);
-            cx.trait_bound(path)
+        .map(|path| {
+            let path = path.to_path(cx, span, self_ident, self_generics);
+            cx.trait_bound(
+                path,
+                if is_const {
+                    ast::TraitBoundModifier::MaybeConst
+                } else {
+                    ast::TraitBoundModifier::None
+                },
+            )
         })
         .collect();
     cx.typaram(span, Ident::new(name, span), attrs.to_owned(), bounds, None)
@@ -227,13 +235,14 @@ impl Bounds {
         span: Span,
         self_ty: Ident,
         self_generics: &Generics,
+        is_const: bool,
     ) -> Generics {
         let params = self
             .bounds
             .iter()
             .map(|t| {
                 let (name, ref bounds) = *t;
-                mk_ty_param(cx, span, name, &[], &bounds, self_ty, self_generics)
+                mk_ty_param(cx, span, name, &[], &bounds, self_ty, self_generics, is_const)
             })
             .collect();
 

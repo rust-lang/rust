@@ -1,5 +1,19 @@
+error[E0277]: the trait bound `E: ~const Clone` is not satisfied
+  --> $DIR/deriving-copyclone.rs:55:24
+   |
+LL | const _: () = is_clone(E(A { a: 1, b: 2 }));
+   |               -------- ^^^^^^^^^^^^^^^^^^^ the trait `~const Clone` is not implemented for `E`
+   |               |
+   |               required by a bound introduced by this call
+   |
+note: required by a bound in `is_clone`
+  --> $DIR/deriving-copyclone.rs:31:22
+   |
+LL | const fn is_clone<T: ~const Clone>(_: T) {}
+   |                      ^^^^^^^^^^^^ required by this bound in `is_clone`
+
 error[E0277]: the trait bound `B<C>: Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:31:13
+  --> $DIR/deriving-copyclone.rs:43:13
    |
 LL |     is_copy(B { a: 1, b: C });
    |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Copy`
@@ -7,12 +21,12 @@ LL |     is_copy(B { a: 1, b: C });
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Copy` for `B<C>`
-  --> $DIR/deriving-copyclone.rs:9:10
+  --> $DIR/deriving-copyclone.rs:11:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
 note: required by a bound in `is_copy`
-  --> $DIR/deriving-copyclone.rs:18:15
+  --> $DIR/deriving-copyclone.rs:30:15
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
@@ -22,24 +36,24 @@ help: consider borrowing here
 LL |     is_copy(&B { a: 1, b: C });
    |             +
 
-error[E0277]: the trait bound `B<C>: Clone` is not satisfied
-  --> $DIR/deriving-copyclone.rs:32:14
+error[E0277]: the trait bound `B<C>: ~const Clone` is not satisfied
+  --> $DIR/deriving-copyclone.rs:44:14
    |
 LL |     is_clone(B { a: 1, b: C });
-   |     -------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Clone`
+   |     -------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `~const Clone`
    |     |
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Clone` for `B<C>`
-  --> $DIR/deriving-copyclone.rs:9:16
+  --> $DIR/deriving-copyclone.rs:11:16
    |
 LL | #[derive(Copy, Clone)]
    |                ^^^^^
 note: required by a bound in `is_clone`
-  --> $DIR/deriving-copyclone.rs:19:16
+  --> $DIR/deriving-copyclone.rs:31:22
    |
-LL | fn is_clone<T: Clone>(_: T) {}
-   |                ^^^^^ required by this bound in `is_clone`
+LL | const fn is_clone<T: ~const Clone>(_: T) {}
+   |                      ^^^^^^^^^^^^ required by this bound in `is_clone`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
@@ -47,7 +61,7 @@ LL |     is_clone(&B { a: 1, b: C });
    |              +
 
 error[E0277]: the trait bound `B<D>: Copy` is not satisfied
-  --> $DIR/deriving-copyclone.rs:35:13
+  --> $DIR/deriving-copyclone.rs:47:13
    |
 LL |     is_copy(B { a: 1, b: D });
    |     ------- ^^^^^^^^^^^^^^^^ expected an implementor of trait `Copy`
@@ -55,12 +69,12 @@ LL |     is_copy(B { a: 1, b: D });
    |     required by a bound introduced by this call
    |
 note: required because of the requirements on the impl of `Copy` for `B<D>`
-  --> $DIR/deriving-copyclone.rs:9:10
+  --> $DIR/deriving-copyclone.rs:11:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^
 note: required by a bound in `is_copy`
-  --> $DIR/deriving-copyclone.rs:18:15
+  --> $DIR/deriving-copyclone.rs:30:15
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
@@ -70,6 +84,6 @@ help: consider borrowing here
 LL |     is_copy(&B { a: 1, b: D });
    |             +
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

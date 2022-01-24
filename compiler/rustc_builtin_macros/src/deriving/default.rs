@@ -31,6 +31,7 @@ pub fn expand_deriving_default(
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,
+        is_const: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,

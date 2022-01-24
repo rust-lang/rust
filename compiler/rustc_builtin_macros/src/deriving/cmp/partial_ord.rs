@@ -47,6 +47,7 @@ pub fn expand_deriving_partial_ord(
         additional_bounds: vec![],
         generics: Bounds::empty(),
         is_unsafe: false,
+        is_const: false,
         supports_unions: false,
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),

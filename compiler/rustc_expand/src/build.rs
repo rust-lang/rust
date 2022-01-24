@@ -128,11 +128,12 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn trait_bound(&self, path: ast::Path) -> ast::GenericBound {
-        ast::GenericBound::Trait(
-            self.poly_trait_ref(path.span, path),
-            ast::TraitBoundModifier::None,
-        )
+    pub fn trait_bound(
+        &self,
+        path: ast::Path,
+        modif: ast::TraitBoundModifier,
+    ) -> ast::GenericBound {
+        ast::GenericBound::Trait(self.poly_trait_ref(path.span, path), modif)
     }
 
     pub fn lifetime(&self, span: Span, ident: Ident) -> ast::Lifetime {
@@ -566,5 +567,13 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn meta_word(&self, sp: Span, w: Symbol) -> ast::MetaItem {
         attr::mk_word_item(Ident::new(w, sp))
+    }
+
+    pub fn meta_name_value(&self, sp: Span, n: Symbol, v: Symbol) -> ast::NestedMetaItem {
+        ast::NestedMetaItem::MetaItem(attr::mk_name_value_item_str(Ident::new(n, sp), v, sp))
+    }
+
+    pub fn meta_list(&self, sp: Span, w: Symbol, items: Vec<ast::NestedMetaItem>) -> ast::MetaItem {
+        attr::mk_list_item(Ident::new(w, sp), items)
     }
 }

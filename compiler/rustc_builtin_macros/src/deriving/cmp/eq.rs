@@ -28,6 +28,7 @@ pub fn expand_deriving_eq(
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,
+        is_const: false,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,

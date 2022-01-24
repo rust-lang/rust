@@ -15,7 +15,7 @@ pub fn expand_deriving_clone(
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    // check if we can use a short form
+    // check if we can use a short form, and if the impl can be const
     //
     // the short form is `fn clone(&self) -> Self { *self }`
     //
@@ -29,6 +29,9 @@ pub fn expand_deriving_clone(
     //      Unions with generic parameters still can derive Clone because they require Copy
     //      for deriving, Clone alone is not enough.
     //      Whever Clone is implemented for fields is irrelevant so we don't assert it.
+    //
+    // for now, the impl is only able to be marked as const if we can use the short form;
+    // in the future, this may be expanded
     let bounds;
     let substructure;
     let is_shallow;
@@ -73,15 +76,29 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
+    let features = cx.sess.features_untracked();
     let inline = cx.meta_word(span, sym::inline);
     let attrs = vec![cx.attribute(inline)];
+    let is_const = is_shallow && features.const_trait_impl;
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
+        attributes: if is_const && features.staged_api {
+            vec![cx.attribute(cx.meta_list(
+                span,
+                sym::rustc_const_unstable,
+                vec![
+                    cx.meta_name_value(span, sym::feature, Symbol::intern("const_clone")),
+                    cx.meta_name_value(span, sym::issue, Symbol::intern("none")),
+                ],
+            ))]
+        } else {
+            Vec::new()
+        },
         path: path_std!(clone::Clone),
         additional_bounds: bounds,
         generics: Bounds::empty(),
         is_unsafe: false,
+        is_const,
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::clone,

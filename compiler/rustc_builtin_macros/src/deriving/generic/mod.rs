@@ -215,6 +215,9 @@ pub struct TraitDef<'a> {
     /// Is it an `unsafe` trait?
     pub is_unsafe: bool,
 
+    /// Is it a `const` impl?
+    pub is_const: bool,
+
     /// Can this trait be derived for unions?
     pub supports_unions: bool,
 
@@ -568,7 +571,7 @@ impl<'a> TraitDef<'a> {
         });
 
         let Generics { mut params, mut where_clause, .. } =
-            self.generics.to_generics(cx, self.span, type_ident, generics);
+            self.generics.to_generics(cx, self.span, type_ident, generics, self.is_const);
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
         let span = generics.span.with_ctxt(ctxt);
@@ -583,10 +586,24 @@ impl<'a> TraitDef<'a> {
                     // extra restrictions on the generics parameters to the
                     // type being derived upon
                     self.additional_bounds.iter().map(|p| {
-                        cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
+                        cx.trait_bound(
+                            p.to_path(cx, self.span, type_ident, generics),
+                            if self.is_const {
+                                ast::TraitBoundModifier::MaybeConst
+                            } else {
+                                ast::TraitBoundModifier::None
+                            },
+                        )
                     }).chain(
                         // require the current trait
-                        iter::once(cx.trait_bound(trait_path.clone()))
+                        iter::once(cx.trait_bound(
+                            trait_path.clone(),
+                            if self.is_const {
+                                ast::TraitBoundModifier::MaybeConst
+                            } else {
+                                ast::TraitBoundModifier::None
+                            }
+                        ))
                     ).chain(
                         // also add in any bounds from the declaration
                         param.bounds.iter().cloned()
@@ -663,11 +680,27 @@ impl<'a> TraitDef<'a> {
                         let mut bounds: Vec<_> = self
                             .additional_bounds
                             .iter()
-                            .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
+                            .map(|p| {
+                                cx.trait_bound(
+                                    p.to_path(cx, self.span, type_ident, generics),
+                                    if self.is_const {
+                                        ast::TraitBoundModifier::MaybeConst
+                                    } else {
+                                        ast::TraitBoundModifier::None
+                                    },
+                                )
+                            })
                             .collect();
 
                         // require the current trait
-                        bounds.push(cx.trait_bound(trait_path.clone()));
+                        bounds.push(cx.trait_bound(
+                            trait_path.clone(),
+                            if self.is_const {
+                                ast::TraitBoundModifier::MaybeConst
+                            } else {
+                                ast::TraitBoundModifier::None
+                            },
+                        ));
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,
@@ -723,6 +756,7 @@ impl<'a> TraitDef<'a> {
         a.extend(self.attributes.iter().cloned());
 
         let unsafety = if self.is_unsafe { ast::Unsafe::Yes(self.span) } else { ast::Unsafe::No };
+        let constness = if self.is_const { ast::Const::Yes(self.span) } else { ast::Const::No };
 
         cx.item(
             self.span,
@@ -732,7 +766,7 @@ impl<'a> TraitDef<'a> {
                 unsafety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
-                constness: ast::Const::No,
+                constness,
                 generics: trait_generics,
                 of_trait: opt_trait_ref,
                 self_ty: self_type,
@@ -933,7 +967,8 @@ impl<'a> MethodDef<'a> {
     ) -> P<ast::AssocItem> {
         let span = trait_.span;
         // Create the generics that aren't for `Self`.
-        let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
+        let fn_generics =
+            self.generics.to_generics(cx, span, type_ident, generics, trait_.is_const);
 
         let args = {
             let self_args = explicit_self.map(|explicit_self| {
