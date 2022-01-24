@@ -845,10 +845,6 @@ impl<'a> NameBinding<'a> {
         )
     }
 
-    fn is_macro_def(&self) -> bool {
-        matches!(self.kind, NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _))
-    }
-
     fn macro_kind(&self) -> Option<MacroKind> {
         self.res().macro_kind()
     }
