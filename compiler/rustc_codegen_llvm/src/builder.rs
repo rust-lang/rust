@@ -956,6 +956,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint, UNNAMED) }
     }
 
+    fn set_personality_fn(&mut self, personality: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
+        }
+    }
+
     fn landing_pad(
         &mut self,
         ty: &'ll Type,
@@ -1041,12 +1047,6 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustAddHandler(catch_switch, handler);
-        }
-    }
-
-    fn set_personality_fn(&mut self, personality: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
     }
 
