@@ -1848,7 +1848,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		position: sticky;
 		z-index: 10;
 		font-size: 2rem;
-		cursor: pointer;
 		height: 45px;
 		width: 100%;
 		left: 0;
