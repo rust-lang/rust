@@ -9,7 +9,7 @@ use crate::task::{Context, Poll};
 /// Polls multiple futures simultaneously, returning a tuple
 /// of all results once complete.
 ///
-/// While `join!(a, b)` is similar to `(a.await, b.await)`,
+/// While `join!(a, b).await` is similar to `(a.await, b.await)`,
 /// `join!` polls both futures concurrently and is therefore more efficient.
 ///
 /// # Examples
