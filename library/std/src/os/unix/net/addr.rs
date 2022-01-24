@@ -131,7 +131,8 @@ impl SocketAddr {
     ///
     /// # Errors
     ///
-    /// Returns an error if the path is longer than `SUN_LEN`.
+    /// Returns an error if the path is longer than `SUN_LEN` or if it contains
+    /// NULL bytes.
     ///
     /// # Examples
     ///
@@ -141,13 +142,22 @@ impl SocketAddr {
     /// use std::path::Path;
     ///
     /// # fn main() -> std::io::Result<()> {
-    /// let address = SocketAddr::unix("/path/to/socket")?;
+    /// let address = SocketAddr::from_path("/path/to/socket")?;
     /// assert_eq!(address.as_pathname(), Some(Path::new("/path/to/socket")));
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Creating a `SocketAddr` with a NULL byte results in an error.
+    ///
+    /// ```
+    /// #![feature(unix_socket_creation)]
+    /// use std::os::unix::net::SocketAddr;
+    ///
+    /// assert!(SocketAddr::from_path("/path/with/\0/bytes").is_err());
+    /// ```
     #[unstable(feature = "unix_socket_creation", issue = "65275")]
-    pub fn unix<P>(path: P) -> io::Result<SocketAddr>
+    pub fn from_path<P>(path: P) -> io::Result<SocketAddr>
     where
         P: AsRef<Path>,
     {
@@ -155,13 +165,12 @@ impl SocketAddr {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
 
         let bytes = path.as_ref().as_os_str().as_bytes();
-        let too_long = match bytes.first() {
-            None => false,
-            // linux abstract namespaces aren't null-terminated.
-            Some(&0) => bytes.len() > storage.sun_path.len(),
-            Some(_) => bytes.len() >= storage.sun_path.len(),
-        };
-        if too_long {
+        if bytes.contains(&b'\0') {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "path can't contain null bytes",
+            ));
+        } else if bytes.len() >= storage.sun_path.len() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "path must be shorter than SUN_LEN",
@@ -184,12 +193,7 @@ impl SocketAddr {
         let base = &storage as *const _ as usize;
         let path = &storage.sun_path as *const _ as usize;
         let sun_path_offset = path - base;
-        let length = sun_path_offset
-            + bytes.len()
-            + match bytes.first() {
-                Some(&0) | None => 0,
-                Some(_) => 1,
-            };
+        let length = sun_path_offset + bytes.len() + 1;
 
         Ok(SocketAddr { addr: storage, len: length as _ })
     }
