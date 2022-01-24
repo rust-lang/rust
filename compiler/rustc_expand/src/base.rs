@@ -3,7 +3,7 @@ use crate::module::DirOwnership;
 
 use rustc_ast::attr::MarkedAttrs;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal};
+use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
@@ -13,8 +13,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use rustc_errors::{
     Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan, PResult,
 };
-use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
-use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
+use rustc_lint_defs::BufferedEarlyLint;
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -22,7 +21,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, FileName, RealFileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, FileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::default::Default;
@@ -1409,81 +1408,4 @@ pub fn parse_macro_name_and_helper_attrs(
     };
 
     Some((trait_ident.name, proc_attrs))
-}
-
-/// This nonterminal looks like some specific enums from
-/// `proc-macro-hack` and `procedural-masquerade` crates.
-/// We need to maintain some special pretty-printing behavior for them due to incorrect
-/// asserts in old versions of those crates and their wide use in the ecosystem.
-/// See issue #73345 for more details.
-/// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
-    let name = item.ident.name;
-    if name == sym::ProceduralMasqueradeDummyType {
-        if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
-            if let [variant] = &*enum_def.variants {
-                if variant.ident.name == sym::Input {
-                    let filename = sess.source_map().span_to_filename(item.ident.span);
-                    if let FileName::Real(RealFileName::LocalPath(path)) = filename {
-                        if let Some(c) = path
-                            .components()
-                            .flat_map(|c| c.as_os_str().to_str())
-                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
-                        {
-                            let crate_matches = if c.starts_with("allsorts-rental") {
-                                true
-                            } else {
-                                let mut version = c.trim_start_matches("rental-").split(".");
-                                version.next() == Some("0")
-                                    && version.next() == Some("5")
-                                    && version
-                                        .next()
-                                        .and_then(|c| c.parse::<u32>().ok())
-                                        .map_or(false, |v| v < 6)
-                            };
-
-                            if crate_matches {
-                                sess.buffer_lint_with_diagnostic(
-                                        &PROC_MACRO_BACK_COMPAT,
-                                        item.ident.span,
-                                        ast::CRATE_NODE_ID,
-                                        "using an old version of `rental`",
-                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
-                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
-                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
-                                        )
-                                    );
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    false
-}
-
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &ParseSess) -> bool {
-    let item = match ann {
-        Annotatable::Item(item) => item,
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return false,
-        },
-        _ => return false,
-    };
-    pretty_printing_compatibility_hack(item, sess)
-}
-
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
-    let item = match nt {
-        Nonterminal::NtItem(item) => item,
-        Nonterminal::NtStmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return false,
-        },
-        _ => return false,
-    };
-    pretty_printing_compatibility_hack(item, sess)
 }

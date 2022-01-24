@@ -83,7 +83,7 @@ impl ToInternal<token::LitKind> for LitKind {
 }
 
 impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStream, Span, Symbol>> {
-    fn from_internal((stream, rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
+    fn from_internal((stream, _rustc): (TokenStream, &mut Rustc<'_, '_>)) -> Self {
         use rustc_ast::token::*;
 
         // Estimate the capacity as `stream.len()` rounded up to the next power
@@ -227,21 +227,11 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
 
                 Interpolated(nt) => {
                     let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // A hack used to pass AST fragments to attribute and derive
-                    // macros as a single nonterminal token instead of a token
-                    // stream.  Such token needs to be "unwrapped" and not
-                    // represented as a delimited group.
-                    // FIXME: It needs to be removed, but there are some
-                    // compatibility issues (see #73345).
-                    if crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.sess()) {
-                        trees.extend(Self::from_internal((stream, rustc)));
-                    } else {
-                        trees.push(TokenTree::Group(Group {
-                            delimiter: pm::Delimiter::None,
-                            stream: Some(stream),
-                            span: DelimSpan::from_single(span),
-                        }))
-                    }
+                    trees.push(TokenTree::Group(Group {
+                        delimiter: pm::Delimiter::None,
+                        stream: Some(stream),
+                        span: DelimSpan::from_single(span),
+                    }))
                 }
 
                 OpenDelim(..) | CloseDelim(..) => unreachable!(),
