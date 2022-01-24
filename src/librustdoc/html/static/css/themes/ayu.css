@@ -191,6 +191,10 @@ pre, .rustdoc.source .example-wrap {
 	color: #a37acc;
 }
 
+.sidebar a { color: #53b1db; }
+.sidebar a.current.type { color: #53b1db; }
+.sidebar a.current.associatedtype { color: #53b1db; }
+
 pre.rust .comment { color: #788797; }
 pre.rust .doccomment { color: #a1ac88; }
 
@@ -484,6 +488,25 @@ a.result-constant:focus,
 a.result-static:focus {}
 a.result-primitive:focus {}
 a.result-keyword:focus {}
+
+.sidebar a.current.enum {}
+.sidebar a.current.struct {}
+.sidebar a.current.foreigntype {}
+.sidebar a.current.attr,
+.sidebar a.current.derive,
+.sidebar a.current.macro {}
+.sidebar a.current.union {}
+.sidebar a.current.constant
+.sidebar a.current.static {}
+.sidebar a.current.primitive {}
+.sidebar a.current.externcrate
+.sidebar a.current.mod {}
+.sidebar a.current.trait {}
+.sidebar a.current.traitalias {}
+.sidebar a.current.fn,
+.sidebar a.current.method,
+.sidebar a.current.tymethod {}
+.sidebar a.current.keyword {}
 
 @media (max-width: 700px) {
 	.sidebar-menu {
