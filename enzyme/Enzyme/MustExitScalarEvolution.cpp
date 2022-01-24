@@ -511,66 +511,45 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
   case ICmpInst::ICMP_ULT:
   case ICmpInst::ICMP_SLE:
   case ICmpInst::ICMP_ULE: { // while (X < Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SLT;
+    bool IsSigned = Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SLE;
+
+    if (Pred == ICmpInst::ICMP_SLE || Pred == ICmpInst::ICMP_ULE) {
+      SmallVector<const SCEV *, 2> sv = {
+          RHS,
+          getConstant(ConstantInt::get(cast<IntegerType>(RHS->getType()), 1))};
+      // Since this is not an infinite loop by induction, RHS cannot be
+      // int_max/uint_max Therefore adding 1 does not wrap.
+      if (IsSigned)
+        RHS = getAddExpr(sv, SCEV::FlagNSW);
+      else
+        RHS = getAddExpr(sv, SCEV::FlagNUW);
+    }
     ExitLimit EL =
         howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit, AllowPredicates);
-    if (EL.hasAnyInfo()) {
-      if (Pred == ICmpInst::ICMP_SLE || Pred == ICmpInst::ICMP_ULE) {
-        EL.MaxOrZero = false;
-        SmallVector<const SCEV *, 2> sv = {
-            EL.ExactNotTaken,
-            getConstant(ConstantInt::get(
-                cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
-        EL.ExactNotTaken = getAddExpr(sv);
-        if (Pred == ICmpInst::ICMP_SLE)
-          EL.ExactNotTaken = getSMaxExpr(
-              EL.ExactNotTaken, getConstant(ConstantInt::get(
-                                    cast<IntegerType>(sv[0]->getType()), 0)));
-        SmallVector<const SCEV *, 2> sv2 = {
-            EL.MaxNotTaken,
-            getConstant(ConstantInt::get(
-                cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
-        if (Pred == ICmpInst::ICMP_SLE)
-          EL.MaxNotTaken = getSMaxExpr(
-              EL.MaxNotTaken, getConstant(ConstantInt::get(
-                                  cast<IntegerType>(sv[0]->getType()), 0)));
-        EL.MaxNotTaken = getAddExpr(sv2);
-      }
+    if (EL.hasAnyInfo())
       return EL;
-    }
     break;
   }
   case ICmpInst::ICMP_SGT:
   case ICmpInst::ICMP_UGT:
   case ICmpInst::ICMP_SGE:
   case ICmpInst::ICMP_UGE: { // while (X > Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SGT;
+    bool IsSigned = Pred == ICmpInst::ICMP_SGT || Pred == ICmpInst::ICMP_SLE;
+    if (Pred == ICmpInst::ICMP_SGE || Pred == ICmpInst::ICMP_UGE) {
+      SmallVector<const SCEV *, 2> sv = {
+          RHS,
+          getConstant(ConstantInt::get(cast<IntegerType>(RHS->getType()), -1))};
+      // Since this is not an infinite loop by induction, RHS cannot be
+      // int_min/uint_min Therefore subtracting 1 does not wrap.
+      if (IsSigned)
+        RHS = getAddExpr(sv, SCEV::FlagNSW);
+      else
+        RHS = getAddExpr(sv, SCEV::FlagNUW);
+    }
     ExitLimit EL = howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
                                        AllowPredicates);
-    if (EL.hasAnyInfo()) {
-      if (Pred == ICmpInst::ICMP_SGE || Pred == ICmpInst::ICMP_UGE) {
-        EL.MaxOrZero = false;
-        SmallVector<const SCEV *, 2> sv = {
-            EL.ExactNotTaken,
-            getConstant(ConstantInt::get(
-                cast<IntegerType>(EL.ExactNotTaken->getType()), 1))};
-        if (Pred == ICmpInst::ICMP_SGE)
-          EL.ExactNotTaken = getSMaxExpr(
-              EL.ExactNotTaken, getConstant(ConstantInt::get(
-                                    cast<IntegerType>(sv[0]->getType()), 0)));
-        EL.ExactNotTaken = getAddExpr(sv, SCEV::NoWrapMask);
-        SmallVector<const SCEV *, 2> sv2 = {
-            EL.MaxNotTaken,
-            getConstant(ConstantInt::get(
-                cast<IntegerType>(EL.MaxNotTaken->getType()), 1))};
-        if (Pred == ICmpInst::ICMP_SGE)
-          EL.MaxNotTaken = getSMaxExpr(
-              EL.MaxNotTaken, getConstant(ConstantInt::get(
-                                  cast<IntegerType>(sv[0]->getType()), 0)));
-        EL.MaxNotTaken = getAddExpr(sv2, SCEV::NoWrapMask);
-      }
+    if (EL.hasAnyInfo())
       return EL;
-    }
     break;
   }
   default:
@@ -654,8 +633,22 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
     break;
   }
   case ICmpInst::ICMP_SLT:
-  case ICmpInst::ICMP_ULT: { // while (X < Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SLT;
+  case ICmpInst::ICMP_ULT:
+  case ICmpInst::ICMP_SLE:
+  case ICmpInst::ICMP_ULE: { // while (X < Y)
+    bool IsSigned = Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SLE;
+
+    if (Pred == ICmpInst::ICMP_SLE || Pred == ICmpInst::ICMP_ULE) {
+      SmallVector<const SCEV *, 2> sv = {
+          RHS,
+          getConstant(ConstantInt::get(cast<IntegerType>(RHS->getType()), 1))};
+      // Since this is not an infinite loop by induction, RHS cannot be
+      // int_max/uint_max Therefore adding 1 does not wrap.
+      if (IsSigned)
+        RHS = getAddExpr(sv, SCEV::FlagNSW);
+      else
+        RHS = getAddExpr(sv, SCEV::FlagNUW);
+    }
     ExitLimit EL =
         howManyLessThans(LHS, RHS, L, IsSigned, ControlsExit, AllowPredicates);
     if (EL.hasAnyInfo())
@@ -663,8 +656,21 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
     break;
   }
   case ICmpInst::ICMP_SGT:
-  case ICmpInst::ICMP_UGT: { // while (X > Y)
-    bool IsSigned = Pred == ICmpInst::ICMP_SGT;
+  case ICmpInst::ICMP_UGT:
+  case ICmpInst::ICMP_SGE:
+  case ICmpInst::ICMP_UGE: { // while (X > Y)
+    bool IsSigned = Pred == ICmpInst::ICMP_SGT || Pred == ICmpInst::ICMP_SLE;
+    if (Pred == ICmpInst::ICMP_SGE || Pred == ICmpInst::ICMP_UGE) {
+      SmallVector<const SCEV *, 2> sv = {
+          RHS,
+          getConstant(ConstantInt::get(cast<IntegerType>(RHS->getType()), -1))};
+      // Since this is not an infinite loop by induction, RHS cannot be
+      // int_min/uint_min Therefore subtracting 1 does not wrap.
+      if (IsSigned)
+        RHS = getAddExpr(sv, SCEV::FlagNSW);
+      else
+        RHS = getAddExpr(sv, SCEV::FlagNUW);
+    }
     ExitLimit EL = howManyGreaterThans(LHS, RHS, L, IsSigned, ControlsExit,
                                        AllowPredicates);
     if (EL.hasAnyInfo())

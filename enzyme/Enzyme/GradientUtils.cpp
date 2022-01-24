@@ -1861,16 +1861,12 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
     assert(found2->second.first);
 
     Value *toadd;
-    // if (ompOffset) {
-    //  toadd = UndefValue::get(found2->second.first->getAllocatedType());
-    //} else {
     toadd = scopeAllocs[found2->second.first][0];
     for (auto u : toadd->users()) {
       if (auto ci = dyn_cast<CastInst>(u)) {
         toadd = ci;
       }
     }
-    //}
 
     // llvm::errs() << " malloc: " << *malloc << "\n";
     // llvm::errs() << " toadd: " << *toadd << "\n";

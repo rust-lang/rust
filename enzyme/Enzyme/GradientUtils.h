@@ -392,58 +392,6 @@ public:
     return true;
   }
 
-  void setupOMPFor() {
-    for (auto &BB : *oldFunc) {
-      for (auto &I : BB) {
-        if (CallInst *call = dyn_cast<CallInst>(&I)) {
-          if (Function *F = call->getCalledFunction()) {
-            if (F->getName() == "__kmpc_for_static_init_4" ||
-                F->getName() == "__kmpc_for_static_init_4u" ||
-                F->getName() == "__kmpc_for_static_init_8" ||
-                F->getName() == "__kmpc_for_static_init_8u") {
-              // todo what if bounds change between fwd/reverse
-              IRBuilder<> pre(getNewFromOriginal(call));
-              IntegerType *i64 = IntegerType::getInt64Ty(oldFunc->getContext());
-              Value *lb = nullptr;
-              for (auto u : call->getArgOperand(4)->users()) {
-                if (auto si = dyn_cast<StoreInst>(u)) {
-                  if (OrigDT.dominates(si, call)) {
-                    lb = pre.CreateSExtOrTrunc(
-                        getNewFromOriginal(si->getValueOperand()), i64);
-                    break;
-                  }
-                }
-              }
-              assert(lb);
-              Value *ub = nullptr;
-              for (auto u : call->getArgOperand(5)->users()) {
-                if (auto si = dyn_cast<StoreInst>(u)) {
-                  if (OrigDT.dominates(si, call)) {
-                    ub = pre.CreateSExtOrTrunc(
-                        getNewFromOriginal(si->getValueOperand()), i64);
-                    break;
-                  }
-                }
-              }
-              assert(ub);
-              IRBuilder<> post(getNewFromOriginal(call)->getNextNode());
-              auto lb_post = post.CreateSExtOrTrunc(
-                  post.CreateLoad(getNewFromOriginal(call->getArgOperand(4))),
-                  i64);
-              ompOffset = post.CreateSub(lb_post, lb, "", true, true);
-              ompTrueLimit = pre.CreateSub(ub, lb);
-              return;
-            }
-          }
-        }
-      }
-    }
-    llvm::errs() << *oldFunc << "\n";
-    assert(0 && "could not find openmp init");
-    // ompOffset;
-    // ompTrueLimit;
-  }
-
   llvm::DebugLoc getNewFromOriginal(const llvm::DebugLoc L) const {
     if (L.get() == nullptr)
       return nullptr;
@@ -1016,8 +964,6 @@ public:
     tape = nullptr;
     tapeidx = 0;
     assert(originalBlocks.size() > 0);
-    if (omp)
-      setupOMPFor();
 
     SmallVector<BasicBlock *, 4> ReturningBlocks;
     for (BasicBlock &BB : *oldFunc) {

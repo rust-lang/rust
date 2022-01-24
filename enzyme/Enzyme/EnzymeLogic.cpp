@@ -115,7 +115,6 @@ struct CacheAnalysis {
   DerivativeMode mode;
   std::map<Value *, bool> seen;
   bool omp;
-  SmallVector<CallInst *, 0> kmpcCall;
   CacheAnalysis(
       const ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
           &allocationsWithGuaranteedFree,
@@ -127,30 +126,7 @@ struct CacheAnalysis {
       : allocationsWithGuaranteedFree(allocationsWithGuaranteedFree), TR(TR),
         AA(AA), oldFunc(oldFunc), SE(SE), OrigLI(OrigLI), OrigDT(OrigDT),
         TLI(TLI), unnecessaryInstructions(unnecessaryInstructions),
-        uncacheable_args(uncacheable_args), mode(mode), omp(omp) {
-
-    for (auto &BB : *oldFunc)
-      for (auto &I : BB)
-        if (auto CI = dyn_cast<CallInst>(&I)) {
-          if (auto F = CI->getCalledFunction()) {
-            if (F->getName() == "__kmpc_for_static_init_4" ||
-                F->getName() == "__kmpc_for_static_init_4u" ||
-                F->getName() == "__kmpc_for_static_init_8" ||
-                F->getName() == "__kmpc_for_static_init_8u") {
-              kmpcCall.push_back(CI);
-            }
-          }
-        }
-    if (kmpcCall.size() > 1) {
-      for (auto call : kmpcCall) {
-        EmitFailure("MultiOMPForInParallel", call->getDebugLoc(), call,
-                    " multiple OpenMP for loops within a single parallel not "
-                    "yet handled",
-                    *call);
-      }
-      llvm_unreachable("Unhandled OpenMP input");
-    }
-  }
+        uncacheable_args(uncacheable_args), mode(mode), omp(omp) {}
 
   bool is_value_mustcache_from_origin(Value *obj) {
     if (seen.find(obj) != seen.end())

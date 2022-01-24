@@ -422,17 +422,20 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
   assert(loopContexts[L].preheader && "loop must have preheader");
   getExitBlocks(L, loopContexts[L].exitBlocks);
 
+  loopContexts[L].offset = nullptr;
+  loopContexts[L].allocLimit = nullptr;
   auto pair = InsertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
   PHINode *CanonicalIV = pair.first;
+  auto incVar = pair.second;
   assert(CanonicalIV);
   loopContexts[L].var = CanonicalIV;
-  loopContexts[L].incvar = pair.second;
+  loopContexts[L].incvar = incVar;
   RemoveRedundantIVs(
       loopContexts[L].header, CanonicalIV, SE,
       [&](Instruction *I, Value *V) { replaceAWithB(I, V); },
       [&](Instruction *I) { erase(I); });
   CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
-                      CanonicalIV, SE, *this, pair.second,
+                      CanonicalIV, SE, *this, incVar,
                       getLatches(L, loopContexts[L].exitBlocks));
   loopContexts[L].antivaralloc =
       IRBuilder<>(inversionAllocs)
@@ -537,6 +540,119 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
 
     if (CanonicalIV == nullptr) {
       report_fatal_error("Couldn't get canonical IV.");
+    }
+
+    LoadInst *omp_lb_post = nullptr;
+
+    SmallPtrSet<const SCEV *, 2> PotentialMins;
+    SmallVector<const SCEV *, 2> Todo = {Limit};
+    while (Todo.size()) {
+      auto S = Todo.back();
+      Todo.pop_back();
+      if (auto SA = dyn_cast<SCEVSMaxExpr>(S)) {
+        for (auto op : SA->operands())
+          Todo.push_back(op);
+      } else if (auto SA = dyn_cast<SCEVUMaxExpr>(S)) {
+        for (auto op : SA->operands())
+          Todo.push_back(op);
+      } else if (auto SA = dyn_cast<SCEVAddExpr>(S)) {
+        for (auto op : SA->operands())
+          Todo.push_back(op);
+      } else
+        PotentialMins.insert(S);
+    }
+    for (auto op : PotentialMins) {
+      auto SM = dyn_cast<SCEVMulExpr>(op);
+      if (!SM)
+        continue;
+      if (SM->getNumOperands() != 2)
+        continue;
+      if (auto C = dyn_cast<SCEVConstant>(SM->getOperand(0))) {
+        // is minus 1
+        if (C->getAPInt().isAllOnesValue()) {
+          const SCEV *prev = SM->getOperand(1);
+          while (true) {
+            if (auto ext = dyn_cast<SCEVZeroExtendExpr>(prev)) {
+              prev = ext->getOperand();
+              continue;
+            }
+            if (auto ext = dyn_cast<SCEVSignExtendExpr>(prev)) {
+              prev = ext->getOperand();
+              continue;
+            }
+            break;
+          }
+          if (auto V = dyn_cast<SCEVUnknown>(prev)) {
+            if (omp_lb_post = dyn_cast<LoadInst>(V->getValue()))
+              break;
+          }
+        }
+      }
+      if (auto C = dyn_cast<SCEVConstant>(SM->getOperand(1))) {
+        // is minus 1
+        if (C->getAPInt().isAllOnesValue()) {
+          const SCEV *prev = SM->getOperand(0);
+          while (true) {
+            if (auto ext = dyn_cast<SCEVZeroExtendExpr>(prev)) {
+              prev = ext->getOperand();
+              continue;
+            }
+            if (auto ext = dyn_cast<SCEVSignExtendExpr>(prev)) {
+              prev = ext->getOperand();
+              continue;
+            }
+            break;
+          }
+          if (auto V = dyn_cast<SCEVUnknown>(prev)) {
+            if (omp_lb_post = dyn_cast<LoadInst>(V->getValue()))
+              break;
+          }
+        }
+      }
+    }
+    CallInst *initCall = nullptr;
+    if (omp_lb_post) {
+      auto AI = dyn_cast<AllocaInst>(omp_lb_post->getPointerOperand());
+      if (AI) {
+        for (auto u : AI->users()) {
+          CallInst *call = dyn_cast<CallInst>(u);
+          if (!call)
+            continue;
+          Function *F = call->getCalledFunction();
+          if (!F)
+            continue;
+          if (F->getName() == "__kmpc_for_static_init_4" ||
+              F->getName() == "__kmpc_for_static_init_4u" ||
+              F->getName() == "__kmpc_for_static_init_8" ||
+              F->getName() == "__kmpc_for_static_init_8u") {
+            initCall = call;
+          }
+        }
+      }
+    }
+    if (initCall) {
+      Value *lb = nullptr;
+      for (auto u : initCall->getArgOperand(4)->users()) {
+        if (auto si = dyn_cast<StoreInst>(u)) {
+          lb = si->getValueOperand();
+          break;
+        }
+      }
+      assert(lb);
+      Value *ub = nullptr;
+      for (auto u : initCall->getArgOperand(5)->users()) {
+        if (auto si = dyn_cast<StoreInst>(u)) {
+          ub = si->getValueOperand();
+          break;
+        }
+      }
+      assert(ub);
+      IRBuilder<> post(omp_lb_post->getNextNode());
+      loopContexts[L].allocLimit = post.CreateZExtOrTrunc(
+          post.CreateSub(ub, lb), CanonicalIV->getType());
+      loopContexts[L].offset = post.CreateZExtOrTrunc(
+          post.CreateSub(omp_lb_post, lb, "", true, true),
+          CanonicalIV->getType());
     }
 
     if (Limit->getType() != CanonicalIV->getType())
@@ -705,6 +821,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           malloccall =
               cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
         }
+        for (auto &actx : sublimits[i].second) {
+          if (actx.first.offset) {
+            malloccall->setMetadata("enzyme_ompfor",
+                                    MDNode::get(malloccall->getContext(), {}));
+            break;
+          }
+        }
 
         if (EnzymeZeroCache && i == 0) {
           Value *args[] = {
@@ -852,8 +975,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       IRBuilder<> v(&sublimits[i - 1].second.back().first.preheader->back());
 
       Value *idx = computeIndexOfChunk(
-          /*inForwardPass*/ true, v, containedloops,
-          ((unsigned)i == sublimits.size() - 1) ? ompOffset : nullptr);
+          /*inForwardPass*/ true, v, containedloops);
 
       storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
       cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
@@ -864,8 +986,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
 Value *CacheUtility::computeIndexOfChunk(
     bool inForwardPass, IRBuilder<> &v,
-    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
-    Value *outerOffset) {
+    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops) {
   // List of loop indices in chunk from innermost to outermost
   SmallVector<Value *, 3> indices;
   // List of cumulative indices in chunk from innermost to outermost
@@ -894,8 +1015,8 @@ Value *CacheUtility::computeIndexOfChunk(
       var = idx.var;
       available[idx.var] = var;
     }
-    if (i == containedloops.size() - 1 && outerOffset) {
-      var = v.CreateAdd(var, lookupM(outerOffset, v), "", /*NUW*/ true,
+    if (idx.offset) {
+      var = v.CreateAdd(var, lookupM(idx.offset, v), "", /*NUW*/ true,
                         /*NSW*/ true);
     }
 
@@ -959,6 +1080,8 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
     idx.dynamic = false;
     idx.parent = nullptr;
     idx.exitBlocks = {};
+    idx.offset = nullptr;
+    idx.allocLimit = nullptr;
     contexts.push_back(idx);
   }
 
@@ -969,10 +1092,6 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
     }
     contexts.emplace_back(idx);
     blk = idx.preheader;
-  }
-  if (ompTrueLimit && contexts.size()) {
-    contexts.back().trueLimit = ompTrueLimit;
-    contexts.back().maxLimit = ompTrueLimit;
   }
 
   // Legal preheaders for loop i (indexed from inner => outer)
@@ -1024,9 +1143,13 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
       IRBuilder<> allocationBuilder(&allocationPreheaders[i]->back());
       Value *limitMinus1 = nullptr;
 
+      Value *limit = contexts[i].maxLimit;
+      if (contexts[i].allocLimit)
+        limit = contexts[i].allocLimit;
+
       // Attempt to compute the limit of this loop at the corresponding
       // allocation preheader. This is null if it was not legal to compute
-      limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,
+      limitMinus1 = unwrapM(limit, allocationBuilder, prevMap,
                             UnwrapMode::AttemptFullUnwrap);
 
       // We have a loop with static bounds, but whose limit is not available
@@ -1034,18 +1157,21 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
       // loop of triangular iteration domain) Handle this case like a dynamic
       // loop and create a new chunk.
       if (limitMinus1 == nullptr) {
-        EmitWarning("NoOuterLimit",
-                    cast<Instruction>(&*contexts[i].maxLimit)->getDebugLoc(),
-                    newFunc,
-                    cast<Instruction>(&*contexts[i].maxLimit)->getParent(),
+        EmitWarning("NoOuterLimit", cast<Instruction>(&*limit)->getDebugLoc(),
+                    newFunc, cast<Instruction>(&*limit)->getParent(),
                     "Could not compute outermost loop limit by moving value ",
-                    *contexts[i].maxLimit, " computed at block",
-                    contexts[i].header->getName(), " function ",
-                    contexts[i].header->getParent()->getName());
+                    *limit, " computed at block", contexts[i].header->getName(),
+                    " function ", contexts[i].header->getParent()->getName());
         allocationPreheaders[i] = contexts[i].preheader;
         allocationBuilder.SetInsertPoint(&allocationPreheaders[i]->back());
-        limitMinus1 = unwrapM(contexts[i].maxLimit, allocationBuilder, prevMap,
+        limitMinus1 = unwrapM(limit, allocationBuilder, prevMap,
                               UnwrapMode::AttemptFullUnwrap);
+        if (limitMinus1 == nullptr) {
+          llvm::errs() << *contexts[i].preheader->getParent() << "\n";
+          llvm::errs() << "block: " << *allocationPreheaders[i] << "\n";
+          llvm::errs() << "limit: " << *limit << "\n";
+        }
+        assert(limitMinus1 != nullptr);
       } else if (i == 0 && extraSize &&
                  unwrapM(extraSize, allocationBuilder, prevMap,
                          UnwrapMode::AttemptFullUnwrap) == nullptr) {
@@ -1355,9 +1481,7 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
     const auto &containedloops = sublimits[i].second;
 
     if (containedloops.size() > 0) {
-      Value *idx = computeIndexOfChunk(
-          inForwardPass, BuilderM, containedloops,
-          ((unsigned)i == sublimits.size() - 1) ? ompOffset : nullptr);
+      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops);
       if (EfficientBoolCache && isi1 && i == 0)
         idx = BuilderM.CreateLShr(
             idx, ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));

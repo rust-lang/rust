@@ -7433,6 +7433,7 @@ public:
               orig_ops[i] = orig->getOperand(i);
             }
             handleAdjointForIntrinsic(ID, *orig, orig_ops);
+            eraseIfUnused(*orig);
             return;
           }
         }

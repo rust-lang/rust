@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -early-cse -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -adce -correlated-propagation -simplifycfg -S -early-cse | FileCheck %s
 
 ; void __enzyme_autodiff(void*, ...);
 
@@ -69,10 +69,8 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn) #0 {
 ; CHECK-NEXT: entry:
-; TODO-CHECK-NEXT:   %0 = icmp ugt i32 %N, 1
-; TODO-CHECK-NEXT:   %umax = select i1 %0, i32 %N, i32 1
-; CHECK:   %[[a1:.+]] = zext i32 %umax to i64
-; CHECK-NEXT:   %[[a2:.+]] = add nuw{{( nsw)?}} i64 %[[a1]], 1
+; TODO-NEXT:   %[[a1:.+]] = zext i32 %N to i64
+; CHECK:   %[[a2:.+]] = add{{( nuw)?}}{{( nsw)?}} i64 %[[a1:.+]], 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a2]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
 ; CHECK-NEXT:   %_malloccache = bitcast i8* %malloccall to double*
@@ -101,10 +99,11 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body:                                   ; preds = %incinvertfor.body, %for.cond.cleanup
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
+; CHECK:   %"add'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"add'de.0", %incinvertfor.body ]
+; CHECK:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
 ; CHECK-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, !invariant.group !6
-; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %[[a7]]
+; CHECK-NEXT:   %m0diffe = fmul fast double %"add'de.0", %[[a7]]
 ; CHECK-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32
 ; CHECK-NEXT:   %idxprom_unwrap = zext i32 %[[unwrap]] to i64

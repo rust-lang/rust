@@ -1,4 +1,4 @@
-; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -S | FileCheck %s; fi
+; RUN: if [ %llvmver -ge 9 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -simplifycfg -S | FileCheck %s; fi
 
 source_filename = "lulesh.cc"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
@@ -133,28 +133,27 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   store i64 %sub4, i64* %.omp.ub_smpl
 ; CHECK-NEXT:   store i64 1, i64* %.omp.stride_smpl
 ; CHECK-NEXT:   call void @__kmpc_for_static_init_8u(%struct.ident_t* nonnull @1, i32 %1, i32 34, i32* nonnull %.omp.is_last, i64* nocapture nonnull %.omp.lb_smpl, i64* nocapture nonnull %.omp.ub_smpl, i64* nocapture nonnull %.omp.stride_smpl, i64 1, i64 1)
-; CHECK-NEXT:   %2 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %3 = load i64, i64* %.omp.ub_smpl
-; CHECK-NEXT:   %4 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %cmp6 = icmp ugt i64 %3, %sub4
-; CHECK-NEXT:   %cond = select i1 %cmp6, i64 %sub4, i64 %3
+; CHECK-NEXT:   %[[ub:.+]] = load i64, i64* %.omp.ub_smpl
+; CHECK-NEXT:   %[[lb:.+]] = load i64, i64* %.omp.lb_smpl
+; CHECK-NEXT:   %cmp6 = icmp ugt i64 %[[ub]], %sub4
+; CHECK-NEXT:   %cond = select i1 %cmp6, i64 %sub4, i64 %[[ub]]
 ; CHECK-NEXT:   %add29 = add i64 %cond, 1
-; CHECK-NEXT:   %cmp730 = icmp ult i64 %4, %add29
+; CHECK-NEXT:   %cmp730 = icmp ult i64 %[[lb]], %add29
 ; CHECK-NEXT:   br i1 %cmp730, label %omp.inner.for.body, label %omp.loop.exit
 
 ; CHECK: omp.inner.for.body:                               ; preds = %omp.precond.then, %omp.inner.for.body
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %omp.inner.for.body ], [ 0, %omp.precond.then ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %5 = add i64 
-;                            %4, %iv
-; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %tmp, i64 %5
-; CHECK-NEXT:   %6 = load double, double* %arrayidx, align 8, !tbaa !9
-; CHECK-NEXT:   %call = call double @sqrt(double %6)
+; CHECK-NEXT:   %[[true1iv:.+]] = add i64 
+;                            %[[lb]], %iv
+; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %tmp, i64 %[[true1iv]]
+; CHECK-NEXT:   %[[ld:.+]] = load double, double* %arrayidx, align 8, !tbaa !9
+; CHECK-NEXT:   %call = call double @sqrt(double %[[ld]])
 ; CHECK-NEXT:   store double %call, double* %arrayidx, align 8, !tbaa !9
-; CHECK-NEXT:   %7 = add nuw nsw i64 %iv, %2
-; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %0, i64 %7
-; CHECK-NEXT:   store double %6, double* %8, align 8, !invariant.group !13
-; CHECK-NEXT:   %add11 = add nuw i64 %5, 1
+; CHECK-NEXT:   %[[trueiv:.+]] = add nuw nsw i64 %iv, %[[lb]]
+; CHECK-NEXT:   %[[loc:.+]] = getelementptr inbounds double, double* %0, i64 %[[trueiv]]
+; CHECK-NEXT:   store double %[[ld]], double* %[[loc]], align 8, !invariant.group !
+; CHECK-NEXT:   %add11 = add nuw i64 %[[true1iv]], 1
 ; CHECK-NEXT:   %add = add nuw i64 %cond, 1
 ; CHECK-NEXT:   %cmp7 = icmp ult i64 %add11, %add
 ; CHECK-NEXT:   br i1 %cmp7, label %omp.inner.for.body, label %omp.loop.exit
@@ -185,79 +184,49 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   store i64 %sub4, i64* %.omp.ub_smpl
 ; CHECK-NEXT:   store i64 1, i64* %.omp.stride_smpl
 ; CHECK-NEXT:   call void @__kmpc_for_static_init_8u(%struct.ident_t* nonnull @1, i32 %0, i32 34, i32* nonnull %.omp.is_last, i64* nocapture nonnull %.omp.lb_smpl, i64* nocapture nonnull %.omp.ub_smpl, i64* nocapture nonnull %.omp.stride_smpl, i64 1, i64 1)
-; CHECK-NEXT:   %1 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %2 = load i64, i64* %.omp.ub_smpl
-; CHECK-NEXT:   %3 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %cmp6 = icmp ugt i64 %2, %sub4
-; CHECK-NEXT:   %cond = select i1 %cmp6, i64 %sub4, i64 %2
-; CHECK-NEXT:   %add29 = add i64 %cond, 1
-; CHECK-NEXT:   %cmp730 = icmp ult i64 %3, %add29
-; CHECK-NEXT:   br i1 %cmp730, label %omp.inner.for.body, label %invertomp.precond.end
+; CHECK-NEXT:   %[[_unwrap7:.+]] = load i64, i64* %.omp.lb_smpl
+; CHECK-NEXT:   %[[_unwrap8:.+]] = load i64, i64* %.omp.ub_smpl
+; CHECK-NEXT:   %[[cmp6_unwrap:.+]] = icmp ugt i64 %[[_unwrap8]], %sub4
+; CHECK-NEXT:   %[[cond_unwrap:.+]] = select i1 %[[cmp6_unwrap]], i64 %sub4, i64 %[[_unwrap8]]
+; CHECK-NEXT:   %[[add29_unwrap:.+]] = add i64 %[[cond_unwrap]], 1
+; CHECK-NEXT:   %[[cmp730_unwrap:.+]] = icmp ult i64 %[[_unwrap7]], %[[add29_unwrap]]
+; CHECK-NEXT:   br i1 %[[cmp730_unwrap]], label %invertomp.loop.exit.loopexit, label %invertomp.precond.then
 
-; CHECK: omp.inner.for.body:                               ; preds = %omp.precond.then, %omp.inner.for.body
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %omp.inner.for.body ], [ 0, %omp.precond.then ]
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %4 = add i64
-;                            %3, %iv
-; CHECK-NEXT:   %5 = add nuw nsw i64 %iv, %1
-; CHECK-NEXT:   %6 = getelementptr inbounds double, double* %truetape, i64 %5
-; CHECK-NEXT:   %7 = load double, double* %6, align 8, !invariant.group !19
-; CHECK-NEXT:   %call = call double @sqrt(double %7)
-; CHECK-NEXT:   %add11 = add nuw i64 %4, 1
-; CHECK-NEXT:   %add = add nuw i64 %cond, 1
-; CHECK-NEXT:   %cmp7 = icmp ult i64 %add11, %add
-; CHECK-NEXT:   br i1 %cmp7, label %omp.inner.for.body, label %invertomp.precond.end
-
-; CHECK: invertentry:                                      ; preds = %entry, %invertomp.precond.end, %invertomp.precond.then
+; CHECK: invertentry:  
 ; CHECK-NEXT:   ret void
 
-; CHECK: invertomp.precond.then:                           ; preds = %invertomp.inner.for.body, %invertomp.loop.exit
+; CHECK: invertomp.precond.then: 
 ; CHECK-NEXT:   %_unwrap = load i32, i32* %.global_tid., align 4, !tbaa !7, !invariant.group !15
 ; CHECK-NEXT:   call void @__kmpc_for_static_fini(%struct.ident_t* @1, i32 %_unwrap)
 ; CHECK-NEXT:   br label %invertentry
 
-; CHECK: invertomp.inner.for.body:                         ; preds = %invertomp.loop.exit.loopexit, %incinvertomp.inner.for.body
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap9, %invertomp.loop.exit.loopexit ], [ %19, %incinvertomp.inner.for.body ]
+; CHECK: invertomp.inner.for.body: 
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap8, %invertomp.loop.exit.loopexit ], [ %[[i19:.+]], %incinvertomp.inner.for.body ] 
 ; CHECK-NEXT:   %_unwrap2 = load i64, i64* %.omp.lb_smpl
 ; CHECK-NEXT:   %_unwrap3 = add i64 %_unwrap2, %"iv'ac.0"
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"tmp'", i64 %_unwrap3
-; CHECK-NEXT:   %8 = load double, double* %"arrayidx'ipg_unwrap", align 8
+; CHECK-NEXT:   %[[i8:.+]] = load double, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
-; CHECK-NEXT:   %_unwrap5 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %9 = add nuw nsw i64 %"iv'ac.0", %_unwrap5
-; CHECK-NEXT:   %10 = getelementptr inbounds double, double* %truetape, i64 %9
-; CHECK-NEXT:   %11 = load double, double* %10, align 8, !invariant.group !20
-; CHECK-NEXT:   %12 = call fast double @llvm.sqrt.f64(double %11)
-; CHECK-NEXT:   %13 = fmul fast double 5.000000e-01, %8
-; CHECK-NEXT:   %14 = fdiv fast double %13, %12
-; CHECK-NEXT:   %15 = fcmp fast oeq double %11, 0.000000e+00
-; CHECK-NEXT:   %16 = select fast i1 %15, double 0.000000e+00, double %14
-; CHECK-NEXT:   %17 = atomicrmw fadd double* %"arrayidx'ipg_unwrap", double %16 monotonic
-; CHECK-NEXT:   %18 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %18, label %invertomp.precond.then, label %incinvertomp.inner.for.body
+; CHECK-NEXT:   %[[i9:.+]] = add nuw nsw i64 %"iv'ac.0", %_unwrap2
+; CHECK-NEXT:   %[[i10:.+]] = getelementptr inbounds double, double* %truetape, i64 %[[i9]]
+; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !invariant.group !
+; CHECK-NEXT:   %[[i12:.+]] = call fast double @llvm.sqrt.f64(double %[[i11]])
+; CHECK-NEXT:   %[[i13:.+]] = fmul fast double 5.000000e-01, %[[i8]]
+; CHECK-NEXT:   %[[i14:.+]] = fdiv fast double %[[i13]], %[[i12]]
+; CHECK-NEXT:   %[[i15:.+]] = fcmp fast oeq double %[[i11]], 0.000000e+00
+; CHECK-NEXT:   %[[i16:.+]] = select fast i1 %[[i15]], double 0.000000e+00, double %[[i14]]
+; CHECK-NEXT:   %[[i17:.+]] = atomicrmw fadd double* %"arrayidx'ipg_unwrap", double %[[i16]] monotonic
+; CHECK-NEXT:   %[[i18:.+]] = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %[[i18]], label %invertomp.precond.then, label %incinvertomp.inner.for.body
 
-; CHECK: incinvertomp.inner.for.body:                      ; preds = %invertomp.inner.for.body
-; CHECK-NEXT:   %19 = add nsw i64 %"iv'ac.0", -1
+; CHECK: incinvertomp.inner.for.body: 
+; CHECK-NEXT:   %[[i19]] = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %invertomp.inner.for.body
 
-; CHECK: invertomp.loop.exit.loopexit:                     ; preds = %invertomp.loop.exit
-; CHECK-NEXT:   %_unwrap7 = load i64, i64* %.omp.ub_smpl
-; CHECK-NEXT:   %cmp6_unwrap = icmp ugt i64 %_unwrap7, %sub4
-; CHECK-NEXT:   %cond_unwrap = select i1 %cmp6_unwrap, i64 %sub4, i64 %_unwrap7
-; CHECK-NEXT:   %_unwrap8 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %_unwrap9 = sub i64 %cond_unwrap, %_unwrap8
+; CHECK: invertomp.loop.exit.loopexit:                     ; preds = %omp.precond.then
+; CHECK-NEXT:   %_unwrap6 = load i64, i64* %.omp.ub_smpl
+; CHECK-NEXT:   %cmp6_unwrap = icmp ugt i64 %_unwrap6, %sub4
+; CHECK-NEXT:   %cond_unwrap = select i1 %cmp6_unwrap, i64 %sub4, i64 %_unwrap6
+; CHECK-NEXT:   %_unwrap7 = load i64, i64* %.omp.lb_smpl
+; CHECK-NEXT:   %_unwrap8 = sub i64 %cond_unwrap, %_unwrap7
 ; CHECK-NEXT:   br label %invertomp.inner.for.body
-
-; CHECK: invertomp.loop.exit:                              ; preds = %invertomp.precond.end
-; CHECK-NEXT:   %_unwrap10 = load i64, i64* %.omp.lb_smpl
-; CHECK-NEXT:   %_unwrap11 = load i64, i64* %.omp.ub_smpl
-; CHECK-NEXT:   %cmp6_unwrap12 = icmp ugt i64 %_unwrap11, %sub4
-; CHECK-NEXT:   %cond_unwrap13 = select i1 %cmp6_unwrap12, i64 %sub4, i64 %_unwrap11
-; CHECK-NEXT:   %add29_unwrap = add i64 %cond_unwrap13, 1
-; CHECK-NEXT:   %cmp730_unwrap = icmp ult i64 %_unwrap10, %add29_unwrap
-; CHECK-NEXT:   br i1 %cmp730_unwrap, label %invertomp.loop.exit.loopexit, label %invertomp.precond.then
-
-; CHECK: invertomp.precond.end:                            ; preds = %omp.inner.for.body, %omp.precond.then
-; CHECK-NEXT:   br i1 %cmp.not, label %invertentry, label %invertomp.loop.exit
-; CHECK-NEXT: }
-
