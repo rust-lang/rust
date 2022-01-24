@@ -5,6 +5,7 @@ use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
+use rustc_ast::ptr::P;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -1402,9 +1403,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
     }
 
-    fn get_macro(self, id: DefIndex, sess: &Session) -> MacroDef {
+    fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.kind(id) {
-            EntryKind::MacroDef(macro_def) => macro_def.decode((self, sess)),
+            EntryKind::MacroDef(mac_args, macro_rules) => {
+                ast::MacroDef { body: P(mac_args.decode((self, sess))), macro_rules }
+            }
             _ => bug!(),
         }
     }
