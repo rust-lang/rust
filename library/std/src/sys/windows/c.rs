@@ -3,7 +3,7 @@
 #![allow(nonstandard_style)]
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
-
+#![allow(unused)]
 use crate::mem;
 use crate::os::raw::NonZero_c_ulong;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};

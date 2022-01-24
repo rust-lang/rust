@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsString;
@@ -605,6 +606,66 @@ impl File {
     }
 }
 
+/// Represents a directory.
+///
+/// Wraps a `File`.
+struct Win32Directory {
+    dir: File,
+    path: PathBuf,
+}
+impl Win32Directory {
+    fn new(dir: File, path: PathBuf) -> Self {
+        Self { dir, path }
+    }
+    fn from_path(path: PathBuf) -> io::Result<Self> {
+        let mut opts = OpenOptions::new();
+        opts.share_mode(c::FILE_SHARE_READ);
+        opts.access_mode(c::DELETE | c::FILE_LIST_DIRECTORY);
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
+        let dir = File::open(&path, &opts).or_else(|e| {
+            if e.kind() == io::ErrorKind::PermissionDenied {
+                opts.access_mode(c::DELETE);
+                File::open(&path, &opts)
+            } else {
+                Err(e)
+            }
+        })?;
+        Ok(Win32Directory { dir, path: path })
+    }
+    fn open_dir(&self, name: &OsString) -> io::Result<Win32Directory> {
+        let path = self.path.join(name);
+        Self::from_path(path)
+    }
+    fn open_file(&self, name: &OsString) -> io::Result<File> {
+        let path = self.path.join(name);
+        let mut opts = OpenOptions::new();
+        opts.share_mode(c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE);
+        opts.access_mode(c::DELETE);
+        opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT);
+        File::open(&path, &opts)
+    }
+}
+impl crate::ops::Deref for Win32Directory {
+    type Target = File;
+    fn deref(&self) -> &Self::Target {
+        &self.dir
+    }
+}
+
+enum FileOrDirectory {
+    File(File),
+    Directory(Win32Directory),
+}
+impl crate::ops::Deref for FileOrDirectory {
+    type Target = File;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::File(file) => file,
+            Self::Directory(dir) => dir,
+        }
+    }
+}
+
 /// A buffer that holds the contents of a directory.
 ///
 /// FIXME: This in the effect doing the same thing as `ReadDir` above but using
@@ -617,7 +678,7 @@ impl File {
 /// So if you open a link (not its target) and iterate the directory,
 /// you will always iterate an empty directory regardless of the target.
 struct DirBuff {
-    dir: File,
+    dir: Win32Directory,
     cursor: usize,
     buffer: [u8; Self::BUFFER_SIZE],
     is_empty: bool,
@@ -625,13 +686,18 @@ struct DirBuff {
 impl DirBuff {
     const BUFFER_SIZE: usize = 1024;
 
-    fn new(dir: File) -> io::Result<Self> {
-        let mut this = Self { dir, cursor: 0, buffer: [0; Self::BUFFER_SIZE], is_empty: false };
+    fn new(dir: Win32Directory) -> io::Result<Self> {
+        let mut this = Self {
+            dir, //: Win32Directory::new(dir, path),
+            cursor: 0,
+            buffer: [0; Self::BUFFER_SIZE],
+            is_empty: false,
+        };
         this.refill(true)?;
 
         // Skip `.` and `..` pseudo entries.
         const DOT: u16 = b'.' as u16;
-        while let (false, [DOT] | [DOT, DOT]) = (this.is_empty(), this.entry()) {
+        while let (false, [DOT] | [DOT, DOT]) = (this.is_empty(), this.entry().0) {
             this.advance()?;
         }
         Ok(this)
@@ -639,18 +705,17 @@ impl DirBuff {
     fn is_empty(&self) -> bool {
         self.is_empty
     }
-    fn open_entry(&mut self) -> Option<io::Result<File>> {
+    fn open_current(&mut self) -> Option<io::Result<FileOrDirectory>> {
         if self.is_empty {
             return None;
         }
-        let mut result = open_link_no_reparse(
-            &self.dir,
-            self.entry(),
-            c::SYNCHRONIZE | c::DELETE | c::FILE_LIST_DIRECTORY,
-        );
-        if matches!(&result, Err(e) if e.kind() == io::ErrorKind::PermissionDenied) {
-            result = open_link_no_reparse(&self.dir, self.entry(), c::SYNCHRONIZE | c::DELETE);
-        }
+        let (name, attrs) = self.entry();
+        let name = OsString::from_wide(name);
+        let result = if (attrs & c::FILE_ATTRIBUTE_DIRECTORY) == 0 {
+            self.dir.open_file(&name).map(|f| FileOrDirectory::File(f))
+        } else {
+            self.dir.open_dir(&name).map(|d| FileOrDirectory::Directory(d))
+        };
         Some(result)
     }
     /// Get a raw pointer to the current entry information.
@@ -659,15 +724,17 @@ impl DirBuff {
     }
 
     /// Get the current entry's filename.
-    fn entry(&self) -> &[u16] {
+    fn entry(&self) -> (&[u16], u32) {
         // SAFETY: The buffer contains a `FILE_ID_BOTH_DIR_INFO` struct but the
         // last field (the file name) is unsized. So we don't use references here.
         unsafe {
             let info = self.info();
-            crate::slice::from_raw_parts(
+            let name = crate::slice::from_raw_parts(
                 (*info).FileName.as_ptr().cast::<u16>(),
                 (*info).FileNameLength as usize / crate::mem::size_of::<u16>(),
-            )
+            );
+            let attrs = (*info).FileAttributes;
+            (name, attrs)
         }
     }
     /// Advance the cursor to the next entry. Returns `Ok(false)` if there
@@ -976,6 +1043,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 /// Open a file or directory without following symlinks.
 fn open_link(path: &Path, access_mode: u32) -> io::Result<File> {
     let mut opts = OpenOptions::new();
+    opts.share_mode(c::FILE_SHARE_READ);
     opts.access_mode(access_mode);
     // `FILE_FLAG_BACKUP_SEMANTICS` allows opening directories.
     // `FILE_FLAG_OPEN_REPARSE_POINT` opens a link instead of its target.
@@ -1015,16 +1083,16 @@ fn remove_dir_all_loop(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Res
     // and the file actually being deleted from the filesystem.
     //
     // So we retry a few times before giving up.
-    const RETRIES: usize = 5;
+    const RETRIES: usize = 10;
 
     let mut stack = Vec::new();
     // Push the file on the stack. We duplicate it here so we can keep hold of
     // the original for later retries.
-    stack.push(DirBuff::new(f.duplicate()?)?);
+    stack.push(DirBuff::new(Win32Directory::new(f.duplicate()?, get_path(f)?))?);
 
     while let Some(mut directory) = stack.pop() {
         let mut retry_count = RETRIES;
-        while let Some(result) = directory.open_entry() {
+        while let Some(result) = directory.open_current() {
             retry_count -= 1;
             match result {
                 Ok(file) => match delete(&file) {
@@ -1033,7 +1101,10 @@ fn remove_dir_all_loop(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Res
                         retry_count = RETRIES;
 
                         stack.push(directory);
-                        directory = DirBuff::new(file)?;
+                        directory = DirBuff::new(match file {
+                            FileOrDirectory::File(_) => return Err(e),
+                            FileOrDirectory::Directory(d) => d,
+                        })?;
 
                         continue; // Recursion.
                     }
