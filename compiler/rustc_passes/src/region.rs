@@ -278,10 +278,6 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
         }
     }
     impl<'a, 'b> Visitor<'a> for LocalAccessResolutionVisitor<'b> {
-        type Map = intravisit::ErasedMap<'a>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
         fn visit_expr(&mut self, expr: &'a Expr<'a>) {
             match expr.kind {
                 hir::ExprKind::AddrOf(..)
@@ -290,7 +286,8 @@ fn mark_local_terminating_scopes<'tcx>(expr: &'tcx hir::Expr<'tcx>) -> FxHashSet
                 | hir::ExprKind::Index(..)
                 | hir::ExprKind::Path(..) => self.probe(expr),
 
-                // We do not probe into other function bodies or blocks.
+                // We do not probe into other function bodies or blocks,
+                // neither `if`s and `match`es because they will be covered in deeper visits
                 hir::ExprKind::If(..)
                 | hir::ExprKind::Match(..)
                 | hir::ExprKind::Block(..)
