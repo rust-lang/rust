@@ -19,7 +19,7 @@ pub fn modify(s: S) -> S {
 
 #[repr(packed)]
 pub struct TooBig {
-    a: u64,
+    a: u128,
     b: u32,
     c: u32,
     d: u8,

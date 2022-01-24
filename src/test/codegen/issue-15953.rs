@@ -1,14 +1,17 @@
 // Test that llvm generates `memcpy` for moving a value
 // inside a function and moving an argument.
 
+// NOTE(eddyb) this has to be large enough to never be passed in registers.
+type BigWithDrop = [String; 2];
+
 struct Foo {
-    x: Vec<i32>,
+    x: BigWithDrop,
 }
 
 #[inline(never)]
 #[no_mangle]
 // CHECK: memcpy
-fn interior(x: Vec<i32>) -> Vec<i32> {
+fn interior(x: BigWithDrop) -> BigWithDrop {
     let Foo { x } = Foo { x: x };
     x
 }
@@ -16,14 +19,14 @@ fn interior(x: Vec<i32>) -> Vec<i32> {
 #[inline(never)]
 #[no_mangle]
 // CHECK: memcpy
-fn exterior(x: Vec<i32>) -> Vec<i32> {
+fn exterior(x: BigWithDrop) -> BigWithDrop {
     x
 }
 
 fn main() {
-    let x = interior(Vec::new());
+    let x = interior(BigWithDrop::default());
     println!("{:?}", x);
 
-    let x = exterior(Vec::new());
+    let x = exterior(BigWithDrop::default());
     println!("{:?}", x);
 }

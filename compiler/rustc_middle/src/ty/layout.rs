@@ -3214,9 +3214,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     _ => return,
                 }
 
-                // Pass and return structures up to 2 pointers in size by value, matching `ScalarPair`.
-                // LLVM will usually pass these in 2 registers, which is more efficient than by-ref.
-                let max_by_val_size = Pointer.size(self) * 2;
+                // Pass and return structures up to 3 pointers in size by value,
+                // similar to `ScalarPair`'s 2 values, but more widely applicable.
+                // LLVM will usually pass these in 3 registers, which is more efficient than by-ref.
+                let pointer_size = Pointer.size(self);
+                let max_by_val_size = pointer_size * 3;
                 let size = arg.layout.size;
 
                 if arg.layout.is_unsized() || size > max_by_val_size {
@@ -3224,8 +3226,24 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 } else {
                     // We want to pass small aggregates as immediates, but using
                     // a LLVM aggregate type for this leads to bad optimizations,
-                    // so we pick an appropriately sized integer type instead.
-                    arg.cast_to(Reg { kind: RegKind::Integer, size });
+                    // so we pick an appropriately sized integer type instead,
+                    // for anything small enough.
+                    let cast_target = if size > pointer_size * 2 {
+                        // This will end up as either a mixed aggregate,
+                        // or `[usize; N]` if `size == pointer_size * N`.
+                        call::Uniform {
+                            unit: Reg { kind: RegKind::Integer, size: pointer_size },
+                            total: size,
+                        }
+                    } else {
+                        // FIXME(eddyb) what's the impact of this combining
+                        // several *unrelated* fields into one integer with a
+                        // non-physical size (e.g. `i96`)? this is likely
+                        // alleviated in common cases by `ScalarPair`, which is
+                        // handled more directly, and before "adjustments".
+                        Reg { kind: RegKind::Integer, size }.into()
+                    };
+                    arg.cast_to(cast_target);
                 }
             };
             fixup(&mut fn_abi.ret);
