@@ -1256,6 +1256,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
+    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
+
     fn landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>, _num_clauses: usize) -> RValue<'gcc> {
         let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
@@ -1293,10 +1297,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn add_handler(&mut self, _catch_switch: RValue<'gcc>, _handler: Block<'gcc>) {
         unimplemented!();
-    }
-
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
-        // TODO(antoyo)
     }
 
     // Atomic Operations
