@@ -7,7 +7,7 @@ Version 1.58.1 (2022-01-19)
 * [Fix wrong error message displayed when some imports are missing][91254]
 * [Fix rustfmt not formatting generated files from stdin][92912]
 
-[CVE-2022-21658]: https://www.cve.org/CVERecord?id=CVE-2022-21658]
+[CVE-2022-21658]: https://www.cve.org/CVERecord?id=CVE-2022-21658
 [91254]: https://github.com/rust-lang/rust/pull/91254
 [92912]: https://github.com/rust-lang/rust/pull/92912
 [clippy/8075]: https://github.com/rust-lang/rust-clippy/pull/8075
