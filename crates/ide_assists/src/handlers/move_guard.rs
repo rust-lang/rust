@@ -267,6 +267,31 @@ fn main() {
     }
 
     #[test]
+    fn move_let_guard_to_arm_body_works() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+fn main() {
+    match 92 {
+        x $0if (let 1 = x) => false,
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x => if (let 1 = x) {
+            false
+        },
+        _ => true
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn move_guard_to_arm_body_works_complex_match() {
         check_assist(
             move_guard_to_arm_body,
@@ -426,13 +451,21 @@ fn main() {
     }
 
     #[test]
-    fn move_arm_cond_to_match_guard_if_let_not_works() {
-        check_assist_not_applicable(
+    fn move_arm_cond_to_match_guard_if_let_works() {
+        check_assist(
             move_arm_cond_to_match_guard,
             r#"
 fn main() {
     match 92 {
-        x => if let 62 = x { $0false },
+        x => if let 62 = x && true { $0false },
+        _ => true
+    }
+}
+"#,
+            r#"
+fn main() {
+    match 92 {
+        x if let 62 = x && true => false,
         _ => true
     }
 }
@@ -884,7 +917,7 @@ fn main() {
 
     #[test]
     fn move_arm_cond_to_match_guard_elseif_iflet() {
-        check_assist_not_applicable(
+        check_assist(
             move_arm_cond_to_match_guard,
             r#"
 fn main() {
@@ -901,9 +934,21 @@ fn main() {
             4
         },
     }
-}
-"#,
-        )
+}"#,
+            r#"
+fn main() {
+    match 92 {
+        3 => 0,
+        x if x > 10 => 1,
+        x if x > 5 => 2,
+        x if let 4 = 4 => {
+            42;
+            3
+        }
+        x => 4,
+    }
+}"#,
+        );
     }
 
     #[test]

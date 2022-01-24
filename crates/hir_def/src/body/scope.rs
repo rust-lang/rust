@@ -542,4 +542,26 @@ fn test() {
             93,
         );
     }
+
+    #[test]
+    fn let_chains_can_reference_previous_lets() {
+        do_check_local_name(
+            r#"
+fn test() {
+    let foo: Option<i32> = None;
+    if let Some(spam) = foo && spa$0m > 1 && let Some(spam) = foo && spam > 1 {}
+}
+"#,
+            61,
+        );
+        do_check_local_name(
+            r#"
+fn test() {
+    let foo: Option<i32> = None;
+    if let Some(spam) = foo && spam > 1 && let Some(spam) = foo && sp$0am > 1 {}
+}
+"#,
+            100,
+        );
+    }
 }

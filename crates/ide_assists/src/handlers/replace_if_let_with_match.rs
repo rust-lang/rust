@@ -382,6 +382,18 @@ impl VariantData {
     }
 
     #[test]
+    fn test_if_let_with_match_let_chain() {
+        check_assist_not_applicable(
+            replace_if_let_with_match,
+            r#"
+fn main() {
+    if $0let true = true && let Some(1) = None {}
+}
+"#,
+        )
+    }
+
+    #[test]
     fn test_if_let_with_match_basic() {
         check_assist(
             replace_if_let_with_match,

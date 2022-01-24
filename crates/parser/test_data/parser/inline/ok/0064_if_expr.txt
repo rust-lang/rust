@@ -16,9 +16,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -30,9 +29,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -51,9 +49,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -65,9 +62,8 @@ SOURCE_FILE
             IF_EXPR
               IF_KW "if"
               WHITESPACE " "
-              CONDITION
-                LITERAL
-                  FALSE_KW "false"
+              LITERAL
+                FALSE_KW "false"
               WHITESPACE " "
               BLOCK_EXPR
                 STMT_LIST
@@ -86,12 +82,11 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              PATH_EXPR
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "S"
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "S"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -103,15 +98,14 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              BLOCK_EXPR
-                STMT_LIST
-                  L_CURLY "{"
-                  WHITESPACE " "
-                  LITERAL
-                    TRUE_KW "true"
-                  WHITESPACE " "
-                  R_CURLY "}"
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                LITERAL
+                  TRUE_KW "true"
+                WHITESPACE " "
+                R_CURLY "}"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST

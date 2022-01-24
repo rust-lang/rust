@@ -35,9 +35,8 @@ SOURCE_FILE
             WHITESPACE " "
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST

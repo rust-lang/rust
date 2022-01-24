@@ -16,9 +16,8 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -30,7 +29,7 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
+            LET_EXPR
               LET_KW "let"
               WHITESPACE " "
               TUPLE_STRUCT_PAT
@@ -69,15 +68,14 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              BLOCK_EXPR
-                STMT_LIST
-                  L_CURLY "{"
-                  WHITESPACE " "
-                  LITERAL
-                    TRUE_KW "true"
-                  WHITESPACE " "
-                  R_CURLY "}"
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                LITERAL
+                  TRUE_KW "true"
+                WHITESPACE " "
+                R_CURLY "}"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST

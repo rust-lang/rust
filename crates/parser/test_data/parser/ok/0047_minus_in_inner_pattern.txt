@@ -219,7 +219,7 @@ SOURCE_FILE
         IF_EXPR
           IF_KW "if"
           WHITESPACE " "
-          CONDITION
+          LET_EXPR
             LET_KW "let"
             WHITESPACE " "
             TUPLE_STRUCT_PAT

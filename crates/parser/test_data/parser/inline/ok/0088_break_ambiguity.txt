@@ -15,9 +15,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              BREAK_EXPR
-                BREAK_KW "break"
+            BREAK_EXPR
+              BREAK_KW "break"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -28,9 +27,8 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              BREAK_EXPR
-                BREAK_KW "break"
+            BREAK_EXPR
+              BREAK_KW "break"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
