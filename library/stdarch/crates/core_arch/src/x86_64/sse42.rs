@@ -10,7 +10,7 @@ extern "C" {
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
-/// CRC32 value for unsigned 64-bit integer `v`.
+/// CRC32-C value for unsigned 64-bit integer `v`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u64)
 #[inline]

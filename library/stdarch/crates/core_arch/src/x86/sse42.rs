@@ -520,7 +520,7 @@ pub unsafe fn _mm_cmpestra<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb:
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
-/// CRC32 value for unsigned 8-bit integer `v`.
+/// CRC32-C value for unsigned 8-bit integer `v`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u8)
 #[inline]
@@ -532,7 +532,7 @@ pub unsafe fn _mm_crc32_u8(crc: u32, v: u8) -> u32 {
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
-/// CRC32 value for unsigned 16-bit integer `v`.
+/// CRC32-C value for unsigned 16-bit integer `v`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u16)
 #[inline]
@@ -544,7 +544,7 @@ pub unsafe fn _mm_crc32_u16(crc: u32, v: u16) -> u32 {
 }
 
 /// Starting with the initial value in `crc`, return the accumulated
-/// CRC32 value for unsigned 32-bit integer `v`.
+/// CRC32-C value for unsigned 32-bit integer `v`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u32)
 #[inline]
