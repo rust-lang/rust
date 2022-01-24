@@ -227,7 +227,8 @@ pub trait Emitter {
         diag: &'a Diagnostic,
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = diag.span.clone();
-        if let Some((sugg, rest)) = diag.suggestions.split_first() {
+        let suggestions = diag.suggestions.as_ref().map_or(&[][..], |suggestions| &suggestions[..]);
+        if let Some((sugg, rest)) = suggestions.split_first() {
             if rest.is_empty() &&
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -282,10 +283,10 @@ pub trait Emitter {
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                (primary_span, &diag.suggestions)
+                (primary_span, suggestions)
             }
         } else {
-            (primary_span, &diag.suggestions)
+            (primary_span, suggestions)
         }
     }
 

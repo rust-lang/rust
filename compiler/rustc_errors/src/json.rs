@@ -345,7 +345,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let sugg = diag.suggestions.iter().map(|sugg| Diagnostic {
+        let sugg = diag.suggestions.iter().flatten().map(|sugg| Diagnostic {
             message: sugg.msg.clone(),
             code: None,
             level: "help",

@@ -262,7 +262,7 @@ pub fn struct_lint_level<'s, 'd>(
         if err.span.primary_spans().iter().any(|s| in_external_macro(sess, *s)) {
             // Any suggestions made here are likely to be incorrect, so anything we
             // emit shouldn't be automatically fixed by rustfix.
-            err.allow_suggestions(false);
+            err.disable_suggestions();
 
             // If this is a future incompatible that is not an edition fixing lint
             // it'll become a hard error, so we have to emit *something*. Also,
