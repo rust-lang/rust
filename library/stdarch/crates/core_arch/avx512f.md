@@ -1629,18 +1629,18 @@
   * [x] [`_mm_maskz_compress_pd`]
   * [x] [`_mm256_mask_compress_pd`]
   * [x] [`_mm256_maskz_compress_pd`]
-  * [ ] [`_mm512_mask_compressstoreu_epi32`] //need i1
-  * [_] [`_mm_mask_compressstoreu_epi32`] //need i1
-  * [_] [`_mm256_mask_compressstoreu_epi32`] //need i1
-  * [ ] [`_mm512_mask_compressstoreu_epi64`] //need i1
-  * [_] [`_mm_mask_compressstoreu_epi64`] //need i1
-  * [_] [`_mm256_mask_compressstoreu_epi64`] //need i1
-  * [ ] [`_mm512_mask_compressstoreu_ps`] //need i1
-  * [_] [`_mm_mask_compressstoreu_ps`] //need i1
-  * [_] [`_mm256_mask_compressstoreu_ps`] //need i1
-  * [ ] [`_mm512_mask_compressstoreu_pd`] //need i1
-  * [_] [`_mm_mask_compressstoreu_pd`] //need i1
-  * [_] [`_mm256_mask_compressstoreu_pd`] //need i1
+  * [x] [`_mm512_mask_compressstoreu_epi32`] //need i1
+  * [x] [`_mm_mask_compressstoreu_epi32`] //need i1
+  * [x] [`_mm256_mask_compressstoreu_epi32`] //need i1
+  * [x] [`_mm512_mask_compressstoreu_epi64`] //need i1
+  * [x] [`_mm_mask_compressstoreu_epi64`] //need i1
+  * [x] [`_mm256_mask_compressstoreu_epi64`] //need i1
+  * [x] [`_mm512_mask_compressstoreu_ps`] //need i1
+  * [x] [`_mm_mask_compressstoreu_ps`] //need i1
+  * [x] [`_mm256_mask_compressstoreu_ps`] //need i1
+  * [x] [`_mm512_mask_compressstoreu_pd`] //need i1
+  * [x] [`_mm_mask_compressstoreu_pd`] //need i1
+  * [x] [`_mm256_mask_compressstoreu_pd`] //need i1
   * [x] [`_mm512_mask_expand_epi32`]
   * [x] [`_mm512_maskz_expand_epi32`]
   * [x] [`_mm_mask_expand_epi32`]
