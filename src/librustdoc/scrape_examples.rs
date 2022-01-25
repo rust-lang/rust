@@ -85,17 +85,20 @@ impl SyntaxRange {
 #[derive(Encodable, Decodable, Debug, Clone)]
 crate struct CallLocation {
     crate call_expr: SyntaxRange,
+    crate call_ident: SyntaxRange,
     crate enclosing_item: SyntaxRange,
 }
 
 impl CallLocation {
     fn new(
         expr_span: rustc_span::Span,
+        ident_span: rustc_span::Span,
         enclosing_item_span: rustc_span::Span,
         source_file: &SourceFile,
     ) -> Self {
         CallLocation {
             call_expr: SyntaxRange::new(expr_span, source_file),
+            call_ident: SyntaxRange::new(ident_span, source_file),
             enclosing_item: SyntaxRange::new(enclosing_item_span, source_file),
         }
     }
@@ -146,24 +149,39 @@ where
         }
 
         // Get type of function if expression is a function call
-        let (ty, span) = match ex.kind {
+        let (ty, call_span, ident_span) = match ex.kind {
             hir::ExprKind::Call(f, _) => {
                 let types = tcx.typeck(ex.hir_id.owner);
 
                 if let Some(ty) = types.node_type_opt(f.hir_id) {
-                    (ty, ex.span)
+                    (ty, ex.span, f.span)
                 } else {
                     trace!("node_type_opt({}) = None", f.hir_id);
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, _, span) => {
+            hir::ExprKind::MethodCall(_, args, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
-                (tcx.type_of(def_id), span)
+
+                // The MethodCall node doesn't directly contain a span for the
+                // method identifier, so we have to compute it by trimming the full
+                // span based on the arguments.
+                let ident_span = match args.get(1) {
+                    // If there is an argument, e.g. "f(x)", then
+                    // get the span "f(" and delete the lparen.
+                    Some(arg) => {
+                        let with_paren = call_span.until(arg.span);
+                        with_paren.with_hi(with_paren.hi() - BytePos(1))
+                    }
+                    // Otherwise, just delete both parens directly.
+                    None => call_span.with_hi(call_span.hi() - BytePos(2)),
+                };
+
+                (tcx.type_of(def_id), call_span, ident_span)
             }
             _ => {
                 return;
@@ -172,8 +190,8 @@ where
 
         // If this span comes from a macro expansion, then the source code may not actually show
         // a use of the given item, so it would be a poor example. Hence, we skip all uses in macros.
-        if span.from_expansion() {
-            trace!("Rejecting expr from macro: {:?}", span);
+        if call_span.from_expansion() {
+            trace!("Rejecting expr from macro: {:?}", call_span);
             return;
         }
 
@@ -183,26 +201,29 @@ where
             .hir()
             .span_with_body(tcx.hir().local_def_id_to_hir_id(tcx.hir().get_parent_item(ex.hir_id)));
         if enclosing_item_span.from_expansion() {
-            trace!("Rejecting expr ({:?}) from macro item: {:?}", span, enclosing_item_span);
+            trace!("Rejecting expr ({:?}) from macro item: {:?}", call_span, enclosing_item_span);
             return;
         }
 
         assert!(
-            enclosing_item_span.contains(span),
-            "Attempted to scrape call at [{:?}] whose enclosing item [{:?}] doesn't contain the span of the call.",
-            span,
-            enclosing_item_span
+            enclosing_item_span.contains(call_span),
+            "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call.",
+        );
+
+        assert!(
+            call_span.contains(ident_span),
+            "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
         );
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
             if self.target_crates.iter().all(|krate| *krate != def_id.krate) {
-                trace!("Rejecting expr from crate not being documented: {:?}", span);
+                trace!("Rejecting expr from crate not being documented: {call_span:?}");
                 return;
             }
 
             let source_map = tcx.sess.source_map();
-            let file = source_map.lookup_char_pos(span.lo()).file;
+            let file = source_map.lookup_char_pos(call_span.lo()).file;
             let file_path = match file.name.clone() {
                 FileName::Real(real_filename) => real_filename.into_local_path(),
                 _ => None,
@@ -212,20 +233,20 @@ where
                 let abs_path = fs::canonicalize(file_path.clone()).unwrap();
                 let cx = &self.cx;
                 let mk_call_data = || {
-                    let clean_span = crate::clean::types::Span::new(span);
+                    let clean_span = crate::clean::types::Span::new(call_span);
                     let url = cx.href_from_span(clean_span, false).unwrap();
                     let display_name = file_path.display().to_string();
-                    let edition = span.edition();
+                    let edition = call_span.edition();
                     CallData { locations: Vec::new(), url, display_name, edition }
                 };
 
                 let fn_key = tcx.def_path_hash(*def_id);
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
-                trace!("Including expr: {:?}", span);
+                trace!("Including expr: {:?}", call_span);
                 let enclosing_item_span =
                     source_map.span_extend_to_prev_char(enclosing_item_span, '\n', false);
-                let location = CallLocation::new(span, enclosing_item_span, &file);
+                let location = CallLocation::new(call_span, ident_span, enclosing_item_span, &file);
                 fn_entries.entry(abs_path).or_insert_with(mk_call_data).locations.push(location);
             }
         }
