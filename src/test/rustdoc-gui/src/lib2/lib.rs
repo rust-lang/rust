@@ -114,3 +114,9 @@ pub mod too_long {
         pub fn foo(&self) {}
     }
 }
+
+pub struct HasALongTraitWithParams {}
+
+pub trait LongTraitWithParamsBananaBananaBanana<T> {}
+
+impl LongTraitWithParamsBananaBananaBanana<usize> for HasALongTraitWithParams {}
