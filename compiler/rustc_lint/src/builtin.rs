@@ -2896,25 +2896,21 @@ impl ClashingExternDeclarations {
                         (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                             // For arrays, we also check the constness of the type.
                             a_const.val == b_const.val
-                                && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (Slice(a_ty), Slice(b_ty)) => {
-                            structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                            structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (RawPtr(a_tymut), RawPtr(b_tymut)) => {
                             a_tymut.mutbl == b_tymut.mutbl
                                 && structurally_same_type_impl(
-                                    seen_types,
-                                    cx,
-                                    &a_tymut.ty,
-                                    &b_tymut.ty,
-                                    ckind,
+                                    seen_types, cx, a_tymut.ty, b_tymut.ty, ckind,
                                 )
                         }
                         (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                             // For structural sameness, we don't need the region to be same.
                             a_mut == b_mut
-                                && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (FnDef(..), FnDef(..)) => {
                             let a_poly_sig = a.fn_sig(tcx);
@@ -2927,7 +2923,7 @@ impl ClashingExternDeclarations {
                             (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
                                 == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
                                 && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                                    structurally_same_type_impl(seen_types, cx, a, b, ckind)
+                                    structurally_same_type_impl(seen_types, cx, *a, *b, ckind)
                                 })
                                 && structurally_same_type_impl(
                                     seen_types,

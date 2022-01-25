@@ -450,7 +450,7 @@ impl<'tcx> VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
     where
         D: TypeRelatingDelegate<'tcx>,
     {
-        relate.relate(&generalized_ty, &self.value_ty())
+        relate.relate(generalized_ty, self.value_ty())
     }
 }
 
@@ -482,7 +482,7 @@ impl<'tcx> VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     where
         D: TypeRelatingDelegate<'tcx>,
     {
-        relate.relate(&self.value_ty(), &generalized_ty)
+        relate.relate(self.value_ty(), generalized_ty)
     }
 }
 

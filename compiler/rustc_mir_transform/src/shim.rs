@@ -68,7 +68,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for generators aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(ty::TyS::kind) {
+            if let Some(ty::Generator(gen_def_id, substs, _)) = ty.map(Ty::kind) {
                 let body = tcx.optimized_mir(*gen_def_id).generator_drop().unwrap();
                 let body = body.clone().subst(tcx, substs);
                 debug!("make_shim({:?}) = {:?}", instance, body);
@@ -137,7 +137,7 @@ fn local_decls_for_sig<'tcx>(
     span: Span,
 ) -> IndexVec<Local, LocalDecl<'tcx>> {
     iter::once(LocalDecl::new(sig.output(), span))
-        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(ity, span).immutable()))
+        .chain(sig.inputs().iter().map(|ity| LocalDecl::new(*ity, span).immutable()))
         .collect()
 }
 

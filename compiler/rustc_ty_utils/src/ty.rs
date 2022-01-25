@@ -474,7 +474,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
                 Some(0) | None => false,
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(*ty)),
             }
         }
         ty::Ref(..) => {

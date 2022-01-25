@@ -514,7 +514,7 @@ impl<'tcx> CPlace<'tcx> {
                     // Can only happen for vector types
                     let len =
                         u16::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
-                    let vector_ty = fx.clif_type(element).unwrap().by(len).unwrap();
+                    let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
 
                     let data = match from.0 {
                         CValueInner::ByRef(ptr, None) => {
@@ -721,8 +721,8 @@ impl<'tcx> CPlace<'tcx> {
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
-            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_ptr()),
-            ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_maybe_unsized().0),
+            ty::Array(elem_ty, _) => (fx.layout_of(*elem_ty), self.to_ptr()),
+            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -781,11 +781,11 @@ pub(crate) fn assert_assignable<'tcx>(
             ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
             ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
         ) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b);
         }
         (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
         | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(

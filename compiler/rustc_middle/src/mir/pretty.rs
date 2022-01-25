@@ -17,7 +17,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TyS, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
 use std::ops::ControlFlow;
 
@@ -427,12 +427,12 @@ impl<'tcx> ExtraComments<'tcx> {
     }
 }
 
-fn use_verbose<'tcx>(ty: &&TyS<'tcx>, fn_def: bool) -> bool {
-    match ty.kind() {
+fn use_verbose<'tcx>(ty: Ty<'tcx>, fn_def: bool) -> bool {
+    match *ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(&g_arg.expect_ty(), fn_def)),
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(g_arg.expect_ty(), fn_def)),
         ty::Array(ty, _) => use_verbose(ty, fn_def),
         ty::FnDef(..) => fn_def,
         _ => true,
@@ -443,7 +443,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Constant { span, user_ty, literal } = constant;
-        if use_verbose(&literal.ty(), true) {
+        if use_verbose(literal.ty(), true) {
             self.push("mir::Constant");
             self.push(&format!(
                 "+ span: {}",
@@ -465,7 +465,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
         let ty::Const { ty, val, .. } = constant;
-        if use_verbose(ty, false) {
+        if use_verbose(*ty, false) {
             self.push("ty::Const");
             self.push(&format!("+ ty: {:?}", ty));
             let val = match val {

@@ -2558,7 +2558,7 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
             ConstantKind::Ty(c) => c.ty,
-            ConstantKind::Val(_, ty) => ty,
+            ConstantKind::Val(_, ty) => *ty,
         }
     }
 

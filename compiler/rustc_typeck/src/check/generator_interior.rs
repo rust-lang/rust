@@ -155,7 +155,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                 self.types.insert(ty::GeneratorInteriorTypeCause {
                     span: source_span,
-                    ty: &ty,
+                    ty,
                     scope_span,
                     yield_span: yield_data.span,
                     expr: expr.map(|e| e.hir_id),

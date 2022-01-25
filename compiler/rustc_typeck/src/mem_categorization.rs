@@ -192,7 +192,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         if let Some(vec) = self.typeck_results.pat_adjustments().get(pat.hir_id) {
             if let Some(first_ty) = vec.first() {
                 debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
-                return Ok(first_ty);
+                return Ok(*first_ty);
             }
         }
 

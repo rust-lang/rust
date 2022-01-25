@@ -985,7 +985,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 }
             }
             ty::Ref(_, ty, _) => {
-                let ty = self.fold_ty(ty);
+                let ty = self.fold_ty(*ty);
                 match ty.kind() {
                     // Avoid `&_`, these can be safely presented as `_`.
                     ty::Error(_) => self.tcx().ty_error(),
@@ -1002,7 +1002,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
             | ty::Projection(_)
             | ty::Never => t.super_fold_with(self),
             ty::Array(ty, c) => {
-                self.tcx().mk_ty(ty::Array(self.fold_ty(ty), self.replace_infers(c, 0, sym::N)))
+                self.tcx().mk_ty(ty::Array(self.fold_ty(*ty), self.replace_infers(c, 0, sym::N)))
             }
             // We don't want to hide type params that haven't been resolved yet.
             // This would be the type that will be written out with the type param

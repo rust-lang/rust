@@ -185,7 +185,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
                 if unsize {
                     let unsized_ty = if let ty::Array(elem_ty, _) = base_ty.kind() {
-                        self.tcx.mk_slice(elem_ty)
+                        self.tcx.mk_slice(*elem_ty)
                     } else {
                         bug!(
                             "AutorefOrPtrAdjustment's unsize flag should only be set for array ty, found {}",
@@ -201,8 +201,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
-                    ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                        assert_eq!(*mutbl, hir::Mutability::Mut);
+                    &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                        assert_eq!(mutbl, hir::Mutability::Mut);
                         self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),

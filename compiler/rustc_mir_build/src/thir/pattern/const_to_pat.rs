@@ -420,7 +420,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 suffix: vec![],
                             }),
                             span,
-                            ty: pointee_ty,
+                            ty: *pointee_ty,
                         },
                     };
                     self.behind_reference.set(old);
@@ -457,7 +457,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // this pattern to a `PartialEq::eq` comparison and `PartialEq::eq` takes a
                 // reference. This makes the rest of the matching logic simpler as it doesn't have
                 // to figure out how to get a reference again.
-                ty::Adt(adt_def, _) if !self.type_marked_structural(pointee_ty) => {
+                ty::Adt(adt_def, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
                         if self.include_lint_checks
                             && !self.saw_const_match_error.get()

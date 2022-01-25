@@ -734,7 +734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
                 _,
                 &ty::Ref(_, checked, _),
-            ) if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() => {
+            ) if self.infcx.can_sub(self.param_env, checked, expected).is_ok() => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
                 if sm.is_imported(expr.span) {

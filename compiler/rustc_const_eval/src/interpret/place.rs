@@ -462,7 +462,7 @@ where
         let (meta, ty) = match base.layout.ty.kind() {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
-            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(inner, inner_len)),
+            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(*inner, inner_len)),
             ty::Slice(..) => {
                 let len = Scalar::from_machine_usize(inner_len, self);
                 (MemPlaceMeta::Meta(len), base.layout.ty)

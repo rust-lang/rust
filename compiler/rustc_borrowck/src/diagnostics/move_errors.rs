@@ -246,18 +246,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             );
             (
                 match kind {
-                    IllegalMoveOriginKind::BorrowedContent { target_place } => self
+                    &IllegalMoveOriginKind::BorrowedContent { target_place } => self
                         .report_cannot_move_from_borrowed_content(
                             original_path,
-                            *target_place,
+                            target_place,
                             span,
                             use_spans,
                         ),
-                    IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
+                    &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                         self.cannot_move_out_of_interior_of_drop(span, ty)
                     }
-                    IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
-                        self.cannot_move_out_of_interior_noncopy(span, ty, Some(*is_index))
+                    &IllegalMoveOriginKind::InteriorOfSliceOrArray { ty, is_index } => {
+                        self.cannot_move_out_of_interior_noncopy(span, ty, Some(is_index))
                     }
                 },
                 span,

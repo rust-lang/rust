@@ -331,7 +331,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match place {
             PlaceRef { local, projection: [] } => {
                 let local = &self.body.local_decls[local];
-                self.describe_field_from_ty(&local.ty, field, None)
+                self.describe_field_from_ty(local.ty, field, None)
             }
             PlaceRef { local, projection: [proj_base @ .., elem] } => match elem {
                 ProjectionElem::Deref => {
@@ -339,10 +339,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Downcast(_, variant_index) => {
                     let base_ty = place.ty(self.body, self.infcx.tcx).ty;
-                    self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
+                    self.describe_field_from_ty(base_ty, field, Some(*variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
-                    self.describe_field_from_ty(&field_type, field, None)
+                    self.describe_field_from_ty(*field_type, field, None)
                 }
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
@@ -362,7 +362,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
-            self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
+            self.describe_field_from_ty(ty.boxed_ty(), field, variant_index)
         } else {
             match *ty.kind() {
                 ty::Adt(def, _) => {
@@ -376,10 +376,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ty::Tuple(_) => field.index().to_string(),
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    self.describe_field_from_ty(&ty, field, variant_index)
+                    self.describe_field_from_ty(ty, field, variant_index)
                 }
                 ty::Array(ty, _) | ty::Slice(ty) => {
-                    self.describe_field_from_ty(&ty, field, variant_index)
+                    self.describe_field_from_ty(ty, field, variant_index)
                 }
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                     // We won't be borrowck'ing here if the closure came from another crate,

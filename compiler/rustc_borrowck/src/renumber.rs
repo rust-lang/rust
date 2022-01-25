@@ -57,7 +57,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
-        *ty = self.renumber_regions(ty);
+        *ty = self.renumber_regions(*ty);
 
         debug!(?ty);
     }

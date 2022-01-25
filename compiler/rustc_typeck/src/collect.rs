@@ -2591,7 +2591,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
-            check(input, ty)
+            check(input, *ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
             check(ty, fty.output().skip_binder())

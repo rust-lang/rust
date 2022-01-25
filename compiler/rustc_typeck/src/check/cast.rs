@@ -885,7 +885,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     });
 
                 // this will report a type mismatch if needed
-                fcx.demand_eqtype(self.span, ety, m_cast.ty);
+                fcx.demand_eqtype(self.span, *ety, m_cast.ty);
                 return Ok(CastKind::ArrayPtrCast);
             }
         }

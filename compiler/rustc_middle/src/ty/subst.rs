@@ -6,6 +6,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor}
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -49,17 +50,17 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(lt) & TAG_MASK, 0);
-                (REGION_TAG, lt as *const _ as usize)
+                (REGION_TAG, lt as *const ty::RegionKind as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(ty) & TAG_MASK, 0);
-                (TYPE_TAG, ty as *const _ as usize)
+                assert_eq!(mem::align_of_val(ty.0.0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.0 as *const ty::TyS<'tcx> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(ct) & TAG_MASK, 0);
-                (CONST_TAG, ct as *const _ as usize)
+                (CONST_TAG, ct as *const ty::Const<'tcx> as usize)
             }
         };
 
@@ -111,11 +112,18 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
         let ptr = self.ptr.get();
+        // SAFETY: use of `Interned::new_unchecked` here is ok because these
+        // pointers were originally created from `Interned` types in `pack()`,
+        // and this is just going in the other direction.
         unsafe {
             match ptr & TAG_MASK {
-                REGION_TAG => GenericArgKind::Lifetime(&*((ptr & !TAG_MASK) as *const _)),
-                TYPE_TAG => GenericArgKind::Type(&*((ptr & !TAG_MASK) as *const _)),
-                CONST_TAG => GenericArgKind::Const(&*((ptr & !TAG_MASK) as *const _)),
+                REGION_TAG => {
+                    GenericArgKind::Lifetime(&*((ptr & !TAG_MASK) as *const ty::RegionKind))
+                }
+                TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::TyS<'tcx>),
+                ))),
+                CONST_TAG => GenericArgKind::Const(&*((ptr & !TAG_MASK) as *const ty::Const<'tcx>)),
                 _ => intrinsics::unreachable(),
             }
         }

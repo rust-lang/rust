@@ -113,7 +113,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, item_hir_id: hir::HirId, decl: &hir::
     let fn_def_id = cx.tcx.hir().local_def_id(item_hir_id);
     let fn_sig = cx.tcx.fn_sig(fn_def_id);
     for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
-        check_ty(cx, hir_ty.span, ty);
+        check_ty(cx, hir_ty.span, *ty);
     }
     check_ty(cx, decl.output.span(), cx.tcx.erase_late_bound_regions(fn_sig.output()));
 }

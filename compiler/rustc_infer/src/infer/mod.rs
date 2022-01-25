@@ -382,7 +382,7 @@ impl<'tcx> ValuePairs<'tcx> {
             found: ty::Term::Ty(found),
         }) = self
         {
-            Some((expected, found))
+            Some((*expected, *found))
         } else {
             None
         }

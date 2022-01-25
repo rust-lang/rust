@@ -1499,7 +1499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
-            hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
+            hir::CaptureBy::Value if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref => ty::UpvarCapture::ByRef(ty::ImmBorrow),
@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         );
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
         }
 

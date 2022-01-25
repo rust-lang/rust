@@ -6,7 +6,7 @@ use std::slice;
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
-    // see `TyS::outer_exclusive_binder` for details
+    // see `Ty::outer_exclusive_binder` for details
     pub outer_exclusive_binder: ty::DebruijnIndex,
 }
 
@@ -270,7 +270,7 @@ impl FlagComputation {
 
     fn add_ty(&mut self, ty: Ty<'_>) {
         self.add_flags(ty.flags());
-        self.add_exclusive_binder(ty.outer_exclusive_binder);
+        self.add_exclusive_binder(ty.outer_exclusive_binder());
     }
 
     fn add_tys(&mut self, tys: &[Ty<'_>]) {

@@ -142,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsize {
                 // We only unsize arrays here.
                 if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = self.tcx.mk_slice(element_ty);
+                    self_ty = self.tcx.mk_slice(*element_ty);
                 } else {
                     continue;
                 }

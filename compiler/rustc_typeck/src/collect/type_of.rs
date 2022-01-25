@@ -639,7 +639,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                         err.emit();
                     }
                 } else {
-                    self.found = Some((span, concrete_type));
+                    self.found = Some((span, *concrete_type));
                 }
             }
         }

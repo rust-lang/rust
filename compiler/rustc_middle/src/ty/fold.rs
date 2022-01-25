@@ -627,7 +627,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 if let Some(fld_t) = self.fld_t.as_mut() {
                     let ty = fld_t(bound_ty);
-                    return ty::fold::shift_vars(self.tcx, &ty, self.current_index.as_u32());
+                    return ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32());
                 }
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => {
@@ -926,7 +926,7 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if t.outer_exclusive_binder < self.binder_index
+        if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
             return ControlFlow::BREAK;
@@ -1146,7 +1146,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // bound at `outer_index` or above (because
         // `outer_exclusive_binder` is always 1 higher than the
         // content in `t`). Therefore, `t` has some escaping vars.
-        if t.outer_exclusive_binder > self.outer_index {
+        if t.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE

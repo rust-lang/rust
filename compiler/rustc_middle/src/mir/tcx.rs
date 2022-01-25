@@ -57,7 +57,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, &ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -93,11 +93,11 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => tcx.mk_array(inner, (to - from) as u64),
+                    ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
                     ty::Array(inner, size) if from_end => {
                         let size = size.eval_usize(tcx, param_env);
                         let len = size - (from as u64) - (to as u64);
-                        tcx.mk_array(inner, len)
+                        tcx.mk_array(*inner, len)
                     }
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
                 })

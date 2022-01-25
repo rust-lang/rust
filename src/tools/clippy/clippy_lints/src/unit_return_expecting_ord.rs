@@ -84,7 +84,8 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
         let partial_ord_preds =
             get_trait_predicates_for_trait_id(cx, generics, cx.tcx.lang_items().partial_ord_trait());
         // Trying to call erase_late_bound_regions on fn_sig.inputs() gives the following error
-        // The trait `rustc::ty::TypeFoldable<'_>` is not implemented for `&[&rustc::ty::TyS<'_>]`
+        // The trait `rustc::ty::TypeFoldable<'_>` is not implemented for
+        // `&[rustc_middle::ty::Ty<'_>]`
         let inputs_output = cx.tcx.erase_late_bound_regions(fn_sig.inputs_and_output());
         inputs_output
             .iter()

@@ -59,7 +59,7 @@ fn type_needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, see
         // Check if any component type has any.
         match ty.kind() {
             ty::Tuple(_) => ty.tuple_fields().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
-            ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, ty, seen),
+            ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, *ty, seen),
             ty::Adt(adt, subs) => adt
                 .all_fields()
                 .map(|f| f.ty(cx.tcx, subs))

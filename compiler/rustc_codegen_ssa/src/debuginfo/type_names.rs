@@ -343,7 +343,7 @@ fn push_debuginfo_type_name<'tcx>(
             // We only care about avoiding recursing
             // directly back to the type we're currently
             // processing
-            visited.remove(t);
+            visited.remove(&t);
         }
         ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or

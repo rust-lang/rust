@@ -500,7 +500,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((referent_ty, &referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, &referent_hir_ty.ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -539,7 +539,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
                 | (ty::Array(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
-                    search_stack.push((elem_ty, elem_hir_ty));
+                    search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
                 (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {

@@ -490,7 +490,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                         return None;
                                     }
                                     let const_val = mir_operand_get_const_val(fx, operand)?;
-                                    if fx.layout_of(ty).size
+                                    if fx.layout_of(*ty).size
                                         != const_val.try_to_scalar_int()?.size()
                                     {
                                         return None;

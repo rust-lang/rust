@@ -149,8 +149,8 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
             Some((ty_def_id, variances)) => {
                 let variance = variances[i];
                 let variance_info = if variance == ty::Invariant {
-                    let ty =
-                        cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
+                    let ty = *cached_ty
+                        .get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
                     ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
                 } else {
                     ty::VarianceDiagInfo::default()

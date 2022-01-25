@@ -510,7 +510,7 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
     for (mut p, _) in predicates {
         if let Some(poly_trait_ref) = p.to_opt_poly_trait_pred() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.self_ty().skip_binder());
+                types_without_default_bounds.remove(&poly_trait_ref.self_ty().skip_binder());
                 continue;
             }
 

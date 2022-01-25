@@ -99,7 +99,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
                 Pat {
                     span: pat.span,
-                    ty: ref_ty,
+                    ty: *ref_ty,
                     kind: Box::new(PatKind::Deref { subpattern: pat }),
                 }
             },
@@ -275,7 +275,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = rty;
+                        ty = *rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }

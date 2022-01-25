@@ -1146,33 +1146,33 @@ rustc_queries! {
         desc { "computing whether `{}` is `Copy`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_sized`.
+    /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_freeze`.
+    /// Query backing `Ty::is_freeze`.
     query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_unpin`.
+    /// Query backing `Ty::is_unpin`.
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::needs_drop`.
+    /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::has_significant_drop_raw`.
+    /// Query backing `Ty::has_significant_drop_raw`.
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
         remap_env_constness
     }
 
-    /// Query backing `TyS::is_structural_eq_shallow`.
+    /// Query backing `Ty::is_structural_eq_shallow`.
     ///
     /// This is only correct for ADTs. Call `is_structural_eq_shallow` to handle all types
     /// correctly.

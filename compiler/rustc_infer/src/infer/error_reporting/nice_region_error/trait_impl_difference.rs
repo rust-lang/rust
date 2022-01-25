@@ -42,8 +42,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     if sup_expected_found == sub_expected_found {
                         self.emit_err(
                             var_origin.span(),
-                            sub_expected,
-                            sub_found,
+                            *sub_expected,
+                            *sub_found,
                             *trait_item_def_id,
                         );
                         return Some(ErrorReported);

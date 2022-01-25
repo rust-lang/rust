@@ -903,7 +903,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let mut closure_ty = self.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
             if let ty::Ref(_, ty, _) = closure_ty.kind() {
                 closure_env_projs.push(ProjectionElem::Deref);
-                closure_ty = ty;
+                closure_ty = *ty;
             }
             let upvar_substs = match closure_ty.kind() {
                 ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),

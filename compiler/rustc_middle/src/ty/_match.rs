@@ -77,7 +77,7 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
             ) => Ok(a),
 
             (&ty::Infer(_), _) | (_, &ty::Infer(_)) => {
-                Err(TypeError::Sorts(relate::expected_found(self, &a, &b)))
+                Err(TypeError::Sorts(relate::expected_found(self, a, b)))
             }
 
             (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(self.tcx().ty_error()),

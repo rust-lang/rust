@@ -185,9 +185,9 @@ impl<'ll, 'tcx> TypeMap<'ll, 'tcx> {
     ///
     /// This function is used to remove the temporary metadata
     /// mapping after we've computed the actual metadata.
-    fn remove_type(&mut self, type_: Ty<'tcx>) {
-        if self.type_to_metadata.remove(type_).is_none() {
-            bug!("type metadata `Ty` '{}' is not in the `TypeMap`!", type_);
+    fn remove_type(&mut self, ty: Ty<'tcx>) {
+        if self.type_to_metadata.remove(&ty).is_none() {
+            bug!("type metadata `Ty` '{}' is not in the `TypeMap`!", ty);
         }
     }
 
@@ -397,7 +397,7 @@ fn fixed_size_array_metadata<'ll, 'tcx>(
         bug!("fixed_size_array_metadata() called with non-ty::Array type `{:?}`", array_type)
     };
 
-    let element_type_metadata = type_metadata(cx, element_type);
+    let element_type_metadata = type_metadata(cx, *element_type);
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
@@ -546,7 +546,7 @@ fn subroutine_type_metadata<'ll, 'tcx>(
     )
     .chain(
         // regular arguments
-        signature.inputs().iter().map(|argument_type| Some(type_metadata(cx, argument_type))),
+        signature.inputs().iter().map(|&argument_type| Some(type_metadata(cx, argument_type))),
     )
     .collect();
 
@@ -601,7 +601,7 @@ fn slice_type_metadata<'ll, 'tcx>(
     unique_type_id: UniqueTypeId,
 ) -> MetadataCreationResult<'ll> {
     let element_type = match slice_type.kind() {
-        ty::Slice(element_type) => element_type,
+        ty::Slice(element_type) => *element_type,
         ty::Str => cx.tcx.types.u8,
         _ => {
             bug!(

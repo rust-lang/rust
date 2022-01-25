@@ -605,7 +605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         substs: SubstsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize_associated_types_in(span, &field.ty(self.tcx, substs))
+        self.normalize_associated_types_in(span, field.ty(self.tcx, substs))
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
@@ -756,7 +756,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.at(&origin, self.param_env).sup(ret_ty, &formal_ret);
+                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
 
                 // FIXME(#27336) can't use ? here, Try::from_error doesn't default
                 // to identity so the resulting type is not constrained.

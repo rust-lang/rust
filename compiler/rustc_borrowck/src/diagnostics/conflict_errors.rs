@@ -2324,7 +2324,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // This is also case 2 from above but for functions, return type is still an
                 // anonymous reference so we select the first argument.
                 let argument_span = fn_decl.inputs.first()?.span;
-                let argument_ty = sig.inputs().skip_binder().first()?;
+                let argument_ty = *sig.inputs().skip_binder().first()?;
 
                 let return_span = fn_decl.output.span();
                 let return_ty = sig.output().skip_binder();
@@ -2379,27 +2379,27 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         diag: &mut DiagnosticBuilder<'_>,
     ) -> String {
         match self {
-            AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
+            &AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
                 diag.span_label(
-                    *argument_span,
+                    argument_span,
                     format!("has type `{}`", cx.get_name_for_ty(argument_ty, 0)),
                 );
 
                 cx.get_region_name_for_ty(argument_ty, 0)
             }
-            AnnotatedBorrowFnSignature::AnonymousFunction {
+            &AnnotatedBorrowFnSignature::AnonymousFunction {
                 argument_ty,
                 argument_span,
                 return_ty,
                 return_span,
             } => {
                 let argument_ty_name = cx.get_name_for_ty(argument_ty, 0);
-                diag.span_label(*argument_span, format!("has type `{}`", argument_ty_name));
+                diag.span_label(argument_span, format!("has type `{}`", argument_ty_name));
 
                 let return_ty_name = cx.get_name_for_ty(return_ty, 0);
                 let types_equal = return_ty_name == argument_ty_name;
                 diag.span_label(
-                    *return_span,
+                    return_span,
                     format!(
                         "{}has type `{}`",
                         if types_equal { "also " } else { "" },
@@ -2419,7 +2419,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
             }
             AnnotatedBorrowFnSignature::NamedFunction { arguments, return_ty, return_span } => {
                 // Region of return type and arguments checked to be the same earlier.
-                let region_name = cx.get_region_name_for_ty(return_ty, 0);
+                let region_name = cx.get_region_name_for_ty(*return_ty, 0);
                 for (_, argument_span) in arguments {
                     diag.span_label(*argument_span, format!("has lifetime `{}`", region_name));
                 }

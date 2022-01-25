@@ -239,8 +239,8 @@ impl<'tcx> TypeError<'tcx> {
     }
 }
 
-impl<'tcx> ty::TyS<'tcx> {
-    pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
+impl<'tcx> Ty<'tcx> {
+    pub fn sort_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => {
                 format!("`{}`", self).into()
@@ -306,7 +306,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn prefix_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
+    pub fn prefix_string(self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Infer(_)
             | ty::Error(_)

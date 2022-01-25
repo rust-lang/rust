@@ -26,6 +26,7 @@ use crate::ty::{
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -151,19 +152,21 @@ impl<'tcx> CtxtInterners<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
     fn intern_ty(&self, kind: TyKind<'tcx>) -> Ty<'tcx> {
-        self.type_
-            .intern(kind, |kind| {
-                let flags = super::flags::FlagComputation::for_kind(&kind);
+        Ty(Interned::new_unchecked(
+            self.type_
+                .intern(kind, |kind| {
+                    let flags = super::flags::FlagComputation::for_kind(&kind);
 
-                let ty_struct = TyS {
-                    kind,
-                    flags: flags.flags,
-                    outer_exclusive_binder: flags.outer_exclusive_binder,
-                };
+                    let ty_struct = TyS {
+                        kind,
+                        flags: flags.flags,
+                        outer_exclusive_binder: flags.outer_exclusive_binder,
+                    };
 
-                InternedInSet(self.arena.alloc(ty_struct))
-            })
-            .0
+                    InternedInSet(self.arena.alloc(ty_struct))
+                })
+                .0,
+        ))
     }
 
     #[inline(never)]
@@ -1628,12 +1631,28 @@ pub trait Lift<'tcx>: fmt::Debug {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted>;
 }
 
-macro_rules! nop_lift {
+// Deprecated: we are in the process of converting all uses to `nop_lift`.
+macro_rules! nop_lift_old {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 if tcx.interners.$set.contains_pointer_to(&InternedInSet(self)) {
+                    Some(unsafe { mem::transmute(self) })
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+macro_rules! nop_lift {
+    ($set:ident; $ty:ty => $lifted:ty) => {
+        impl<'a, 'tcx> Lift<'tcx> for $ty {
+            type Lifted = $lifted;
+            fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self.0.0)) {
                     Some(unsafe { mem::transmute(self) })
                 } else {
                     None
@@ -1662,10 +1681,10 @@ macro_rules! nop_list_lift {
 }
 
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
-nop_lift! {region; Region<'a> => Region<'tcx>}
-nop_lift! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
-nop_lift! {const_allocation; &'a Allocation => &'tcx Allocation}
-nop_lift! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
+nop_lift_old! {region; Region<'a> => Region<'tcx>}
+nop_lift_old! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
+nop_lift_old! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
@@ -1882,15 +1901,15 @@ macro_rules! sty_debug_print {
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
                 for &InternedInSet(t) in types {
-                    let variant = match t.kind() {
+                    let variant = match t.kind {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
                         ty::Error(_) => /* unimportant */ continue,
                         $(ty::$variant(..) => &mut $variant,)*
                     };
-                    let lt = t.flags().intersects(ty::TypeFlags::HAS_RE_INFER);
-                    let ty = t.flags().intersects(ty::TypeFlags::HAS_TY_INFER);
-                    let ct = t.flags().intersects(ty::TypeFlags::HAS_CT_INFER);
+                    let lt = t.flags.intersects(ty::TypeFlags::HAS_RE_INFER);
+                    let ty = t.flags.intersects(ty::TypeFlags::HAS_TY_INFER);
+                    let ct = t.flags.intersects(ty::TypeFlags::HAS_CT_INFER);
 
                     variant.total += 1;
                     total.total += 1;
@@ -2000,7 +2019,7 @@ impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx> Borrow<TyKind<'tcx>> for InternedInSet<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
-        &self.0.kind()
+        &self.0.kind
     }
 }
 
@@ -2008,7 +2027,7 @@ impl<'tcx> PartialEq for InternedInSet<'tcx, TyS<'tcx>> {
     fn eq(&self, other: &InternedInSet<'tcx, TyS<'tcx>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
-        self.0.kind() == other.0.kind()
+        self.0.kind == other.0.kind
     }
 }
 
@@ -2017,7 +2036,7 @@ impl<'tcx> Eq for InternedInSet<'tcx, TyS<'tcx>> {}
 impl<'tcx> Hash for InternedInSet<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
-        self.0.kind().hash(s)
+        self.0.kind.hash(s)
     }
 }
 

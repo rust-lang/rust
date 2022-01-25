@@ -188,7 +188,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         }
 
         if let Some(ty) = self.cache.get(&ty) {
-            return Ok(ty);
+            return Ok(*ty);
         }
 
         // See note in `rustc_trait_selection::traits::project` about why we

@@ -7,9 +7,10 @@ use rustc_middle::ty;
 use rustc_span::symbol::sym;
 
 declare_tool_lint! {
-    /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to always be passed by value.
-    /// This is usually used for types that are thin wrappers around references, so there is no benefit to an extra
-    /// layer of indirection. (Example: `Ty` which is a reference to a `TyS`)
+    /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to
+    /// always be passed by value. This is usually used for types that are thin wrappers around
+    /// references, so there is no benefit to an extra layer of indirection. (Example: `Ty` which
+    /// is a reference to an `Interned<TyS>`)
     pub rustc::PASS_BY_VALUE,
     Warn,
     "pass by reference of a type flagged as `#[rustc_pass_by_value]`",

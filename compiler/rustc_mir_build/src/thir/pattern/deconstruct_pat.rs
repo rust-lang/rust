@@ -929,7 +929,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             ty::Bool => smallvec![make_range(0, 1)],
             ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
-                if len != 0 && cx.is_uninhabited(sub_ty) {
+                if len != 0 && cx.is_uninhabited(*sub_ty) {
                     smallvec![]
                 } else {
                     smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
@@ -937,7 +937,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             }
             // Treat arrays of a constant but unknown length like slices.
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
                 smallvec![Slice(Slice::new(None, kind))]
             }
             ty::Adt(def, substs) if def.is_enum() => {
@@ -1386,7 +1386,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             // fields.
                             // Note: `t` is `str`, not `&str`.
                             let subpattern =
-                                DeconstructedPat::new(Str(value), Fields::empty(), t, pat.span);
+                                DeconstructedPat::new(Str(value), Fields::empty(), *t, pat.span);
                             ctor = Single;
                             fields = Fields::singleton(cx, subpattern)
                         }

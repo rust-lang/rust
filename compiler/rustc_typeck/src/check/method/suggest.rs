@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if needs_mut {
                         let trait_type = self.tcx.mk_ref(
                             region,
-                            ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() },
+                            ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
                         err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
                     }
@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Ok(pick) = self.lookup_probe(
                     span,
                     item_name,
-                    rcvr_ty,
+                    *rcvr_ty,
                     rcvr,
                     crate::check::method::probe::ProbeScope::AllTraits,
                 ) {
@@ -1487,10 +1487,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     break;
                 }
                 for (rcvr_ty, pre) in &[
-                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::OwnedBox), "Box::new"),
-                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::Pin), "Pin::new"),
-                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Arc), "Arc::new"),
-                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Rc), "Rc::new"),
+                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
+                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
+                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
+                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty {
                         if let Ok(pick) = self.lookup_probe(

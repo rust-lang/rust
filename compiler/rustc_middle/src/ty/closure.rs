@@ -116,7 +116,7 @@ impl<'tcx> ClosureKind {
     }
 
     /// Returns the representative scalar type for this closure kind.
-    /// See `TyS::to_opt_closure_kind` for more details.
+    /// See `Ty::to_opt_closure_kind` for more details.
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self {
             ty::ClosureKind::Fn => tcx.types.i8,

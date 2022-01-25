@@ -841,7 +841,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Found a value represented as a pair. For now only do const-prop if the type
                     // of `rvalue` is also a tuple with two scalars.
                     // FIXME: enable the general case stated above ^.
-                    let ty = &value.layout.ty;
+                    let ty = value.layout.ty;
                     // Only do it for tuples
                     if let ty::Tuple(substs) = ty.kind() {
                         // Only do it if tuple is also a pair with two scalars

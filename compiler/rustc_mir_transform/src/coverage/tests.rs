@@ -37,23 +37,11 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, DebruijnIndex, TyS, TypeFlags};
+use rustc_middle::ty::{self, BOOL_TY};
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
 const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;
-
-fn dummy_ty() -> &'static TyS<'static> {
-    thread_local! {
-        static DUMMY_TYS: &'static TyS<'static> = Box::leak(Box::new(TyS::make_for_test(
-            ty::Bool,
-            TypeFlags::empty(),
-            DebruijnIndex::from_usize(0),
-        )));
-    }
-
-    &DUMMY_TYS.with(|tys| *tys)
-}
 
 struct MockBlocks<'tcx> {
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -166,7 +154,7 @@ impl<'tcx> MockBlocks<'tcx> {
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
         let switchint_kind = TerminatorKind::SwitchInt {
             discr: Operand::Move(Place::from(self.new_temp())),
-            switch_ty: dummy_ty(),
+            switch_ty: BOOL_TY, // just a dummy value
             targets: SwitchTargets::static_if(0, TEMP_BLOCK, TEMP_BLOCK),
         };
         self.add_block_from(some_from_block, switchint_kind)
