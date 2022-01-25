@@ -6,9 +6,11 @@ use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 use crate::sys::c;
+use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed handle.
@@ -141,6 +143,36 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
         let owned_handle = handle_or_null.0;
         if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
+    }
+}
+
+impl OwnedHandle {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
+    /// as the existing `OwnedHandle` instance.
+    pub fn try_clone(&self) -> crate::io::Result<Self> {
+        self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
+    }
+
+    pub(crate) fn duplicate(
+        &self,
+        access: c::DWORD,
+        inherit: bool,
+        options: c::DWORD,
+    ) -> io::Result<Self> {
+        let mut ret = 0 as c::HANDLE;
+        cvt(unsafe {
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(
+                cur_proc,
+                self.as_raw_handle(),
+                cur_proc,
+                &mut ret,
+                access,
+                inherit as c::BOOL,
+                options,
+            )
+        })?;
+        unsafe { Ok(Self::from_raw_handle(ret)) }
     }
 }
 

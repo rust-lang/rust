@@ -262,26 +262,17 @@ impl Handle {
         Ok(written as usize)
     }
 
+    pub fn try_clone(&self) -> io::Result<Self> {
+        Ok(Self(self.0.try_clone()?))
+    }
+
     pub fn duplicate(
         &self,
         access: c::DWORD,
         inherit: bool,
         options: c::DWORD,
-    ) -> io::Result<Handle> {
-        let mut ret = 0 as c::HANDLE;
-        cvt(unsafe {
-            let cur_proc = c::GetCurrentProcess();
-            c::DuplicateHandle(
-                cur_proc,
-                self.as_raw_handle(),
-                cur_proc,
-                &mut ret,
-                access,
-                inherit as c::BOOL,
-                options,
-            )
-        })?;
-        unsafe { Ok(Handle::from_raw_handle(ret)) }
+    ) -> io::Result<Self> {
+        Ok(Self(self.0.duplicate(access, inherit, options)?))
     }
 }
 

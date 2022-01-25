@@ -460,7 +460,7 @@ impl File {
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        Ok(File { handle: self.handle.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)? })
+        Ok(Self { handle: self.handle.try_clone()? })
     }
 
     fn reparse_point<'a>(
