@@ -22,7 +22,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             global
         }
         else {
-            self.declare_global(name, ty, is_tls, link_section)
+            self.declare_global(name, ty, GlobalKind::Exported, is_tls, link_section)
         }
     }
 
@@ -47,8 +47,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         unsafe { std::mem::transmute(func) }
     }*/
 
-    pub fn declare_global(&self, name: &str, ty: Type<'gcc>, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
-        let global = self.context.new_global(None, GlobalKind::Exported, ty, name);
+    pub fn declare_global(&self, name: &str, ty: Type<'gcc>, global_kind: GlobalKind, is_tls: bool, link_section: Option<Symbol>) -> LValue<'gcc> {
+        let global = self.context.new_global(None, global_kind, ty, name);
         if is_tls {
             global.set_tls_model(self.tls_model);
         }
