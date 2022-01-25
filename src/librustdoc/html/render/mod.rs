@@ -376,25 +376,21 @@ impl Setting {
                 description,
             ),
             Setting::Select { js_data_name, description, default_value, ref options } => format!(
-                "<div class=\"setting-line\">\
-                     <div>{}</div>\
-                     <label class=\"select-wrapper\">\
-                         <select id=\"{}\" autocomplete=\"off\">{}</select>\
-                         <img src=\"{}down-arrow{}.svg\" alt=\"Select item\">\
-                     </label>\
-                 </div>",
-                description,
+                "<div class=\"setting-line\"><div class=\"radio-line\" id=\"{}\"><span class=\"setting-name\">{}</span>{}</div></div>",
                 js_data_name,
+                description,
                 options
                     .iter()
                     .map(|opt| format!(
-                        "<option value=\"{name}\" {}>{name}</option>",
-                        if opt == default_value { "selected" } else { "" },
+                        "<label for=\"{js_data_name}-{name}\" class=\"choice\">
+                           <input type=\"radio\" name=\"{js_data_name}\" id=\"{js_data_name}-{name}\" value=\"{name}\" {checked}>\
+                           {name}\
+                         </label>",
+                        js_data_name = js_data_name,
                         name = opt,
+                        checked = if opt == default_value { "checked" } else { "" },
                     ))
                     .collect::<String>(),
-                root_path,
-                suffix,
             ),
         }
     }
@@ -418,31 +414,25 @@ impl<T: Into<Setting>> From<(&'static str, Vec<T>)> for Setting {
 fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<String, Error> {
     // (id, explanation, default value)
     let settings: &[Setting] = &[
-        (
-            "Theme preferences",
-            vec![
-                Setting::from(("use-system-theme", "Use system theme", true)),
-                Setting::Select {
-                    js_data_name: "theme",
-                    description: "Theme",
-                    default_value: "light",
-                    options: theme_names.clone(),
-                },
-                Setting::Select {
-                    js_data_name: "preferred-dark-theme",
-                    description: "Preferred dark theme",
-                    default_value: "dark",
-                    options: theme_names.clone(),
-                },
-                Setting::Select {
-                    js_data_name: "preferred-light-theme",
-                    description: "Preferred light theme",
-                    default_value: "light",
-                    options: theme_names,
-                },
-            ],
-        )
-            .into(),
+        Setting::from(("use-system-theme", "Use system theme", true)),
+        Setting::Select {
+            js_data_name: "theme",
+            description: "Theme",
+            default_value: "light",
+            options: theme_names.clone(),
+        },
+        Setting::Select {
+            js_data_name: "preferred-light-theme",
+            description: "Preferred light theme",
+            default_value: "light",
+            options: theme_names.clone(),
+        },
+        Setting::Select {
+            js_data_name: "preferred-dark-theme",
+            description: "Preferred dark theme",
+            default_value: "dark",
+            options: theme_names,
+        },
         ("auto-hide-large-items", "Auto-hide item contents for large items.", true).into(),
         ("auto-hide-method-docs", "Auto-hide item methods' documentation", false).into(),
         ("auto-hide-trait-implementations", "Auto-hide trait implementation documentation", false)
@@ -454,9 +444,14 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
     ];
 
     Ok(format!(
-        "<h1 class=\"fqn\">\
-            <span class=\"in-band\">Rustdoc settings</span>\
-        </h1>\
+        "<div class=\"main-heading\">
+            <h1 class=\"fqn\">\
+                <span class=\"in-band\">Rustdoc settings</span>\
+            </h1>\
+            <span class=\"out-of-band\">\
+            <a id=\"back\" href=\"javascript:void(0)\">Back</a>\
+            </span>\
+        </div>\
         <div class=\"settings\">{}</div>\
         <link rel=\"stylesheet\" href=\"{root_path}settings{suffix}.css\">\
         <script src=\"{root_path}settings{suffix}.js\"></script>",
