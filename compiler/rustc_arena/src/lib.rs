@@ -45,24 +45,24 @@ pub struct TypedArena<T> {
     end: Cell<*mut T>,
 
     /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<T>>>,
+    chunks: RefCell<Vec<ArenaChunk<T>>>,
 
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
     _own: PhantomData<T>,
 }
 
-struct TypedArenaChunk<T> {
+struct ArenaChunk<T = u8> {
     /// The raw storage for the arena chunk.
     storage: Box<[MaybeUninit<T>]>,
     /// The number of valid entries in the chunk.
     entries: usize,
 }
 
-impl<T> TypedArenaChunk<T> {
+impl<T> ArenaChunk<T> {
     #[inline]
-    unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
-        TypedArenaChunk { storage: Box::new_uninit_slice(capacity), entries: 0 }
+    unsafe fn new(capacity: usize) -> ArenaChunk<T> {
+        ArenaChunk { storage: Box::new_uninit_slice(capacity), entries: 0 }
     }
 
     /// Destroys this arena chunk.
@@ -272,7 +272,7 @@ impl<T> TypedArena<T> {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = TypedArenaChunk::<T>::new(new_cap);
+            let mut chunk = ArenaChunk::<T>::new(new_cap);
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
@@ -281,7 +281,7 @@ impl<T> TypedArena<T> {
 
     // Drops the contents of the last chunk. The last chunk is partially empty, unlike all other
     // chunks.
-    fn clear_last_chunk(&self, last_chunk: &mut TypedArenaChunk<T>) {
+    fn clear_last_chunk(&self, last_chunk: &mut ArenaChunk<T>) {
         // Determine how much was filled.
         let start = last_chunk.start() as usize;
         // We obtain the value of the pointer to the first uninitialized element.
@@ -340,7 +340,7 @@ pub struct DroplessArena {
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<u8>>>,
+    chunks: RefCell<Vec<ArenaChunk>>,
 }
 
 unsafe impl Send for DroplessArena {}
@@ -378,7 +378,7 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = TypedArenaChunk::<u8>::new(new_cap);
+            let mut chunk = ArenaChunk::new(new_cap);
             self.start.set(chunk.start());
             self.end.set(chunk.end());
             chunks.push(chunk);
