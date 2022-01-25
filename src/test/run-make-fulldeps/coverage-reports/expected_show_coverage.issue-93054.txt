@@ -1,0 +1,29 @@
+    1|       |// Regression test for #93054: Functions using uninhabited types often only have a single,
+    2|       |// unreachable basic block which doesn't get instrumented. This should not cause llvm-cov to fail.
+    3|       |// Since these kinds functions can't be invoked anyway, it's ok to not have coverage data for them.
+    4|       |
+    5|       |// compile-flags: --edition=2021
+    6|       |
+    7|       |enum Never { }
+    8|       |
+    9|       |impl Never {
+   10|       |    fn foo(self) {
+   11|       |        match self { }
+   12|       |        make().map(|never| match never { });
+   13|       |    }
+   14|       |
+   15|       |    fn bar(&self) {
+   16|       |        match *self { }
+   17|       |    }
+   18|       |}
+   19|       |
+   20|      0|async fn foo2(never: Never) {
+   21|       |    match never { }
+   22|       |}
+   23|       |
+   24|      0|fn make() -> Option<Never> {
+   25|      0|    None
+   26|      0|}
+   27|       |
+   28|      1|fn main() { }
+

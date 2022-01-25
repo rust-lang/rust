@@ -9,6 +9,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdSet;
 use rustc_llvm::RustString;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
@@ -76,10 +77,18 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         let coverage_mapping_buffer = llvm::build_byte_buffer(|coverage_mapping_buffer| {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);
         });
-        debug_assert!(
-            !coverage_mapping_buffer.is_empty(),
-            "Every `FunctionCoverage` should have at least one counter"
-        );
+
+        if coverage_mapping_buffer.is_empty() {
+            if function_coverage.is_used() {
+                bug!(
+                    "A used function should have had coverage mapping data but did not: {}",
+                    mangled_function_name
+                );
+            } else {
+                debug!("unused function had no coverage mapping data: {}", mangled_function_name);
+                continue;
+            }
+        }
 
         function_data.push((mangled_function_name, source_hash, is_used, coverage_mapping_buffer));
     }
