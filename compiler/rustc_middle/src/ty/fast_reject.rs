@@ -54,12 +54,6 @@ pub enum SimplifyParams {
     No,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum StripReferences {
-    Yes,
-    No,
-}
-
 /// Tries to simplify a type by only returning the outermost injective¹ layer, if one exists.
 ///
 /// The idea is to get something simple that we can use to quickly decide if two types could unify,
@@ -73,8 +67,6 @@ pub enum StripReferences {
 /// When using `SimplifyParams::Yes`, we still return a simplified type for params and projections²,
 /// the reasoning for this can be seen at the places doing this.
 ///
-/// For diagnostics we strip references with `StripReferences::Yes`. This is currently the best
-/// way to skip some unhelpful suggestions.
 ///
 /// ¹ meaning that if two outermost layers are different, then the whole types are also different.
 /// ² FIXME(@lcnr): this seems like it can actually end up being unsound with the way it's used during
@@ -87,7 +79,6 @@ pub fn simplify_type(
     tcx: TyCtxt<'_>,
     ty: Ty<'_>,
     can_simplify_params: SimplifyParams,
-    strip_references: StripReferences,
 ) -> Option<SimplifiedType> {
     match *ty.kind() {
         ty::Bool => Some(BoolSimplifiedType),
@@ -106,16 +97,7 @@ pub fn simplify_type(
             }
             _ => Some(MarkerTraitObjectSimplifiedType),
         },
-        ty::Ref(_, ty, mutbl) => {
-            if strip_references == StripReferences::Yes {
-                // For diagnostics, when recommending similar impls we want to
-                // recommend impls even when there is a reference mismatch,
-                // so we treat &T and T equivalently in that case.
-                simplify_type(tcx, ty, can_simplify_params, strip_references)
-            } else {
-                Some(RefSimplifiedType(mutbl))
-            }
-        }
+        ty::Ref(_, _, mutbl) => Some(RefSimplifiedType(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(ClosureSimplifiedType(def_id)),
         ty::Generator(def_id, _, _) => Some(GeneratorSimplifiedType(def_id)),
         ty::GeneratorWitness(ref tys) => {
