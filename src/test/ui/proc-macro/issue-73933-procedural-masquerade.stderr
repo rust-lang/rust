@@ -9,7 +9,37 @@ LL | enum ProceduralMasqueradeDummyType {
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
 
-error: aborting due to previous error
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+error: aborting due to 4 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
 error: using `procedural-masquerade` crate
@@ -19,6 +49,39 @@ LL | enum ProceduralMasqueradeDummyType {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[deny(proc_macro_back_compat)]` on by default
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+Future breakage diagnostic:
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+Future breakage diagnostic:
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
+   = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.
+
+Future breakage diagnostic:
+error: using `procedural-masquerade` crate
+  --> $DIR/issue-73933-procedural-masquerade.rs:7:6
+   |
+LL | enum ProceduralMasqueradeDummyType {
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. Versions of this crate below 0.1.7 will eventually stop compiling.

@@ -285,6 +285,7 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
     const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+    #[cfg(not(miri))] // inline assembly does not work in Miri
     unsafe {
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {

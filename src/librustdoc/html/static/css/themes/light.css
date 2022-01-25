@@ -167,7 +167,7 @@ a.result-keyword:focus { background-color: #afc6e4; }
 .sidebar a.current.traitalias { color: #4b349e; }
 .sidebar a.current.fn,
 .sidebar a.current.method,
-.sidebar a.current.tymethod { color: #32d479; }
+.sidebar a.current.tymethod { color: #a67736; }
 .sidebar a.current.keyword { color: #356da4; }
 
 nav.main .current {

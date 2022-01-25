@@ -74,3 +74,7 @@ assert-text: (".sidebar > .location", "Module sub_sub_module")
 assert-false: ".sidebar-elems .crate"
 assert-text: (".sidebar-elems .items > ul > li:nth-child(1)", "Functions")
 assert-text: ("#functions + .item-table .item-left > a", "foo")
+
+// Links to trait implementations in the sidebar should not wrap even if they are long.
+goto: file://|DOC_PATH|/lib2/struct.HasALongTraitWithParams.html
+assert-property: (".sidebar-links a", {"offsetHeight": 29})

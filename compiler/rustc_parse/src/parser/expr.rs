@@ -1458,7 +1458,7 @@ impl<'a> Parser<'a> {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
         } else if !ate_colon && (self.check(&TokenKind::Comma) || self.check(&TokenKind::Gt)) {
             // We're probably inside of a `Path<'a>` that needs a turbofish, so suppress the
-            // "must be followed by a colon" error.
+            // "must be followed by a colon" error, and the "expected one of" error.
             self.diagnostic().delay_span_bug(lo, "this label wasn't parsed correctly");
             consume_colon = false;
             Ok(self.mk_expr_err(lo))
