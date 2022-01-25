@@ -37,21 +37,27 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
+    if super::ENABLE_DROP_TRACKING {
+        let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
-    let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
-    let mut drop_ranges = build_control_flow_graph(
-        fcx.tcx.hir(),
-        fcx.tcx,
-        &fcx.typeck_results.borrow(),
-        consumed_borrowed_places,
-        body,
-        num_exprs,
-    );
+        let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
+        let mut drop_ranges = build_control_flow_graph(
+            fcx.tcx.hir(),
+            fcx.tcx,
+            &fcx.typeck_results.borrow(),
+            consumed_borrowed_places,
+            body,
+            num_exprs,
+        );
 
-    drop_ranges.propagate_to_fixpoint();
+        drop_ranges.propagate_to_fixpoint();
 
-    DropRanges { tracked_value_map: drop_ranges.tracked_value_map, nodes: drop_ranges.nodes }
+        DropRanges { tracked_value_map: drop_ranges.tracked_value_map, nodes: drop_ranges.nodes }
+    } else {
+        // If drop range tracking is not enabled, skip all the analysis and produce an
+        // empty set of DropRanges.
+        DropRanges { tracked_value_map: FxHashMap::default(), nodes: IndexVec::new() }
+    }
 }
 
 /// Applies `f` to consumable node in the HIR subtree pointed to by `place`.
