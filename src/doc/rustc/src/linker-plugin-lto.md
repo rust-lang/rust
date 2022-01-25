@@ -86,7 +86,7 @@ option:
 rustc -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
 ```
 
-### Usage with clang-cl and --target x86_64-pc-windows-msvc
+### Usage with clang-cl and x86_64-pc-windows-msvc
 
 Cross language LTO can be used with the x86_64-pc-windows-msvc target, but this requires using the
 clang-cl compiler instead of the MSVC cl.exe included with Visual Studio Build Tools, and linking
