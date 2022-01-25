@@ -539,7 +539,7 @@ impl BufRead for StdinLock<'_> {
         self.inner.fill_buf()
     }
 
-    fn consume(&mut self, n: usize) {
+    fn consume(&mut self, amt: usize) {
         self.inner.consume(n)
     }
 
