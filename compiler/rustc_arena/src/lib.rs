@@ -125,6 +125,11 @@ impl<I, T> IterExt<T> for I
 where
     I: IntoIterator<Item = T>,
 {
+    // This default collects into a `SmallVec` and then allocates by copying
+    // from it. The specializations below for types like `Vec` are more
+    // efficient, copying directly without the intermediate collecting step.
+    // This default could be made more efficient, like
+    // `DroplessArena::alloc_from_iter`, but it's not hot enough to bother.
     #[inline]
     default fn alloc_from_iter(self, arena: &TypedArena<T>) -> &mut [T] {
         let vec: SmallVec<[_; 8]> = self.into_iter().collect();
@@ -139,7 +144,7 @@ impl<T, const N: usize> IterExt<T> for std::array::IntoIter<T, N> {
         if len == 0 {
             return &mut [];
         }
-        // Move the content to the arena by copying and then forgetting it
+        // Move the content to the arena by copying and then forgetting it.
         unsafe {
             let start_ptr = arena.alloc_raw_slice(len);
             self.as_slice().as_ptr().copy_to_nonoverlapping(start_ptr, len);
@@ -156,7 +161,7 @@ impl<T> IterExt<T> for Vec<T> {
         if len == 0 {
             return &mut [];
         }
-        // Move the content to the arena by copying and then forgetting it
+        // Move the content to the arena by copying and then forgetting it.
         unsafe {
             let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
@@ -173,7 +178,7 @@ impl<A: smallvec::Array> IterExt<A::Item> for SmallVec<A> {
         if len == 0 {
             return &mut [];
         }
-        // Move the content to the arena by copying and then forgetting it
+        // Move the content to the arena by copying and then forgetting it.
         unsafe {
             let start_ptr = arena.alloc_raw_slice(len);
             self.as_ptr().copy_to_nonoverlapping(start_ptr, len);
@@ -520,10 +525,19 @@ impl DroplessArena {
     }
 }
 
-// Declare an `Arena` containing one dropless arena and many typed arenas (the
-// types of the typed arenas are specified by the arguments). The dropless
-// arena will be used for any types that impl `Copy`, and also for any of the
-// specified types that satisfy `!mem::needs_drop`.
+/// Declare an `Arena` containing one dropless arena and many typed arenas (the
+/// types of the typed arenas are specified by the arguments).
+///
+/// There are three cases of interest.
+/// - Types that are `Copy`: these need not be specified in the arguments. They
+///   will use the `DroplessArena`.
+/// - Types that are `!Copy` and `!Drop`: these must be specified in the
+///   arguments. An empty `TypedArena` will be created for each one, but the
+///   `DroplessArena` will always be used and the `TypedArena` will stay empty.
+///   This is odd but harmless, because an empty arena allocates no memory.
+/// - Types that are `!Copy` and `Drop`: these must be specified in the
+///   arguments. The `TypedArena` will be used for them.
+///
 #[rustc_macro_transparency = "semitransparent"]
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
