@@ -21,6 +21,7 @@ use crate::value::Value;
 
 use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
+use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -275,6 +276,12 @@ impl<'ll, 'tcx> TypeMap<'ll, 'tcx> {
         enum_type_id: UniqueTypeId,
     ) -> String {
         format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id))
+    }
+
+    /// Gets the `UniqueTypeId` for the type of a vtable.
+    fn get_unique_type_id_of_vtable_type(&mut self, vtable_type_name: &str) -> UniqueTypeId {
+        let interner_key = self.unique_id_interner.intern(vtable_type_name);
+        interner_key
     }
 }
 
@@ -2586,6 +2593,14 @@ pub fn create_global_var_metadata<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, g
 }
 
 /// Generates LLVM debuginfo for a vtable.
+///
+/// The vtable type looks like a struct with a field for each function pointer and super-trait
+/// pointer it contains (plus the `size` and `align` fields).
+///
+/// Except for `size`, `align`, and `drop_in_place`, the field names don't try to mirror
+/// the name of the method they implement. This can be implemented in the future once there
+/// is a proper disambiguation scheme for dealing with methods from different traits that have
+/// the same name.
 fn vtable_type_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
@@ -2602,16 +2617,79 @@ fn vtable_type_metadata<'ll, 'tcx>(
         COMMON_VTABLE_ENTRIES
     };
 
-    // FIXME: We describe the vtable as an array of *const () pointers. The length of the array is
-    //        correct - but we could create a more accurate description, e.g. by describing it
-    //        as a struct where each field has a name that corresponds to the name of the method
-    //        it points to.
-    //        However, this is not entirely straightforward because there might be multiple
-    //        methods with the same name if the vtable is for multiple traits. So for now we keep
-    //        things simple instead of adding some ad-hoc disambiguation scheme.
-    let vtable_type = tcx.mk_array(tcx.mk_imm_ptr(tcx.types.unit), vtable_entries.len() as u64);
+    // All function pointers are described as opaque pointers. This could be improved in the future
+    // by describing them as actual function pointers.
+    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types.unit);
+    let void_pointer_type_debuginfo = type_metadata(cx, void_pointer_ty);
+    let usize_debuginfo = type_metadata(cx, tcx.types.usize);
+    let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);
+    // If `usize` is not pointer-sized and -aligned then the size and alignment computations
+    // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
+    // platforms.
+    assert_eq!(cx.size_and_align_of(tcx.types.usize), (pointer_size, pointer_align));
 
-    type_metadata(cx, vtable_type)
+    let vtable_type_name =
+        compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::Type);
+    let unique_type_id = debug_context(cx)
+        .type_map
+        .borrow_mut()
+        .get_unique_type_id_of_vtable_type(&vtable_type_name);
+    let size = pointer_size * vtable_entries.len() as u64;
+
+    // This gets mapped to a DW_AT_containing_type attribute which allows GDB to correlate
+    // the vtable to the type it is for.
+    let vtable_holder = type_metadata(cx, ty);
+
+    let vtable_type_metadata = create_struct_stub(
+        cx,
+        size,
+        pointer_align,
+        &vtable_type_name,
+        unique_type_id,
+        NO_SCOPE_METADATA,
+        DIFlags::FlagArtificial,
+        Some(vtable_holder),
+    );
+
+    // Create a field for each entry in the vtable.
+    let fields: Vec<_> = vtable_entries
+        .iter()
+        .enumerate()
+        .filter_map(|(index, vtable_entry)| {
+            let (field_name, field_type) = match vtable_entry {
+                ty::VtblEntry::MetadataDropInPlace => {
+                    ("drop_in_place".to_string(), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::Method(_) => {
+                    // Note: This code does not try to give a proper name to each method
+                    //       because their might be multiple methods with the same name
+                    //       (coming from different traits).
+                    (format!("__method{}", index), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::TraitVPtr(_) => {
+                    (format!("__super_trait_ptr{}", index), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_debuginfo),
+                ty::VtblEntry::MetadataSize => ("size".to_string(), usize_debuginfo),
+                ty::VtblEntry::Vacant => return None,
+            };
+
+            Some(MemberDescription {
+                name: field_name,
+                type_metadata: field_type,
+                offset: pointer_size * index as u64,
+                size: pointer_size,
+                align: pointer_align,
+                flags: DIFlags::FlagZero,
+                discriminant: None,
+                source_info: None,
+            })
+        })
+        .collect();
+
+    let type_params = create_DIArray(DIB(cx), &[]);
+    set_members_of_composite_type(cx, vtable_type_metadata, fields, None, type_params);
+    vtable_type_metadata
 }
 
 /// Creates debug information for the given vtable, which is for the
@@ -2633,11 +2711,12 @@ pub fn create_vtable_metadata<'ll, 'tcx>(
         return;
     }
 
-    let vtable_name = compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref);
+    let vtable_name =
+        compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);
     let vtable_type = vtable_type_metadata(cx, ty, poly_trait_ref);
+    let linkage_name = "";
 
     unsafe {
-        let linkage_name = "";
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,

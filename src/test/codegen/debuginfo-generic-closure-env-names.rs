@@ -17,35 +17,34 @@
 
 // compile-flags: -Cdebuginfo=2 --edition 2021 -Copt-level=0 -Csymbol-mangling-version=v0
 
-
-// CHECK: [[non_generic_closure_NAMESPACE:!.*]] = !DINamespace(name: "non_generic_closure"
-// CHECK: [[function_containing_closure_NAMESPACE:!.*]] = !DINamespace(name: "function_containing_closure"
-// CHECK: [[generic_async_function_NAMESPACE:!.*]] = !DINamespace(name: "generic_async_function"
-// CHECK: [[generic_async_block_NAMESPACE:!.*]] = !DINamespace(name: "generic_async_block"
-
 // non_generic_closure()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}", scope: [[non_generic_closure_NAMESPACE]]
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0", scope: [[non_generic_closure_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
+// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0", scope: ![[non_generic_closure_NAMESPACE:[0-9]+]],
+// CHECK: ![[non_generic_closure_NAMESPACE]] = !DINamespace(name: "non_generic_closure"
+
+// CHECK: ![[function_containing_closure_NAMESPACE:[0-9]+]] = !DINamespace(name: "function_containing_closure"
+// CHECK: ![[generic_async_function_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_function"
+// CHECK: ![[generic_async_block_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_block"
 
 // function_containing_closure<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<u32>", scope: [[function_containing_closure_NAMESPACE]]
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<u32>", scope: [[function_containing_closure_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<u32>", scope: ![[function_containing_closure_NAMESPACE]]
+// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<u32>", scope: ![[function_containing_closure_NAMESPACE]]
 
 // generic_async_function<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: [[generic_async_function_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_function_NAMESPACE]]
 
 // generic_async_function<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<u32>", scope: [[generic_async_function_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<u32>", scope: ![[generic_async_function_NAMESPACE]]
 
 // generic_async_block<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: [[generic_async_block_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_block_NAMESPACE]]
 
 // generic_async_block<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<u32>", scope: [[generic_async_block_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<u32>", scope: ![[generic_async_block_NAMESPACE]]
 
 // function_containing_closure<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: [[function_containing_closure_NAMESPACE]]
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<debuginfo_generic_closure_env_names::Foo>", scope: [[function_containing_closure_NAMESPACE]]
+// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
+// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
 
 
 #![crate_type = "lib"]
@@ -54,15 +53,14 @@ use std::future::Future;
 pub struct Foo;
 
 pub fn non_generic_closure(x: Foo) -> Box<dyn FnOnce() -> Foo> {
-    // This static only exists to trigger generating the namespace debuginfo for
-    // `function_containing_closure` at a predictable, early point, which makes
-    // writing the FileCheck tests above simpler.
-    static _X: u8 = 0;
     return Box::new(move || x);
 }
 
 fn function_containing_closure<T: 'static>(x: T) -> impl FnOnce() -> T {
-    static _X: u8 = 0; // Same as above
+    // This static only exists to trigger generating the namespace debuginfo for
+    // `function_containing_closure` at a predictable, early point, which makes
+    // writing the FileCheck tests above simpler.
+    static _X: u8 = 0;
 
     return move || x;
 }
