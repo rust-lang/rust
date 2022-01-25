@@ -66,17 +66,17 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.cond.cleanup6 ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw i64 %iv, 1
 ; CHECK-NEXT:   %[[mallocgep1:.+]] = getelementptr inbounds double*, double** %call_malloccache, i64 %iv
-; CHECK-NEXT:   %mallocsize3 = mul nuw nsw i64 %iv.next, 8
-; CHECK-NEXT:   %malloccall4 = tail call noalias nonnull i8* @malloc(i64 %mallocsize3)
-; CHECK-NEXT:   %call_malloccache5 = bitcast i8* %malloccall4 to double*
-; CHECK-NEXT:   store double* %call_malloccache5, double** %[[mallocgep1]], align 8, !invariant.group !0
+; CHECK-NEXT:   %[[mallocsize1:.+]] = mul nuw nsw i64 %iv.next, 8
+; CHECK-NEXT:   %[[malloccall2:.+]] = tail call noalias nonnull i8* @malloc(i64 %[[mallocsize1]])
+; CHECK-NEXT:   %[[call_malloccache3:.+]] = bitcast i8* %[[malloccall2]] to double*
+; CHECK-NEXT:   store double* %[[call_malloccache3]], double** %[[mallocgep1]], align 8, !invariant.group !0
 ; CHECK-NEXT:   br label %for.body7
 
 ; CHECK: for.body7:                                        ; preds = %for.body7, %for.cond3.preheader
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body7 ], [ 0, %for.cond3.preheader ]
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
 ; CHECK-NEXT:   %[[augmented:.+]] = call fast double @augmented_get(double* %x, double* %"x'", i64 undef, i64 %iv1)
-; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %call_malloccache5, i64 %iv1
+; CHECK-NEXT:   %[[mallocgep2:.+]] = getelementptr inbounds double, double* %[[call_malloccache3]], i64 %iv1
 ; CHECK-NEXT:   store double %[[augmented]], double* %[[mallocgep2]], align 8, !invariant.group !1
 ; CHECK-NEXT:   %exitcond = icmp eq i64 %iv1, %iv
 ; CHECK-NEXT:   br i1 %exitcond, label %for.cond.cleanup6, label %for.body7

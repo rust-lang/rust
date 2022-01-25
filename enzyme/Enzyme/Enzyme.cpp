@@ -439,8 +439,13 @@ public:
     unsigned width = 1;
 
     // determine width
+#if LLVM_VERSION_MAJOR >= 14
+    for (auto [i, found] = std::tuple{0, false}; i < CI->arg_size(); ++i)
+#else
     for (auto [i, found] = std::tuple{0, false}; i < CI->getNumArgOperands();
-         ++i) {
+         ++i)
+#endif
+    {
       Value *arg = CI->getArgOperand(i);
 
       if (getMetadataName(arg) && *getMetadataName(arg) == "enzyme_width") {
@@ -453,7 +458,12 @@ public:
           return false;
         }
 
-        if (i + 1 >= CI->getNumArgOperands()) {
+#if LLVM_VERSION_MAJOR >= 14
+        if (i + 1 >= CI->arg_size())
+#else
+        if (i + 1 >= CI->getNumArgOperands())
+#endif
+        {
           EmitFailure("MissingVectorWidth", CI->getDebugLoc(), CI,
                       "constant integer followong enzyme_width is missing",
                       *CI->getArgOperand(i), " in", *CI);
@@ -510,8 +520,14 @@ public:
                 ArrayType::get(PointerType::get(sty->getElementType(0),
                                                 pty->getAddressSpace()),
                                width));
-            for (int i = 0; i < width; ++i) {
+            for (size_t i = 0; i < width; ++i) {
+#if LLVM_VERSION_MAJOR > 7
+              Value *elem = Builder.CreateStructGEP(
+                  cast<PointerType>(sretPt->getType())->getElementType(),
+                  sretPt, i);
+#else
               Value *elem = Builder.CreateStructGEP(sretPt, i);
+#endif
               acc = Builder.CreateInsertValue(acc, elem, i);
             }
             shadow = acc;
@@ -578,14 +594,27 @@ public:
         if (mode == DerivativeMode::ReverseModeGradient) {
           if (differentialReturn && differet == nullptr) {
             differet = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal))
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              differet = Builder.CreateLoad(
+                  cast<PointerType>(differet->getType())->getElementType(),
+                  differet);
+#else
               differet = Builder.CreateLoad(differet);
+#endif
+            }
             assert(differet->getType() == cast<Function>(fn)->getReturnType());
             continue;
           } else if (tape == nullptr) {
             tape = res;
-            if (CI->paramHasAttr(i, Attribute::ByVal))
+            if (CI->paramHasAttr(i, Attribute::ByVal)) {
+#if LLVM_VERSION_MAJOR > 7
+              tape = Builder.CreateLoad(
+                  cast<PointerType>(tape->getType())->getElementType(), tape);
+#else
               tape = Builder.CreateLoad(tape);
+#endif
+            }
             continue;
           }
         }
@@ -885,18 +914,29 @@ public:
     if (mode == DerivativeMode::ReverseModeGradient && tape && tapeType) {
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
       if (tapeIsPointer) {
-        tape = Builder.CreateLoad(Builder.CreateBitCast(
+        tape = Builder.CreateBitCast(
             tape, PointerType::get(
                       tapeType,
-                      cast<PointerType>(tape->getType())->getAddressSpace())));
+                      cast<PointerType>(tape->getType())->getAddressSpace()));
+#if LLVM_VERSION_MAJOR > 7
+        tape = Builder.CreateLoad(tapeType, tape);
+#else
+        tape = Builder.CreateLoad(tape);
+#endif
       } else if (tapeType != tape->getType() &&
                  DL.getTypeSizeInBits(tapeType) <=
                      DL.getTypeSizeInBits(tape->getType())) {
         IRBuilder<> EB(&CI->getParent()->getParent()->getEntryBlock().front());
         auto AL = EB.CreateAlloca(tape->getType());
         Builder.CreateStore(tape, AL);
+#if LLVM_VERSION_MAJOR > 7
+        tape = Builder.CreateLoad(
+            tapeType,
+            Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
+#else
         tape = Builder.CreateLoad(
             Builder.CreatePointerCast(AL, PointerType::getUnqual(tapeType)));
+#endif
       }
       assert(tape->getType() == tapeType);
       args.push_back(tape);
@@ -1030,7 +1070,12 @@ public:
           Builder.CreateStore(
               diffret, Builder.CreatePointerCast(
                            AL, PointerType::getUnqual(diffret->getType())));
-          CI->replaceAllUsesWith(Builder.CreateLoad(AL));
+#if LLVM_VERSION_MAJOR > 7
+          Value *cload = Builder.CreateLoad(CI->getType(), AL);
+#else
+          Value *cload = Builder.CreateLoad(AL);
+#endif
+          CI->replaceAllUsesWith(cload);
         } else {
           llvm::errs() << *CI << " - " << *diffret << "\n";
           assert(0 && " what");
@@ -1041,8 +1086,13 @@ public:
         // Assign results to struct allocated at the call site.
         if (StructType *st = cast<StructType>(diffret->getType())) {
           for (unsigned int i = 0; i < st->getNumElements(); i++) {
-            Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}),
-                                Builder.CreateStructGEP(sret, i));
+#if LLVM_VERSION_MAJOR > 7
+            Value *sgep = Builder.CreateStructGEP(
+                cast<PointerType>(sret->getType())->getElementType(), sret, i);
+#else
+            Value *sgep = Builder.CreateStructGEP(sret, i);
+#endif
+            Builder.CreateStore(Builder.CreateExtractValue(diffret, {i}), sgep);
           }
         }
       } else {

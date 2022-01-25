@@ -26,9 +26,9 @@ entry:
 
 ; CHECK: define internal { double*, double* } @augmented_cst(double* noalias %W, double* %"W'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %.fca.0.insert = insertvalue { double*, double* } undef, double* %W, 0
-; CHECK-NEXT:   %.fca.1.insert = insertvalue { double*, double* } %.fca.0.insert, double* %"W'", 1
-; CHECK-NEXT:   ret { double*, double* } %.fca.1.insert
+; CHECK-NEXT:   %[[fca0insert:.+]] = insertvalue { double*, double* } undef, double* %W, 0
+; CHECK-NEXT:   %[[fca1insert:.+]] = insertvalue { double*, double* } %[[fca0insert:.+]], double* %"W'", 1
+; CHECK-NEXT:   ret { double*, double* } %[[fca1insert:.+]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffecst(double* noalias %W, double* %"W'") 

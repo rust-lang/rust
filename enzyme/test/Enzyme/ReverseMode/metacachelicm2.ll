@@ -80,9 +80,9 @@ attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 ; CHECK-NEXT:   %len = load i64, i64* %arrayidx, align 8, !tbaa !6, !invariant.group !8
 ; CHECK-NEXT:   %0 = getelementptr inbounds double*, double** %ld_malloccache, i64 %iv
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %len, 8
-; CHECK-NEXT:   %malloccall3 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %ld_malloccache4 = bitcast i8* %malloccall3 to double*
-; CHECK-NEXT:   store double* %ld_malloccache4, double** %0, align 8, !invariant.group !9
+; CHECK-NEXT:   %[[malloccall3:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %[[ld_malloccache4:.+]] = bitcast i8* %[[malloccall3]] to double*
+; CHECK-NEXT:   store double* %[[ld_malloccache4]], double** %0, align 8, !invariant.group !9
 ; CHECK-NEXT:   %1 = getelementptr inbounds double*, double** %ld_malloccache, i64 %iv
 ; CHECK-NEXT:   %2 = load double*, double** %1, align 8, !dereferenceable !10, !invariant.group !9
 ; CHECK-NEXT:   %3 = bitcast double* %2 to i8*
@@ -114,9 +114,9 @@ attributes #2 = { "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-
 
 ; CHECK: invertfor.body5.preheader:                        ; preds = %invertfor.body5
 ; CHECK-NEXT:   %6 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   %_unwrap6 = getelementptr inbounds double*, double** %ld_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %forfree7 = load double*, double** %_unwrap6, align 8, !dereferenceable !10, !invariant.group !9
-; CHECK-NEXT:   %7 = bitcast double* %forfree7 to i8*
+; CHECK-NEXT:   %[[_unwrap6:.+]] = getelementptr inbounds double*, double** %ld_malloccache, i64 %"iv'ac.0"
+; CHECK-NEXT:   %[[forfree7:.+]] = load double*, double** %[[_unwrap6]], align 8, !dereferenceable !10, !invariant.group !9
+; CHECK-NEXT:   %7 = bitcast double* %[[forfree7]] to i8*
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %7)
 ; CHECK-NEXT:   br i1 %6, label %invertentry, label %incinvertfor.body5.preheader
 

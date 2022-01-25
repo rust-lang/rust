@@ -80,8 +80,8 @@ attributes #0 = { readnone speculatable }
 
 ; CHECK: for.body59:                                       ; preds = %for.body59, %for.body
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body59 ], [ 0, %for.body ]
-; CHECK-NEXT:   %[[a3:.+]] = mul i64 {{(%iv1, %step|%step, %iv1)}}
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
+; CHECK-NEXT:   %[[a3:.+]] = mul i64 {{(%iv1, %step|%step, %iv1)}}
 ; CHECK-NEXT:   %add61 = add nuw nsw i64 %[[a3]], %step
 ; CHECK-NEXT:   %_augmented = call fast double @augmented_inner(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[a5:.+]] = mul nuw nsw i64 %iv, %[[a0]]
@@ -116,8 +116,8 @@ attributes #0 = { readnone speculatable }
 
 ; CHECK: for.body59:                                       ; preds = %for.body59, %for.body
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body59 ], [ 0, %for.body ]
-; CHECK-NEXT:   %[[a4:.+]] = mul i64 {{(%iv1, %step|%step, %iv1)}}
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
+; CHECK-NEXT:   %[[a4:.+]] = mul i64 {{(%iv1, %step|%step, %iv1)}}
 ; CHECK-NEXT:   %add61 = add nuw nsw i64 %[[a4]], %step
 ; CHECK-NEXT:   %cmp57 = icmp slt i64 %add61, 100
 ; CHECK-NEXT:   br i1 %cmp57, label %for.body59, label %for.cond.loopexit
@@ -145,8 +145,8 @@ attributes #0 = { readnone speculatable }
 ; CHECK-NEXT:   %[[_unwrap6:.+]] = add nuw nsw i64 %"iv1'ac.0", %[[_unwrap5]]
 ; CHECK-NEXT:   %[[_unwrap7:.+]] = getelementptr inbounds double, double* %0, i64 %[[_unwrap6]]
 ; TODO make the invariant group here the same in the augmented forward
-; CHECK-NEXT:   %tapeArg3_unwrap = load double, double* %[[_unwrap7:.+]], align 8, !invariant.group !
-; CHECK-NEXT:   call void @diffeinner(double* %x, double* %"x'", double %tapeArg3_unwrap)
+; CHECK-NEXT:   %[[tapeArg3_unwrap:.+]] = load double, double* %[[_unwrap7:.+]], align 8, !invariant.group !
+; CHECK-NEXT:   call void @diffeinner(double* %x, double* %"x'", double %[[tapeArg3_unwrap]])
 ; CHECK-NEXT:   %[[a13:.+]] = icmp eq i64 %"iv1'ac.0", 0
 ; CHECK-NEXT:   br i1 %[[a13]], label %invertfor.body, label %incinvertfor.body59
 

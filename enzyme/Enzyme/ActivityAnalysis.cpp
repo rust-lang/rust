@@ -254,7 +254,12 @@ bool ActivityAnalyzer::isFunctionArgumentConstant(CallInst *CI, Value *val) {
   if (Name == "Faddeeva_erf" || Name == "Faddeeva_erfc" ||
       Name == "Faddeeva_erfcx" || Name == "Faddeeva_erfi" ||
       Name == "Faddeeva_dawson") {
-    for (size_t i = 0; i < CI->getNumArgOperands() - 1; i++) {
+#if LLVM_VERSION_MAJOR >= 14
+    for (size_t i = 0; i < CI->arg_size() - 1; i++)
+#else
+    for (size_t i = 0; i < CI->getNumArgOperands() - 1; i++)
+#endif
+    {
       if (val == CI->getOperand(i))
         return false;
     }
@@ -335,7 +340,12 @@ static inline void propagateArgumentInformation(
     if (Name == "Faddeeva_erf" || Name == "Faddeeva_erfc" ||
         Name == "Faddeeva_erfcx" || Name == "Faddeeva_erfi" ||
         Name == "Faddeeva_dawson") {
-      for (size_t i = 0; i < CI.getNumArgOperands() - 1; i++) {
+#if LLVM_VERSION_MAJOR >= 14
+      for (size_t i = 0; i < CI.arg_size() - 1; i++)
+#else
+      for (size_t i = 0; i < CI.getNumArgOperands() - 1; i++)
+#endif
+      {
         propagateFromOperand(CI.getOperand(i));
       }
       return;
@@ -909,7 +919,9 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         return true;
       }
     }
-    if (ce->isGEPWithNoNotionalOverIndexing()) {
+    if (ce->getOpcode() == Instruction::GetElementPtr &&
+        llvm::all_of(ce->operand_values(),
+                     [&](Value *v) { return isConstantValue(TR, v); })) {
       if (isConstantValue(TR, ce->getOperand(0))) {
         if (EnzymePrintActivity)
           llvm::errs() << " VALUE const cast from gep operand " << *Val << "\n";

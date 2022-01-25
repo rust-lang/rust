@@ -65,8 +65,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(80) dereferenceable_or_null(80) i8* @malloc(i64 80)
 ; CHECK-NEXT:   %call_malloccache = bitcast i8* %malloccall to i64*
-; CHECK-NEXT:   %malloccall3 = tail call noalias nonnull dereferenceable(80) dereferenceable_or_null(80) i8* @malloc(i64 80)
-; CHECK-NEXT:   %i0_malloccache = bitcast i8* %malloccall3 to double**
+; CHECK-NEXT:   %[[malloccall3:.+]] = tail call noalias nonnull dereferenceable(80) dereferenceable_or_null(80) i8* @malloc(i64 80)
+; CHECK-NEXT:   %i0_malloccache = bitcast i8* %[[malloccall3]] to double**
 ; CHECK-NEXT:   br label %for.body5.preheader
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.cond.cleanup4
@@ -82,9 +82,9 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   store i64 %call, i64* %[[a1]], align 8, !invariant.group !6
 ; CHECK-NEXT:   %[[a2:.+]] = getelementptr inbounds double*, double** %i0_malloccache, i64 %iv
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %call, 8
-; CHECK-NEXT:   %malloccall5 = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %i0_malloccache6 = bitcast i8* %malloccall5 to double*
-; CHECK-NEXT:   store double* %i0_malloccache6, double** %[[a2]], align 8, !invariant.group !7
+; CHECK-NEXT:   %[[malloccall5:.+]] = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
+; CHECK-NEXT:   %[[i0_malloccache6:.+]] = bitcast i8* %[[malloccall5]] to double*
+; CHECK-NEXT:   store double* %[[i0_malloccache6]], double** %[[a2]], align 8, !invariant.group !7
 ; CHECK-NEXT:   %[[a3:.+]] = getelementptr inbounds double*, double** %i0_malloccache, i64 %iv
 ; CHECK-NEXT:   %[[a4:.+]] = load double*, double** %[[a3]], align 8, !dereferenceable !8, !invariant.group !7
 ; CHECK-NEXT:   %[[a5:.+]] = bitcast double* %[[a4]] to i8*
@@ -112,7 +112,7 @@ attributes #2 = { nounwind }
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.body5.preheader
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall)
-; CHECK-NEXT:   tail call void @free(i8* nonnull %malloccall3)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall3]])
 ; CHECK-NEXT:   ret void
 
 ; CHECK: invertfor.body5.preheader:                        ; preds = %invertfor.body5

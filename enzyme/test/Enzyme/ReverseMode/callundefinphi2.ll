@@ -259,9 +259,9 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
 ; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
-; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
+; CHECK-NEXT:   %[[ipc8:.+]] = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
 ; CHECK-NEXT:   %3 = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
-; CHECK-NEXT:   %_augmented = call double** @augmented_subfn(double* nonnull %3, double* nonnull %"'ipc8", double* nonnull %0, double* nonnull %"'ipc")
+; CHECK-NEXT:   %_augmented = call double** @augmented_subfn(double* nonnull %3, double* nonnull %[[ipc8]], double* nonnull %0, double* nonnull %"'ipc")
 ; CHECK-NEXT:   br label %for.body.i
 
 ; CHECK: for.body.i:                                       ; preds = %for.body.i, %_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit
@@ -276,7 +276,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:    br label %for.cond10.preheader.i
 
 ; CHECK:  for.cond10.preheader.i:                           ; preds = %for.cond.cleanup13.i, %for.cond10.preheader.i.preheader
-; CHECK-NEXT:    %iv3 = phi i64 [ %iv.next4, %for.cond.cleanup13.i ], [ 0, %for.cond10.preheader.i.preheader ]
+; CHECK-NEXT:    %iv3 = phi i64 [ 0, %for.cond10.preheader.i.preheader ], [ %iv.next4, %for.cond.cleanup13.i ] 
 ; CHECK-NEXT:    %res.i.sroa.0.1 = phi i64 [ %[[res:.+]], %for.cond.cleanup13.i ], [ 0, %for.cond10.preheader.i.preheader ]
 ; CHECK-NEXT:    %iv.next4 = add nuw nsw i64 %iv3, 1
 ; CHECK-NEXT:    %mul.i.i = mul nsw i64 4, %iv3
@@ -331,7 +331,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body.i.i
 
 ; CHECK: invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @diffesubfn(double* nonnull %3, double* nonnull %"'ipc8", double* nonnull %0, double* nonnull %"'ipc", double** %_augmented)
+; CHECK-NEXT:   call void @diffesubfn(double* nonnull %3, double* nonnull %[[ipc8]], double* nonnull %0, double* nonnull %"'ipc", double** %_augmented)
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i13'mi")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %call.i.i.i.i.i.i.i13)
 ; CHECK-NEXT:   br label %invertfor.body.i.i
@@ -376,7 +376,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[fad]], %[[unwrap13]]
 ; CHECK-NEXT:   %[[m2a:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[dessa:.+]] = bitcast double %[[m2a]] to i64
-; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc8", i64 %[[iv35a]]
+; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %[[ipc8]], i64 %[[iv35a]]
 ; CHECK-NEXT:   %[[ipc16:.+]] = bitcast double* %"arrayidx.i.i'ipg_unwrap" to i64*
 ; CHECK-NEXT:   %[[prepc:.+]] = load i64, i64* %[[ipc16]], align 8
 ; CHECK-NEXT:   %[[ddpc:.+]] = bitcast i64 %[[prepc]] to double

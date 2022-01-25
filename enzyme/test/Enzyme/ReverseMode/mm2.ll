@@ -152,16 +152,16 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK-NEXT:   br label %invertfor.inc47
 
 ; CHECK: invertfor.body5:                                  ; preds = %invertfor.body23
-; CHECK-NEXT:   %[[a8:.+]] = load double, double* %"out_iji'ipg_unwrap8", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"out_iji'ipg_unwrap8", align 8
+; CHECK-NEXT:   %[[a8:.+]] = load double, double* %[[out_ijiipg_unwrap8:.+]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[out_ijiipg_unwrap8]], align 8
 ; CHECK-NEXT:   %[[a9:.+]] = fadd fast double %[[a16:.+]], %[[a8]]
 ; CHECK-NEXT:   %lhs_i_unwrap = getelementptr inbounds double, double* %lhs_data, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %L_lhs_i_unwrap = load double, double* %lhs_i_unwrap, align 8, !tbaa !2, !invariant.group !6
 ; CHECK-NEXT:   %m0diffeL_rhs_ij = fmul fast double %[[a9]], %L_lhs_i_unwrap
-; CHECK-NEXT:   %rhs_ij_unwrap = getelementptr inbounds double, double* %rhs_data, i64 %_unwrap6
+; CHECK-NEXT:   %rhs_ij_unwrap = getelementptr inbounds double, double* %rhs_data, i64 %[[_unwrap6:.+]]
 ; CHECK-NEXT:   %L_rhs_ij_unwrap = load double, double* %rhs_ij_unwrap, align 8, !tbaa !2, !invariant.group !7
 ; CHECK-NEXT:   %m1diffeL_lhs_i = fmul fast double %[[a9]], %L_rhs_ij_unwrap
-; CHECK-NEXT:   %"rhs_ij'ipg_unwrap" = getelementptr inbounds double, double* %"rhs_data'", i64 %_unwrap6
+; CHECK-NEXT:   %"rhs_ij'ipg_unwrap" = getelementptr inbounds double, double* %"rhs_data'", i64 %[[_unwrap6]]
 ; CHECK-NEXT:   %[[a10:.+]] = load double, double* %"rhs_ij'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[a11:.+]] = fadd fast double %[[a10]], %m0diffeL_rhs_ij
 ; CHECK-NEXT:   store double %[[a11]], double* %"rhs_ij'ipg_unwrap", align 8
@@ -178,27 +178,27 @@ attributes #3 = { argmemonly nounwind }
 ; CHECK: invertfor.body23:                                 ; preds = %invertfor.inc44, %incinvertfor.body23
 ; CHECK-NEXT:   %"add'de.0" = phi double [ 0.000000e+00, %invertfor.inc44 ], [ %[[a16]], %incinvertfor.body23 ]
 ; CHECK-NEXT:   %"iv3'ac.0" = phi i64 [ %[[starting]], %invertfor.inc44 ], [ %[[a22:.+]], %incinvertfor.body23 ]
-; CHECK-NEXT:   %_unwrap6 = mul nsw i64 %"iv1'ac.0", %rows
-; CHECK-NEXT:   %_unwrap7 = add nsw i64 %_unwrap6, %"iv'ac.0"
-; CHECK-NEXT:   %"out_iji'ipg_unwrap8" = getelementptr inbounds double, double* %"out_data'", i64 %_unwrap7
-; CHECK-NEXT:   %[[a15:.+]] = load double, double* %"out_iji'ipg_unwrap8", align 8
-; CHECK-NEXT:   store double 0.000000e+00, double* %"out_iji'ipg_unwrap8", align 8
+; CHECK-NEXT:   %[[_unwrap6]] = mul nsw i64 %"iv1'ac.0", %rows
+; CHECK-NEXT:   %[[_unwrap7:.+]] = add nsw i64 %[[_unwrap6]], %"iv'ac.0"
+; CHECK-NEXT:   %[[out_ijiipg_unwrap8]] = getelementptr inbounds double, double* %"out_data'", i64 %[[_unwrap7]]
+; CHECK-NEXT:   %[[a15:.+]] = load double, double* %[[out_ijiipg_unwrap8]], align 8
+; CHECK-NEXT:   store double 0.000000e+00, double* %[[out_ijiipg_unwrap8]], align 8
 ; CHECK-NEXT:   %[[a16]] = fadd fast double %"add'de.0", %[[a15]]
 ; CHECK-NEXT:   %iv.next4_unwrap = add nuw nsw i64 %"iv3'ac.0", 1
-; CHECK-NEXT:   %_unwrap9 = mul nsw i64 %iv.next4_unwrap, %rows
-; CHECK-NEXT:   %_unwrap10 = add nsw i64 %_unwrap9, %"iv'ac.0"
-; CHECK-NEXT:   %lhs_ki_unwrap = getelementptr inbounds double, double* %lhs_data, i64 %_unwrap10
+; CHECK-NEXT:   %[[_unwrap9:.+]] = mul nsw i64 %iv.next4_unwrap, %rows
+; CHECK-NEXT:   %[[_unwrap10:.+]] = add nsw i64 %[[_unwrap9]], %"iv'ac.0"
+; CHECK-NEXT:   %lhs_ki_unwrap = getelementptr inbounds double, double* %lhs_data, i64 %[[_unwrap10]]
 ; CHECK-NEXT:   %L_lhs_ki_unwrap = load double, double* %lhs_ki_unwrap, align 8, !tbaa !2, !invariant.group !8
 ; CHECK-NEXT:   %m0diffeL_rhs_kk = fmul fast double %[[a16]], %L_lhs_ki_unwrap
-; CHECK-NEXT:   %_unwrap11 = add nsw i64 %iv.next4_unwrap, %_unwrap6
-; CHECK-NEXT:   %rhs_kk_unwrap = getelementptr inbounds double, double* %rhs_data, i64 %_unwrap11
+; CHECK-NEXT:   %[[_unwrap11:.+]] = add nsw i64 %iv.next4_unwrap, %[[_unwrap6]]
+; CHECK-NEXT:   %rhs_kk_unwrap = getelementptr inbounds double, double* %rhs_data, i64 %[[_unwrap11]]
 ; CHECK-NEXT:   %L_rhs_kk_unwrap = load double, double* %rhs_kk_unwrap, align 8, !tbaa !2, !invariant.group !9
 ; CHECK-NEXT:   %m1diffeL_lhs_ki = fmul fast double %[[a16]], %L_rhs_kk_unwrap
-; CHECK-NEXT:   %"rhs_kk'ipg_unwrap" = getelementptr inbounds double, double* %"rhs_data'", i64 %_unwrap11
+; CHECK-NEXT:   %"rhs_kk'ipg_unwrap" = getelementptr inbounds double, double* %"rhs_data'", i64 %[[_unwrap11]]
 ; CHECK-NEXT:   %[[a17:.+]] = load double, double* %"rhs_kk'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[a18:.+]] = fadd fast double %[[a17]], %m0diffeL_rhs_kk
 ; CHECK-NEXT:   store double %[[a18]], double* %"rhs_kk'ipg_unwrap", align 8
-; CHECK-NEXT:   %"lhs_ki'ipg_unwrap" = getelementptr inbounds double, double* %"lhs_data'", i64 %_unwrap10
+; CHECK-NEXT:   %"lhs_ki'ipg_unwrap" = getelementptr inbounds double, double* %"lhs_data'", i64 %[[_unwrap10]]
 ; CHECK-NEXT:   %[[a19:.+]] = load double, double* %"lhs_ki'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[a20:.+]] = fadd fast double %[[a19]], %m1diffeL_lhs_ki
 ; CHECK-NEXT:   store double %[[a20]], double* %"lhs_ki'ipg_unwrap", align 8

@@ -128,7 +128,65 @@ std::pair<PHINode *, Instruction *> InsertNewCanonicalIV(Loop *L, Type *Ty,
       CanonicalIV->addIncoming(ConstantInt::get(Ty, 0), Pred);
     }
   }
+  assert(L->getCanonicalInductionVariable() == CanonicalIV);
   return std::pair<PHINode *, Instruction *>(CanonicalIV, Inc);
+}
+
+// Create a new canonical induction variable of Type Ty for Loop L
+// Return the variable and the increment instruction
+std::pair<PHINode *, Instruction *> FindCanonicalIV(Loop *L, Type *Ty) {
+  assert(L);
+  assert(Ty);
+
+  BasicBlock *Header = L->getHeader();
+  assert(Header);
+  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
+    PHINode *PN = cast<PHINode>(II);
+    if (PN->getType() != Ty)
+      continue;
+
+    Instruction *Inc = nullptr;
+    bool legal = true;
+    for (BasicBlock *Pred : predecessors(Header)) {
+      assert(Pred);
+      if (L->contains(Pred)) {
+        auto Inc2 =
+            dyn_cast<BinaryOperator>(PN->getIncomingValueForBlock(Pred));
+        if (!Inc2 || Inc2->getOpcode() != Instruction::Add ||
+            Inc2->getOperand(0) != PN) {
+          legal = false;
+          break;
+        }
+        auto CI = dyn_cast<ConstantInt>(Inc2->getOperand(1));
+        if (!CI || !CI->isOne()) {
+          legal = false;
+          break;
+        }
+        if (Inc) {
+          if (Inc2 != Inc) {
+            legal = false;
+            break;
+          }
+        } else
+          Inc = Inc2;
+      } else {
+        auto CI = dyn_cast<ConstantInt>(PN->getIncomingValueForBlock(Pred));
+        if (!CI || !CI->isZero()) {
+          legal = false;
+          break;
+        }
+      }
+    }
+    if (!legal)
+      continue;
+    if (!Inc)
+      continue;
+    if (Inc != Header->getFirstNonPHIOrDbg())
+      Inc->moveBefore(Header->getFirstNonPHIOrDbg());
+    return std::make_pair(PN, Inc);
+  }
+  Header->dump();
+  assert(0 && "Could not find canonical IV");
 }
 
 // Attempt to rewrite all phinode's in the loop in terms of the
@@ -141,9 +199,38 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
   assert(CanonicalIV);
   SmallVector<Instruction *, 8> IVsToRemove;
 
-  // This scope is necessary to ensure scevexpander cleans up before we erase
-  // things
-  {
+  auto CanonicalSCEV = SE.getSCEV(CanonicalIV);
+
+  for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II);) {
+    PHINode *PN = cast<PHINode>(II);
+    ++II;
+    if (PN == CanonicalIV)
+      continue;
+    if (!SE.isSCEVable(PN->getType()))
+      continue;
+    const SCEV *S = SE.getSCEV(PN);
+    if (SE.getCouldNotCompute() == S || isa<SCEVUnknown>(S))
+      continue;
+    // we may expand code for phi where not legal (computing with
+    // subloop expressions). Check that this isn't the case
+    if (!SE.dominates(S, Header))
+      continue;
+
+    if (S == CanonicalSCEV) {
+      replacer(PN, CanonicalIV);
+      eraser(PN);
+      continue;
+    }
+
+    IRBuilder<> B(PN);
+    auto Tmp = B.CreatePHI(PN->getType(), 0);
+    for (auto Pred : predecessors(Header))
+      Tmp->addIncoming(UndefValue::get(Tmp->getType()), Pred);
+    replacer(PN, Tmp);
+    eraser(PN);
+
+    // This scope is necessary to ensure scevexpander cleans up before we erase
+    // things
 #if LLVM_VERSION_MAJOR >= 12
     SCEVExpander Exp(SE, Header->getParent()->getParent()->getDataLayout(),
                      "enzyme");
@@ -152,35 +239,12 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
         SE, Header->getParent()->getParent()->getDataLayout(), "enzyme");
 #endif
 
-    for (BasicBlock::iterator II = Header->begin(); isa<PHINode>(II); ++II) {
-      PHINode *PN = cast<PHINode>(II);
-      if (PN == CanonicalIV)
-        continue;
-      if (!SE.isSCEVable(PN->getType()))
-        continue;
-      const SCEV *S = SE.getSCEV(PN);
-      if (SE.getCouldNotCompute() == S)
-        continue;
-      // we may expand code for phi where not legal (computing with
-      // subloop expressions). Check that this isn't the case
-      if (!SE.dominates(S, Header))
-        continue;
-      // We place that at first non phi as it may produce a non-phi instruction
-      // and must thus be expanded after all phi's
-      Value *NewIV =
-          Exp.expandCodeFor(S, PN->getType(), Header->getFirstNonPHI());
-      assert(NewIV->getType() == PN->getType());
-      if (NewIV == PN) {
-        continue;
-      }
-
-      replacer(PN, NewIV);
-      IVsToRemove.push_back(PN);
-    }
-  }
-
-  for (Instruction *PN : IVsToRemove) {
-    eraser(PN);
+    // We place that at first non phi as it may produce a non-phi instruction
+    // and must thus be expanded after all phi's
+    Value *NewIV =
+        Exp.expandCodeFor(S, Tmp->getType(), Header->getFirstNonPHI());
+    replacer(Tmp, NewIV);
+    eraser(Tmp);
   }
 }
 
@@ -424,16 +488,13 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
 
   loopContexts[L].offset = nullptr;
   loopContexts[L].allocLimit = nullptr;
-  auto pair = InsertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
+  // A precisely matching canonical IV shouldve been run during preprocessing.
+  auto pair = FindCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
   PHINode *CanonicalIV = pair.first;
   auto incVar = pair.second;
   assert(CanonicalIV);
   loopContexts[L].var = CanonicalIV;
   loopContexts[L].incvar = incVar;
-  RemoveRedundantIVs(
-      loopContexts[L].header, CanonicalIV, SE,
-      [&](Instruction *I, Value *V) { replaceAWithB(I, V); },
-      [&](Instruction *I) { erase(I); });
   CanonicalizeLatches(L, loopContexts[L].header, loopContexts[L].preheader,
                       CanonicalIV, SE, *this, incVar,
                       getLatches(L, loopContexts[L].exitBlocks));
@@ -857,7 +918,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 #if LLVM_VERSION_MAJOR >= 14
           malloccall->addDereferenceableRetAttr(
               ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
-          AttrBuilder B;
+          AttrBuilder B(ci->getContext());
           B.addDereferenceableOrNullAttr(ci->getLimitedValue() *
                                          byteSizeOfType->getLimitedValue());
           malloccall->setAttributes(
@@ -910,7 +971,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         scopeInstructions[alloc].push_back(zerostore);
 
         IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
+#if LLVM_VERSION_MAJOR > 7
+        Value *allocation = build.CreateLoad(
+            cast<PointerType>(storeInto->getType())->getElementType(),
+            storeInto);
+#else
         Value *allocation = build.CreateLoad(storeInto);
+#endif
 
         Value *tsize = ConstantInt::get(
             size->getType(),
@@ -977,7 +1044,16 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       Value *idx = computeIndexOfChunk(
           /*inForwardPass*/ true, v, containedloops);
 
-      storeInto = v.CreateGEP(v.CreateLoad(storeInto), idx);
+#if LLVM_VERSION_MAJOR > 7
+      storeInto = v.CreateLoad(
+          cast<PointerType>(storeInto->getType())->getElementType(), storeInto);
+      storeInto =
+          v.CreateGEP(cast<PointerType>(storeInto->getType())->getElementType(),
+                      storeInto, idx);
+#else
+      storeInto = v.CreateLoad(storeInto);
+      storeInto = v.CreateGEP(storeInto, idx);
+#endif
       cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
     }
   }
@@ -1009,7 +1085,11 @@ Value *CacheUtility::computeIndexOfChunk(
     if (var == nullptr)
       var = ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 0);
     else if (!inForwardPass) {
+#if LLVM_VERSION_MAJOR > 7
+      var = v.CreateLoad(idx.var->getType(), idx.antivaralloc);
+#else
       var = v.CreateLoad(idx.antivaralloc);
+#endif
       available[idx.var] = var;
     } else {
       var = idx.var;
@@ -1196,8 +1276,13 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
         // map
         if (allocationPreheaders[i] != contexts[j].preheader) {
           if (!inForwardPass) {
+#if LLVM_VERSION_MAJOR > 7
+            reverseMap[contexts[j].var] = RB->CreateLoad(
+                contexts[j].var->getType(), contexts[j].antivaralloc);
+#else
             reverseMap[contexts[j].var] =
                 RB->CreateLoad(contexts[j].antivaralloc);
+#endif
           }
         } else {
           break;
@@ -1340,7 +1425,13 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
       auto mask = v.CreateNot(v.CreateShl(
           ConstantInt::get(Type::getInt8Ty(cache->getContext()), 1), subidx));
 
-      auto cleared = v.CreateAnd(v.CreateLoad(loc), mask);
+#if LLVM_VERSION_MAJOR > 7
+      Value *loadChunk = v.CreateLoad(
+          cast<PointerType>(loc->getType())->getElementType(), loc);
+#else
+      Value *loadChunk = v.CreateLoad(loc);
+#endif
+      auto cleared = v.CreateAnd(loadChunk, mask);
 
       auto toset = v.CreateShl(
           v.CreateZExt(val, Type::getInt8Ty(cache->getContext())), subidx);
@@ -1436,7 +1527,12 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
   // Iterate from outermost loop to innermost loop
   for (int i = sublimits.size() - 1; i >= 0; i--) {
     // Lookup the next allocation pointer
+#if LLVM_VERSION_MAJOR > 7
+    next = BuilderM.CreateLoad(
+        cast<PointerType>(next->getType())->getElementType(), next);
+#else
     next = BuilderM.CreateLoad(next);
+#endif
     if (storeInInstructionsMap && isa<AllocaInst>(cache))
       scopeInstructions[cast<AllocaInst>(cache)].push_back(
           cast<Instruction>(next));
@@ -1490,7 +1586,12 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         assert(es);
         idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
       }
+#if LLVM_VERSION_MAJOR > 7
+      next = BuilderM.CreateGEP(
+          cast<PointerType>(next->getType())->getElementType(), next, idx);
+#else
       next = BuilderM.CreateGEP(next, idx);
+#endif
       cast<GetElementPtrInst>(next)->setIsInBounds(true);
       if (storeInInstructionsMap && isa<AllocaInst>(cache))
         scopeInstructions[cast<AllocaInst>(cache)].push_back(
@@ -1507,7 +1608,12 @@ llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
                                                 llvm::Value *cptr,
                                                 llvm::Value *cache) {
   // Retrieve the actual result
+#if LLVM_VERSION_MAJOR > 7
+  auto result = BuilderM.CreateLoad(
+      cast<PointerType>(cptr->getType())->getElementType(), cptr);
+#else
   auto result = BuilderM.CreateLoad(cptr);
+#endif
 
   // Apply requisite invariant, alignment, etc
   if (ValueInvariantGroups.find(cache) == ValueInvariantGroups.end()) {
@@ -1547,7 +1653,13 @@ Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
 
   // Optionally apply the additional offset
   if (extraOffset) {
+#if LLVM_VERSION_MAJOR > 7
+    cptr =
+        BuilderM.CreateGEP(cast<PointerType>(cptr->getType())->getElementType(),
+                           cptr, extraOffset);
+#else
     cptr = BuilderM.CreateGEP(cptr, extraOffset);
+#endif
     cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
   }
 

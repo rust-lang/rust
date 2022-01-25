@@ -386,7 +386,9 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
       analysis[Val] = analysis[CE->getOperand(0)];
       return;
     }
-    if (CE->isGEPWithNoNotionalOverIndexing()) {
+    if (CE->getOpcode() == Instruction::GetElementPtr &&
+        llvm::all_of(CE->operand_values(),
+                     [](Value *v) { return isa<ConstantInt>(v); })) {
       auto g2 = cast<GetElementPtrInst>(CE->getAsInstruction());
 #if LLVM_VERSION_MAJOR > 6
       APInt ai(DL.getIndexSizeInBits(g2->getPointerAddressSpace()), 0);
@@ -1067,7 +1069,9 @@ void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
       updateAnalysis(CE.getOperand(0), getAnalysis(&CE), &CE);
     return;
   }
-  if (CE.isGEPWithNoNotionalOverIndexing()) {
+  if (CE.getOpcode() == Instruction::GetElementPtr &&
+      llvm::all_of(CE.operand_values(),
+                   [](Value *v) { return isa<ConstantInt>(v); })) {
 
     auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
     auto g2 = cast<GetElementPtrInst>(CE.getAsInstruction());

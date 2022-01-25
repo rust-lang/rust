@@ -62,7 +62,7 @@ exit:                                             ; preds = %L50
 ; CHECK-NEXT:   br label %invertL1e
 
 ; CHECK: invertL50:                                        ; preds = %invertL1e, %incinvertL50
-; CHECK-NEXT:   %3 = phi double [ %.pre5, %invertL1e ], [ %5, %incinvertL50 ]
+; CHECK-NEXT:   %3 = phi double [ %[[pre5:.+]], %invertL1e ], [ %5, %incinvertL50 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 5, %invertL1e ], [ %7, %incinvertL50 ]
 ; CHECK-NEXT:   %m0diffeld = fmul fast double %differeturn, %.pre
 ; CHECK-NEXT:   %4 = fadd fast double %m0diffeld, %m0diffeld
@@ -80,6 +80,6 @@ exit:                                             ; preds = %L50
 ; CHECK-NEXT:   %.phi.trans.insert = getelementptr inbounds double, double* %ld_malloccache, i64 %"iv'ac.0"
 ; CHECK-NEXT:   %.pre = load double, double* %.phi.trans.insert, align 8, !invariant.group !0
 ; CHECK-NEXT:   %"gep'ipg_unwrap.phi.trans.insert" = getelementptr inbounds double, double addrspace(1)* %"in'", i64 %"iv'ac.0"
-; CHECK-NEXT:   %.pre5 = load double, double addrspace(1)* %"gep'ipg_unwrap.phi.trans.insert", align 8
+; CHECK-NEXT:   %[[pre5]] = load double, double addrspace(1)* %"gep'ipg_unwrap.phi.trans.insert", align 8
 ; CHECK-NEXT:   br label %invertL50
 ; CHECK-NEXT: }

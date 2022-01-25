@@ -270,8 +270,8 @@ attributes #6 = { nounwind }
 ; CHECK: for.body44:                                       ; preds = %for.body44, %cond.end33
 ; CHECK-NEXT:   %iv1 = phi i64 [ %iv.next2, %for.body44 ], [ 0, %cond.end33 ]
 ; CHECK-NEXT:   %tmp.1102 = phi float [ %tmp.0105, %cond.end33 ], [ %add56, %for.body44 ]
-; CHECK-NEXT:   %[[v16:.+]] = trunc i64 %iv1 to i32
 ; CHECK-NEXT:   %iv.next2 = add nuw nsw i64 %iv1, 1
+; CHECK-NEXT:   %[[v16:.+]] = trunc i64 %iv1 to i32
 ; CHECK-NEXT:   %idxprom48 = zext i32 %[[v16]] to i64
 ; CHECK-NEXT:   %arrayidx4999 = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a, i64 0, i64 %idxprom, i64 %idxprom48
 ; CHECK-NEXT:   %arrayidx49 = addrspacecast float addrspace(3)* %arrayidx4999 to float*
@@ -322,25 +322,25 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.cond.cleanup43
 
 ; CHECK: invertcond.false:                                 ; preds = %invertcond.end
-; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds float, float* %"d_a'", i64 %add14_unwrap7
+; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds float, float* %"d_a'", i64 %[[add14_unwrap5:.+]]
 ; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx'ipg_unwrap", float %[[v27]] monotonic
 ; CHECK-NEXT:   br label %invertfor.body
 
 ; CHECK: invertcond.end:                                   ; preds = %invertcond.end33, %invertcond.false31
-; CHECK-NEXT:   %"'de8.0" = phi float [ 0.000000e+00, %invertcond.false31 ], [ %[[v31:.+]], %invertcond.end33 ]
+; CHECK-NEXT:   %[[de80:.+]] = phi float [ 0.000000e+00, %invertcond.false31 ], [ %[[v31:.+]], %invertcond.end33 ]
 ; CHECK-NEXT:   %"arrayidx2195'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, i64 0, i64 %[[idxprom_unwrap54:.+]], i64 %[[conv13_unwrap53:.+]]
 ; CHECK-NEXT:   %"arrayidx21'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx2195'ipg_unwrap" to float*
 ; CHECK-NEXT:   %[[v25:.+]] = load float, float* %"arrayidx21'ipc_unwrap", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx21'ipc_unwrap", align 4
-; CHECK-NEXT:   %add11_unwrap5 = add i64 %[[mul9_unwrap35:.+]], %[[conv13_unwrap53]]
-; CHECK-NEXT:   %add14_unwrap7 = add i64 %add11_unwrap5, %mul10_unwrap19
-; CHECK-NEXT:   %cmp16.not_unwrap = icmp ult i64 %add14_unwrap7, %mul15_unwrap24
+; CHECK-NEXT:   %[[add11_unwrap3:.+]] = add i64 %[[mul9_unwrap35:.+]], %[[conv13_unwrap53]]
+; CHECK-NEXT:   %[[add14_unwrap5]] = add i64 %[[add11_unwrap3]], %[[mul10_unwrap16:.+]]
+; CHECK-NEXT:   %cmp16.not_unwrap = icmp ult i64 %[[add14_unwrap5]], %[[mul15_unwrap21:.+]]
 ; CHECK-NEXT:   %[[v26:.+]] = fadd fast float %"'de.1", %[[v25]]
 ; CHECK-NEXT:   %[[v27]] = select fast i1 %cmp16.not_unwrap, float %[[v26]], float %"'de.1"
 ; CHECK-NEXT:   br i1 %cmp16.not_unwrap, label %invertcond.false, label %invertfor.body
 
 ; CHECK: invertcond.false31:                               ; preds = %invertcond.end33
-; CHECK-NEXT:   %"arrayidx32'ipg_unwrap" = getelementptr inbounds float, float* %"d_b'", i64 %add27_unwrap16
+; CHECK-NEXT:   %"arrayidx32'ipg_unwrap" = getelementptr inbounds float, float* %"d_b'", i64 %[[add27_unwrap14:.+]]
 ; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx32'ipg_unwrap", float %[[v31]] monotonic
 ; CHECK-NEXT:   br label %invertcond.end
 
@@ -350,16 +350,16 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %"arrayidx40'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx4097'ipg_unwrap" to float*
 ; CHECK-NEXT:   %[[v29:.+]] = load float, float* %"arrayidx40'ipc_unwrap", align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"arrayidx40'ipc_unwrap", align 4
-; CHECK-NEXT:   %add25_unwrap14 = add nuw nsw i64 %mul10_unwrap19, %[[idxprom_unwrap54]]
-; CHECK-NEXT:   %mul26_unwrap15 = mul i64 %add25_unwrap14, %n
-; CHECK-NEXT:   %add27_unwrap16 = add i64 %mul26_unwrap15, %conv6
-; CHECK-NEXT:   %cmp29.not_unwrap = icmp ult i64 %add27_unwrap16, %mul15_unwrap24
-; CHECK-NEXT:   %[[v30:.+]] = fadd fast float %"'de8.1", %[[v29]]
-; CHECK-NEXT:   %[[v31]] = select fast i1 %cmp29.not_unwrap, float %[[v30]], float %"'de8.1"
+; CHECK-NEXT:   %[[add25_unwrap14:.+]] = add nuw nsw i64 %[[mul10_unwrap16]], %[[idxprom_unwrap54]]
+; CHECK-NEXT:   %[[mul26_unwrap15:.+]] = mul i64 %[[add25_unwrap14]], %n
+; CHECK-NEXT:   %[[add27_unwrap14]] = add i64 %[[mul26_unwrap15]], %conv6
+; CHECK-NEXT:   %cmp29.not_unwrap = icmp ult i64 %[[add27_unwrap14]], %[[mul15_unwrap21]]
+; CHECK-NEXT:   %[[v30:.+]] = fadd fast float %[[de81:.+]], %[[v29]]
+; CHECK-NEXT:   %[[v31]] = select fast i1 %cmp29.not_unwrap, float %[[v30]], float %[[de81]]
 ; CHECK-NEXT:   br i1 %cmp29.not_unwrap, label %invertcond.false31, label %invertcond.end
 
 ; CHECK: invertfor.cond.cleanup43:                         ; preds = %incinvertfor.body, %invertfor.cond.cleanup.loopexit
-; CHECK-NEXT:   %"'de8.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %"'de8.0", %incinvertfor.body ]
+; CHECK-NEXT:   %[[de81:.+]] = phi float [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %[[de80]], %incinvertfor.body ]
 ; CHECK-NEXT:   %"'de.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup.loopexit ], [ %"'de.0", %incinvertfor.body ]
 ; CHECK-NEXT:   %"add56'de.0" = phi float [ %[[v19]], %invertfor.cond.cleanup.loopexit ], [ %[[v22]], %incinvertfor.body ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %_unwrap, %invertfor.cond.cleanup.loopexit ], [ %[[v23]], %incinvertfor.body ]
@@ -370,43 +370,44 @@ attributes #6 = { nounwind }
 ; CHECK-NEXT:   %"tmp.0105'de.1" = phi float [ 0.000000e+00, %invertfor.cond.cleanup43 ], [ %[[v39]], %incinvertfor.body44 ]
 ; CHECK-NEXT:   %"add56'de.1" = phi float [ %"add56'de.0", %invertfor.cond.cleanup43 ], [ %[[v37]], %incinvertfor.body44 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 15, %invertfor.cond.cleanup43 ], [ %[[v40:.+]], %incinvertfor.body44 ]
-; CHECK-NEXT:   %_unwrap18 = trunc i64 %"iv1'ac.0" to i32
-; CHECK-NEXT:   %mul10_unwrap19 = shl i64 %"iv'ac.0", 4
-; CHECK-NEXT:   %idxprom_unwrap20 = zext i32 %_unwrap18 to i64
-; CHECK-NEXT:   %add25_unwrap21 = add nuw nsw i64 %mul10_unwrap19, %idxprom_unwrap20
-; CHECK-NEXT:   %mul26_unwrap22 = mul i64 %add25_unwrap21, %n
-; CHECK-NEXT:   %add27_unwrap23 = add i64 %mul26_unwrap22, %conv6
-; CHECK-NEXT:   %mul15_unwrap24 = mul i64 %n, %n
-; CHECK-NEXT:   %cmp29.not_unwrap25 = icmp ult i64 %add27_unwrap23, %mul15_unwrap24
+; CHECK-NEXT:   %[[_unwrap18:.+]] = trunc i64 %"iv1'ac.0" to i32
+; CHECK-NEXT:   %[[mul10_unwrap16]] = shl i64 %"iv'ac.0", 4
+; CHECK-NEXT:   %[[idxprom_unwrap20:.+]] = zext i32 %[[_unwrap18]] to i64
+; CHECK-NEXT:   %[[add25_unwrap21:.+]] = add nuw nsw i64 %[[mul10_unwrap16]], %[[idxprom_unwrap20:.+]]
+; CHECK-NEXT:   %[[mul26_unwrap22:.+]] = mul i64 %[[add25_unwrap21]], %n
+; CHECK-NEXT:   %[[add27_unwrap23:.+]] = add i64 %[[mul26_unwrap22]], %conv6
+; CHECK-NEXT:   %[[mul15_unwrap21]] = mul i64 %n, %n
+; CHECK-NEXT:   %[[cmp29not_unwrap22:.+]] = icmp ult i64 %[[add27_unwrap23]], %[[mul15_unwrap21]]
+; CHECK-NEXT:   br i1 %[[cmp29not_unwrap22]], label %invertfor.body44_phirc, label %invertfor.body44_phimerge
 
 ; CHECK: invertfor.body44_phirc:
-; CHECK-NEXT:   %arrayidx32_unwrap = getelementptr inbounds float, float* %d_b, i64 %add27_unwrap23
-; CHECK-NEXT:   %_unwrap34 = load float, float* %arrayidx32_unwrap, align 4, !tbaa !9
+; CHECK-NEXT:   %arrayidx32_unwrap = getelementptr inbounds float, float* %d_b, i64 %[[add27_unwrap23:.+]]
+; CHECK-NEXT:   %[[_unwrap34:.+]] = load float, float* %arrayidx32_unwrap, align 4, !tbaa !9
 ; CHECK-NEXT:   br label %invertfor.body44_phimerge
 
 ; CHECK: invertfor.body44_phimerge:                        ; preds = %invertfor.body44, %invertfor.body44_phirc
-; CHECK-NEXT:   %[[v32:.+]] = phi {{(fast )?}}float [ %_unwrap34, %invertfor.body44_phirc ], [ 0.000000e+00, %invertfor.body44 ]
+; CHECK-NEXT:   %[[v32:.+]] = phi {{(fast )?}}float [ %[[_unwrap34]], %invertfor.body44_phirc ], [ 0.000000e+00, %invertfor.body44 ]
 ; CHECK-NEXT:   %m0diffe = fmul fast float %"add56'de.1", %[[v32]]
 ; CHECK-NEXT:   %[[mul9_unwrap35]] = mul i64 %conv, %n
-; CHECK-NEXT:   %add11_unwrap38 = add i64 %[[mul9_unwrap35]], %idxprom_unwrap20
-; CHECK-NEXT:   %add14_unwrap40 = add i64 %add11_unwrap38, %mul10_unwrap19
-; CHECK-NEXT:   %cmp16.not_unwrap42 = icmp ult i64 %add14_unwrap40, %mul15_unwrap24
-; CHECK-NEXT:   br i1 %cmp16.not_unwrap42, label %invertfor.body44_phimerge_phirc, label %invertfor.body44_phimerge_phimerge
+; CHECK-NEXT:   %[[add11_unwrap38:.+]] = add i64 %[[mul9_unwrap35]], %[[idxprom_unwrap20]]
+; CHECK-NEXT:   %[[add14_unwrap40:.+]] = add i64 %[[add11_unwrap38]], %[[mul10_unwrap16]]
+; CHECK-NEXT:   %[[cmp16not_unwrap42:.+]] = icmp ult i64 %[[add14_unwrap40]], %[[mul15_unwrap21]]
+; CHECK-NEXT:   br i1 %[[cmp16not_unwrap42:.+]], label %invertfor.body44_phimerge_phirc, label %invertfor.body44_phimerge_phimerge
 
 ; CHECK: invertfor.body44_phimerge_phirc:                  ; preds = %invertfor.body44_phimerge
-; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds float, float* %d_a, i64 %add14_unwrap40
-; CHECK-NEXT:   %_unwrap51 = load float, float* %arrayidx_unwrap, align 4, !tbaa !9
+; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds float, float* %d_a, i64 %[[add14_unwrap40]]
+; CHECK-NEXT:   %[[_unwrap51:.+]] = load float, float* %arrayidx_unwrap, align 4, !tbaa !9
 ; CHECK-NEXT:   br label %invertfor.body44_phimerge_phimerge
 
 ; CHECK: invertfor.body44_phimerge_phimerge:
-; CHECK-NEXT:   %[[v33:.+]] = phi {{(fast )?}}float [ %_unwrap51, %invertfor.body44_phimerge_phirc ], [ 0.000000e+00, %invertfor.body44_phimerge ]
+; CHECK-NEXT:   %[[v33:.+]] = phi {{(fast )?}}float [ %[[_unwrap51]], %invertfor.body44_phimerge_phirc ], [ 0.000000e+00, %invertfor.body44_phimerge ]
 ; CHECK-NEXT:   %m1diffe = fmul fast float %"add56'de.1", %[[v33]]
 ; CHECK-NEXT:   %[[conv13_unwrap53]] = zext i32 %[[v12]] to i64
-; CHECK-NEXT:   %"arrayidx54101'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b_shadow, i64 0, i64 %idxprom_unwrap20, i64 %[[conv13_unwrap53]]
+; CHECK-NEXT:   %"arrayidx54101'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_b_shadow, i64 0, i64 %[[idxprom_unwrap20]], i64 %[[conv13_unwrap53]]
 ; CHECK-NEXT:   %"arrayidx54'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx54101'ipg_unwrap" to float*
 ; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx54'ipc_unwrap", float %m1diffe monotonic
 ; CHECK-NEXT:   %[[idxprom_unwrap54]] = zext i32 %[[v10]] to i64
-; CHECK-NEXT:   %"arrayidx4999'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, i64 0, i64 %[[idxprom_unwrap54]], i64 %idxprom_unwrap20
+; CHECK-NEXT:   %"arrayidx4999'ipg_unwrap" = getelementptr inbounds [16 x [16 x float]], [16 x [16 x float]] addrspace(3)* @_ZZ22gpu_square_matrix_multPfS_S_mE6tile_a_shadow, i64 0, i64 %[[idxprom_unwrap54]], i64 %[[idxprom_unwrap20]]
 ; CHECK-NEXT:   %"arrayidx49'ipc_unwrap" = addrspacecast float addrspace(3)* %"arrayidx4999'ipg_unwrap" to float*
 ; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float* %"arrayidx49'ipc_unwrap", float %m0diffe monotonic
 ; CHECK-NEXT:   %[[v36:.+]] = icmp eq i64 %"iv1'ac.0", 0

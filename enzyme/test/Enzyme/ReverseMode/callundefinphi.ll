@@ -469,7 +469,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %call.i.i.i.i.i.i.i13 = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
 ; CHECK-NEXT:   %"call.i.i.i.i.i.i.i13'mi" = call noalias nonnull dereferenceable(128) dereferenceable_or_null(128) i8* @malloc(i64 128)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull dereferenceable(128) dereferenceable_or_null(128) %"call.i.i.i.i.i.i.i13'mi", i8 0, i64 128, i1 false)
-; CHECK-NEXT:   %"'ipc8" = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
+; CHECK-NEXT:   %[[ipc8:.+]] = bitcast i8* %"call.i.i.i.i.i.i.i13'mi" to double*
 ; CHECK-NEXT:   %[[unwrap:.+]] = bitcast i8* %call.i.i.i.i.i.i.i13 to double*
 ; CHECK-NEXT:   br label %for.body.i
 
@@ -521,7 +521,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body.i.i
 
 ; CHECK: invert_ZN5Eigen8internal26call_dense_assignment_loopINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEENS_13CwiseBinaryOpINS0_20scalar_difference_opIddEEKS3_S7_EENS0_9assign_opIddEEEEvRT_RKT0_RKT1_.exit: ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @diffesubfn(double* nonnull %[[unwrap]], double* nonnull %"'ipc8", double* nonnull %0, double* nonnull %"'ipc")
+; CHECK-NEXT:   call void @diffesubfn(double* nonnull %[[unwrap]], double* nonnull %[[ipc8]], double* nonnull %0, double* nonnull %"'ipc")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %"call.i.i.i.i.i.i.i13'mi")
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %call.i.i.i.i.i.i.i13)
 ; CHECK-NEXT:   br label %invertfor.body.i.i
@@ -558,7 +558,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %[[abc:.+]] = bitcast double %[[aadd]] to i64
 ; CHECK-NEXT:   %mul.i.i_unwrap = mul nsw i64 4, %"iv3'ac.0"
 ; CHECK-NEXT:   %add.i4.i_unwrap = add nsw i64 %mul.i.i_unwrap, %"iv5'ac.0"
-; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %"'ipc8", i64 %add.i4.i_unwrap
+; CHECK-NEXT:   %"arrayidx.i.i'ipg_unwrap" = getelementptr inbounds double, double* %[[ipc8]], i64 %add.i4.i_unwrap
 ; CHECK-NEXT:   %[[bcup:.+]] = bitcast double* %"arrayidx.i.i'ipg_unwrap" to i64*
 ; CHECK-NEXT:   %[[puw1:.+]] = load i64, i64* %[[bcup]], align 8
 ; CHECK-NEXT:   %[[bcpw:.+]] = bitcast i64 %[[puw1]] to double

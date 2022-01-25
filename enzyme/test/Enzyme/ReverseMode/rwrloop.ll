@@ -119,9 +119,9 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[a0:.+]] = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %cmp233 = icmp sgt i32 %[[a0]], 0
-; CHECK-NEXT:   %_unwrap5 = sext i32 %[[a0]] to i64
-; TODO-CHECK-NEXT:   %_unwrap6 = icmp sgt i64 %_unwrap5, 1
-; TODO-CHECK-NEXT:   %[[smax_unwrap:.+]] = select i1 %_unwrap6, i64 %_unwrap5, i64 1
+; CHECK-NEXT:   %[[_unwrap5:.+]] = sext i32 %[[a0]] to i64
+; TODO-CHECK-NEXT:   %_unwrap6 = icmp sgt i64 %[[_unwrap5]], 1
+; TODO-CHECK-NEXT:   %[[smax_unwrap:.+]] = select i1 %_unwrap6, i64 %[[_unwrap5]], i64 1
 ; CHECK:   %[[a1:.+]] = mul nuw nsw i64 %[[smax_unwrap:.+]], 10
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[a1]], 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
@@ -190,8 +190,8 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %"add10'de.1" = phi double [ %[[a27:.+]], %invertfor.cond.cleanup3.loopexit ], [ %[[a13:.+]], %incinvertfor.body4 ]
 ; CHECK-NEXT:   %"iv1'ac.1" = phi i64 [ %[[_unwrap20:.+]], %invertfor.cond.cleanup3.loopexit ], [ %[[a24:.+]], %incinvertfor.body4 ]
 ; CHECK-NEXT:   %_unwrap = mul nuw nsw i64 %"iv'ac.0", 10
-; CHECK-NEXT:   %_unwrap3 = add nuw nsw i64 %"iv1'ac.1", %_unwrap
-; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %_unwrap3
+; CHECK-NEXT:   %[[_unwrap3:.+]] = add nuw nsw i64 %"iv1'ac.1", %_unwrap
+; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %[[_unwrap3]]
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[a13]] = fadd fast double %"sum.134'de.1", %"add10'de.1"
 ; CHECK-NEXT:   %[[a14:.+]] = fadd fast double %"mul9'de.1", %"add10'de.1"

@@ -1427,27 +1427,24 @@ void clearFunctionAttributes(Function *f) {
     f->removeFnAttr(Attribute::OptimizeNone);
 
 #if LLVM_VERSION_MAJOR >= 14
-  if (auto bytes = f->getAttributes().getRetDereferenceableBytes())
+  if (f->getAttributes().getRetDereferenceableBytes())
 #else
-  if (auto bytes = f->getDereferenceableBytes(llvm::AttributeList::ReturnIndex))
+  if (f->getDereferenceableBytes(llvm::AttributeList::ReturnIndex))
 #endif
   {
-    AttrBuilder ab;
-    ab.addDereferenceableAttr(bytes);
 #if LLVM_VERSION_MAJOR >= 14
-    f->removeRetAttrs(ab);
+    f->removeRetAttr(Attribute::Dereferenceable);
 #else
-    f->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+    f->removeAttribute(llvm::AttributeList::ReturnIndex,
+                       Attribute::Dereferenceable);
 #endif
   }
 
   if (f->getAttributes().getRetAlignment()) {
-    AttrBuilder ab;
-    ab.addAlignmentAttr(f->getAttributes().getRetAlignment());
 #if LLVM_VERSION_MAJOR >= 14
-    f->removeRetAttrs(ab);
+    f->removeRetAttr(Attribute::Alignment);
 #else
-    f->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+    f->removeAttribute(llvm::AttributeList::ReturnIndex, Attribute::Alignment);
 #endif
   }
   Attribute::AttrKind attrs[] = {
@@ -1938,30 +1935,27 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     gutils->newFunc->removeFnAttr(Attribute::OptimizeNone);
 
 #if LLVM_VERSION_MAJOR >= 14
-  if (auto bytes =
-          gutils->newFunc->getAttributes().getRetDereferenceableBytes())
+  if (gutils->newFunc->getAttributes().getRetDereferenceableBytes())
 #else
-  if (auto bytes = gutils->newFunc->getDereferenceableBytes(
+  if (gutils->newFunc->getDereferenceableBytes(
           llvm::AttributeList::ReturnIndex))
 #endif
   {
-    AttrBuilder ab;
-    ab.addDereferenceableAttr(bytes);
 #if LLVM_VERSION_MAJOR >= 14
-    gutils->newFunc->removeRetAttrs(ab);
+    gutils->newFunc->removeRetAttr(Attribute::Dereferenceable);
 #else
-    gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     Attribute::Dereferenceable);
 #endif
   }
 
   // TODO could keep nonnull if returning value -1
   if (gutils->newFunc->getAttributes().getRetAlignment()) {
-    AttrBuilder ab;
-    ab.addAlignmentAttr(gutils->newFunc->getAttributes().getRetAlignment());
 #if LLVM_VERSION_MAJOR >= 14
-    gutils->newFunc->removeRetAttrs(ab);
+    gutils->newFunc->removeRetAttr(Attribute::Alignment);
 #else
-    gutils->newFunc->removeAttributes(llvm::AttributeList::ReturnIndex, ab);
+    gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex,
+                                     Attribute::Alignment);
 #endif
   }
 
@@ -2179,7 +2173,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       }
 #if LLVM_VERSION_MAJOR >= 14
       malloccall->addDereferenceableRetAttr(size->getLimitedValue());
-      AttrBuilder B;
+      AttrBuilder B(malloccall->getContext());
       B.addDereferenceableOrNullAttr(size->getLimitedValue());
       malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
           malloccall->getContext(), B));
@@ -2197,7 +2191,12 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       assert(ret);
       Value *gep = ret;
       if (!removeStruct) {
+#if LLVM_VERSION_MAJOR > 7
+        gep = ib.CreateGEP(cast<PointerType>(ret->getType())->getElementType(),
+                           ret, Idxs, "");
+#else
         gep = ib.CreateGEP(ret, Idxs, "");
+#endif
         cast<GetElementPtrInst>(gep)->setIsInBounds(true);
       }
       ib.CreateStore(malloccall, gep);
@@ -2215,7 +2214,12 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       };
       tapeMemory = ret;
       if (!removeStruct) {
+#if LLVM_VERSION_MAJOR > 7
+        tapeMemory = ib.CreateGEP(
+            cast<PointerType>(ret->getType())->getElementType(), ret, Idxs, "");
+#else
         tapeMemory = ib.CreateGEP(ret, Idxs, "");
+#endif
         cast<GetElementPtrInst>(tapeMemory)->setIsInBounds(true);
       }
     }
@@ -2230,7 +2234,13 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         std::vector<Value *> Idxs = {ib.getInt32(0), ib.getInt32(i)};
         Value *gep = tapeMemory;
         if (!removeTapeStruct) {
+#if LLVM_VERSION_MAJOR > 7
+          gep = ib.CreateGEP(
+              cast<PointerType>(tapeMemory->getType())->getElementType(),
+              tapeMemory, Idxs, "");
+#else
           gep = ib.CreateGEP(tapeMemory, Idxs, "");
+#endif
           cast<GetElementPtrInst>(gep)->setIsInBounds(true);
         }
         ib.CreateStore(VMap[v], gep);
@@ -2295,8 +2305,14 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       }
       if (noReturn)
         ib.CreateRetVoid();
-      else
+      else {
+#if LLVM_VERSION_MAJOR > 7
+        ib.CreateRet(ib.CreateLoad(
+            cast<PointerType>(ret->getType())->getElementType(), ret));
+#else
         ib.CreateRet(ib.CreateLoad(ret));
+#endif
+      }
       cast<Instruction>(VMap[ri])->eraseFromParent();
     }
   }
@@ -2465,7 +2481,12 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
     SmallVector<Value *, 4> retargs;
 
     if (retAlloca) {
+#if LLVM_VERSION_MAJOR > 7
+      auto result = Builder.CreateLoad(retAlloca->getAllocatedType(), retAlloca,
+                                       "retreload");
+#else
       auto result = Builder.CreateLoad(retAlloca, "retreload");
+#endif
       // TODO reintroduce invariant load/group
       // result->setMetadata(LLVMContext::MD_invariant_load,
       // MDNode::get(retAlloca->getContext(), {}));
@@ -2473,7 +2494,12 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
     }
 
     if (dretAlloca) {
+#if LLVM_VERSION_MAJOR > 7
+      auto result = Builder.CreateLoad(dretAlloca->getAllocatedType(),
+                                       dretAlloca, "dretreload");
+#else
       auto result = Builder.CreateLoad(dretAlloca, "dretreload");
+#endif
       // TODO reintroduce invariant load/group
       // result->setMetadata(LLVMContext::MD_invariant_load,
       // MDNode::get(dretAlloca->getContext(), {}));
@@ -2733,7 +2759,12 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
     assert(targetToPreds.size() &&
            "only loops with one backedge are presently supported");
 
+#if LLVM_VERSION_MAJOR > 7
+    Value *av = phibuilder.CreateLoad(loopContext.var->getType(),
+                                      loopContext.antivaralloc);
+#else
     Value *av = phibuilder.CreateLoad(loopContext.antivaralloc);
+#endif
     Value *phi =
         phibuilder.CreateICmpEQ(av, Constant::getNullValue(av->getType()));
     Value *nphi = phibuilder.CreateNot(phi);
@@ -2898,9 +2929,15 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
       if (aug.tapeType) {
         assert(tape);
-        auto tapep =
-            bb.CreatePointerCast(tape, PointerType::getUnqual(aug.tapeType));
+        auto tapep = bb.CreatePointerCast(
+            tape, PointerType::get(
+                      aug.tapeType,
+                      cast<PointerType>(tape->getType())->getAddressSpace()));
+#if LLVM_VERSION_MAJOR > 7
+        auto truetape = bb.CreateLoad(aug.tapeType, tapep, "tapeld");
+#else
         auto truetape = bb.CreateLoad(tapep, "tapeld");
+#endif
         truetape->setMetadata("enzyme_mustcache",
                               MDNode::get(truetape->getContext(), {}));
 
@@ -3282,7 +3319,12 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
       if (!augmenteddata->tapeType->isEmptyTy()) {
         auto tapep = BuilderZ.CreatePointerCast(
             additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
+#if LLVM_VERSION_MAJOR > 7
+        LoadInst *truetape =
+            BuilderZ.CreateLoad(augmenteddata->tapeType, tapep, "truetape");
+#else
         LoadInst *truetape = BuilderZ.CreateLoad(tapep, "truetape");
+#endif
         truetape->setMetadata("enzyme_mustcache",
                               MDNode::get(truetape->getContext(), {}));
 

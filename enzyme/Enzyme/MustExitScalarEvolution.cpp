@@ -427,6 +427,7 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
     Pred = ExitCond->getInversePredicate();
   const ICmpInst::Predicate OriginalPred = Pred;
 
+#if LLVM_VERSION_MAJOR < 14
   // Handle common loops like: for (X = "string"; *X; ++X)
   if (LoadInst *LI = dyn_cast<LoadInst>(ExitCond->getOperand(0)))
     if (Constant *RHS = dyn_cast<Constant>(ExitCond->getOperand(1))) {
@@ -434,6 +435,7 @@ ScalarEvolution::ExitLimit MustExitScalarEvolution::computeExitLimitFromICmp(
       if (ItCnt.hasAnyInfo())
         return ItCnt;
     }
+#endif
 
   const SCEV *LHS = getSCEV(ExitCond->getOperand(0));
   const SCEV *RHS = getSCEV(ExitCond->getOperand(1));

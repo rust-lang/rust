@@ -174,8 +174,6 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %[[mergeblk]] ], [ 0, %entry ] 
 ; CHECK-NEXT:   %[[phi1:.+]] = phi double [ %add, %[[mergeblk]] ], [ 1.000000e+00, %entry ] 
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-
-
 ; CHECK-NEXT:   %[[phibc:.+]] = bitcast double* %[[phiload]] to i8*
 ; CHECK-NEXT:   %[[nexttrunc0:.+]] = and i64 %iv.next, 1
 ; CHECK-NEXT:   %[[nexttrunc:.+]] = icmp ne i64 %[[nexttrunc0]], 0

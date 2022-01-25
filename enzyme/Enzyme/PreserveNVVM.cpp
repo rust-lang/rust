@@ -35,6 +35,8 @@
 
 #include "llvm/Transforms/Utils.h"
 
+#include <map>
+
 using namespace llvm;
 #ifdef DEBUG_TYPE
 #undef DEBUG_TYPE

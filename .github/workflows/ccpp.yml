@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9", "10", "11", "12", "13"]
+        llvm: ["7", "8", "9", "10", "11", "12", "13"] #, "14"]
         build: ["Release"] # "RelWithDebInfo"
         os: [ubuntu-20.04, ubuntu-18.04]
     

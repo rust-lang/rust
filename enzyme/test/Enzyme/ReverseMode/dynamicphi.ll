@@ -64,13 +64,11 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br label %for.outerbody
 
 ; CHECK: for.outerbody: 
-; CHECK-NEXT:   %loopLimit_cache3.0 = phi i64* [ null, %entry ], [ %[[loopLimit_realloccast]], %for.outerbody.loopexit ]
+; CHECK-NEXT:   %[[loopLimit_cache3:.+]] = phi i64* [ null, %entry ], [ %[[loopLimit_realloccast]], %for.outerbody.loopexit ]
 ; CHECK-NEXT:   %phi_cache.0 = phi double** [ null, %entry ], [ %[[phi_realloccast:.+]], %for.outerbody.loopexit ]
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.outerbody.loopexit ], [ 0, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %1 = bitcast double** %phi_cache.0 to i8*
-
-
 ; CHECK-NEXT:   %2 = and i64 %iv.next, 1
 ; CHECK-NEXT:   %3 = icmp ne i64 %2, 0
 ; CHECK-NEXT:   %4 = call i64 @llvm.ctpop.i64(i64 %iv.next) #3
@@ -88,18 +86,18 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: __enzyme_exponentialallocation.exit:
 ; CHECK-NEXT:   %[[phi_realloc:.+]] = phi i8* [ %10, %grow.i ], [ %1, %for.outerbody ]
 ; CHECK-NEXT:   %[[phi_realloccache:.+]] = bitcast i8* %[[phi_realloc]] to double**
-; CHECK-NEXT:   %13 = bitcast i64* %loopLimit_cache3.0 to i8*
-; CHECK-NEXT:   br i1 %6, label %grow.i9, label %[[nouterbody:.+]]
+; CHECK-NEXT:   %13 = bitcast i64* %[[loopLimit_cache3]] to i8*
+; CHECK-NEXT:   br i1 %6, label %grow.i7, label %[[nouterbody:.+]]
 
-; CHECK: grow.i9:  
+; CHECK: grow.i7:  
 ; CHECK-NEXT:   %14 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true) #3
 ; CHECK-NEXT:   %15 = sub nuw nsw i64 64, %14
 ; CHECK-NEXT:   %16 = shl i64 8, %15
 ; CHECK-NEXT:   %17 = call i8* @realloc(i8* %13, i64 %16) #3
-; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit10
+; CHECK-NEXT:   br label %[[nouterbody]]
 
 ; CHECK: [[nouterbody]]:
-; CHECK-NEXT:   %[[loopLimit_realloccache:.+]] = phi i8* [ %17, %grow.i9 ], [ %13, %__enzyme_exponentialallocation.exit ]
+; CHECK-NEXT:   %[[loopLimit_realloccache:.+]] = phi i8* [ %17, %grow.i7 ], [ %13, %__enzyme_exponentialallocation.exit ]
 ; CHECK-NEXT:   %[[loopLimit_realloccast]] = bitcast i8* %[[loopLimit_realloccache]] to i64*
 
 ; CHECK-NEXT:   %iand = and i64 %iv, 5678
@@ -123,17 +121,17 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %25 = call i64 @llvm.ctpop.i64(i64 %iv.next2) #3
 ; CHECK-NEXT:   %26 = icmp ult i64 %25, 3
 ; CHECK-NEXT:   %27 = and i1 %26, %24
-; CHECK-NEXT:   br i1 %27, label %grow.i11, label %__enzyme_exponentialallocation.exit12
+; CHECK-NEXT:   br i1 %27, label %grow.i9, label %__enzyme_exponentialallocation.exit10
 
-; CHECK: grow.i11:
+; CHECK: grow.i9:
 ; CHECK-NEXT:   %28 = call i64 @llvm.ctlz.i64(i64 %iv.next2, i1 true) #3
 ; CHECK-NEXT:   %29 = sub nuw nsw i64 64, %28
 ; CHECK-NEXT:   %30 = shl i64 8, %29
 ; CHECK-NEXT:   %31 = call i8* @realloc(i8* %22, i64 %30) #3
-; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit12
+; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit10
 
-; CHECK: __enzyme_exponentialallocation.exit12:            ; preds = %for.body, %grow.i11
-; CHECK-NEXT:   %[[phi_realloccache4:.+]] = phi i8* [ %31, %grow.i11 ], [ %22, %for.body ]
+; CHECK: __enzyme_exponentialallocation.exit10: 
+; CHECK-NEXT:   %[[phi_realloccache4:.+]] = phi i8* [ %31, %grow.i9 ], [ %22, %for.body ]
 ; CHECK-NEXT:   %[[phi_realloccast5:.+]] = bitcast i8* %[[phi_realloccache4]] to double*
 
 
