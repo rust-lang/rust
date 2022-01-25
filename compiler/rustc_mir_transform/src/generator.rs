@@ -1296,10 +1296,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         }
         let upvar_locals = upvar_collector.finish();
         tracing::info!("Upvar locals: {:?}", upvar_locals);
-        tracing::info!("Upvar count: {:?}", upvars.len());
-        if upvar_locals.len() != upvars.len() {
-            eprintln!("{:#?}", body);
-            assert_eq!(upvar_locals.len(), upvars.len());
+        tracing::info!("Expected upvar count: {:?}", upvars.len());
+
+        let mut replacer = ReplaceLocalWithGeneratorFieldAccess { tcx, upvar_locals };
+        for (block, data) in body.basic_blocks_mut().iter_enumerated_mut() {
+            replacer.visit_basic_block_data(block, data);
         }
 
         let first_block = &mut body.basic_blocks_mut()[BasicBlock::new(0)];
@@ -1388,23 +1389,26 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
 /// Finds locals that are assigned from generator upvars.
 #[derive(Default)]
-struct ExtractGeneratorUpvarLocals {
-    upvar_locals: FxHashMap<Field, Vec<Local>>,
+struct ExtractGeneratorUpvarLocals<'tcx> {
+    upvar_locals: FxHashMap<Local, Rvalue<'tcx>>,
 }
 
-impl ExtractGeneratorUpvarLocals {
-    fn finish(self) -> FxHashMap<Field, Vec<Local>> {
+impl<'tcx> ExtractGeneratorUpvarLocals<'tcx> {
+    fn finish(self) -> FxHashMap<Local, Rvalue<'tcx>> {
         self.upvar_locals
     }
 }
 
-impl<'tcx> Visitor<'tcx> for ExtractGeneratorUpvarLocals {
+impl<'tcx> Visitor<'tcx> for ExtractGeneratorUpvarLocals<'tcx> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let mut visitor = FindGeneratorFieldAccess { field_index: None };
         visitor.visit_rvalue(rvalue, location);
 
-        if let Some(field_index) = visitor.field_index {
-            self.upvar_locals.entry(field_index).or_insert_with(|| vec![]).push(place.local);
+        if let Some(_) = visitor.field_index {
+            if !place.projection.is_empty() {
+                panic!("Non-empty projectsion: {place:#?}");
+            }
+            self.upvar_locals.insert(place.local, rvalue.clone());
         }
     }
 }
@@ -1420,7 +1424,7 @@ impl<'tcx> Visitor<'tcx> for FindGeneratorFieldAccess {
         _context: PlaceContext,
         _location: Location,
     ) {
-        tracing::info!("visit_projection, place_ref={:#?}", place_ref);
+        tracing::info!("visit_projection, place_ref={place_ref:#?}");
 
         if place_ref.local.as_usize() == 1 {
             if !place_ref.projection.is_empty() {
@@ -1432,6 +1436,42 @@ impl<'tcx> Visitor<'tcx> for FindGeneratorFieldAccess {
         }
     }
 }
+
+struct ReplaceLocalWithGeneratorFieldAccess<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    upvar_locals: FxHashMap<Local, Rvalue<'tcx>>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for ReplaceLocalWithGeneratorFieldAccess<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+        for (statement_index, statement) in data.statements.iter_mut().enumerate() {
+            if let StatementKind::Assign(box (place, _rvalue)) = &statement.kind {
+                // Upvar was stored into a local => turn into nop
+                if self.upvar_locals.contains_key(&place.local) {
+                    *statement = Statement { source_info: statement.source_info, kind: StatementKind::Nop };
+                }
+            }
+            self.visit_statement(statement, Location { block, statement_index });
+        }
+    }
+
+    fn visit_place(&mut self, source: &mut Place<'tcx>, _context: PlaceContext, _location: Location) {
+        if let Some(rvalue) = self.upvar_locals.get(&source.local) {
+            match rvalue {
+                Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+                    tracing::info!("Replacing {source:#?} with {place:#?}");
+                    *source = *place;
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 
 /// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields
 /// in the generator state machine but whose storage is not marked as conflicting
