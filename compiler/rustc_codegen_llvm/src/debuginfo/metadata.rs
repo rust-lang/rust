@@ -351,14 +351,15 @@ impl<'ll, 'tcx> RecursiveTypeDescription<'ll, 'tcx> {
 
                 // ... then create the member descriptions ...
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
+                let type_params = compute_type_parameters(cx, unfinished_type);
 
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(
                     cx,
-                    unfinished_type,
                     member_holding_stub,
                     member_descriptions,
                     None,
+                    type_params,
                 );
                 MetadataCreationResult::new(metadata_stub, true)
             }
@@ -983,7 +984,17 @@ fn foreign_type_metadata<'ll, 'tcx>(
     debug!("foreign_type_metadata: {:?}", t);
 
     let name = compute_debuginfo_type_name(cx.tcx, t, false);
-    create_struct_stub(cx, t, &name, unique_type_id, NO_SCOPE_METADATA, DIFlags::FlagZero)
+    let (size, align) = cx.size_and_align_of(t);
+    create_struct_stub(
+        cx,
+        size,
+        align,
+        &name,
+        unique_type_id,
+        NO_SCOPE_METADATA,
+        DIFlags::FlagZero,
+        None,
+    )
 }
 
 fn param_type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
@@ -1299,14 +1310,17 @@ fn prepare_struct_metadata<'ll, 'tcx>(
     };
 
     let containing_scope = get_namespace_for_item(cx, struct_def_id);
+    let (size, align) = cx.size_and_align_of(struct_type);
 
     let struct_metadata_stub = create_struct_stub(
         cx,
-        struct_type,
+        size,
+        align,
         &struct_name,
         unique_type_id,
         Some(containing_scope),
         DIFlags::FlagZero,
+        None,
     );
 
     create_and_register_recursive_type_forward_declaration(
@@ -1398,15 +1412,18 @@ fn prepare_tuple_metadata<'ll, 'tcx>(
     unique_type_id: UniqueTypeId,
     containing_scope: Option<&'ll DIScope>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
+    let (size, align) = cx.size_and_align_of(tuple_type);
     let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
     let struct_stub = create_struct_stub(
         cx,
-        tuple_type,
+        size,
+        align,
         &tuple_name[..],
         unique_type_id,
         containing_scope,
         DIFlags::FlagZero,
+        None,
     );
 
     create_and_register_recursive_type_forward_declaration(
@@ -1581,13 +1598,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
                     describe_enum_variant(cx, self.layout, variant_info, self_metadata);
 
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
+                let type_params = compute_type_parameters(cx, self.enum_type);
 
                 set_members_of_composite_type(
                     cx,
-                    self.enum_type,
                     variant_type_metadata,
                     member_descriptions,
                     Some(&self.common_members),
+                    type_params,
                 );
                 vec![MemberDescription {
                     name: variant_info.variant_name(),
@@ -1648,13 +1666,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         let member_descriptions =
                             member_desc_factory.create_member_descriptions(cx);
+                        let type_params = compute_type_parameters(cx, self.enum_type);
 
                         set_members_of_composite_type(
                             cx,
-                            self.enum_type,
                             variant_type_metadata,
                             member_descriptions,
                             Some(&self.common_members),
+                            type_params,
                         );
 
                         MemberDescription {
@@ -1777,13 +1796,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
                     );
 
                     let member_descriptions = member_desc_factory.create_member_descriptions(cx);
+                    let type_params = compute_type_parameters(cx, self.enum_type);
 
                     set_members_of_composite_type(
                         cx,
-                        self.enum_type,
                         variant_type_metadata,
                         member_descriptions,
                         Some(&self.common_members),
+                        type_params,
                     );
 
                     let (size, align) =
@@ -1823,13 +1843,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                             let member_descriptions =
                                 member_desc_factory.create_member_descriptions(cx);
+                            let type_params = compute_type_parameters(cx, self.enum_type);
 
                             set_members_of_composite_type(
                                 cx,
-                                self.enum_type,
                                 variant_type_metadata,
                                 member_descriptions,
                                 Some(&self.common_members),
+                                type_params,
                             );
 
                             let niche_value = calculate_niche_value(i);
@@ -1965,13 +1986,18 @@ fn describe_enum_variant<'ll, 'tcx>(
             .type_map
             .borrow_mut()
             .get_unique_type_id_of_enum_variant(cx, layout.ty, variant_name);
+
+        let (size, align) = cx.size_and_align_of(layout.ty);
+
         create_struct_stub(
             cx,
-            layout.ty,
+            size,
+            align,
             variant_name,
             unique_type_id,
             Some(containing_scope),
             DIFlags::FlagZero,
+            None,
         )
     });
 
@@ -2308,22 +2334,27 @@ fn composite_type_metadata<'ll, 'tcx>(
     member_descriptions: Vec<MemberDescription<'ll>>,
     containing_scope: Option<&'ll DIScope>,
 ) -> &'ll DICompositeType {
+    let (size, align) = cx.size_and_align_of(composite_type);
+
     // Create the (empty) struct metadata node ...
     let composite_type_metadata = create_struct_stub(
         cx,
-        composite_type,
+        size,
+        align,
         composite_type_name,
         composite_type_unique_id,
         containing_scope,
         DIFlags::FlagZero,
+        None,
     );
+
     // ... and immediately create and add the member descriptions.
     set_members_of_composite_type(
         cx,
-        composite_type,
         composite_type_metadata,
         member_descriptions,
         None,
+        compute_type_parameters(cx, composite_type),
     );
 
     composite_type_metadata
@@ -2331,10 +2362,10 @@ fn composite_type_metadata<'ll, 'tcx>(
 
 fn set_members_of_composite_type<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    composite_type: Ty<'tcx>,
     composite_type_metadata: &'ll DICompositeType,
     member_descriptions: Vec<MemberDescription<'ll>>,
     common_members: Option<&Vec<Option<&'ll DIType>>>,
+    type_params: &'ll DIArray,
 ) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
@@ -2361,13 +2392,12 @@ fn set_members_of_composite_type<'ll, 'tcx>(
         member_metadata.extend(other_members.iter());
     }
 
-    let type_params = compute_type_parameters(cx, composite_type);
     unsafe {
-        let type_array = create_DIArray(DIB(cx), &member_metadata);
+        let field_array = create_DIArray(DIB(cx), &member_metadata);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
             DIB(cx),
             composite_type_metadata,
-            Some(type_array),
+            Some(field_array),
             Some(type_params),
         );
     }
@@ -2420,14 +2450,14 @@ fn compute_type_parameters<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -
 /// with `set_members_of_composite_type()`.
 fn create_struct_stub<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    struct_type: Ty<'tcx>,
-    struct_type_name: &str,
+    size: Size,
+    align: Align,
+    type_name: &str,
     unique_type_id: UniqueTypeId,
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
+    vtable_holder: Option<&'ll DIType>,
 ) -> &'ll DICompositeType {
-    let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
-
     let type_map = debug_context(cx).type_map.borrow();
     let unique_type_id = type_map.get_unique_type_id_as_string(unique_type_id);
 
@@ -2440,17 +2470,17 @@ fn create_struct_stub<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateStructType(
             DIB(cx),
             containing_scope,
-            struct_type_name.as_ptr().cast(),
-            struct_type_name.len(),
+            type_name.as_ptr().cast(),
+            type_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
-            struct_size.bits(),
-            struct_align.bits() as u32,
+            size.bits(),
+            align.bits() as u32,
             flags,
             None,
             empty_array,
             0,
-            None,
+            vtable_holder,
             unique_type_id.as_ptr().cast(),
             unique_type_id.len(),
         )
