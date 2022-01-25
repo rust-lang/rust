@@ -1448,8 +1448,6 @@ impl<'a> Parser<'a> {
         let lo = label.ident.span;
         let label = Some(label);
         let ate_colon = self.eat(&token::Colon);
-        let msg = "expected `while`, `for`, `loop` or `{` after a label";
-
         let expr = if self.eat_keyword(kw::While) {
             self.parse_while_expr(label, lo, attrs)
         } else if self.eat_keyword(kw::For) {
@@ -1459,12 +1457,13 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
         } else if !ate_colon && (self.check(&TokenKind::Comma) || self.check(&TokenKind::Gt)) {
-            self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
             // We're probably inside of a `Path<'a>` that needs a turbofish, so suppress the
-            // "must be followed by a colon" error.
+            // "must be followed by a colon" error, and the "expected one of" error.
+            self.diagnostic().delay_span_bug(lo, "this label wasn't parsed correctly");
             consume_colon = false;
             Ok(self.mk_expr_err(lo))
         } else {
+            let msg = "expected `while`, `for`, `loop` or `{` after a label";
             self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
             // Continue as an expression in an effort to recover on `'label: non_block_expr`.
             self.parse_expr()

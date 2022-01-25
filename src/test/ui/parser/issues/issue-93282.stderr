@@ -1,9 +1,3 @@
-error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/issue-93282.rs:2:9
-   |
-LL |     f<'a,>
-   |         ^ expected `while`, `for`, `loop` or `{` after a label
-
 error: expected one of `.`, `:`, `;`, `?`, `for`, `loop`, `while`, `{`, `}`, or an operator, found `,`
   --> $DIR/issue-93282.rs:2:9
    |
@@ -15,5 +9,5 @@ help: use `::<...>` instead of `<...>` to specify lifetime, type, or const argum
 LL |     f::<'a,>
    |      ++
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
