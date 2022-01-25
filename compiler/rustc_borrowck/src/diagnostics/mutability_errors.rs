@@ -798,7 +798,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .map(|assoc_items| {
                         assoc_items
                             .in_definition_order()
-                            .map(|assoc_item_def| assoc_item_def.ident)
+                            .map(|assoc_item_def| assoc_item_def.ident(self.infcx.tcx))
                             .filter(|&ident| {
                                 let original_method_ident = path_segment.ident;
                                 original_method_ident != ident

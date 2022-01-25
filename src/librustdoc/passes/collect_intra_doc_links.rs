@@ -427,7 +427,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     .inherent_impls(did)
                     .iter()
                     .flat_map(|imp| tcx.associated_items(*imp).in_definition_order())
-                    .any(|item| item.ident.name == variant_name)
+                    .any(|item| item.name == variant_name)
                 {
                     // This is just to let `fold_item` know that this shouldn't be considered;
                     // it's a bug for the error to make it to the user

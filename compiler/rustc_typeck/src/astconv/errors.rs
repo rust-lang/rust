@@ -214,7 +214,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .flatten()
             .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.ident.name) } else { None },
+                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
             )
             .collect();
 
@@ -270,7 +270,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let trait_def_id = assoc_item.container.id();
                 names.push(format!(
                     "`{}` (from trait `{}`)",
-                    assoc_item.ident,
+                    assoc_item.name,
                     tcx.def_path_str(trait_def_id),
                 ));
             }
@@ -327,11 +327,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut names: FxHashMap<_, usize> = FxHashMap::default();
             for item in assoc_items {
                 types_count += 1;
-                *names.entry(item.ident.name).or_insert(0) += 1;
+                *names.entry(item.name).or_insert(0) += 1;
             }
             let mut dupes = false;
             for item in assoc_items {
-                let prefix = if names[&item.ident.name] > 1 {
+                let prefix = if names[&item.name] > 1 {
                     let trait_def_id = item.container.id();
                     dupes = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
@@ -339,7 +339,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     String::new()
                 };
                 if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
-                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.ident));
+                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.name));
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
@@ -350,14 +350,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `Iterator<Item = isize>`.
                 for (potential, item) in iter::zip(&potential_assoc_types, assoc_items) {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*potential) {
-                        suggestions.push((*potential, format!("{} = {}", item.ident, snippet)));
+                        suggestions.push((*potential, format!("{} = {}", item.name, snippet)));
                     }
                 }
             } else if let (Ok(snippet), false) =
                 (tcx.sess.source_map().span_to_snippet(*span), dupes)
             {
                 let types: Vec<_> =
-                    assoc_items.iter().map(|item| format!("{} = Type", item.ident)).collect();
+                    assoc_items.iter().map(|item| format!("{} = Type", item.name)).collect();
                 let code = if snippet.ends_with('>') {
                     // The user wrote `Trait<'a>` or similar and we don't have a type we can
                     // suggest, but at least we can clue them to the correct syntax
@@ -388,17 +388,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let mut names: FxHashMap<_, usize> = FxHashMap::default();
                 for item in assoc_items {
                     types_count += 1;
-                    *names.entry(item.ident.name).or_insert(0) += 1;
+                    *names.entry(item.name).or_insert(0) += 1;
                 }
                 let mut label = vec![];
                 for item in assoc_items {
-                    let postfix = if names[&item.ident.name] > 1 {
+                    let postfix = if names[&item.name] > 1 {
                         let trait_def_id = item.container.id();
                         format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
                     } else {
                         String::new()
                     };
-                    label.push(format!("`{}`{}", item.ident, postfix));
+                    label.push(format!("`{}`{}", item.name, postfix));
                 }
                 if !label.is_empty() {
                     err.span_label(

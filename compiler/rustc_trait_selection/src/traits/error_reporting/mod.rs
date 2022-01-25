@@ -1353,6 +1353,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                                 .map(|id| (trait_assoc_item, id))
                         })
                         .and_then(|(trait_assoc_item, id)| {
+                            let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
                             self.tcx.find_map_relevant_impl(
                                 id,
                                 proj.projection_ty.self_ty(),
@@ -1360,7 +1361,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                                     self.tcx
                                         .associated_items(did)
                                         .in_definition_order()
-                                        .filter(|assoc| assoc.ident == trait_assoc_item.ident)
+                                        .filter(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
                                         .next()
                                 },
                             )

@@ -1367,7 +1367,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "use the fully qualified path to an implementation",
-                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.ident),
+                    format!("<Type as {}>::{}", self.tcx.def_path_str(trait_ref), assoc_item.name),
                     Applicability::HasPlaceholders,
                 );
             }

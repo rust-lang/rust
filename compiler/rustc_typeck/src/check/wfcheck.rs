@@ -864,7 +864,7 @@ fn check_associated_item(
                 let hir_sig = sig_if_method.expect("bad signature for method");
                 check_fn_or_method(
                     fcx,
-                    item.ident.span,
+                    item.ident(fcx.tcx).span,
                     sig,
                     hir_sig.decl,
                     item.def_id,

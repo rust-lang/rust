@@ -1033,7 +1033,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.ident)
+            .map(|candidate| candidate.item.ident(self.tcx))
             .filter(|&name| set.insert(name))
             .collect();
 
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 "<{} as {}>::{}",
                                 stable_pick.self_ty,
                                 self.tcx.def_path_str(def_id),
-                                stable_pick.item.ident
+                                stable_pick.item.name
                             ),
                             Applicability::MachineApplicable,
                         );
@@ -1748,14 +1748,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let best_name = {
                     let names = applicable_close_candidates
                         .iter()
-                        .map(|cand| cand.ident.name)
+                        .map(|cand| cand.name)
                         .collect::<Vec<Symbol>>();
                     find_best_match_for_name(&names, self.method_name.unwrap().name, None)
                 }
                 .unwrap();
-                Ok(applicable_close_candidates
-                    .into_iter()
-                    .find(|method| method.ident.name == best_name))
+                Ok(applicable_close_candidates.into_iter().find(|method| method.name == best_name))
             }
         })
     }
@@ -1906,7 +1904,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
-                        let dist = lev_distance(name.as_str(), x.ident.as_str());
+                        let dist = lev_distance(name.as_str(), x.name.as_str());
                         x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
                     })
                     .copied()

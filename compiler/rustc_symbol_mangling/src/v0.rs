@@ -556,7 +556,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.item_def_id).ident;
+                        let name = cx.tcx.associated_item(projection.item_def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
                         cx = match projection.term {

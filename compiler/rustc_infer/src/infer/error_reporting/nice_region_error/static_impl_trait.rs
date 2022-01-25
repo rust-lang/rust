@@ -70,7 +70,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                             .map(|s| format!("`{}`", s))
                             .unwrap_or_else(|| "`fn` parameter".to_string()),
                         lifetime,
-                        ctxt.assoc_item.ident,
+                        ctxt.assoc_item.name,
                     );
                     err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
                     err.span_label(
@@ -231,7 +231,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // Handle case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a
                 // `'static` lifetime when called as a method on a binding: `bar.qux()`.
                 if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
-                    override_error_code = Some(ctxt.assoc_item.ident);
+                    override_error_code = Some(ctxt.assoc_item.name);
                 }
             }
         }
@@ -252,7 +252,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     self.get_impl_ident_and_self_ty_from_trait(*item_def_id, &v.0)
                 {
                     if self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty) {
-                        override_error_code = Some(ident);
+                        override_error_code = Some(ident.name);
                     }
                 }
             }

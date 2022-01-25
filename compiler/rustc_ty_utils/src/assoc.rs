@@ -100,7 +100,7 @@ fn associated_item_from_trait_item_ref(
     };
 
     ty::AssocItem {
-        ident: trait_item_ref.ident,
+        name: trait_item_ref.ident.name,
         kind,
         vis: tcx.visibility(def_id),
         defaultness: trait_item_ref.defaultness,
@@ -124,7 +124,7 @@ fn associated_item_from_impl_item_ref(
     };
 
     ty::AssocItem {
-        ident: impl_item_ref.ident,
+        name: impl_item_ref.ident.name,
         kind,
         vis: tcx.visibility(def_id),
         defaultness: impl_item_ref.defaultness,

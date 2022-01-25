@@ -2650,7 +2650,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
-                self.tcx.associated_item(def_id).ident
+                self.tcx.associated_item(def_id).name
             ),
             infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{}`", name),
             infer::UpvarRegion(ref upvar_id, _) => {

@@ -2194,7 +2194,7 @@ impl Impl {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())
-            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.ident.name).collect())
+            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name).collect())
             .unwrap_or_default()
     }
 }

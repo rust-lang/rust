@@ -44,8 +44,7 @@ impl AssocItemContainer {
 #[derive(Copy, Clone, Debug, PartialEq, HashStable, Eq, Hash)]
 pub struct AssocItem {
     pub def_id: DefId,
-    #[stable_hasher(project(name))]
-    pub ident: Ident,
+    pub name: Symbol,
     pub kind: AssocKind,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
@@ -61,6 +60,10 @@ pub struct AssocItem {
 }
 
 impl AssocItem {
+    pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
+        Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
+    }
+
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
         match self.kind {
             ty::AssocKind::Fn => {
@@ -70,9 +73,9 @@ impl AssocItem {
                 // regions just fine, showing `fn(&MyType)`.
                 tcx.fn_sig(self.def_id).skip_binder().to_string()
             }
-            ty::AssocKind::Type => format!("type {};", self.ident),
+            ty::AssocKind::Type => format!("type {};", self.name),
             ty::AssocKind::Const => {
-                format!("const {}: {:?};", self.ident, tcx.type_of(self.def_id))
+                format!("const {}: {:?};", self.name, tcx.type_of(self.def_id))
             }
         }
     }
@@ -115,7 +118,7 @@ pub struct AssocItems<'tcx> {
 impl<'tcx> AssocItems<'tcx> {
     /// Constructs an `AssociatedItems` map from a series of `ty::AssocItem`s in definition order.
     pub fn new(items_in_def_order: impl IntoIterator<Item = &'tcx ty::AssocItem>) -> Self {
-        let items = items_in_def_order.into_iter().map(|item| (item.ident.name, item)).collect();
+        let items = items_in_def_order.into_iter().map(|item| (item.name, item)).collect();
         AssocItems { items }
     }
 
@@ -149,7 +152,7 @@ impl<'tcx> AssocItems<'tcx> {
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
             .filter(|item| item.kind == kind)
-            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+            .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 
     /// Returns the associated item with the given name and any of `AssocKind`, if one exists.
@@ -162,7 +165,7 @@ impl<'tcx> AssocItems<'tcx> {
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
             .filter(|item| kinds.contains(&item.kind))
-            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+            .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 
     /// Returns the associated item with the given name in the given `Namespace`, if one exists.
@@ -175,6 +178,6 @@ impl<'tcx> AssocItems<'tcx> {
     ) -> Option<&ty::AssocItem> {
         self.filter_by_name_unhygienic(ident.name)
             .filter(|item| item.kind.namespace() == ns)
-            .find(|item| tcx.hygienic_eq(ident, item.ident, parent_def_id))
+            .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
     }
 }

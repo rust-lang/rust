@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.kind[def_id] <- EntryKind::AssocType(container));
             }
         }
-        self.encode_ident_span(def_id, impl_item.ident);
+        self.encode_ident_span(def_id, impl_item.ident(self.tcx));
         self.encode_item_type(def_id);
         if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
             record!(self.tables.trait_item_def_id[def_id] <- trait_item_def_id);

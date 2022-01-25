@@ -300,7 +300,7 @@ fn compare_predicate_entailment<'tcx>(
                 cause.span(tcx),
                 E0053,
                 "method `{}` has an incompatible type for trait",
-                trait_m.ident
+                trait_m.name
             );
             match &terr {
                 TypeError::ArgumentMutability(0) | TypeError::ArgumentSorts(_, 0)
@@ -452,7 +452,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         tcx.sess.emit_err(LifetimesOrBoundsMismatchOnTrait {
             span,
             item_kind,
-            ident: impl_m.ident,
+            ident: impl_m.ident(tcx),
             generics_span,
         });
         return Err(ErrorReported);
@@ -540,14 +540,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0185,
                 "method `{}` has a `{}` declaration in the impl, but not in the trait",
-                trait_m.ident,
+                trait_m.name,
                 self_descr
             );
             err.span_label(impl_m_span, format!("`{}` used in impl", self_descr));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("trait method declared without `{}`", self_descr));
             } else {
-                err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -560,14 +560,14 @@ fn compare_self_type<'tcx>(
                 impl_m_span,
                 E0186,
                 "method `{}` has a `{}` declaration in the trait, but not in the impl",
-                trait_m.ident,
+                trait_m.name,
                 self_descr
             );
             err.span_label(impl_m_span, format!("expected `{}` in impl", self_descr));
             if let Some(span) = tcx.hir().span_if_local(trait_m.def_id) {
                 err.span_label(span, format!("`{}` used in trait", self_descr));
             } else {
-                err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
+                err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -640,7 +640,7 @@ fn compare_number_of_generics<'tcx>(
                     "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
                     item_kind,
-                    trait_.ident,
+                    trait_.name,
                     impl_count,
                     pluralize!(impl_count),
                     trait_count,
@@ -747,7 +747,7 @@ fn compare_number_of_method_arguments<'tcx>(
             impl_span,
             E0050,
             "method `{}` has {} but the declaration in trait `{}` has {}",
-            trait_m.ident,
+            trait_m.name,
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
             trait_number_args
@@ -761,7 +761,7 @@ fn compare_number_of_method_arguments<'tcx>(
                 ),
             );
         } else {
-            err.note_trait_signature(trait_m.ident.to_string(), trait_m.signature(tcx));
+            err.note_trait_signature(trait_m.name.to_string(), trait_m.signature(tcx));
         }
         err.span_label(
             impl_span,
@@ -811,7 +811,7 @@ fn compare_synthetic_generics<'tcx>(
                 impl_span,
                 E0643,
                 "method `{}` has incompatible signature for trait",
-                trait_m.ident
+                trait_m.name
             );
             err.span_label(trait_span, "declaration in trait here");
             match (impl_synthetic, trait_synthetic) {
@@ -965,7 +965,7 @@ fn compare_const_param_types<'tcx>(
                 *impl_span,
                 E0053,
                 "method `{}` has an incompatible const parameter type for trait",
-                trait_m.ident
+                trait_m.name
             );
             err.span_note(
                 trait_span.map_or_else(|| trait_item_span.unwrap_or(*impl_span), |span| *span),
@@ -1053,7 +1053,7 @@ crate fn compare_const_impl<'tcx>(
                 cause.span,
                 E0326,
                 "implemented const `{}` has an incompatible type for trait",
-                trait_c.ident
+                trait_c.name
             );
 
             let trait_c_span = trait_c.def_id.as_local().map(|trait_c_def_id| {

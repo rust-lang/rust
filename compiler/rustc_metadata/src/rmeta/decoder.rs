@@ -1279,7 +1279,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         ty::AssocItem {
-            ident,
+            name: ident.name,
             kind,
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
