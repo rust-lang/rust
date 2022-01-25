@@ -8,7 +8,6 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::{sym, Symbol};
 use std::borrow::Cow;
@@ -149,7 +148,7 @@ pub(super) fn check<'tcx>(
                 if_chain! {
                     if path_to_local_id(a_path, filter_param_id);
                     if path_to_local_id(b, map_param_id);
-                    if TyS::same_type(cx.typeck_results().expr_ty_adjusted(a), cx.typeck_results().expr_ty_adjusted(b));
+                    if cx.typeck_results().expr_ty_adjusted(a) == cx.typeck_results().expr_ty_adjusted(b);
                     then {
                         return true;
                     }

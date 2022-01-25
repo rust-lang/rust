@@ -6,7 +6,6 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
 use rustc_span::sym;
 
 use super::IMPLICIT_CLONE;
@@ -19,7 +18,7 @@ pub fn check(cx: &LateContext<'_>, method_name: &str, expr: &hir::Expr<'_>, recv
         let input_type = cx.typeck_results().expr_ty(recv);
         let (input_type, ref_count) = peel_mid_ty_refs(input_type);
         if let Some(ty_name) = input_type.ty_adt_def().map(|adt_def| cx.tcx.item_name(adt_def.did));
-        if TyS::same_type(return_type, input_type);
+        if return_type == input_type;
         then {
             let mut app = Applicability::MachineApplicable;
             let recv_snip = snippet_with_context(cx, recv.span, expr.span.ctxt(), "..", &mut app).0;

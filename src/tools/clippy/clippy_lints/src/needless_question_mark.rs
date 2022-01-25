@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
 use rustc_hir::{AsyncGeneratorKind, Block, Body, Expr, ExprKind, GeneratorKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -128,7 +127,7 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if expr.span.ctxt() == inner_expr.span.ctxt();
         let expr_ty = cx.typeck_results().expr_ty(expr);
         let inner_ty = cx.typeck_results().expr_ty(inner_expr);
-        if TyS::same_type(expr_ty, inner_ty);
+        if expr_ty == inner_ty;
         then {
             span_lint_and_sugg(
                 cx,

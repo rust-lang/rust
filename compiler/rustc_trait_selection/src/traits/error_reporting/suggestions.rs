@@ -1555,7 +1555,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // `erase_late_bound_regions`.
             let ty_erased = self.tcx.erase_late_bound_regions(ty);
             let ty_erased = self.tcx.erase_regions(ty_erased);
-            let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+            let eq = ty_erased == target_ty_erased;
             debug!(
                 "maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
                     target_ty_erased={:?} eq={:?}",

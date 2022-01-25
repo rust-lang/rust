@@ -893,19 +893,6 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn same_type(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match (&a.kind(), &b.kind()) {
-            (&Adt(did_a, substs_a), &Adt(did_b, substs_b)) => {
-                if did_a != did_b {
-                    return false;
-                }
-
-                substs_a.types().zip(substs_b.types()).all(|(a, b)| Self::same_type(a, b))
-            }
-            _ => a == b,
-        }
-    }
-
     /// Peel off all reference types in this type until there are none left.
     ///
     /// This method is idempotent, i.e. `ty.peel_refs().peel_refs() == ty.peel_refs()`.
