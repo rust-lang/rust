@@ -484,6 +484,10 @@ nav.sub {
 	overflow: hidden;
 }
 
+.sidebar-links a {
+	white-space: nowrap;
+}
+
 .sidebar h2 {
 	border-bottom: none;
 	font-weight: 500;
