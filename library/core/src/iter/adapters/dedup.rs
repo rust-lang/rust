@@ -128,7 +128,7 @@ where
         let Self { inner, last, same_bucket } = self;
         let last = last.get_or_insert_with(|| inner.next());
         let last_item = last.as_ref()?;
-        let next = inner.find(|next_item| !(same_bucket)(last_item, next_item));
+        let next = inner.find(|next_item| !(same_bucket)(next_item, last_item));
         crate::mem::replace(last, next)
     }
 
