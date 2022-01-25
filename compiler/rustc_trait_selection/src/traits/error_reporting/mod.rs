@@ -21,10 +21,9 @@ use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
-    self, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    self, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
@@ -44,9 +43,7 @@ pub use rustc_infer::traits::error_reporting::*;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CandidateSimilarity {
     Exact,
-    Simplified,
     Fuzzy,
-    Unknown,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1099,7 +1096,7 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         error: &MismatchedProjectionTypes<'tcx>,
     );
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>, strip_references: StripReferences) -> bool;
+    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool;
 
     fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str>;
 
@@ -1404,7 +1401,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         });
     }
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>, strip_references: StripReferences) -> bool {
+    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
         fn type_category(t: Ty<'_>) -> Option<u32> {
@@ -1424,19 +1421,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 ty::Param(..) => Some(12),
                 ty::Opaque(..) => Some(13),
                 ty::Never => Some(14),
-                ty::Adt(adt, ..) => match adt.adt_kind() {
-                    AdtKind::Struct => Some(15),
-                    AdtKind::Union => Some(16),
-                    AdtKind::Enum => Some(17),
-                },
-                ty::Generator(..) => Some(18),
-                ty::Foreign(..) => Some(19),
-                ty::GeneratorWitness(..) => Some(20),
+                ty::Adt(..) => Some(15),
+                ty::Generator(..) => Some(16),
+                ty::Foreign(..) => Some(17),
+                ty::GeneratorWitness(..) => Some(18),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
 
-        let strip_reference = |mut t: Ty<'tcx>| -> Ty<'tcx> {
+        let strip_references = |mut t: Ty<'tcx>| -> Ty<'tcx> {
             loop {
                 match t.kind() {
                     ty::Ref(_, inner, _) | ty::RawPtr(ty::TypeAndMut { ty: inner, .. }) => {
@@ -1447,16 +1440,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        let (a, b) = if strip_references == StripReferences::Yes {
-            (strip_reference(a), strip_reference(b))
-        } else {
-            (a, b)
-        };
-
         match (type_category(a), type_category(b)) {
             (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
-                (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
-                _ => cat_a == cat_b,
+                (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
+                _ if cat_a == cat_b => true,
+                (ty::Ref(..), _) | (_, ty::Ref(..)) => {
+                    self.fuzzy_match_tys(strip_references(a), strip_references(b))
+                }
+                _ => false,
             },
             // infer and error can be equated to all types
             _ => true,
@@ -1476,87 +1467,33 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Vec<ImplCandidate<'tcx>> {
-        // We simplify params and strip references here.
-        //
-        // This both removes a lot of unhelpful suggestions, e.g.
-        // when searching for `&Foo: Trait` it doesn't suggestion `impl Trait for &Bar`,
-        // while also suggesting impls for `&Foo` when we're looking for `Foo: Trait`.
-        //
-        // The second thing isn't necessarily always a good thing, but
-        // any other simple setup results in a far worse output, so 🤷
-        let simp = fast_reject::simplify_type(
-            self.tcx,
-            trait_ref.skip_binder().self_ty(),
-            SimplifyParams::Yes,
-            StripReferences::Yes,
-        );
-        let all_impls = self.tcx.all_impls(trait_ref.def_id());
+        self.tcx
+            .all_impls(trait_ref.def_id())
+            .filter_map(|def_id| {
+                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                    return None;
+                }
 
-        match simp {
-            Some(simp) => {
-                all_impls
-                    .filter_map(|def_id| {
-                        if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
-                            return None;
-                        }
+                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
 
-                        let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+                // Check for exact match.
+                if trait_ref.skip_binder().self_ty() == imp.self_ty() {
+                    return Some(ImplCandidate {
+                        trait_ref: imp,
+                        similarity: CandidateSimilarity::Exact,
+                    });
+                }
 
-                        // Check for exact match.
-                        if trait_ref.skip_binder().self_ty() == imp.self_ty() {
-                            return Some(ImplCandidate {
-                                trait_ref: imp,
-                                similarity: CandidateSimilarity::Exact,
-                            });
-                        }
+                if self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty()) {
+                    return Some(ImplCandidate {
+                        trait_ref: imp,
+                        similarity: CandidateSimilarity::Fuzzy,
+                    });
+                }
 
-                        // Check for match between simplified types.
-                        let imp_simp = fast_reject::simplify_type(
-                            self.tcx,
-                            imp.self_ty(),
-                            SimplifyParams::Yes,
-                            StripReferences::Yes,
-                        );
-                        if let Some(imp_simp) = imp_simp {
-                            if simp == imp_simp {
-                                return Some(ImplCandidate {
-                                    trait_ref: imp,
-                                    similarity: CandidateSimilarity::Simplified,
-                                });
-                            }
-                        }
-
-                        // Check for fuzzy match.
-                        // Pass `StripReferences::Yes` because although we do want to
-                        // be fuzzier than `simplify_type`, we don't want to be
-                        // *too* fuzzy.
-                        if self.fuzzy_match_tys(
-                            trait_ref.skip_binder().self_ty(),
-                            imp.self_ty(),
-                            StripReferences::Yes,
-                        ) {
-                            return Some(ImplCandidate {
-                                trait_ref: imp,
-                                similarity: CandidateSimilarity::Fuzzy,
-                            });
-                        }
-
-                        None
-                    })
-                    .collect()
-            }
-            None => all_impls
-                .filter_map(|def_id| {
-                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
-                        return None;
-                    }
-                    self.tcx.impl_trait_ref(def_id).map(|trait_ref| ImplCandidate {
-                        trait_ref,
-                        similarity: CandidateSimilarity::Unknown,
-                    })
-                })
-                .collect(),
-        }
+                None
+            })
+            .collect()
     }
 
     fn report_similar_impl_candidates(
