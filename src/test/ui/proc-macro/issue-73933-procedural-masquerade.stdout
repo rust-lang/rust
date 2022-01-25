@@ -14,9 +14,9 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "Input",
-                span: #0 bytes(173..178),
+                span: #0 bytes(315..320),
             },
         ],
-        span: #0 bytes(121..180),
+        span: #0 bytes(121..322),
     },
 ]
