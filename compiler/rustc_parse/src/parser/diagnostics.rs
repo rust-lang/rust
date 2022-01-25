@@ -731,28 +731,22 @@ impl<'a> Parser<'a> {
                     match x {
                         Ok((_, _, false)) => {
                             if self.eat(&token::Gt) {
-                                let turbo_err = e.span_suggestion_verbose(
+                                e.span_suggestion_verbose(
                                     binop.span.shrink_to_lo(),
                                     TURBOFISH_SUGGESTION_STR,
                                     "::".to_string(),
                                     Applicability::MaybeIncorrect,
-                                );
-                                if self.check(&TokenKind::Semi) {
-                                    turbo_err.emit();
-                                    *expr = self.mk_expr_err(expr.span);
-                                    return Ok(());
-                                } else {
-                                    match self.parse_expr() {
-                                        Ok(_) => {
-                                            turbo_err.emit();
-                                            *expr = self
-                                                .mk_expr_err(expr.span.to(self.prev_token.span));
-                                            return Ok(());
-                                        }
-                                        Err(mut err) => {
-                                            turbo_err.cancel();
-                                            err.cancel();
-                                        }
+                                )
+                                .emit();
+                                match self.parse_expr() {
+                                    Ok(_) => {
+                                        *expr =
+                                            self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                        return Ok(());
+                                    }
+                                    Err(mut err) => {
+                                        *expr = self.mk_expr_err(expr.span);
+                                        err.cancel();
                                     }
                                 }
                             }
