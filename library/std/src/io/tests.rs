@@ -602,3 +602,18 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
         [255; 128].take(64).read_buf(&mut rbuf).unwrap();
     });
 }
+
+#[test]
+fn read_arc() {
+    use crate::net::TcpStream;
+    use crate::sync::Arc;
+
+    // This test is wrapped in a closure to make sure it typechecks
+    // but we do not run it.
+    let _ = || {
+        let stream = TcpStream::connect("localhost:8080").unwrap();
+        let mut stream = Arc::new(stream);
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer).unwrap();
+    };
+}
