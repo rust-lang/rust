@@ -2,7 +2,7 @@ use super::OverlapError;
 
 use crate::traits;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
+use rustc_middle::ty::fast_reject::{self, SimplifiedType, SimplifyParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 
@@ -49,12 +49,7 @@ impl ChildrenExt<'_> for Children {
     /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        ) {
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), SimplifyParams::No) {
             debug!("insert_blindly: impl_def_id={:?} st={:?}", impl_def_id, st);
             self.non_blanket_impls.entry(st).or_default().push(impl_def_id)
         } else {
@@ -69,12 +64,7 @@ impl ChildrenExt<'_> for Children {
     fn remove_existing(&mut self, tcx: TyCtxt<'_>, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let vec: &mut Vec<DefId>;
-        if let Some(st) = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        ) {
+        if let Some(st) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), SimplifyParams::No) {
             debug!("remove_existing: impl_def_id={:?} st={:?}", impl_def_id, st);
             vec = self.non_blanket_impls.get_mut(&st).unwrap();
         } else {
@@ -322,12 +312,7 @@ impl GraphExt for Graph {
 
         let mut parent = trait_def_id;
         let mut last_lint = None;
-        let simplified = fast_reject::simplify_type(
-            tcx,
-            trait_ref.self_ty(),
-            SimplifyParams::No,
-            StripReferences::No,
-        );
+        let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), SimplifyParams::No);
 
         // Descend the specialization tree, where `parent` is the current parent node.
         loop {
