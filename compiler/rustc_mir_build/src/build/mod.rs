@@ -350,6 +350,7 @@ struct Builder<'a, 'tcx> {
 
     def_id: DefId,
     hir_id: hir::HirId,
+    parent_module: DefId,
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
@@ -807,15 +808,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let lint_level = LintLevel::Explicit(hir_id);
+        let param_env = tcx.param_env(def.did);
         let mut builder = Builder {
             thir,
             tcx,
             infcx,
             typeck_results: tcx.typeck_opt_const_arg(def),
             region_scope_tree: tcx.region_scope_tree(def.did),
-            param_env: tcx.param_env(def.did),
+            param_env,
             def_id: def.did.to_def_id(),
             hir_id,
+            parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
