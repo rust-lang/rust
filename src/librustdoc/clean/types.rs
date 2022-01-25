@@ -5,7 +5,7 @@ use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{slice, vec};
+use std::vec;
 
 use arrayvec::ArrayVec;
 
@@ -733,43 +733,12 @@ crate struct Module {
     crate span: Span,
 }
 
-crate struct ListAttributesIter<'a> {
-    attrs: slice::Iter<'a, ast::Attribute>,
-    current_list: vec::IntoIter<ast::NestedMetaItem>,
-    name: Symbol,
-}
-
-impl<'a> Iterator for ListAttributesIter<'a> {
-    type Item = ast::NestedMetaItem;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(nested) = self.current_list.next() {
-            return Some(nested);
-        }
-
-        for attr in &mut self.attrs {
-            if let Some(list) = attr.meta_item_list() {
-                if attr.has_name(self.name) {
-                    self.current_list = list.into_iter();
-                    if let Some(nested) = self.current_list.next() {
-                        return Some(nested);
-                    }
-                }
-            }
-        }
-
-        None
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let lower = self.current_list.len();
-        (lower, None)
-    }
-}
-
 crate trait AttributesExt {
-    /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn lists(&self, name: Symbol) -> ListAttributesIter<'_>;
+    type AttributeIterator<'a>: Iterator<Item = ast::NestedMetaItem>
+    where
+        Self: 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a>;
 
     fn span(&self) -> Option<rustc_span::Span>;
 
@@ -781,8 +750,13 @@ crate trait AttributesExt {
 }
 
 impl AttributesExt for [ast::Attribute] {
-    fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
-        ListAttributesIter { attrs: self.iter(), current_list: Vec::new().into_iter(), name }
+    type AttributeIterator<'a> = impl Iterator<Item = ast::NestedMetaItem> + 'a;
+
+    fn lists<'a>(&'a self, name: Symbol) -> Self::AttributeIterator<'a> {
+        self.iter()
+            .filter(move |attr| attr.has_name(name))
+            .filter_map(ast::Attribute::meta_item_list)
+            .flatten()
     }
 
     /// Return the span of the first doc-comment, if it exists.
@@ -902,12 +876,9 @@ crate trait NestedAttributesExt {
     fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem>;
 }
 
-impl<I> NestedAttributesExt for I
-where
-    I: IntoIterator<Item = ast::NestedMetaItem>,
-{
-    fn get_word_attr(self, word: Symbol) -> Option<ast::NestedMetaItem> {
-        self.into_iter().find(|attr| attr.is_word() && attr.has_name(word))
+impl<I: Iterator<Item = ast::NestedMetaItem>> NestedAttributesExt for I {
+    fn get_word_attr(mut self, word: Symbol) -> Option<ast::NestedMetaItem> {
+        self.find(|attr| attr.is_word() && attr.has_name(word))
     }
 }
 
@@ -1015,7 +986,7 @@ crate struct Attributes {
 }
 
 impl Attributes {
-    crate fn lists(&self, name: Symbol) -> ListAttributesIter<'_> {
+    crate fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::NestedMetaItem> + '_ {
         self.other_attrs.lists(name)
     }
 
