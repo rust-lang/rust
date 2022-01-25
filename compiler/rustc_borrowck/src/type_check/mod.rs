@@ -203,9 +203,16 @@ pub(crate) fn type_check<'mir, 'tcx>(
                             ConstraintCategory::OpaqueType,
                             CustomTypeOp::new(
                                 |infcx| {
-                                    Ok(decl
+                                    let res = decl
                                         .hidden_type(infcx, &cause, param_env)
-                                        .map_err(|e| e.0)?)
+                                        .map_err(|e| e.0)?;
+                                    infcx.register_member_constraints(
+                                        param_env,
+                                        opaque_type_key,
+                                        res.value.ty,
+                                        res.value.span,
+                                    );
+                                    Ok(res)
                                 },
                                 || "opaque_type_map".to_string(),
                             ),

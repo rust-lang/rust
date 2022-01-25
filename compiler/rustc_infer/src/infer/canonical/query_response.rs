@@ -723,7 +723,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         true
     }
 
-    fn constrain_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
+    fn register_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
         self.obligations.push(self.infcx.opaque_ty_obligation(
             a,
             b,

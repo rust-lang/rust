@@ -11,16 +11,21 @@ LL | | }
    | |_^ ...but data from `a` is returned here
 
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ret-impl-trait-one.rs:16:65
+  --> $DIR/ret-impl-trait-one.rs:16:80
    |
-LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
-   |                                                                 ^^^^^^^^^^^^^^
+LL |   async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
+   |  ____________________________________--__________________________________________^
+   | |                                    |
+   | |                                    hidden type `(&'a u8, &'b u8)` captures the lifetime `'b` as defined here
+LL | |
+LL | |     (a, b)
+LL | | }
+   | |_^
    |
-note: hidden type `(&'a u8, &'<empty> u8)` captures lifetime smaller than the function body
-  --> $DIR/ret-impl-trait-one.rs:16:65
+help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |
-LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> {
-   |                                                                 ^^^^^^^^^^^^^^
+LL | async fn async_ret_impl_trait1<'a, 'b>(a: &'a u8, b: &'b u8) -> impl Trait<'a> + 'b {
+   |                                                                                ++++
 
 error: aborting due to 2 previous errors
 

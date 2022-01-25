@@ -1,5 +1,5 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{InferCtxt, InferOk, InferResult};
+use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, PredicateObligation, PredicateObligations};
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
@@ -379,13 +379,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// - `free_region_relations` -- something that can be used to relate
     ///   the free regions (`'a`) that appear in the impl trait.
     #[instrument(level = "debug", skip(self))]
-    pub fn constrain_opaque_type(
+    pub fn register_member_constraints(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         concrete_ty: Ty<'tcx>,
         span: Span,
-    ) -> InferResult<'tcx, ()> {
+    ) {
         let def_id = opaque_type_key.def_id;
 
         let tcx = self.tcx;
@@ -445,7 +445,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 )
             },
         });
-        Ok(InferOk { value: (), obligations: vec![] })
     }
 
     pub fn opaque_ty_obligation(

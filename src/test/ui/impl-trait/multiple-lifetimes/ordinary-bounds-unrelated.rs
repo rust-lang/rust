@@ -27,7 +27,6 @@ where
     // ```
     if condition() { a } else { b }
     //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
-    //~| ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 }
 
 fn condition() -> bool {

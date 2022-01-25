@@ -1,14 +1,15 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:37
+  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:48
    |
 LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                                     ^^^^^^^^^^
+   |                          -                     ^^^^^^^^
+   |                          |
+   |                          hidden type `Pin<&Foo>` captures the lifetime `'_` as defined here
    |
-note: hidden type `Pin<&'<empty> Foo>` captures lifetime smaller than the function body
-  --> $DIR/arbitrary_self_types_pin_lifetime_impl_trait-async.rs:8:37
+help: to declare that the `impl Trait` captures `'_`, you can add an explicit `'_` lifetime bound
    |
-LL |     async fn f(self: Pin<&Self>) -> impl Clone { self }
-   |                                     ^^^^^^^^^^
+LL |     async fn f(self: Pin<&Self>) -> impl Clone + '_ { self }
+   |                                                ++++
 
 error: aborting due to previous error
 

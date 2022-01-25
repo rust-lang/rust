@@ -33,7 +33,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// purpose of this function is to do that translation.
     ///
     /// (*) C1 and C2 were introduced in the comments on
-    /// `constrain_opaque_type`. Read that comment for more context.
+    /// `register_member_constraints`. Read that comment for more context.
     ///
     /// # Parameters
     ///
