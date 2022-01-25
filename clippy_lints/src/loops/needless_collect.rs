@@ -12,7 +12,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node,
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span};
 
@@ -334,8 +334,8 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     }
 }
 
-fn get_captured_ids(cx: &LateContext<'_>, ty: &'_ TyS<'_>) -> HirIdSet {
-    fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
+fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
+    fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: Ty<'_>, set: &mut HirIdSet) {
         match ty.kind() {
             ty::Adt(_, generics) => {
                 for generic in *generics {

@@ -103,7 +103,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
     ];
 
     let ty_to_check = match probably_ref_ty.kind() {
-        ty::Ref(_, ty_to_check, _) => ty_to_check,
+        ty::Ref(_, ty_to_check, _) => *ty_to_check,
         _ => probably_ref_ty,
     };
 
@@ -209,7 +209,7 @@ fn is_normalizable_helper<'tcx>(
     ty: Ty<'tcx>,
     cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
-    if let Some(&cached_result) = cache.get(ty) {
+    if let Some(&cached_result) = cache.get(&ty) {
         return cached_result;
     }
     // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
@@ -252,7 +252,7 @@ pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
-        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
+        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(*inner_type),
         ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
         _ => false,
     }
@@ -318,7 +318,7 @@ pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
 pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn peel(ty: Ty<'_>, count: usize) -> (Ty<'_>, usize) {
         if let ty::Ref(_, ty, _) = ty.kind() {
-            peel(ty, count + 1)
+            peel(*ty, count + 1)
         } else {
             (ty, count)
         }
@@ -331,8 +331,8 @@ pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
     fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
         match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(ty, count + 1, Mutability::Not),
+            ty::Ref(_, ty, Mutability::Mut) => f(*ty, count + 1, mutability),
+            ty::Ref(_, ty, Mutability::Not) => f(*ty, count + 1, Mutability::Not),
             _ => (ty, count, mutability),
         }
     }
@@ -360,7 +360,7 @@ pub fn walk_ptrs_hir_ty<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
 pub fn walk_ptrs_ty_depth(ty: Ty<'_>) -> (Ty<'_>, usize) {
     fn inner(ty: Ty<'_>, depth: usize) -> (Ty<'_>, usize) {
         match ty.kind() {
-            ty::Ref(_, ty, _) => inner(ty, depth + 1),
+            ty::Ref(_, ty, _) => inner(*ty, depth + 1),
             _ => (ty, depth),
         }
     }
@@ -394,7 +394,7 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 /// Checks if a given type looks safe to be uninitialized.
 pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     match ty.kind() {
-        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
+        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, *component),
         ty::Tuple(types) => types.types().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
         ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did),
         _ => false,

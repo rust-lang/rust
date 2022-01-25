@@ -149,7 +149,7 @@ fn check_rvalue<'tcx>(
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
-            let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+            let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
             match (cast_in, cast_out) {
                 (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) => {
                     Err((span, "casting pointers to ints is unstable in const fn".into()))

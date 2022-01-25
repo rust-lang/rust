@@ -200,27 +200,27 @@ fn reduce_refs<'tcx>(
     loop {
         return match (from_ty.kind(), to_ty.kind()) {
             (
-                ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. }),
-                ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. }),
+                &ty::Ref(_, from_sub_ty, _) | &ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. }),
+                &ty::Ref(_, to_sub_ty, _) | &ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. }),
             ) => {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
                 continue;
             },
-            (ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }), _)
+            (&ty::Ref(_, unsized_ty, _) | &ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }), _)
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
                 ReducedTys::FromFatPtr { unsized_ty }
             },
-            (_, ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }))
+            (_, &ty::Ref(_, unsized_ty, _) | &ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }))
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
                 ReducedTys::ToFatPtr { unsized_ty }
             },
-            (ty::Ref(_, from_ty, _) | ty::RawPtr(TypeAndMut { ty: from_ty, .. }), _) => {
+            (&ty::Ref(_, from_ty, _) | &ty::RawPtr(TypeAndMut { ty: from_ty, .. }), _) => {
                 ReducedTys::FromPtr { from_ty, to_ty }
             },
-            (_, ty::Ref(_, to_ty, _) | ty::RawPtr(TypeAndMut { ty: to_ty, .. })) => {
+            (_, &ty::Ref(_, to_ty, _) | &ty::RawPtr(TypeAndMut { ty: to_ty, .. })) => {
                 ReducedTys::ToPtr { from_ty, to_ty }
             },
             _ => ReducedTys::Other { from_ty, to_ty },
@@ -247,7 +247,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             },
             ty::Tuple(args) => {
                 let mut iter = args.iter().map(GenericArg::expect_ty);
-                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
+                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, *ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
                 if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
@@ -265,7 +265,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .fields
                     .iter()
                     .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
-                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
+                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, *ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
                 if iter.all(|ty| is_zero_sized_ty(cx, ty)) {

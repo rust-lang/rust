@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
     };
 
     match inner_ty.kind() {
-        ty::Ref(_, ty, _) if !is_copy(cx, ty) => {},
+        ty::Ref(_, ty, _) if !is_copy(cx, *ty) => {},
         _ => return,
     };
 

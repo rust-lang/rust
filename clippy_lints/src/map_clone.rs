@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     let obj_ty = cx.typeck_results().expr_ty(obj);
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                         if matches!(mutability, Mutability::Not) {
-                                            let copy = is_copy(cx, ty);
+                                            let copy = is_copy(cx, *ty);
                                             self.lint_explicit_closure(cx, e.span, args[0].span, copy);
                                         }
                                     } else {

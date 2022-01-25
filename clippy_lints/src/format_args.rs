@@ -211,7 +211,7 @@ where
             if overloaded_deref.is_some() {
                 n_needed = n_total;
             }
-            ty = target;
+            ty = *target;
         } else {
             return (n_needed, ty);
         }

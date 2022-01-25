@@ -47,7 +47,7 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
         then {
             let mut ty = ctx.typeck_results().expr_ty(obj);
             ty = match ty.kind() {
-                ty::Ref(_, ty, ..) => ty,
+                ty::Ref(_, ty, ..) => *ty,
                 _ => ty
             };
 

@@ -116,7 +116,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         if let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
             cx.typeck_results().expr_ty(ptr_self).kind();
         then {
-            return Some((pointee_ty, count));
+            return Some((*pointee_ty, count));
         }
     };
     None
