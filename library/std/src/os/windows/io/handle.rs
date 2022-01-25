@@ -171,7 +171,7 @@ impl OwnedHandle {
         // if we passed it a null handle, but we can treat null as a valid
         // handle which doesn't do any I/O, and allow it to be duplicated.
         if handle.is_null() {
-            return unsafe { Ok(Handle::from_raw_handle(handle)) };
+            return unsafe { Ok(Self::from_raw_handle(handle)) };
         }
 
         let mut ret = 0 as c::HANDLE;
