@@ -1204,6 +1204,7 @@ symbols! {
         rustc_trivial_field_reads,
         rustc_unsafe_specialization_marker,
         rustc_variance,
+        rustc_with_negative_coherence,
         rustdoc,
         rustdoc_internals,
         rustfmt,
