@@ -1088,7 +1088,8 @@ fn remove_dir_all_loop(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Res
     let mut stack = Vec::new();
     // Push the file on the stack. We duplicate it here so we can keep hold of
     // the original for later retries.
-    stack.push(DirBuff::new(Win32Directory::new(f.duplicate()?, get_path(f)?))?);
+    // The canonical NT path is used so that there are no links in the path.
+    stack.push(DirBuff::new(Win32Directory::new(f.duplicate()?, get_nt_path_as_win32(f)?))?);
 
     while let Some(mut directory) = stack.pop() {
         let mut retry_count = RETRIES;
@@ -1116,7 +1117,8 @@ fn remove_dir_all_loop(f: &File, delete: fn(&File) -> io::Result<()>) -> io::Res
                 // locked by another process as these are usually temporary.
                 Err(e)
                     if (e.raw_os_error() == Some(c::ERROR_DELETE_PENDING as _)
-                        || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _))
+                        || e.raw_os_error() == Some(c::ERROR_SHARING_VIOLATION as _)
+                        || e.raw_os_error() == Some(c::ERROR_ACCESS_DENIED as _))
                         && retry_count != 0 =>
                 {
                     continue; // Retry.
@@ -1232,6 +1234,18 @@ fn get_path(f: &File) -> io::Result<PathBuf> {
             c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
         |buf| PathBuf::from(OsString::from_wide(buf)),
+    )
+}
+fn get_nt_path_as_win32(f: &File) -> io::Result<PathBuf> {
+    super::fill_utf16_buf(
+        |buf, sz| unsafe {
+            c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_NT)
+        },
+        |buf| {
+            let mut path = PathBuf::from(r"\\?\GLOBALROOT");
+            path.push(&OsString::from_wide(buf));
+            path
+        },
     )
 }
 
