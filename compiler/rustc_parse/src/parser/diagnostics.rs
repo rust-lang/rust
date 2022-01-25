@@ -737,7 +737,7 @@ impl<'a> Parser<'a> {
                                     "::".to_string(),
                                     Applicability::MaybeIncorrect,
                                 );
-                                if self.check(&TokenKind::Semi) {
+                                if matches!(self.token.kind, token::Semi | token::CloseDelim(_)) {
                                     turbo_err.emit();
                                     *expr = self.mk_expr_err(expr.span);
                                     return Ok(());
