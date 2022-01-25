@@ -215,16 +215,19 @@ pub unsafe fn create_module<'ll>(
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
         let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
-        llvm::LLVMRustAddModuleFlag(llmod, avoid_plt, 1);
+        llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
     if sess.is_sanitizer_cfi_enabled() {
         // FIXME(rcvalle): Add support for non canonical jump tables.
         let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
-        // FIXME(rcvalle): Add it with Override behavior flag--LLVMRustAddModuleFlag adds it with
-        // Warning behavior flag. Add support for specifying the behavior flag to
-        // LLVMRustAddModuleFlag.
-        llvm::LLVMRustAddModuleFlag(llmod, canonical_jump_tables, 1);
+        // FIXME(rcvalle): Add it with Override behavior flag.
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Warning,
+            canonical_jump_tables,
+            1,
+        );
     }
 
     // Control Flow Guard is currently only supported by the MSVC linker on Windows.
@@ -233,11 +236,21 @@ pub unsafe fn create_module<'ll>(
             CFGuard::Disabled => {}
             CFGuard::NoChecks => {
                 // Set `cfguard=1` module flag to emit metadata only.
-                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 1)
+                llvm::LLVMRustAddModuleFlag(
+                    llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "cfguard\0".as_ptr() as *const _,
+                    1,
+                )
             }
             CFGuard::Checks => {
                 // Set `cfguard=2` module flag to emit metadata and checks.
-                llvm::LLVMRustAddModuleFlag(llmod, "cfguard\0".as_ptr() as *const _, 2)
+                llvm::LLVMRustAddModuleFlag(
+                    llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "cfguard\0".as_ptr() as *const _,
+                    2,
+                )
             }
         }
     }
@@ -247,24 +260,28 @@ pub unsafe fn create_module<'ll>(
 
         llvm::LLVMRustAddModuleFlag(
             llmod,
+            llvm::LLVMModFlagBehavior::Error,
             "branch-target-enforcement\0".as_ptr().cast(),
             bti.into(),
         );
 
         llvm::LLVMRustAddModuleFlag(
             llmod,
+            llvm::LLVMModFlagBehavior::Error,
             "sign-return-address\0".as_ptr().cast(),
             pac.is_some().into(),
         );
         let pac_opts = pac.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
         llvm::LLVMRustAddModuleFlag(
             llmod,
+            llvm::LLVMModFlagBehavior::Error,
             "sign-return-address-all\0".as_ptr().cast(),
             pac_opts.leaf.into(),
         );
         let is_bkey = if pac_opts.key == PAuthKey::A { false } else { true };
         llvm::LLVMRustAddModuleFlag(
             llmod,
+            llvm::LLVMModFlagBehavior::Error,
             "sign-return-address-with-bkey\0".as_ptr().cast(),
             is_bkey.into(),
         );

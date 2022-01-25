@@ -108,18 +108,29 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             // This can be overridden using --llvm-opts -dwarf-version,N.
             // Android has the same issue (#22398)
             if let Some(version) = sess.target.dwarf_version {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "Dwarf Version\0".as_ptr().cast(), version)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "Dwarf Version\0".as_ptr().cast(),
+                    version,
+                )
             }
 
             // Indicate that we want CodeView debug information on MSVC
             if sess.target.is_like_msvc {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "CodeView\0".as_ptr().cast(), 1)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "CodeView\0".as_ptr().cast(),
+                    1,
+                )
             }
 
             // Prevent bitcode readers from deleting the debug info.
             let ptr = "Debug Info Version\0".as_ptr();
             llvm::LLVMRustAddModuleFlag(
                 self.llmod,
+                llvm::LLVMModFlagBehavior::Warning,
                 ptr.cast(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
