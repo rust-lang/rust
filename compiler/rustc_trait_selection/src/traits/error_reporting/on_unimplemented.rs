@@ -4,7 +4,6 @@ use super::{
 use crate::infer::InferCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::fast_reject::StripReferences;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
@@ -57,7 +56,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     trait_ref.substs.types().skip(1),
                     impl_trait_ref.substs.types().skip(1),
                 )
-                .all(|(u, v)| self.fuzzy_match_tys(u, v, StripReferences::No))
+                .all(|(u, v)| self.fuzzy_match_tys(u, v))
                 {
                     fuzzy_match_impls.push(def_id);
                 }

@@ -8,6 +8,8 @@ LL |     foo(&baz);
    |     |   help: consider adding dereference here: `&***baz`
    |     required by a bound introduced by this call
    |
+   = help: the following implementations were found:
+             <&LDM as Happy>
 note: required by a bound in `foo`
   --> $DIR/multiple-0.rs:30:26
    |

@@ -5,11 +5,11 @@ LL |     assert_copy::<&'static mut isize>();
    |                   ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut isize`
    |
    = help: the following implementations were found:
-             <isize as Copy>
+             <&T as Copy>
+             <*const T as Copy>
+             <*mut T as Copy>
              <i128 as Copy>
-             <i16 as Copy>
-             <i32 as Copy>
-           and 8 others
+           and 11 others
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
@@ -23,11 +23,11 @@ LL |     assert_copy::<&'a mut isize>();
    |                   ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut isize`
    |
    = help: the following implementations were found:
-             <isize as Copy>
+             <&T as Copy>
+             <*const T as Copy>
+             <*mut T as Copy>
              <i128 as Copy>
-             <i16 as Copy>
-             <i32 as Copy>
-           and 8 others
+           and 11 others
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
@@ -112,6 +112,10 @@ error[E0277]: the trait bound `&'a mut (dyn Dummy + Send + 'a): Copy` is not sat
 LL |     assert_copy::<&'a mut (dyn Dummy + Send)>();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'a mut (dyn Dummy + Send + 'a)`
    |
+   = help: the following implementations were found:
+             <&T as Copy>
+             <*const T as Copy>
+             <*mut T as Copy>
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
