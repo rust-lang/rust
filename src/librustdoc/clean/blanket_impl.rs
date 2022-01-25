@@ -101,6 +101,27 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
 
                     cx.generated_synthetics.insert((ty, trait_def_id));
 
+                    let hir_imp = impl_def_id.as_local()
+                        .map(|local| cx.tcx.hir().expect_item(local))
+                        .and_then(|item| if let hir::ItemKind::Impl(i) = &item.kind {
+                            Some(i)
+                        } else {
+                            None
+                        });
+
+                    let items = match hir_imp {
+                        Some(imp) => imp
+                            .items
+                            .iter()
+                            .map(|ii| cx.tcx.hir().impl_item(ii.id).clean(cx))
+                            .collect::<Vec<_>>(),
+                        None => cx.tcx
+                            .associated_items(impl_def_id)
+                            .in_definition_order()
+                            .map(|x| x.clean(cx))
+                            .collect::<Vec<_>>(),
+                    };
+
                     impls.push(Item {
                         name: None,
                         attrs: Default::default(),
@@ -117,12 +138,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             // the post-inference `trait_ref`, as it's more accurate.
                             trait_: Some(trait_ref.clean(cx)),
                             for_: ty.clean(cx),
-                            items: cx
-                                .tcx
-                                .associated_items(impl_def_id)
-                                .in_definition_order()
-                                .map(|x| x.clean(cx))
-                                .collect::<Vec<_>>(),
+                            items,
                             polarity: ty::ImplPolarity::Positive,
                             kind: ImplKind::Blanket(box trait_ref.self_ty().clean(cx)),
                         }),
