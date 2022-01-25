@@ -160,27 +160,14 @@ where
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, args, call_span) => {
+            hir::ExprKind::MethodCall(path, _, call_span) => {
                 let types = tcx.typeck(ex.hir_id.owner);
                 let Some(def_id) = types.type_dependent_def_id(ex.hir_id) else {
                     trace!("type_dependent_def_id({}) = None", ex.hir_id);
                     return;
                 };
 
-                // The MethodCall node doesn't directly contain a span for the
-                // method identifier, so we have to compute it by trimming the full
-                // span based on the arguments.
-                let ident_span = match args.get(1) {
-                    // If there is an argument, e.g. "f(x)", then
-                    // get the span "f(" and delete the lparen.
-                    Some(arg) => {
-                        let with_paren = call_span.until(arg.span);
-                        with_paren.with_hi(with_paren.hi() - BytePos(1))
-                    }
-                    // Otherwise, just delete both parens directly.
-                    None => call_span.with_hi(call_span.hi() - BytePos(2)),
-                };
-
+                let ident_span = path.ident.span;
                 (tcx.type_of(def_id), call_span, ident_span)
             }
             _ => {
