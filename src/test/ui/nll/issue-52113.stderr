@@ -6,8 +6,8 @@ LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> i
    |                |
    |                lifetime `'a` defined here
 ...
-LL |     x
-   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+LL |         data.push(value);
+   |         ^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
 
