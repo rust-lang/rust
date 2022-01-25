@@ -30,4 +30,5 @@ fn main() {
     //~^ ERROR this function takes 1 argument but 0 arguments were supplied
     let ans = s("burma", "shave");
     //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+    //~| ERROR mismatched types
 }
