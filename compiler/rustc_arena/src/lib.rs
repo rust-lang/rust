@@ -546,7 +546,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
         $($name: $crate::TypedArena<$ty>,)*
     }
 
-    pub trait ArenaAllocatable<'tcx, T = Self>: Sized {
+    pub trait ArenaAllocatable<'tcx, C = rustc_arena::IsNotCopy>: Sized {
         fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self;
         fn allocate_from_iter<'a>(
             arena: &'a Arena<'tcx>,
@@ -555,7 +555,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     }
 
     // Any type that impls `Copy` can be arena-allocated in the `DroplessArena`.
-    impl<'tcx, T: Copy> ArenaAllocatable<'tcx, ()> for T {
+    impl<'tcx, T: Copy> ArenaAllocatable<'tcx, rustc_arena::IsCopy> for T {
         #[inline]
         fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
             arena.dropless.alloc(self)
@@ -569,7 +569,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
         }
     }
     $(
-        impl<'tcx> ArenaAllocatable<'tcx, $ty> for $ty {
+        impl<'tcx> ArenaAllocatable<'tcx, rustc_arena::IsNotCopy> for $ty {
             #[inline]
             fn allocate_on<'a>(self, arena: &'a Arena<'tcx>) -> &'a mut Self {
                 if !::std::mem::needs_drop::<Self>() {
@@ -595,7 +595,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
 
     impl<'tcx> Arena<'tcx> {
         #[inline]
-        pub fn alloc<T: ArenaAllocatable<'tcx, U>, U>(&self, value: T) -> &mut T {
+        pub fn alloc<T: ArenaAllocatable<'tcx, C>, C>(&self, value: T) -> &mut T {
             value.allocate_on(self)
         }
 
@@ -608,7 +608,7 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
             self.dropless.alloc_slice(value)
         }
 
-        pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, U>, U>(
+        pub fn alloc_from_iter<'a, T: ArenaAllocatable<'tcx, C>, C>(
             &'a self,
             iter: impl ::std::iter::IntoIterator<Item = T>,
         ) -> &'a mut [T] {
@@ -616,6 +616,11 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
         }
     }
 }
+
+// Marker types that let us give different behaviour for arenas allocating
+// `Copy` types vs `!Copy` types.
+pub struct IsCopy;
+pub struct IsNotCopy;
 
 #[cfg(test)]
 mod tests;
