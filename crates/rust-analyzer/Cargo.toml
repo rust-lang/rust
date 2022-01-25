@@ -31,6 +31,7 @@ serde = { version = "1.0.106", features = ["derive"] }
 serde_json = { version = "1.0.48", features = ["preserve_order"] }
 threadpool = "1.7.1"
 rayon = "1.5"
+num_cpus = "1.13.1"
 mimalloc = { version = "0.1.19", default-features = false, optional = true }
 lsp-server = "0.5.1"
 tracing = "0.1"

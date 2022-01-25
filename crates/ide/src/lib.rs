@@ -87,7 +87,7 @@ pub use crate::{
     moniker::{MonikerKind, MonikerResult, PackageInformation},
     move_item::Direction,
     navigation_target::NavigationTarget,
-    prime_caches::PrimeCachesProgress,
+    prime_caches::ParallelPrimeCachesProgress,
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
@@ -244,11 +244,11 @@ impl Analysis {
         self.with_db(|db| status::status(&*db, file_id))
     }
 
-    pub fn prime_caches<F>(&self, cb: F) -> Cancellable<()>
+    pub fn parallel_prime_caches<F>(&self, num_worker_threads: u8, cb: F) -> Cancellable<()>
     where
-        F: Fn(PrimeCachesProgress) + Sync + std::panic::UnwindSafe,
+        F: Fn(ParallelPrimeCachesProgress) + Sync + std::panic::UnwindSafe,
     {
-        self.with_db(move |db| prime_caches::prime_caches(db, &cb))
+        self.with_db(move |db| prime_caches::parallel_prime_caches(db, num_worker_threads, &cb))
     }
 
     /// Gets the text of the source file.

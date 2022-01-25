@@ -70,7 +70,7 @@ pub(crate) enum Task {
 #[derive(Debug)]
 pub(crate) enum PrimeCachesProgress {
     Begin,
-    Report(ide::PrimeCachesProgress),
+    Report(ide::ParallelPrimeCachesProgress),
     End { cancelled: bool },
 }
 
@@ -291,11 +291,23 @@ impl GlobalState {
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
-                            message = Some(format!(
-                                "{}/{} ({})",
-                                report.n_done, report.n_total, report.on_crate
-                            ));
-                            fraction = Progress::fraction(report.n_done, report.n_total);
+
+                            message = match &report.crates_currently_indexing[..] {
+                                [crate_name] => Some(format!(
+                                    "{}/{} ({})",
+                                    report.crates_done, report.crates_total, crate_name
+                                )),
+                                [crate_name, rest @ ..] => Some(format!(
+                                    "{}/{} ({} + {} more)",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name,
+                                    rest.len()
+                                )),
+                                _ => None,
+                            };
+
+                            fraction = Progress::fraction(report.crates_done, report.crates_total);
                         }
                         PrimeCachesProgress::End { cancelled } => {
                             state = Progress::End;
@@ -493,11 +505,13 @@ impl GlobalState {
             self.fetch_build_data();
         }
         if self.prime_caches_queue.should_start_op() {
+            let num_worker_threads = self.config.prime_caches_num_threads();
+
             self.task_pool.handle.spawn_with_sender({
                 let analysis = self.snapshot().analysis;
                 move |sender| {
                     sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                    let res = analysis.prime_caches(|progress| {
+                    let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
                         let report = PrimeCachesProgress::Report(progress);
                         sender.send(Task::PrimeCaches(report)).unwrap();
                     });

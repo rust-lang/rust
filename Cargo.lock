@@ -597,6 +597,7 @@ version = "0.0.0"
 dependencies = [
  "cfg",
  "cov-mark",
+ "crossbeam-channel",
  "dot",
  "either",
  "expect-test",
@@ -1367,6 +1368,7 @@ dependencies = [
  "lsp-types",
  "mbe",
  "mimalloc",
+ "num_cpus",
  "oorandom",
  "parking_lot",
  "proc_macro_api",

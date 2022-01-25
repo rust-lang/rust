@@ -298,6 +298,9 @@ config_data! {
         /// Whether to show `can't find Cargo.toml` error message.
         notifications_cargoTomlNotFound: bool      = "true",
 
+        /// How many worker threads to to handle priming caches. The default `0` means to pick automatically.
+        primeCaches_numThreads: ParallelPrimeCachesNumThreads = "0",
+
         /// Enable support for procedural macros, implies `#rust-analyzer.cargo.runBuildScripts#`.
         procMacro_enable: bool                     = "true",
         /// Internal config, path to proc-macro server executable (typically,
@@ -1016,6 +1019,13 @@ impl Config {
             yield_points: self.data.highlightRelated_yieldPoints,
         }
     }
+
+    pub fn prime_caches_num_threads(&self) -> u8 {
+        match self.data.primeCaches_numThreads {
+            0 => num_cpus::get_physical().try_into().unwrap_or(u8::MAX),
+            n => n,
+        }
+    }
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -1129,6 +1139,8 @@ enum WorkspaceSymbolSearchKindDef {
     OnlyTypes,
     AllSymbols,
 }
+
+type ParallelPrimeCachesNumThreads = u8;
 
 macro_rules! _config_data {
     (struct $name:ident {
@@ -1350,6 +1362,11 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Search for types only",
                 "Search for all symbols kinds"
             ],
+        },
+        "ParallelPrimeCachesNumThreads" => set! {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 255
         },
         _ => panic!("{}: {}", ty, default),
     }
