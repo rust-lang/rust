@@ -6,7 +6,6 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -54,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
             if addressee.span.ctxt() == ctxt;
             if let ExprKind::Index(indexed, range) = addressee.kind;
             if is_type_lang_item(cx, cx.typeck_results().expr_ty_adjusted(range), LangItem::RangeFull);
-            if TyS::same_type(cx.typeck_results().expr_ty(expr), cx.typeck_results().expr_ty(indexed));
+            if cx.typeck_results().expr_ty(expr) == cx.typeck_results().expr_ty(indexed);
             then {
                 let mut app = Applicability::MachineApplicable;
                 let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;

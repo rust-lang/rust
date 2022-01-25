@@ -102,7 +102,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 if let Some(typeck) = self.inner.maybe_typeck_results {
                     let l_ty = typeck.pat_ty(l.pat);
                     let r_ty = typeck.pat_ty(r.pat);
-                    if !rustc_middle::ty::TyS::same_type(l_ty, r_ty) {
+                    if l_ty != r_ty {
                         return false;
                     }
                 }
