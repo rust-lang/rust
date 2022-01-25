@@ -99,6 +99,12 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
    |
 LL |     let _ = 0x61u32 as char;
    |             ^^^^^^^^^^^^^^^ invalid cast
+   |
+help: try `char::from_u32` instead
+  --> $DIR/cast-rfc0401.rs:41:13
+   |
+LL |     let _ = 0x61u32 as char;
+   |             ^^^^^^^^^^^^^^^
 
 error[E0606]: casting `bool` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:43:13
