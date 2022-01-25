@@ -106,7 +106,7 @@ macro_rules! impl_float_vector {
             }
 
             /// Returns true for each lane if its value is neither zero, infinite,
-            /// subnormal, or `NaN`.
+            /// subnormal, nor `NaN`.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_normal(self) -> Mask<$mask_ty, LANES> {
