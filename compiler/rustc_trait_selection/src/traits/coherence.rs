@@ -7,9 +7,11 @@
 use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::IntercrateAmbiguityCause;
+use crate::traits::util::impl_trait_ref_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext,
+    self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
+    PredicateObligations, SelectionContext,
 };
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
@@ -135,45 +137,83 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     header
 }
 
+/// What kind of overlap check are we doing -- this exists just for testing and feature-gating
+/// purposes.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+enum OverlapMode {
+    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for crate-local types)
+    Stable,
+    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of the where-clauses.
+    WithNegative,
+    /// Just check for negative impls, not for "where clause not implemented": used for testing.
+    Strict,
+}
+
+impl OverlapMode {
+    fn use_negative_impl(&self) -> bool {
+        *self == OverlapMode::Strict || *self == OverlapMode::WithNegative
+    }
+
+    fn use_implicit_negative(&self) -> bool {
+        *self == OverlapMode::Stable || *self == OverlapMode::WithNegative
+    }
+}
+
+fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
+    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
+        != tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
+    {
+        bug!("Use strict coherence on both impls",);
+    }
+
+    if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence)
+        != tcx.has_attr(impl2_def_id, sym::rustc_with_negative_coherence)
+    {
+        bug!("Use with negative coherence on both impls",);
+    }
+
+    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence) {
+        OverlapMode::Strict
+    } else if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence) {
+        OverlapMode::WithNegative
+    } else {
+        OverlapMode::Stable
+    }
+}
+
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     skip_leak_check: SkipLeakCheck,
-    a_def_id: DefId,
-    b_def_id: DefId,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
+    debug!("overlap(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, skip_leak_check, a_def_id, b_def_id, snapshot)
+        overlap_within_probe(selcx, skip_leak_check, impl1_def_id, impl2_def_id, snapshot)
     })
 }
 
 fn overlap_within_probe<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     skip_leak_check: SkipLeakCheck,
-    a_def_id: DefId,
-    b_def_id: DefId,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
-    fn loose_check<'cx, 'tcx>(
-        selcx: &mut SelectionContext<'cx, 'tcx>,
-        o: &PredicateObligation<'tcx>,
-    ) -> bool {
-        !selcx.predicate_may_hold_fatal(o)
-    }
+    let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
 
-    fn strict_check<'cx, 'tcx>(
-        selcx: &SelectionContext<'cx, 'tcx>,
-        o: &PredicateObligation<'tcx>,
-    ) -> bool {
-        let infcx = selcx.infcx();
-        let tcx = infcx.tcx;
-        o.flip_polarity(tcx)
-            .as_ref()
-            .map(|o| selcx.infcx().predicate_must_hold_modulo_regions(o))
-            .unwrap_or(false)
+    let overlap_mode = overlap_mode(tcx, impl1_def_id, impl2_def_id);
+
+    if overlap_mode.use_negative_impl() {
+        if negative_impl(selcx, impl1_def_id, impl2_def_id)
+            || negative_impl(selcx, impl2_def_id, impl1_def_id)
+        {
+            return None;
+        }
     }
 
     // For the purposes of this check, we don't bring any placeholder
@@ -182,26 +222,61 @@ fn overlap_within_probe<'cx, 'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
-    let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);
+    let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
+    let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    debug!("overlap: a_impl_header={:?}", a_impl_header);
-    debug!("overlap: b_impl_header={:?}", b_impl_header);
+    debug!("overlap: impl1_header={:?}", impl1_header);
+    debug!("overlap: impl2_header={:?}", impl2_header);
 
-    // Do `a` and `b` unify? If not, no overlap.
-    let obligations = match selcx
-        .infcx()
-        .at(&ObligationCause::dummy(), param_env)
-        .eq_impl_headers(&a_impl_header, &b_impl_header)
-    {
-        Ok(InferOk { obligations, value: () }) => obligations,
-        Err(_) => {
-            return None;
-        }
-    };
-
+    let obligations = equate_impl_headers(selcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
+    if overlap_mode.use_implicit_negative() {
+        if implicit_negative(selcx, param_env, &impl1_header, impl2_header, obligations) {
+            return None;
+        }
+    }
+
+    if !skip_leak_check.is_yes() {
+        if infcx.leak_check(true, snapshot).is_err() {
+            debug!("overlap: leak check failed");
+            return None;
+        }
+    }
+
+    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
+    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
+
+    let involves_placeholder =
+        matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
+
+    let impl_header = selcx.infcx().resolve_vars_if_possible(impl1_header);
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+}
+
+fn equate_impl_headers<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: &ty::ImplHeader<'tcx>,
+) -> Option<PredicateObligations<'tcx>> {
+    // Do `a` and `b` unify? If not, no overlap.
+    selcx
+        .infcx()
+        .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+        .eq_impl_headers(impl1_header, impl2_header)
+        .map(|infer_ok| infer_ok.obligations)
+        .ok()
+}
+
+/// Given impl1 and impl2 check if both impls can be satisfied by a common type (including
+/// where-clauses) If so, return false, otherwise return true, they are disjoint.
+fn implicit_negative<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl1_header: &ty::ImplHeader<'tcx>,
+    impl2_header: ty::ImplHeader<'tcx>,
+    obligations: PredicateObligations<'tcx>,
+) -> bool {
     // There's no overlap if obligations are unsatisfiable or if the obligation negated is
     // satisfied.
     //
@@ -225,11 +300,11 @@ fn overlap_within_probe<'cx, 'tcx>(
     // at some point an impl for `&'?a str: Error` could be added.
     let infcx = selcx.infcx();
     let tcx = infcx.tcx;
-    let opt_failing_obligation = a_impl_header
+    let opt_failing_obligation = impl1_header
         .predicates
         .iter()
         .copied()
-        .chain(b_impl_header.predicates)
+        .chain(impl2_header.predicates)
         .map(|p| infcx.resolve_vars_if_possible(p))
         .map(|p| Obligation {
             cause: ObligationCause::dummy(),
@@ -239,15 +314,7 @@ fn overlap_within_probe<'cx, 'tcx>(
         })
         .chain(obligations)
         .find(|o| {
-            // if both impl headers are set to strict coherence it means that this will be accepted
-            // only if it's stated that T: !Trait. So only prove that the negated obligation holds.
-            if tcx.has_attr(a_def_id, sym::rustc_strict_coherence)
-                && tcx.has_attr(b_def_id, sym::rustc_strict_coherence)
-            {
-                strict_check(selcx, o)
-            } else {
-                loose_check(selcx, o) || tcx.features().negative_impls && strict_check(selcx, o)
-            }
+            loose_check(selcx, o) || tcx.features().negative_impls && negative_impl_exists(selcx, o)
         });
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
@@ -255,24 +322,97 @@ fn overlap_within_probe<'cx, 'tcx>(
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-        return None;
+        true
+    } else {
+        false
     }
+}
 
-    if !skip_leak_check.is_yes() {
-        if infcx.leak_check(true, snapshot).is_err() {
-            debug!("overlap: leak check failed");
-            return None;
+/// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
+/// where-clauses) If so, return true, they are disjoint and false otherwise.
+fn negative_impl<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    impl1_def_id: DefId,
+    impl2_def_id: DefId,
+) -> bool {
+    let tcx = selcx.infcx().tcx;
+
+    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+    let impl1_env = tcx.param_env(impl1_def_id);
+    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
+
+    // Create an infcx, taking the predicates of impl1 as assumptions:
+    tcx.infer_ctxt().enter(|infcx| {
+        // Normalize the trait reference. The WF rules ought to ensure
+        // that this always succeeds.
+        let impl1_trait_ref = match traits::fully_normalize(
+            &infcx,
+            FulfillmentContext::new(),
+            ObligationCause::dummy(),
+            impl1_env,
+            impl1_trait_ref,
+        ) {
+            Ok(impl1_trait_ref) => impl1_trait_ref,
+            Err(err) => {
+                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+            }
+        };
+
+        // Attempt to prove that impl2 applies, given all of the above.
+        let selcx = &mut SelectionContext::new(&infcx);
+        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+        let (impl2_trait_ref, obligations) =
+            impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+
+        // do the impls unify? If not, not disjoint.
+        let more_obligations = match infcx
+            .at(&ObligationCause::dummy(), impl1_env)
+            .eq(impl1_trait_ref, impl2_trait_ref)
+        {
+            Ok(InferOk { obligations, .. }) => obligations,
+            Err(_) => {
+                debug!(
+                    "explicit_disjoint: {:?} does not unify with {:?}",
+                    impl1_trait_ref, impl2_trait_ref
+                );
+                return false;
+            }
+        };
+
+        let opt_failing_obligation = obligations
+            .into_iter()
+            .chain(more_obligations)
+            .find(|o| negative_impl_exists(selcx, o));
+
+        if let Some(failing_obligation) = opt_failing_obligation {
+            debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+            true
+        } else {
+            false
         }
-    }
+    })
+}
 
-    let impl_header = selcx.infcx().resolve_vars_if_possible(a_impl_header);
-    let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
-    debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
+fn loose_check<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
+    !selcx.predicate_may_hold_fatal(o)
+}
 
-    let involves_placeholder =
-        matches!(selcx.infcx().region_constraints_added_in_snapshot(snapshot), Some(true));
-
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
+fn negative_impl_exists<'cx, 'tcx>(
+    selcx: &SelectionContext<'cx, 'tcx>,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
+    let infcx = selcx.infcx();
+    let tcx = infcx.tcx;
+    o.flip_polarity(tcx)
+        .as_ref()
+        .map(|o| {
+            // FIXME This isn't quite correct, regions should be included
+            selcx.infcx().predicate_must_hold_modulo_regions(o)
+        })
+        .unwrap_or(false)
 }
 
 pub fn trait_ref_is_knowable<'tcx>(

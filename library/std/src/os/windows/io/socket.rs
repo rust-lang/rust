@@ -4,9 +4,13 @@
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::fmt;
+use crate::io;
 use crate::marker::PhantomData;
+use crate::mem;
 use crate::mem::forget;
+use crate::sys;
 use crate::sys::c;
+use crate::sys::cvt;
 
 /// A borrowed socket.
 ///
@@ -67,6 +71,77 @@ impl BorrowedSocket<'_> {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
+}
+
+impl OwnedSocket {
+    /// Creates a new `OwnedSocket` instance that shares the same underlying socket
+    /// as the existing `OwnedSocket` instance.
+    pub fn try_clone(&self) -> io::Result<Self> {
+        let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
+        let result = unsafe {
+            c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
+        };
+        sys::net::cvt(result)?;
+        let socket = unsafe {
+            c::WSASocketW(
+                info.iAddressFamily,
+                info.iSocketType,
+                info.iProtocol,
+                &mut info,
+                0,
+                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
+            )
+        };
+
+        if socket != c::INVALID_SOCKET {
+            unsafe { Ok(OwnedSocket::from_raw_socket(socket)) }
+        } else {
+            let error = unsafe { c::WSAGetLastError() };
+
+            if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
+                return Err(io::Error::from_raw_os_error(error));
+            }
+
+            let socket = unsafe {
+                c::WSASocketW(
+                    info.iAddressFamily,
+                    info.iSocketType,
+                    info.iProtocol,
+                    &mut info,
+                    0,
+                    c::WSA_FLAG_OVERLAPPED,
+                )
+            };
+
+            if socket == c::INVALID_SOCKET {
+                return Err(last_error());
+            }
+
+            unsafe {
+                let socket = OwnedSocket::from_raw_socket(socket);
+                socket.set_no_inherit()?;
+                Ok(socket)
+            }
+        }
+    }
+
+    #[cfg(not(target_vendor = "uwp"))]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        cvt(unsafe {
+            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
+        })
+        .map(drop)
+    }
+
+    #[cfg(target_vendor = "uwp")]
+    pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
+        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
+    }
+}
+
+/// Returns the last error from the Windows socket interface.
+fn last_error() -> io::Error {
+    io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
 impl AsRawSocket for BorrowedSocket<'_> {
