@@ -1,7 +1,5 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
-mod lower_use;
-
 use crate::intern::Interned;
 
 use either::Either;
@@ -14,8 +12,6 @@ use crate::{
     path::{GenericArg, GenericArgs, ModPath, Path, PathKind},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
-
-pub(super) use lower_use::convert_path;
 
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
@@ -72,10 +68,10 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                     Some(trait_ref) => {
                         let Path { mod_path, generic_args: path_generic_args, .. } =
                             Path::from_src(trait_ref.path()?, ctx)?;
-                        let num_segments = mod_path.segments.len();
+                        let num_segments = mod_path.segments().len();
                         kind = mod_path.kind;
 
-                        segments.extend(mod_path.segments.iter().cloned().rev());
+                        segments.extend(mod_path.segments().iter().cloned().rev());
                         generic_args.extend(Vec::from(path_generic_args).into_iter().rev());
 
                         // Insert the type reference (T in the above example) as Self parameter for the trait

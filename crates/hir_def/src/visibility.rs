@@ -56,7 +56,7 @@ impl RawVisibility {
         };
         match node.kind() {
             ast::VisibilityKind::In(path) => {
-                let path = ModPath::from_src(db, path, hygiene);
+                let path = ModPath::from_src(db.upcast(), path, hygiene);
                 let path = match path {
                     None => return RawVisibility::private(),
                     Some(path) => path,

@@ -502,7 +502,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let path = Interned::new(ModPath::from_src(self.db, m.path()?, self.hygiene())?);
+        let path = Interned::new(ModPath::from_src(self.db.upcast(), m.path()?, self.hygiene())?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
         let res = MacroCall { path, ast_id, expand_to };
@@ -769,7 +769,7 @@ impl UseTreeLowering<'_> {
                 // E.g. `use something::{inner}` (prefix is `None`, path is `something`)
                 // or `use something::{path::{inner::{innerer}}}` (prefix is `something::path`, path is `inner`)
                 Some(path) => {
-                    match ModPath::from_src(self.db, path, self.hygiene) {
+                    match ModPath::from_src(self.db.upcast(), path, self.hygiene) {
                         Some(it) => Some(it),
                         None => return None, // FIXME: report errors somewhere
                     }
@@ -788,7 +788,7 @@ impl UseTreeLowering<'_> {
         } else {
             let is_glob = tree.star_token().is_some();
             let path = match tree.path() {
-                Some(path) => Some(ModPath::from_src(self.db, path, self.hygiene)?),
+                Some(path) => Some(ModPath::from_src(self.db.upcast(), path, self.hygiene)?),
                 None => None,
             };
             let alias = tree.rename().map(|a| {

@@ -27,8 +27,10 @@ use syntax::{ted, SyntaxNode};
 use crate::{
     ast::{self, AstNode},
     db::AstDatabase,
+    hygiene::Hygiene,
+    mod_path::ModPath,
     EagerCallInfo, ExpandTo, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind,
+    MacroDefKind, UnresolvedMacro,
 };
 
 #[derive(Debug)]
@@ -94,18 +96,14 @@ impl ErrorSink for &'_ mut dyn FnMut(mbe::ExpandError) {
     }
 }
 
-fn err(msg: impl Into<String>) -> mbe::ExpandError {
-    mbe::ExpandError::Other(msg.into())
-}
-
 pub fn expand_eager_macro(
     db: &dyn AstDatabase,
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
-    resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
+    resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
     diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
-) -> Result<MacroCallId, ErrorEmitted> {
+) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
     let parsed_args = macro_call
         .value
         .token_tree()
@@ -129,16 +127,19 @@ pub fn expand_eager_macro(
         }),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
     });
-    let arg_file_id = arg_id;
 
     let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, mbe::TopEntryPoint::Expr).0;
-    let result = eager_macro_recur(
+    let result = match eager_macro_recur(
         db,
-        InFile::new(arg_file_id.as_file(), parsed_args.syntax_node()),
+        InFile::new(arg_id.as_file(), parsed_args.syntax_node()),
         krate,
         resolver,
         diagnostic_sink,
-    )?;
+    ) {
+        Ok(Ok(it)) => it,
+        Ok(Err(err)) => return Ok(Err(err)),
+        Err(err) => return Err(err),
+    };
     let subtree = to_subtree(&result);
 
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
@@ -157,7 +158,7 @@ pub fn expand_eager_macro(
             kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
         };
 
-        Ok(db.intern_macro_call(loc))
+        Ok(Ok(db.intern_macro_call(loc)))
     } else {
         panic!("called `expand_eager_macro` on non-eager macro def {:?}", def);
     }
@@ -194,9 +195,10 @@ fn eager_macro_recur(
     db: &dyn AstDatabase,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
-    macro_resolver: &dyn Fn(ast::Path) -> Option<MacroDefId>,
+    macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
-) -> Result<SyntaxNode, ErrorEmitted> {
+) -> Result<Result<SyntaxNode, ErrorEmitted>, UnresolvedMacro> {
+    let hygiene = Hygiene::new(db, curr.file_id);
     let original = curr.value.clone_for_update();
 
     let children = original.descendants().filter_map(ast::MacroCall::cast);
@@ -204,23 +206,27 @@ fn eager_macro_recur(
 
     // Collect replacement
     for child in children {
-        let def = diagnostic_sink.option_with(
-            || macro_resolver(child.path()?),
-            || {
-                let path = child.path().map(|path| format!(" `{}!`", path)).unwrap_or_default();
-                err(format!("failed to resolve macro{}", path))
-            },
-        )?;
+        let def = match child.path().and_then(|path| ModPath::from_src(db, path, &hygiene)) {
+            Some(path) => macro_resolver(path.clone()).ok_or_else(|| UnresolvedMacro { path })?,
+            None => {
+                diagnostic_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
+                continue;
+            }
+        };
         let insert = match def.kind {
             MacroDefKind::BuiltInEager(..) => {
-                let id = expand_eager_macro(
+                let id = match expand_eager_macro(
                     db,
                     krate,
                     curr.with_value(child.clone()),
                     def,
                     macro_resolver,
                     diagnostic_sink,
-                )?;
+                ) {
+                    Ok(Ok(it)) => it,
+                    Ok(Err(err)) => return Ok(Err(err)),
+                    Err(err) => return Err(err),
+                };
                 db.parse_or_expand(id.as_file())
                     .expect("successful macro expansion should be parseable")
                     .clone_for_update()
@@ -231,21 +237,28 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
                 let res = lazy_expand(db, &def, curr.with_value(child.clone()), krate);
-                let val = diagnostic_sink.expand_result_option(res)?;
+                let val = match diagnostic_sink.expand_result_option(res) {
+                    Ok(it) => it,
+                    Err(err) => return Ok(Err(err)),
+                };
 
                 // replace macro inside
-                eager_macro_recur(db, val, krate, macro_resolver, diagnostic_sink)?
+                match eager_macro_recur(db, val, krate, macro_resolver, diagnostic_sink) {
+                    Ok(Ok(it)) => it,
+                    Ok(Err(err)) => return Ok(Err(err)),
+                    Err(err) => return Err(err),
+                }
             }
         };
 
         // check if the whole original syntax is replaced
         if child.syntax() == &original {
-            return Ok(insert);
+            return Ok(Ok(insert));
         }
 
         replacements.push((child, insert));
     }
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
-    Ok(original)
+    Ok(Ok(original))
 }
