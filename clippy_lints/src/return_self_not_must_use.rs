@@ -60,7 +60,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.59.0"]
     pub RETURN_SELF_NOT_MUST_USE,
-    suspicious,
+    pedantic,
     "missing `#[must_use]` annotation on a method returning `Self`"
 }
 

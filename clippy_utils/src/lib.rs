@@ -1850,7 +1850,8 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 }
 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.
-pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<Node<'tcx>> {
+/// Returns both the node and the `HirId` of the closest child node.
+pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<(Node<'tcx>, HirId)> {
     let mut child_id = expr.hir_id;
     let mut iter = tcx.hir().parent_iter(child_id);
     loop {
@@ -1862,9 +1863,9 @@ pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>
                 ExprKind::Match(_, [arm], _) if arm.hir_id == child_id => child_id = expr.hir_id,
                 ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = expr.hir_id,
                 ExprKind::If(_, then_expr, None) if then_expr.hir_id == child_id => break None,
-                _ => break Some(Node::Expr(expr)),
+                _ => break Some((Node::Expr(expr), child_id)),
             },
-            Some((_, node)) => break Some(node),
+            Some((_, node)) => break Some((node, child_id)),
         }
     }
 }
@@ -1873,18 +1874,21 @@ pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>
 pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     !matches!(
         get_expr_use_or_unification_node(tcx, expr),
-        None | Some(Node::Stmt(Stmt {
-            kind: StmtKind::Expr(_)
-                | StmtKind::Semi(_)
-                | StmtKind::Local(Local {
-                    pat: Pat {
-                        kind: PatKind::Wild,
+        None | Some((
+            Node::Stmt(Stmt {
+                kind: StmtKind::Expr(_)
+                    | StmtKind::Semi(_)
+                    | StmtKind::Local(Local {
+                        pat: Pat {
+                            kind: PatKind::Wild,
+                            ..
+                        },
                         ..
-                    },
-                    ..
-                }),
-            ..
-        }))
+                    }),
+                ..
+            }),
+            _
+        ))
     )
 }
 

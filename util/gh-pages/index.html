@@ -368,7 +368,7 @@ Otherwise, have a great day =^.^=
         <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
     </a>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/7.0.0/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.5.0/languages/rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.12/angular.min.js"></script>
@@ -522,6 +522,11 @@ Otherwise, have a great day =^.^=
                 }
 
                 scrollToLintByURL($scope);
+
+                setTimeout(function () {
+                    var el = document.getElementById('filter-input');
+                    if (el) { el.focus() }
+                }, 0);
             })
             .error(function (data) {
                 $scope.error = data;

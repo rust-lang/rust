@@ -77,5 +77,17 @@ LL |     let _x = some_and_qmark_in_macro!(x?);
    |
    = note: this error originates in the macro `some_and_qmark_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 12 previous errors
+error: question mark operator is useless here
+  --> $DIR/needless_question_mark.rs:131:5
+   |
+LL |     Some(to.magic?)
+   |     ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
+
+error: question mark operator is useless here
+  --> $DIR/needless_question_mark.rs:139:5
+   |
+LL |     Ok(s.magic?)
+   |     ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `s.magic`
+
+error: aborting due to 14 previous errors
 

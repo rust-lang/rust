@@ -96,7 +96,7 @@ const fn issue6067() {
     };
 }
 
-#[allow(clippy::deref_addrof, dead_code)]
+#[allow(clippy::deref_addrof, dead_code, clippy::needless_borrow)]
 fn issue7921() {
     if let None = *(&None::<()>) {}
     if let None = *&None::<()> {}

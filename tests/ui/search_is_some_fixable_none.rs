@@ -189,7 +189,7 @@ mod issue7392 {
         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
     }
 
-    fn test_string_1(s: &String) -> bool {
+    fn test_string_1(s: &str) -> bool {
         s.is_empty()
     }
 

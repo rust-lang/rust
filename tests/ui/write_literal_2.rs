@@ -6,20 +6,20 @@ use std::io::Write;
 fn main() {
     let mut v = Vec::new();
 
-    writeln!(&mut v, "{}", "{hello}");
-    writeln!(&mut v, r"{}", r"{hello}");
-    writeln!(&mut v, "{}", '\'');
-    writeln!(&mut v, "{}", '"');
-    writeln!(&mut v, r"{}", '"'); // don't lint
-    writeln!(&mut v, r"{}", '\'');
+    writeln!(v, "{}", "{hello}");
+    writeln!(v, r"{}", r"{hello}");
+    writeln!(v, "{}", '\'');
+    writeln!(v, "{}", '"');
+    writeln!(v, r"{}", '"'); // don't lint
+    writeln!(v, r"{}", '\'');
     writeln!(
-        &mut v,
+        v,
         "some {}",
         "hello \
         world!"
     );
     writeln!(
-        &mut v,
+        v,
         "some {}\
         {} \\ {}",
         "1", "2", "3",
