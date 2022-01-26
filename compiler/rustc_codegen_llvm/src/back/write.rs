@@ -56,28 +56,24 @@ pub fn write_output_file<'ll>(
     file_type: llvm::FileType,
     self_profiler_ref: &SelfProfilerRef,
 ) -> Result<(), FatalError> {
+    debug!("write_output_file output={:?} dwo_output={:?}", output, dwo_output);
     unsafe {
         let output_c = path_to_c_string(output);
-        let result = if let Some(dwo_output) = dwo_output {
-            let dwo_output_c = path_to_c_string(dwo_output);
-            llvm::LLVMRustWriteOutputFile(
-                target,
-                pm,
-                m,
-                output_c.as_ptr(),
-                dwo_output_c.as_ptr(),
-                file_type,
-            )
+        let dwo_output_c;
+        let dwo_output_ptr = if let Some(dwo_output) = dwo_output {
+            dwo_output_c = path_to_c_string(dwo_output);
+            dwo_output_c.as_ptr()
         } else {
-            llvm::LLVMRustWriteOutputFile(
-                target,
-                pm,
-                m,
-                output_c.as_ptr(),
-                std::ptr::null(),
-                file_type,
-            )
+            std::ptr::null()
         };
+        let result = llvm::LLVMRustWriteOutputFile(
+            target,
+            pm,
+            m,
+            output_c.as_ptr(),
+            dwo_output_ptr,
+            file_type,
+        );
 
         // Record artifact sizes for self-profiling
         if result == llvm::LLVMRustResult::Success {
