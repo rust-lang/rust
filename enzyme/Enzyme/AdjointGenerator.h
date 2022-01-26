@@ -5076,7 +5076,7 @@ public:
 
 #if LLVM_VERSION_MAJOR > 7
         Value *d_reqp = Builder2.CreateLoad(
-            impi,
+            PointerType::getUnqual(impi),
             Builder2.CreatePointerCast(
                 d_req, PointerType::getUnqual(PointerType::getUnqual(impi))));
 #else

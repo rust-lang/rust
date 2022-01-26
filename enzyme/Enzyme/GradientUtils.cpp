@@ -1068,8 +1068,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               reverseBlockToPrimal[blocks[i]] = fwd;
               IRBuilder<> B(blocks[i]);
 
-              unwrap_cache[blocks[i]] = unwrap_cache[oldB];
-              lookup_cache[blocks[i]] = lookup_cache[oldB];
+              for (auto pair : unwrap_cache[oldB])
+                unwrap_cache[blocks[i]].insert(pair);
+              for (auto pair : lookup_cache[oldB])
+                lookup_cache[blocks[i]].insert(pair);
               auto PB = *done[std::make_pair(valparent, predBlocks[i])].begin();
 
               if (auto inst = dyn_cast<Instruction>(
@@ -1151,8 +1153,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               unwrap_cache[bret][idx.first][idx.second] = toret;
             }
             unwrappedLoads[toret] = val;
-            unwrap_cache[bret] = unwrap_cache[oldB];
-            lookup_cache[bret] = lookup_cache[oldB];
+            for (auto pair : unwrap_cache[oldB])
+              unwrap_cache[bret].insert(pair);
+            for (auto pair : lookup_cache[oldB])
+              lookup_cache[bret].insert(pair);
             return toret;
           }
         }
@@ -1253,8 +1257,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
         IRBuilder<> B(blocks[i]);
 
-        unwrap_cache[blocks[i]] = unwrap_cache[oldB];
-        lookup_cache[blocks[i]] = lookup_cache[oldB];
+        for (auto pair : unwrap_cache[oldB])
+          unwrap_cache[blocks[i]].insert(pair);
+        for (auto pair : lookup_cache[oldB])
+          lookup_cache[blocks[i]].insert(pair);
 
         if (auto inst =
                 dyn_cast<Instruction>(phi->getIncomingValueForBlock(PB))) {
@@ -1390,8 +1396,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (permitCache) {
         unwrap_cache[bret][idx.first][idx.second] = toret;
       }
-      unwrap_cache[bret] = unwrap_cache[oldB];
-      lookup_cache[bret] = lookup_cache[oldB];
+      for (auto pair : unwrap_cache[oldB])
+        unwrap_cache[bret].insert(pair);
+      for (auto pair : lookup_cache[oldB])
+        lookup_cache[bret].insert(pair);
       unwrappedLoads[toret] = val;
       return toret;
     }

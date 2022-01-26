@@ -536,9 +536,9 @@ private:
   Value *tape;
 
   std::map<BasicBlock *,
-           std::map<Value *, std::map<BasicBlock *, WeakTrackingVH>>>
+           ValueMap<Value *, std::map<BasicBlock *, WeakTrackingVH>>>
       unwrap_cache;
-  std::map<BasicBlock *, std::map<Value *, WeakTrackingVH>> lookup_cache;
+  std::map<BasicBlock *, ValueMap<Value *, WeakTrackingVH>> lookup_cache;
 
 public:
   BasicBlock *addReverseBlock(BasicBlock *currentBlock, Twine name,
@@ -557,8 +557,10 @@ public:
     vec.push_back(rev);
     reverseBlockToPrimal[rev] = found->second;
     if (forkCache) {
-      unwrap_cache[rev] = unwrap_cache[currentBlock];
-      lookup_cache[rev] = lookup_cache[currentBlock];
+      for (auto pair : unwrap_cache[currentBlock])
+        unwrap_cache[rev].insert(pair);
+      for (auto pair : lookup_cache[currentBlock])
+        lookup_cache[rev].insert(pair);
     }
     return rev;
   }
