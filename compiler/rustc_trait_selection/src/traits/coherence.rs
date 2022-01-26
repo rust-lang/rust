@@ -160,24 +160,21 @@ impl OverlapMode {
 }
 
 fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
-    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
-        != tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
-    {
-        bug!("Use strict coherence on both impls",);
-    }
+    let negative1 = tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence);
+    let negative2 = tcx.has_attr(impl2_def_id, sym::rustc_with_negative_coherence);
 
-    if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence)
-        != tcx.has_attr(impl2_def_id, sym::rustc_with_negative_coherence)
-    {
-        bug!("Use with negative coherence on both impls",);
-    }
-
-    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence) {
-        OverlapMode::Strict
-    } else if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence) {
-        OverlapMode::WithNegative
-    } else {
-        OverlapMode::Stable
+    match (negative1, negative2) {
+        (true, true) => OverlapMode::WithNegative,
+        (false, false) => {
+            let strict1 = tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence);
+            let strict2 = tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence);
+            match (strict1, strict2) {
+                (false, false) => OverlapMode::Stable,
+                (true, true) => OverlapMode::Strict,
+                (false, true) | (true, false) => bug!("Use with negative coherence on both impls"),
+            }
+        }
+        (false, true) | (true, false) => bug!("Use strict coherence on both impls"),
     }
 }
 
