@@ -11,6 +11,8 @@ use crate::{
     traits,
 };
 
+use super::opaque_types::OpaqueHiddenType;
+
 pub struct Snapshot<'tcx> {
     pub(crate) undo_len: usize,
     _marker: PhantomData<&'tcx ()>,
@@ -18,7 +20,7 @@ pub struct Snapshot<'tcx> {
 
 /// Records the "undo" data for a single operation that affects some form of inference variable.
 pub(crate) enum UndoLog<'tcx> {
-    OpaqueTypes(OpaqueTypeKey<'tcx>, usize),
+    OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),

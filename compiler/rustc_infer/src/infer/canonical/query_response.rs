@@ -502,7 +502,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             let opaque = self.tcx.mk_opaque(key.def_id, substs);
             for &ty in tys {
                 let ty = substitute_value(self.tcx, &result_subst, ty);
-                obligations.extend(self.handle_opaque_type(opaque, ty, cause, param_env)?);
+                obligations
+                    .extend(self.handle_opaque_type(opaque, ty, cause, param_env)?.obligations);
             }
         }
 

@@ -18,14 +18,14 @@ pub struct OpaqueTypeStorage<'tcx> {
 
 impl<'tcx> OpaqueTypeStorage<'tcx> {
     #[instrument(level = "debug")]
-    pub(crate) fn remove(&mut self, key: OpaqueTypeKey<'tcx>, idx: usize) {
-        if idx == 0 {
+    pub(crate) fn remove(&mut self, key: OpaqueTypeKey<'tcx>, idx: Option<OpaqueHiddenType<'tcx>>) {
+        if let Some(idx) = idx {
+            self.opaque_types.get_mut(&key).unwrap().hidden_types[0] = idx;
+        } else {
             match self.opaque_types.remove(&key) {
                 None => bug!("reverted opaque type inference that was never registered: {:?}", key),
                 Some(_) => {}
             }
-        } else {
-            self.opaque_types.get_mut(&key).unwrap().hidden_types.drain(idx..);
         }
     }
 
@@ -75,14 +75,17 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
         opaque_type: Ty<'tcx>,
         ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
-    ) {
+    ) -> Option<Ty<'tcx>> {
         if let Some(decl) = self.storage.opaque_types.get_mut(&key) {
-            decl.hidden_types.push(ty);
-            self.undo_log.push(UndoLog::OpaqueTypes(key, decl.hidden_types.len()));
-            return;
+            assert_eq!(decl.hidden_types.len(), 1);
+            let prev = decl.hidden_types[0];
+            decl.hidden_types = vec![ty];
+            self.undo_log.push(UndoLog::OpaqueTypes(key, Some(prev)));
+            return Some(prev.ty);
         }
         let decl = OpaqueTypeDecl { opaque_type, hidden_types: vec![ty], origin };
         self.storage.opaque_types.insert(key, decl);
-        self.undo_log.push(UndoLog::OpaqueTypes(key, 0));
+        self.undo_log.push(UndoLog::OpaqueTypes(key, None));
+        None
     }
 }

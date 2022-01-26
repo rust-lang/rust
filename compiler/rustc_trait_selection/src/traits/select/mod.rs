@@ -705,8 +705,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &obligation.cause,
                         obligation.param_env,
                     ) {
-                        Ok(obligations) => {
-                            self.evaluate_predicates_recursively(previous_stack, obligations)
+                        Ok(res) => {
+                            self.evaluate_predicates_recursively(previous_stack, res.obligations)
                         }
                         Err(_) => Ok(EvaluatedToErr),
                     }

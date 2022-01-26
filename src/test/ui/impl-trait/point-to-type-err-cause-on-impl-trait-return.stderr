@@ -1,31 +1,41 @@
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:5:5
    |
-LL |         return 0i32;
-   |                ---- type expected due to this
-LL |     }
+LL | fn foo() -> impl std::fmt::Display {
+   |             ---------------------- the expected opaque type
+...
 LL |     1u32
    |     ^^^^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:12:16
    |
-LL |         return 0i32;
-   |                ---- type expected due to this
-LL |     } else {
+LL | fn bar() -> impl std::fmt::Display {
+   |             ---------------------- the expected opaque type
+...
 LL |         return 1u32;
    |                ^^^^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:17:5
    |
+LL |   fn baz() -> impl std::fmt::Display {
+   |               ---------------------- the expected opaque type
 LL | /     if false {
 LL | |         return 0i32;
-   | |                ---- type expected due to this
 LL | |     } else {
 LL | |         1u32
 LL | |     }
    | |_____^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:28:9
@@ -53,36 +63,48 @@ LL ~         Box::new(1u32)
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:33:5
    |
+LL |   fn bat() -> impl std::fmt::Display {
+   |               ---------------------- the expected opaque type
 LL | /     match 13 {
 LL | |         0 => return 0i32,
-   | |                     ---- type expected due to this
 LL | |         _ => 1u32,
 LL | |     }
    | |_____^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:40:5
    |
+LL |   fn can() -> impl std::fmt::Display {
+   |               ---------------------- the expected opaque type
 LL | /     match 13 {
 LL | |         0 => return 0i32,
-   | |                     ---- type expected due to this
 LL | |         1 => 1u32,
 LL | |         _ => 2u32,
 LL | |     }
    | |_____^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:48:5
    |
+LL |   fn cat() -> impl std::fmt::Display {
+   |               ---------------------- the expected opaque type
 LL | /     match 13 {
 LL | |         0 => {
 LL | |             return 0i32;
-   | |                    ---- type expected due to this
 LL | |         }
 ...  |
 LL | |         }
 LL | |     }
    | |_____^ expected `i32`, found `u32`
+   |
+   = note: expected opaque type `impl std::fmt::Display`
+                     found type `u32`
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:61:14

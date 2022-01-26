@@ -1,10 +1,14 @@
 error[E0308]: mismatched types
   --> $DIR/issue-74280.rs:10:5
    |
-LL |     let y = || -> Test { () };
-   |                          -- type expected due to this
+LL | type Test = impl Copy;
+   |             --------- the expected opaque type
+...
 LL |     7
    |     ^ expected `()`, found integer
+   |
+   = note: expected opaque type `impl Copy`
+                     found type `{integer}`
 
 error: could not find defining uses
   --> $DIR/issue-74280.rs:5:13

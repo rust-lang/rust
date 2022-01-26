@@ -18,15 +18,7 @@ LL | pub fn gather_all() -> impl Iterator<Item = Lint> {
    |
    = help: the trait `Iterator` is not implemented for `()`
 
-error[E0277]: `()` is not an iterator
-  --> $DIR/issue-72911.rs:17:20
-   |
-LL | fn lint_files() -> impl Iterator<Item = foo::MissingItem> {
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
-   |
-   = help: the trait `Iterator` is not implemented for `()`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0277, E0433.
 For more information about an error, try `rustc --explain E0277`.

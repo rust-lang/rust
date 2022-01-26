@@ -1,5 +1,5 @@
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, PredicateObligation, PredicateObligations};
+use crate::traits::{self, PredicateObligation};
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::sync::Lrc;
@@ -19,6 +19,8 @@ pub type OpaqueTypeMap<'tcx> = VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>
 mod table;
 
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
+
+use super::InferResult;
 
 /// Information about the opaque types whose values we
 /// are inferring in this function (these are the `impl Trait` that
@@ -152,11 +154,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         opaque: Ty<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<InferOk<'tcx, Ty<'tcx>>> {
-        let mut obligations = vec![];
-        let value = Instantiator { infcx: self, cause, param_env, obligations: &mut obligations }
-            .fold_opaque_ty_new(opaque, |_, _| ty)?;
-        Some(InferOk { value, obligations })
+    ) -> Option<InferResult<'tcx, ()>> {
+        Instantiator { infcx: self, cause, param_env }.fold_opaque_ty_new(opaque, |_, _| ty)
     }
 
     pub fn handle_opaque_type(
@@ -165,9 +164,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         b: Ty<'tcx>,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<PredicateObligations<'tcx>, TypeError<'tcx>> {
+    ) -> InferResult<'tcx, ()> {
         if a.references_error() || b.references_error() {
-            return Ok(vec![]);
+            return Ok(InferOk { value: (), obligations: vec![] });
         }
         if self.defining_use_anchor.is_some() {
             let process = |a: Ty<'tcx>, b: Ty<'tcx>| {
@@ -175,12 +174,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     return None;
                 }
                 self.instantiate_opaque_types(b, a, cause.clone(), param_env)
-                    .map(|res| res.obligations)
             };
             if let Some(res) = process(a, b) {
-                Ok(res)
+                res
             } else if let Some(res) = process(b, a) {
-                Ok(res)
+                res
             } else {
                 // Rerun equality check, but this time error out due to
                 // different types.
@@ -205,13 +203,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             let key = opaque_type.expect_opaque_type();
             let origin = self.opaque_ty_origin_unchecked(key.def_id, cause.span);
-            self.inner.borrow_mut().opaque_types().register(
+            let prev = self.inner.borrow_mut().opaque_types().register(
                 key,
                 opaque_type,
                 OpaqueHiddenType { ty: hidden_ty, span: cause.span },
                 origin,
             );
-            Ok(vec![])
+            match prev {
+                Some(prev) => self.at(cause, param_env).eq(prev, hidden_ty),
+                None => Ok(InferOk { value: (), obligations: vec![] }),
+            }
         }
     }
 
@@ -599,7 +600,6 @@ struct Instantiator<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    obligations: &'a mut PredicateObligations<'tcx>,
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
@@ -607,7 +607,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
-    ) -> Option<Ty<'tcx>> {
+    ) -> Option<InferResult<'tcx, ()>> {
         // Check that this is `impl Trait` type is
         // declared by `parent_def_id` -- i.e., one whose
         // value we are inferring.  At present, this is
@@ -659,7 +659,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         opaque_type_key: OpaqueTypeKey<'tcx>,
         origin: hir::OpaqueTyOrigin,
         mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> InferResult<'tcx, ()> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
@@ -673,12 +673,16 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         // Foo, impl Bar)`.
         let span = self.cause.span;
 
-        self.infcx.inner.borrow_mut().opaque_types().register(
+        let mut obligations = vec![];
+        let prev = self.infcx.inner.borrow_mut().opaque_types().register(
             OpaqueTypeKey { def_id, substs },
             ty,
             OpaqueHiddenType { ty: ty_var, span },
             origin,
         );
+        if let Some(prev) = prev {
+            obligations = self.infcx.at(&self.cause, self.param_env).eq(prev, ty_var)?.obligations;
+        }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
 
@@ -698,7 +702,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                         projection_ty,
                         self.cause.clone(),
                         0,
-                        &mut self.obligations,
+                        &mut obligations,
                     ),
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
@@ -714,19 +718,19 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             if let ty::PredicateKind::Projection(projection) = predicate.kind().skip_binder() {
                 if projection.term.references_error() {
                     // No point on adding these obligations since there's a type error involved.
-                    return tcx.ty_error();
+                    return Ok(InferOk { value: (), obligations: vec![] });
                 }
                 trace!("{:#?}", projection.term);
             }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
-            self.obligations.push(traits::Obligation::new(
+            obligations.push(traits::Obligation::new(
                 self.cause.clone(),
                 self.param_env,
                 predicate,
             ));
         }
-        ty_var
+        Ok(InferOk { value: (), obligations })
     }
 }
 

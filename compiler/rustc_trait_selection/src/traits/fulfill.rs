@@ -652,7 +652,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         &obligation.cause,
                         obligation.param_env,
                     ) {
-                        Ok(value) => ProcessResult::Changed(mk_pending(value)),
+                        Ok(value) => ProcessResult::Changed(mk_pending(value.obligations)),
                         Err(err) => ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
                             ExpectedFound::new(true, a, b),
                             err,
