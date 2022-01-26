@@ -10,6 +10,7 @@ use crate::build::scope::DropKind;
 use crate::build::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::{
     fx::{FxHashSet, FxIndexMap},
     stack::ensure_sufficient_stack,
@@ -1722,7 +1723,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         debug!("add_fake_borrows fake_borrows = {:?}", fake_borrows);
 
-        let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
+        let mut all_fake_borrows = FxIndexSet::default();
 
         // Insert a Shallow borrow of the prefixes of any fake borrows.
         for place in fake_borrows {
@@ -1734,16 +1735,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Insert a shallow borrow after a deref. For other
                     // projections the borrow of prefix_cursor will
                     // conflict with any mutation of base.
-                    all_fake_borrows.push(PlaceRef { local: place.local, projection: proj_base });
+                    all_fake_borrows.insert(PlaceRef { local: place.local, projection: proj_base });
                 }
             }
 
-            all_fake_borrows.push(place.as_ref());
+            all_fake_borrows.insert(place.as_ref());
         }
-
-        // Deduplicate and ensure a deterministic order.
-        all_fake_borrows.sort();
-        all_fake_borrows.dedup();
 
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 

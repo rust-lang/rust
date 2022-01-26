@@ -1,5 +1,6 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
@@ -54,7 +55,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
-            place_cache: Vec::new(),
+            place_cache: FxIndexSet::default(),
         }
         .visit_body(body);
     }
@@ -108,7 +109,7 @@ struct TypeChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
-    place_cache: Vec<PlaceRef<'tcx>>,
+    place_cache: FxIndexSet<PlaceRef<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -438,16 +439,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 // Currently this simply checks for duplicate places.
                 self.place_cache.clear();
                 if let Some((destination, _)) = destination {
-                    self.place_cache.push(destination.as_ref());
+                    self.place_cache.insert(destination.as_ref());
                 }
                 for arg in args {
                     if let Operand::Move(place) = arg {
-                        self.place_cache.push(place.as_ref());
+                        self.place_cache.insert(place.as_ref());
                     }
                 }
                 let all_len = self.place_cache.len();
-                self.place_cache.sort_unstable();
-                self.place_cache.dedup();
                 let has_duplicates = all_len != self.place_cache.len();
                 if has_duplicates {
                     self.fail(
