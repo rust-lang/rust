@@ -2,7 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::check::FnCtxt;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1113,14 +1113,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 _ => false,
             });
-        let mut preds: Vec<_> = errors
+        let preds: FxIndexSet<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Trait(pred) => Some(pred),
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
         let def_ids = preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {
