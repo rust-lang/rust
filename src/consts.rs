@@ -35,7 +35,12 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // following:
         for (value, variable) in &*self.const_globals.borrow() {
             if format!("{:?}", value) == format!("{:?}", cv) {
-                // TODO(antoyo): upgrade alignment.
+                if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
+                    let alignment = align.bits() as i32;
+                    if alignment > global_variable.get_alignment() {
+                        global_variable.set_alignment(alignment);
+                    }
+                }
                 return *variable;
             }
         }
@@ -182,7 +187,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // globally.
         global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
-        global.get_address(None)
+        let rvalue = global.get_address(None);
+        self.global_lvalues.borrow_mut().insert(rvalue, global);
+        rvalue
     }
 
     pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {
