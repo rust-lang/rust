@@ -1046,3 +1046,71 @@ m!(
         "#]],
     )
 }
+
+#[test]
+fn eager_macro_correctly_resolves_contents() {
+    // Eager macros resolve any contained macros when expanded. This should work correctly with the
+    // usual name resolution rules, so both of these `include!`s should include the right file.
+
+    check(
+        r#"
+//- /lib.rs
+#[rustc_builtin_macro]
+macro_rules! include { () => {} }
+
+include!(inner_a!());
+include!(crate::inner_b!());
+
+#[macro_export]
+macro_rules! inner_a {
+    () => { "inc_a.rs" };
+}
+#[macro_export]
+macro_rules! inner_b {
+    () => { "inc_b.rs" };
+}
+//- /inc_a.rs
+struct A;
+//- /inc_b.rs
+struct B;
+"#,
+        expect![[r#"
+        crate
+        A: t v
+        B: t v
+        inner_a: m
+        inner_b: m
+    "#]],
+    );
+}
+
+#[test]
+fn eager_macro_correctly_resolves_dollar_crate() {
+    check(
+        r#"
+//- /lib.rs
+#[rustc_builtin_macro]
+macro_rules! include { () => {} }
+
+#[macro_export]
+macro_rules! inner {
+    () => { "inc.rs" };
+}
+
+macro_rules! m {
+    () => { include!($crate::inner!()); };
+}
+
+m!();
+
+//- /inc.rs
+struct A;
+"#,
+        expect![[r#"
+            crate
+            inner: m
+        "#]],
+    );
+
+    // FIXME: This currently fails. The result should contain `A: t v`.
+}

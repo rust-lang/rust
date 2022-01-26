@@ -14,11 +14,13 @@ pub mod builtin_fn_macro;
 pub mod proc_macro;
 pub mod quote;
 pub mod eager;
+pub mod mod_path;
 
 use base_db::ProcMacroKind;
 use either::Either;
 
 pub use mbe::{ExpandError, ExpandResult, Origin};
+use mod_path::ModPath;
 
 use std::{hash::Hash, iter, sync::Arc};
 
@@ -834,4 +836,9 @@ impl ExpandTo {
             }
         }
     }
+}
+
+#[derive(Debug)]
+pub struct UnresolvedMacro {
+    pub path: ModPath,
 }

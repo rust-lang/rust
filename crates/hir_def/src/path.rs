@@ -6,33 +6,13 @@ use std::{
     iter,
 };
 
-use crate::{body::LowerCtx, db::DefDatabase, intern::Interned, type_ref::LifetimeRef};
-use base_db::CrateId;
-use hir_expand::{
-    hygiene::Hygiene,
-    name::{name, Name},
-};
+use crate::{body::LowerCtx, intern::Interned, type_ref::LifetimeRef};
+use hir_expand::name::{name, Name};
 use syntax::ast;
 
 use crate::type_ref::{TypeBound, TypeRef};
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ModPath {
-    pub kind: PathKind,
-    segments: Vec<Name>,
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum PathKind {
-    Plain,
-    /// `self::` is `Super(0)`
-    Super(u8),
-    Crate,
-    /// Absolute path (::foo)
-    Abs,
-    /// `$crate` from macro expansion
-    DollarCrate(CrateId),
-}
+pub use hir_expand::mod_path::{path, ModPath, PathKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportAlias {
@@ -47,67 +27,6 @@ impl Display for ImportAlias {
         match self {
             ImportAlias::Underscore => f.write_str("_"),
             ImportAlias::Alias(name) => f.write_str(&name.to_smol_str()),
-        }
-    }
-}
-
-impl ModPath {
-    pub fn from_src(db: &dyn DefDatabase, path: ast::Path, hygiene: &Hygiene) -> Option<ModPath> {
-        lower::convert_path(db, None, path, hygiene)
-    }
-
-    pub fn from_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> ModPath {
-        let segments = segments.into_iter().collect::<Vec<_>>();
-        ModPath { kind, segments }
-    }
-
-    /// Creates a `ModPath` from a `PathKind`, with no extra path segments.
-    pub const fn from_kind(kind: PathKind) -> ModPath {
-        ModPath { kind, segments: Vec::new() }
-    }
-
-    pub fn segments(&self) -> &[Name] {
-        &self.segments
-    }
-
-    pub fn push_segment(&mut self, segment: Name) {
-        self.segments.push(segment);
-    }
-
-    pub fn pop_segment(&mut self) -> Option<Name> {
-        self.segments.pop()
-    }
-
-    /// Returns the number of segments in the path (counting special segments like `$crate` and
-    /// `super`).
-    pub fn len(&self) -> usize {
-        self.segments.len()
-            + match self.kind {
-                PathKind::Plain => 0,
-                PathKind::Super(i) => i as usize,
-                PathKind::Crate => 1,
-                PathKind::Abs => 0,
-                PathKind::DollarCrate(_) => 1,
-            }
-    }
-
-    pub fn is_ident(&self) -> bool {
-        self.as_ident().is_some()
-    }
-
-    pub fn is_self(&self) -> bool {
-        self.kind == PathKind::Super(0) && self.segments.is_empty()
-    }
-
-    /// If this path is a single identifier, like `foo`, return its name.
-    pub fn as_ident(&self) -> Option<&Name> {
-        if self.kind != PathKind::Plain {
-            return None;
-        }
-
-        match &*self.segments {
-            [name] => Some(name),
-            _ => None,
         }
     }
 }
@@ -185,10 +104,7 @@ impl Path {
     }
 
     pub fn segments(&self) -> PathSegments<'_> {
-        PathSegments {
-            segments: self.mod_path.segments.as_slice(),
-            generic_args: &self.generic_args,
-        }
+        PathSegments { segments: self.mod_path.segments(), generic_args: &self.generic_args }
     }
 
     pub fn mod_path(&self) -> &ModPath {
@@ -203,7 +119,7 @@ impl Path {
             type_anchor: self.type_anchor.clone(),
             mod_path: Interned::new(ModPath::from_segments(
                 self.mod_path.kind.clone(),
-                self.mod_path.segments[..self.mod_path.segments.len() - 1].iter().cloned(),
+                self.mod_path.segments()[..self.mod_path.segments().len() - 1].iter().cloned(),
             )),
             generic_args: self.generic_args[..self.generic_args.len() - 1].to_vec().into(),
         };
@@ -296,76 +212,3 @@ impl From<Name> for Box<Path> {
         Box::new(Path::from(name))
     }
 }
-
-impl From<Name> for ModPath {
-    fn from(name: Name) -> ModPath {
-        ModPath::from_segments(PathKind::Plain, iter::once(name))
-    }
-}
-
-impl Display for ModPath {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut first_segment = true;
-        let mut add_segment = |s| -> fmt::Result {
-            if !first_segment {
-                f.write_str("::")?;
-            }
-            first_segment = false;
-            f.write_str(s)?;
-            Ok(())
-        };
-        match self.kind {
-            PathKind::Plain => {}
-            PathKind::Super(0) => add_segment("self")?,
-            PathKind::Super(n) => {
-                for _ in 0..n {
-                    add_segment("super")?;
-                }
-            }
-            PathKind::Crate => add_segment("crate")?,
-            PathKind::Abs => add_segment("")?,
-            PathKind::DollarCrate(_) => add_segment("$crate")?,
-        }
-        for segment in &self.segments {
-            if !first_segment {
-                f.write_str("::")?;
-            }
-            first_segment = false;
-            write!(f, "{}", segment)?;
-        }
-        Ok(())
-    }
-}
-
-pub use hir_expand::name as __name;
-
-#[macro_export]
-macro_rules! __known_path {
-    (core::iter::IntoIterator) => {};
-    (core::iter::Iterator) => {};
-    (core::result::Result) => {};
-    (core::option::Option) => {};
-    (core::ops::Range) => {};
-    (core::ops::RangeFrom) => {};
-    (core::ops::RangeFull) => {};
-    (core::ops::RangeTo) => {};
-    (core::ops::RangeToInclusive) => {};
-    (core::ops::RangeInclusive) => {};
-    (core::future::Future) => {};
-    (core::ops::Try) => {};
-    ($path:path) => {
-        compile_error!("Please register your known path in the path module")
-    };
-}
-
-#[macro_export]
-macro_rules! __path {
-    ($start:ident $(:: $seg:ident)*) => ({
-        $crate::__known_path!($start $(:: $seg)*);
-        $crate::path::ModPath::from_segments($crate::path::PathKind::Abs, vec![
-            $crate::path::__name![$start], $($crate::path::__name![$seg],)*
-        ])
-    });
-}
-
-pub use crate::__path as path;
