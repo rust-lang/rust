@@ -598,6 +598,15 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
+            // ```rust
+            // type Foo = impl Fn() -> usize; // when computing type for this
+            // const fn bar() -> Foo {
+            //     || 0usize
+            // }
+            // const BAZR: Foo = bar(); // we would mir-borrowck this, causing cycles
+            // // because we again need to reveal `Foo` so we can check whether the
+            // // constant does not contain interior mutability.
+            // ```
             if self.tcx.typeck(def_id).concrete_opaque_types.get(&self.def_id).is_none() {
                 debug!("no constraints in typeck results");
                 return;
