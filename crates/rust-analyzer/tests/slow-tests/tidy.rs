@@ -139,10 +139,9 @@ fn check_cargo_toml(path: &Path, text: String) {
 
 #[test]
 fn check_merge_commits() {
-    let stdout = cmd!("git rev-list --merges --invert-grep --author 'bors\\[bot\\]' HEAD~19..")
-        .read()
-        .unwrap();
-    if !stdout.is_empty() {
+    let bors = cmd!("git rev-list --merges --author 'bors\\[bot\\]' HEAD~19..").read().unwrap();
+    let all = cmd!("git rev-list --merges HEAD~19..").read().unwrap();
+    if bors != all {
         panic!(
             "
 Merge commits are not allowed in the history.
