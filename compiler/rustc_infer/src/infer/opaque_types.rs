@@ -6,7 +6,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::subst::{GenericArgKind, Subst};
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitor};
@@ -33,59 +32,10 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// The hidden types that have been inferred for this opaque type.
     /// There can be multiple, but they are all `lub`ed together at the end
     /// to obtain the canonical hidden type.
-    pub hidden_types: Vec<OpaqueHiddenType<'tcx>>,
+    pub hidden_type: OpaqueHiddenType<'tcx>,
 
     /// The origin of the opaque type.
     pub origin: hir::OpaqueTyOrigin,
-}
-
-impl<'tcx> OpaqueTypeDecl<'tcx> {
-    pub fn hidden_type(
-        &self,
-        infcx: &InferCtxt<'_, 'tcx>,
-        cause: &ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<
-        InferOk<'tcx, OpaqueHiddenType<'tcx>>,
-        (TypeError<'tcx>, OpaqueHiddenType<'tcx>, OpaqueHiddenType<'tcx>),
-    > {
-        let mut value = self.hidden_types[0];
-        let mut obligations = vec![];
-        let mut error: Option<(_, _, OpaqueHiddenType<'tcx>)> = None;
-        for &next in self.hidden_types[1..].iter() {
-            // FIXME: make use of the spans to get nicer diagnostics!
-            let res = match infcx.at(cause, param_env).eq(value.ty, next.ty) {
-                Ok(res) => res,
-                Err(e) => {
-                    // Try to improve the span. Sometimes we have dummy spans, sometimes we are pointing
-                    // at an if/match instead of at the arm that gave us the type, but later spans point
-                    // to the right thing.
-                    if let Some((_, _, old)) = &mut error {
-                        old.span = old.span.substitute_dummy(next.span);
-                        // Shrink the span if possible
-                        if old.span.contains(next.span) {
-                            old.span = next.span;
-                        }
-                    } else {
-                        let mut next = next;
-                        next.span = next.span.substitute_dummy(cause.span(infcx.tcx));
-                        error = Some((e, value, next));
-                    }
-                    continue;
-                }
-            };
-            obligations.extend(res.obligations);
-            value.span = value.span.substitute_dummy(next.span);
-            // Shrink the span if possible
-            if value.span.contains(next.span) {
-                value.span = next.span;
-            }
-        }
-        match error {
-            None => Ok(InferOk { value, obligations }),
-            Some(e) => Err(e),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, TypeFoldable)]

@@ -18,7 +18,9 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime, NllRegionVariableOrigin};
+use rustc_infer::infer::{
+    InferCtxt, InferOk, LateBoundRegionConversionTime, NllRegionVariableOrigin,
+};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::AssertKind;
@@ -194,31 +196,24 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let opaque_type_values = opaque_type_values
                 .into_iter()
                 .filter_map(|(opaque_type_key, decl)| {
-                    let def_id = body.source.def_id().expect_local();
-                    let body_id = cx.tcx().hir().local_def_id_to_hir_id(def_id);
-                    let cause = ObligationCause::misc(body.span, body_id);
-                    let hidden = cx
-                        .fully_perform_op(
-                            Locations::All(body.span),
-                            ConstraintCategory::OpaqueType,
-                            CustomTypeOp::new(
-                                |infcx| {
-                                    let res = decl
-                                        .hidden_type(infcx, &cause, param_env)
-                                        .map_err(|e| e.0)?;
-                                    infcx.register_member_constraints(
-                                        param_env,
-                                        opaque_type_key,
-                                        res.value.ty,
-                                        res.value.span,
-                                    );
-                                    Ok(res)
-                                },
-                                || "opaque_type_map".to_string(),
-                            ),
-                        )
-                        .unwrap();
-                    let mut hidden_type = infcx.resolve_vars_if_possible(hidden.ty);
+                    cx.fully_perform_op(
+                        Locations::All(body.span),
+                        ConstraintCategory::OpaqueType,
+                        CustomTypeOp::new(
+                            |infcx| {
+                                infcx.register_member_constraints(
+                                    param_env,
+                                    opaque_type_key,
+                                    decl.hidden_type.ty,
+                                    decl.hidden_type.span,
+                                );
+                                Ok(InferOk { value: (), obligations: vec![] })
+                            },
+                            || "opaque_type_map".to_string(),
+                        ),
+                    )
+                    .unwrap();
+                    let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type.ty);
                     trace!(
                         "finalized opaque type {:?} to {:#?}",
                         opaque_type_key,
@@ -226,7 +221,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     );
                     if hidden_type.has_infer_types_or_consts() {
                         infcx.tcx.sess.delay_span_bug(
-                            hidden.span,
+                            decl.hidden_type.span,
                             &format!("could not resolve {:#?}", hidden_type.kind()),
                         );
                         hidden_type = infcx.tcx.ty_error();
@@ -263,7 +258,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
                         );
                         None
                     } else {
-                        Some((opaque_type_key, (hidden_type, hidden.span, decl.origin)))
+                        Some((opaque_type_key, (hidden_type, decl.hidden_type.span, decl.origin)))
                     }
                 })
                 .collect();

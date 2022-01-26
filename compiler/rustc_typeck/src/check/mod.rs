@@ -99,8 +99,6 @@ pub use diverges::Diverges;
 pub use expectation::Expectation;
 pub use fn_ctxt::*;
 pub use inherited::{Inherited, InheritedBuilder};
-use rustc_infer::traits::ObligationCause;
-use traits::ObligationCauseCode::MiscObligation;
 
 use crate::astconv::AstConv;
 use crate::check::gather_locals::GatherLocalsVisitor;
@@ -472,19 +470,6 @@ fn typeck_with_fallback<'tcx>(
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
             let ty = fcx.normalize_ty(span, ty);
             fcx.require_type_is_sized(ty, span, code);
-        }
-
-        let opaque_types = fcx.infcx.inner.borrow_mut().opaque_type_storage.opaque_types();
-        for (_, decl) in opaque_types {
-            let cause = ObligationCause::new(body.value.span, id, MiscObligation);
-            if let Err((err, expected, actual)) =
-                decl.hidden_type(&fcx.infcx, &cause, fcx.param_env)
-            {
-                let cause = ObligationCause::new(actual.span, id, MiscObligation);
-                fcx.report_mismatched_types(&cause, expected.ty, actual.ty, err)
-                    .span_label(expected.span, "type expected due to this")
-                    .emit();
-            }
         }
 
         fcx.select_all_obligations_or_error();

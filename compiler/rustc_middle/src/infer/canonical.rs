@@ -180,7 +180,7 @@ pub struct QueryResponse<'tcx, R> {
     pub certainty: Certainty,
     /// List of opaque types for which we figured out a hidden type
     /// during the evaluation of the query.
-    pub opaque_types: Vec<(OpaqueTypeKey<'tcx>, Vec<Ty<'tcx>>)>,
+    pub opaque_types: Vec<(OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 

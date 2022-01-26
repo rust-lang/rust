@@ -146,13 +146,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         })
     }
 
-    fn take_opaque_types_for_query_response(&self) -> Vec<(OpaqueTypeKey<'tcx>, Vec<Ty<'tcx>>)> {
+    fn take_opaque_types_for_query_response(&self) -> Vec<(OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner
             .borrow_mut()
             .opaque_type_storage
             .take_opaque_types()
             .into_iter()
-            .map(|(k, v)| (k, v.hidden_types.into_iter().map(|ht| ht.ty).collect()))
+            .map(|(k, v)| (k, v.hidden_type.ty))
             .collect()
     }
 
@@ -497,14 +497,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let mut obligations = vec![];
 
         // Carry all newly resolved opaque types to the caller's scope
-        for (key, tys) in &query_response.value.opaque_types {
+        for &(key, ty) in &query_response.value.opaque_types {
             let substs = substitute_value(self.tcx, &result_subst, key.substs);
             let opaque = self.tcx.mk_opaque(key.def_id, substs);
-            for &ty in tys {
-                let ty = substitute_value(self.tcx, &result_subst, ty);
-                obligations
-                    .extend(self.handle_opaque_type(opaque, ty, cause, param_env)?.obligations);
-            }
+            let ty = substitute_value(self.tcx, &result_subst, ty);
+            obligations.extend(self.handle_opaque_type(opaque, ty, cause, param_env)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
