@@ -483,9 +483,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let local_id_to_def_id = local_node_ids
             .iter()
             .filter_map(|&node_id| {
-                let def_id = self.resolver.opt_local_def_id(node_id)?;
                 let hir_id = self.node_id_to_hir_id[node_id]?;
-                Some((hir_id.local_id, def_id))
+                if hir_id.local_id == hir::ItemLocalId::new(0) {
+                    None
+                } else {
+                    let def_id = self.resolver.opt_local_def_id(node_id)?;
+                    Some((hir_id.local_id, def_id))
+                }
             })
             .collect();
 
