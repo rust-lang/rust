@@ -2496,7 +2496,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let try_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
                     trait_pred,
-                    normalized_ty,
+                    normalized_ty.ty().unwrap(),
                 );
                 debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
                 if self.predicate_may_hold(&try_obligation)

@@ -538,7 +538,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                               })
                       }) =>
                 {
-                  // TODO when does this unwrap fail? I have no idea what case it would.
+                  // FIXME(associated_const_equality) when does this unwrap fail? I have no idea what case it would.
                   let trait_def_id = trait_ref.trait_def_id().unwrap();
                   let assoc_items = tcx.associated_items(trait_def_id);
                   let assoc_item = assoc_items.find_by_name_and_kind(
@@ -547,7 +547,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                   if let Some(assoc_item) = assoc_item {
                     tcx.type_of(assoc_item.def_id)
                   } else {
-                      // TODO useful error message here.
+                      // FIXME(associated_const_equality): add a useful error message here.
                       tcx.ty_error_with_message(
                         DUMMY_SP,
                         &format!("Could not find associated const on trait"),
