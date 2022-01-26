@@ -358,11 +358,21 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     Err(err) => throw_ub_format!("align has to be a power of 2, {}", err),
                 };
 
-                ecx.memory.deallocate(
-                    ptr,
-                    Some((size, align)),
-                    interpret::MemoryKind::Machine(MemoryKind::Heap),
-                )?;
+                // If an allocation is created in an another const,
+                // we don't deallocate it.
+                let (alloc_id, _, _) = ecx.memory.ptr_get_alloc(ptr)?;
+                let is_allocated_in_another_const = matches!(
+                    ecx.tcx.get_global_alloc(alloc_id),
+                    Some(interpret::GlobalAlloc::Memory(_))
+                );
+
+                if !is_allocated_in_another_const {
+                    ecx.memory.deallocate(
+                        ptr,
+                        Some((size, align)),
+                        interpret::MemoryKind::Machine(MemoryKind::Heap),
+                    )?;
+                }
             }
             _ => {
                 return Err(ConstEvalErrKind::NeedsRfc(format!(

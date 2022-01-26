@@ -1914,12 +1914,13 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_raw_ptr_comparison", issue = "53020")]
     pub fn ptr_guaranteed_ne<T>(ptr: *const T, other: *const T) -> bool;
 
-    /// Allocate at compile time. Should not be called at runtime.
+    /// Allocate at compile time.
+    /// Returns a null pointer at runtime.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     pub fn const_allocate(size: usize, align: usize) -> *mut u8;
 
     /// Deallocate a memory which allocated by `intrinsics::const_allocate` at compile time.
-    /// Should not be called at runtime.
+    /// Does nothing at runtime.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[cfg(not(bootstrap))]
     pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
