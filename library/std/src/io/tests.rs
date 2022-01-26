@@ -607,10 +607,10 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
 fn forward_arc() {
     // Tests forwarding of Read, Write, and Seek through an Arc<T> when &T implements the trait.
 
-    use crate::net::TcpStream;
     use crate::fs::File;
-    use crate::sync::Arc;
     use crate::io::SeekFrom;
+    use crate::net::TcpStream;
+    use crate::sync::Arc;
 
     // This test is wrapped in a closure to make sure it typechecks
     // but we do not run it.
@@ -633,10 +633,10 @@ fn forward_arc() {
 fn forward_rc() {
     // Tests forwarding of Read, Write, and Seek through an Arc<T> when &T implements the trait.
 
-    use crate::net::TcpStream;
     use crate::fs::File;
-    use crate::rc::Rc;
     use crate::io::SeekFrom;
+    use crate::net::TcpStream;
+    use crate::rc::Rc;
 
     // This test is wrapped in a closure to make sure it typechecks
     // but we do not run it.
