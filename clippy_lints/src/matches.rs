@@ -942,20 +942,20 @@ fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
             );
             let mut left_pos = left_pos.unwrap_or(usize::MAX);
             let mut right_pos = right_pos.unwrap_or(usize::MAX);
-            let mut left_span = 0;
-            let mut right_span = 0;
+            let mut left_dot_space = 0;
+            let mut right_dot_space = 0;
             for i in 0..len {
                 let mut found_dotdot = false;
                 if i == left_pos {
-                    left_span += 1;
-                    if left_span < len - left_in.len() {
+                    left_dot_space += 1;
+                    if left_dot_space < len - left_in.len() {
                         left_pos += 1;
                     }
                     found_dotdot = true;
                 }
                 if i == right_pos {
-                    right_span += 1;
-                    if right_span < len - right_in.len() {
+                    right_dot_space += 1;
+                    if right_dot_space < len - right_in.len() {
                         right_pos += 1;
                     }
                     found_dotdot = true;
@@ -963,7 +963,9 @@ fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
                 if found_dotdot {
                     continue;
                 }
-                if !contains_only_wilds(&left_in[i - left_span]) && !contains_only_wilds(&right_in[i - right_span]) {
+                if !contains_only_wilds(&left_in[i - left_dot_space])
+                    && !contains_only_wilds(&right_in[i - right_dot_space])
+                {
                     return false;
                 }
             }
