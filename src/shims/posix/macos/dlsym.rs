@@ -17,6 +17,7 @@ impl Dlsym {
     pub fn from_str(name: &str) -> InterpResult<'static, Option<Dlsym>> {
         Ok(match name {
             "getentropy" => Some(Dlsym::getentropy),
+            "openat" => None, // std has a fallback for this
             _ => throw_unsup_format!("unsupported macOS dlsym: {}", name),
         })
     }
