@@ -16,7 +16,7 @@ use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
-use rustc_span::hygiene::{MacroKind, SyntaxContext};
+use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
@@ -925,20 +925,9 @@ fn trait_impls_for<'a>(
     ty: Ty<'a>,
     module: DefId,
 ) -> FxHashSet<(DefId, DefId)> {
-    let mut resolver = cx.resolver.borrow_mut();
-    let in_scope_traits = cx.module_trait_cache.entry(module).or_insert_with(|| {
-        resolver.access(|resolver| {
-            let parent_scope = &ParentScope::module(resolver.expect_module(module), resolver);
-            resolver
-                .traits_in_scope(None, parent_scope, SyntaxContext::root(), None)
-                .into_iter()
-                .map(|candidate| candidate.def_id)
-                .collect()
-        })
-    });
-
     let tcx = cx.tcx;
-    let iter = in_scope_traits.iter().flat_map(|&trait_| {
+    let iter = cx.resolver_caches.traits_in_scope[&module].iter().flat_map(|trait_candidate| {
+        let trait_ = trait_candidate.def_id;
         trace!("considering explicit impl for trait {:?}", trait_);
 
         // Look at each trait implementation to see if it's an impl for `did`

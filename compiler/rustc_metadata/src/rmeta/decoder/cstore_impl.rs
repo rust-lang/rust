@@ -493,7 +493,7 @@ impl CStore {
     pub fn trait_impls_in_crate_untracked(
         &self,
         cnum: CrateNum,
-    ) -> impl Iterator<Item = (DefId, Option<SimplifiedType>)> + '_ {
+    ) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + '_ {
         self.get_crate_data(cnum).get_trait_impls()
     }
 }

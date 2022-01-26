@@ -4,9 +4,9 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{HirId, Path};
+use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -33,6 +33,9 @@ use crate::passes::{self, Condition::*};
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
 crate struct ResolverCaches {
+    /// Traits in scope for a given module.
+    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
+    crate traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     crate all_traits: Option<Vec<DefId>>,
     crate all_trait_impls: Option<Vec<DefId>>,
 }
@@ -67,11 +70,6 @@ crate struct DocContext<'tcx> {
     crate auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     crate render_options: RenderOptions,
-    /// The traits in scope for a given module.
-    ///
-    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
-    /// `map<module, set<trait>>`
-    crate module_trait_cache: FxHashMap<DefId, FxHashSet<DefId>>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -350,7 +348,6 @@ crate fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        module_trait_cache: FxHashMap::default(),
         cache: Cache::new(access_levels, render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,
