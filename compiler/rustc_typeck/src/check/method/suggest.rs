@@ -268,7 +268,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (None, true) => "variant",
                     }
                 };
-                let mut err = if !actual.references_error() {
+                // FIXME(eddyb) this intendation is probably unnecessary.
+                let mut err = {
                     // Suggest clamping down the type if the method that is being attempted to
                     // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
@@ -461,9 +462,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         err
                     }
-                } else {
-                    tcx.sess.diagnostic().struct_dummy()
                 };
+
+                if actual.references_error() {
+                    err.downgrade_to_delayed_bug();
+                }
 
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did) {

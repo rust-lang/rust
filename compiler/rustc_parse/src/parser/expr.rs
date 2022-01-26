@@ -1622,9 +1622,11 @@ impl<'a> Parser<'a> {
                 };
                 if let Some(expr) = expr {
                     if matches!(expr.kind, ExprKind::Err) {
-                        self.diagnostic()
-                            .delay_span_bug(self.token.span, &"invalid interpolated expression");
-                        return self.diagnostic().struct_dummy();
+                        let mut err = self
+                            .diagnostic()
+                            .struct_span_err(self.token.span, &"invalid interpolated expression");
+                        err.downgrade_to_delayed_bug();
+                        return err;
                     }
                 }
             }

@@ -622,14 +622,6 @@ impl Handler {
         self.inner.borrow_mut().emit_stashed_diagnostics();
     }
 
-    /// Construct a dummy builder with `Level::Cancelled`.
-    ///
-    /// Using this will neither report anything to the user (e.g. a warning),
-    /// nor will compilation cancel as a result.
-    pub fn struct_dummy(&self) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Level::Cancelled, "")
-    }
-
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:

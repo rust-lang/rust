@@ -1482,12 +1482,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
+        let mut err = mk_diag(self.ty_to_string(actual_ty));
+
         // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
-            return self.tcx.sess.diagnostic().struct_dummy();
+            err.downgrade_to_delayed_bug();
         }
 
-        mk_diag(self.ty_to_string(actual_ty))
+        err
     }
 
     pub fn report_mismatched_types(
