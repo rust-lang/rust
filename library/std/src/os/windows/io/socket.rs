@@ -21,6 +21,10 @@ use crate::sys::cvt;
 /// so it can be used in FFI in places where a socket is passed as an argument,
 /// it is not captured or consumed, and it never has the value
 /// `INVALID_SOCKET`.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedSocket`
+/// rather than an `OwnedSocket`. It just makes a trivial copy of the raw
+/// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]

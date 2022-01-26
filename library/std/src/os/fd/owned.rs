@@ -21,6 +21,10 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// descriptor, so it can be used in FFI in places where a file descriptor is
 /// passed as an argument, it is not captured or consumed, and it never has the
 /// value `-1`.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedFd`
+/// rather than an `OwnedFd`. It just makes a trivial copy of the raw file
+/// descriptor, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
