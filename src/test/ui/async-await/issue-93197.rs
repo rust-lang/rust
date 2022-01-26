@@ -1,5 +1,5 @@
 // Regression test for #93197
-// build-pass
+// check-pass
 // edition:2021
 
 #![feature(try_blocks)]
