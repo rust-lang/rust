@@ -19,6 +19,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -29,8 +30,6 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
-
-use std::collections::BTreeMap;
 
 pub use rustc_middle::traits::Reveal;
 
@@ -512,9 +511,9 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // These three maps track the bound variable that were replaced by placeholders. It might be
     // nice to remove these since we already have the `kind` in the placeholder; we really just need
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
-    mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_regions: FxHashMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: FxHashMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_consts: FxHashMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -532,13 +531,15 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         value: T,
     ) -> (
         T,
-        BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        FxHashMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        FxHashMap<ty::PlaceholderType, ty::BoundTy>,
+        FxHashMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     ) {
-        let mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion> = BTreeMap::new();
-        let mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy> = BTreeMap::new();
-        let mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> = BTreeMap::new();
+        let mapped_regions: FxHashMap<ty::PlaceholderRegion, ty::BoundRegion> =
+            FxHashMap::default();
+        let mapped_types: FxHashMap<ty::PlaceholderType, ty::BoundTy> = FxHashMap::default();
+        let mapped_consts: FxHashMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> =
+            FxHashMap::default();
 
         let mut replacer = BoundVarReplacer {
             infcx,
@@ -648,9 +649,9 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
 // The inverse of `BoundVarReplacer`: replaces placeholders with the bound vars from which they came.
 pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
-    mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-    mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_regions: FxHashMap<ty::PlaceholderRegion, ty::BoundRegion>,
+    mapped_types: FxHashMap<ty::PlaceholderType, ty::BoundTy>,
+    mapped_consts: FxHashMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
     current_index: ty::DebruijnIndex,
 }
@@ -658,9 +659,9 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
 impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
     pub fn replace_placeholders<T: TypeFoldable<'tcx>>(
         infcx: &'me InferCtxt<'me, 'tcx>,
-        mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
-        mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        mapped_regions: FxHashMap<ty::PlaceholderRegion, ty::BoundRegion>,
+        mapped_types: FxHashMap<ty::PlaceholderType, ty::BoundTy>,
+        mapped_consts: FxHashMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
         universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> T {

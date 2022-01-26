@@ -35,7 +35,6 @@ use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::BTreeMap;
 use std::fmt;
 
 use self::combine::CombineFields;
@@ -1500,7 +1499,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         T: TypeFoldable<'tcx>,
     {
