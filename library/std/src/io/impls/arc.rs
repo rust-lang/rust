@@ -1,9 +1,15 @@
-//! Forwarding implementations for Rc
+//! Forwarding implementations for Arc
 
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write};
 use alloc::sync::Arc;
 
+/// Enables forwarding `Read` through an `Arc<T>`
+///
+/// This only applies for types such as `File` or `TcpStream` that implement Read
+/// on `&T`. The reason is that `Read` normally requires `&mut self`, but mutation
+/// through an `Arc` is not generally allowed because the value in the `Arc` may be
+/// shared.
 #[stable(feature = "io_delegation_rc", since = "1.60.0")]
 impl<T> Read for Arc<T>
 where
@@ -44,6 +50,12 @@ where
         (self as &T).read_exact(buf)
     }
 }
+/// Enables forwarding `Write` through an `Arc<T>`
+///
+/// This only applies for types such as `File` or `TcpStream` that implement Write
+/// on `&T`. The reason is that `Write` normally requires `&mut self`, but mutation
+/// through an `Arc` is not generally allowed because the value in the `Arc` may be
+/// shared.
 #[stable(feature = "io_delegation_rc", since = "1.60.0")]
 impl<T> Write for Arc<T>
 where
@@ -79,6 +91,12 @@ where
         (self as &T).write_fmt(fmt)
     }
 }
+/// Enables forwarding `Seek` through an `Arc<T>`
+///
+/// This only applies for types such as `File` or `TcpStream` that implement Seek
+/// on `&T`. The reason is that `Seek` normally requires `&mut self`, but mutation
+/// through an `Arc` is not generally allowed because the value in the `Arc` may be
+/// shared.
 #[stable(feature = "io_delegation_rc", since = "1.60.0")]
 impl<T> Seek for Arc<T>
 where
