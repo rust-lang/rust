@@ -927,13 +927,13 @@ When doing multiple comparisons use `<`/`<=`, avoid `>`/`>=`.
 assert!(lo <= x && x <= hi);
 assert!(r1 < l2 || r2 < l1);
 assert!(x < y);
-assert!(x > 0);
+assert!(0 < x);
 
 // BAD
 assert!(x >= lo && x <= hi);
 assert!(r1 < l2 || l1 > r2);
 assert!(y > x);
-assert!(0 > x);
+assert!(x > 0);
 ```
 
 **Rationale:** Less-then comparisons are more intuitive, they correspond spatially to [real line](https://en.wikipedia.org/wiki/Real_line).
