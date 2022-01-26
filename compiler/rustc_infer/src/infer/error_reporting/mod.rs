@@ -1913,7 +1913,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             cause, exp_found
         );
         if let ty::Adt(expected_def, expected_substs) = exp_found.expected.kind() {
-            if expected_def.is_enum() {
+            if expected_def.is_enum() || exp_found.found.is_unit() {
                 return;
             }
 

@@ -1,0 +1,58 @@
+error[E0308]: mismatched types
+  --> $DIR/zst-suggestions.rs:4:9
+   |
+LL |     let () = ()..;
+   |         ^^   ---- this expression has type `RangeFrom<()>`
+   |         |
+   |         expected struct `RangeFrom`, found `()`
+   |
+   = note: expected struct `RangeFrom<()>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/zst-suggestions.rs:5:9
+   |
+LL |     let () = ..();
+   |         ^^   ---- this expression has type `RangeTo<()>`
+   |         |
+   |         expected struct `RangeTo`, found `()`
+   |
+   = note: expected struct `RangeTo<()>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/zst-suggestions.rs:6:9
+   |
+LL |     let () = ..=();
+   |         ^^   ----- this expression has type `RangeToInclusive<()>`
+   |         |
+   |         expected struct `RangeToInclusive`, found `()`
+   |
+   = note: expected struct `RangeToInclusive<()>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/zst-suggestions.rs:7:9
+   |
+LL |     let () = ()..();
+   |         ^^   ------ this expression has type `std::ops::Range<()>`
+   |         |
+   |         expected struct `std::ops::Range`, found `()`
+   |
+   = note: expected struct `std::ops::Range<()>`
+           found unit type `()`
+
+error[E0308]: mismatched types
+  --> $DIR/zst-suggestions.rs:8:9
+   |
+LL |     let () = ()..=();
+   |         ^^   ------- this expression has type `RangeInclusive<()>`
+   |         |
+   |         expected struct `RangeInclusive`, found `()`
+   |
+   = note: expected struct `RangeInclusive<()>`
+           found unit type `()`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
