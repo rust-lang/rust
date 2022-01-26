@@ -1,3 +1,3 @@
 fn main() {
-    let box = "foo"; //~ error: expected pattern, found `=`
+    let box = "foo"; //~ error: expected identifier, found reserved keyword `box`
 }

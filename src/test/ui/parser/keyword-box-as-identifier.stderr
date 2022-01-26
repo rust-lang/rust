@@ -1,8 +1,13 @@
-error: expected pattern, found `=`
-  --> $DIR/keyword-box-as-identifier.rs:2:13
+error: expected identifier, found reserved keyword `box`
+  --> $DIR/keyword-box-as-identifier.rs:4:9
    |
 LL |     let box = "foo";
-   |             ^ expected pattern
+   |         ^^^ expected identifier, found reserved keyword
+   |
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     let r#box = "foo";
+   |         ~~~~~
 
 error: aborting due to previous error
 
