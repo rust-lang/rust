@@ -42,7 +42,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
-use std::cmp::Ordering;
+// use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::ControlFlow;
 use std::{fmt, ptr, str};
@@ -436,17 +436,17 @@ impl<'tcx> TyS<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(TyS<'_>, 40);
 
-impl<'tcx> Ord for TyS<'tcx> {
-    fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.kind().cmp(other.kind())
-    }
-}
+// impl<'tcx> Ord for TyS<'tcx> {
+//     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
+//         self.kind().cmp(other.kind())
+//     }
+// }
 
-impl<'tcx> PartialOrd for TyS<'tcx> {
-    fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.kind().cmp(other.kind()))
-    }
-}
+// impl<'tcx> PartialOrd for TyS<'tcx> {
+//     fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
+//         Some(self.kind().cmp(other.kind()))
+//     }
+// }
 
 impl<'tcx> PartialEq for TyS<'tcx> {
     #[inline]
@@ -814,7 +814,7 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
@@ -1120,7 +1120,7 @@ pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 pub type PlaceholderType = Placeholder<BoundVar>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable)]
 pub struct BoundConst<'tcx> {
     pub var: BoundVar,
     pub ty: Ty<'tcx>,
@@ -1180,7 +1180,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`
 /// to get the type of `did`.
 #[derive(Copy, Clone, Debug, TypeFoldable, Lift, TyEncodable, TyDecodable)]
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
 #[derive(Hash, HashStable)]
 pub struct WithOptConstParam<T> {
     pub did: T,

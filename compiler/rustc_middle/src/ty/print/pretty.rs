@@ -774,8 +774,8 @@ pub trait PrettyPrinter<'tcx>:
         // by looking up the projections associated with the def_id.
         let bounds = self.tcx().explicit_item_bounds(def_id);
 
-        let mut traits = BTreeMap::new();
-        let mut fn_traits = BTreeMap::new();
+        let mut traits = FxHashMap::default();
+        let mut fn_traits = FxHashMap::default();
         let mut is_sized = false;
 
         for (predicate, _) in bounds {
@@ -951,11 +951,11 @@ pub trait PrettyPrinter<'tcx>:
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
-        traits: &mut BTreeMap<
+        traits: &mut FxHashMap<
             ty::PolyTraitRef<'tcx>,
             BTreeMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut FxHashMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
 
@@ -2024,7 +2024,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
-    region_map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+    region_map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
     name: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
 }
 
@@ -2086,7 +2086,7 @@ impl<'tcx, F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
     pub fn name_all_regions<T>(
         mut self,
         value: &ty::Binder<'tcx, T>,
-    ) -> Result<(Self, T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
+    ) -> Result<(Self, T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
@@ -2211,7 +2211,7 @@ impl<'tcx, F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 tcx,
                 current_index: ty::INNERMOST,
                 name: &mut name,
-                region_map: BTreeMap::new(),
+                region_map: FxHashMap::default(),
             };
             let new_value = value.clone().skip_binder().fold_with(&mut folder);
             let region_map = folder.region_map;

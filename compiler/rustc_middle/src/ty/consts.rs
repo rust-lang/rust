@@ -18,7 +18,7 @@ pub use kind::*;
 pub use valtree::*;
 
 /// Typed constant value.
-#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq)]
 #[derive(HashStable)]
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,

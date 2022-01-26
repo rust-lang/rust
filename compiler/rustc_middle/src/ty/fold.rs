@@ -35,9 +35,8 @@ use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sso::SsoHashSet;
-use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::ControlFlow;
 
@@ -695,12 +694,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         value: Binder<'tcx, T>,
         mut fld_r: F,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        let mut region_map = BTreeMap::new();
+        let mut region_map = FxHashMap::default();
         let mut real_fld_r =
             |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = value.skip_binder();
@@ -747,14 +746,14 @@ impl<'tcx> TyCtxt<'tcx> {
         mut fld_r: F,
         fld_t: G,
         fld_c: H,
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, FxHashMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
         H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
-        let mut region_map = BTreeMap::new();
+        let mut region_map = FxHashMap::default();
         let real_fld_r = |br: ty::BoundRegion| *region_map.entry(br).or_insert_with(|| fld_r(br));
         let value = self.replace_escaping_bound_vars(value.skip_binder(), real_fld_r, fld_t, fld_c);
         (value, region_map)
