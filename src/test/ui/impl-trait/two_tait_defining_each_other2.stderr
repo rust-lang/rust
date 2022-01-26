@@ -1,0 +1,8 @@
+error: could not find defining uses
+  --> $DIR/two_tait_defining_each_other2.rs:3:10
+   |
+LL | type A = impl Foo;
+   |          ^^^^^^^^
+
+error: aborting due to previous error
+
