@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `UnconstDrop: Drop` is not satisfied
+error[E0277]: the trait bound `UnconstDrop: ~const Drop` is not satisfied
   --> $DIR/const-block-const-bound.rs:18:11
    |
 LL |         f(UnconstDrop);
-   |         - ^^^^^^^^^^^ the trait `Drop` is not implemented for `UnconstDrop`
+   |         - ^^^^^^^^^^^ expected an implementor of trait `~const Drop`
    |         |
    |         required by a bound introduced by this call
    |
@@ -11,16 +11,18 @@ note: required by a bound in `f`
    |
 LL | const fn f<T: ~const Drop>(x: T) {}
    |               ^^^^^^^^^^^ required by this bound in `f`
-help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+help: consider borrowing here
    |
-LL | fn main() where UnconstDrop: Drop {
-   |           +++++++++++++++++++++++
+LL |         f(&UnconstDrop);
+   |           +
+LL |         f(&mut UnconstDrop);
+   |           ++++
 
-error[E0277]: the trait bound `NonDrop: Drop` is not satisfied
+error[E0277]: the trait bound `NonDrop: ~const Drop` is not satisfied
   --> $DIR/const-block-const-bound.rs:20:11
    |
 LL |         f(NonDrop);
-   |         - ^^^^^^^ the trait `Drop` is not implemented for `NonDrop`
+   |         - ^^^^^^^ expected an implementor of trait `~const Drop`
    |         |
    |         required by a bound introduced by this call
    |
@@ -29,6 +31,12 @@ note: required by a bound in `f`
    |
 LL | const fn f<T: ~const Drop>(x: T) {}
    |               ^^^^^^^^^^^ required by this bound in `f`
+help: consider borrowing here
+   |
+LL |         f(&NonDrop);
+   |           +
+LL |         f(&mut NonDrop);
+   |           ++++
 
 error: aborting due to 2 previous errors
 

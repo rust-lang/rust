@@ -1021,7 +1021,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ObligationCauseCode::BuiltinDerivedObligation(code) |
                 ObligationCauseCode::ImplDerivedObligation(code) |
                 ObligationCauseCode::DerivedObligation(code) => {
-                    code.parent_trait_ref.self_ty().skip_binder().into()
+                    code.parent_trait_pred.self_ty().skip_binder().into()
                 }
                 _ if let ty::PredicateKind::Trait(predicate) =
                     error.obligation.predicate.kind().skip_binder() => {

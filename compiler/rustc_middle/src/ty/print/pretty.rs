@@ -2413,6 +2413,29 @@ impl<'tcx> ty::Binder<'tcx, ty::TraitRef<'tcx>> {
     }
 }
 
+#[derive(Copy, Clone, TypeFoldable, Lift)]
+pub struct TraitPredPrintModifiersAndPath<'tcx>(ty::TraitPredicate<'tcx>);
+
+impl<'tcx> fmt::Debug for TraitPredPrintModifiersAndPath<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl<'tcx> ty::TraitPredicate<'tcx> {
+    pub fn print_modifiers_and_trait_path(self) -> TraitPredPrintModifiersAndPath<'tcx> {
+        TraitPredPrintModifiersAndPath(self)
+    }
+}
+
+impl<'tcx> ty::PolyTraitPredicate<'tcx> {
+    pub fn print_modifiers_and_trait_path(
+        self,
+    ) -> ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>> {
+        self.map_bound(TraitPredPrintModifiersAndPath)
+    }
+}
+
 forward_display_to_print! {
     Ty<'tcx>,
     &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
@@ -2427,6 +2450,7 @@ forward_display_to_print! {
     ty::Binder<'tcx, TraitRefPrintOnlyTraitName<'tcx>>,
     ty::Binder<'tcx, ty::FnSig<'tcx>>,
     ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
+    ty::Binder<'tcx, TraitPredPrintModifiersAndPath<'tcx>>,
     ty::Binder<'tcx, ty::SubtypePredicate<'tcx>>,
     ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
     ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
@@ -2491,6 +2515,18 @@ define_print_and_forward_display! {
         p!(print_def_path(self.0.def_id, &[]));
     }
 
+    TraitPredPrintModifiersAndPath<'tcx> {
+        if let ty::BoundConstness::ConstIfConst = self.0.constness {
+            p!("~const ")
+        }
+
+        if let ty::ImplPolarity::Negative = self.0.polarity {
+            p!("!")
+        }
+
+        p!(print(self.0.trait_ref.print_only_trait_path()));
+    }
+
     ty::ParamTy {
         p!(write("{}", self.name))
     }
@@ -2508,8 +2544,11 @@ define_print_and_forward_display! {
     }
 
     ty::TraitPredicate<'tcx> {
-        p!(print(self.trait_ref.self_ty()), ": ",
-           print(self.trait_ref.print_only_trait_path()))
+        p!(print(self.trait_ref.self_ty()), ": ");
+        if let ty::BoundConstness::ConstIfConst = self.constness {
+            p!("~const ");
+        }
+        p!(print(self.trait_ref.print_only_trait_path()))
     }
 
     ty::ProjectionPredicate<'tcx> {

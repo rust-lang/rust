@@ -659,7 +659,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
-        let obligation_predicate = obligation.predicate.to_poly_trait_ref();
+        let obligation_predicate = obligation.predicate;
         let Normalized { value: obligation_predicate, mut obligations } =
             ensure_sufficient_stack(|| {
                 normalize_with_depth(
@@ -689,7 +689,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligations.extend(self.confirm_poly_trait_refs(
             obligation.cause.clone(),
             obligation.param_env,
-            obligation_predicate,
+            obligation_predicate.to_poly_trait_ref(),
             trait_ref,
         )?);
 
