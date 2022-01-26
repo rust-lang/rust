@@ -749,7 +749,7 @@ fn sanitize_witness<'tcx>(
         }
         let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
 
-        let is_inhabited = !tcx.is_ty_uninhabited_from(
+        let is_uninhabited = tcx.is_ty_uninhabited_from(
             tcx.parent_module(tcx.hir().local_def_id_to_hir_id(did.expect_local())).to_def_id(),
             decl_ty,
             param_env,
@@ -757,7 +757,7 @@ fn sanitize_witness<'tcx>(
 
         // Sanity check that typeck knows about the type of locals which are
         // live across a suspension point
-        if is_inhabited || allowed.contains(&decl_ty) || allowed_upvars.contains(&decl_ty) {
+        if is_uninhabited || allowed.contains(&decl_ty) || allowed_upvars.contains(&decl_ty) {
             // This type which appears in the generator either...
             // - is uninhabited, in which case it can't actually be captured at runtime
             // - appears in the approximation from the static type (`allowed`)
