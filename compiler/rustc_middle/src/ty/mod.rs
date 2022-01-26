@@ -766,6 +766,17 @@ impl<'tcx> TraitPredicate<'tcx> {
             *param_env = param_env.with_constness(self.constness.and(param_env.constness()))
         }
     }
+
+    /// Remap the constness of this predicate before emitting it for diagnostics.
+    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
+        // this is different to `remap_constness` that callees want to print this predicate
+        // in case of selection errors. `T: ~const Drop` bounds cannot end up here when the
+        // param_env is not const because we it is always satisfied in non-const contexts.
+        if let hir::Constness::NotConst = param_env.constness() {
+            self.constness = ty::BoundConstness::NotConst;
+        }
+    }
+
     pub fn def_id(self) -> DefId {
         self.trait_ref.def_id
     }
@@ -783,6 +794,14 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 
     pub fn self_ty(self) -> ty::Binder<'tcx, Ty<'tcx>> {
         self.map_bound(|trait_ref| trait_ref.self_ty())
+    }
+
+    /// Remap the constness of this predicate before emitting it for diagnostics.
+    pub fn remap_constness_diag(&mut self, param_env: ParamEnv<'tcx>) {
+        *self = self.map_bound(|mut p| {
+            p.remap_constness_diag(param_env);
+            p
+        });
     }
 }
 

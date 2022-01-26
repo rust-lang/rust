@@ -1,26 +1,32 @@
-error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied
+error[E0277]: the trait bound `NonTrivialDrop: ~const Drop` is not satisfied
   --> $DIR/const-drop-fail.rs:44:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     NonTrivialDrop,
-   |     ^^^^^^^^^^^^^^ the trait `Drop` is not implemented for `NonTrivialDrop`
+   |     ^^^^^^^^^^^^^^ expected an implementor of trait `~const Drop`
    |
 note: required by a bound in `check`
   --> $DIR/const-drop-fail.rs:35:19
    |
 LL | const fn check<T: ~const Drop>(_: T) {}
    |                   ^^^^^^^^^^^ required by this bound in `check`
+help: consider borrowing here
+   |
+LL |     &NonTrivialDrop,
+   |     +
+LL |     &mut NonTrivialDrop,
+   |     ++++
 
-error[E0277]: the trait bound `NonTrivialDrop: Drop` is not satisfied in `ConstImplWithDropGlue`
+error[E0277]: the trait bound `NonTrivialDrop: ~const Drop` is not satisfied in `ConstImplWithDropGlue`
   --> $DIR/const-drop-fail.rs:46:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     ConstImplWithDropGlue(NonTrivialDrop),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `Drop` is not implemented for `NonTrivialDrop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `~const Drop` is not implemented for `NonTrivialDrop`
    |
 note: required because it appears within the type `ConstImplWithDropGlue`
   --> $DIR/const-drop-fail.rs:17:8
@@ -33,16 +39,16 @@ note: required by a bound in `check`
 LL | const fn check<T: ~const Drop>(_: T) {}
    |                   ^^^^^^^^^^^ required by this bound in `check`
 
-error[E0277]: the trait bound `NonTrivialDrop: A` is not satisfied
+error[E0277]: the trait bound `ConstDropImplWithBounds<NonTrivialDrop>: ~const Drop` is not satisfied
   --> $DIR/const-drop-fail.rs:48:5
    |
 LL |         const _: () = check($exp);
    |                       ----- required by a bound introduced by this call
 ...
 LL |     ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `A` is not implemented for `NonTrivialDrop`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an implementor of trait `~const Drop`
    |
-note: required because of the requirements on the impl of `Drop` for `ConstDropImplWithBounds<NonTrivialDrop>`
+note: required because of the requirements on the impl of `~const Drop` for `ConstDropImplWithBounds<NonTrivialDrop>`
   --> $DIR/const-drop-fail.rs:29:25
    |
 LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
@@ -52,6 +58,12 @@ note: required by a bound in `check`
    |
 LL | const fn check<T: ~const Drop>(_: T) {}
    |                   ^^^^^^^^^^^ required by this bound in `check`
+help: consider borrowing here
+   |
+LL |     &ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
+   |     +
+LL |     &mut ConstDropImplWithBounds::<NonTrivialDrop>(PhantomData),
+   |     ++++
 
 error: aborting due to 3 previous errors
 

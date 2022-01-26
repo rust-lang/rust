@@ -199,9 +199,20 @@ use self::Ordering::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
-#[rustc_on_unimplemented(
-    message = "can't compare `{Self}` with `{Rhs}`",
-    label = "no implementation for `{Self} == {Rhs}`"
+#[cfg_attr(
+    bootstrap,
+    rustc_on_unimplemented(
+        message = "can't compare `{Self}` with `{Rhs}`",
+        label = "no implementation for `{Self} == {Rhs}`"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_on_unimplemented(
+        message = "can't compare `{Self}` with `{Rhs}`",
+        label = "no implementation for `{Self} == {Rhs}`",
+        append_const_msg,
+    )
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
@@ -1031,9 +1042,20 @@ impl PartialOrd for Ordering {
 #[doc(alias = "<")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
-#[rustc_on_unimplemented(
-    message = "can't compare `{Self}` with `{Rhs}`",
-    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`"
+#[cfg_attr(
+    bootstrap,
+    rustc_on_unimplemented(
+        message = "can't compare `{Self}` with `{Rhs}`",
+        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    rustc_on_unimplemented(
+        message = "can't compare `{Self}` with `{Rhs}`",
+        label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
+        append_const_msg,
+    )
 )]
 #[rustc_diagnostic_item = "PartialOrd"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {

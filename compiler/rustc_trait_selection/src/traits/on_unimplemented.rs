@@ -19,6 +19,7 @@ pub struct OnUnimplementedDirective {
     pub label: Option<OnUnimplementedFormatString>,
     pub note: Option<OnUnimplementedFormatString>,
     pub enclosing_scope: Option<OnUnimplementedFormatString>,
+    pub append_const_msg: Option<Option<Symbol>>,
 }
 
 #[derive(Default)]
@@ -27,6 +28,11 @@ pub struct OnUnimplementedNote {
     pub label: Option<String>,
     pub note: Option<String>,
     pub enclosing_scope: Option<String>,
+    /// Append a message for `~const Trait` errors. `None` means not requested and
+    /// should fallback to a generic message, `Some(None)` suggests using the default
+    /// appended message, `Some(Some(s))` suggests use the `s` message instead of the
+    /// default one..
+    pub append_const_msg: Option<Option<Symbol>>,
 }
 
 fn parse_error(
@@ -89,6 +95,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut note = None;
         let mut enclosing_scope = None;
         let mut subcommands = vec![];
+        let mut append_const_msg = None;
 
         let parse_value = |value_str| {
             OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span).map(Some)
@@ -131,6 +138,14 @@ impl<'tcx> OnUnimplementedDirective {
                     }
                     continue;
                 }
+            } else if item.has_name(sym::append_const_msg) && append_const_msg.is_none() {
+                if let Some(msg) = item.value_str() {
+                    append_const_msg = Some(Some(msg));
+                    continue;
+                } else if item.is_word() {
+                    append_const_msg = Some(None);
+                    continue;
+                }
             }
 
             // nothing found
@@ -153,6 +168,7 @@ impl<'tcx> OnUnimplementedDirective {
                 label,
                 note,
                 enclosing_scope,
+                append_const_msg,
             })
         }
     }
@@ -183,6 +199,7 @@ impl<'tcx> OnUnimplementedDirective {
                 )?),
                 note: None,
                 enclosing_scope: None,
+                append_const_msg: None,
             }))
         } else {
             return Err(ErrorReported);
@@ -201,6 +218,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut label = None;
         let mut note = None;
         let mut enclosing_scope = None;
+        let mut append_const_msg = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
@@ -235,6 +253,8 @@ impl<'tcx> OnUnimplementedDirective {
             if let Some(ref enclosing_scope_) = command.enclosing_scope {
                 enclosing_scope = Some(enclosing_scope_.clone());
             }
+
+            append_const_msg = command.append_const_msg.clone();
         }
 
         let options: FxHashMap<Symbol, String> =
@@ -244,6 +264,7 @@ impl<'tcx> OnUnimplementedDirective {
             message: message.map(|m| m.format(tcx, trait_ref, &options)),
             note: note.map(|n| n.format(tcx, trait_ref, &options)),
             enclosing_scope: enclosing_scope.map(|e_s| e_s.format(tcx, trait_ref, &options)),
+            append_const_msg,
         }
     }
 }

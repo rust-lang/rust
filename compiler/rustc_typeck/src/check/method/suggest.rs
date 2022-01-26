@@ -823,9 +823,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => None,
                         })
                     {
-                        let parent_trait_ref = data.parent_trait_ref;
+                        let parent_trait_ref = data.parent_trait_pred;
                         let parent_def_id = parent_trait_ref.def_id();
-                        let path = parent_trait_ref.print_only_trait_path();
+                        let path = parent_trait_ref.print_modifiers_and_trait_path();
                         let tr_self_ty = parent_trait_ref.skip_binder().self_ty();
                         let mut candidates = vec![];
                         self.tcx.for_each_relevant_impl(
