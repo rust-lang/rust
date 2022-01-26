@@ -9,6 +9,7 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
+use crate::panic::BacktraceStyle;
 use core::panic::{BoxMeUp, Location, PanicInfo};
 
 use crate::any::Any;
@@ -18,7 +19,7 @@ use crate::mem::{self, ManuallyDrop};
 use crate::process;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::stdio::panic_output;
-use crate::sys_common::backtrace::{self, RustBacktrace};
+use crate::sys_common::backtrace;
 use crate::sys_common::rwlock::StaticRWLock;
 use crate::sys_common::thread_info;
 use crate::thread;
@@ -262,10 +263,10 @@ where
 fn default_hook(info: &PanicInfo<'_>) {
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let backtrace_env = if panic_count::get_count() >= 2 {
-        backtrace::rust_backtrace_print_full()
+    let backtrace = if panic_count::get_count() >= 2 {
+        BacktraceStyle::full()
     } else {
-        backtrace::rust_backtrace_env()
+        crate::panic::get_backtrace_style()
     };
 
     // The current implementation always returns `Some`.
@@ -286,10 +287,14 @@ fn default_hook(info: &PanicInfo<'_>) {
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
-        match backtrace_env {
-            RustBacktrace::Print(format) => drop(backtrace::print(err, format)),
-            RustBacktrace::Disabled => {}
-            RustBacktrace::RuntimeDisabled => {
+        match backtrace {
+            Some(BacktraceStyle::Short) => {
+                drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Short))
+            }
+            Some(BacktraceStyle::Full) => {
+                drop(backtrace::print(err, crate::backtrace_rs::PrintFmt::Full))
+            }
+            Some(BacktraceStyle::Off) => {
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = writeln!(
                         err,
@@ -297,6 +302,8 @@ fn default_hook(info: &PanicInfo<'_>) {
                     );
                 }
             }
+            // If backtraces aren't supported, do nothing.
+            None => {}
         }
     };
 
