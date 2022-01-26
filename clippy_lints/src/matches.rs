@@ -916,22 +916,6 @@ fn contains_only_wilds(pat: &Pat<'_>) -> bool {
 
 /// Returns true if the given patterns forms only exhaustive matches that don't contain enum
 /// patterns without a wildcard.
-///
-/// For example:
-///
-/// ```
-/// // Returns false, because the first arm contain enum without a wildcard.
-/// match x {
-///     (Some(E::V), _) => todo!(),
-///     (None, _) => {}
-/// }
-///
-/// // Returns true, because the both arms form exhaustive matches and without enum variants.
-/// match x {
-///     (Some(_), _) => todo!(),
-///     (None, _) => {}
-/// }
-/// ```
 fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
     match (&left.kind, &right.kind) {
         (PatKind::Wild, _) | (_, PatKind::Wild) => true,
