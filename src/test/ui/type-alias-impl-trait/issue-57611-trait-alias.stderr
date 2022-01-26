@@ -1,11 +1,17 @@
-error: implementation of `FnOnce` is not general enough
+error[E0308]: mismatched types
   --> $DIR/issue-57611-trait-alias.rs:19:22
    |
 LL |     fn bar(&self) -> Self::Bar {
-   |                      ^^^^^^^^^ implementation of `FnOnce` is not general enough
+   |                      ^^^^^^^^^ one type is more general than the other
    |
-   = note: closure with signature `fn(&'2 X) -> &X` must implement `FnOnce<(&'1 X,)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 X,)>`, for some specific lifetime `'2`
+   = note: expected type `for<'r> Fn<(&'r X,)>`
+              found type `Fn<(&X,)>`
+note: this closure does not fulfill the lifetime requirements
+  --> $DIR/issue-57611-trait-alias.rs:21:9
+   |
+LL |         |x| x
+   |         ^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.
