@@ -604,9 +604,13 @@ fn bench_take_read_buf(b: &mut test::Bencher) {
 }
 
 #[test]
-fn read_arc() {
+fn forward_arc() {
+    // Tests forwarding of Read, Write, and Seek through an Arc<T> when &T implements the trait.
+
     use crate::net::TcpStream;
+    use crate::fs::File;
     use crate::sync::Arc;
+    use crate::io::SeekFrom;
 
     // This test is wrapped in a closure to make sure it typechecks
     // but we do not run it.
@@ -615,5 +619,38 @@ fn read_arc() {
         let mut stream = Arc::new(stream);
         let mut buffer = [0; 4];
         stream.read(&mut buffer).unwrap();
+        stream.write(&buffer).unwrap();
+    };
+
+    let _ = || {
+        let file = File::open("foo").unwrap();
+        let mut file = Arc::new(file);
+        file.seek(SeekFrom::Start(10)).unwrap();
+    };
+}
+
+#[test]
+fn forward_rc() {
+    // Tests forwarding of Read, Write, and Seek through an Arc<T> when &T implements the trait.
+
+    use crate::net::TcpStream;
+    use crate::fs::File;
+    use crate::rc::Rc;
+    use crate::io::SeekFrom;
+
+    // This test is wrapped in a closure to make sure it typechecks
+    // but we do not run it.
+    let _ = || {
+        let stream = TcpStream::connect("localhost:8080").unwrap();
+        let mut stream = Rc::new(stream);
+        let mut buffer = [0; 4];
+        stream.read(&mut buffer).unwrap();
+        stream.write(&buffer).unwrap();
+    };
+
+    let _ = || {
+        let file = File::open("foo").unwrap();
+        let mut file = Rc::new(file);
+        file.seek(SeekFrom::Start(10)).unwrap();
     };
 }
