@@ -1,4 +1,3 @@
-use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::{self, PredicateObligation, PredicateObligations};
 use hir::def_id::{DefId, LocalDefId};
@@ -604,20 +603,6 @@ struct Instantiator<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Instantiator<'a, 'tcx> {
-    #[instrument(level = "trace", skip(self))]
-    fn instantiate_opaque_types(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let Some(ty) = self.fold_opaque_ty_new(ty, |infcx, span| {
-            infcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            })
-        }) {
-            return ty;
-        }
-
-        ty
-    }
-
     fn fold_opaque_ty_new(
         &mut self,
         ty: Ty<'tcx>,
@@ -720,7 +705,6 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                     ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
                         ty_var
                     }
-                    ty::Opaque(..) => self.instantiate_opaque_types(ty),
                     _ => ty,
                 },
                 lt_op: |lt| lt,

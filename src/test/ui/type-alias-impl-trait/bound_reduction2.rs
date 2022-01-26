@@ -15,5 +15,5 @@ impl<W> Trait<W> for () {}
 
 fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
     ()
-    //~^ ERROR type annotations needed
+    //~^ ERROR non-defining opaque type use
 }

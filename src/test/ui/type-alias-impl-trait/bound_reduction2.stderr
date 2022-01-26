@@ -1,8 +1,14 @@
-error[E0282]: type annotations needed
+error: non-defining opaque type use in defining scope
   --> $DIR/bound_reduction2.rs:17:5
    |
 LL |     ()
-   |     ^^ cannot infer type
+   |     ^^
+   |
+note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
+  --> $DIR/bound_reduction2.rs:9:10
+   |
+LL | type Foo<V> = impl Trait<V>;
+   |          ^
 
 error: could not find defining uses
   --> $DIR/bound_reduction2.rs:9:15
@@ -12,4 +18,3 @@ LL | type Foo<V> = impl Trait<V>;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0282`.

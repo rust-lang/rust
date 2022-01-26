@@ -13,8 +13,7 @@ impl Foo<u32> for () {}
 
 fn foo() -> impl Foo<FooX> {
     ()
-    //~^ ERROR: type annotations needed
-    //~| ERROR: type annotations needed
+    //~^ ERROR: the trait bound `(): Foo<impl Debug>` is not satisfied
 }
 
 fn main() {}

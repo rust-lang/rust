@@ -1,15 +1,14 @@
 error[E0277]: the trait bound `(): Foo<impl Debug>` is not satisfied
-  --> $DIR/nested-tait-inference2.rs:15:5
+  --> $DIR/nested-tait-inference.rs:15:5
    |
 LL |     ()
    |     ^^ the trait `Foo<impl Debug>` is not implemented for `()`
    |
    = help: the following implementations were found:
              <() as Foo<()>>
-             <() as Foo<u32>>
 
 error: could not find defining uses
-  --> $DIR/nested-tait-inference2.rs:6:13
+  --> $DIR/nested-tait-inference.rs:6:13
    |
 LL | type FooX = impl Debug;
    |             ^^^^^^^^^^
