@@ -499,8 +499,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types(&mut self) {
         let opaque_types =
             self.fcx.infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-        for (opaque_type_key, _) in opaque_types {
-            self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id);
+        for (opaque_type_key, decl) in opaque_types {
+            let hidden_type = match decl.origin {
+                hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
+                    Some(self.resolve(decl.hidden_type.ty, &decl.hidden_type.span))
+                }
+                hir::OpaqueTyOrigin::TyAlias => None,
+            };
+            self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
         }
     }
 

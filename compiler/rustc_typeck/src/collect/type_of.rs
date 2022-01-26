@@ -389,21 +389,22 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .copied()
                         .unwrap_or_else(|| {
-                            if let Some(ErrorReported) =
-                                tcx.typeck(owner).tainted_by_errors
-                            {
+                            let table = tcx.typeck(owner);
+                            if let Some(ErrorReported) = table.tainted_by_errors {
                                 // Some error in the
                                 // owner fn prevented us from populating
                                 // the `concrete_opaque_types` table.
                                 tcx.ty_error()
                             } else {
-                                // We failed to resolve the opaque type or it
-                                // resolves to itself. We interpret this as the
-                                // no values of the hidden type ever being constructed,
-                                // so we can just make the hidden type be `!`.
-                                // For backwards compatibility reasons, we fall back to
-                                // `()` until we the diverging default is changed.
-                                tcx.mk_diverging_default()
+                                table.concrete_opaque_types.get(&def_id.to_def_id()).copied().unwrap_or_else(|| {
+                                    // We failed to resolve the opaque type or it
+                                    // resolves to itself. We interpret this as the
+                                    // no values of the hidden type ever being constructed,
+                                    // so we can just make the hidden type be `!`.
+                                    // For backwards compatibility reasons, we fall back to
+                                    // `()` until we the diverging default is changed.
+                                    Some(tcx.mk_diverging_default())
+                                }).expect("RPIT always have a hidden type from typeck")
                             }
                         });
                     debug!("concrete_ty = {:?}", concrete_ty);
@@ -597,7 +598,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             }
             // Calling `mir_borrowck` can lead to cycle errors through
             // const-checking, avoid calling it if we don't have to.
-            if !self.tcx.typeck(def_id).concrete_opaque_types.contains(&self.def_id) {
+            if self.tcx.typeck(def_id).concrete_opaque_types.get(&self.def_id).is_none() {
                 debug!("no constraints in typeck results");
                 return;
             }
