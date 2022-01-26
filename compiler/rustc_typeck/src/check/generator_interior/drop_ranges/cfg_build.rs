@@ -209,6 +209,45 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
         }
     }
+
+    /// Break and continue expression targets might be another expression or a block,
+    /// but this analysis only looks at expressions. In case a break has a block as a
+    /// target, this will find the last expression in the block and return its HirId
+    /// instead.
+    fn find_target_expression(&self, hir_id: HirId) -> HirId {
+        let node = self.hir.get(hir_id);
+        match node {
+            hir::Node::Expr(_) => hir_id,
+            hir::Node::Block(b) => b.expr.map_or_else(
+                // If there is no tail expression, there will be at least one statement in the
+                // block because the block contains a break or continue statement.
+                || b.stmts.last().unwrap().hir_id,
+                |expr| expr.hir_id,
+            ),
+            hir::Node::Param(..)
+            | hir::Node::Item(..)
+            | hir::Node::ForeignItem(..)
+            | hir::Node::TraitItem(..)
+            | hir::Node::ImplItem(..)
+            | hir::Node::Variant(..)
+            | hir::Node::Field(..)
+            | hir::Node::AnonConst(..)
+            | hir::Node::Stmt(..)
+            | hir::Node::PathSegment(..)
+            | hir::Node::Ty(..)
+            | hir::Node::TraitRef(..)
+            | hir::Node::Binding(..)
+            | hir::Node::Pat(..)
+            | hir::Node::Arm(..)
+            | hir::Node::Local(..)
+            | hir::Node::Ctor(..)
+            | hir::Node::Lifetime(..)
+            | hir::Node::GenericParam(..)
+            | hir::Node::Visibility(..)
+            | hir::Node::Crate(..)
+            | hir::Node::Infer(..) => bug!("Unsupported branch target: {:?}", node),
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
@@ -334,7 +373,8 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             }
             ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
             | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
-                self.drop_ranges.add_control_edge_hir_id(self.expr_index, target);
+                self.drop_ranges
+                    .add_control_edge_hir_id(self.expr_index, self.find_target_expression(target));
             }
 
             ExprKind::Call(f, args) => {
@@ -462,11 +502,13 @@ impl DropRangesBuilder {
     /// Should be called after visiting the HIR but before solving the control flow, otherwise some
     /// edges will be missed.
     fn process_deferred_edges(&mut self) {
+        trace!("processing deferred edges. post_order_map={:#?}", self.post_order_map);
         let mut edges = vec![];
         swap(&mut edges, &mut self.deferred_edges);
         edges.into_iter().for_each(|(from, to)| {
-            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
             trace!("Adding deferred edge from {:?} to {:?}", from, to);
+            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
+            trace!("target edge PostOrderId={:?}", to);
             self.add_control_edge(from, to)
         });
     }
