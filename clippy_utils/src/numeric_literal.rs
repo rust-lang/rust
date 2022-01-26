@@ -51,7 +51,14 @@ impl<'a> NumericLiteral<'a> {
     }
 
     pub fn from_lit_kind(src: &'a str, lit_kind: &LitKind) -> Option<NumericLiteral<'a>> {
-        if lit_kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
+        let unsigned_src = src.strip_prefix('-').map_or(src, |s| s);
+        if lit_kind.is_numeric()
+            && unsigned_src
+                .trim_start()
+                .chars()
+                .next()
+                .map_or(false, |c| c.is_digit(10))
+        {
             let (unsuffixed, suffix) = split_suffix(src, lit_kind);
             let float = matches!(lit_kind, LitKind::Float(..));
             Some(NumericLiteral::new(unsuffixed, suffix, float))

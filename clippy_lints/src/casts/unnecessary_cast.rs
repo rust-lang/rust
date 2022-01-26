@@ -23,15 +23,14 @@ pub(super) fn check(
 
         if_chain! {
             if let LitKind::Int(n, _) = lit.node;
-            if let Some(src) = snippet_opt(cx, lit.span);
+            if let Some(src) = snippet_opt(cx, cast_expr.span);
             if cast_to.is_floating_point();
             if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node);
             let from_nbits = 128 - n.leading_zeros();
             let to_nbits = fp_ty_mantissa_nbits(cast_to);
             if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
             then {
-                let literal_str = if is_unary_neg(cast_expr) { format!("-{}", num_lit.integer) } else { num_lit.integer.into() };
-                lint_unnecessary_cast(cx, expr, &literal_str, cast_from, cast_to);
+                lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                 return true
             }
         }
@@ -48,7 +47,7 @@ pub(super) fn check(
             | LitKind::Float(_, LitFloatType::Suffixed(_))
                 if cast_from.kind() == cast_to.kind() =>
             {
-                if let Some(src) = snippet_opt(cx, lit.span) {
+                if let Some(src) = snippet_opt(cx, cast_expr.span) {
                     if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node) {
                         lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
                     }
@@ -112,8 +111,4 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
         ty::Float(FloatTy::F64) | ty::Infer(InferTy::FloatVar(_)) => 52,
         _ => 0,
     }
-}
-
-fn is_unary_neg(expr: &Expr<'_>) -> bool {
-    matches!(expr.kind, ExprKind::Unary(UnOp::Neg, _))
 }
