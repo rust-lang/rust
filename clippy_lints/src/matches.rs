@@ -848,9 +848,9 @@ fn check_single_match_opt_like(
         (&paths::RESULT, "Ok"),
     ];
 
-    // We want to suggest to exclude an arm that contains only wildcards or forms the ehaustive
-    // match with the second branch.
-    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_tuples(arms[0].pat, arms[1].pat) {
+    // We want to suggest to exclude an arm that contains only wildcards or forms the exhaustive
+    // match with the second branch, without enum variants in matches.
+    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_matches(arms[0].pat, arms[1].pat) {
         return;
     }
 
@@ -907,30 +907,30 @@ fn contains_only_wilds(pat: &Pat<'_>) -> bool {
     }
 }
 
-/// Returns true if the given patterns form the tuples that exhaustively matches all possible
-/// parameters.
+/// Returns true if the given patterns forms only exhaustive matches that don't contain enum
+/// patterns without a wildcard.
 ///
-/// Here are some examples:
+/// For example:
 ///
 /// ```
-/// // Doesn't form exhaustive match, because the first arm may contain not only E::V.
+/// // Returns false, because the first arm contain enum without a wildcard.
 /// match x {
 ///     (Some(E::V), _) => todo!(),
 ///     (None, _) => {}
 /// }
 ///
-/// // Forms exhaustive match, because the patterns cover all possible cases at the same positions.
+/// // Returns true, because the both arms form exhaustive matches and without enum variants.
 /// match x {
 ///     (Some(_), _) => todo!(),
 ///     (None, _) => {}
 /// }
 /// ```
-fn form_exhaustive_tuples(left: &Pat<'_>, right: &Pat<'_>) -> bool {
+fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
     match (&left.kind, &right.kind) {
         (PatKind::Wild, _) | (_, PatKind::Wild) => true,
         (PatKind::Tuple(left_in, left_pos), PatKind::Tuple(right_in, right_pos)) => {
-            // We don't actually know the position and presence of the `..` (dotdot) operator in
-            // the arms, so we need to evaluate the correct offsets here in order to iterate in
+            // We don't actually know the position and the presence of the `..` (dotdot) operator
+            // in the arms, so we need to evaluate the correct offsets here in order to iterate in
             // both arms at the same time.
             let len = max(
                 left_in.len() + {
