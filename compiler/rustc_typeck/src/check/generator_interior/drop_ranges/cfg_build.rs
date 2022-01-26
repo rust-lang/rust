@@ -4,7 +4,7 @@ use super::{
 };
 use hir::{
     intravisit::{self, Visitor},
-    Body, Expr, ExprKind, Guard, HirId,
+    Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -85,6 +85,7 @@ struct DropRangeVisitor<'a, 'tcx> {
     expr_index: PostOrderId,
     tcx: TyCtxt<'tcx>,
     typeck_results: &'a TypeckResults<'tcx>,
+    label_stack: Vec<(Option<rustc_ast::Label>, PostOrderId)>,
 }
 
 impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
@@ -101,7 +102,15 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             hir,
             num_exprs,
         );
-        Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0), typeck_results, tcx }
+        Self {
+            hir,
+            places,
+            drop_ranges,
+            expr_index: PostOrderId::from_u32(0),
+            typeck_results,
+            tcx,
+            label_stack: vec![],
+        }
     }
 
     fn record_drop(&mut self, value: TrackedValue) {
@@ -209,6 +218,60 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
         }
     }
+
+    /// Map a Destination to an equivalent expression node
+    ///
+    /// The destination field of a Break or Continue expression can target either an
+    /// expression or a block. The drop range analysis, however, only deals in
+    /// expression nodes, so blocks that might be the destination of a Break or Continue
+    /// will not have a PostOrderId.
+    ///
+    /// If the destination is an expression, this function will simply return that expression's
+    /// hir_id. If the destination is a block, this function will return the hir_id of last
+    /// expression in the block.
+    fn find_target_expression_from_destination(
+        &self,
+        destination: hir::Destination,
+    ) -> Result<HirId, LoopIdError> {
+        destination.target_id.map(|target| {
+            let node = self.hir.get(target);
+            match node {
+                hir::Node::Expr(_) => target,
+                hir::Node::Block(b) => find_last_block_expression(b),
+                hir::Node::Param(..)
+                | hir::Node::Item(..)
+                | hir::Node::ForeignItem(..)
+                | hir::Node::TraitItem(..)
+                | hir::Node::ImplItem(..)
+                | hir::Node::Variant(..)
+                | hir::Node::Field(..)
+                | hir::Node::AnonConst(..)
+                | hir::Node::Stmt(..)
+                | hir::Node::PathSegment(..)
+                | hir::Node::Ty(..)
+                | hir::Node::TraitRef(..)
+                | hir::Node::Binding(..)
+                | hir::Node::Pat(..)
+                | hir::Node::Arm(..)
+                | hir::Node::Local(..)
+                | hir::Node::Ctor(..)
+                | hir::Node::Lifetime(..)
+                | hir::Node::GenericParam(..)
+                | hir::Node::Visibility(..)
+                | hir::Node::Crate(..)
+                | hir::Node::Infer(..) => bug!("Unsupported branch target: {:?}", node),
+            }
+        })
+    }
+}
+
+fn find_last_block_expression(block: &hir::Block<'_>) -> HirId {
+    block.expr.map_or_else(
+        // If there is no tail expression, there will be at least one statement in the
+        // block because the block contains a break or continue statement.
+        || block.stmts.last().unwrap().hir_id,
+        |expr| expr.hir_id,
+    )
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
@@ -320,8 +383,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 });
             }
 
-            ExprKind::Loop(body, ..) => {
+            ExprKind::Loop(body, label, ..) => {
                 let loop_begin = self.expr_index + 1;
+                self.label_stack.push((label, loop_begin));
                 if body.stmts.is_empty() && body.expr.is_none() {
                     // For empty loops we won't have updated self.expr_index after visiting the
                     // body, meaning we'd get an edge from expr_index to expr_index + 1, but
@@ -331,10 +395,31 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                     self.visit_block(body);
                     self.drop_ranges.add_control_edge(self.expr_index, loop_begin);
                 }
+                self.label_stack.pop();
             }
-            ExprKind::Break(hir::Destination { target_id: Ok(target), .. }, ..)
-            | ExprKind::Continue(hir::Destination { target_id: Ok(target), .. }, ..) => {
-                self.drop_ranges.add_control_edge_hir_id(self.expr_index, target);
+            // Find the loop entry by searching through the label stack for either the last entry
+            // (if label is none), or the first entry where the label matches this one. The Loop
+            // case maintains this stack mapping labels to the PostOrderId for the loop entry.
+            ExprKind::Continue(hir::Destination { label, .. }, ..) => self
+                .label_stack
+                .iter()
+                .rev()
+                .find(|(loop_label, _)| label.is_none() || *loop_label == label)
+                .map_or((), |(_, target)| {
+                    self.drop_ranges.add_control_edge(self.expr_index, *target)
+                }),
+
+            ExprKind::Break(destination, ..) => {
+                // destination either points to an expression or to a block. We use
+                // find_target_expression_from_destination to use the last expression of the block
+                // if destination points to a block.
+                //
+                // We add an edge to the hir_id of the expression/block we are breaking out of, and
+                // then in process_deferred_edges we will map this hir_id to its PostOrderId, which
+                // will refer to the end of the block due to the post order traversal.
+                self.find_target_expression_from_destination(destination).map_or((), |target| {
+                    self.drop_ranges.add_control_edge_hir_id(self.expr_index, target)
+                })
             }
 
             ExprKind::Call(f, args) => {
@@ -359,11 +444,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Binary(..)
             | ExprKind::Block(..)
             | ExprKind::Box(..)
-            | ExprKind::Break(..)
             | ExprKind::Cast(..)
             | ExprKind::Closure(..)
             | ExprKind::ConstBlock(..)
-            | ExprKind::Continue(..)
             | ExprKind::DropTemps(..)
             | ExprKind::Err
             | ExprKind::Field(..)
@@ -462,11 +545,13 @@ impl DropRangesBuilder {
     /// Should be called after visiting the HIR but before solving the control flow, otherwise some
     /// edges will be missed.
     fn process_deferred_edges(&mut self) {
+        trace!("processing deferred edges. post_order_map={:#?}", self.post_order_map);
         let mut edges = vec![];
         swap(&mut edges, &mut self.deferred_edges);
         edges.into_iter().for_each(|(from, to)| {
-            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
             trace!("Adding deferred edge from {:?} to {:?}", from, to);
+            let to = *self.post_order_map.get(&to).expect("Expression ID not found");
+            trace!("target edge PostOrderId={:?}", to);
             self.add_control_edge(from, to)
         });
     }
