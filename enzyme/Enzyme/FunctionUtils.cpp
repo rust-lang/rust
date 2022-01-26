@@ -824,6 +824,51 @@ void CanonicalizeLoops(Function *F, FunctionAnalysisManager &FAM) {
   FAM.invalidate(*F, PA);
 }
 
+void RemoveRedundantPHI(Function *F, FunctionAnalysisManager &FAM) {
+  DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(*F);
+  for (BasicBlock &BB : *F) {
+    for (BasicBlock::iterator II = BB.begin(); isa<PHINode>(II);) {
+      PHINode *PN = cast<PHINode>(II);
+      ++II;
+      SmallPtrSet<Value *, 2> vals;
+      SmallPtrSet<PHINode *, 2> done;
+      SmallVector<PHINode *, 2> todo = {PN};
+      while (todo.size() > 0) {
+        PHINode *N = todo.back();
+        todo.pop_back();
+        if (done.count(N))
+          continue;
+        done.insert(N);
+        if (vals.size() == 0 && todo.size() == 0 && PN != N &&
+            DT.dominates(N, PN)) {
+          vals.insert(N);
+          break;
+        }
+        for (auto &v : N->incoming_values()) {
+          if (isa<UndefValue>(v))
+            continue;
+          if (auto NN = dyn_cast<PHINode>(v)) {
+            todo.push_back(NN);
+            continue;
+          }
+          vals.insert(v);
+          if (vals.size() > 1)
+            break;
+        }
+        if (vals.size() > 1)
+          break;
+      }
+      if (vals.size() == 1) {
+        auto V = *vals.begin();
+        if (!isa<Instruction>(V) || DT.dominates(cast<Instruction>(V), PN)) {
+          PN->replaceAllUsesWith(V);
+          PN->eraseFromParent();
+        }
+      }
+    }
+  }
+}
+
 PreProcessCache::PreProcessCache() {
   MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(FAM); });
   FAM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
@@ -1381,10 +1426,6 @@ Function *PreProcessCache::preprocessForClone(Function *F,
 
   ReplaceReallocs(NewF);
 
-  // Run LoopSimplifyPass to ensure preheaders exist on all loops
-  auto PA = LoopSimplifyPass().run(*NewF, FAM);
-  FAM.invalidate(*NewF, PA);
-
   if (mode == DerivativeMode::ReverseModePrimal ||
       mode == DerivativeMode::ReverseModeGradient ||
       mode == DerivativeMode::ReverseModeCombined) {
@@ -1394,6 +1435,13 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   }
 
   CanonicalizeLoops(NewF, FAM);
+  RemoveRedundantPHI(NewF, FAM);
+
+  // Run LoopSimplifyPass to ensure preheaders exist on all loops
+  {
+    auto PA = LoopSimplifyPass().run(*NewF, FAM);
+    FAM.invalidate(*NewF, PA);
+  }
 
   {
     std::vector<Instruction *> ToErase;
@@ -1426,6 +1474,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     PA.preserve<PhiValuesAnalysis>();
 #endif
     FAM.invalidate(*NewF, PA);
+
     if (EnzymeNameInstructions) {
       for (auto &Arg : NewF->args()) {
         if (!Arg.hasName())

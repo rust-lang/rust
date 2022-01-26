@@ -66,7 +66,7 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK: for.outerbody: 
 ; CHECK-NEXT:   %[[loopLimit_cache3:.+]] = phi i64* [ null, %entry ], [ %[[loopLimit_realloccast]], %for.outerbody.loopexit ]
 ; CHECK-NEXT:   %phi_cache.0 = phi double** [ null, %entry ], [ %[[phi_realloccast:.+]], %for.outerbody.loopexit ]
-; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.outerbody.loopexit ], [ 0, %entry ]
+; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.outerbody.loopexit ] 
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %1 = bitcast double** %phi_cache.0 to i8*
 ; CHECK-NEXT:   %2 = and i64 %iv.next, 1
@@ -154,8 +154,8 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   ret { double } %[[a9]]
 
 ; CHECK: invertfor.outerbody: 
-; CHECK-NEXT:   %"outeradd'de.0" = phi double [ %[[a16:.+]], %invertfor.body.ph ], [ %differeturn, %[[nouterbody]] ]
 ; CHECK-NEXT:   %"x'de.0" = phi double [ %[[a14:.+]], %invertfor.body.ph ], [ 0.000000e+00, %[[nouterbody]] ]
+; CHECK-NEXT:   %"outeradd'de.0" = phi double [ %[[a16:.+]], %invertfor.body.ph ], [ %differeturn, %[[nouterbody]] ]
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[a11:.+]], %invertfor.body.ph ], [ %iv, %[[nouterbody]] ]
 ; CHECK-NEXT:   %[[a10:.+]] = icmp eq i64 %"iv'ac.0", 0
 ; CHECK-NEXT:   br i1 %[[a10]], label %invertentry, label %incinvertfor.outerbody
