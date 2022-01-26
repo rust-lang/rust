@@ -1631,7 +1631,6 @@ mod remove_dir_impl {
         target_os = "illumos",
         target_os = "haiku",
         target_os = "vxworks",
-        target_os = "fuchsia"
     ))]
     fn is_dir(_ent: &DirEntry) -> Option<bool> {
         None
@@ -1642,7 +1641,6 @@ mod remove_dir_impl {
         target_os = "illumos",
         target_os = "haiku",
         target_os = "vxworks",
-        target_os = "fuchsia"
     )))]
     fn is_dir(ent: &DirEntry) -> Option<bool> {
         match ent.entry.d_type {
