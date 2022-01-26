@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_as_cast_ty() {
             Ok(rhs) => mk_expr(self, lhs, rhs),
-            Err(mut type_err) => {
+            Err(type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
@@ -717,7 +717,7 @@ impl<'a> Parser<'a> {
                                     .emit();
                                 return Ok(expr);
                             }
-                            Err(mut err) => {
+                            Err(err) => {
                                 err.cancel();
                                 *self = snapshot;
                             }
@@ -773,7 +773,7 @@ impl<'a> Parser<'a> {
 
                         expr
                     }
-                    Err(mut path_err) => {
+                    Err(path_err) => {
                         // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
                         *self = parser_snapshot_after_type;
@@ -1127,7 +1127,7 @@ impl<'a> Parser<'a> {
         snapshot: Option<(Self, ExprKind)>,
     ) -> Option<P<Expr>> {
         match (seq.as_mut(), snapshot) {
-            (Err(ref mut err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
+            (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 let name = pprust::path_to_string(&path);
                 snapshot.bump(); // `(`
                 match snapshot.parse_struct_fields(path, false, token::Paren) {
@@ -1138,11 +1138,12 @@ impl<'a> Parser<'a> {
                         let close_paren = self.prev_token.span;
                         let span = lo.to(self.prev_token.span);
                         if !fields.is_empty() {
-                            err.cancel();
-                            let mut err = self.struct_span_err(
+                            let replacement_err = self.struct_span_err(
                                 span,
                                 "invalid `struct` delimiters or `fn` call arguments",
                             );
+                            mem::replace(err, replacement_err).cancel();
+
                             err.multipart_suggestion(
                                 &format!("if `{}` is a struct, use braces as delimiters", name),
                                 vec![
@@ -1878,7 +1879,7 @@ impl<'a> Parser<'a> {
                 *self = snapshot;
                 Some(self.mk_expr_err(arr.span))
             }
-            Err(mut e) => {
+            Err(e) => {
                 e.cancel();
                 None
             }
@@ -2381,7 +2382,7 @@ impl<'a> Parser<'a> {
                         return Some(err(self, stmts));
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.cancel();
                 }
             }
@@ -2398,7 +2399,7 @@ impl<'a> Parser<'a> {
                 }
                 // We couldn't parse either yet another statement missing it's
                 // enclosing block nor the next arm's pattern or closing brace.
-                Err(mut stmt_err) => {
+                Err(stmt_err) => {
                     stmt_err.cancel();
                     *self = start_snapshot;
                     break;

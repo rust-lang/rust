@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
                 // extra noise.
                 init
             }
-            (Err(mut init_err), Some((snapshot, _, ty_err))) => {
+            (Err(init_err), Some((snapshot, _, ty_err))) => {
                 // init error, ty error
                 init_err.cancel();
                 // Couldn't parse the type nor the initializer, only raise the type error and
@@ -449,7 +449,7 @@ impl<'a> Parser<'a> {
                     );
                 }
             }
-            Err(mut e) => {
+            Err(e) => {
                 self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
                 e.cancel();
             }

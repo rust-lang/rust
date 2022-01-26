@@ -95,7 +95,7 @@ fn emit_frag_parse_err(
     match kind {
         // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
         AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
-            Err(mut err) => err.cancel(),
+            Err(err) => err.cancel(),
             Ok(_) => {
                 e.note(
                     "the macro call doesn't expand to an expression, but it can expand to a statement",

@@ -42,7 +42,7 @@ fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
 
     let mut p =
         new_parser_from_source_str(ps, FileName::Custom(src_as_string.clone()), src_as_string);
-    p.parse_expr().map_err(|mut e| e.cancel()).ok()
+    p.parse_expr().map_err(|e| e.cancel()).ok()
 }
 
 // Helper functions for building exprs

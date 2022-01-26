@@ -379,7 +379,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // Convert any reservation warnings into lints.
     let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
     for (_, (place, span, location, bk, borrow)) in reservation_warnings {
-        let mut initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
+        let initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
 
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
@@ -2329,7 +2329,7 @@ mod error {
             move_out_indices: Vec<MoveOutIndex>,
             place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
         ) -> bool {
-            if let Some((_, mut diag)) =
+            if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
             {
                 // Cancel the old diagnostic so we don't ICE

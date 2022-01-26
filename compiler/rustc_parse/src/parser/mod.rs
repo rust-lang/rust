@@ -849,7 +849,7 @@ impl<'a> Parser<'a> {
                                     v.push(t);
                                     continue;
                                 }
-                                Err(mut e) => {
+                                Err(e) => {
                                     // Parsing failed, therefore it must be something more serious
                                     // than just a missing separator.
                                     expect_err.emit();

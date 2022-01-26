@@ -534,7 +534,7 @@ impl Write {
             match parser
                 .parse_expr()
                 .map(rustc_ast::ptr::P::into_inner)
-                .map_err(|mut e| e.cancel())
+                .map_err(|e| e.cancel())
             {
                 // write!(e, ...)
                 Ok(p) if parser.eat(&token::Comma) => Some(p),
@@ -563,7 +563,7 @@ impl Write {
             }
 
             let comma_span = parser.prev_token.span;
-            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|mut err| err.cancel()) {
+            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|err| err.cancel()) {
                 expr
             } else {
                 return (Some(fmtstr), None);

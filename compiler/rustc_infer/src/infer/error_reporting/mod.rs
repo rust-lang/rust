@@ -1598,7 +1598,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
                         // Derived error. Cancel the emitter.
-                        diag.cancel();
+                        // NOTE(eddyb) this was `.cancel()`, but `diag`
+                        // is borrowed, so we can't fully defuse it.
+                        diag.downgrade_to_delayed_bug();
                         return;
                     }
                 };

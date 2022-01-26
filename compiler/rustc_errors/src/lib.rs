@@ -911,10 +911,6 @@ impl HandlerInner {
 
     // FIXME(eddyb) this should ideally take `diagnostic` by value.
     fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
-        if diagnostic.cancelled() {
-            return;
-        }
-
         if diagnostic.level == Level::DelayedBug {
             // FIXME(eddyb) this should check for `has_errors` and stop pushing
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
@@ -1238,7 +1234,6 @@ pub enum Level {
     Warning,
     Note,
     Help,
-    Cancelled,
     FailureNote,
     Allow,
 }
@@ -1266,7 +1261,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow | Cancelled => unreachable!(),
+            Allow => unreachable!(),
         }
         spec
     }
@@ -1279,7 +1274,6 @@ impl Level {
             Note => "note",
             Help => "help",
             FailureNote => "failure-note",
-            Cancelled => panic!("Shouldn't call on cancelled error"),
             Allow => panic!("Shouldn't call on allowed error"),
         }
     }

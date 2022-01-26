@@ -628,9 +628,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
-                        for mut err in errs {
-                            err.cancel();
-                        }
+                        drop(errs);
                         return false;
                     },
                 };
@@ -668,7 +666,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                             _ => {},
                         },
                         Ok(None) => break,
-                        Err(mut e) => {
+                        Err(e) => {
                             e.cancel();
                             return false;
                         },

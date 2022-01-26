@@ -133,7 +133,7 @@ impl Diagnostic {
             | Level::Error { .. }
             | Level::FailureNote => true,
 
-            Level::Warning | Level::Note | Level::Help | Level::Cancelled | Level::Allow => false,
+            Level::Warning | Level::Note | Level::Help | Level::Allow => false,
         }
     }
 
@@ -151,17 +151,6 @@ impl Diagnostic {
         }
     }
 
-    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
-    /// canceled or it will panic when dropped).
-    pub fn cancel(&mut self) {
-        self.level = Level::Cancelled;
-    }
-
-    /// Check if this diagnostic [was cancelled][Self::cancel()].
-    pub fn cancelled(&self) -> bool {
-        self.level == Level::Cancelled
-    }
-
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but
@@ -174,17 +163,12 @@ impl Diagnostic {
     /// locally in whichever way makes the most sense.
     #[track_caller]
     pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
-        // FIXME(eddyb) this check is only necessary because cancellation exists,
-        // but hopefully that can be removed in the future, if enough callers
-        // of `.cancel()` can take `DiagnosticBuilder`, and by-value.
-        if !self.cancelled() {
-            assert!(
-                self.is_error(),
-                "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
-                self.level
-            );
-            self.level = Level::DelayedBug;
-        }
+        assert!(
+            self.is_error(),
+            "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
+            self.level
+        );
+        self.level = Level::DelayedBug;
 
         self
     }

@@ -2114,7 +2114,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
                 let ty = parent_trait_ref.skip_binder().self_ty();
                 if parent_trait_ref.references_error() {
-                    err.cancel();
+                    // NOTE(eddyb) this was `.cancel()`, but `err`
+                    // is borrowed, so we can't fully defuse it.
+                    err.downgrade_to_delayed_bug();
                     return;
                 }
 

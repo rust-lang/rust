@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         loop {
             // skip any other attributes, we want the item
             if snapshot.token.kind == token::Pound {
-                if let Err(mut err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
+                if let Err(err) = snapshot.parse_attribute(InnerAttrPolicy::Permitted) {
                     err.cancel();
                     return Some(replacement_span);
                 }
@@ -206,7 +206,7 @@ impl<'a> Parser<'a> {
                 );
                 return None;
             }
-            Err(mut item_err) => {
+            Err(item_err) => {
                 item_err.cancel();
             }
             Ok(None) => {}
@@ -412,12 +412,12 @@ impl<'a> Parser<'a> {
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_lit() {
             Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
-            Err(ref mut err) => err.cancel(),
+            Err(err) => err.cancel(),
         }
 
         match self.parse_meta_item() {
             Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
-            Err(ref mut err) => err.cancel(),
+            Err(err) => err.cancel(),
         }
 
         let found = pprust::token_to_string(&self.token);

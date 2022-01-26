@@ -1962,7 +1962,9 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             // Avoid complaining about other inference issues for expressions like
             // `42 >> 1`, where the types are still `{integer}`, but we want to
             // Do we need `trait_ref.skip_binder().self_ty().is_numeric() &&` too?
-            err.cancel();
+            // NOTE(eddyb) this was `.cancel()`, but `err`
+            // is borrowed, so we can't fully defuse it.
+            err.downgrade_to_delayed_bug();
             return;
         }
         let post = if post.len() > 4 {

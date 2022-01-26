@@ -16,7 +16,7 @@ use tracing::debug;
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
-    handler: &'a Handler,
+    state: DiagnosticBuilderState<'a>,
 
     /// `Diagnostic` is a large type, and `DiagnosticBuilder` is often used as a
     /// return value, especially within the frequently-used `PResult` type.
@@ -24,6 +24,34 @@ pub struct DiagnosticBuilder<'a> {
     /// copying. In practice, it does not (at the time of writing).
     diagnostic: Box<Diagnostic>,
 }
+
+#[derive(Clone)]
+enum DiagnosticBuilderState<'a> {
+    /// Initial state of a `DiagnosticBuilder`, before `.emit()` or `.cancel()`.
+    ///
+    /// The `Diagnostic` will be emitted through this `Handler`.
+    Emittable(&'a Handler),
+
+    /// State of a `DiagnosticBuilder`, after `.emit()` or *during* `.cancel()`.
+    ///
+    /// The `Diagnostic` will be ignored when calling `.emit()`, and it can be
+    /// assumed that `.emit()` was previously called, to end up in this state.
+    ///
+    /// While this is also used by `.cancel()`, this state is only observed by
+    /// the `Drop` `impl` of `DiagnosticBuilder`, as `.cancel()` takes `self`
+    /// by-value specifically to prevent any attempts to `.emit()`.
+    ///
+    // FIXME(eddyb) currently this doesn't prevent extending the `Diagnostic`,
+    // despite that being potentially lossy, if important information is added
+    // *after* the original `.emit()` call.
+    AlreadyEmittedOrDuringCancellation,
+}
+
+// `DiagnosticBuilderState` should be pointer-sized.
+rustc_data_structures::static_assert_size!(
+    DiagnosticBuilderState<'_>,
+    std::mem::size_of::<&Handler>()
+);
 
 /// In general, the `DiagnosticBuilder` uses deref to allow access to
 /// the fields and methods of the embedded `diagnostic` in a
@@ -78,8 +106,18 @@ impl<'a> DerefMut for DiagnosticBuilder<'a> {
 impl<'a> DiagnosticBuilder<'a> {
     /// Emit the diagnostic.
     pub fn emit(&mut self) {
-        self.handler.emit_diagnostic(&self);
-        self.cancel();
+        match self.state {
+            // First `.emit()` call, the `&Handler` is still available.
+            DiagnosticBuilderState::Emittable(handler) => {
+                handler.emit_diagnostic(&self);
+                self.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+            }
+            // `.emit()` was previously called, disallowed from repeating it.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {
+                // FIXME(eddyb) rely on this to return a "proof" that an error
+                // was/will be emitted, despite doing no emission *here and now*.
+            }
+        }
     }
 
     /// Emit the diagnostic unless `delay` is true,
@@ -91,6 +129,17 @@ impl<'a> DiagnosticBuilder<'a> {
             self.downgrade_to_delayed_bug();
         }
         self.emit();
+    }
+
+    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
+    /// cancelled or it will panic when dropped).
+    ///
+    /// This method takes `self` by-value to disallow calling `.emit()` on it,
+    /// which may be expected to *guarantee* the emission of an error, either
+    /// at the time of the call, or through a prior `.emit()` call.
+    pub fn cancel(mut self) {
+        self.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+        drop(self);
     }
 
     /// Stashes diagnostic for possible later improvement in a different,
@@ -105,21 +154,28 @@ impl<'a> DiagnosticBuilder<'a> {
     }
 
     /// Converts the builder to a `Diagnostic` for later emission,
-    /// unless handler has disabled such buffering.
+    /// unless handler has disabled such buffering, or `.emit()` was called.
     pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a Handler)> {
-        if self.handler.flags.dont_buffer_diagnostics
-            || self.handler.flags.treat_err_as_bug.is_some()
-        {
+        let handler = match self.state {
+            // No `.emit()` calls, the `&Handler` is still available.
+            DiagnosticBuilderState::Emittable(handler) => handler,
+            // `.emit()` was previously called, nothing we can do.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {
+                return None;
+            }
+        };
+
+        if handler.flags.dont_buffer_diagnostics || handler.flags.treat_err_as_bug.is_some() {
             self.emit();
             return None;
         }
 
-        let handler = self.handler;
-
-        // We must use `Level::Cancelled` for `dummy` to avoid an ICE about an
-        // unused diagnostic.
-        let dummy = Diagnostic::new(Level::Cancelled, "");
+        // Take the `Diagnostic` by replacing it with a dummy.
+        let dummy = Diagnostic::new(Level::Allow, "");
         let diagnostic = std::mem::replace(&mut *self.diagnostic, dummy);
+
+        // Disable the ICE on `Drop`.
+        self.cancel();
 
         // Logging here is useful to help track down where in logs an error was
         // actually emitted.
@@ -314,7 +370,10 @@ impl<'a> DiagnosticBuilder<'a> {
     /// diagnostic.
     crate fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> DiagnosticBuilder<'a> {
         debug!("Created new diagnostic");
-        DiagnosticBuilder { handler, diagnostic: Box::new(diagnostic) }
+        DiagnosticBuilder {
+            state: DiagnosticBuilderState::Emittable(handler),
+            diagnostic: Box::new(diagnostic),
+        }
     }
 }
 
@@ -324,19 +383,26 @@ impl<'a> Debug for DiagnosticBuilder<'a> {
     }
 }
 
-/// Destructor bomb - a `DiagnosticBuilder` must be either emitted or canceled
+/// Destructor bomb - a `DiagnosticBuilder` must be either emitted or cancelled
 /// or we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
-        if !panicking() && !self.cancelled() {
-            let mut db = DiagnosticBuilder::new(
-                self.handler,
-                Level::Bug,
-                "the following error was constructed but not emitted",
-            );
-            db.emit();
-            self.emit();
-            panic!();
+        match self.state {
+            // No `.emit()` or `.cancel()` calls.
+            DiagnosticBuilderState::Emittable(handler) => {
+                if !panicking() {
+                    let mut db = DiagnosticBuilder::new(
+                        handler,
+                        Level::Bug,
+                        "the following error was constructed but not emitted",
+                    );
+                    db.emit();
+                    handler.emit_diagnostic(&self);
+                    panic!();
+                }
+            }
+            // `.emit()` was previously called, or maybe we're during `.cancel()`.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
     }
 }

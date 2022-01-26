@@ -2001,13 +2001,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // into a single one.
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
-            parent_err.cancel();
-
             err.message = take(&mut parent_err.message);
             err.code = take(&mut parent_err.code);
             err.children = take(&mut parent_err.children);
 
-            drop(parent_err);
+            parent_err.cancel();
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 

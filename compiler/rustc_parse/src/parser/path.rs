@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
         match self.parse_angle_args(ty_generics) {
             Ok(args) => Ok(args),
-            Err(mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
+            Err(e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
                 // Swap `self` with our backup of the parser state before attempting to parse
                 // generic arguments.
                 let snapshot = mem::replace(self, snapshot.unwrap());
