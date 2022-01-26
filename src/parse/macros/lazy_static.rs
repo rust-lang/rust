@@ -23,7 +23,7 @@ pub(crate) fn parse_lazy_static(
                         val
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.cancel();
                     parser.sess.span_diagnostic.reset_err_count();
                     return None;

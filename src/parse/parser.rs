@@ -115,7 +115,7 @@ impl<'a> Parser<'a> {
             match parser.parse_mod(&TokenKind::Eof) {
                 Ok(result) => Some(result),
                 Err(mut e) => {
-                    sess.emit_or_cancel_diagnostic(&mut e);
+                    e.emit();
                     if sess.can_reset_errors() {
                         sess.reset_errors();
                     }
