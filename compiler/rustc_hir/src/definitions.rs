@@ -107,8 +107,6 @@ pub struct Definitions {
     /// Their `HirId`s are defined by their position while lowering the enclosing owner.
     // FIXME(cjgillot) Some `LocalDefId`s from `use` items are dropped during lowering and lack a `HirId`.
     pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
-    /// The reverse mapping of `def_id_to_hir_id`.
-    pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
@@ -330,11 +328,6 @@ impl Definitions {
         self.def_id_to_hir_id[id].unwrap()
     }
 
-    #[inline]
-    pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
-        self.hir_id_to_def_id.get(&hir_id).copied()
-    }
-
     /// Adds a root definition (no parent) and a few other reserved definitions.
     pub fn new(stable_crate_id: StableCrateId, crate_span: Span) -> Definitions {
         let key = DefKey {
@@ -362,7 +355,6 @@ impl Definitions {
         Definitions {
             table,
             def_id_to_hir_id: Default::default(),
-            hir_id_to_def_id: Default::default(),
             expansions_that_defined: Default::default(),
             def_id_to_span,
             stable_crate_id,
@@ -424,12 +416,6 @@ impl Definitions {
             self.def_id_to_hir_id.is_empty(),
             "trying to initialize `LocalDefId` <-> `HirId` mappings twice"
         );
-
-        // Build the reverse mapping of `def_id_to_hir_id`.
-        self.hir_id_to_def_id = mapping
-            .iter_enumerated()
-            .filter_map(|(def_id, hir_id)| hir_id.map(|hir_id| (hir_id, def_id)))
-            .collect();
 
         self.def_id_to_hir_id = mapping;
     }

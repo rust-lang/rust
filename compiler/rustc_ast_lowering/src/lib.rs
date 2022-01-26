@@ -479,6 +479,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
         let local_node_ids = std::mem::take(&mut self.local_node_ids);
+
+        let local_id_to_def_id = local_node_ids
+            .iter()
+            .filter_map(|&node_id| {
+                let hir_id = self.node_id_to_hir_id[node_id]?;
+                if hir_id.local_id == hir::ItemLocalId::new(0) {
+                    None
+                } else {
+                    let def_id = self.resolver.opt_local_def_id(node_id)?;
+                    Some((hir_id.local_id, def_id))
+                }
+            })
+            .collect();
+
         let trait_map = local_node_ids
             .into_iter()
             .filter_map(|node_id| {
@@ -501,7 +515,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (hash_including_bodies, hash_without_bodies) = self.hash_owner(node, &bodies);
         let (nodes, parenting) =
             index::index_hir(self.sess, self.resolver.definitions(), node, &bodies);
-        let nodes = hir::OwnerNodes { hash_including_bodies, hash_without_bodies, nodes, bodies };
+        let nodes = hir::OwnerNodes {
+            hash_including_bodies,
+            hash_without_bodies,
+            nodes,
+            bodies,
+            local_id_to_def_id,
+        };
         let attrs = {
             let mut hcx = self.resolver.create_stable_hashing_context();
             let mut stable_hasher = StableHasher::new();

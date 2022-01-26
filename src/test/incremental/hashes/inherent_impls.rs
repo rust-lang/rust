@@ -29,9 +29,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,associated_item_def_ids")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,associated_item_def_ids")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail3")]
@@ -54,9 +54,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir,promoted_mir,typeck")]
@@ -91,9 +91,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(
@@ -153,9 +153,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(
@@ -182,9 +182,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir")]
@@ -203,9 +203,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner,associated_item_def_ids")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner,associated_item_def_ids")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2")]
@@ -232,9 +232,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir")]
@@ -257,9 +257,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
@@ -282,9 +282,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,optimized_mir,typeck")]
@@ -308,9 +308,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2")]
@@ -334,9 +334,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner_nodes,optimized_mir")]
@@ -359,9 +359,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck,optimized_mir")]
@@ -384,9 +384,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck")]
@@ -409,9 +409,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes,fn_sig,typeck")]
@@ -443,9 +443,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
@@ -492,9 +492,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
@@ -538,9 +538,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(
@@ -584,9 +584,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
@@ -633,9 +633,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     // Warning: Note that `typeck` are coming up clean here.
@@ -668,9 +668,9 @@ impl Foo {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner_nodes")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl Foo {
     #[rustc_clean(cfg="cfail2")]
@@ -719,9 +719,9 @@ impl Bar<u32> {
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="hir_owner")]
+#[rustc_clean(cfg="cfail2", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="hir_owner")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 impl Bar<u64> {
     #[rustc_clean(cfg="cfail2", except="fn_sig,optimized_mir,typeck")]
