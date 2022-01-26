@@ -36,8 +36,8 @@
       let mut _31: f32;                    // in scope 0 at $DIR/early_otherwise_branch_68867.rs:25:50: 25:55
       let mut _32: !;                      // in scope 0 at $DIR/early_otherwise_branch_68867.rs:26:14: 26:28
       let mut _33: ();                     // in scope 0 at $DIR/early_otherwise_branch_68867.rs:26:25: 26:27
-+     let mut _34: isize;                  // in scope 0 at $DIR/early_otherwise_branch_68867.rs:22:21: 22:30
-+     let mut _35: bool;                   // in scope 0 at $DIR/early_otherwise_branch_68867.rs:22:21: 22:30
++     let mut _34: isize;                  // in scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
++     let mut _35: bool;                   // in scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
       scope 1 {
 -         debug one => _12;                // in scope 1 at $DIR/early_otherwise_branch_68867.rs:22:14: 22:17
 -         debug other => _13;              // in scope 1 at $DIR/early_otherwise_branch_68867.rs:22:24: 22:29
@@ -85,7 +85,7 @@
 +         StorageLive(_34);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
 +         _34 = discriminant((*(_4.1: &ViewportPercentageLength))); // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
 +         StorageLive(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
-+         _35 = Ne(_34, _11);              // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
++         _35 = Ne(_11, move _34);         // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
 +         StorageDead(_34);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
 +         switchInt(move _35) -> [false: bb7, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
       }
@@ -293,8 +293,8 @@
 -         StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:27:6: 27:7
 -         StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch_68867.rs:28:1: 28:2
 -         return;                          // scope 0 at $DIR/early_otherwise_branch_68867.rs:28:2: 28:2
-+         StorageDead(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:22:21: 22:30
-+         switchInt(_11) -> [0_isize: bb2, 1_isize: bb3, 2_isize: bb4, 3_isize: bb5, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_68867.rs:22:21: 22:30
++         StorageDead(_35);                // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
++         switchInt(_11) -> [0_isize: bb2, 1_isize: bb3, 2_isize: bb4, 3_isize: bb5, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch_68867.rs:21:8: 21:24
       }
   }
   

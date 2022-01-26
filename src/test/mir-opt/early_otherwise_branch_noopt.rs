@@ -13,16 +13,6 @@ fn noopt1(x: Option<u32>, y: Option<u32>) -> u32 {
     }
 }
 
-// must not optimize as the types being matched on are not identical
-// EMIT_MIR early_otherwise_branch_noopt.noopt2.EarlyOtherwiseBranch.diff
-fn noopt2(x: Option<u32>, y: Option<bool>) -> u32 {
-    match (x, y) {
-        (Some(a), Some(b)) => 0,
-        _ => 1,
-    }
-}
-
 fn main() {
     noopt1(None, Some(0));
-    noopt2(None, Some(true));
 }

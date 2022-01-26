@@ -1,0 +1,30 @@
+- // MIR for `no_downcast` before EarlyOtherwiseBranch
++ // MIR for `no_downcast` after EarlyOtherwiseBranch
+  
+  fn no_downcast(_1: &E) -> u32 {
+      debug e => _1;                       // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:12:16: 12:17
+      let mut _0: u32;                     // return place in scope 0 at $DIR/early_otherwise_branch_soundness.rs:12:26: 12:29
+      let mut _2: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:20: 13:30
+      let mut _3: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+  
+      bb0: {
+          _3 = discriminant((*_1));        // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          switchInt(move _3) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+      }
+  
+      bb1: {
+          _2 = discriminant((*(((*_1) as Some).0: &E))); // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+          switchInt(move _2) -> [1_isize: bb2, otherwise: bb3]; // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:12: 13:31
+      }
+  
+      bb2: {
+          _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:38: 13:39
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
+      }
+  
+      bb3: {
+          _0 = const 2_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:49: 13:50
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
+      }
+  }
+  
