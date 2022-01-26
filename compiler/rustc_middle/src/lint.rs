@@ -314,10 +314,8 @@ pub fn struct_lint_level<'s, 'd>(
                     return;
                 }
             }
-            (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn, None) => sess.struct_warn(""),
-            (Level::ForceWarn, Some(span)) => sess.struct_span_force_warn(span, ""),
-            (Level::ForceWarn, None) => sess.struct_force_warn(""),
+            (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
+            (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
                 let mut builder = sess.diagnostic().struct_err_lint("");
                 builder.set_span(span);

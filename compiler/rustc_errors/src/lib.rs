@@ -632,23 +632,11 @@ impl Handler {
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
-    /// The builder will be canceled if warnings cannot be emitted.
+    /// Attempting to `.emit()` the builder will only emit if either:
+    /// * `can_emit_warnings` is `true`
+    /// * `is_force_warn` was set in `DiagnosticId::Lint`
     pub fn struct_span_warn(&self, span: impl Into<MultiSpan>, msg: &str) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_warn(msg);
-        result.set_span(span);
-        result
-    }
-
-    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
-    ///
-    /// This will "force" the warning meaning it will not be canceled even
-    /// if warnings cannot be emitted.
-    pub fn struct_span_force_warn(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: &str,
-    ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_force_warn(msg);
         result.set_span(span);
         result
     }
@@ -679,20 +667,10 @@ impl Handler {
 
     /// Construct a builder at the `Warning` level with the `msg`.
     ///
-    /// The builder will be canceled if warnings cannot be emitted.
+    /// Attempting to `.emit()` the builder will only emit if either:
+    /// * `can_emit_warnings` is `true`
+    /// * `is_force_warn` was set in `DiagnosticId::Lint`
     pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
-        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        if !self.flags.can_emit_warnings {
-            result.cancel();
-        }
-        result
-    }
-
-    /// Construct a builder at the `Warning` level with the `msg`.
-    ///
-    /// This will "force" a warning meaning it will not be canceled even
-    /// if warnings cannot be emitted.
-    pub fn struct_force_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, Level::Warning, msg)
     }
 
