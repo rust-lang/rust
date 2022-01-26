@@ -357,6 +357,11 @@ CTypeTreeRef EnzymeGradientUtilsAllocAndGetTypeTree(GradientUtils *gutils,
   return (CTypeTreeRef)pTT;
 }
 
+void EnzymeGradientUtilsDumpTypeResults(GradientUtils *gutils) {
+  assert(gutils->my_TR);
+  gutils->my_TR->dump();
+}
+
 void EnzymeGradientUtilsSubTransferHelper(
     GradientUtils *gutils, CDerivativeMode mode, LLVMTypeRef secretty,
     uint64_t intrinsic, uint64_t dstAlign, uint64_t srcAlign, uint64_t offset,
