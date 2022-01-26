@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::{
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, peel_mid_ty_refs};
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item, match_type, peel_mid_ty_refs};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     get_parent_expr, is_lang_ctor, is_lint_allowed, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs,
@@ -741,7 +741,7 @@ fn check_single_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], exp
         let ty = cx.typeck_results().expr_ty(ex);
         if *ty.kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
             check_single_match_single_pattern(cx, ex, arms, expr, els);
-            check_single_match_opt_like(cx, ex, arms, expr, els);
+            check_single_match_opt_like(cx, ex, arms, expr, ty, els);
         }
     }
 }
@@ -830,11 +830,12 @@ fn report_single_match_single_pattern(
     );
 }
 
-fn check_single_match_opt_like(
-    cx: &LateContext<'_>,
+fn check_single_match_opt_like<'a>(
+    cx: &LateContext<'a>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
+    ty: Ty<'a>,
     els: Option<&Expr<'_>>,
 ) {
     // list of candidate `Enum`s we know will never get any more members
@@ -854,44 +855,50 @@ fn check_single_match_opt_like(
         return;
     }
 
-    let mut paths = Vec::new();
-    if !collect_pat_paths(&mut paths, arms[1].pat) {
+    let mut paths_and_types = Vec::new();
+    if !collect_pat_paths(&mut paths_and_types, cx, arms[1].pat, ty) {
         return;
     }
 
-    let in_candidate_enum = |path: &String| -> bool {
-        for &(_, pat_path) in candidates {
-            if path == pat_path {
+    let in_candidate_enum = |path_info: &(String, &TyS<'_>)| -> bool {
+        let (path, ty) = path_info;
+        for &(ty_path, pat_path) in candidates {
+            if path == pat_path && match_type(cx, ty, ty_path) {
                 return true;
             }
         }
         false
     };
-    if paths.iter().all(in_candidate_enum) {
+    if paths_and_types.iter().all(in_candidate_enum) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
 
-/// Collects paths from the given paths. Returns true if the given pattern could be simplified,
-/// false otherwise.
-fn collect_pat_paths(acc: &mut Vec<String>, pat: &Pat<'_>) -> bool {
+/// Collects paths and their types from the given patterns. Returns true if the given pattern could
+/// be simplified, false otherwise.
+fn collect_pat_paths<'a>(acc: &mut Vec<(String, Ty<'a>)>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) -> bool {
     match pat.kind {
         PatKind::Wild => true,
-        PatKind::Tuple(inner, _) => inner.iter().all(|p| collect_pat_paths(acc, p)),
+        PatKind::Tuple(inner, _) => inner.iter().all(|p| {
+            let p_ty = cx.typeck_results().pat_ty(p);
+            collect_pat_paths(acc, cx, p, p_ty)
+        }),
         PatKind::TupleStruct(ref path, ..) => {
-            acc.push(rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(path, false);
-            }));
+            });
+            acc.push((path, ty));
             true
         },
         PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => {
-            acc.push(ident.to_string());
+            acc.push((ident.to_string(), ty));
             true
         },
         PatKind::Path(ref path) => {
-            acc.push(rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(path, false);
-            }));
+            });
+            acc.push((path, ty));
             true
         },
         _ => false,

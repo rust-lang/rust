@@ -197,6 +197,32 @@ fn ranges() {
     }
 }
 
+fn skip_type_aliases() {
+    enum OptionEx {
+        Some(i32),
+        None,
+    }
+    enum ResultEx {
+        Err(i32),
+        Ok(i32),
+    }
+
+    use OptionEx::{None, Some};
+    use ResultEx::{Err, Ok};
+
+    // don't lint
+    match Err(42) {
+        Ok(_) => dummy(),
+        Err(_) => (),
+    };
+
+    // don't lint
+    match Some(1i32) {
+        Some(_) => dummy(),
+        None => (),
+    };
+}
+
 macro_rules! single_match {
     ($num:literal) => {
         match $num {
