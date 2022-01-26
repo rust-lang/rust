@@ -120,9 +120,21 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.iter.size_hint();
-        // we could be entirely valid surrogates (2 elements per
-        // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+
+        // `self.buf` will never contain the first part of a surrogate,
+        // so the presence of `buf == Some(...)` always means +1
+        // on lower and upper bound.
+        let addition_from_buf = self.buf.is_some() as usize;
+
+        // `self.iter` could contain entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char).
+        //
+        // On odd lower bound, at least one element must stay unpaired
+        // (with other elements from `self.iter`), so we round up.
+        let low = low.div_ceil(2) + addition_from_buf;
+        let high = high.and_then(|h| h.checked_add(addition_from_buf));
+
+        (low, high)
     }
 }
 
