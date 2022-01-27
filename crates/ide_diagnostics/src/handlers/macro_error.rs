@@ -39,6 +39,45 @@ macro_rules! compile_error { () => {} }
     }
 
     #[test]
+    fn eager_macro_concat() {
+        // FIXME: this is incorrectly handling `$crate`, resulting in a wrong diagnostic.
+        // See: https://github.com/rust-analyzer/rust-analyzer/issues/10300
+
+        check_diagnostics(
+            r#"
+//- /lib.rs crate:lib deps:core
+use core::{panic, concat};
+
+mod private {
+    pub use core::concat;
+}
+
+macro_rules! m {
+    () => {
+        panic!(concat!($crate::private::concat!("")));
+    };
+}
+
+fn f() {
+    m!();
+  //^^^^ error: unresolved macro `$crate::private::concat!`
+}
+
+//- /core.rs crate:core
+#[macro_export]
+#[rustc_builtin_macro]
+macro_rules! concat { () => {} }
+
+pub macro panic {
+    ($msg:expr) => (
+        $crate::panicking::panic_str($msg)
+    ),
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn include_macro_should_allow_empty_content() {
         let mut config = DiagnosticsConfig::default();
 

@@ -104,6 +104,7 @@ pub fn expand_eager_macro(
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
     diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
+    let hygiene = Hygiene::new(db, macro_call.file_id);
     let parsed_args = macro_call
         .value
         .token_tree()
@@ -131,6 +132,7 @@ pub fn expand_eager_macro(
     let parsed_args = mbe::token_tree_to_syntax_node(&parsed_args, mbe::TopEntryPoint::Expr).0;
     let result = match eager_macro_recur(
         db,
+        &hygiene,
         InFile::new(arg_id.as_file(), parsed_args.syntax_node()),
         krate,
         resolver,
@@ -193,12 +195,12 @@ fn lazy_expand(
 
 fn eager_macro_recur(
     db: &dyn AstDatabase,
+    hygiene: &Hygiene,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
     mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
 ) -> Result<Result<SyntaxNode, ErrorEmitted>, UnresolvedMacro> {
-    let hygiene = Hygiene::new(db, curr.file_id);
     let original = curr.value.clone_for_update();
 
     let children = original.descendants().filter_map(ast::MacroCall::cast);
@@ -243,7 +245,8 @@ fn eager_macro_recur(
                 };
 
                 // replace macro inside
-                match eager_macro_recur(db, val, krate, macro_resolver, diagnostic_sink) {
+                let hygiene = Hygiene::new(db, val.file_id);
+                match eager_macro_recur(db, &hygiene, val, krate, macro_resolver, diagnostic_sink) {
                     Ok(Ok(it)) => it,
                     Ok(Err(err)) => return Ok(Err(err)),
                     Err(err) => return Err(err),
