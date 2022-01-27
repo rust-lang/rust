@@ -190,10 +190,10 @@ pub struct InferCtxtInner<'tcx> {
     /// that all type inference variables have been bound and so forth.
     region_obligations: Vec<(hir::HirId, RegionObligation<'tcx>)>,
 
+    undo_log: InferCtxtUndoLogs<'tcx>,
+
     /// Caches for opaque type inference.
     pub opaque_type_storage: OpaqueTypeStorage<'tcx>,
-
-    undo_log: InferCtxtUndoLogs<'tcx>,
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
