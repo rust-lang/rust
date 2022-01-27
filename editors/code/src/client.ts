@@ -155,6 +155,9 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                 );
             }
 
+        },
+        markdown: {
+            supportHtml: true,
         }
     };
 
