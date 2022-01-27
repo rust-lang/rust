@@ -33,6 +33,9 @@ crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         if let Some(NonRecursive) = TriColorDepthFirstSearch::new(&body).run_from_start(&mut vis) {
             return;
         }
+        if vis.reachable_recursive_calls.is_empty() {
+            return;
+        }
 
         vis.reachable_recursive_calls.sort();
 
@@ -148,13 +151,14 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
+        let terminator = self.body[bb].terminator();
+        if terminator.unwind() == Some(&Some(target)) && terminator.successors().count() > 1 {
+            return true;
+        }
         // Don't traverse successors of recursive calls or false CFG edges.
         match self.body[bb].terminator().kind {
             TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
-
-            TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
-            | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
-
+            TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
             _ => false,
         }
     }
