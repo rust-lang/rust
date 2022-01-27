@@ -319,6 +319,12 @@ static inline void propagateArgumentInformation(
         Name == "__cxa_guard_abort")
       return;
 
+    /// Only the first argument (magnitude) of copysign is active
+    if (F->getIntrinsicID() == Intrinsic::copysign) {
+      propagateFromOperand(CI.getOperand(0));
+      return;
+    }
+
     /// Only the src/dst in memset/memcpy/memmove impact the activity of the
     /// instruction
     // memset cannot propagate activity as it sets
