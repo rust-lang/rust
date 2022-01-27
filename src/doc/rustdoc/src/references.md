@@ -16,7 +16,7 @@ If you know of other great resources, please submit a pull request!
 - [Github tagged RFCs]
 - [Github tagged issues]
 - [RFC (stalled) front page styleguide]
-- [Guide on how to write documenation for a Rust crate]
+- [Guide on how to write documentation for a Rust crate]
 
 
 [API Guidelines]: https://rust-lang.github.io/api-guidelines/documentation.html
