@@ -1086,6 +1086,7 @@ struct B;
 
 #[test]
 fn eager_macro_correctly_resolves_dollar_crate() {
+    // MBE -> eager -> $crate::mbe
     check(
         r#"
 //- /lib.rs
@@ -1108,9 +1109,37 @@ struct A;
 "#,
         expect![[r#"
             crate
+            A: t v
             inner: m
         "#]],
     );
+    // eager -> MBE -> $crate::mbe
+    check(
+        r#"
+//- /lib.rs
+#[rustc_builtin_macro]
+macro_rules! include { () => {} }
 
-    // FIXME: This currently fails. The result should contain `A: t v`.
+#[macro_export]
+macro_rules! inner {
+    () => { "inc.rs" };
+}
+
+macro_rules! n {
+    () => {
+        $crate::inner!()
+    };
+}
+
+include!(n!());
+
+//- /inc.rs
+struct A;
+"#,
+        expect![[r#"
+            crate
+            A: t v
+            inner: m
+        "#]],
+    );
 }
