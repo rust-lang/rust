@@ -94,11 +94,11 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     }
 }
 
-impl<S> Join<&str> for [S] 
+impl<S> Join<S> for [S] 
 where S: crate::string::ToString {
     type Output = String;
     
-    fn join(slice: &Self, sep: &str) -> String {
+    fn join(slice: &Self, sep: &S) -> String {
         // Reuse the [&str] impl of Join.
         let slice = slice.iter().map(
             |s| s.to_string()
