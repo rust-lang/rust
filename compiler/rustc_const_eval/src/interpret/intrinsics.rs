@@ -478,10 +478,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     throw_ub_format!("`assume` intrinsic called with `false`");
                 }
             }
-            sym::raw_eq => {
-                let result = self.raw_eq_intrinsic(&args[0], &args[1])?;
-                self.write_scalar(result, dest)?;
-            }
             _ => return Ok(false),
         }
 
@@ -589,20 +585,5 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let bytes = std::iter::repeat(byte).take(len.bytes_usize());
         self.memory.write_bytes(dst, bytes)
-    }
-
-    pub(crate) fn raw_eq_intrinsic(
-        &mut self,
-        lhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-        rhs: &OpTy<'tcx, <M as Machine<'mir, 'tcx>>::PointerTag>,
-    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
-        let layout = self.layout_of(lhs.layout.ty.builtin_deref(true).unwrap().ty)?;
-        assert!(!layout.is_unsized());
-
-        let lhs = self.read_pointer(lhs)?;
-        let rhs = self.read_pointer(rhs)?;
-        let lhs_bytes = self.memory.read_bytes(lhs, layout.size)?;
-        let rhs_bytes = self.memory.read_bytes(rhs, layout.size)?;
-        Ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 }

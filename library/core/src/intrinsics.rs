@@ -1939,25 +1939,6 @@ extern "rust-intrinsic" {
     #[cfg(not(bootstrap))]
     pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
 
-    /// Determines whether the raw bytes of the two values are equal.
-    ///
-    /// This is particularly handy for arrays, since it allows things like just
-    /// comparing `i96`s instead of forcing `alloca`s for `[6 x i16]`.
-    ///
-    /// Above some backend-decided threshold this will emit calls to `memcmp`,
-    /// like slice equality does, instead of causing massive code size.
-    ///
-    /// # Safety
-    ///
-    /// It's UB to call this if any of the *bytes* in `*a` or `*b` are uninitialized.
-    /// Note that this is a stricter criterion than just the *values* being
-    /// fully-initialized: if `T` has padding, it's UB to call this intrinsic.
-    ///
-    /// (The implementation is allowed to branch on the results of comparisons,
-    /// which is UB if any of their inputs are `undef`.)
-    #[rustc_const_unstable(feature = "const_intrinsic_raw_eq", issue = "none")]
-    pub fn raw_eq<T>(a: &T, b: &T) -> bool;
-
     /// See documentation of [`std::hint::black_box`] for details.
     ///
     /// [`std::hint::black_box`]: crate::hint::black_box
