@@ -1005,19 +1005,24 @@ public:
       break;
     }
     case DerivativeMode::ForwardMode: {
-      Value *orig_op0 = I.getOperand(0);
-
       IRBuilder<> Builder2(&I);
       getForwardBuilder(Builder2);
 
-      if (!gutils->isConstantValue(orig_op0)) {
-        Value *dif = diffe(orig_op0, Builder2);
-        setDiffe(&I, Builder2.CreateCast(I.getOpcode(), dif, I.getType()),
-                 Builder2);
-      } else {
-        setDiffe(&I, Constant::getNullValue(I.getType()), Builder2);
-      }
+      Value *orig_op0 = I.getOperand(0);
+      Type *diffTy = gutils->getShadowType(I.getType());
 
+      auto rule = [&](Value *dif) {
+        return Builder2.CreateCast(I.getOpcode(), dif, I.getType());
+      };
+
+      if (!gutils->isConstantValue(orig_op0)) {
+        Value *dop0 = diffe(orig_op0, Builder2);
+        Value *diff = applyChainRule(I.getType(), Builder2, rule, dop0);
+
+        setDiffe(&I, diff, Builder2);
+      } else {
+        setDiffe(&I, Constant::getNullValue(diffTy), Builder2);
+      }
       break;
     }
     }
@@ -1612,6 +1617,22 @@ public:
   void setDiffe(Value *val, Value *dif, IRBuilder<> &Builder) {
     assert(Mode != DerivativeMode::ReverseModePrimal);
     ((DiffeGradientUtils *)gutils)->setDiffe(val, dif, Builder);
+  }
+
+  /// Unwraps a vector derivative from its internal representation and applies a
+  /// function f to each element. Return values of f are collected and wrapped.
+  template <typename Func, typename... Args>
+  Value *applyChainRule(Type *diffType, IRBuilder<> &Builder, Func rule,
+                        Args... args) {
+    return ((DiffeGradientUtils *)gutils)
+        ->applyChainRule(diffType, Builder, rule, args...);
+  }
+
+  /// Unwraps a vector derivative from its internal representation and applies a
+  /// function f to each element.
+  template <typename Func, typename... Args>
+  void applyChainRule(IRBuilder<> &Builder, Func rule, Args... args) {
+    ((DiffeGradientUtils *)gutils)->applyChainRule(Builder, rule, args...);
   }
 
   bool shouldFree() {

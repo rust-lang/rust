@@ -2413,7 +2413,8 @@ void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
       } else if (!gutils->isConstantValue(ret)) {
         toret = gutils->diffe(ret, nBuilder);
       } else {
-        toret = Constant::getNullValue(ret->getType());
+        Type *retTy = gutils->getShadowType(ret->getType());
+        toret = Constant::getNullValue(retTy);
       }
 
       break;

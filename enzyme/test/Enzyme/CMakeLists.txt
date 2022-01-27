@@ -1,5 +1,6 @@
 add_subdirectory(ReverseMode)
 add_subdirectory(ForwardMode)
+add_subdirectory(ForwardModeVector)
 
 # Run regression and unit tests
 add_lit_testsuite(check-enzyme "Running enzyme regression tests"
