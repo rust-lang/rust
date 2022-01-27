@@ -1204,7 +1204,16 @@ impl Clean<Item> for ty::AssocItem {
             }
         };
 
-        Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx)
+        let mut output = Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
+
+        // HACK: Override visibility for items in a trait implementation to match HIR
+        let impl_ref = tcx.parent(self.def_id).and_then(|did| tcx.impl_trait_ref(did));
+
+        if impl_ref.is_some() {
+            output.visibility = Visibility::Inherited;
+        }
+
+        output
     }
 }
 
