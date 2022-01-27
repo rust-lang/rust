@@ -193,9 +193,9 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let opaque_type_values =
                 infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-            let opaque_type_values = opaque_type_values
+            opaque_type_values
                 .into_iter()
-                .filter_map(|(opaque_type_key, decl)| {
+                .map(|(opaque_type_key, decl)| {
                     cx.fully_perform_op(
                         Locations::All(body.span),
                         ConstraintCategory::OpaqueType,
@@ -226,43 +226,10 @@ pub(crate) fn type_check<'mir, 'tcx>(
                         );
                         hidden_type = infcx.tcx.ty_error();
                     }
-                    let concrete_is_opaque = if let ty::Opaque(def_id, _) = hidden_type.kind() {
-                        *def_id == opaque_type_key.def_id
-                    } else {
-                        false
-                    };
 
-                    if concrete_is_opaque {
-                        // We're using an opaque `impl Trait` type without
-                        // 'revealing' it. For example, code like this:
-                        //
-                        // type Foo = impl Debug;
-                        // fn foo1() -> Foo { ... }
-                        // fn foo2() -> Foo { foo1() }
-                        //
-                        // In `foo2`, we're not revealing the type of `Foo` - we're
-                        // just treating it as the opaque type.
-                        //
-                        // When this occurs, we do *not* want to try to equate
-                        // the concrete type with the underlying defining type
-                        // of the opaque type - this will always fail, since
-                        // the defining type of an opaque type is always
-                        // some other type (e.g. not itself)
-                        // Essentially, none of the normal obligations apply here -
-                        // we're just passing around some unknown opaque type,
-                        // without actually looking at the underlying type it
-                        // gets 'revealed' into
-                        debug!(
-                            "eq_opaque_type_and_type: non-defining use of {:?}",
-                            opaque_type_key.def_id,
-                        );
-                        None
-                    } else {
-                        Some((opaque_type_key, (hidden_type, decl.hidden_type.span, decl.origin)))
-                    }
+                    (opaque_type_key, (hidden_type, decl.hidden_type.span, decl.origin))
                 })
-                .collect();
-            opaque_type_values
+                .collect()
         },
     );
 
