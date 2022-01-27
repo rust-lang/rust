@@ -607,7 +607,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         &mut self,
         macro_def: &ast::MacroDef,
         ident: &Ident,
-        sp: &Span,
+        sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
         let (kw, has_bang) = if macro_def.macro_rules {
@@ -623,7 +623,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             macro_def.body.delim(),
             &macro_def.body.inner_tokens(),
             true,
-            *sp,
+            sp,
         );
         if macro_def.body.need_semicolon() {
             self.word(";");

@@ -336,5 +336,5 @@ fn is_arg_inside_call(arg: Span, call: Span) -> bool {
     // panic call in the source file, to avoid invalid suggestions when macros are involved.
     // We specifically check for the spans to not be identical, as that happens sometimes when
     // proc_macros lie about spans and apply the same span to all the tokens they produce.
-    call.contains(arg) && !call.source_equal(&arg)
+    call.contains(arg) && !call.source_equal(arg)
 }

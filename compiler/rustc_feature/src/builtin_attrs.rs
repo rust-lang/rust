@@ -625,7 +625,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_pass_by_value, Normal,
-        template!(Word), WarnFollowing,
+        template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
     BuiltinAttribute {
