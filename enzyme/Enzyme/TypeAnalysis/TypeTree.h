@@ -129,19 +129,23 @@ public:
     bool changed = false;
     if (Seq.size() > 0) {
 
-      // check pointer abilities from before
+      // check types at lower pointer offsets are either pointer or
+      // anything.
       {
-        std::vector<int> tmp(Seq.begin(), Seq.end() - 1);
-        auto found = mapping.find(tmp);
-        if (found != mapping.end()) {
-          if (!(found->second == BaseType::Pointer ||
-                found->second == BaseType::Anything)) {
-            llvm::errs() << "FAILED CT: " << str()
-                         << " adding Seq: " << to_string(Seq) << ": "
-                         << CT.str() << "\n";
+        std::vector<int> tmp(Seq);
+        while (tmp.size() > 0) {
+          tmp.erase(tmp.end() - 1);
+          auto found = mapping.find(tmp);
+          if (found != mapping.end()) {
+            if (found->second == BaseType::Anything)
+              return changed;
+            if (found->second != BaseType::Pointer) {
+              llvm::errs() << "FAILED CT: " << str()
+                           << " adding Seq: " << to_string(Seq) << ": "
+                           << CT.str() << "\n";
+            }
+            assert(found->second == BaseType::Pointer);
           }
-          assert(found->second == BaseType::Pointer ||
-                 found->second == BaseType::Anything);
         }
       }
 
