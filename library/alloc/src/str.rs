@@ -95,7 +95,7 @@ impl<S: Borrow<str>> Join<&str> for [S] {
 }
 
 impl<'_, S> Join<&'_ str> for [S] 
-where S: crate::string::ToString {
+where S: crate::string::ToString + Clone {
     type Output = String;
     
     fn join(slice: &Self, sep: &S) -> String {
