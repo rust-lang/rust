@@ -1,13 +1,8 @@
 error: future cannot be sent between threads safely
   --> $DIR/issue-70935-complex-spans.rs:11:5
    |
-LL | /     async move {
-LL | |
-LL | |         baz(|| async{
-LL | |             foo(tx.clone());
-LL | |         }).await;
-LL | |     }
-   | |_____^ future created by async block is not `Send`
+LL |     async move {
+   |     ^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `Sender<i32>`
 note: future is not `Send` as this value is used across an await

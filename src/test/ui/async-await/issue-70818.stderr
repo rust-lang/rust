@@ -2,7 +2,7 @@ error: future cannot be sent between threads safely
   --> $DIR/issue-70818.rs:5:5
    |
 LL |     async { (ty, ty1) }
-   |     ^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
+   |     ^^^^^ future created by async block is not `Send`
    |
 note: captured value is not `Send`
   --> $DIR/issue-70818.rs:5:18
