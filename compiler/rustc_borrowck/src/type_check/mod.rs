@@ -1745,11 +1745,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn ensure_place_sized(&mut self, ty: Ty<'tcx>, span: Span) {
         let tcx = self.tcx();
 
-        // This may contain opaque types, resolve them to the underlying
-        // type if defined in the current function. Otherwise we can't
-        // necessarily prove sizedness of the type.
-        let ty = self.infcx.resolve_vars_if_possible(ty);
-
         // Erase the regions from `ty` to get a global type.  The
         // `Sized` bound in no way depends on precise regions, so this
         // shouldn't affect `is_sized`.

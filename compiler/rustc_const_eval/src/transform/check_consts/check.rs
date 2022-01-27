@@ -48,7 +48,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let ty = ccx.body.local_decls[local].ty;
         // Peeking into opaque types causes cycles if the current function declares said opaque
         // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage withhin this function
+        // analysis that looks at the actual usage within this function
         if !ty.has_opaque_types() && !NeedsDrop::in_any_value_of_ty(ccx, ty) {
             return false;
         }
@@ -105,7 +105,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
         let ty = ccx.body.local_decls[local].ty;
         // Peeking into opaque types causes cycles if the current function declares said opaque
         // type. Thus we avoid short circuiting on the type and instead run the more expensive
-        // analysis that looks at the actual usage withhin this function
+        // analysis that looks at the actual usage within this function
         if !ty.has_opaque_types() && !HasMutInterior::in_any_value_of_ty(ccx, ty) {
             return false;
         }
