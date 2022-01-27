@@ -80,12 +80,47 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
         if self.defining_use_anchor.is_some() {
             let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
-                ty::Opaque(def_id, substs) => self.fold_opaque_ty_new(
+                ty::Opaque(def_id, substs) => Some(self.register_hidden_type(
                     OpaqueTypeKey { def_id, substs },
                     cause.clone(),
                     param_env,
                     b,
-                ),
+                    // Check that this is `impl Trait` type is
+                    // declared by `parent_def_id` -- i.e., one whose
+                    // value we are inferring.  At present, this is
+                    // always true during the first phase of
+                    // type-check, but not always true later on during
+                    // NLL. Once we support named opaque types more fully,
+                    // this same scenario will be able to arise during all phases.
+                    //
+                    // Here is an example using type alias `impl Trait`
+                    // that indicates the distinction we are checking for:
+                    //
+                    // ```rust
+                    // mod a {
+                    //   pub type Foo = impl Iterator;
+                    //   pub fn make_foo() -> Foo { .. }
+                    // }
+                    //
+                    // mod b {
+                    //   fn foo() -> a::Foo { a::make_foo() }
+                    // }
+                    // ```
+                    //
+                    // Here, the return type of `foo` references an
+                    // `Opaque` indeed, but not one whose value is
+                    // presently being inferred. You can get into a
+                    // similar situation with closure return types
+                    // today:
+                    //
+                    // ```rust
+                    // fn foo() -> impl Iterator { .. }
+                    // fn bar() {
+                    //     let x = || foo(); // returns the Opaque assoc with `foo`
+                    // }
+                    // ```
+                    self.opaque_type_origin(def_id, cause.span)?,
+                )),
                 _ => None,
             };
             if let Some(res) = process(a, b) {
@@ -479,63 +514,14 @@ impl UseKind {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    fn fold_opaque_ty_new(
-        &self,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        hidden_ty: Ty<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
-        // Check that this is `impl Trait` type is
-        // declared by `parent_def_id` -- i.e., one whose
-        // value we are inferring.  At present, this is
-        // always true during the first phase of
-        // type-check, but not always true later on during
-        // NLL. Once we support named opaque types more fully,
-        // this same scenario will be able to arise during all phases.
-        //
-        // Here is an example using type alias `impl Trait`
-        // that indicates the distinction we are checking for:
-        //
-        // ```rust
-        // mod a {
-        //   pub type Foo = impl Iterator;
-        //   pub fn make_foo() -> Foo { .. }
-        // }
-        //
-        // mod b {
-        //   fn foo() -> a::Foo { a::make_foo() }
-        // }
-        // ```
-        //
-        // Here, the return type of `foo` references an
-        // `Opaque` indeed, but not one whose value is
-        // presently being inferred. You can get into a
-        // similar situation with closure return types
-        // today:
-        //
-        // ```rust
-        // fn foo() -> impl Iterator { .. }
-        // fn bar() {
-        //     let x = || foo(); // returns the Opaque assoc with `foo`
-        // }
-        // ```
-        if let Some(origin) = self.opaque_type_origin(opaque_type_key.def_id, cause.span) {
-            return Some(self.fold_opaque_ty(cause, param_env, opaque_type_key, origin, hidden_ty));
-        }
-
-        debug!(?opaque_type_key, "encountered opaque outside its definition scope",);
-        None
-    }
-
     #[instrument(skip(self), level = "debug")]
-    fn fold_opaque_ty(
+    fn register_hidden_type(
         &self,
+        opaque_type_key: OpaqueTypeKey<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        opaque_type_key: OpaqueTypeKey<'tcx>,
-        origin: hir::OpaqueTyOrigin,
         hidden_ty: Ty<'tcx>,
+        origin: hir::OpaqueTyOrigin,
     ) -> InferResult<'tcx, ()> {
         let tcx = self.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
