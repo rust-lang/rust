@@ -156,12 +156,18 @@ impl ProcMacro {
         attr: Option<&Subtree>,
         env: Vec<(String, String)>,
     ) -> Result<Result<Subtree, PanicMessage>, ServerError> {
+        let current_dir = env
+            .iter()
+            .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
+            .map(|(_, value)| value.clone());
+
         let task = ExpandMacro {
             macro_body: FlatTree::new(subtree),
             macro_name: self.name.to_string(),
             attributes: attr.map(FlatTree::new),
             lib: self.dylib_path.to_path_buf().into(),
             env,
+            current_dir,
         };
 
         let request = msg::Request::ExpandMacro(task);

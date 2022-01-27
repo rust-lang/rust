@@ -43,6 +43,16 @@ impl ProcMacroSrv {
             prev_env.insert(k.as_str(), env::var_os(k));
             env::set_var(k, v);
         }
+        let prev_working_dir = match task.current_dir {
+            Some(dir) => {
+                let prev_working_dir = std::env::current_dir().ok();
+                if let Err(err) = std::env::set_current_dir(&dir) {
+                    eprintln!("Failed to set the current working dir to {}. Error: {:?}", dir, err)
+                }
+                prev_working_dir
+            }
+            None => None,
+        };
 
         let macro_body = task.macro_body.to_subtree();
         let attributes = task.attributes.map(|it| it.to_subtree());
@@ -54,6 +64,15 @@ impl ProcMacroSrv {
             match &prev_env[k.as_str()] {
                 Some(v) => env::set_var(k, v),
                 None => env::remove_var(k),
+            }
+        }
+        if let Some(dir) = prev_working_dir {
+            if let Err(err) = std::env::set_current_dir(&dir) {
+                eprintln!(
+                    "Failed to set the current working dir to {}. Error: {:?}",
+                    dir.display(),
+                    err
+                )
             }
         }
 
