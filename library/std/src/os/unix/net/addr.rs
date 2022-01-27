@@ -2,7 +2,7 @@ use crate::ffi::OsStr;
 use crate::os::unix::ffi::OsStrExt;
 use crate::path::Path;
 use crate::sys::cvt;
-use crate::{ascii, fmt, io, iter, mem, ptr};
+use crate::{ascii, fmt, io, mem, ptr};
 
 // FIXME(#43348): Make libc adapt #[doc(cfg(...))] so we don't need these fake definitions here?
 #[cfg(not(unix))]
@@ -22,8 +22,9 @@ fn sun_path_offset(addr: &libc::sockaddr_un) -> usize {
     path - base
 }
 
-pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
-    let mut addr: libc::sockaddr_un = mem::zeroed();
+pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {
+    // SAFETY: All zeros is a valid representation for `sockaddr_un`.
+    let mut addr: libc::sockaddr_un = unsafe { mem::zeroed() };
     addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
     let bytes = path.as_os_str().as_bytes();
@@ -41,11 +42,13 @@ pub(super) unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, 
             &"path must be shorter than SUN_LEN",
         ));
     }
-    for (dst, src) in iter::zip(&mut addr.sun_path, bytes) {
-        *dst = *src as libc::c_char;
-    }
-    // null byte for pathname addresses is already there because we zeroed the
-    // struct
+    // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
+    // both point to valid memory.
+    // NOTE: We zeroed the memory above, so the path is already null
+    // terminated.
+    unsafe {
+        ptr::copy_nonoverlapping(bytes.as_ptr(), addr.sun_path.as_mut_ptr().cast(), bytes.len())
+    };
 
     let mut len = sun_path_offset(&addr) + bytes.len();
     match bytes.get(0) {
