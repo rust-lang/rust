@@ -270,6 +270,7 @@ pub mod known {
         global_allocator,
         test,
         test_case,
+        recursion_limit,
         // Safe intrinsics
         abort,
         add_with_overflow,

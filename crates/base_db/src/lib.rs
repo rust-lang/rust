@@ -69,21 +69,6 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
-
-    #[salsa::transparent]
-    fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
-}
-
-pub struct CrateLimits {
-    /// The maximum depth for potentially infinitely-recursive compile-time operations like macro expansion or auto-dereference.
-    pub recursion_limit: u32,
-}
-
-fn crate_limits(_db: &dyn SourceDatabase, _crate_id: CrateId) -> CrateLimits {
-    CrateLimits {
-        // 128 is the default in rustc.
-        recursion_limit: 128,
-    }
 }
 
 fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
