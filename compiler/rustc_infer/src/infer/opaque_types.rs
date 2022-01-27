@@ -86,8 +86,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(a.kind(), ty::Opaque(..)) {
                     return None;
                 }
-                Instantiator { infcx: self, cause: cause.clone(), param_env }
-                    .fold_opaque_ty_new(a, |_, _| b)
+                self.fold_opaque_ty_new(a, cause.clone(), param_env, |_, _| b)
             };
             if let Some(res) = process(a, b) {
                 res
@@ -480,16 +479,12 @@ impl UseKind {
     }
 }
 
-struct Instantiator<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
-    cause: ObligationCause<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-}
-
-impl<'a, 'tcx> Instantiator<'a, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn fold_opaque_ty_new(
-        &mut self,
+        &self,
         ty: Ty<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
         // Check that this is `impl Trait` type is
@@ -527,9 +522,8 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         // }
         // ```
         let opaque_type_key = ty.expect_opaque_type();
-        if let Some(origin) = self.infcx.opaque_type_origin(opaque_type_key.def_id, self.cause.span)
-        {
-            return Some(self.fold_opaque_ty(ty, opaque_type_key, origin, mk_ty));
+        if let Some(origin) = self.opaque_type_origin(opaque_type_key.def_id, cause.span) {
+            return Some(self.fold_opaque_ty(ty, cause, param_env, opaque_type_key, origin, mk_ty));
         }
 
         debug!(?ty, "encountered opaque outside its definition scope",);
@@ -538,34 +532,35 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
 
     #[instrument(skip(self, mk_ty), level = "debug")]
     fn fold_opaque_ty(
-        &mut self,
+        &self,
         ty: Ty<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         origin: hir::OpaqueTyOrigin,
         mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
     ) -> InferResult<'tcx, ()> {
-        let infcx = self.infcx;
-        let tcx = infcx.tcx;
+        let tcx = self.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
-        let ty_var = mk_ty(infcx, self.cause.span);
+        let ty_var = mk_ty(self, cause.span);
 
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        let span = self.cause.span;
+        let span = cause.span;
 
         let mut obligations = vec![];
-        let prev = self.infcx.inner.borrow_mut().opaque_types().register(
+        let prev = self.inner.borrow_mut().opaque_types().register(
             OpaqueTypeKey { def_id, substs },
             ty,
             OpaqueHiddenType { ty: ty_var, span },
             origin,
         );
         if let Some(prev) = prev {
-            obligations = self.infcx.at(&self.cause, self.param_env).eq(prev, ty_var)?.obligations;
+            obligations = self.at(&cause, param_env).eq(prev, ty_var)?.obligations;
         }
 
         debug!("generated new type inference var {:?}", ty_var.kind());
@@ -581,10 +576,10 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
-                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => infcx.infer_projection(
-                        self.param_env,
+                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => self.infer_projection(
+                        param_env,
                         projection_ty,
-                        self.cause.clone(),
+                        cause.clone(),
                         0,
                         &mut obligations,
                     ),
@@ -608,11 +603,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             }
             // Require that the predicate holds for the concrete type.
             debug!(?predicate);
-            obligations.push(traits::Obligation::new(
-                self.cause.clone(),
-                self.param_env,
-                predicate,
-            ));
+            obligations.push(traits::Obligation::new(cause.clone(), param_env, predicate));
         }
         Ok(InferOk { value: (), obligations })
     }
