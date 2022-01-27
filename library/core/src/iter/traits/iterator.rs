@@ -515,8 +515,44 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
+    /// If both iterators have roughly equivalent syntax, it may me more readable to use [`zip`]:
+    ///
+    /// ```
+    /// use std::iter::zip;
+    ///
+    /// let a = [1, 2, 3];
+    /// let b = [2, 3, 4];
+    ///
+    /// let mut zipped = zip(
+    ///     a.into_iter().map(|x| x * 2).skip(1),
+    ///     b.into_iter().map(|x| x * 2).skip(1),
+    /// );
+    ///
+    /// assert_eq!(zipped.next(), Some((4, 6)));
+    /// assert_eq!(zipped.next(), Some((6, 8)));
+    /// assert_eq!(zipped.next(), None);
+    /// ```
+    ///
+    /// compared to:
+    ///
+    /// ```
+    /// # let a = [1, 2, 3];
+    /// # let b = [2, 3, 4];
+    /// #
+    /// let mut zipped = a
+    ///     .into_iter()
+    ///     .map(|x| x * 2)
+    ///     .skip(1)
+    ///     .zip(b.into_iter().map(|x| x * 2).skip(1));
+    /// #
+    /// # assert_eq!(zipped.next(), Some((4, 6)));
+    /// # assert_eq!(zipped.next(), Some((6, 8)));
+    /// # assert_eq!(zipped.next(), None);
+    /// ```
+    ///
     /// [`enumerate`]: Iterator::enumerate
     /// [`next`]: Iterator::next
+    /// [`zip`]: crate::iter::zip
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter>
