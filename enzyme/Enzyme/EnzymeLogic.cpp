@@ -97,6 +97,8 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 cl::opt<bool> EnzymeJuliaAddrLoad(
     "enzyme-julia-addr-load", cl::init(false), cl::Hidden,
     cl::desc("Mark all loads resulting in an addr(13)* to be legal to redo"));
+
+void (*CustomErrorHandler)(const char *) = nullptr;
 }
 
 struct CacheAnalysis {
@@ -1702,6 +1704,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   if (todiff->empty()) {
+    if (todiff->empty() && CustomErrorHandler) {
+      std::string s =
+          ("No augmented forward pass found for " + todiff->getName()).str();
+      CustomErrorHandler(s.c_str());
+    }
     llvm::errs() << "mod: " << *todiff->getParent() << "\n";
     llvm::errs() << *todiff << "\n";
     assert(0 && "attempting to differentiate function without definition");
@@ -3195,6 +3202,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                 "return or non-constant");
   }
 
+  if (key.todiff->empty() && CustomErrorHandler) {
+    std::string s = ("No derivative found for " + key.todiff->getName()).str();
+    CustomErrorHandler(s.c_str());
+  }
   assert(!key.todiff->empty());
 
   ReturnType retVal =
@@ -3921,6 +3932,11 @@ Function *EnzymeLogic::CreateForwardDiff(
     EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
                 todiff, &todiff->getEntryBlock(),
                 "Cannot use provided custom derivative pass");
+  }
+  if (todiff->empty() && CustomErrorHandler) {
+    std::string s =
+        ("No forward derivative found for " + todiff->getName()).str();
+    CustomErrorHandler(s.c_str());
   }
   if (todiff->empty())
     llvm::errs() << *todiff << "\n";
