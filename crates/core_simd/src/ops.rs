@@ -1,4 +1,3 @@
-use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
@@ -32,232 +31,211 @@ where
     }
 }
 
-/// Checks if the right-hand side argument of a left- or right-shift would cause overflow.
-fn invalid_shift_rhs<T>(rhs: T) -> bool
-where
-    T: Default + PartialOrd + core::convert::TryFrom<usize>,
-    <T as core::convert::TryFrom<usize>>::Error: core::fmt::Debug,
-{
-    let bits_in_type = T::try_from(8 * core::mem::size_of::<T>()).unwrap();
-    rhs < T::default() || rhs >= bits_in_type
+macro_rules! unsafe_base {
+    ($lhs:ident, $rhs:ident, {$simd_call:ident}, $($_:tt)*) => {
+        unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
+    };
 }
 
-/// Automatically implements operators over references in addition to the provided operator.
-macro_rules! impl_ref_ops {
-    // binary op
-    {
-        impl<const $lanes:ident: usize> core::ops::$trait:ident<$rhs:ty> for $type:ty
-        where
-            LaneCount<$lanes2:ident>: SupportedLaneCount,
+/// SAFETY: This macro should not be used for anything except Shl or Shr, and passed the appropriate shift intrinsic.
+/// It handles performing a bitand in addition to calling the shift operator, so that the result
+/// is well-defined: LLVM can return a poison value if you shl, lshr, or ashr if rhs >= <Int>::BITS
+/// At worst, this will maybe add another instruction and cycle,
+/// at best, it may open up more optimization opportunities,
+/// or simply be elided entirely, especially for SIMD ISAs which default to this.
+///
+// FIXME: Consider implementing this in cg_llvm instead?
+// cg_clif defaults to this, and scalar MIR shifts also default to wrapping
+macro_rules! wrap_bitshift {
+    ($lhs:ident, $rhs:ident, {$simd_call:ident}, $int:ident) => {
+        unsafe {
+            $crate::simd::intrinsics::$simd_call(
+                $lhs,
+                $rhs.bitand(Simd::splat(<$int>::BITS as $int - 1)),
+            )
+        }
+    };
+}
+
+// Division by zero is poison, according to LLVM.
+// So is dividing the MIN value of a signed integer by -1,
+// since that would return MAX + 1.
+// FIXME: Rust allows <SInt>::MIN / -1,
+// so we should probably figure out how to make that safe.
+macro_rules! int_divrem_guard {
+    (   $lhs:ident,
+        $rhs:ident,
+        {   const PANIC_ZERO: &'static str = $zero:literal;
+            const PANIC_OVERFLOW: &'static str = $overflow:literal;
+            $simd_call:ident
+        },
+        $int:ident ) => {
+        if $rhs.lanes_eq(Simd::splat(0)).any() {
+            panic!($zero);
+        } else if <$int>::MIN != 0
+            && ($lhs.lanes_eq(Simd::splat(<$int>::MIN))
+                // type inference can break here, so cut an SInt to size
+                & $rhs.lanes_eq(Simd::splat(-1i64 as _))).any()
         {
-            type Output = $output:ty;
-
-            $(#[$attrs:meta])*
-            fn $fn:ident($self_tok:ident, $rhs_arg:ident: $rhs_arg_ty:ty) -> Self::Output $body:tt
-        }
-    } => {
-        impl<const $lanes: usize> core::ops::$trait<$rhs> for $type
-        where
-            LaneCount<$lanes2>: SupportedLaneCount,
-        {
-            type Output = $output;
-
-            $(#[$attrs])*
-            fn $fn($self_tok, $rhs_arg: $rhs_arg_ty) -> Self::Output $body
+            panic!($overflow);
+        } else {
+            unsafe { $crate::simd::intrinsics::$simd_call($lhs, $rhs) }
         }
     };
 }
 
-/// Automatically implements operators over vectors and scalars for a particular vector.
-macro_rules! impl_op {
-    { impl Add for $scalar:ty } => {
-        impl_op! { @binary $scalar, Add::add, simd_add }
-    };
-    { impl Sub for $scalar:ty } => {
-        impl_op! { @binary $scalar, Sub::sub, simd_sub }
-    };
-    { impl Mul for $scalar:ty } => {
-        impl_op! { @binary $scalar, Mul::mul, simd_mul }
-    };
-    { impl Div for $scalar:ty } => {
-        impl_op! { @binary $scalar, Div::div, simd_div }
-    };
-    { impl Rem for $scalar:ty } => {
-        impl_op! { @binary $scalar, Rem::rem, simd_rem }
-    };
-    { impl Shl for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shl::shl, simd_shl }
-    };
-    { impl Shr for $scalar:ty } => {
-        impl_op! { @binary $scalar, Shr::shr, simd_shr }
-    };
-    { impl BitAnd for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitAnd::bitand, simd_and }
-    };
-    { impl BitOr for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitOr::bitor, simd_or }
-    };
-    { impl BitXor for $scalar:ty } => {
-        impl_op! { @binary $scalar, BitXor::bitxor, simd_xor }
-    };
+macro_rules! for_base_types {
+    (   T = ($($scalar:ident),*);
+        type Lhs = Simd<T, N>;
+        type Rhs = Simd<T, N>;
+        type Output = $out:ty;
 
-    // generic binary op with assignment when output is `Self`
-    { @binary $scalar:ty, $trait:ident :: $trait_fn:ident, $intrinsic:ident } => {
-        impl_ref_ops! {
-            impl<const LANES: usize> core::ops::$trait<Self> for Simd<$scalar, LANES>
-            where
-                LaneCount<LANES>: SupportedLaneCount,
-            {
-                type Output = Self;
+        impl $op:ident::$call:ident {
+            $macro_impl:ident $inner:tt
+        }) => {
+            $(
+                impl<const N: usize> $op<Self> for Simd<$scalar, N>
+                where
+                    $scalar: SimdElement,
+                    LaneCount<N>: SupportedLaneCount,
+                {
+                    type Output = $out;
 
-                #[inline]
-                fn $trait_fn(self, rhs: Self) -> Self::Output {
-                    unsafe {
-                        intrinsics::$intrinsic(self, rhs)
+                    #[inline]
+                    #[must_use = "operator returns a new vector without mutating the inputs"]
+                    fn $call(self, rhs: Self) -> Self::Output {
+                        $macro_impl!(self, rhs, $inner, $scalar)
                     }
-                }
-            }
+                })*
+    }
+}
+
+// A "TokenTree muncher": takes a set of scalar types `T = {};`
+// type parameters for the ops it implements, `Op::fn` names,
+// and a macro that expands into an expr, substituting in an intrinsic.
+// It passes that to for_base_types, which expands an impl for the types,
+// using the expanded expr in the function, and recurses with itself.
+//
+// tl;dr impls a set of ops::{Traits} for a set of types
+macro_rules! for_base_ops {
+    (
+        T = $types:tt;
+        type Lhs = Simd<T, N>;
+        type Rhs = Simd<T, N>;
+        type Output = $out:ident;
+        impl $op:ident::$call:ident
+            $inner:tt
+        $($rest:tt)*
+    ) => {
+        for_base_types! {
+            T = $types;
+            type Lhs = Simd<T, N>;
+            type Rhs = Simd<T, N>;
+            type Output = $out;
+            impl $op::$call
+                $inner
+        }
+        for_base_ops! {
+            T = $types;
+            type Lhs = Simd<T, N>;
+            type Rhs = Simd<T, N>;
+            type Output = $out;
+            $($rest)*
         }
     };
+    ($($done:tt)*) => {
+        // Done.
+    }
 }
 
-/// Implements floating-point operators for the provided types.
-macro_rules! impl_float_ops {
-    { $($scalar:ty),* } => {
-        $(
-            impl_op! { impl Add for $scalar }
-            impl_op! { impl Sub for $scalar }
-            impl_op! { impl Mul for $scalar }
-            impl_op! { impl Div for $scalar }
-            impl_op! { impl Rem for $scalar }
-        )*
-    };
+// Integers can always accept add, mul, sub, bitand, bitor, and bitxor.
+// For all of these operations, simd_* intrinsics apply wrapping logic.
+for_base_ops! {
+    T = (i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
+    type Lhs = Simd<T, N>;
+    type Rhs = Simd<T, N>;
+    type Output = Self;
+
+    impl Add::add {
+        unsafe_base { simd_add }
+    }
+
+    impl Mul::mul {
+        unsafe_base { simd_mul }
+    }
+
+    impl Sub::sub {
+        unsafe_base { simd_sub }
+    }
+
+    impl BitAnd::bitand {
+        unsafe_base { simd_and }
+    }
+
+    impl BitOr::bitor {
+        unsafe_base { simd_or }
+    }
+
+    impl BitXor::bitxor {
+        unsafe_base { simd_xor }
+    }
+
+    impl Div::div {
+        int_divrem_guard {
+            const PANIC_ZERO: &'static str = "attempt to divide by zero";
+            const PANIC_OVERFLOW: &'static str = "attempt to divide with overflow";
+            simd_div
+        }
+    }
+
+    impl Rem::rem {
+        int_divrem_guard {
+            const PANIC_ZERO: &'static str = "attempt to calculate the remainder with a divisor of zero";
+            const PANIC_OVERFLOW: &'static str = "attempt to calculate the remainder with overflow";
+            simd_rem
+        }
+    }
+
+    // The only question is how to handle shifts >= <Int>::BITS?
+    // Our current solution uses wrapping logic.
+    impl Shl::shl {
+        wrap_bitshift { simd_shl }
+    }
+
+    impl Shr::shr {
+        wrap_bitshift {
+            // This automatically monomorphizes to lshr or ashr, depending,
+            // so it's fine to use it for both UInts and SInts.
+            simd_shr
+        }
+    }
 }
 
-/// Implements unsigned integer operators for the provided types.
-macro_rules! impl_unsigned_int_ops {
-    { $($scalar:ty),* } => {
-        $(
-            impl_op! { impl Add for $scalar }
-            impl_op! { impl Sub for $scalar }
-            impl_op! { impl Mul for $scalar }
-            impl_op! { impl BitAnd for $scalar }
-            impl_op! { impl BitOr  for $scalar }
-            impl_op! { impl BitXor for $scalar }
+// We don't need any special precautions here:
+// Floats always accept arithmetic ops, but may become NaN.
+for_base_ops! {
+    T = (f32, f64);
+    type Lhs = Simd<T, N>;
+    type Rhs = Simd<T, N>;
+    type Output = Self;
 
-            // Integers panic on divide by 0
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Div<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
+    impl Add::add {
+        unsafe_base { simd_add }
+    }
 
-                    #[inline]
-                    fn div(self, rhs: Self) -> Self::Output {
-                        if rhs.as_array()
-                            .iter()
-                            .any(|x| *x == 0)
-                        {
-                            panic!("attempt to divide by zero");
-                        }
+    impl Mul::mul {
+        unsafe_base { simd_mul }
+    }
 
-                        // Guards for div(MIN, -1),
-                        // this check only applies to signed ints
-                        if <$scalar>::MIN != 0 && self.as_array().iter()
-                                .zip(rhs.as_array().iter())
-                                .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
-                            panic!("attempt to divide with overflow");
-                        }
-                        unsafe { intrinsics::simd_div(self, rhs) }
-                    }
-                }
-            }
+    impl Sub::sub {
+        unsafe_base { simd_sub }
+    }
 
-            // remainder panics on zero divisor
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Rem<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
+    impl Div::div {
+        unsafe_base { simd_div }
+    }
 
-                    #[inline]
-                    fn rem(self, rhs: Self) -> Self::Output {
-                        if rhs.as_array()
-                            .iter()
-                            .any(|x| *x == 0)
-                        {
-                            panic!("attempt to calculate the remainder with a divisor of zero");
-                        }
-
-                        // Guards for rem(MIN, -1)
-                        // this branch applies the check only to signed ints
-                        if <$scalar>::MIN != 0 && self.as_array().iter()
-                                .zip(rhs.as_array().iter())
-                                .any(|(x,y)| *x == <$scalar>::MIN && *y == -1 as _) {
-                            panic!("attempt to calculate the remainder with overflow");
-                        }
-                        unsafe { intrinsics::simd_rem(self, rhs) }
-                    }
-                }
-            }
-
-            // shifts panic on overflow
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shl<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shl(self, rhs: Self) -> Self::Output {
-                        // TODO there is probably a better way of doing this
-                        if rhs.as_array()
-                            .iter()
-                            .copied()
-                            .any(invalid_shift_rhs)
-                        {
-                            panic!("attempt to shift left with overflow");
-                        }
-                        unsafe { intrinsics::simd_shl(self, rhs) }
-                    }
-                }
-            }
-
-            impl_ref_ops! {
-                impl<const LANES: usize> core::ops::Shr<Self> for Simd<$scalar, LANES>
-                where
-                    LaneCount<LANES>: SupportedLaneCount,
-                {
-                    type Output = Self;
-
-                    #[inline]
-                    fn shr(self, rhs: Self) -> Self::Output {
-                        // TODO there is probably a better way of doing this
-                        if rhs.as_array()
-                            .iter()
-                            .copied()
-                            .any(invalid_shift_rhs)
-                        {
-                            panic!("attempt to shift with overflow");
-                        }
-                        unsafe { intrinsics::simd_shr(self, rhs) }
-                    }
-                }
-            }
-        )*
-    };
+    impl Rem::rem {
+        unsafe_base { simd_rem }
+    }
 }
-
-/// Implements unsigned integer operators for the provided types.
-macro_rules! impl_signed_int_ops {
-    { $($scalar:ty),* } => {
-        impl_unsigned_int_ops! { $($scalar),* }
-    };
-}
-
-impl_unsigned_int_ops! { u8, u16, u32, u64, usize }
-impl_signed_int_ops! { i8, i16, i32, i64, isize }
-impl_float_ops! { f32, f64 }
