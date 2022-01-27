@@ -54,12 +54,6 @@ pub struct Expander {
     recursion_limit: usize,
 }
 
-#[cfg(test)]
-static EXPANSION_RECURSION_LIMIT: Limit = Limit::new(32);
-
-#[cfg(not(test))]
-static EXPANSION_RECURSION_LIMIT: Limit = Limit::new(128);
-
 impl CfgExpander {
     pub(crate) fn new(
         db: &dyn DefDatabase,
@@ -101,7 +95,7 @@ impl Expander {
         db: &dyn DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
-        if EXPANSION_RECURSION_LIMIT.check(self.recursion_limit + 1).is_err() {
+        if self.recursion_limit(db).check(self.recursion_limit + 1).is_err() {
             cov_mark::hit!(your_stack_belongs_to_me);
             return Ok(ExpandResult::str_err(
                 "reached recursion limit during macro expansion".into(),
@@ -221,6 +215,17 @@ impl Expander {
     fn ast_id<N: AstNode>(&self, item: &N) -> AstId<N> {
         let file_local_id = self.ast_id_map.ast_id(item);
         AstId::new(self.current_file_id, file_local_id)
+    }
+
+    fn recursion_limit(&self, db: &dyn DefDatabase) -> Limit {
+        let limit = db.crate_limits(self.cfg_expander.krate).recursion_limit as _;
+
+        #[cfg(not(test))]
+        return Limit::new(limit);
+
+        // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
+        #[cfg(test)]
+        return Limit::new(std::cmp::min(32, limit));
     }
 }
 
