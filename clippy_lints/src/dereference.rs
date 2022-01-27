@@ -183,6 +183,10 @@ enum State {
         deref_span: Span,
         deref_hir_id: HirId,
     },
+    Reborrow {
+        deref_span: Span,
+        deref_hir_id: HirId,
+    },
     Borrow,
 }
 
@@ -395,10 +399,38 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                 ));
             },
             (Some((State::Borrow, data)), RefOp::Deref) => {
+                if typeck.expr_ty(sub_expr).is_ref() {
+                    self.state = Some((
+                        State::Reborrow {
+                            deref_span: expr.span,
+                            deref_hir_id: expr.hir_id,
+                        },
+                        data,
+                    ));
+                } else {
+                    self.state = Some((
+                        State::ExplicitDeref {
+                            deref_span: expr.span,
+                            deref_hir_id: expr.hir_id,
+                        },
+                        data,
+                    ));
+                }
+            },
+            (
+                Some((
+                    State::Reborrow {
+                        deref_span,
+                        deref_hir_id,
+                    },
+                    data,
+                )),
+                RefOp::Deref,
+            ) => {
                 self.state = Some((
                     State::ExplicitDeref {
-                        deref_span: expr.span,
-                        deref_hir_id: expr.hir_id,
+                        deref_span,
+                        deref_hir_id,
                     },
                     data,
                 ));
@@ -959,7 +991,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 },
             );
         },
-        State::Borrow => (),
+        State::Borrow | State::Reborrow { .. } => (),
     }
 }
 

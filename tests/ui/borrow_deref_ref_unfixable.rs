@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables, clippy::explicit_auto_deref)]
+#![allow(dead_code, unused_variables)]
 
 fn main() {}
 

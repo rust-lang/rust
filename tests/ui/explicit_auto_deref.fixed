@@ -8,7 +8,8 @@
     clippy::needless_borrow,
     clippy::ptr_arg,
     clippy::redundant_field_names,
-    clippy::too_many_arguments
+    clippy::too_many_arguments,
+    clippy::borrow_deref_ref
 )]
 
 trait CallableStr {
@@ -48,6 +49,7 @@ impl<U: ?Sized> CallableT<U> for i32 {
 }
 
 fn f_str(_: &str) {}
+fn f_string(_: &String) {}
 fn f_t<T>(_: T) {}
 fn f_ref_t<T: ?Sized>(_: &T) {}
 
@@ -158,4 +160,8 @@ fn main() {
     }
     let _ = E2::S1(&*s); // Don't lint. Inferred type would change.
     let _ = E2::S2 { s: &*s }; // Don't lint. Inferred type would change.
+
+    let ref_s = &s;
+    let _: &String = &*ref_s; // Don't lint reborrow.
+    f_string(&*ref_s); // Don't lint reborrow.
 }
