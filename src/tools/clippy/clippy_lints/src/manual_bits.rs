@@ -72,6 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn get_one_size_of_ty<'tcx>(

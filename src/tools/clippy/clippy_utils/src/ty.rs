@@ -5,19 +5,22 @@
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{TyKind, Unsafety};
+use rustc_hir::{Expr, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, AdtDef, IntTy, Predicate, Ty, TyCtxt, TypeFoldable, UintTy};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
+use rustc_middle::ty::{
+    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy,
+};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
-use crate::{match_def_path, must_use_attr};
+use crate::{expr_path_res, match_def_path, must_use_attr};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -409,4 +412,106 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(P
         })
     })
     .flatten()
+}
+
+/// A signature for a function like type.
+#[derive(Clone, Copy)]
+pub enum ExprFnSig<'tcx> {
+    Sig(Binder<'tcx, FnSig<'tcx>>),
+    Closure(Binder<'tcx, FnSig<'tcx>>),
+    Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>),
+}
+impl<'tcx> ExprFnSig<'tcx> {
+    /// Gets the argument type at the given offset.
+    pub fn input(self, i: usize) -> Binder<'tcx, Ty<'tcx>> {
+        match self {
+            Self::Sig(sig) => sig.input(i),
+            Self::Closure(sig) => sig.input(0).map_bound(|ty| ty.tuple_element_ty(i).unwrap()),
+            Self::Trait(inputs, _) => inputs.map_bound(|ty| ty.tuple_element_ty(i).unwrap()),
+        }
+    }
+
+    /// Gets the result type, if one could be found. Note that the result type of a trait may not be
+    /// specified.
+    pub fn output(self) -> Option<Binder<'tcx, Ty<'tcx>>> {
+        match self {
+            Self::Sig(sig) | Self::Closure(sig) => Some(sig.output()),
+            Self::Trait(_, output) => output,
+        }
+    }
+}
+
+/// If the expression is function like, get the signature for it.
+pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
+    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = expr_path_res(cx, expr) {
+        Some(ExprFnSig::Sig(cx.tcx.fn_sig(id)))
+    } else {
+        let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
+        match *ty.kind() {
+            ty::Closure(_, subs) => Some(ExprFnSig::Closure(subs.as_closure().sig())),
+            ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).subst(cx.tcx, subs))),
+            ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
+            ty::Dynamic(bounds, _) => {
+                let lang_items = cx.tcx.lang_items();
+                match bounds.principal() {
+                    Some(bound)
+                        if Some(bound.def_id()) == lang_items.fn_trait()
+                            || Some(bound.def_id()) == lang_items.fn_once_trait()
+                            || Some(bound.def_id()) == lang_items.fn_mut_trait() =>
+                    {
+                        let output = bounds
+                            .projection_bounds()
+                            .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
+                            .map(|p| p.map_bound(|p| p.term.ty().expect("return type was a const")));
+                        Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
+                    },
+                    _ => None,
+                }
+            },
+            ty::Param(_) | ty::Projection(..) => {
+                let mut inputs = None;
+                let mut output = None;
+                let lang_items = cx.tcx.lang_items();
+
+                for (pred, _) in all_predicates_of(cx.tcx, cx.typeck_results().hir_owner.to_def_id()) {
+                    let mut is_input = false;
+                    if let Some(ty) = pred
+                        .kind()
+                        .map_bound(|pred| match pred {
+                            PredicateKind::Trait(p)
+                                if (lang_items.fn_trait() == Some(p.def_id())
+                                    || lang_items.fn_mut_trait() == Some(p.def_id())
+                                    || lang_items.fn_once_trait() == Some(p.def_id()))
+                                    && p.self_ty() == ty =>
+                            {
+                                is_input = true;
+                                Some(p.trait_ref.substs.type_at(1))
+                            },
+                            PredicateKind::Projection(p)
+                                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
+                                    && p.projection_ty.self_ty() == ty =>
+                            {
+                                is_input = false;
+                                p.term.ty()
+                            },
+                            _ => None,
+                        })
+                        .transpose()
+                    {
+                        if is_input && inputs.is_none() {
+                            inputs = Some(ty);
+                        } else if !is_input && output.is_none() {
+                            output = Some(ty);
+                        } else {
+                            // Multiple different fn trait impls. Is this even allowed?
+                            return None;
+                        }
+                    }
+                }
+
+                inputs.map(|ty| ExprFnSig::Trait(ty, output))
+            },
+            _ => None,
+        }
+    }
 }

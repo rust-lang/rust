@@ -5,13 +5,10 @@
     clippy::no_effect,
     clippy::redundant_closure_call,
     clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn
-)]
-#![warn(
-    clippy::redundant_closure,
-    clippy::redundant_closure_for_method_calls,
+    clippy::option_map_unit_fn,
     clippy::needless_borrow
 )]
+#![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
 
 use std::path::{Path, PathBuf};
 
@@ -34,7 +31,7 @@ fn main() {
     Some(1).map(closure_mac!()); // don't lint closure in macro expansion
     let _: Option<Vec<u8>> = true.then(std::vec::Vec::new); // special case vec!
     let d = Some(1u8).map(|a| foo(foo2(a))); //is adjusted?
-    all(&[1, 2, 3], &2, below); //is adjusted
+    all(&[1, 2, 3], &&2, below); //is adjusted
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
