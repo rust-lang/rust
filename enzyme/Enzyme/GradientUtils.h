@@ -2252,5 +2252,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode Mode,
                        unsigned dstalign, unsigned srcalign, unsigned offset,
                        bool dstConstant, Value *shadow_dst, bool srcConstant,
                        Value *shadow_src, Value *length, Value *isVolatile,
-                       llvm::CallInst *MTI, bool allowForward = true);
+                       llvm::CallInst *MTI, bool allowForward = true,
+                       bool shadowsLookedUp = false);
 #endif

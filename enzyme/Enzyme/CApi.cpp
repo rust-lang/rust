@@ -367,7 +367,7 @@ void EnzymeGradientUtilsSubTransferHelper(
     uint64_t intrinsic, uint64_t dstAlign, uint64_t srcAlign, uint64_t offset,
     uint8_t dstConstant, LLVMValueRef shadow_dst, uint8_t srcConstant,
     LLVMValueRef shadow_src, LLVMValueRef length, LLVMValueRef isVolatile,
-    LLVMValueRef MTI, uint8_t allowForward) {
+    LLVMValueRef MTI, uint8_t allowForward, uint8_t shadowsLookedUp) {
   auto orig = unwrap(MTI);
   assert(orig);
   SubTransferHelper(gutils, (DerivativeMode)mode, unwrap(secretty),
@@ -375,7 +375,7 @@ void EnzymeGradientUtilsSubTransferHelper(
                     (unsigned)srcAlign, (unsigned)offset, (bool)dstConstant,
                     unwrap(shadow_dst), (bool)srcConstant, unwrap(shadow_src),
                     unwrap(length), unwrap(isVolatile), cast<CallInst>(orig),
-                    (bool)allowForward);
+                    (bool)allowForward, (bool)shadowsLookedUp);
 }
 
 LLVMValueRef EnzymeCreateForwardDiff(

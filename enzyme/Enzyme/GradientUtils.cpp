@@ -3541,8 +3541,14 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     } else if (BuilderM.GetInsertBlock() != inversionAllocs) {
       // Something in the entry (or anything that dominates all returns, doesn't
       // need caching)
-
       BasicBlock *orig = isOriginal(inst->getParent());
+      if (!orig) {
+        llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+        llvm::errs() << "newFunc: " << *newFunc << "\n";
+        llvm::errs() << "insertBlock: " << *BuilderM.GetInsertBlock() << "\n";
+        llvm::errs() << "instP: " << *inst->getParent() << "\n";
+        llvm::errs() << "inst: " << *inst << "\n";
+      }
       assert(orig);
 
       // TODO upgrade this to be all returns that this could enter from
@@ -5202,7 +5208,8 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
                        unsigned dstalign, unsigned srcalign, unsigned offset,
                        bool dstConstant, Value *shadow_dst, bool srcConstant,
                        Value *shadow_src, Value *length, Value *isVolatile,
-                       llvm::CallInst *MTI, bool allowForward) {
+                       llvm::CallInst *MTI, bool allowForward,
+                       bool shadowsLookedUp) {
   // TODO offset
   if (secretty) {
     // no change to forward pass if represents floats
@@ -5215,7 +5222,8 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
       // (which thus == src and may be illegal)
       if (srcConstant) {
         SmallVector<Value *, 4> args;
-        args.push_back(gutils->lookupM(shadow_dst, Builder2));
+        args.push_back(shadowsLookedUp ? shadow_dst
+                                       : gutils->lookupM(shadow_dst, Builder2));
         if (args[0]->getType()->isIntegerTy())
           args[0] = Builder2.CreateIntToPtr(
               args[0], Type::getInt8PtrTy(MTI->getContext()));
@@ -5244,7 +5252,8 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
 
       } else {
         SmallVector<Value *, 4> args;
-        auto dsto = gutils->lookupM(shadow_dst, Builder2);
+        auto dsto = shadowsLookedUp ? shadow_dst
+                                    : gutils->lookupM(shadow_dst, Builder2);
         if (dsto->getType()->isIntegerTy())
           dsto = Builder2.CreateIntToPtr(
               dsto, Type::getInt8PtrTy(dsto->getContext()));
@@ -5261,7 +5270,8 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
 #endif
         }
         args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
-        auto srco = gutils->lookupM(shadow_src, Builder2);
+        auto srco = shadowsLookedUp ? shadow_src
+                                    : gutils->lookupM(shadow_src, Builder2);
         if (srco->getType()->isIntegerTy())
           srco = Builder2.CreateIntToPtr(
               srco, Type::getInt8PtrTy(srco->getContext()));
@@ -5303,6 +5313,7 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
     // pass with the copy
     if (allowForward && (mode == DerivativeMode::ReverseModePrimal ||
                          mode == DerivativeMode::ReverseModeCombined)) {
+      assert(!shadowsLookedUp);
 
       // It is questionable how the following case would even occur, but if
       // the dst is constant, we shouldn't do anything extra
