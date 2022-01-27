@@ -263,7 +263,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         let index = self.values().push(TypeVariableData { origin });
         assert_eq!(eq_key.vid.as_u32(), index as u32);
 
-        debug!("new_var(index={:?}, universe={:?}, origin={:?}", eq_key.vid, universe, origin,);
+        debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key.vid, universe, origin);
 
         eq_key.vid
     }
