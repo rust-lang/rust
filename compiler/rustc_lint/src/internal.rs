@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                     lint.build(&format!("usage of qualified `ty::{}`", t))
                                         .span_suggestion(
                                             path.span,
-                                            "try using it unqualified",
+                                            "try importing it and using it unqualified",
                                             t,
                                             // The import probably needs to be changed
                                             Applicability::MaybeIncorrect,
