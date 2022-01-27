@@ -938,6 +938,12 @@ pub struct GrowableBitSet<T: Idx> {
     bit_set: BitSet<T>,
 }
 
+impl<T: Idx> Default for GrowableBitSet<T> {
+    fn default() -> Self {
+        GrowableBitSet::new_empty()
+    }
+}
+
 impl<T: Idx> GrowableBitSet<T> {
     /// Ensure that the set can hold at least `min_domain_size` elements.
     pub fn ensure(&mut self, min_domain_size: usize) {
