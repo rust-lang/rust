@@ -1654,7 +1654,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
-                OpaqueType(..) |
+                    OpaqueType(..) |
                     TypeWellFormedFromEnv(..) => continue,
                 };
                 if predicate.is_global() {
