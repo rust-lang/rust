@@ -1036,20 +1036,18 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 }
             };
 
-            let what_rustc_thinks =
+            let mut what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()));
-            if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
-                if impl_.of_trait.is_some() {
-                    // Trait impl items always inherit the impl's visibility --
-                    // we don't want to show `pub`.
-                    Item { visibility: Inherited, ..what_rustc_thinks }
-                } else {
-                    what_rustc_thinks
-                }
-            } else {
-                panic!("found impl item with non-impl parent {:?}", parent_item);
+
+            let impl_ref = cx.tcx.parent(local_did).and_then(|did| cx.tcx.impl_trait_ref(did));
+
+            // Trait impl items always inherit the impl's visibility --
+            // we don't want to show `pub`.
+            if impl_ref.is_some() {
+                what_rustc_thinks.visibility = Inherited;
             }
+
+            what_rustc_thinks
         })
     }
 }
@@ -1204,16 +1202,18 @@ impl Clean<Item> for ty::AssocItem {
             }
         };
 
-        let mut output = Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
+        let mut what_rustc_thinks =
+            Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
 
-        // HACK: Override visibility for items in a trait implementation to match HIR
         let impl_ref = tcx.parent(self.def_id).and_then(|did| tcx.impl_trait_ref(did));
 
+        // Trait impl items always inherit the impl's visibility --
+        // we don't want to show `pub`.
         if impl_ref.is_some() {
-            output.visibility = Visibility::Inherited;
+            what_rustc_thinks.visibility = Visibility::Inherited;
         }
 
-        output
+        what_rustc_thinks
     }
 }
 
