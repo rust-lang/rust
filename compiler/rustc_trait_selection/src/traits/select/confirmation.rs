@@ -553,23 +553,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
-        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
-            normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                trait_ref,
-            )
-        });
-
-        obligations.extend(self.confirm_poly_trait_refs(
-            obligation.cause.clone(),
-            obligation.param_env,
-            obligation.predicate.to_poly_trait_ref(),
-            trait_ref,
-        )?);
-        Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested: obligations })
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        Ok(ImplSourceFnPointerData { fn_ty: self_ty, nested })
     }
 
     fn confirm_trait_alias_candidate(
@@ -616,26 +601,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_generator_candidate");
 
         let trait_ref = self.generator_trait_ref_unnormalized(obligation, substs);
-        let Normalized { value: trait_ref, mut obligations } = ensure_sufficient_stack(|| {
-            normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                trait_ref,
-            )
-        });
 
-        debug!(?trait_ref, ?obligations, "generator candidate obligations");
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        debug!(?trait_ref, ?nested, "generator candidate obligations");
 
-        obligations.extend(self.confirm_poly_trait_refs(
-            obligation.cause.clone(),
-            obligation.param_env,
-            obligation.predicate.to_poly_trait_ref(),
-            trait_ref,
-        )?);
-
-        Ok(ImplSourceGeneratorData { generator_def_id, substs, nested: obligations })
+        Ok(ImplSourceGeneratorData { generator_def_id, substs, nested })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -657,44 +627,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => bug!("closure candidate for non-closure {:?}", obligation),
         };
 
-        let obligation_predicate = obligation.predicate;
-        let Normalized { value: obligation_predicate, mut obligations } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation_predicate,
-                )
-            });
-
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);
-        let Normalized { value: trait_ref, obligations: trait_ref_obligations } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    trait_ref,
-                )
-            });
+        let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
-        debug!(?closure_def_id, ?trait_ref, ?obligations, "confirm closure candidate obligations");
-
-        obligations.extend(trait_ref_obligations);
-        obligations.extend(self.confirm_poly_trait_refs(
-            obligation.cause.clone(),
-            obligation.param_env,
-            obligation_predicate.to_poly_trait_ref(),
-            trait_ref,
-        )?);
+        debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 
         // FIXME: Chalk
 
         if !self.tcx().sess.opts.debugging_opts.chalk {
-            obligations.push(Obligation::new(
+            nested.push(Obligation::new(
                 obligation.cause.clone(),
                 obligation.param_env,
                 ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind))
@@ -702,7 +643,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ));
         }
 
-        Ok(ImplSourceClosureData { closure_def_id, substs, nested: obligations })
+        Ok(ImplSourceClosureData { closure_def_id, substs, nested })
     }
 
     /// In the case of closure types and fn pointers,
@@ -733,15 +674,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self), level = "trace")]
     fn confirm_poly_trait_refs(
         &mut self,
-        obligation_cause: ObligationCause<'tcx>,
-        obligation_param_env: ty::ParamEnv<'tcx>,
-        obligation_trait_ref: ty::PolyTraitRef<'tcx>,
+        obligation: &TraitObligation<'tcx>,
         expected_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
+        // Normalize the obligation and expected trait refs together, because why not
+        let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
+            ensure_sufficient_stack(|| {
+                self.infcx.commit_unconditionally(|_| {
+                    normalize_with_depth(
+                        self,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        (obligation_trait_ref, expected_trait_ref),
+                    )
+                })
+            });
+
         self.infcx
-            .at(&obligation_cause, obligation_param_env)
+            .at(&obligation.cause, obligation.param_env)
             .sup(obligation_trait_ref, expected_trait_ref)
-            .map(|InferOk { obligations, .. }| obligations)
+            .map(|InferOk { mut obligations, .. }| {
+                obligations.extend(nested);
+                obligations
+            })
             .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
     }
 
