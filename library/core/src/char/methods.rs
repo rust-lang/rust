@@ -9,11 +9,11 @@ use super::*;
 
 #[lang = "char"]
 impl char {
-    /// The highest valid code point a `char` can have.
+    /// The highest valid code point a `char` can have, 0x10FFFF.
     ///
-    /// A `char` is a [Unicode Scalar Value], which means that it is a [Code
-    /// Point], but only ones within a certain range. `MAX` is the highest valid
-    /// code point that's a valid [Unicode Scalar Value].
+    /// A [Code Point] is any value between zero and `char::MAX`, inclusive. A
+    /// `char` is a [Unicode Scalar Value], which is a Code Point that is not
+    /// in the range `0xD800..=0xDFFF`.
     ///
     /// [Unicode Scalar Value]: https://www.unicode.org/glossary/#unicode_scalar_value
     /// [Code Point]: https://www.unicode.org/glossary/#code_point
