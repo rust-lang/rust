@@ -1738,11 +1738,10 @@ impl<'a> Parser<'a> {
                         .help("valid widths are 8, 16, 32, 64 and 128")
                         .emit();
                 } else if let Some(fixed) = fix_base_capitalisation(suf) {
-                    let msg = format!("invalid suffix `{}` for number literal", suf);
+                    let msg = "invalid base prefix for number literal";
 
                     self.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
-                        .help("base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase")
+                        .note("base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase")
                         .span_suggestion(
                             span,
                             "try making the prefix lowercase",
