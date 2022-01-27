@@ -94,7 +94,7 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     }
 }
 
-impl<S> Join<S> for [S] 
+impl<'_, S> Join<&'_ str> for [S] 
 where S: crate::string::ToString {
     type Output = String;
     
