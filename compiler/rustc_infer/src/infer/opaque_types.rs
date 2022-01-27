@@ -71,43 +71,6 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    /// Links the opaque type with the given hidden type
-    /// and creates appropriate obligations. For example, given the input:
-    ///
-    ///     opaque = impl Iterator<Item = impl Debug>
-    ///     hidden = std::vec::IntoIter<i32>
-    ///
-    /// this method would register the opaque type `impl Iterator` to have
-    /// the hidden type `std::vec::IntoIter<i32>` and create the type variable
-    /// `?1` but also the obligations:
-    ///
-    ///     std::vec::IntoIter<i32>: Iterator<Item = ?1>
-    ///     ?1: Debug
-    ///
-    /// Moreover, it returns an `OpaqueTypeMap` that would map `?0` to
-    /// info about the `impl Iterator<..>` type and `?1` to info about
-    /// the `impl Debug` type.
-    ///
-    /// # Parameters
-    ///
-    /// - `parent_def_id` -- the `DefId` of the function in which the opaque type
-    ///   is defined
-    /// - `body_id` -- the body-id with which the resulting obligations should
-    ///   be associated
-    /// - `param_env` -- the in-scope parameter environment to be used for
-    ///   obligations
-    /// - `value` -- the value within which we are instantiating opaque types
-    /// - `value_span` -- the span where the value came from, used in error reporting
-    pub fn instantiate_opaque_types(
-        &self,
-        ty: Ty<'tcx>,
-        opaque: Ty<'tcx>,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> Option<InferResult<'tcx, ()>> {
-        Instantiator { infcx: self, cause, param_env }.fold_opaque_ty_new(opaque, |_, _| ty)
-    }
-
     pub fn handle_opaque_type(
         &self,
         a: Ty<'tcx>,
@@ -123,7 +86,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(a.kind(), ty::Opaque(..)) {
                     return None;
                 }
-                self.instantiate_opaque_types(b, a, cause.clone(), param_env)
+                Instantiator { infcx: self, cause: cause.clone(), param_env }
+                    .fold_opaque_ty_new(a, |_, _| b)
             };
             if let Some(res) = process(a, b) {
                 res
@@ -298,36 +262,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// but this is not necessary, because the opaque type we
     /// create will be allowed to reference `T`. So we only generate a
     /// constraint that `'0: 'a`.
-    ///
-    /// # The `free_region_relations` parameter
-    ///
-    /// The `free_region_relations` argument is used to find the
-    /// "minimum" of the regions supplied to a given opaque type.
-    /// It must be a relation that can answer whether `'a <= 'b`,
-    /// where `'a` and `'b` are regions that appear in the "substs"
-    /// for the opaque type references (the `<'a>` in `Foo1<'a>`).
-    ///
-    /// Note that we do not impose the constraints based on the
-    /// generic regions from the `Foo1` definition (e.g., `'x`). This
-    /// is because the constraints we are imposing here is basically
-    /// the concern of the one generating the constraining type C1,
-    /// which is the current function. It also means that we can
-    /// take "implied bounds" into account in some cases:
-    ///
-    /// ```text
-    /// trait SomeTrait<'a, 'b> { }
-    /// fn foo<'a, 'b>(_: &'a &'b u32) -> impl SomeTrait<'a, 'b> { .. }
-    /// ```
-    ///
-    /// Here, the fact that `'b: 'a` is known only because of the
-    /// implied bounds from the `&'a &'b u32` parameter, and is not
-    /// "inherent" to the opaque type definition.
-    ///
-    /// # Parameters
-    ///
-    /// - `opaque_types` -- the map produced by `instantiate_opaque_types`
-    /// - `free_region_relations` -- something that can be used to relate
-    ///   the free regions (`'a`) that appear in the impl trait.
     #[instrument(level = "debug", skip(self))]
     pub fn register_member_constraints(
         &self,
