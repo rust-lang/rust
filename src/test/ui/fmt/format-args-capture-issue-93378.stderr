@@ -1,0 +1,10 @@
+error: invalid reference to positional arguments 1 and 2 (there is 1 argument)
+  --> $DIR/format-args-capture-issue-93378.rs:5:26
+   |
+LL |     println!("{a} {b} {} {} {c} {}", c = "c");
+   |                          ^^     ^^
+   |
+   = note: positional arguments are zero-based
+
+error: aborting due to previous error
+
