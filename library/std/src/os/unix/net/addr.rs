@@ -164,41 +164,7 @@ impl SocketAddr {
     where
         P: AsRef<Path>,
     {
-        // SAFETY: All zeros is a valid representation for `sockaddr_un`.
-        let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
-
-        let bytes = path.as_ref().as_os_str().as_bytes();
-        if bytes.contains(&b'\0') {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "path can't contain null bytes",
-            ));
-        } else if bytes.len() >= storage.sun_path.len() {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "path must be shorter than SUN_LEN",
-            ));
-        }
-
-        storage.sun_family = libc::AF_UNIX as _;
-        // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
-        // both point to valid memory.
-        // NOTE: We zeroed the memory above, so the path is already null
-        // terminated.
-        unsafe {
-            ptr::copy_nonoverlapping(
-                bytes.as_ptr(),
-                storage.sun_path.as_mut_ptr().cast(),
-                bytes.len(),
-            )
-        };
-
-        let base = &storage as *const _ as usize;
-        let path = &storage.sun_path as *const _ as usize;
-        let sun_path_offset = path - base;
-        let length = sun_path_offset + bytes.len() + 1;
-
-        Ok(SocketAddr { addr: storage, len: length as _ })
+        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len })
     }
 
     /// Returns `true` if the address is unnamed.
