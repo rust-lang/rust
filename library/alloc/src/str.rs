@@ -79,7 +79,7 @@ pub use core::str::{RSplitTerminator, SplitTerminator};
 impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
-    fn concat(slice: &Self) -> String {
+    fn concat(slice: &Self) -> String { 
         Join::join(slice, "")
     }
 }
@@ -93,6 +93,21 @@ impl<S: Borrow<str>> Join<&str> for [S] {
         unsafe { String::from_utf8_unchecked(join_generic_copy(slice, sep.as_bytes())) }
     }
 }
+
+impl<S> Join<Borrow<Str>> for [S] 
+where S: std::fmt::Display {
+    type Output = String;
+    
+    fn join(slice: &Self, sep: &str) -> String {
+        // Reuse the [&str] impl of Join.
+        let slice = slice.iter().map(
+            |s| s.to_string()
+        ).collect::<Vec<String>>();
+        
+        slice.join(sep)
+    }
+}
+
 
 #[cfg(not(no_global_oom_handling))]
 macro_rules! specialize_for_lengths {
