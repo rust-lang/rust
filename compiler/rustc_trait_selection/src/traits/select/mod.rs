@@ -2248,8 +2248,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            // We don't want opaque types to just randomly match everything,
-            // they should be opaque, even in their defining scope.
+            // We don't want predicates for opaque types to just match all other types,
+            // if there is an obligation on the opaque type, then that obligation must be met
+            // opaquely. Otherwise we'd match any obligation to the opaque type and then error
+            // out later.
             .define_opaque_types(false)
             .sup(obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
