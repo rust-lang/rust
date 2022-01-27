@@ -514,9 +514,12 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), enumerate[2]);
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
+    ///
     /// If both iterators have roughly equivalent syntax, it may me more readable to use [`zip`]:
+    ///
     /// ```
-    /// # use std::iter::zip;
+    /// use std::iter::zip;
+    ///
     /// let a = [1, 2, 3];
     /// let b = [2, 3, 4];
     ///
@@ -529,20 +532,22 @@ pub trait Iterator {
     /// assert_eq!(zipped.next(), Some((6, 8)));
     /// assert_eq!(zipped.next(), None);
     /// ```
-    /// compared to:
-    /// ```
-    /// let a = [1, 2, 3];
-    /// let b = [2, 3, 4];
     ///
+    /// compared to:
+    ///
+    /// ```
+    /// # let a = [1, 2, 3];
+    /// # let b = [2, 3, 4];
+    /// #
     /// let mut zipped = a
     ///     .into_iter()
     ///     .map(|x| x * 2)
     ///     .skip(1)
     ///     .zip(b.into_iter().map(|x| x * 2).skip(1));
-    ///
-    /// assert_eq!(zipped.next(), Some((4, 6)));
-    /// assert_eq!(zipped.next(), Some((6, 8)));
-    /// assert_eq!(zipped.next(), None);
+    /// #
+    /// # assert_eq!(zipped.next(), Some((4, 6)));
+    /// # assert_eq!(zipped.next(), Some((6, 8)));
+    /// # assert_eq!(zipped.next(), None);
     /// ```
     ///
     /// [`enumerate`]: Iterator::enumerate
