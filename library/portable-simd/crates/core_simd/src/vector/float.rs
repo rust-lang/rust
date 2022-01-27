@@ -38,29 +38,6 @@ macro_rules! impl_float_vector {
                 unsafe { intrinsics::simd_fabs(self) }
             }
 
-            /// Fused multiply-add.  Computes `(self * a) + b` with only one rounding error,
-            /// yielding a more accurate result than an unfused multiply-add.
-            ///
-            /// Using `mul_add` *may* be more performant than an unfused multiply-add if the target
-            /// architecture has a dedicated `fma` CPU instruction.  However, this is not always
-            /// true, and will be heavily dependent on designing algorithms with specific target
-            /// hardware in mind.
-            #[cfg(feature = "std")]
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn mul_add(self, a: Self, b: Self) -> Self {
-                unsafe { intrinsics::simd_fma(self, a, b) }
-            }
-
-            /// Produces a vector where every lane has the square root value
-            /// of the equivalently-indexed lane in `self`
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            #[cfg(feature = "std")]
-            pub fn sqrt(self) -> Self {
-                unsafe { intrinsics::simd_fsqrt(self) }
-            }
-
             /// Takes the reciprocal (inverse) of each lane, `1/x`.
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
@@ -128,8 +105,8 @@ macro_rules! impl_float_vector {
                 self.abs().lanes_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(<$type>::INFINITY).to_bits()).lanes_eq(Simd::splat(0))
             }
 
-            /// Returns true for each lane if its value is neither neither zero, infinite,
-            /// subnormal, or `NaN`.
+            /// Returns true for each lane if its value is neither zero, infinite,
+            /// subnormal, nor `NaN`.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_normal(self) -> Mask<$mask_ty, LANES> {
@@ -164,11 +141,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             pub fn min(self, other: Self) -> Self {
-                // TODO consider using an intrinsic
-                self.is_nan().select(
-                    other,
-                    self.lanes_ge(other).select(other, self)
-                )
+                unsafe { intrinsics::simd_fmin(self, other) }
             }
 
             /// Returns the maximum of each lane.
@@ -177,11 +150,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
             pub fn max(self, other: Self) -> Self {
-                // TODO consider using an intrinsic
-                self.is_nan().select(
-                    other,
-                    self.lanes_le(other).select(other, self)
-                )
+                unsafe { intrinsics::simd_fmax(self, other) }
             }
 
             /// Restrict each lane to a certain interval unless it is NaN.

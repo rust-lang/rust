@@ -546,6 +546,8 @@ macro_rules! impl_float_tests {
 
             #[cfg(feature = "std")]
             mod std {
+                use std_float::StdFloat;
+
                 use super::*;
                 test_helpers::test_lanes! {
                     fn sqrt<const LANES: usize>() {

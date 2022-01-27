@@ -75,6 +75,36 @@ where
         Self(array)
     }
 
+    /// Performs lanewise conversion of a SIMD vector's elements to another SIMD-valid type.
+    /// This follows the semantics of Rust's `as` conversion for casting
+    /// integers to unsigned integers (interpreting as the other type, so `-1` to `MAX`),
+    /// and from floats to integers (truncating, or saturating at the limits) for each lane,
+    /// or vice versa.
+    ///
+    /// # Examples
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "std")] use core_simd::Simd;
+    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
+    /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
+    /// let ints = floats.cast::<i32>();
+    /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
+    ///
+    /// // Formally equivalent, but `Simd::cast` can optimize better.
+    /// assert_eq!(ints, Simd::from_array(floats.to_array().map(|x| x as i32)));
+    ///
+    /// // The float conversion does not round-trip.
+    /// let floats_again = ints.cast();
+    /// assert_ne!(floats, floats_again);
+    /// assert_eq!(floats_again, Simd::from_array([1.0, -4.0, 2147483647.0, 0.0]));
+    /// ```
+    #[must_use]
+    #[inline]
+    #[cfg(not(bootstrap))]
+    pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
+        unsafe { intrinsics::simd_as(self) }
+    }
+
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
     /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
     ///
