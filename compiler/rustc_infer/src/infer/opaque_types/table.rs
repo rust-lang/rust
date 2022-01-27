@@ -72,7 +72,6 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
     pub fn register(
         &mut self,
         key: OpaqueTypeKey<'tcx>,
-        opaque_type: Ty<'tcx>,
         hidden_type: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
     ) -> Option<Ty<'tcx>> {
@@ -81,7 +80,7 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
             self.undo_log.push(UndoLog::OpaqueTypes(key, Some(prev)));
             return Some(prev.ty);
         }
-        let decl = OpaqueTypeDecl { opaque_type, hidden_type, origin };
+        let decl = OpaqueTypeDecl { hidden_type, origin };
         self.storage.opaque_types.insert(key, decl);
         self.undo_log.push(UndoLog::OpaqueTypes(key, None));
         None
