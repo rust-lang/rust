@@ -44,6 +44,7 @@
 /// Maximum offset for type trees to keep
 extern "C" {
 extern llvm::cl::opt<int> MaxTypeOffset;
+extern llvm::cl::opt<bool> EnzymeTypeWarning;
 }
 
 /// Helper function to print a vector of ints to a string
@@ -277,9 +278,10 @@ public:
       }
     }
     if (Seq.size() > 6) {
-      llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
-                   << str() << " adding v: " << to_string(Seq) << ": "
-                   << CT.str() << "\n";
+      if (EnzymeTypeWarning)
+        llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
+                     << str() << " adding v: " << to_string(Seq) << ": "
+                     << CT.str() << "\n";
       return changed;
     }
 

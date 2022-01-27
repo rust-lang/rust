@@ -42,6 +42,9 @@ extern "C" {
 llvm::cl::opt<int> MaxTypeOffset("enzyme-max-type-offset", cl::init(500),
                                  cl::Hidden,
                                  cl::desc("Maximum type tree offset"));
+llvm::cl::opt<bool> EnzymeTypeWarning("enzyme-type-warning", cl::init(true),
+                                      cl::Hidden,
+                                      cl::desc("Print Type Depth Warning"));
 }
 
 // TODO keep type information that is striated
