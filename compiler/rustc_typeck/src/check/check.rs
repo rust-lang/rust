@@ -95,11 +95,6 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(declared_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
-    if let ty::Opaque(..) = declared_ret_ty.kind() {
-        // FIXME(oli-obk): remove this and have diagnostics check the signature's return type directly
-        // as we don't reveal here anymore.
-        fcx.ret_coercion_impl_trait = Some(declared_ret_ty);
-    }
 
     let span = body.value.span;
 
