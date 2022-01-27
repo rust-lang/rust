@@ -86,7 +86,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if !matches!(a.kind(), ty::Opaque(..)) {
                     return None;
                 }
-                self.fold_opaque_ty_new(a, cause.clone(), param_env, |_, _| b)
+                self.fold_opaque_ty_new(a, cause.clone(), param_env, b)
             };
             if let Some(res) = process(a, b) {
                 res
@@ -482,10 +482,10 @@ impl UseKind {
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn fold_opaque_ty_new(
         &self,
-        ty: Ty<'tcx>,
+        opaque_type: Ty<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
+        hidden_ty: Ty<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
         // Check that this is `impl Trait` type is
         // declared by `parent_def_id` -- i.e., one whose
@@ -521,29 +521,34 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         //     let x = || foo(); // returns the Opaque assoc with `foo`
         // }
         // ```
-        let opaque_type_key = ty.expect_opaque_type();
+        let opaque_type_key = opaque_type.expect_opaque_type();
         if let Some(origin) = self.opaque_type_origin(opaque_type_key.def_id, cause.span) {
-            return Some(self.fold_opaque_ty(ty, cause, param_env, opaque_type_key, origin, mk_ty));
+            return Some(self.fold_opaque_ty(
+                opaque_type,
+                cause,
+                param_env,
+                opaque_type_key,
+                origin,
+                hidden_ty,
+            ));
         }
 
-        debug!(?ty, "encountered opaque outside its definition scope",);
+        debug!(?opaque_type, "encountered opaque outside its definition scope",);
         None
     }
 
-    #[instrument(skip(self, mk_ty), level = "debug")]
+    #[instrument(skip(self), level = "debug")]
     fn fold_opaque_ty(
         &self,
-        ty: Ty<'tcx>,
+        opaque_type: Ty<'tcx>,
         cause: ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         origin: hir::OpaqueTyOrigin,
-        mk_ty: impl FnOnce(&InferCtxt<'_, 'tcx>, Span) -> Ty<'tcx>,
+        hidden_ty: Ty<'tcx>,
     ) -> InferResult<'tcx, ()> {
         let tcx = self.tcx;
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
-
-        let ty_var = mk_ty(self, cause.span);
 
         // Ideally, we'd get the span where *this specific `ty` came
         // from*, but right now we just use the span from the overall
@@ -555,15 +560,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut obligations = vec![];
         let prev = self.inner.borrow_mut().opaque_types().register(
             OpaqueTypeKey { def_id, substs },
-            ty,
-            OpaqueHiddenType { ty: ty_var, span },
+            opaque_type,
+            OpaqueHiddenType { ty: hidden_ty, span },
             origin,
         );
         if let Some(prev) = prev {
-            obligations = self.at(&cause, param_env).eq(prev, ty_var)?.obligations;
+            obligations = self.at(&cause, param_env).eq(prev, hidden_ty)?.obligations;
         }
-
-        debug!("generated new type inference var {:?}", ty_var.kind());
 
         let item_bounds = tcx.explicit_item_bounds(def_id);
 
@@ -586,7 +589,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
-                        ty_var
+                        hidden_ty
                     }
                     _ => ty,
                 },
