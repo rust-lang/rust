@@ -9,6 +9,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(bytes_count_to_len::BYTES_COUNT_TO_LEN),
     LintId::of(casts::CHAR_LIT_AS_U8),
     LintId::of(casts::UNNECESSARY_CAST),
+    LintId::of(dereference::EXPLICIT_AUTO_DEREF),
     LintId::of(derivable_impls::DERIVABLE_IMPLS),
     LintId::of(double_comparison::DOUBLE_COMPARISONS),
     LintId::of(double_parens::DOUBLE_PARENS),

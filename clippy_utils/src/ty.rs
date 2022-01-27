@@ -6,16 +6,16 @@ use core::ops::ControlFlow;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, LangItem, TyKind, Unsafety};
+use rustc_hir::{Expr, FnDecl, LangItem, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, BoundRegion, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy, Region,
-    RegionKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDiscr,
+    self, AdtDef, Binder, BoundRegion, DefIdTree, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, ProjectionTy,
+    Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -502,16 +502,46 @@ pub fn all_predicates_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(P
 #[derive(Clone, Copy)]
 pub enum ExprFnSig<'tcx> {
     Sig(Binder<'tcx, FnSig<'tcx>>),
-    Closure(Binder<'tcx, FnSig<'tcx>>),
+    Closure(Option<&'tcx FnDecl<'tcx>>, Binder<'tcx, FnSig<'tcx>>),
     Trait(Binder<'tcx, Ty<'tcx>>, Option<Binder<'tcx, Ty<'tcx>>>),
 }
 impl<'tcx> ExprFnSig<'tcx> {
-    /// Gets the argument type at the given offset.
-    pub fn input(self, i: usize) -> Binder<'tcx, Ty<'tcx>> {
+    /// Gets the argument type at the given offset. This will return `None` when the index is out of
+    /// bounds only for variadic functions, otherwise this will panic.
+    pub fn input(self, i: usize) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) => sig.input(i),
-            Self::Closure(sig) => sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
-            Self::Trait(inputs, _) => inputs.map_bound(|ty| ty.tuple_fields()[i]),
+            Self::Sig(sig) => {
+                if sig.c_variadic() {
+                    sig.inputs().map_bound(|inputs| inputs.get(i).copied()).transpose()
+                } else {
+                    Some(sig.input(i))
+                }
+            },
+            Self::Closure(_, sig) => Some(sig.input(0).map_bound(|ty| ty.tuple_fields()[i])),
+            Self::Trait(inputs, _) => Some(inputs.map_bound(|ty| ty.tuple_fields()[i])),
+        }
+    }
+
+    /// Gets the argument type at the given offset. For closures this will also get the type as
+    /// written. This will return `None` when the index is out of bounds only for variadic
+    /// functions, otherwise this will panic.
+    pub fn input_with_hir(self, i: usize) -> Option<(Option<&'tcx hir::Ty<'tcx>>, Binder<'tcx, Ty<'tcx>>)> {
+        match self {
+            Self::Sig(sig) => {
+                if sig.c_variadic() {
+                    sig.inputs()
+                        .map_bound(|inputs| inputs.get(i).copied())
+                        .transpose()
+                        .map(|arg| (None, arg))
+                } else {
+                    Some((None, sig.input(i)))
+                }
+            },
+            Self::Closure(decl, sig) => Some((
+                decl.and_then(|decl| decl.inputs.get(i)),
+                sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
+            )),
+            Self::Trait(inputs, _) => Some((None, inputs.map_bound(|ty| ty.tuple_fields()[i]))),
         }
     }
 
@@ -519,7 +549,7 @@ impl<'tcx> ExprFnSig<'tcx> {
     /// specified.
     pub fn output(self) -> Option<Binder<'tcx, Ty<'tcx>>> {
         match self {
-            Self::Sig(sig) | Self::Closure(sig) => Some(sig.output()),
+            Self::Sig(sig) | Self::Closure(_, sig) => Some(sig.output()),
             Self::Trait(_, output) => output,
         }
     }
@@ -536,7 +566,12 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
 
 fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'tcx>> {
     match *ty.kind() {
-        ty::Closure(_, subs) => Some(ExprFnSig::Closure(subs.as_closure().sig())),
+        ty::Closure(id, subs) => {
+            let decl = id
+                .as_local()
+                .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.hir().local_def_id_to_hir_id(id)));
+            Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
+        },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs))),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig)),
         ty::Dynamic(bounds, _) => {
@@ -738,4 +773,18 @@ pub fn for_each_top_level_late_bound_region<B>(
         }
     }
     ty.visit_with(&mut V { index: 0, f })
+}
+
+pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx VariantDef> {
+    match res {
+        Res::Def(DefKind::Struct, id) => Some(cx.tcx.adt_def(id).non_enum_variant()),
+        Res::Def(DefKind::Variant, id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).variant_with_id(id)),
+        Res::Def(DefKind::Ctor(CtorOf::Struct, _), id) => Some(cx.tcx.adt_def(cx.tcx.parent(id)).non_enum_variant()),
+        Res::Def(DefKind::Ctor(CtorOf::Variant, _), id) => {
+            let var_id = cx.tcx.parent(id);
+            Some(cx.tcx.adt_def(cx.tcx.parent(var_id)).variant_with_id(var_id))
+        },
+        Res::SelfCtor(id) => Some(cx.tcx.type_of(id).ty_adt_def().unwrap().non_enum_variant()),
+        _ => None,
+    }
 }

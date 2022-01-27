@@ -1,18 +1,21 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::ty::peel_mid_ty_refs;
-use clippy_utils::{get_parent_expr, get_parent_node, is_lint_allowed, path_to_local};
+use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, variant_of_res};
+use clippy_utils::{
+    get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, peel_hir_ty_refs, walk_to_expr_usage,
+};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::{
-    BindingAnnotation, Body, BodyId, BorrowKind, Destination, Expr, ExprKind, HirId, MatchSource, Mutability, Node,
-    Pat, PatKind, UnOp,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Destination, Expr, ExprKind, FnRetTy, GenericArg, HirId,
+    ImplItem, ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
+    TraitItemKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
 
@@ -104,10 +107,34 @@ declare_clippy_lint! {
     "`ref` binding to a reference"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for dereferencing expressions which would be covered by auto-deref.
+    ///
+    /// ### Why is this bad?
+    /// This unnecessarily complicates the code.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let x = String::new();
+    /// let y: &str = &*x;
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let x = String::new();
+    /// let y: &str = &x;
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub EXPLICIT_AUTO_DEREF,
+    complexity,
+    "dereferencing when the compiler would automatically dereference"
+}
+
 impl_lint_pass!(Dereferencing => [
     EXPLICIT_DEREF_METHODS,
     NEEDLESS_BORROW,
     REF_BINDING_TO_REFERENCE,
+    EXPLICIT_AUTO_DEREF,
 ]);
 
 #[derive(Default)]
@@ -152,6 +179,11 @@ enum State {
         required_precedence: i8,
         msg: &'static str,
     },
+    ExplicitDeref {
+        deref_span: Span,
+        deref_hir_id: HirId,
+    },
+    Borrow,
 }
 
 // A reference operation considered by this lint pass
@@ -305,6 +337,14 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     hir_id: expr.hir_id,
                                 },
                             ));
+                        } else if is_stable_auto_deref_position(cx, expr) {
+                            self.state = Some((
+                                State::Borrow,
+                                StateData {
+                                    span: expr.span,
+                                    hir_id: expr.hir_id,
+                                },
+                            ));
                         }
                     },
                     _ => (),
@@ -353,6 +393,18 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     },
                     data,
                 ));
+            },
+            (Some((State::Borrow, data)), RefOp::Deref) => {
+                self.state = Some((
+                    State::ExplicitDeref {
+                        deref_span: expr.span,
+                        deref_hir_id: expr.hir_id,
+                    },
+                    data,
+                ));
+            },
+            (state @ Some((State::ExplicitDeref { .. }, _)), RefOp::Deref) => {
+                self.state = state;
             },
 
             (Some((state, data)), _) => report(cx, expr, state, data),
@@ -596,8 +648,230 @@ fn find_adjustments<'tcx>(
     }
 }
 
+// Checks if the expression for the given id occurs in a position which auto dereferencing applies.
+// Note that the target type must not be inferred in a way that may cause auto-deref to select a
+// different type, nor may the position be the result of a macro expansion.
+//
+// e.g. the following should not linted
+// macro_rules! foo { ($e:expr) => { let x: &str = $e; }}
+// foo!(&*String::new());
+// fn foo<T>(_: &T) {}
+// foo(&*String::new())
+fn is_stable_auto_deref_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
+    walk_to_expr_usage(cx, e, |node, child_id| match node {
+        Node::Local(&Local { ty: Some(ty), .. }) => Some(is_binding_ty_auto_deref_stable(ty)),
+        Node::Item(&Item {
+            kind: ItemKind::Static(..) | ItemKind::Const(..),
+            ..
+        })
+        | Node::TraitItem(&TraitItem {
+            kind: TraitItemKind::Const(..),
+            ..
+        })
+        | Node::ImplItem(&ImplItem {
+            kind: ImplItemKind::Const(..),
+            ..
+        }) => Some(true),
+
+        Node::Item(&Item {
+            kind: ItemKind::Fn(..),
+            def_id,
+            ..
+        })
+        | Node::TraitItem(&TraitItem {
+            kind: TraitItemKind::Fn(..),
+            def_id,
+            ..
+        })
+        | Node::ImplItem(&ImplItem {
+            kind: ImplItemKind::Fn(..),
+            def_id,
+            ..
+        }) => {
+            let output = cx.tcx.fn_sig(def_id.to_def_id()).skip_binder().output();
+            Some(!(output.has_placeholders() || output.has_opaque_types()))
+        },
+
+        Node::Expr(e) => match e.kind {
+            ExprKind::Ret(_) => {
+                let output = cx
+                    .tcx
+                    .fn_sig(cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()))
+                    .skip_binder()
+                    .output();
+                Some(!(output.has_placeholders() || output.has_opaque_types()))
+            },
+            ExprKind::Call(func, args) => Some(
+                args.iter()
+                    .position(|arg| arg.hir_id == child_id)
+                    .zip(expr_sig(cx, func))
+                    .and_then(|(i, sig)| sig.input_with_hir(i))
+                    .map_or(false, |(hir_ty, ty)| match hir_ty {
+                        // Type inference for closures can depend on how they're called. Only go by the explicit
+                        // types here.
+                        Some(ty) => is_binding_ty_auto_deref_stable(ty),
+                        None => is_param_auto_deref_stable(ty.skip_binder()),
+                    }),
+            ),
+            ExprKind::MethodCall(_, [_, args @ ..], _) => {
+                let id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
+                Some(args.iter().position(|arg| arg.hir_id == child_id).map_or(false, |i| {
+                    let arg = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
+                    is_param_auto_deref_stable(arg)
+                }))
+            },
+            ExprKind::Struct(path, fields, _) => {
+                let variant = variant_of_res(cx, cx.qpath_res(path, e.hir_id));
+                Some(
+                    fields
+                        .iter()
+                        .find(|f| f.expr.hir_id == child_id)
+                        .zip(variant)
+                        .and_then(|(field, variant)| variant.fields.iter().find(|f| f.name == field.ident.name))
+                        .map_or(false, |field| is_param_auto_deref_stable(cx.tcx.type_of(field.did))),
+                )
+            },
+            _ => None,
+        },
+        _ => None,
+    })
+    .unwrap_or(false)
+}
+
+// Checks whether auto-dereferencing any type into a binding of the given type will definitely
+// produce the same result.
+//
+// e.g.
+// let x = Box::new(Box::new(0u32));
+// let y1: &Box<_> = x.deref();
+// let y2: &Box<_> = &x;
+//
+// Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
+// switching to auto-dereferencing.
+fn is_binding_ty_auto_deref_stable(ty: &hir::Ty<'_>) -> bool {
+    let (ty, count) = peel_hir_ty_refs(ty);
+    if count != 1 {
+        return false;
+    }
+
+    match &ty.kind {
+        TyKind::Rptr(_, ty) => is_binding_ty_auto_deref_stable(ty.ty),
+        &TyKind::Path(
+            QPath::TypeRelative(_, path)
+            | QPath::Resolved(
+                _,
+                Path {
+                    segments: [.., path], ..
+                },
+            ),
+        ) => {
+            if let Some(args) = path.args {
+                args.args.iter().all(|arg| {
+                    if let GenericArg::Type(ty) = arg {
+                        !ty_contains_infer(ty)
+                    } else {
+                        true
+                    }
+                })
+            } else {
+                true
+            }
+        },
+        TyKind::Slice(_)
+        | TyKind::Array(..)
+        | TyKind::BareFn(_)
+        | TyKind::Never
+        | TyKind::Tup(_)
+        | TyKind::Ptr(_)
+        | TyKind::TraitObject(..)
+        | TyKind::Path(_) => true,
+        TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::Err => false,
+    }
+}
+
+// Checks whether a type is inferred at some point.
+// e.g. `_`, `Box<_>`, `[_]`
+fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
+    match &ty.kind {
+        TyKind::Slice(ty) | TyKind::Array(ty, _) => ty_contains_infer(ty),
+        TyKind::Ptr(ty) | TyKind::Rptr(_, ty) => ty_contains_infer(ty.ty),
+        TyKind::Tup(tys) => tys.iter().any(ty_contains_infer),
+        TyKind::BareFn(ty) => {
+            if ty.decl.inputs.iter().any(ty_contains_infer) {
+                return true;
+            }
+            if let FnRetTy::Return(ty) = &ty.decl.output {
+                ty_contains_infer(ty)
+            } else {
+                false
+            }
+        },
+        &TyKind::Path(
+            QPath::TypeRelative(_, path)
+            | QPath::Resolved(
+                _,
+                Path {
+                    segments: [.., path], ..
+                },
+            ),
+        ) => {
+            if let Some(args) = path.args {
+                args.args.iter().any(|arg| {
+                    if let GenericArg::Type(ty) = arg {
+                        ty_contains_infer(ty)
+                    } else {
+                        false
+                    }
+                })
+            } else {
+                false
+            }
+        },
+        TyKind::Path(_) | TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err => true,
+        TyKind::Never | TyKind::TraitObject(..) => false,
+    }
+}
+
+// Checks whether a type is stable when switching to auto dereferencing,
+fn is_param_auto_deref_stable(ty: Ty<'_>) -> bool {
+    let (ty, count) = peel_mid_ty_refs(ty);
+    if count != 1 {
+        return false;
+    }
+
+    match ty.kind() {
+        ty::Bool
+        | ty::Char
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Foreign(_)
+        | ty::Str
+        | ty::Array(..)
+        | ty::Slice(..)
+        | ty::RawPtr(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(_)
+        | ty::Closure(..)
+        | ty::Generator(..)
+        | ty::GeneratorWitness(..)
+        | ty::Never
+        | ty::Tuple(_)
+        | ty::Ref(..)
+        | ty::Projection(_) => true,
+        ty::Infer(_)
+        | ty::Error(_)
+        | ty::Param(_)
+        | ty::Bound(..)
+        | ty::Opaque(..)
+        | ty::Placeholder(_)
+        | ty::Dynamic(..) => false,
+        ty::Adt(..) => !(ty.has_placeholders() || ty.has_param_types_or_consts()),
+    }
+}
+
 #[expect(clippy::needless_pass_by_value)]
-fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: StateData) {
+fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
     match state {
         State::DerefMethod {
             ty_changed_count,
@@ -663,6 +937,29 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, state: State, data: S
                 diag.span_suggestion(data.span, "change this to", sugg, app);
             });
         },
+        State::ExplicitDeref {
+            deref_span,
+            deref_hir_id,
+        } => {
+            let (span, hir_id) = if cx.typeck_results().expr_ty(expr).is_ref() {
+                (data.span, data.hir_id)
+            } else {
+                (deref_span, deref_hir_id)
+            };
+            span_lint_hir_and_then(
+                cx,
+                EXPLICIT_AUTO_DEREF,
+                hir_id,
+                span,
+                "deref which would be done by auto-deref",
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let snip = snippet_with_context(cx, expr.span, span.ctxt(), "..", &mut app).0;
+                    diag.span_suggestion(span, "try this", snip.into_owned(), app);
+                },
+            );
+        },
+        State::Borrow => (),
     }
 }
 
