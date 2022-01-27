@@ -15,6 +15,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
+#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
@@ -611,7 +612,7 @@ impl Span {
 
     #[inline]
     /// Returns `true` if `hi == lo`.
-    pub fn is_empty(&self) -> bool {
+    pub fn is_empty(self) -> bool {
         let span = self.data_untracked();
         span.hi == span.lo
     }
@@ -639,7 +640,7 @@ impl Span {
     ///
     /// Use this instead of `==` when either span could be generated code,
     /// and you only care that they point to the same bytes of source text.
-    pub fn source_equal(&self, other: &Span) -> bool {
+    pub fn source_equal(self, other: Span) -> bool {
         let span = self.data();
         let other = other.data();
         span.lo == other.lo && span.hi == other.hi
@@ -680,17 +681,17 @@ impl Span {
     }
 
     #[inline]
-    pub fn rust_2015(&self) -> bool {
+    pub fn rust_2015(self) -> bool {
         self.edition() == edition::Edition::Edition2015
     }
 
     #[inline]
-    pub fn rust_2018(&self) -> bool {
+    pub fn rust_2018(self) -> bool {
         self.edition() >= edition::Edition::Edition2018
     }
 
     #[inline]
-    pub fn rust_2021(&self) -> bool {
+    pub fn rust_2021(self) -> bool {
         self.edition() >= edition::Edition::Edition2021
     }
 
@@ -711,7 +712,7 @@ impl Span {
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
-    pub fn allows_unstable(&self, feature: Symbol) -> bool {
+    pub fn allows_unstable(self, feature: Symbol) -> bool {
         self.ctxt()
             .outer_expn_data()
             .allow_internal_unstable
@@ -719,7 +720,7 @@ impl Span {
     }
 
     /// Checks if this span arises from a compiler desugaring of kind `kind`.
-    pub fn is_desugaring(&self, kind: DesugaringKind) -> bool {
+    pub fn is_desugaring(self, kind: DesugaringKind) -> bool {
         match self.ctxt().outer_expn_data().kind {
             ExpnKind::Desugaring(k) => k == kind,
             _ => false,
@@ -728,7 +729,7 @@ impl Span {
 
     /// Returns the compiler desugaring that created this span, or `None`
     /// if this span is not from a desugaring.
-    pub fn desugaring_kind(&self) -> Option<DesugaringKind> {
+    pub fn desugaring_kind(self) -> Option<DesugaringKind> {
         match self.ctxt().outer_expn_data().kind {
             ExpnKind::Desugaring(k) => Some(k),
             _ => None,
@@ -738,7 +739,7 @@ impl Span {
     /// Checks if a span is "internal" to a macro in which `unsafe`
     /// can be used without triggering the `unsafe_code` lint.
     //  (that is, a macro marked with `#[allow_internal_unsafe]`).
-    pub fn allows_unsafe(&self) -> bool {
+    pub fn allows_unsafe(self) -> bool {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
 
@@ -751,7 +752,7 @@ impl Span {
                     return None;
                 }
 
-                let is_recursive = expn_data.call_site.source_equal(&prev_span);
+                let is_recursive = expn_data.call_site.source_equal(prev_span);
 
                 prev_span = self;
                 self = expn_data.call_site;
@@ -865,13 +866,13 @@ impl Span {
 
     /// Equivalent of `Span::call_site` from the proc macro API,
     /// except that the location is taken from the `self` span.
-    pub fn with_call_site_ctxt(&self, expn_id: ExpnId) -> Span {
+    pub fn with_call_site_ctxt(self, expn_id: ExpnId) -> Span {
         self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
     }
 
     /// Equivalent of `Span::mixed_site` from the proc macro API,
     /// except that the location is taken from the `self` span.
-    pub fn with_mixed_site_ctxt(&self, expn_id: ExpnId) -> Span {
+    pub fn with_mixed_site_ctxt(self, expn_id: ExpnId) -> Span {
         self.with_ctxt_from_mark(expn_id, Transparency::SemiTransparent)
     }
 

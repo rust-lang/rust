@@ -28,7 +28,7 @@ impl CoverageStatement {
                 let stmt = &mir_body[bb].statements[stmt_index];
                 format!(
                     "{}: @{}[{}]: {:?}",
-                    source_range_no_file(tcx, &span),
+                    source_range_no_file(tcx, span),
                     bb.index(),
                     stmt_index,
                     stmt
@@ -38,7 +38,7 @@ impl CoverageStatement {
                 let term = mir_body[bb].terminator();
                 format!(
                     "{}: @{}.{}: {:?}",
-                    source_range_no_file(tcx, &span),
+                    source_range_no_file(tcx, span),
                     bb.index(),
                     term_type(&term.kind),
                     term.kind
@@ -155,7 +155,7 @@ impl CoverageSpan {
     pub fn format<'tcx>(&self, tcx: TyCtxt<'tcx>, mir_body: &mir::Body<'tcx>) -> String {
         format!(
             "{}\n    {}",
-            source_range_no_file(tcx, &self.span),
+            source_range_no_file(tcx, self.span),
             self.format_coverage_statements(tcx, mir_body).replace('\n', "\n    "),
         )
     }

@@ -45,94 +45,13 @@ macro_rules! type_alias {
     }
 }
 
-type_alias! { "char.md", c_char = u8, NonZero_c_char = NonZeroU8;
-#[doc(cfg(all()))]
-#[cfg(any(
-    all(
-        target_os = "linux",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "hexagon",
-            target_arch = "powerpc",
-            target_arch = "powerpc64",
-            target_arch = "s390x",
-            target_arch = "riscv64",
-            target_arch = "riscv32"
-        )
-    ),
-    all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
-    all(target_os = "l4re", target_arch = "x86_64"),
-    all(
-        target_os = "freebsd",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc",
-            target_arch = "powerpc64",
-            target_arch = "riscv64"
-        )
-    ),
-    all(
-        target_os = "netbsd",
-        any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
-    ),
-    all(target_os = "openbsd", target_arch = "aarch64"),
-    all(
-        target_os = "vxworks",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc64",
-            target_arch = "powerpc"
-        )
-    ),
-    all(target_os = "fuchsia", target_arch = "aarch64")
-))]}
-type_alias! { "char.md", c_char = i8, NonZero_c_char = NonZeroI8;
-#[doc(cfg(all()))]
-#[cfg(not(any(
-    all(
-        target_os = "linux",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "hexagon",
-            target_arch = "powerpc",
-            target_arch = "powerpc64",
-            target_arch = "s390x",
-            target_arch = "riscv64",
-            target_arch = "riscv32"
-        )
-    ),
-    all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
-    all(target_os = "l4re", target_arch = "x86_64"),
-    all(
-        target_os = "freebsd",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc",
-            target_arch = "powerpc64",
-            target_arch = "riscv64"
-        )
-    ),
-    all(
-        target_os = "netbsd",
-        any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
-    ),
-    all(target_os = "openbsd", target_arch = "aarch64"),
-    all(
-        target_os = "vxworks",
-        any(
-            target_arch = "aarch64",
-            target_arch = "arm",
-            target_arch = "powerpc64",
-            target_arch = "powerpc"
-        )
-    ),
-    all(target_os = "fuchsia", target_arch = "aarch64")
-)))]}
+type_alias! { "char.md", c_char = c_char_definition::c_char, NonZero_c_char = c_char_definition::NonZero_c_char;
+// Make this type alias appear cfg-dependent so that Clippy does not suggest
+// replacing `0 as c_char` with `0_i8`/`0_u8`. This #[cfg(all())] can be removed
+// after the false positive in https://github.com/rust-lang/rust-clippy/issues/8093
+// is fixed.
+#[cfg(all())]
+#[doc(cfg(all()))] }
 type_alias! { "schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
 type_alias! { "uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
 type_alias! { "short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
@@ -180,3 +99,58 @@ pub type c_ptrdiff_t = isize;
 /// platforms where this is not the case.
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub type c_ssize_t = isize;
+
+mod c_char_definition {
+    cfg_if::cfg_if! {
+        // These are the targets on which c_char is unsigned.
+        if #[cfg(any(
+            all(
+                target_os = "linux",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "hexagon",
+                    target_arch = "powerpc",
+                    target_arch = "powerpc64",
+                    target_arch = "s390x",
+                    target_arch = "riscv64",
+                    target_arch = "riscv32"
+                )
+            ),
+            all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
+            all(target_os = "l4re", target_arch = "x86_64"),
+            all(
+                target_os = "freebsd",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc",
+                    target_arch = "powerpc64",
+                    target_arch = "riscv64"
+                )
+            ),
+            all(
+                target_os = "netbsd",
+                any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
+            ),
+            all(target_os = "openbsd", target_arch = "aarch64"),
+            all(
+                target_os = "vxworks",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc64",
+                    target_arch = "powerpc"
+                )
+            ),
+            all(target_os = "fuchsia", target_arch = "aarch64")
+        ))] {
+            pub type c_char = u8;
+            pub type NonZero_c_char = core::num::NonZeroU8;
+        } else {
+            // On every other target, c_char is signed.
+            pub type c_char = i8;
+            pub type NonZero_c_char = core::num::NonZeroI8;
+        }
+    }
+}

@@ -571,7 +571,7 @@ impl<'a> State<'a> {
                 self.ann.nested(self, Nested::Body(body));
             }
             hir::ItemKind::Macro(ref macro_def) => {
-                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+                self.print_mac_def(macro_def, &item.ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
             }

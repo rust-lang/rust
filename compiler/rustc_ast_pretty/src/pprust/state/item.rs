@@ -347,7 +347,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
-                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+                self.print_mac_def(macro_def, &item.ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
             }

@@ -61,6 +61,15 @@ use rustc_data_structures::fx::FxIndexSet;
 /// using the callback `SPAN_TRACK` to access the query engine.
 ///
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
+// FIXME(@lcnr): Enable this attribute once the bootstrap
+// compiler knows of `rustc_pass_by_value`.
+//
+// Right now, this lint would only trigger when compiling the
+// stage 2 compiler, which is fairly annoying as there are
+// a lot of places using `&Span` right now. After the next bootstrap bump,
+// the lint will already trigger when using stage 1, which is a lot less annoying.
+//
+// #[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub struct Span {
     base_or_index: u32,
     len_or_tag: u16,
