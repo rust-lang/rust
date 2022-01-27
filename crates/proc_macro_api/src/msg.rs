@@ -48,6 +48,8 @@ pub struct ExpandMacro {
 
     /// Environment variables to set during macro expansion.
     pub env: Vec<(String, String)>,
+
+    pub current_dir: Option<String>,
 }
 
 pub trait Message: Serialize + DeserializeOwned {
@@ -143,6 +145,7 @@ mod tests {
             attributes: None,
             lib: std::env::current_dir().unwrap(),
             env: Default::default(),
+            current_dir: Default::default(),
         };
 
         let json = serde_json::to_string(&task).unwrap();
