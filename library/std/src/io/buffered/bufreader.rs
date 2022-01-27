@@ -1,7 +1,8 @@
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSliceMut, Read, ReadBuf, ReadBufRef, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+    self, BufRead, IoSliceMut, Read, ReadBuf, ReadBufRef, Seek, SeekFrom, SizeHint,
+    DEFAULT_BUF_SIZE,
 };
 use crate::mem::MaybeUninit;
 

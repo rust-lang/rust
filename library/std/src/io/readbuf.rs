@@ -61,7 +61,7 @@ impl<'a> ReadBuf<'a> {
     /// Creates a new [`ReadBufRef`] referencing this `ReadBuf`.
     #[inline]
     pub fn borrow(&mut self) -> ReadBufRef<'_, 'a> {
-        ReadBufRef {read_buf: self}
+        ReadBufRef { read_buf: self }
     }
 
     /// Returns the total capacity of the buffer.
@@ -250,17 +250,16 @@ impl<'a> ReadBuf<'a> {
     }
 }
 
-
 /// A wrapper around [`&mut ReadBuf`](ReadBuf) which prevents the buffer that the `ReadBuf` points to from being replaced.
 #[derive(Debug)]
 pub struct ReadBufRef<'a, 'b> {
-    read_buf: &'a mut ReadBuf<'b>
+    read_buf: &'a mut ReadBuf<'b>,
 }
 
 impl<'a, 'b> ReadBufRef<'a, 'b> {
     /// Creates a new `ReadBufRef` referencing the same `ReadBuf` as this one.
     pub fn reborrow(&mut self) -> ReadBufRef<'_, 'b> {
-        ReadBufRef {read_buf: self.read_buf}
+        ReadBufRef { read_buf: self.read_buf }
     }
 
     /// Returns the total capacity of the buffer.
