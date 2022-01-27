@@ -213,7 +213,18 @@ fn project_and_unify_type<'cx, 'tcx>(
 
     let infcx = selcx.infcx();
     // FIXME(associated_const_equality): Handle consts here as well as types.
-    let obligation_pred_ty = obligation.predicate.term.ty().unwrap();
+    // FIXME(compiler-errors): We need to normalize here until we properly handle
+    // GAT projection types that we can't normalize properly, see note in
+    // `rustc_trait_selection::traits::project`
+    let obligation_pred_ty = normalize_with_depth_to(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        obligation.predicate.term.ty().unwrap(),
+        &mut obligations,
+    );
+
     match infcx.at(&obligation.cause, obligation.param_env).eq(normalized_ty, obligation_pred_ty) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
