@@ -1793,6 +1793,10 @@ declare_lint! {
     Warn,
     "detects name collision with an existing but unstable method",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "once this associated item is added to the standard library, \
+             the ambiguity may cause an error or change in behavior!"
+        ),
         reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
         // Note: this item represents future incompatibility of all unstable functions in the
         //       standard library, and thus should never be removed or changed to an error.
@@ -2335,6 +2339,10 @@ declare_lint! {
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "this borrowing pattern was not meant to be accepted, \
+            and may become a hard error in the future"
+        ),
         reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
     };
 }
