@@ -679,22 +679,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         expected_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        let Normalized { obligations: mut nested, value: obligation_trait_ref } =
-            normalize_with_depth(
-                self,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                obligation.predicate.to_poly_trait_ref(),
-            );
-        let expected_trait_ref = normalize_with_depth_to(
-            self,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            obligation.predicate.to_poly_trait_ref(),
-            &mut nested,
-        );
+        let obligation_trait_ref = obligation.predicate.to_poly_trait_ref();
+        // Normalize the obligation and expected trait refs together, because why not
+        let Normalized { obligations: nested, value: (obligation_trait_ref, expected_trait_ref) } =
+            ensure_sufficient_stack(|| {
+                self.infcx.commit_unconditionally(|_| {
+                    normalize_with_depth(
+                        self,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        (obligation_trait_ref, expected_trait_ref),
+                    )
+                })
+            });
 
         self.infcx
             .at(&obligation.cause, obligation.param_env)
