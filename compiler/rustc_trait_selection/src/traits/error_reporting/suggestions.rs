@@ -1328,6 +1328,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::Generator(..) => "generator",
             _ => "function",
         };
+        let span = self.tcx.sess.source_map().guess_head_span(span);
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,

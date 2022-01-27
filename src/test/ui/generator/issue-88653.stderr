@@ -1,18 +1,11 @@
 error[E0631]: type mismatch in generator arguments
   --> $DIR/issue-88653.rs:9:5
    |
-LL |       |bar| {
-   |       ^----
-   |       |
-   |  _____found signature of `fn(bool) -> _`
-   | |
-LL | |
-LL | |
-LL | |
-...  |
-LL | |         }
-LL | |     }
-   | |_____^ expected signature of `fn((bool,)) -> _`
+LL |     |bar| {
+   |     ^^^^^
+   |     |
+   |     expected signature of `fn((bool,)) -> _`
+   |     found signature of `fn(bool) -> _`
 
 error: aborting due to previous error
 
