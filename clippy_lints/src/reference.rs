@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
@@ -100,62 +99,6 @@ impl EarlyLintPass for DerefAddrOf {
                         applicability,
                     );
                 }
-            }
-        }
-    }
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for references in expressions that use
-    /// auto dereference.
-    ///
-    /// ### Why is this bad?
-    /// The reference is a no-op and is automatically
-    /// dereferenced by the compiler and makes the code less clear.
-    ///
-    /// ### Example
-    /// ```rust
-    /// struct Point(u32, u32);
-    /// let point = Point(30, 20);
-    /// let x = (&point).0;
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # struct Point(u32, u32);
-    /// # let point = Point(30, 20);
-    /// let x = point.0;
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub REF_IN_DEREF,
-    complexity,
-    "Use of reference in auto dereference expression."
-}
-
-declare_lint_pass!(RefInDeref => [REF_IN_DEREF]);
-
-impl EarlyLintPass for RefInDeref {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
-        if_chain! {
-            if let ExprKind::Field(ref object, _) = e.kind;
-            if let ExprKind::Paren(ref parened) = object.kind;
-            if let ExprKind::AddrOf(_, _, ref inner) = parened.kind;
-            then {
-                let applicability = if inner.span.from_expansion() {
-                    Applicability::MaybeIncorrect
-                } else {
-                    Applicability::MachineApplicable
-                };
-                let sugg = Sugg::ast(cx, inner, "_").maybe_par();
-                span_lint_and_sugg(
-                    cx,
-                    REF_IN_DEREF,
-                    object.span,
-                    "creating a reference that is immediately dereferenced",
-                    "try this",
-                    sugg.to_string(),
-                    applicability,
-                );
             }
         }
     }

@@ -251,14 +251,6 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
 
-error: writing `&String` instead of `&str` involves a new object where a slice will do
-  --> $DIR/search_is_some_fixable_none.rs:192:25
-   |
-LL |     fn test_string_1(s: &String) -> bool {
-   |                         ^^^^^^^ help: change this to: `&str`
-   |
-   = note: `-D clippy::ptr-arg` implied by `-D warnings`
-
 error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some_fixable_none.rs:208:17
    |
@@ -289,5 +281,5 @@ error: called `is_none()` after searching an `Iterator` with `find`
 LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|fp| test_u32_2(*fp.field))`
 
-error: aborting due to 44 previous errors
+error: aborting due to 43 previous errors
 

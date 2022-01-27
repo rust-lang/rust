@@ -9,9 +9,14 @@ use walkdir::WalkDir;
 
 use crate::clippy_project_root;
 
+#[cfg(not(windows))]
+static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
+#[cfg(windows)]
+static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
+
 static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::new(|| {
     let mut path = std::env::current_exe().unwrap();
-    path.set_file_name("cargo-clippy");
+    path.set_file_name(CARGO_CLIPPY_EXE);
     fs::metadata(path).ok()?.modified().ok()
 });
 

@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, call_args, _) => {
                     if call_args.len() == 1
-                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym!(as_ref))
+                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref)
                         && {
                             let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
                             let base_type = arg_type.peel_refs();

@@ -247,7 +247,6 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(redundant_slicing::REDUNDANT_SLICING),
     LintId::of(redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES),
     LintId::of(reference::DEREF_ADDROF),
-    LintId::of(reference::REF_IN_DEREF),
     LintId::of(regex::INVALID_REGEX),
     LintId::of(repeat_once::REPEAT_ONCE),
     LintId::of(returns::LET_AND_RETURN),

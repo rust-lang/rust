@@ -54,6 +54,7 @@
 #![warn(clippy::match_result_ok)]
 #![warn(clippy::disallowed_types)]
 #![warn(clippy::disallowed_methods)]
+#![warn(clippy::needless_borrow)]
 // uplifted lints
 #![warn(invalid_value)]
 #![warn(array_into_iter)]

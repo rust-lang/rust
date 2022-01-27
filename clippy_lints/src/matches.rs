@@ -30,7 +30,7 @@ use rustc_middle::ty::{self, Ty, TyS, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::sym;
+use rustc_span::{sym, symbol::kw};
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry;
 
@@ -961,13 +961,13 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                 let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
                 if path_str == "Err" {
                     let mut matching_wild = inner.iter().any(is_wild);
-                    let mut ident_bind_name = String::from("_");
+                    let mut ident_bind_name = kw::Underscore;
                     if !matching_wild {
                         // Looking for unused bindings (i.e.: `_e`)
                         for pat in inner.iter() {
                             if let PatKind::Binding(_, id, ident, None) = pat.kind {
                                 if ident.as_str().starts_with('_') && !is_local_used(cx, arm.body, id) {
-                                    ident_bind_name = ident.name.as_str().to_string();
+                                    ident_bind_name = ident.name;
                                     matching_wild = true;
                                 }
                             }
@@ -982,7 +982,7 @@ fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm
                             span_lint_and_note(cx,
                                 MATCH_WILD_ERR_ARM,
                                 arm.pat.span,
-                                &format!("`Err({})` matches all errors", &ident_bind_name),
+                                &format!("`Err({})` matches all errors", ident_bind_name),
                                 None,
                                 "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
                             );

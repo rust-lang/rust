@@ -1,5 +1,5 @@
 // run-rustfix
-#![allow(dead_code)]
+#![allow(dead_code, clippy::needless_borrow)]
 #![warn(clippy::duration_subsec)]
 
 use std::time::Duration;

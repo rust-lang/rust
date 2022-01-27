@@ -5,13 +5,10 @@
     clippy::no_effect,
     clippy::redundant_closure_call,
     clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn
-)]
-#![warn(
-    clippy::redundant_closure,
-    clippy::redundant_closure_for_method_calls,
+    clippy::option_map_unit_fn,
     clippy::needless_borrow
 )]
+#![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
 
 use std::path::{Path, PathBuf};
 
