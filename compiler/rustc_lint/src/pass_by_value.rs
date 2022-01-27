@@ -76,10 +76,10 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
             .map(|arg| match arg {
                 GenericArg::Lifetime(lt) => lt.name.ident().to_string(),
                 GenericArg::Type(ty) => {
-                    cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_default()
+                    cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_else(|_| "_".into())
                 }
                 GenericArg::Const(c) => {
-                    cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_default()
+                    cx.tcx.sess.source_map().span_to_snippet(c.span).unwrap_or_else(|_| "_".into())
                 }
                 GenericArg::Infer(_) => String::from("_"),
             })
