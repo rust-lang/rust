@@ -163,12 +163,17 @@ pub enum FutureIncompatibilityReason {
     /// This will be an error in a future release, and
     /// Cargo should create a report even for dependencies
     FutureReleaseErrorReportNow,
+    /// Code that changes meaning in some way in a
+    /// future release.
+    FutureReleaseSemanticsChange,
     /// Previously accepted code that will become an
     /// error in the provided edition
     EditionError(Edition),
     /// Code that changes meaning in some way in
     /// the provided edition
     EditionSemanticsChange(Edition),
+    /// A custom reason.
+    Custom(&'static str),
 }
 
 impl FutureIncompatibilityReason {
