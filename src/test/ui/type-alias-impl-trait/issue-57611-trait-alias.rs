@@ -15,7 +15,6 @@ struct X;
 
 impl Foo for X {
     type Bar = impl Baz<Self, Self>;
-    //~^ ERROR could not find defining uses
 
     fn bar(&self) -> Self::Bar {
         |x| x

@@ -1,5 +1,5 @@
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/issue-57611-trait-alias.rs:21:9
+  --> $DIR/issue-57611-trait-alias.rs:20:9
    |
 LL |         |x| x
    |         ^^^^^ implementation of `FnOnce` is not general enough
@@ -7,11 +7,5 @@ LL |         |x| x
    = note: closure with signature `fn(&'2 X) -> &X` must implement `FnOnce<(&'1 X,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 X,)>`, for some specific lifetime `'2`
 
-error: could not find defining uses
-  --> $DIR/issue-57611-trait-alias.rs:17:16
-   |
-LL |     type Bar = impl Baz<Self, Self>;
-   |                ^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

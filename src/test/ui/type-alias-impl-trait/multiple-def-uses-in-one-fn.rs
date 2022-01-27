@@ -5,7 +5,6 @@
 #![feature(type_alias_impl_trait)]
 
 type X<A, B> = impl Into<&'static A>;
-//~^ ERROR could not find defining uses
 
 fn f<A, B: 'static>(a: &'static A, b: B) -> (X<A, B>, X<B, A>) {
     (a, a)

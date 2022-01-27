@@ -16,7 +16,7 @@ mod m {
         is_send(foo()); // Today: error
     }
 
-    fn baz() { //~ ERROR concrete type differs from previous defining opaque type use
+    fn baz() {
         let f: Foo = 22_u32;
     }
 

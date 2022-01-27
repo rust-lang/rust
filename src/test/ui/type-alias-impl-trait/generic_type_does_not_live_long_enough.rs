@@ -9,7 +9,6 @@ fn main() {
 
 type WrongGeneric<T> = impl 'static;
 //~^ ERROR: at least one trait must be specified
-//~| ERROR could not find defining uses
 
 fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
     t

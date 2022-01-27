@@ -8,7 +8,6 @@ pub trait Bar {
 
 impl<S: Default> Bar for S {
     type E = impl Copy;
-    //~^ ERROR could not find defining uses
 
     fn foo<T: Default>() -> Self::E {
         //~^ ERROR impl has stricter requirements than trait

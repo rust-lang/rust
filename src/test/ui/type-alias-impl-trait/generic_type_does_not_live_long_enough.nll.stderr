@@ -17,7 +17,7 @@ LL | type WrongGeneric<T> = impl 'static;
    |                   ^
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generic_type_does_not_live_long_enough.rs:15:5
+  --> $DIR/generic_type_does_not_live_long_enough.rs:14:5
    |
 LL |     t
    |     ^

@@ -607,7 +607,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // // because we again need to reveal `Foo` so we can check whether the
             // // constant does not contain interior mutability.
             // ```
-            if self.tcx.typeck(def_id).concrete_opaque_types.get(&self.def_id).is_none() {
+            let tables = self.tcx.typeck(def_id);
+            if let Some(_) = tables.tainted_by_errors {
+                self.found = Some((DUMMY_SP, self.tcx.ty_error()));
+                return;
+            }
+            if tables.concrete_opaque_types.get(&self.def_id).is_none() {
                 debug!("no constraints in typeck results");
                 return;
             }

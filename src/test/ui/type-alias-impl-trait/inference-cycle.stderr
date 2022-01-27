@@ -34,18 +34,6 @@ note: cycle used when checking item types in module `m`
 LL | mod m {
    | ^^^^^
 
-error: concrete type differs from previous defining opaque type use
-  --> $DIR/inference-cycle.rs:19:5
-   |
-LL |     fn baz() {
-   |     ^^^^^^^^ expected `()`, got `u32`
-   |
-note: previous use here
-  --> $DIR/inference-cycle.rs:11:5
-   |
-LL |     pub fn foo() -> Foo {
-   |     ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

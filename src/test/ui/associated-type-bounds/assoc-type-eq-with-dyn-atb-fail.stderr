@@ -1,17 +1,11 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:34:9
+  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:33:9
    |
 LL |         Box::new(AssocNoCopy)
    |         ^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
    = note: required for the cast to the object type `dyn Bar<Assoc = impl Copy>`
 
-error: could not find defining uses
-  --> $DIR/assoc-type-eq-with-dyn-atb-fail.rs:30:28
-   |
-LL |     type Out = Box<dyn Bar<Assoc: Copy>>;
-   |                            ^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

@@ -28,7 +28,6 @@ impl Bar for AssocNoCopy {
 
 impl Thing for AssocNoCopy {
     type Out = Box<dyn Bar<Assoc: Copy>>;
-    //~^ ERROR could not find defining uses
 
     fn func() -> Self::Out {
         Box::new(AssocNoCopy)

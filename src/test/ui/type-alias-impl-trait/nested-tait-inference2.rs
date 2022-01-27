@@ -4,7 +4,6 @@
 use std::fmt::Debug;
 
 type FooX = impl Debug;
-//~^ ERROR could not find defining uses
 
 trait Foo<A> {}
 
