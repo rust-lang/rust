@@ -2026,6 +2026,7 @@ public:
         }
       goto def;
     }
+    case Instruction::Shl:
     case Instruction::Mul:
     case Instruction::Sub:
     case Instruction::Add: {
