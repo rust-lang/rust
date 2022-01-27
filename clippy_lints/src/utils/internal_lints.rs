@@ -23,6 +23,7 @@ use rustc_hir::{
     UnOp,
 };
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;

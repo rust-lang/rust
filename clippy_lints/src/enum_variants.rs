@@ -172,6 +172,9 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         let name = var.ident.name.as_str();
 
         let variant_split = camel_case_split(name);
+        if variant_split.len() == 1 {
+            return;
+        }
 
         pre = pre
             .iter()

@@ -1,5 +1,11 @@
 #![warn(clippy::needless_lifetimes)]
-#![allow(dead_code, clippy::needless_pass_by_value, clippy::unnecessary_wraps, dyn_drop)]
+#![allow(
+    dead_code,
+    clippy::boxed_local,
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    dyn_drop
+)]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 
@@ -366,6 +372,49 @@ mod issue6159 {
         F: FnOnce(&'a T::Target) -> R,
     {
         f(x.deref())
+    }
+}
+
+mod issue7296 {
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    struct Foo;
+    impl Foo {
+        fn implicit<'a>(&'a self) -> &'a () {
+            &()
+        }
+        fn implicit_mut<'a>(&'a mut self) -> &'a () {
+            &()
+        }
+
+        fn explicit<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+        fn explicit_mut<'a>(self: &'a mut Rc<Self>) -> &'a () {
+            &()
+        }
+
+        fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+            &()
+        }
+    }
+
+    trait Bar {
+        fn implicit<'a>(&'a self) -> &'a ();
+        fn implicit_provided<'a>(&'a self) -> &'a () {
+            &()
+        }
+
+        fn explicit<'a>(self: &'a Arc<Self>) -> &'a ();
+        fn explicit_provided<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+
+        fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
+        fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+            &()
+        }
     }
 }
 

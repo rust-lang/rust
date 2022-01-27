@@ -522,6 +522,11 @@ Otherwise, have a great day =^.^=
                 }
 
                 scrollToLintByURL($scope);
+
+                setTimeout(function () {
+                    var el = document.getElementById('filter-input');
+                    if (el) { el.focus() }
+                }, 0);
             })
             .error(function (data) {
                 $scope.error = data;

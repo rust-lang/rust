@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::peel_mid_ty_refs;
 use clippy_utils::{get_parent_expr, get_parent_node, is_lint_allowed, path_to_local};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
@@ -10,11 +11,10 @@ use rustc_hir::{
     Pat, PatKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
-use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -131,8 +131,6 @@ pub struct Dereferencing {
 struct StateData {
     /// Span of the top level expression
     span: Span,
-    /// The required mutability
-    target_mut: Mutability,
 }
 
 enum State {
@@ -141,9 +139,13 @@ enum State {
         // The number of calls in a sequence which changed the referenced type
         ty_changed_count: usize,
         is_final_ufcs: bool,
+        /// The required mutability
+        target_mut: Mutability,
     },
     DerefedBorrow {
-        count: u32,
+        count: usize,
+        required_precedence: i8,
+        msg: &'static str,
     },
 }
 
@@ -214,59 +216,98 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     1
                                 },
                                 is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
-                            },
-                            StateData {
-                                span: expr.span,
                                 target_mut,
                             },
+                            StateData { span: expr.span },
                         ));
                     },
                     RefOp::AddrOf => {
                         // Find the number of times the borrow is auto-derefed.
                         let mut iter = find_adjustments(cx.tcx, typeck, expr).iter();
-                        if let Some((i, adjust)) = iter.by_ref().enumerate().find_map(|(i, adjust)| {
-                            if !matches!(adjust.kind, Adjust::Deref(_)) {
-                                Some((i, adjust))
-                            } else if !adjust.target.is_ref() {
-                                // Add one to the number of references found.
-                                Some((i + 1, adjust))
+                        let mut deref_count = 0usize;
+                        let next_adjust = loop {
+                            match iter.next() {
+                                Some(adjust) => {
+                                    if !matches!(adjust.kind, Adjust::Deref(_)) {
+                                        break Some(adjust);
+                                    } else if !adjust.target.is_ref() {
+                                        deref_count += 1;
+                                        break iter.next();
+                                    }
+                                    deref_count += 1;
+                                },
+                                None => break None,
+                            };
+                        };
+
+                        // Determine the required number of references before any can be removed. In all cases the
+                        // reference made by the current expression will be removed. After that there are four cases to
+                        // handle.
+                        //
+                        // 1. Auto-borrow will trigger in the current position, so no further references are required.
+                        // 2. Auto-deref ends at a reference, or the underlying type, so one extra needs to be left to
+                        //    handle the automatically inserted re-borrow.
+                        // 3. Auto-deref hits a user-defined `Deref` impl, so at least one reference needs to exist to
+                        //    start auto-deref.
+                        // 4. If the chain of non-user-defined derefs ends with a mutable re-borrow, and re-borrow
+                        //    adjustments will not be inserted automatically, then leave one further reference to avoid
+                        //    moving a mutable borrow.
+                        //    e.g.
+                        //        fn foo<T>(x: &mut Option<&mut T>, y: &mut T) {
+                        //            let x = match x {
+                        //                // Removing the borrow will cause `x` to be moved
+                        //                Some(x) => &mut *x,
+                        //                None => y
+                        //            };
+                        //        }
+                        let deref_msg =
+                            "this expression creates a reference which is immediately dereferenced by the compiler";
+                        let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
+
+                        let (required_refs, required_precedence, msg) = if is_auto_borrow_position(parent, expr.hir_id)
+                        {
+                            (1, PREC_POSTFIX, if deref_count == 1 { borrow_msg } else { deref_msg })
+                        } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
+                            next_adjust.map(|a| &a.kind)
+                        {
+                            if matches!(mutability, AutoBorrowMutability::Mut { .. })
+                                && !is_auto_reborrow_position(parent)
+                            {
+                                (3, 0, deref_msg)
                             } else {
-                                None
+                                (2, 0, deref_msg)
                             }
-                        }) {
-                            // Found two consecutive derefs. At least one can be removed.
-                            if i > 1 {
-                                let target_mut = iter::once(adjust)
-                                    .chain(iter)
-                                    .find_map(|adjust| match adjust.kind {
-                                        Adjust::Borrow(AutoBorrow::Ref(_, m)) => Some(m.into()),
-                                        _ => None,
-                                    })
-                                    // This default should never happen. Auto-deref always reborrows.
-                                    .unwrap_or(Mutability::Not);
-                                self.state = Some((
-                                    // Subtract one for the current borrow expression, and one to cover the last
-                                    // reference which can't be removed (it's either reborrowed, or needed for
-                                    // auto-deref to happen).
-                                    State::DerefedBorrow {
-                                        count:
-                                            // Truncation here would require more than a `u32::MAX` level reference. The compiler
-                                            // does not support this.
-                                            #[allow(clippy::cast_possible_truncation)]
-                                            { i as u32 - 2 }
-                                    },
-                                    StateData {
-                                        span: expr.span,
-                                        target_mut,
-                                    },
-                                ));
-                            }
+                        } else {
+                            (2, 0, deref_msg)
+                        };
+
+                        if deref_count >= required_refs {
+                            self.state = Some((
+                                State::DerefedBorrow {
+                                    // One of the required refs is for the current borrow expression, the remaining ones
+                                    // can't be removed without breaking the code. See earlier comment.
+                                    count: deref_count - required_refs,
+                                    required_precedence,
+                                    msg,
+                                },
+                                StateData { span: expr.span },
+                            ));
                         }
                     },
                     _ => (),
                 }
             },
-            (Some((State::DerefMethod { ty_changed_count, .. }, data)), RefOp::Method(_)) => {
+            (
+                Some((
+                    State::DerefMethod {
+                        target_mut,
+                        ty_changed_count,
+                        ..
+                    },
+                    data,
+                )),
+                RefOp::Method(_),
+            ) => {
                 self.state = Some((
                     State::DerefMethod {
                         ty_changed_count: if deref_method_same_type(typeck.expr_ty(expr), typeck.expr_ty(sub_expr)) {
@@ -275,12 +316,30 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             ty_changed_count + 1
                         },
                         is_final_ufcs: matches!(expr.kind, ExprKind::Call(..)),
+                        target_mut,
                     },
                     data,
                 ));
             },
-            (Some((State::DerefedBorrow { count }, data)), RefOp::AddrOf) if count != 0 => {
-                self.state = Some((State::DerefedBorrow { count: count - 1 }, data));
+            (
+                Some((
+                    State::DerefedBorrow {
+                        count,
+                        required_precedence,
+                        msg,
+                    },
+                    data,
+                )),
+                RefOp::AddrOf,
+            ) if count != 0 => {
+                self.state = Some((
+                    State::DerefedBorrow {
+                        count: count - 1,
+                        required_precedence,
+                        msg,
+                    },
+                    data,
+                ));
             },
 
             (Some((state, data)), _) => report(cx, expr, state, data),
@@ -455,6 +514,30 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
     }
 }
 
+/// Checks if the given expression is in a position which can be auto-reborrowed.
+/// Note: This is only correct assuming auto-deref is already occurring.
+fn is_auto_reborrow_position(parent: Option<Node<'_>>) -> bool {
+    match parent {
+        Some(Node::Expr(parent)) => matches!(parent.kind, ExprKind::MethodCall(..) | ExprKind::Call(..)),
+        Some(Node::Local(_)) => true,
+        _ => false,
+    }
+}
+
+/// Checks if the given expression is a position which can auto-borrow.
+fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
+    if let Some(Node::Expr(parent)) = parent {
+        match parent.kind {
+            ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
+            ExprKind::Field(..) => true,
+            ExprKind::Call(f, _) => f.hir_id == child_id,
+            _ => false,
+        }
+    } else {
+        false
+    }
+}
+
 /// Adjustments are sometimes made in the parent block rather than the expression itself.
 fn find_adjustments<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -503,6 +586,7 @@ fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) 
         State::DerefMethod {
             ty_changed_count,
             is_final_ufcs,
+            target_mut,
         } => {
             let mut app = Applicability::MachineApplicable;
             let (expr_str, expr_is_macro_call) = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app);
@@ -517,12 +601,12 @@ fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) 
             };
             let addr_of_str = if ty_changed_count < ref_count {
                 // Check if a reborrow from &mut T -> &T is required.
-                if data.target_mut == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
+                if target_mut == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
                     "&*"
                 } else {
                     ""
                 }
-            } else if data.target_mut == Mutability::Mut {
+            } else if target_mut == Mutability::Mut {
                 "&mut "
             } else {
                 "&"
@@ -538,7 +622,7 @@ fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) 
                 cx,
                 EXPLICIT_DEREF_METHODS,
                 data.span,
-                match data.target_mut {
+                match target_mut {
                     Mutability::Not => "explicit `deref` method call",
                     Mutability::Mut => "explicit `deref_mut` method call",
                 },
@@ -547,19 +631,24 @@ fn report(cx: &LateContext<'_>, expr: &Expr<'_>, state: State, data: StateData) 
                 app,
             );
         },
-        State::DerefedBorrow { .. } => {
+        State::DerefedBorrow {
+            required_precedence,
+            msg,
+            ..
+        } => {
             let mut app = Applicability::MachineApplicable;
             let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
             span_lint_and_sugg(
                 cx,
                 NEEDLESS_BORROW,
                 data.span,
-                &format!(
-                    "this expression borrows a reference (`{}`) that is immediately dereferenced by the compiler",
-                    cx.typeck_results().expr_ty(expr),
-                ),
+                msg,
                 "change this to",
-                snip.into(),
+                if required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
+                    format!("({})", snip)
+                } else {
+                    snip.into()
+                },
                 app,
             );
         },

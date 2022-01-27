@@ -386,7 +386,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
 }
 
 /// Return `true` if `sugg` is enclosed in parenthesis.
-fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
+pub fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     let mut chars = sugg.as_ref().chars();
     if chars.next() == Some('(') {
         let mut depth = 1;
