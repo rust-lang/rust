@@ -440,7 +440,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(span, explanation);
                         }
 
-                        if trait_predicate.is_const() && obligation.param_env.is_const() {
+                        if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
                             let non_const_predicate = trait_ref.without_const();
                             let non_const_obligation = Obligation {
                                 cause: obligation.cause.clone(),

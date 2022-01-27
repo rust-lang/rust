@@ -784,6 +784,11 @@ impl<'tcx> TraitPredicate<'tcx> {
     pub fn self_ty(self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
+
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.constness == BoundConstness::ConstIfConst
+    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
@@ -804,8 +809,9 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         });
     }
 
-    pub fn is_const(self) -> bool {
-        self.skip_binder().constness == BoundConstness::ConstIfConst
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.skip_binder().is_const_if_const()
     }
 }
 
@@ -1392,6 +1398,7 @@ impl<'tcx> ParamEnv<'tcx> {
         self.packed.tag().constness
     }
 
+    #[inline]
     pub fn is_const(self) -> bool {
         self.packed.tag().constness == hir::Constness::Const
     }
