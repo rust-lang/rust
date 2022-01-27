@@ -703,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_spans = vec![];
 
                     let mut collect_type_param_suggestions =
-                        |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
+                        |self_ty: Ty<'tcx>, parent_pred: ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
                             if let (ty::Param(_), ty::PredicateKind::Trait(p)) =
                                 (self_ty.kind(), parent_pred.kind().skip_binder())
@@ -892,7 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .filter(|(pred, _, _parent_pred)| !skip_list.contains(&pred))
                         .filter_map(|(pred, parent_pred, _cause)| {
                             format_pred(*pred).map(|(p, self_ty)| {
-                                collect_type_param_suggestions(self_ty, pred, &p);
+                                collect_type_param_suggestions(self_ty, *pred, &p);
                                 match parent_pred {
                                     None => format!("`{}`", &p),
                                     Some(parent_pred) => match format_pred(*parent_pred) {
@@ -900,7 +900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Some((parent_p, _)) => {
                                             collect_type_param_suggestions(
                                                 self_ty,
-                                                parent_pred,
+                                                *parent_pred,
                                                 &p,
                                             );
                                             format!("`{}`\nwhich is required by `{}`", p, parent_p)

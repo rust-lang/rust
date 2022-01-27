@@ -1181,7 +1181,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
 
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if predicate.inner.outer_exclusive_binder > self.outer_index {
+        if predicate.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
@@ -1263,9 +1263,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
-            predicate, predicate.inner.flags, self.flags
+            predicate,
+            predicate.flags(),
+            self.flags
         );
-        if predicate.inner.flags.intersects(self.flags) {
+        if predicate.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE

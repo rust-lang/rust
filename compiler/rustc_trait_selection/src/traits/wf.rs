@@ -198,7 +198,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     trait_ref: &ty::TraitRef<'tcx>,
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
-    pred: &ty::Predicate<'tcx>,
+    pred: ty::Predicate<'tcx>,
 ) {
     debug!(
         "extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}",
@@ -319,7 +319,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 trait_ref,
                 item,
                 &mut cause,
-                &obligation.predicate,
+                obligation.predicate,
             );
             traits::Obligation::with_depth(cause, depth, param_env, obligation.predicate)
         };

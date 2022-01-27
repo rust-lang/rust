@@ -20,7 +20,7 @@ use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
     FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyFnSig, Predicate, PredicateInner, PredicateKind, ProjectionTy, Region, RegionKind,
+    ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region, RegionKind,
     ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
@@ -107,7 +107,7 @@ pub struct CtxtInterners<'tcx> {
     region: InternedSet<'tcx, RegionKind>,
     poly_existential_predicates:
         InternedSet<'tcx, List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>>>,
-    predicate: InternedSet<'tcx, PredicateInner<'tcx>>,
+    predicate: InternedSet<'tcx, PredicateS<'tcx>>,
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
@@ -170,23 +170,22 @@ impl<'tcx> CtxtInterners<'tcx> {
     }
 
     #[inline(never)]
-    fn intern_predicate(
-        &self,
-        kind: Binder<'tcx, PredicateKind<'tcx>>,
-    ) -> &'tcx PredicateInner<'tcx> {
-        self.predicate
-            .intern(kind, |kind| {
-                let flags = super::flags::FlagComputation::for_predicate(kind);
+    fn intern_predicate(&self, kind: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
+        Predicate(Interned::new_unchecked(
+            self.predicate
+                .intern(kind, |kind| {
+                    let flags = super::flags::FlagComputation::for_predicate(kind);
 
-                let predicate_struct = PredicateInner {
-                    kind,
-                    flags: flags.flags,
-                    outer_exclusive_binder: flags.outer_exclusive_binder,
-                };
+                    let predicate_struct = PredicateS {
+                        kind,
+                        flags: flags.flags,
+                        outer_exclusive_binder: flags.outer_exclusive_binder,
+                    };
 
-                InternedInSet(self.arena.alloc(predicate_struct))
-            })
-            .0
+                    InternedInSet(self.arena.alloc(predicate_struct))
+                })
+                .0,
+        ))
     }
 }
 
@@ -1684,7 +1683,7 @@ nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift_old! {region; Region<'a> => Region<'tcx>}
 nop_lift_old! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
-nop_lift_old! {predicate; &'a PredicateInner<'a> => &'tcx PredicateInner<'tcx>}
+nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
 nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
@@ -2040,23 +2039,23 @@ impl<'tcx> Hash for InternedInSet<'tcx, TyS<'tcx>> {
     }
 }
 
-impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for InternedInSet<'tcx, PredicateInner<'tcx>> {
+impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for InternedInSet<'tcx, PredicateS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Binder<'tcx, PredicateKind<'tcx>> {
         &self.0.kind
     }
 }
 
-impl<'tcx> PartialEq for InternedInSet<'tcx, PredicateInner<'tcx>> {
-    fn eq(&self, other: &InternedInSet<'tcx, PredicateInner<'tcx>>) -> bool {
+impl<'tcx> PartialEq for InternedInSet<'tcx, PredicateS<'tcx>> {
+    fn eq(&self, other: &InternedInSet<'tcx, PredicateS<'tcx>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
         self.0.kind == other.0.kind
     }
 }
 
-impl<'tcx> Eq for InternedInSet<'tcx, PredicateInner<'tcx>> {}
+impl<'tcx> Eq for InternedInSet<'tcx, PredicateS<'tcx>> {}
 
-impl<'tcx> Hash for InternedInSet<'tcx, PredicateInner<'tcx>> {
+impl<'tcx> Hash for InternedInSet<'tcx, PredicateS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
         self.0.kind.hash(s)
@@ -2237,8 +2236,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_predicate(self, binder: Binder<'tcx, PredicateKind<'tcx>>) -> Predicate<'tcx> {
-        let inner = self.interners.intern_predicate(binder);
-        Predicate { inner }
+        self.interners.intern_predicate(binder)
     }
 
     #[inline]

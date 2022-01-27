@@ -88,7 +88,7 @@ macro_rules! arena_types {
 
             // Interned types
             [] tys: rustc_middle::ty::TyS<'tcx>,
-            [] predicates: rustc_middle::ty::PredicateInner<'tcx>,
+            [] predicates: rustc_middle::ty::PredicateS<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

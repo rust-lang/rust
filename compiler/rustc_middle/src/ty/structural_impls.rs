@@ -1112,12 +1112,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let new = self.inner.kind.try_fold_with(folder)?;
+        let new = self.kind().try_fold_with(folder)?;
         Ok(folder.tcx().reuse_or_mk_predicate(self, new))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.inner.kind.visit_with(visitor)
+        self.kind().visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -1125,11 +1125,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     }
 
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.inner.outer_exclusive_binder > binder
+        self.outer_exclusive_binder() > binder
     }
 
     fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.inner.flags.intersects(flags)
+        self.flags().intersects(flags)
     }
 }
 

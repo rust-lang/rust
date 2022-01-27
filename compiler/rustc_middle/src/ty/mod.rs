@@ -43,9 +43,9 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::ControlFlow;
-use std::{fmt, ptr, str};
+use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::InferTy::*;
@@ -466,51 +466,50 @@ impl ty::EarlyBoundRegion {
     }
 }
 
+/// Represents a predicate.
+///
+/// See comments on `TyS`, which apply here too (albeit for
+/// `PredicateS`/`Predicate` rather than `TyS`/`Ty`).
 #[derive(Debug)]
-crate struct PredicateInner<'tcx> {
+crate struct PredicateS<'tcx> {
     kind: Binder<'tcx, PredicateKind<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
+// This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateInner<'_>, 56);
+static_assert_size!(PredicateS<'_>, 56);
 
-#[derive(Clone, Copy, Lift)]
-pub struct Predicate<'tcx> {
-    inner: &'tcx PredicateInner<'tcx>,
-}
-
-impl<'tcx> PartialEq for Predicate<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        // `self.kind` is always interned.
-        ptr::eq(self.inner, other.inner)
-    }
-}
-
-impl Hash for Predicate<'_> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        (self.inner as *const PredicateInner<'_>).hash(s)
-    }
-}
-
-impl<'tcx> Eq for Predicate<'tcx> {}
+/// Use this rather than `PredicateS`, whenever possible.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct Predicate<'tcx>(Interned<'tcx, PredicateS<'tcx>>);
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
     #[inline]
     pub fn kind(self) -> Binder<'tcx, PredicateKind<'tcx>> {
-        self.inner.kind
+        self.0.kind
+    }
+
+    #[inline(always)]
+    pub fn flags(self) -> TypeFlags {
+        self.0.flags
+    }
+
+    #[inline(always)]
+    pub fn outer_exclusive_binder(self) -> DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 
     /// Flips the polarity of a Predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
-    pub fn flip_polarity(&self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
+    pub fn flip_polarity(self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
         let kind = self
-            .inner
-            .kind
+            .kind()
             .map_bound(|kind| match kind {
                 PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) => {
                     Some(PredicateKind::Trait(TraitPredicate {
@@ -530,14 +529,14 @@ impl<'tcx> Predicate<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let PredicateInner {
+        let PredicateS {
             ref kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
             flags: _,
             outer_exclusive_binder: _,
-        } = self.inner;
+        } = self.0.0;
 
         kind.hash_stable(hcx, hasher);
     }
