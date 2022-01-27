@@ -94,8 +94,8 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     }
 }
 
-impl<S> Join<Borrow<Str>> for [S] 
-where S: std::fmt::Display {
+impl<S> Join<&str> for [S] 
+where S: crate::string::ToString {
     type Output = String;
     
     fn join(slice: &Self, sep: &str) -> String {
