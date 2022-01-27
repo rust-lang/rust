@@ -100,6 +100,7 @@ where
     /// ```
     #[must_use]
     #[inline]
+    #[cfg(not(bootstrap))]
     pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
         unsafe { intrinsics::simd_as(self) }
     }
