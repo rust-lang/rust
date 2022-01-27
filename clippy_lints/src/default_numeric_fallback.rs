@@ -5,12 +5,11 @@ use if_chain::if_chain;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{
-    intravisit::{walk_expr, walk_stmt, NestedVisitorMap, Visitor},
+    intravisit::{walk_expr, walk_stmt, Visitor},
     Body, Expr, ExprKind, HirId, Lit, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::{
-    hir::map::Map,
     lint::in_external_macro,
     ty::{self, FloatTy, IntTy, PolyFnSig, Ty},
 };
@@ -117,8 +116,6 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
@@ -134,7 +131,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 }
             },
 
-            ExprKind::MethodCall(_, _, args, _) => {
+            ExprKind::MethodCall(_, args, _) => {
                 if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self.cx.tcx.fn_sig(def_id).skip_binder();
                     for (expr, bound) in iter::zip(*args, fn_sig.inputs()) {
@@ -208,10 +205,6 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
 
         walk_stmt(self, stmt);
         self.ty_bounds.pop();
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }
 

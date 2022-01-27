@@ -86,7 +86,7 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                 None
             }
         },
-        ExprKind::MethodCall(path, _, args, _) => {
+        ExprKind::MethodCall(path, args, _) => {
             if_chain! {
                 if let [obj, _] = args;
                 if cx.typeck_results().expr_ty(obj).is_floating_point() || match_trait_method(cx, expr, &paths::ORD);

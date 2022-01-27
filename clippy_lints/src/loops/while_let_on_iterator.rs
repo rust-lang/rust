@@ -7,7 +7,7 @@ use clippy_utils::{
 };
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def::Res, Expr, ExprKind, HirId, Local, Mutability, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Res::Def(_, pat_did) = pat_path.res;
         if match_def_path(cx, pat_did, &paths::OPTION_SOME);
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, _, [iter_expr], _) = let_expr.kind;
+        if let ExprKind::MethodCall(method_name, [iter_expr], _) = let_expr.kind;
         if method_name.ident.name == sym::next;
         if is_trait_method(cx, let_expr, sym::Iterator);
         if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
@@ -211,11 +211,6 @@ fn uses_iter<'tcx>(cx: &LateContext<'tcx>, iter_expr: &IterExpr, container: &'tc
         uses_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, '_, 'tcx> {
-        type Map = ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if self.uses_iter {
                 // return
@@ -254,11 +249,6 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         used_iter: bool,
     }
     impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
-        type Map = ErasedMap<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
             if self.used_iter {
                 return;
@@ -293,12 +283,6 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
         used_after: bool,
     }
     impl<'a, 'b, 'tcx> Visitor<'tcx> for NestedLoopVisitor<'a, 'b, 'tcx> {
-        type Map = ErasedMap<'tcx>;
-
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_local(&mut self, l: &'tcx Local<'_>) {
             if !self.after_loop {
                 l.pat.each_binding_or_first(&mut |_, id, _, _| {

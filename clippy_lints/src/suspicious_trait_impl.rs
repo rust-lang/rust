@@ -2,9 +2,8 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -66,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
             let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
-            if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get(parent_fn);
+            if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get_by_def_id(parent_fn);
             if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
             let body = cx.tcx.hir().body(body_id);
             let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id);
@@ -104,8 +103,6 @@ struct BinaryExprVisitor {
 }
 
 impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         match expr.kind {
             hir::ExprKind::Binary(..)
@@ -115,9 +112,5 @@ impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
         }
 
         walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

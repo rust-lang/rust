@@ -567,7 +567,6 @@ fn ident_difference_expr_with_base_location(
         | (Repeat(_, _), Repeat(_, _))
         | (Struct(_), Struct(_))
         | (MacCall(_), MacCall(_))
-        | (LlvmInlineAsm(_), LlvmInlineAsm(_))
         | (InlineAsm(_), InlineAsm(_))
         | (Ret(_), Ret(_))
         | (Continue(_), Continue(_))

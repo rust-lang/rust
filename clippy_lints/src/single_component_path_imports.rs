@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::{ptr::P, Crate, Item, ItemKind, MacroDef, ModKind, UseTreeKind, VisibilityKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{edition::Edition, symbol::kw, Span, Symbol};
 
@@ -37,7 +37,7 @@ declare_lint_pass!(SingleComponentPathImports => [SINGLE_COMPONENT_PATH_IMPORTS]
 
 impl EarlyLintPass for SingleComponentPathImports {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
-        if cx.sess.opts.edition < Edition::Edition2018 {
+        if cx.sess().opts.edition < Edition::Edition2018 {
             return;
         }
         check_mod(cx, &krate.items);

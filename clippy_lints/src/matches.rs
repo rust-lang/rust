@@ -25,7 +25,7 @@ use rustc_hir::{
     Mutability, Node, Pat, PatKind, PathSegment, QPath, RangeEnd, TyKind,
 };
 use rustc_hir::{HirIdMap, HirIdSet};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty, TyS, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -1776,7 +1776,7 @@ mod redundant_pattern_match {
     use rustc_errors::Applicability;
     use rustc_hir::LangItem::{OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
     use rustc_hir::{
-        intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
+        intravisit::{walk_expr, Visitor},
         Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath, UnOp,
     };
     use rustc_lint::LateContext;
@@ -1880,11 +1880,6 @@ mod redundant_pattern_match {
             res: bool,
         }
         impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
-            type Map = ErasedMap<'tcx>;
-            fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-                NestedVisitorMap::None
-            }
-
             fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
                 match expr.kind {
                     // Taking the reference of a value leaves a temporary
@@ -1914,7 +1909,7 @@ mod redundant_pattern_match {
                     },
                     // Method calls can take self by reference.
                     // e.g. In `String::new().len()` the string is a temporary value.
-                    ExprKind::MethodCall(_, _, [self_arg, args @ ..], _) => {
+                    ExprKind::MethodCall(_, [self_arg, args @ ..], _) => {
                         if !matches!(self_arg.kind, ExprKind::Path(_)) {
                             let self_by_ref = self
                                 .cx
@@ -2025,7 +2020,7 @@ mod redundant_pattern_match {
         // check that `while_let_on_iterator` lint does not trigger
         if_chain! {
             if keyword == "while";
-            if let ExprKind::MethodCall(method_path, _, _, _) = let_expr.kind;
+            if let ExprKind::MethodCall(method_path, _, _) = let_expr.kind;
             if method_path.ident.name == sym::next;
             if is_trait_method(cx, let_expr, sym::Iterator);
             then {

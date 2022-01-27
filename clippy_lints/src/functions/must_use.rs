@@ -4,7 +4,6 @@ use rustc_hir::def_id::{DefIdSet, LocalDefId};
 use rustc_hir::{self as hir, def::Res, intravisit, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::{
-    hir::map::Map,
     lint::in_external_macro,
     ty::{self, Ty},
 };
@@ -48,7 +47,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
         let attr = must_use_attr(attrs);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.hir_id(), item.span, fn_header_span, attr);
-        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.hir_id()).is_none() {
+        } else if is_public && !is_proc_macro(cx.sess(), attrs) && trait_ref_of_method(cx, item.def_id).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,
@@ -211,8 +210,6 @@ struct StaticMutVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
         use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
@@ -220,7 +217,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             return;
         }
         match expr.kind {
-            Call(_, args) | MethodCall(_, _, args, _) => {
+            Call(_, args) | MethodCall(_, args, _) => {
                 let mut tys = DefIdSet::default();
                 for arg in args {
                     if self.cx.tcx.has_typeck_results(arg.hir_id.owner.to_def_id())
@@ -243,10 +240,6 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
             },
             _ => {},
         }
-    }
-
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::None
     }
 }
 

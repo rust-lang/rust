@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for DurationSubsec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             if let ExprKind::Binary(Spanned { node: BinOpKind::Div, .. }, left, right) = expr.kind;
-            if let ExprKind::MethodCall(method_path, _ , args, _) = left.kind;
+            if let ExprKind::MethodCall(method_path, args, _) = left.kind;
             if match_type(cx, cx.typeck_results().expr_ty(&args[0]).peel_refs(), &paths::DURATION);
             if let Some((Constant::Int(divisor), _)) = constant(cx, cx.typeck_results(), right);
             then {

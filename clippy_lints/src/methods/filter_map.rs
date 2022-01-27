@@ -28,7 +28,7 @@ fn is_method<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>, method_name: Sy
             let closure_expr = peel_blocks(&body.value);
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
-                hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, _, args, _) => {
+                hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, args, _) => {
                     if_chain! {
                     if ident.name == method_name;
                     if let hir::ExprKind::Path(path) = &args[0].kind;
@@ -118,7 +118,7 @@ pub(super) fn check<'tcx>(
             };
             // closure ends with is_some() or is_ok()
             if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
-            if let ExprKind::MethodCall(path, _, [filter_arg], _) = filter_body.value.kind;
+            if let ExprKind::MethodCall(path, [filter_arg], _) = filter_body.value.kind;
             if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
             if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did) {
                 Some(false)
@@ -135,7 +135,7 @@ pub(super) fn check<'tcx>(
             if let [map_param] = map_body.params;
             if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;
             // closure ends with expect() or unwrap()
-            if let ExprKind::MethodCall(seg, _, [map_arg, ..], _) = map_body.value.kind;
+            if let ExprKind::MethodCall(seg, [map_arg, ..], _) = map_body.value.kind;
             if matches!(seg.ident.name, sym::expect | sym::unwrap | sym::unwrap_or);
 
             let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {

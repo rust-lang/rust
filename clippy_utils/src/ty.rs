@@ -40,8 +40,8 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 }
 
 /// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
-pub fn contains_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, other_ty: Ty<'tcx>) -> bool {
-    ty.walk(tcx).any(|inner| match inner.unpack() {
+pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
@@ -49,8 +49,8 @@ pub fn contains_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, other_ty: Ty<'tcx>) ->
 
 /// Walks into `ty` and returns `true` if any inner type is an instance of the given adt
 /// constructor.
-pub fn contains_adt_constructor<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, adt: &'tcx AdtDef) -> bool {
-    ty.walk(tcx).any(|inner| match inner.unpack() {
+pub fn contains_adt_constructor(ty: Ty<'_>, adt: &AdtDef) -> bool {
+    ty.walk().any(|inner| match inner.unpack() {
         GenericArgKind::Type(inner_ty) => inner_ty.ty_adt_def() == Some(adt),
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
@@ -224,7 +224,7 @@ fn is_normalizable_helper<'tcx>(
                         .iter()
                         .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, substs), cache))
                 }),
-                _ => ty.walk(cx.tcx).all(|generic_arg| match generic_arg.unpack() {
+                _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
                     GenericArgKind::Type(inner_ty) if inner_ty != ty => {
                         is_normalizable_helper(cx, param_env, inner_ty, cache)
                     },
@@ -462,7 +462,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
                         let output = bounds
                             .projection_bounds()
                             .find(|p| lang_items.fn_once_output().map_or(false, |id| id == p.item_def_id()))
-                            .map(|p| p.map_bound(|p| p.ty));
+                            .map(|p| p.map_bound(|p| p.term.ty().expect("return type was a const")));
                         Some(ExprFnSig::Trait(bound.map_bound(|b| b.substs.type_at(0)), output))
                     },
                     _ => None,
@@ -492,7 +492,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
                                     && p.projection_ty.self_ty() == ty =>
                             {
                                 is_input = false;
-                                Some(p.ty)
+                                p.term.ty()
                             },
                             _ => None,
                         })

@@ -191,13 +191,13 @@ impl<'a> PanicExpn<'a> {
         if !macro_backtrace(expr.span).any(|macro_call| is_panic(cx, macro_call.def_id)) {
             return None;
         }
-        let ExprKind::Call(callee, [arg]) = expr.kind else { return None };
-        let ExprKind::Path(QPath::Resolved(_, path)) = callee.kind else { return None };
+        let ExprKind::Call(callee, [arg]) = &expr.kind else { return None };
+        let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else { return None };
         let result = match path.segments.last().unwrap().ident.as_str() {
             "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
             "panic" | "panic_str" => Self::Str(arg),
             "panic_display" => {
-                let ExprKind::AddrOf(_, _, e) = arg.kind else { return None };
+                let ExprKind::AddrOf(_, _, e) = &arg.kind else { return None };
                 Self::Display(e)
             },
             "panic_fmt" => Self::Format(FormatArgsExpn::parse(cx, arg)?),

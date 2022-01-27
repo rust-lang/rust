@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         }
 
         let parent_id = cx.tcx.hir().get_parent_item(hir_id);
-        let parent_node = cx.tcx.hir().find(parent_id);
+        let parent_node = cx.tcx.hir().find_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
         if let Some(Node::Item(item)) = parent_node {
@@ -175,8 +175,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                 // skip if there is a `self` parameter binding to a type
                 // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
                 if let Some(trait_self_ty) = self.trait_self_ty {
-                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(self.cx.tcx, cmt.place.ty(), trait_self_ty)
-                    {
+                    if map.name(cmt.hir_id) == kw::SelfLower && contains_ty(cmt.place.ty(), trait_self_ty) {
                         return;
                     }
                 }

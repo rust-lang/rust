@@ -98,9 +98,11 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
                         if trait_pred.self_ty() == inp;
                         if let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred);
                         then {
-                            if ord_preds.iter().any(|ord| ord.self_ty() == return_ty_pred.ty) {
+                            if ord_preds.iter().any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty()) {
                                 args_to_check.push((i, "Ord".to_string()));
-                            } else if partial_ord_preds.iter().any(|pord| pord.self_ty() == return_ty_pred.ty) {
+                            } else if partial_ord_preds.iter().any(|pord| {
+                                pord.self_ty() == return_ty_pred.term.ty().unwrap()
+                            }) {
                                 args_to_check.push((i, "PartialOrd".to_string()));
                             }
                         }
@@ -141,7 +143,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
 
 impl<'tcx> LateLintPass<'tcx> for UnitReturnExpectingOrd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::MethodCall(_, _, args, _) = expr.kind {
+        if let ExprKind::MethodCall(_, args, _) = expr.kind {
             let arg_indices = get_args_to_check(cx, expr);
             for (i, trait_name) in arg_indices {
                 if i < args.len() {

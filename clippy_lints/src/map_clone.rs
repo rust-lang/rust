@@ -5,7 +5,7 @@ use clippy_utils::{is_trait_method, meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
         }
 
         if_chain! {
-            if let hir::ExprKind::MethodCall(method, _, args, _) = e.kind;
+            if let hir::ExprKind::MethodCall(method, args, _) = e.kind;
             if args.len() == 2;
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(method, _, [obj], _) => if_chain! {
+                            hir::ExprKind::MethodCall(method, [obj], _) => if_chain! {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone;
                                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
                                 if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);

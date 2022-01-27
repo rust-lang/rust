@@ -2,11 +2,10 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::is_lint_allowed;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, HirId, Local, UnsafeSource};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -114,12 +113,6 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
 }
 
 impl<'v> Visitor<'v> for UndocumentedUnsafeBlocks {
-    type Map = Map<'v>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         match ex.kind {
             ExprKind::Block(_, _) => self.local_level = self.local_level.saturating_add(1),

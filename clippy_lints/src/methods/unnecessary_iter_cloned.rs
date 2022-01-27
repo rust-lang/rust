@@ -4,10 +4,11 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait};
 use clippy_utils::{fn_def_id, get_parent_expr, path_to_local_id, usage};
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, HirId, LangItem, Mutability, Pat};
 use rustc_lint::LateContext;
-use rustc_middle::{hir::map::Map, ty};
+use rustc_middle::hir::nested_filter;
+use rustc_middle::ty;
 use rustc_span::{sym, Symbol};
 
 use super::UNNECESSARY_TO_OWNED;
@@ -44,7 +45,7 @@ pub fn check_for_loop_iter(
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             let snippet = if_chain! {
-                if let ExprKind::MethodCall(maybe_iter_method_name, _, [collection], _) = receiver.kind;
+                if let ExprKind::MethodCall(maybe_iter_method_name, [collection], _) = receiver.kind;
                 if maybe_iter_method_name.ident.name == sym::iter;
 
                 if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
@@ -139,10 +140,10 @@ struct CloneOrCopyVisitor<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
@@ -154,7 +155,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                         self.addr_of_exprs.push(parent);
                         return;
                     },
-                    ExprKind::MethodCall(_, _, args, _) => {
+                    ExprKind::MethodCall(_, args, _) => {
                         if_chain! {
                             if args.iter().skip(1).all(|arg| !self.is_binding(arg));
                             if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);

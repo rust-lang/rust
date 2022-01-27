@@ -243,9 +243,10 @@ fn check_other_call_arg<'tcx>(
         if if trait_predicate.def_id() == deref_trait_id {
             if let [projection_predicate] = projection_predicates[..] {
                 let normalized_ty =
-                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.ty);
+                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
-                    && get_associated_type(cx, receiver_ty, deref_trait_id, "Target") == Some(normalized_ty)
+                    && get_associated_type(cx, receiver_ty, deref_trait_id,
+                    "Target").map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
             } else {
                 false
             }
@@ -312,7 +313,7 @@ fn get_callee_substs_and_args<'tcx>(
         }
     }
     if_chain! {
-        if let ExprKind::MethodCall(_, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(_, args, _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         then {
             let substs = cx.typeck_results().node_substs(expr.hir_id);

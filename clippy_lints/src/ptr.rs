@@ -10,14 +10,14 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdMap;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnDecl, FnRetTy, GenericArg,
     ImplItemKind, ItemKind, Lifetime, LifetimeName, Mutability, Node, Param, ParamName, PatKind, QPath, TraitFn,
     TraitItem, TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocItems, AssocKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -519,9 +519,9 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
         skip_count: usize,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
         }
 
         fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
@@ -572,7 +572,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             set_skip_flag();
                         }
                     },
-                    ExprKind::MethodCall(name, _, expr_args @ [self_arg, ..], _) => {
+                    ExprKind::MethodCall(name, expr_args @ [self_arg, ..], _) => {
                         let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
                         if i == 0 {
                             // Check if the method can be renamed.

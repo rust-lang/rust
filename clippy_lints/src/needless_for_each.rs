@@ -1,10 +1,9 @@
 use rustc_errors::Applicability;
 use rustc_hir::{
-    intravisit::{walk_expr, NestedVisitorMap, Visitor},
+    intravisit::{walk_expr, Visitor},
     Expr, ExprKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{source_map::Span, sym, Symbol};
 
@@ -57,12 +56,12 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
 
         if_chain! {
             // Check the method name is `for_each`.
-            if let ExprKind::MethodCall(method_name, _, [for_each_recv, for_each_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(method_name, [for_each_recv, for_each_arg], _) = expr.kind;
             if method_name.ident.name == Symbol::intern("for_each");
             // Check `for_each` is an associated function of `Iterator`.
             if is_trait_method(cx, expr, sym::Iterator);
             // Checks the receiver of `for_each` is also a method call.
-            if let ExprKind::MethodCall(_, _, [iter_recv], _) = for_each_recv.kind;
+            if let ExprKind::MethodCall(_, [iter_recv], _) = for_each_recv.kind;
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
             if matches!(
@@ -136,8 +135,6 @@ struct RetCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for RetCollector {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {
@@ -159,9 +156,5 @@ impl<'tcx> Visitor<'tcx> for RetCollector {
         }
 
         walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

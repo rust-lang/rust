@@ -5,7 +5,7 @@ use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, meets_msrv, msr
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if trait_ref_of_method(cx, hir_id).is_some()
+                if trait_ref_of_method(cx, def_id).is_some()
                     || already_const(sig.header)
                     || method_accepts_dropable(cx, sig.decl.inputs)
                 {

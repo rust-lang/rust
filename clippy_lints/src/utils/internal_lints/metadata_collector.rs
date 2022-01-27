@@ -19,8 +19,9 @@ use rustc_hir::{
     self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
 };
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::Ident;
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
@@ -579,9 +580,11 @@ fn get_lint_group_and_level_or_lint(
     lint_name: &str,
     item: &Item<'_>,
 ) -> Option<(String, &'static str)> {
-    let result = cx
-        .lint_store
-        .check_lint_name(cx.sess(), lint_name, Some(sym::clippy), &[]);
+    let result = cx.lint_store.check_lint_name(
+        lint_name,
+        Some(sym::clippy),
+        &[Ident::with_dummy_span(sym::clippy)].into_iter().collect(),
+    );
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
             if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {
@@ -738,10 +741,10 @@ impl<'a, 'hir> LintResolver<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
-    type Map = Map<'hir>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
@@ -792,10 +795,10 @@ impl<'a, 'hir> ApplicabilityResolver<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
-    type Map = Map<'hir>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 
     fn visit_path(&mut self, path: &'hir hir::Path<'hir>, _id: hir::HirId) {
@@ -875,10 +878,10 @@ impl<'a, 'hir> IsMultiSpanScanner<'a, 'hir> {
 }
 
 impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
-    type Map = Map<'hir>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
@@ -897,7 +900,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for IsMultiSpanScanner<'a, 'hir> {
                     self.add_single_span_suggestion();
                 }
             },
-            ExprKind::MethodCall(path, _path_span, arg, _arg_span) => {
+            ExprKind::MethodCall(path, arg, _arg_span) => {
                 let (self_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(&arg[0]));
                 if match_type(self.cx, self_ty, &paths::DIAGNOSTIC_BUILDER) {
                     let called_method = path.ident.name.as_str().to_string();

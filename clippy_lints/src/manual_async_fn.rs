@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
     AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
-    IsAsync, ItemKind, LifetimeName, TraitRef, Ty, TyKind, TypeBindingKind,
+    IsAsync, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -140,7 +140,7 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
         if args.bindings.len() == 1;
         let binding = &args.bindings[0];
         if binding.ident.name == sym::Output;
-        if let TypeBindingKind::Equality{ty: output} = binding.kind;
+        if let TypeBindingKind::Equality{term: Term::Ty(output)} = binding.kind;
         then {
             return Some(output)
         }

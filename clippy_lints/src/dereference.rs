@@ -420,7 +420,7 @@ fn try_parse_ref_op<'tcx>(
     expr: &'tcx Expr<'_>,
 ) -> Option<(RefOp, &'tcx Expr<'tcx>)> {
     let (def_id, arg) = match expr.kind {
-        ExprKind::MethodCall(_, _, [arg], _) => (typeck.type_dependent_def_id(expr.hir_id)?, arg),
+        ExprKind::MethodCall(_, [arg], _) => (typeck.type_dependent_def_id(expr.hir_id)?, arg),
         ExprKind::Call(
             Expr {
                 kind: ExprKind::Path(path),
@@ -467,7 +467,7 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
     match parent.kind {
         // Leave deref calls in the middle of a method chain.
         // e.g. x.deref().foo()
-        ExprKind::MethodCall(_, _, [self_arg, ..], _) if self_arg.hir_id == child_id => false,
+        ExprKind::MethodCall(_, [self_arg, ..], _) if self_arg.hir_id == child_id => false,
 
         // Leave deref calls resulting in a called function
         // e.g. (x.deref())()
@@ -508,7 +508,6 @@ fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, 
         | ExprKind::Continue(..)
         | ExprKind::Ret(..)
         | ExprKind::InlineAsm(..)
-        | ExprKind::LlvmInlineAsm(..)
         | ExprKind::Struct(..)
         | ExprKind::Repeat(..)
         | ExprKind::Yield(..) => true,
@@ -529,7 +528,7 @@ fn is_auto_reborrow_position(parent: Option<Node<'_>>) -> bool {
 fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
     if let Some(Node::Expr(parent)) = parent {
         match parent.kind {
-            ExprKind::MethodCall(_, _, [self_arg, ..], _) => self_arg.hir_id == child_id,
+            ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
             ExprKind::Field(..) => true,
             ExprKind::Call(f, _) => f.hir_id == child_id,
             _ => false,

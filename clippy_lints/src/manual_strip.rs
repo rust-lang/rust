@@ -6,11 +6,10 @@ use clippy_utils::{eq_expr_value, higher, match_def_path, meets_msrv, msrvs, pat
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::BinOpKind;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -75,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 
         if_chain! {
             if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr);
-            if let ExprKind::MethodCall(_, _, [target_arg, pattern], _) = cond.kind;
+            if let ExprKind::MethodCall(_, [target_arg, pattern], _) = cond.kind;
             if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id);
             if let ExprKind::Path(target_path) = &target_arg.kind;
             then {
@@ -133,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.
 fn len_arg<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if_chain! {
-        if let ExprKind::MethodCall(_, _, [arg], _) = expr.kind;
+        if let ExprKind::MethodCall(_, [arg], _) = expr.kind;
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if match_def_path(cx, method_def_id, &paths::STR_LEN);
         then {
@@ -203,11 +202,6 @@ fn find_stripping<'tcx>(
     }
 
     impl<'a, 'tcx> Visitor<'tcx> for StrippingFinder<'a, 'tcx> {
-        type Map = Map<'tcx>;
-        fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-            NestedVisitorMap::None
-        }
-
         fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
             if_chain! {
                 if is_ref_str(self.cx, ex);

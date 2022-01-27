@@ -4,10 +4,9 @@ use clippy_utils::{fn_def_id, path_to_local_id};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -287,8 +286,6 @@ struct BorrowVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if self.borrows {
             return;
@@ -301,14 +298,10 @@ impl<'tcx> Visitor<'tcx> for BorrowVisitor<'_, 'tcx> {
                 .fn_sig(def_id)
                 .output()
                 .skip_binder()
-                .walk(self.cx.tcx)
+                .walk()
                 .any(|arg| matches!(arg.unpack(), GenericArgKind::Lifetime(_)));
         }
 
         walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

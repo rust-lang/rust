@@ -2039,10 +2039,10 @@ impl_lint_pass!(Methods => [
 
 /// Extracts a method call name, args, and `Span` of the method name.
 fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx str, &'tcx [hir::Expr<'tcx>], Span)> {
-    if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
+    if let ExprKind::MethodCall(path, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
             let name = path.ident.name.as_str();
-            return Some((name, args, span));
+            return Some((name, args, path.ident.span));
         }
     }
     None
@@ -2060,14 +2060,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
             },
-            hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
-                or_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
-                expect_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
+            hir::ExprKind::MethodCall(method_call, args, _) => {
+                let method_span = method_call.ident.span;
+                or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
+                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
-                into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
+                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
             },
@@ -2090,7 +2091,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_did(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.def_id);
 
@@ -2166,10 +2167,10 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
 
             // walk the return type and check for Self (this does not check associated types)
             if let Some(self_adt) = self_ty.ty_adt_def() {
-                if contains_adt_constructor(cx.tcx, ret_ty, self_adt) {
+                if contains_adt_constructor(ret_ty, self_adt) {
                     return;
                 }
-            } else if contains_ty(cx.tcx, ret_ty, self_ty) {
+            } else if contains_ty(ret_ty, self_ty) {
                 return;
             }
 
@@ -2178,12 +2179,16 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 // one of the associated types must be Self
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
+                        let assoc_ty = match projection_predicate.term {
+                            ty::Term::Ty(ty) => ty,
+                            ty::Term::Const(_c) => continue,
+                        };
                         // walk the associated type and check for Self
                         if let Some(self_adt) = self_ty.ty_adt_def() {
-                            if contains_adt_constructor(cx.tcx, projection_predicate.ty, self_adt) {
+                            if contains_adt_constructor(assoc_ty, self_adt) {
                                 return;
                             }
-                        } else if contains_ty(cx.tcx, projection_predicate.ty, self_ty) {
+                        } else if contains_ty(assoc_ty, self_ty) {
                             return;
                         }
                     }
@@ -2232,7 +2237,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if let TraitItemKind::Fn(_, _) = item.kind;
             let ret_ty = return_ty(cx, item.hir_id());
             let self_ty = TraitRef::identity(cx.tcx, item.def_id.to_def_id()).self_ty().skip_binder();
-            if !contains_ty(cx.tcx, ret_ty, self_ty);
+            if !contains_ty(ret_ty, self_ty);
 
             then {
                 span_lint(
