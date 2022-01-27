@@ -1273,7 +1273,8 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   // is valid. We could make it always valid by checking the pointer
   // operand explicitly is a pointer.
   if (direction & UP) {
-    if (gep.isInBounds()) {
+    if (gep.isInBounds() || (pointerAnalysis.Inner0() == BaseType::Pointer &&
+                             getAnalysis(&gep).Inner0() == BaseType::Pointer)) {
       for (auto &ind : gep.indices()) {
         updateAnalysis(ind, TypeTree(BaseType::Integer).Only(-1), &gep);
       }
