@@ -262,10 +262,6 @@ pub(crate) fn type_check<'mir, 'tcx>(
                     }
                 })
                 .collect();
-            // `hidden_type` may re-register an opaque type, so we need to clean out the
-            // newly re-added types. Either we got here successfully, so they are irrelevant,
-            // or we already errored anyway.
-            let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
             opaque_type_values
         },
     );
