@@ -398,7 +398,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 diag.message = initial_diag.styled_message().clone();
                 diag.span = initial_diag.span.clone();
 
-                mbcx.buffer_error(diag);
+                mbcx.buffer_non_error_diag(diag);
             },
         );
         initial_diag.cancel();
@@ -2293,8 +2293,8 @@ mod error {
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
-        /// Errors to be reported buffer
+            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorReported>)>,
+        /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
         tainted_by_errors: Option<ErrorReported>,
@@ -2309,8 +2309,14 @@ mod error {
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
+        // FIXME(eddyb) this is a suboptimal API because `tainted_by_errors` is
+        // set before any emission actually happens (weakening the guarantee).
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorReported>) {
             self.tainted_by_errors = Some(ErrorReported {});
+            t.buffer(&mut self.buffered);
+        }
+
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
             t.buffer(&mut self.buffered);
         }
 
@@ -2320,14 +2326,18 @@ mod error {
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorReported>) {
             self.errors.buffer_error(t);
+        }
+
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
+            self.errors.buffer_non_error_diag(t);
         }
 
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
+            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorReported>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2365,7 +2375,7 @@ mod error {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx>)> {
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorReported>)> {
             self.errors.buffered_move_errors.get(move_out_indices)
         }
     }

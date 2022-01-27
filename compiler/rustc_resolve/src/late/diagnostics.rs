@@ -12,7 +12,9 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -133,7 +135,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'a>, Vec<ImportSuggestion>) {
+    ) -> (DiagnosticBuilder<'a, ErrorReported>, Vec<ImportSuggestion>) {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
@@ -1817,7 +1819,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         &self,
         spans: Vec<Span>,
         count: usize,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         struct_span_err!(
             self.tcx.sess,
             spans,

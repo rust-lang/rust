@@ -376,9 +376,13 @@ fn get_test_runner(
     match &*meta_list {
         [single] => match single.meta_item() {
             Some(meta_item) if meta_item.is_word() => return Some(meta_item.path.clone()),
-            _ => sd.struct_span_err(span, "`test_runner` argument must be a path").emit(),
+            _ => {
+                sd.struct_span_err(span, "`test_runner` argument must be a path").emit();
+            }
         },
-        _ => sd.struct_span_err(span, "`#![test_runner(..)]` accepts exactly 1 argument").emit(),
+        _ => {
+            sd.struct_span_err(span, "`#![test_runner(..)]` accepts exactly 1 argument").emit();
+        }
     }
     None
 }

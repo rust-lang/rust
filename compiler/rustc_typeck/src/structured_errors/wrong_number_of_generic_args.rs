@@ -1,5 +1,7 @@
 use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
@@ -362,7 +364,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx> {
+    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
@@ -789,7 +791,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         rustc_errors::error_code!(E0107)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let mut err = self.start_diagnostics();
 
         self.notify(&mut err);

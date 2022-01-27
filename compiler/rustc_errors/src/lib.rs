@@ -9,6 +9,8 @@
 #![feature(let_else)]
 #![feature(nll)]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![feature(adt_const_params)]
+#![allow(incomplete_features)]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -52,7 +54,7 @@ mod snippet;
 mod styled_buffer;
 pub use snippet::Style;
 
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
+pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorReported>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
@@ -609,7 +611,7 @@ impl Handler {
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and `StashKey` as the key.
-    pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_>> {
+    pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         self.inner
             .borrow_mut()
             .stashed_diagnostics
@@ -627,7 +629,11 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    pub fn struct_span_warn(&self, span: impl Into<MultiSpan>, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_warn(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_warn(msg);
         result.set_span(span);
         result
@@ -638,7 +644,7 @@ impl Handler {
         &self,
         span: impl Into<MultiSpan>,
         msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_allow(msg);
         result.set_span(span);
         result
@@ -651,7 +657,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_span_warn(span, msg);
         result.code(code);
         result
@@ -662,17 +668,21 @@ impl Handler {
     /// Attempting to `.emit()` the builder will only emit if either:
     /// * `can_emit_warnings` is `true`
     /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
-    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
-    pub fn struct_span_err(&self, span: impl Into<MultiSpan>, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_err(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let mut result = self.struct_err(msg);
         result.set_span(span);
         result
@@ -684,7 +694,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let mut result = self.struct_span_err(span, msg);
         result.code(code);
         result
@@ -692,18 +702,22 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Level::Error { lint: false }, msg)
+    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
+        DiagnosticBuilder::new_guaranteeing_error::<{ Level::Error { lint: false } }>(self, msg)
     }
 
     /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
     #[doc(hidden)]
-    pub fn struct_err_lint(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_err_lint(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
-    pub fn struct_err_with_code(&self, msg: &str, code: DiagnosticId) -> DiagnosticBuilder<'_> {
+    pub fn struct_err_with_code(
+        &self,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let mut result = self.struct_err(msg);
         result.code(code);
         result
@@ -714,7 +728,7 @@ impl Handler {
         &self,
         span: impl Into<MultiSpan>,
         msg: &str,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let mut result = self.struct_fatal(msg);
         result.set_span(span);
         result
@@ -726,24 +740,24 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let mut result = self.struct_span_fatal(span, msg);
         result.code(code);
         result
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Level::Fatal, msg)
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
+        DiagnosticBuilder::new_guaranteeing_error::<{ Level::Fatal }>(self, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.
-    pub fn struct_help(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_help(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Help, msg)
     }
 
     /// Construct a builder at the `Note` level with the `msg`.
-    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Note, msg)
     }
 
@@ -804,7 +818,7 @@ impl Handler {
         self.emit_diag_at_span(Diagnostic::new(Note, msg), span);
     }
 
-    pub fn span_note_diag(&self, span: Span, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn span_note_diag(&self, span: Span, msg: &str) -> DiagnosticBuilder<'_, ()> {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
         db.set_span(span);
         db
@@ -1222,7 +1236,7 @@ impl DelayedDiagnostic {
     }
 }
 
-#[derive(Copy, PartialEq, Clone, Hash, Debug, Encodable, Decodable)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
     Bug,
     DelayedBug,

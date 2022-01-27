@@ -58,7 +58,7 @@ use crate::traits::{
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Diagnostic};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorReported};
 use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -230,7 +230,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     span: Span,
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
-) -> DiagnosticBuilder<'tcx> {
+) -> DiagnosticBuilder<'tcx, ErrorReported> {
     let mut err = struct_span_err!(
         tcx.sess,
         span,
@@ -2014,7 +2014,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         trace: TypeTrace<'tcx>,
         terr: &TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         use crate::traits::ObligationCauseCode::MatchExpressionArm;
 
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
@@ -2222,7 +2222,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         let hir = self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
@@ -2648,7 +2648,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     fn report_inference_failure(
         &self,
         var_origin: RegionVariableOrigin,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BrNamed(_, name) => name.to_string(),

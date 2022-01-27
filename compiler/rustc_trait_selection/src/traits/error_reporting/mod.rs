@@ -102,7 +102,7 @@ pub trait InferCtxtExt<'tcx> {
         expected_args: Vec<ArgKind>,
         found_args: Vec<ArgKind>,
         is_closure: bool,
-    ) -> DiagnosticBuilder<'tcx>;
+    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
@@ -1019,7 +1019,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         expected_args: Vec<ArgKind>,
         found_args: Vec<ArgKind>,
         is_closure: bool,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {

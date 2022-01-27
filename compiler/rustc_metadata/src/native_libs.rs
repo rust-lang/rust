@@ -243,7 +243,9 @@ impl Collector<'_> {
         if matches!(lib.kind, NativeLibKind::Framework { .. }) && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
+                Some(span) => {
+                    struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
+                }
                 None => self.tcx.sess.err(msg),
             }
         }

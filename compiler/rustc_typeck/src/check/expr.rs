@@ -486,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })
+            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span });
         }
     }
 
@@ -1470,14 +1470,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                     self.register_predicates(obligations)
                                                 }
                                                 // FIXME: Need better diagnostics for `FieldMisMatch` error
-                                                Err(_) => self
-                                                    .report_mismatched_types(
+                                                Err(_) => {
+                                                    self.report_mismatched_types(
                                                         &cause,
                                                         target_ty,
                                                         fru_ty,
                                                         FieldMisMatch(variant.name, ident.name),
                                                     )
-                                                    .emit(),
+                                                    .emit();
+                                                }
                                             }
                                         }
                                         fru_ty
@@ -1485,22 +1486,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .collect()
                             }
                             _ => {
-                                return self
-                                    .report_mismatched_types(
-                                        &self.misc(base_expr.span),
-                                        adt_ty,
-                                        base_ty,
-                                        Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
-                                    )
-                                    .emit();
+                                self.report_mismatched_types(
+                                    &self.misc(base_expr.span),
+                                    adt_ty,
+                                    base_ty,
+                                    Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
+                                )
+                                .emit();
+                                return;
                             }
                         }
                     }
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             } else {
@@ -1529,10 +1530,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .collect(),
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             };
@@ -2213,7 +2214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         expr_t: Ty<'tcx>,
         id: HirId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 

@@ -460,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
                 use crate::structured_errors::MissingCastForVariadicArg;
 
-                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit()
+                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
             }
 
             for arg in provided_args.iter().skip(expected_arg_count) {

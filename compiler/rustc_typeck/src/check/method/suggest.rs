@@ -3,7 +3,9 @@
 
 use crate::check::FnCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -91,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
-    ) -> Option<DiagnosticBuilder<'_>> {
+    ) -> Option<DiagnosticBuilder<'_, ErrorReported>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return None;

@@ -221,7 +221,7 @@ enum DiagnosticBuilderMethod {
 pub trait SessionDiagnostic<'a> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
-    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a>;
+    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, ErrorReported>;
 }
 
 /// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
@@ -303,7 +303,11 @@ impl Session {
         self.crate_types.set(crate_types).expect("`crate_types` was initialized twice")
     }
 
-    pub fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_warn<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
@@ -311,19 +315,27 @@ impl Session {
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
-    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
     }
-    pub fn struct_span_allow<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_allow<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_allow(sp, msg)
     }
-    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_allow(msg)
     }
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_span_err(sp, msg)
     }
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
@@ -331,17 +343,25 @@ impl Session {
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_err(msg)
     }
-    pub fn struct_err_with_code(&self, msg: &str, code: DiagnosticId) -> DiagnosticBuilder<'_> {
+    pub fn struct_err_with_code(
+        &self,
+        msg: &str,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
-    pub fn struct_span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_span_fatal<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
@@ -349,10 +369,10 @@ impl Session {
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
         self.diagnostic().struct_fatal(msg)
     }
 
@@ -386,7 +406,7 @@ impl Session {
     pub fn err(&self, msg: &str) {
         self.diagnostic().err(msg)
     }
-    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) {
+    pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorReported {
         err.into_diagnostic(self).emit()
     }
     #[inline]
@@ -457,7 +477,7 @@ impl Session {
     pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
-    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_> {
+    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_note_without_error(msg)
     }
 

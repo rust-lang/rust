@@ -37,14 +37,16 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
 pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
     match tcx.sess.target.is_abi_supported(abi) {
         Some(true) => (),
-        Some(false) => struct_span_err!(
-            tcx.sess,
-            span,
-            E0570,
-            "`{}` is not a supported ABI for the current target",
-            abi
-        )
-        .emit(),
+        Some(false) => {
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0570,
+                "`{}` is not a supported ABI for the current target",
+                abi
+            )
+            .emit();
+        }
         None => {
             tcx.struct_span_lint_hir(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.build("use of calling convention not supported on this target").emit()
@@ -60,7 +62,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
             E0781,
             "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
         )
-        .emit()
+        .emit();
     }
 }
 

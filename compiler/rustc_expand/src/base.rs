@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported, PResult};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
@@ -1072,7 +1072,11 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: &str,
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         self.sess.parse_sess.span_diagnostic.struct_span_err(sp, msg)
     }
 
@@ -1130,11 +1134,7 @@ impl<'a> ExtCtxt<'a> {
     /// This unifies the logic used for resolving `include_X!`.
     ///
     /// FIXME: move this to `rustc_builtin_macros` and make it private.
-    pub fn resolve_path(
-        &self,
-        path: impl Into<PathBuf>,
-        span: Span,
-    ) -> Result<PathBuf, DiagnosticBuilder<'a>> {
+    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'a, PathBuf> {
         let path = path.into();
 
         // Relative paths are resolved relative to the file in which they are found
@@ -1174,7 +1174,7 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &str,
-) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a>, bool)>> {
+) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a, ErrorReported>, bool)>> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
@@ -1233,7 +1233,9 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, sp: Span, tts: TokenStream, name: &str) 
 pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
     match p.parse_expr() {
         Ok(e) => return Some(e),
-        Err(mut err) => err.emit(),
+        Err(mut err) => {
+            err.emit();
+        }
     }
     while p.token != token::Eof {
         p.bump();

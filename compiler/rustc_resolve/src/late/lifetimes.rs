@@ -1572,6 +1572,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shado
             name,
             orig.kind.desc()
         )
+        .forget_guarantee()
     } else {
         // shadowing involving a label is only a warning, due to issues with
         // labels and lifetimes not being macro-hygienic.

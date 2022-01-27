@@ -17,7 +17,7 @@ use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, PResult};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edition::LATEST_STABLE_EDITION;
@@ -1167,7 +1167,9 @@ impl<'a> Parser<'a> {
                         return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
-                    Err(mut err) => err.emit(),
+                    Err(mut err) => {
+                        err.emit();
+                    }
                 }
             }
             _ => {}
@@ -1819,6 +1821,7 @@ impl<'a> Parser<'a> {
                 err
             } else {
                 self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                    .forget_guarantee()
             };
             err.span_label(sp, format!("invalid suffix `{}`", suf));
             err.emit();
@@ -2100,9 +2103,9 @@ impl<'a> Parser<'a> {
     fn error_missing_if_then_block(
         &self,
         if_span: Span,
-        err: Option<DiagnosticBuilder<'a>>,
+        err: Option<DiagnosticBuilder<'a, ErrorReported>>,
         binop_span: Option<Span>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         let msg = "this `if` expression has a condition, but no block";
 
         let mut err = if let Some(mut err) = err {

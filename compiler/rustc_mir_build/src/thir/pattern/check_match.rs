@@ -6,7 +6,9 @@ use super::{PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
-use rustc_errors::{error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -36,7 +38,11 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(
+    sess: &Session,
+    sp: Span,
+    error_message: String,
+) -> DiagnosticBuilder<'_, ErrorReported> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 

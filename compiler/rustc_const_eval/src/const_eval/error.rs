@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fmt;
 
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::{layout::LayoutError, query::TyCtxtAt, ConstInt};
@@ -94,13 +94,13 @@ impl<'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
-        emit: impl FnOnce(DiagnosticBuilder<'_>),
+        decorate: impl FnOnce(&mut Diagnostic),
     ) -> ErrorHandled {
-        self.struct_generic(tcx, message, emit, None)
+        self.struct_generic(tcx, message, decorate, None)
     }
 
     pub fn report_as_error(&self, tcx: TyCtxtAt<'tcx>, message: &str) -> ErrorHandled {
-        self.struct_error(tcx, message, |mut e| e.emit())
+        self.struct_error(tcx, message, |_| {})
     }
 
     pub fn report_as_lint(
@@ -113,7 +113,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         self.struct_generic(
             tcx,
             message,
-            |mut lint: DiagnosticBuilder<'_>| {
+            |lint: &mut Diagnostic| {
                 // Apply the span.
                 if let Some(span) = span {
                     let primary_spans = lint.span.primary_spans().to_vec();
@@ -127,7 +127,6 @@ impl<'tcx> ConstEvalErr<'tcx> {
                         }
                     }
                 }
-                lint.emit();
             },
             Some(lint_root),
         )
@@ -136,9 +135,8 @@ impl<'tcx> ConstEvalErr<'tcx> {
     /// Create a diagnostic for this const eval error.
     ///
     /// Sets the message passed in via `message` and adds span labels with detailed error
-    /// information before handing control back to `emit` to do any final processing.
-    /// It's the caller's responsibility to call emit(), stash(), etc. within the `emit`
-    /// function to dispose of the diagnostic properly.
+    /// information before handing control back to `decorate` to do any final annotations,
+    /// after which the diagnostic is emitted.
     ///
     /// If `lint_root.is_some()` report it as a lint, else report it as a hard error.
     /// (Except that for some errors, we ignore all that -- see `must_error` below.)
@@ -146,10 +144,10 @@ impl<'tcx> ConstEvalErr<'tcx> {
         &self,
         tcx: TyCtxtAt<'tcx>,
         message: &str,
-        emit: impl FnOnce(DiagnosticBuilder<'_>),
+        decorate: impl FnOnce(&mut Diagnostic),
         lint_root: Option<hir::HirId>,
     ) -> ErrorHandled {
-        let finish = |mut err: DiagnosticBuilder<'_>, span_msg: Option<String>| {
+        let finish = |err: &mut Diagnostic, span_msg: Option<String>| {
             trace!("reporting const eval failure at {:?}", self.span);
             if let Some(span_msg) = span_msg {
                 err.span_label(self.span, span_msg);
@@ -188,8 +186,8 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 }
                 flush_last_line(last_frame, times);
             }
-            // Let the caller finish the job.
-            emit(err)
+            // Let the caller attach any additional information it wants.
+            decorate(err);
         };
 
         // Special handling for certain errors
@@ -206,8 +204,9 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 // The `message` makes little sense here, this is a more serious error than the
                 // caller thinks anyway.
                 // See <https://github.com/rust-lang/rust/pull/63152>.
-                finish(struct_error(tcx, &self.error.to_string()), None);
-                return ErrorHandled::Reported(ErrorReported);
+                let mut err = struct_error(tcx, &self.error.to_string());
+                finish(&mut err, None);
+                return ErrorHandled::Reported(err.emit());
             }
             _ => {}
         };
@@ -223,13 +222,18 @@ impl<'tcx> ConstEvalErr<'tcx> {
                 rustc_session::lint::builtin::CONST_ERR,
                 hir_id,
                 tcx.span,
-                |lint| finish(lint.build(message), Some(err_msg)),
+                |lint| {
+                    let mut lint = lint.build(message);
+                    finish(&mut lint, Some(err_msg));
+                    lint.emit();
+                },
             );
             ErrorHandled::Linted
         } else {
             // Report as hard error.
-            finish(struct_error(tcx, message), Some(err_msg));
-            ErrorHandled::Reported(ErrorReported)
+            let mut err = struct_error(tcx, message);
+            finish(&mut err, Some(err_msg));
+            ErrorHandled::Reported(err.emit())
         }
     }
 }

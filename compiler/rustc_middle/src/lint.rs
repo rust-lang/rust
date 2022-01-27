@@ -186,18 +186,18 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     }
 }
 
-pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a>);
+pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a, ()>);
 
 impl<'a> LintDiagnosticBuilder<'a> {
     /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
-    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a, ()> {
         self.0.set_primary_message(msg);
         self.0.set_is_lint();
         self.0
     }
 
     /// Create a LintDiagnosticBuilder from some existing DiagnosticBuilder.
-    pub fn new(err: DiagnosticBuilder<'a>) -> LintDiagnosticBuilder<'a> {
+    pub fn new(err: DiagnosticBuilder<'a, ()>) -> LintDiagnosticBuilder<'a> {
         LintDiagnosticBuilder(err)
     }
 }

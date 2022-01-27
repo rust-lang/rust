@@ -3,7 +3,7 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
@@ -150,29 +150,28 @@ impl<'s> LintLevelsBuilder<'s> {
                     fcw_warning, specs, old_src, id_name
                 );
 
-                let decorate_diag_builder = |mut diag_builder: DiagnosticBuilder<'_>| {
-                    diag_builder.span_label(src.span(), "overruled by previous forbid");
+                let decorate_diag = |diag: &mut Diagnostic| {
+                    diag.span_label(src.span(), "overruled by previous forbid");
                     match old_src {
                         LintLevelSource::Default => {
-                            diag_builder.note(&format!(
+                            diag.note(&format!(
                                 "`forbid` lint level is the default for {}",
                                 id.to_string()
                             ));
                         }
                         LintLevelSource::Node(_, forbid_source_span, reason) => {
-                            diag_builder.span_label(forbid_source_span, "`forbid` level set here");
+                            diag.span_label(forbid_source_span, "`forbid` level set here");
                             if let Some(rationale) = reason {
-                                diag_builder.note(rationale.as_str());
+                                diag.note(rationale.as_str());
                             }
                         }
                         LintLevelSource::CommandLine(_, _) => {
-                            diag_builder.note("`forbid` lint level was set on command line");
+                            diag.note("`forbid` lint level was set on command line");
                         }
                     }
-                    diag_builder.emit();
                 };
                 if !fcw_warning {
-                    let diag_builder = struct_span_err!(
+                    let mut diag_builder = struct_span_err!(
                         self.sess,
                         src.span(),
                         E0453,
@@ -180,18 +179,20 @@ impl<'s> LintLevelsBuilder<'s> {
                         level.as_str(),
                         src.name(),
                     );
-                    decorate_diag_builder(diag_builder);
+                    decorate_diag(&mut diag_builder);
+                    diag_builder.emit();
                 } else {
                     self.struct_lint(
                         FORBIDDEN_LINT_GROUPS,
                         Some(src.span().into()),
                         |diag_builder| {
-                            let diag_builder = diag_builder.build(&format!(
+                            let mut diag_builder = diag_builder.build(&format!(
                                 "{}({}) incompatible with previous forbid",
                                 level.as_str(),
                                 src.name(),
                             ));
-                            decorate_diag_builder(diag_builder);
+                            decorate_diag(&mut diag_builder);
+                            diag_builder.emit();
                         },
                     );
                 }

@@ -319,7 +319,7 @@ impl LintStore {
     ) {
         let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
         if lint_name_only == crate::WARNINGS.name_lower() && level == Level::ForceWarn {
-            return struct_span_err!(
+            struct_span_err!(
                 sess,
                 DUMMY_SP,
                 E0602,
@@ -327,6 +327,7 @@ impl LintStore {
                 crate::WARNINGS.name_lower()
             )
             .emit();
+            return;
         }
         let db = match self.check_lint_name(lint_name_only, tool_name, registered_tools) {
             CheckLintNameResult::Ok(_) => None,
@@ -339,7 +340,7 @@ impl LintStore {
                     err.help(&format!("did you mean: `{}`", suggestion));
                 }
 
-                Some(err)
+                Some(err.forget_guarantee())
             }
             CheckLintNameResult::Tool(result) => match result {
                 Err((Some(_), new_name)) => Some(sess.struct_warn(&format!(
@@ -350,13 +351,16 @@ impl LintStore {
                 ))),
                 _ => None,
             },
-            CheckLintNameResult::NoTool => Some(struct_span_err!(
-                sess,
-                DUMMY_SP,
-                E0602,
-                "unknown lint tool: `{}`",
-                tool_name.unwrap()
-            )),
+            CheckLintNameResult::NoTool => Some(
+                struct_span_err!(
+                    sess,
+                    DUMMY_SP,
+                    E0602,
+                    "unknown lint tool: `{}`",
+                    tool_name.unwrap()
+                )
+                .forget_guarantee(),
+            ),
         };
 
         if let Some(mut db) = db {

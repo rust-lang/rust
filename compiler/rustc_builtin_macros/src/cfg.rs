@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
 use rustc_span::Span;
 
@@ -29,11 +29,7 @@ pub fn expand_cfg(
     }
 }
 
-fn parse_cfg<'a>(
-    cx: &mut ExtCtxt<'a>,
-    sp: Span,
-    tts: TokenStream,
-) -> Result<ast::MetaItem, DiagnosticBuilder<'a>> {
+fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
