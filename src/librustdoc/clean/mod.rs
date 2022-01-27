@@ -895,8 +895,15 @@ fn clean_fn_decl_from_did_and_sig(
 ) -> FnDecl {
     let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_names(did)).iter();
 
+    // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
+    // but shouldn't change any code meaning.
+    let output = match sig.skip_binder().output().clean(cx) {
+        Type::Tuple(inner) if inner.len() == 0 => DefaultReturn,
+        ty => Return(ty),
+    };
+
     FnDecl {
-        output: Return(sig.skip_binder().output().clean(cx)),
+        output,
         c_variadic: sig.skip_binder().c_variadic,
         inputs: Arguments {
             values: sig
