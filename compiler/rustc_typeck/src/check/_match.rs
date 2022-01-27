@@ -98,8 +98,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
-            let opt_suggest_box_span =
-                self.opt_suggest_box_span(arm.body.span, arm_ty, orig_expected);
+            let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
 
             let (arm_span, semi_span) =
                 self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
@@ -504,12 +503,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
-        _span: Span,
         outer_ty: &'tcx TyS<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
         match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {
-            (Expectation::ExpectHasType(expected), Some((_id, _ty)))
+            (Expectation::ExpectHasType(expected), Some(_))
                 if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
             {
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();

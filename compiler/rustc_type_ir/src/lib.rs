@@ -61,8 +61,10 @@ bitflags! {
                                           | TypeFlags::HAS_CT_INFER.bits
                                           | TypeFlags::HAS_TY_PLACEHOLDER.bits
                                           | TypeFlags::HAS_CT_PLACEHOLDER.bits
-                                          // Opaque types may get resolved in the current scope and must
-                                          // thus not be transported to other queries if it can be avoided.
+                                          // The `evaluate_obligation` query does not return further
+                                          // obligations. If it evaluates an obligation with an opaque
+                                          // type, that opaque type may get compared to another type,
+                                          // constraining it. We would lose this information.
                                           // FIXME: differentiate between crate-local opaque types
                                           // and opaque types from other crates, as only opaque types
                                           // from the local crate can possibly be a local name
