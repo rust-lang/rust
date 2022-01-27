@@ -36,7 +36,6 @@ trait Ty<'a> {
 
 fn main() {
     let v = Unit2.m(
-        //~^ ERROR type mismatch
         L {
         //~^ ERROR type mismatch
             f : |x| { drop(x); Unit4 }
