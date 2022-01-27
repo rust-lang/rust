@@ -313,6 +313,7 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(pin_static_ref)]
+#![feature(platform_intrinsics)]
 #![feature(portable_simd)]
 #![feature(prelude_import)]
 #![feature(ptr_as_uninit)]
@@ -465,8 +466,6 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
-#[unstable(feature = "portable_simd", issue = "86656")]
-pub use core::simd;
 #[unstable(feature = "async_stream", issue = "79024")]
 pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
@@ -512,6 +511,25 @@ pub mod time;
 
 #[unstable(feature = "once_cell", issue = "74465")]
 pub mod lazy;
+
+// Pull in `std_float` crate  into libstd. The contents of
+// `std_float` are in a different repository: rust-lang/portable-simd.
+#[path = "../../portable-simd/crates/std_float/src/lib.rs"]
+#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
+#[allow(rustdoc::bare_urls)]
+#[unstable(feature = "portable_simd", issue = "86656")]
+#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
+mod std_float;
+
+#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
+#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
+#[unstable(feature = "portable_simd", issue = "86656")]
+pub mod simd {
+    #[doc(inline)]
+    pub use crate::std_float::StdFloat;
+    #[doc(inline)]
+    pub use core::simd::*;
+}
 
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
