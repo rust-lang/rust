@@ -339,7 +339,7 @@ impl File {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         unsafe {
             let len = buf.remaining();
             let mut out_num_bytes = MaybeUninit::uninit();

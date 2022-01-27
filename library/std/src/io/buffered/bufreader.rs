@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
+    self, BufRead, IoSliceMut, Read, ReadBuf, ReadBufRef, Seek, SeekFrom, SizeHint, DEFAULT_BUF_SIZE,
 };
 use crate::mem::MaybeUninit;
 
@@ -271,7 +271,7 @@ impl<R: Read> Read for BufReader<R> {
         Ok(nread)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         // If we don't have any buffered data and we're doing a massive read
         // (larger than our internal buffer), bypass our internal buffer
         // entirely.
@@ -283,7 +283,7 @@ impl<R: Read> Read for BufReader<R> {
         let prev = buf.filled_len();
 
         let mut rem = self.fill_buf()?;
-        rem.read_buf(buf)?;
+        rem.read_buf(buf.reborrow())?;
 
         self.consume(buf.filled_len() - prev); //slice impl of read_buf known to never unfill buf
 
@@ -386,7 +386,7 @@ impl<R: Read> BufRead for BufReader<R> {
                 readbuf.assume_init(self.init);
             }
 
-            self.inner.read_buf(&mut readbuf)?;
+            self.inner.read_buf(readbuf.borrow())?;
 
             self.cap = readbuf.filled_len();
             self.init = readbuf.initialized_len();

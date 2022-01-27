@@ -4,7 +4,7 @@
 mod tests;
 
 use crate::cmp;
-use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBuf};
+use crate::io::{self, IoSlice, IoSliceMut, Read, ReadBufRef};
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -115,7 +115,7 @@ impl FileDesc {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),

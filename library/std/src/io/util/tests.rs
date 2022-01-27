@@ -81,25 +81,25 @@ fn empty_reads() {
 
     let mut buf = [];
     let mut buf = ReadBuf::uninit(&mut buf);
-    e.read_buf(&mut buf).unwrap();
+    e.read_buf(buf.borrow()).unwrap();
     assert_eq!(buf.filled_len(), 0);
     assert_eq!(buf.initialized_len(), 0);
 
     let mut buf = [MaybeUninit::uninit()];
     let mut buf = ReadBuf::uninit(&mut buf);
-    e.read_buf(&mut buf).unwrap();
+    e.read_buf(buf.borrow()).unwrap();
     assert_eq!(buf.filled_len(), 0);
     assert_eq!(buf.initialized_len(), 0);
 
     let mut buf = [MaybeUninit::uninit(); 1024];
     let mut buf = ReadBuf::uninit(&mut buf);
-    e.read_buf(&mut buf).unwrap();
+    e.read_buf(buf.borrow()).unwrap();
     assert_eq!(buf.filled_len(), 0);
     assert_eq!(buf.initialized_len(), 0);
 
     let mut buf = [MaybeUninit::uninit(); 1024];
     let mut buf = ReadBuf::uninit(&mut buf);
-    e.by_ref().read_buf(&mut buf).unwrap();
+    e.by_ref().read_buf(buf.borrow()).unwrap();
     assert_eq!(buf.filled_len(), 0);
     assert_eq!(buf.initialized_len(), 0);
 }

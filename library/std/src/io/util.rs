@@ -5,7 +5,7 @@ mod tests;
 
 use crate::fmt;
 use crate::io::{
-    self, BufRead, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, SizeHint, Write,
+    self, BufRead, IoSlice, IoSliceMut, Read, ReadBufRef, Seek, SeekFrom, SizeHint, Write,
 };
 
 /// A reader which is always at EOF.
@@ -47,7 +47,7 @@ impl Read for Empty {
     }
 
     #[inline]
-    fn read_buf(&mut self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, _buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         Ok(())
     }
 }
@@ -130,7 +130,7 @@ impl Read for Repeat {
         Ok(buf.len())
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written
         for slot in unsafe { buf.unfilled_mut() } {
             slot.write(self.byte);

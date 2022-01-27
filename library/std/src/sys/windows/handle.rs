@@ -1,7 +1,7 @@
 #![unstable(issue = "none", feature = "windows_handle")]
 
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, Read, ReadBufRef};
 use crate::mem;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -130,7 +130,7 @@ impl Handle {
         }
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         let mut read = 0;
         let len = cmp::min(buf.remaining(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {

@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::io::{self, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, IoSlice, IoSliceMut, ReadBufRef, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
@@ -206,7 +206,7 @@ impl File {
         self.0
     }
 
-    pub fn read_buf(&self, _buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, _buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         self.0
     }
 

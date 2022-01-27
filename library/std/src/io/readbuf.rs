@@ -58,6 +58,12 @@ impl<'a> ReadBuf<'a> {
         ReadBuf { buf, filled: 0, initialized: 0 }
     }
 
+    /// Creates a new [`ReadBufRef`] referencing this `ReadBuf`.
+    #[inline]
+    pub fn borrow(&mut self) -> ReadBufRef<'_, 'a> {
+        ReadBufRef {read_buf: self}
+    }
+
     /// Returns the total capacity of the buffer.
     #[inline]
     pub fn capacity(&self) -> usize {
@@ -241,5 +247,168 @@ impl<'a> ReadBuf<'a> {
     #[inline]
     pub fn initialized_len(&self) -> usize {
         self.initialized
+    }
+}
+
+
+/// A wrapper around [`&mut ReadBuf`](ReadBuf) which prevents the buffer that the `ReadBuf` points to from being replaced.
+#[derive(Debug)]
+pub struct ReadBufRef<'a, 'b> {
+    read_buf: &'a mut ReadBuf<'b>
+}
+
+impl<'a, 'b> ReadBufRef<'a, 'b> {
+    /// Creates a new `ReadBufRef` referencing the same `ReadBuf` as this one.
+    pub fn reborrow(&mut self) -> ReadBufRef<'_, 'b> {
+        ReadBufRef {read_buf: self.read_buf}
+    }
+
+    /// Returns the total capacity of the buffer.
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.read_buf.capacity()
+    }
+
+    /// Returns a shared reference to the filled portion of the buffer.
+    #[inline]
+    pub fn filled(&self) -> &[u8] {
+        self.read_buf.filled()
+    }
+
+    /// Returns a mutable reference to the filled portion of the buffer.
+    #[inline]
+    pub fn filled_mut(&mut self) -> &mut [u8] {
+        self.read_buf.filled_mut()
+    }
+
+    /// Returns a shared reference to the initialized portion of the buffer.
+    ///
+    /// This includes the filled portion.
+    #[inline]
+    pub fn initialized(&self) -> &[u8] {
+        self.read_buf.initialized()
+    }
+
+    /// Returns a mutable reference to the initialized portion of the buffer.
+    ///
+    /// This includes the filled portion.
+    #[inline]
+    pub fn initialized_mut(&mut self) -> &mut [u8] {
+        self.read_buf.initialized_mut()
+    }
+
+    /// Returns a mutable reference to the unfilled part of the buffer without ensuring that it has been fully
+    /// initialized.
+    ///
+    /// # Safety
+    ///
+    /// The caller must not de-initialize portions of the buffer that have already been initialized.
+    #[inline]
+    pub unsafe fn unfilled_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        self.read_buf.unfilled_mut()
+    }
+
+    /// Returns a mutable reference to the uninitialized part of the buffer.
+    ///
+    /// It is safe to uninitialize any of these bytes.
+    #[inline]
+    pub fn uninitialized_mut(&mut self) -> &mut [MaybeUninit<u8>] {
+        self.read_buf.uninitialized_mut()
+    }
+
+    /// Returns a mutable reference to the unfilled part of the buffer, ensuring it is fully initialized.
+    ///
+    /// Since `ReadBuf` tracks the region of the buffer that has been initialized, this is effectively "free" after
+    /// the first use.
+    #[inline]
+    pub fn initialize_unfilled(&mut self) -> &mut [u8] {
+        self.read_buf.initialize_unfilled()
+    }
+
+    /// Returns a mutable reference to the first `n` bytes of the unfilled part of the buffer, ensuring it is
+    /// fully initialized.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.remaining()` is less than `n`.
+    #[inline]
+    pub fn initialize_unfilled_to(&mut self, n: usize) -> &mut [u8] {
+        self.read_buf.initialize_unfilled_to(n)
+    }
+
+    /// Returns the number of bytes at the end of the slice that have not yet been filled.
+    #[inline]
+    pub fn remaining(&self) -> usize {
+        self.read_buf.remaining()
+    }
+
+    /// Clears the buffer, resetting the filled region to empty.
+    ///
+    /// The number of initialized bytes is not changed, and the contents of the buffer are not modified.
+    #[inline]
+    pub fn clear(&mut self) {
+        self.read_buf.clear()
+    }
+
+    /// Increases the size of the filled region of the buffer.
+    ///
+    /// The number of initialized bytes is not changed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the filled region of the buffer would become larger than the initialized region.
+    #[inline]
+    pub fn add_filled(&mut self, n: usize) {
+        self.read_buf.add_filled(n)
+    }
+
+    /// Sets the size of the filled region of the buffer.
+    ///
+    /// The number of initialized bytes is not changed.
+    ///
+    /// Note that this can be used to *shrink* the filled region of the buffer in addition to growing it (for
+    /// example, by a `Read` implementation that compresses data in-place).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the filled region of the buffer would become larger than the initialized region.
+    #[inline]
+    pub fn set_filled(&mut self, n: usize) {
+        self.read_buf.set_filled(n)
+    }
+
+    /// Asserts that the first `n` unfilled bytes of the buffer are initialized.
+    ///
+    /// `ReadBuf` assumes that bytes are never de-initialized, so this method does nothing when called with fewer
+    /// bytes than are already known to be initialized.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the first `n` unfilled bytes of the buffer have already been initialized.
+    #[inline]
+    pub unsafe fn assume_init(&mut self, n: usize) {
+        self.read_buf.assume_init(n)
+    }
+
+    /// Appends data to the buffer, advancing the written position and possibly also the initialized position.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.remaining()` is less than `buf.len()`.
+    #[inline]
+    pub fn append(&mut self, buf: &[u8]) {
+        self.read_buf.append(buf)
+    }
+
+    /// Returns the amount of bytes that have been filled.
+    #[inline]
+    pub fn filled_len(&self) -> usize {
+        self.read_buf.filled_len()
+    }
+
+    /// Returns the amount of bytes that have been initialized.
+    #[inline]
+    pub fn initialized_len(&self) -> usize {
+        self.read_buf.initialized_len()
     }
 }

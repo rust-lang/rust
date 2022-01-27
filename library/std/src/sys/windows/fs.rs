@@ -2,7 +2,7 @@ use crate::os::windows::prelude::*;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBufRef, SeekFrom};
 use crate::mem;
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::path::{Path, PathBuf};
@@ -420,7 +420,7 @@ impl File {
         self.handle.read_at(buf, offset)
     }
 
-    pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    pub fn read_buf(&self, buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         self.handle.read_buf(buf)
     }
 

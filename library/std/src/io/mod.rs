@@ -281,7 +281,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::ReadBuf;
+pub use self::readbuf::{ReadBuf, ReadBufRef};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -372,7 +372,7 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>
             read_buf.assume_init(initialized);
         }
 
-        match r.read_buf(&mut read_buf) {
+        match r.read_buf(read_buf.borrow()) {
             Ok(()) => {}
             Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
@@ -464,7 +464,7 @@ pub(crate) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [
     }
 }
 
-pub(crate) fn default_read_buf<F>(read: F, buf: &mut ReadBuf<'_>) -> Result<()>
+pub(crate) fn default_read_buf<F>(read: F, mut buf: ReadBufRef<'_, '_>) -> Result<()>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>,
 {
@@ -811,7 +811,7 @@ pub trait Read {
     ///
     /// The default implementation delegates to `read`.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, buf: ReadBufRef<'_, '_>) -> Result<()> {
         default_read_buf(|b| self.read(b), buf)
     }
 
@@ -820,10 +820,10 @@ pub trait Read {
     /// This is equivalent to the [`read_exact`](Read::read_exact) method, except that it is passed a [`ReadBuf`] rather than `[u8]` to
     /// allow use with uninitialized buffers.
     #[unstable(feature = "read_buf", issue = "78485")]
-    fn read_buf_exact(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf_exact(&mut self, mut buf: ReadBufRef<'_, '_>) -> Result<()> {
         while buf.remaining() > 0 {
             let prev_filled = buf.filled().len();
-            match self.read_buf(buf) {
+            match self.read_buf(buf.reborrow()) {
                 Ok(()) => {}
                 Err(e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e),
@@ -2565,7 +2565,7 @@ impl<T: Read> Read for Take<T> {
         Ok(n)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> Result<()> {
+    fn read_buf(&mut self, mut buf: ReadBufRef<'_, '_>) -> Result<()> {
         // Don't call into inner reader at all at EOF because it may still block
         if self.limit == 0 {
             return Ok(());
@@ -2589,7 +2589,7 @@ impl<T: Read> Read for Take<T> {
                 sliced_buf.assume_init(extra_init);
             }
 
-            self.inner.read_buf(&mut sliced_buf)?;
+            self.inner.read_buf(sliced_buf.borrow())?;
 
             let new_init = sliced_buf.initialized_len();
             let filled = sliced_buf.filled_len();
@@ -2605,7 +2605,7 @@ impl<T: Read> Read for Take<T> {
 
             self.limit -= filled as u64;
         } else {
-            self.inner.read_buf(buf)?;
+            self.inner.read_buf(buf.reborrow())?;
 
             //inner may unfill
             self.limit -= buf.filled_len().saturating_sub(prev_filled) as u64;

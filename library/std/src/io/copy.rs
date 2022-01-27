@@ -95,7 +95,7 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
             }
 
             if read_buf.capacity() >= DEFAULT_BUF_SIZE {
-                match reader.read_buf(&mut read_buf) {
+                match reader.read_buf(read_buf.borrow()) {
                     Ok(()) => {
                         let bytes_read = read_buf.filled_len();
 
@@ -132,7 +132,7 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     let mut len = 0;
 
     loop {
-        match reader.read_buf(&mut buf) {
+        match reader.read_buf(buf.borrow()) {
             Ok(()) => {}
             Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),

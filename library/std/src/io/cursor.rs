@@ -4,7 +4,7 @@ mod tests;
 use crate::io::prelude::*;
 
 use crate::cmp;
-use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, ReadBufRef, SeekFrom};
 
 use core::convert::TryInto;
 
@@ -324,10 +324,10 @@ where
         Ok(n)
     }
 
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         let prev_filled = buf.filled_len();
 
-        Read::read_buf(&mut self.fill_buf()?, buf)?;
+        Read::read_buf(&mut self.fill_buf()?, buf.reborrow())?;
 
         self.pos += (buf.filled_len() - prev_filled) as u64;
 

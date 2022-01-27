@@ -64,7 +64,7 @@ fn test_buffered_reader_read_buf() {
     let mut buf = [MaybeUninit::uninit(); 3];
     let mut buf = ReadBuf::uninit(&mut buf);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled(), [5, 6, 7]);
     assert_eq!(reader.buffer(), []);
@@ -72,7 +72,7 @@ fn test_buffered_reader_read_buf() {
     let mut buf = [MaybeUninit::uninit(); 2];
     let mut buf = ReadBuf::uninit(&mut buf);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled(), [0, 1]);
     assert_eq!(reader.buffer(), []);
@@ -80,7 +80,7 @@ fn test_buffered_reader_read_buf() {
     let mut buf = [MaybeUninit::uninit(); 1];
     let mut buf = ReadBuf::uninit(&mut buf);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled(), [2]);
     assert_eq!(reader.buffer(), [3]);
@@ -88,19 +88,19 @@ fn test_buffered_reader_read_buf() {
     let mut buf = [MaybeUninit::uninit(); 3];
     let mut buf = ReadBuf::uninit(&mut buf);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled(), [3]);
     assert_eq!(reader.buffer(), []);
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled(), [3, 4]);
     assert_eq!(reader.buffer(), []);
 
     buf.clear();
 
-    reader.read_buf(&mut buf).unwrap();
+    reader.read_buf(buf.borrow()).unwrap();
 
     assert_eq!(buf.filled_len(), 0);
 }

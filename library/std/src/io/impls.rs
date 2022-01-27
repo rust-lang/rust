@@ -5,7 +5,7 @@ use crate::alloc::Allocator;
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
+    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBufRef, Seek, SeekFrom, Write,
 };
 use crate::mem;
 
@@ -20,7 +20,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         (**self).read_buf(buf)
     }
 
@@ -124,7 +124,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         (**self).read_buf(buf)
     }
 
@@ -248,7 +248,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+    fn read_buf(&mut self, mut buf: ReadBufRef<'_, '_>) -> io::Result<()> {
         let amt = cmp::min(buf.remaining(), self.len());
         let (a, b) = self.split_at(amt);
 
