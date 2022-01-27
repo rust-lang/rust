@@ -4,10 +4,10 @@ error: expected identifier, found keyword `loop`
 LL |     let loop = "foo";
    |         ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `loop` to use it as an identifier
    |
 LL |     let r#loop = "foo";
-   |         ~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

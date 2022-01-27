@@ -192,10 +192,10 @@ impl<'a> Parser<'a> {
                 if ident.is_raw_guess()
                     && self.look_ahead(1, |t| valid_follow.contains(&t.kind)) =>
             {
-                err.span_suggestion(
-                    ident.span,
-                    "you can escape reserved keywords to use them as identifiers",
-                    format!("r#{}", ident.name),
+                err.span_suggestion_verbose(
+                    ident.span.shrink_to_lo(),
+                    &format!("escape `{}` to use it as an identifier", ident.name),
+                    "r#".to_owned(),
                     Applicability::MaybeIncorrect,
                 );
             }

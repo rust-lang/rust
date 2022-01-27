@@ -7,10 +7,10 @@ LL |
 LL |             return
    |             ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `return` to use it as an identifier
    |
 LL |             r#return
-   |
+   |             ++
 
 error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
   --> $DIR/issue-15980.rs:13:9

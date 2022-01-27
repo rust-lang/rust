@@ -4,10 +4,10 @@ error: expected identifier, found keyword `unsafe`
 LL |     let unsafe = "foo";
    |         ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `unsafe` to use it as an identifier
    |
 LL |     let r#unsafe = "foo";
-   |         ~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 
