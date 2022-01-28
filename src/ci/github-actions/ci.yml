@@ -285,16 +285,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-xl
+          # - name: mingw-check
+          #   <<: *job-linux-xl
 
           - name: x86_64-gnu-llvm-12
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+          # - name: x86_64-gnu-tools
+          #   env:
+          #     CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+          #   <<: *job-linux-xl
 
   auto:
     <<: *base-ci-job

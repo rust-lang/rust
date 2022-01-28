@@ -43,9 +43,9 @@ else
     PYTHON="python2"
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
+# if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
-fi
+# fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
@@ -155,17 +155,19 @@ else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
 
-if [ ! -z "$SCRIPT" ]; then
-  sh -x -c "$SCRIPT"
-else
-  do_make() {
-    echo "make -j $ncpus $1"
-    make -j $ncpus $1
-    local retval=$?
-    return $retval
-  }
+# if [ ! -z "$SCRIPT" ]; then
+#   sh -x -c "$SCRIPT"
+# else
+#   do_make() {
+#     echo "make -j $ncpus $1"
+#     make -j $ncpus $1
+#     local retval=$?
+#     return $retval
+#   }
 
-  do_make "$RUST_CHECK_TARGET"
-fi
+#   do_make "$RUST_CHECK_TARGET"
+# fi
+
+sh -x -c "catchsegv $SCRIPT"
 
 sccache --show-stats || true
