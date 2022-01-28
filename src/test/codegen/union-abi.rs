@@ -7,6 +7,8 @@
 #![crate_type="lib"]
 #![feature(repr_simd)]
 
+// CHECK: %UnionF32U32 = type { [1 x i32] }
+
 #[derive(Copy, Clone)]
 pub enum Unhab {}
 
@@ -46,35 +48,35 @@ pub union UnionF32{a:f32}
 #[no_mangle]
 pub fn test_UnionF32(_: UnionF32) -> UnionF32 { loop {} }
 
-pub union UnionF32F32{a:f32, b:f32}
+pub union UnionF32F32{a: f32, b: f32}
 
 // CHECK: define float @test_UnionF32F32(float %_1)
 #[no_mangle]
 pub fn test_UnionF32F32(_: UnionF32F32) -> UnionF32F32 { loop {} }
 
-pub union UnionF32U32{a:f32, b:u32}
+pub union UnionF32U32{a: f32, b: u32}
 
-// CHECK: define i32 @test_UnionF32U32(i32{{( %0)?}})
+// CHECK: define %UnionF32U32 @test_UnionF32U32(%UnionF32U32{{( %0)?}})
 #[no_mangle]
 pub fn test_UnionF32U32(_: UnionF32U32) -> UnionF32U32 { loop {} }
 
-pub union UnionU128{a:u128}
+pub union UnionU128{a: u128}
 // CHECK: define i128 @test_UnionU128(i128 %_1)
 #[no_mangle]
 pub fn test_UnionU128(_: UnionU128) -> UnionU128 { loop {} }
 
-pub union UnionU128x2{a:(u128, u128)}
+pub union UnionU128x2{a: (u128, u128)}
 // CHECK: define void @test_UnionU128x2(i128 %_1.0, i128 %_1.1)
 #[no_mangle]
 pub fn test_UnionU128x2(_: UnionU128x2) { loop {} }
 
 #[repr(C)]
-pub union CUnionU128x2{a:(u128, u128)}
+pub union CUnionU128x2{a: (u128, u128)}
 // CHECK: define void @test_CUnionU128x2(%CUnionU128x2* {{.*}} %_1)
 #[no_mangle]
 pub fn test_CUnionU128x2(_: CUnionU128x2) { loop {} }
 
-pub union UnionBool { b:bool }
+pub union UnionBool { b: bool }
 // CHECK: define zeroext i1 @test_UnionBool(i8 %b)
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool { unsafe { b.b }  }
