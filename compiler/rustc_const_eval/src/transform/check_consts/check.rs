@@ -832,10 +832,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             return;
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
-                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
-                                self.check_op(ops::FnCallNonConst(None));
-                                return;
-                            }
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
                                 .associated_item_def_ids(data.impl_def_id)
@@ -846,6 +842,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 // used for the `resolve` call below
                                 substs = InternalSubsts::identity_for_item(tcx, did);
                                 callee = did;
+                            }
+
+                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                });
+                                return;
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
