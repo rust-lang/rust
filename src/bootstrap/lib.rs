@@ -652,7 +652,7 @@ impl Build {
 
     /// Gets the space-separated set of activated features for the standard
     /// library.
-    fn std_features(&self, target: TargetSelection) -> String {
+    fn std_features(&self, target: TargetSelection, with_c: bool) -> String {
         let mut features = "panic-unwind".to_string();
 
         match self.config.llvm_libunwind {
@@ -663,7 +663,7 @@ impl Build {
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
-        if self.config.profiler_enabled(target) {
+        if self.config.profiler_enabled(target) && with_c {
             features.push_str(" profiler");
         }
         features

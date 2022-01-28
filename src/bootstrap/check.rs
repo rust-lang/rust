@@ -84,7 +84,7 @@ impl Step for Std {
             target,
             cargo_subcommand(builder.kind),
         );
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo, false);
 
         builder.info(&format!(
             "Checking stage{} std artifacts ({} -> {})",
@@ -127,7 +127,7 @@ impl Step for Std {
         );
 
         cargo.arg("--all-targets");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo, false);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo
         // to also check the tests/benches/examples for these crates, rather

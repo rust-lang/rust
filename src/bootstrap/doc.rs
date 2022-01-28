@@ -438,7 +438,6 @@ impl Step for Std {
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
 
-        builder.ensure(compile::Std { compiler, target });
         let out_dir = builder.stage_out(compiler, Mode::Std).join(target.triple).join("doc");
 
         t!(fs::copy(builder.src.join("src/doc/rust.css"), out.join("rust.css")));
@@ -446,7 +445,7 @@ impl Step for Std {
         let run_cargo_rustdoc_for = |package: &str| {
             let mut cargo =
                 builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustdoc");
-            compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+            compile::std_cargo(builder, target, compiler.stage, &mut cargo, false);
 
             cargo
                 .arg("-p")

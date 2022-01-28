@@ -1964,7 +1964,7 @@ impl Step for Crate {
             builder.cargo(compiler, mode, SourceType::InTree, target, test_kind.subcommand());
         match mode {
             Mode::Std => {
-                compile::std_cargo(builder, target, compiler.stage, &mut cargo);
+                compile::std_cargo(builder, target, compiler.stage, &mut cargo, true);
             }
             Mode::Rustc => {
                 builder.ensure(compile::Rustc { compiler, target });

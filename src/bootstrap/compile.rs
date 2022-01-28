@@ -106,7 +106,7 @@ impl Step for Std {
         target_deps.extend(copy_self_contained_objects(builder, &compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
+        std_cargo(builder, target, compiler.stage, &mut cargo, true);
 
         builder.info(&format!(
             "Building stage{} std artifacts ({} -> {})",
@@ -262,7 +262,13 @@ fn copy_self_contained_objects(
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, cargo: &mut Cargo) {
+pub fn std_cargo(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    stage: u32,
+    cargo: &mut Cargo,
+    with_c: bool,
+) {
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
@@ -283,7 +289,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
     let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+    let compiler_builtins_c_feature = if compiler_builtins_root.exists() && with_c {
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -306,7 +312,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features);
     } else {
-        let mut features = builder.std_features(target);
+        let mut features = builder.std_features(target, with_c);
         features.push_str(compiler_builtins_c_feature);
 
         cargo
