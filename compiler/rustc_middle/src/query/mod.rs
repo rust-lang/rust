@@ -52,8 +52,16 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_owner(key: LocalDefId) -> hir::MaybeOwner<crate::hir::Owner<'tcx>> {
+    query hir_owner(key: LocalDefId) -> Option<crate::hir::Owner<'tcx>> {
         desc { |tcx| "HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
+    }
+
+    /// Gives access to the HIR ID for the given `LocalDefId` owner `key`.
+    ///
+    /// This can be conveniently accessed by methods on `tcx.hir()`.
+    /// Avoid calling this query directly.
+    query local_def_id_to_hir_id(key: LocalDefId) -> hir::MaybeOwner<crate::hir::Owner<'tcx>> {
+        desc { |tcx| "HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.

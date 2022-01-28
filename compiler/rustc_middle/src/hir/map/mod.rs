@@ -123,7 +123,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
             self.current_id.local_id = ItemLocalId::new(0);
-            if let MaybeOwner::Owner(node) = self.map.tcx.hir_owner(self.current_id.owner) {
+            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
                 return Some((self.current_id.owner, node.node));
             }
         }
@@ -141,7 +141,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
             self.current_id = HirId::make_owner(parent_id);
 
             // If this `HirId` doesn't have an entry, skip it and look for its `parent_id`.
-            if let MaybeOwner::Owner(node) = self.map.tcx.hir_owner(self.current_id.owner) {
+            if let Some(node) = self.map.tcx.hir_owner(self.current_id.owner) {
                 return Some((self.current_id.owner, node.node));
             }
         }
@@ -155,7 +155,7 @@ impl<'hir> Map<'hir> {
 
     pub fn root_module(&self) -> &'hir Mod<'hir> {
         match self.tcx.hir_owner(CRATE_DEF_ID).map(|o| o.node) {
-            MaybeOwner::Owner(OwnerNode::Crate(item)) => item,
+            Some(OwnerNode::Crate(item)) => item,
             _ => bug!(),
         }
     }
@@ -215,7 +215,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        let owner = self.tcx.hir_owner(def_id);
+        let owner = self.tcx.local_def_id_to_hir_id(def_id);
         match owner {
             MaybeOwner::Owner(_) => HirId::make_owner(def_id),
             MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
@@ -340,7 +340,7 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     pub fn find(&self, id: HirId) -> Option<Node<'hir>> {
         if id.local_id == ItemLocalId::from_u32(0) {
-            let owner = self.tcx.hir_owner(id.owner).as_owner()?;
+            let owner = self.tcx.hir_owner(id.owner)?;
             Some(owner.node.into())
         } else {
             let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
@@ -371,7 +371,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_generics(&self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
-        let node = self.tcx.hir_owner(id).as_owner()?;
+        let node = self.tcx.hir_owner(id)?;
         match node.node {
             OwnerNode::ImplItem(impl_item) => Some(&impl_item.generics),
             OwnerNode::TraitItem(trait_item) => Some(&trait_item.generics),
@@ -588,10 +588,10 @@ impl<'hir> Map<'hir> {
     pub fn get_module(&self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = HirId::make_owner(module);
         match self.tcx.hir_owner(module).map(|o| o.node) {
-            MaybeOwner::Owner(OwnerNode::Item(&Item {
-                span, kind: ItemKind::Mod(ref m), ..
-            })) => (m, span, hir_id),
-            MaybeOwner::Owner(OwnerNode::Crate(item)) => (item, item.inner, hir_id),
+            Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
+                (m, span, hir_id)
+            }
+            Some(OwnerNode::Crate(item)) => (item, item.inner, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }
@@ -885,7 +885,7 @@ impl<'hir> Map<'hir> {
 
     pub fn get_foreign_abi(&self, hir_id: HirId) -> Abi {
         let parent = self.get_parent_item(hir_id);
-        if let MaybeOwner::Owner(node) = self.tcx.hir_owner(parent) {
+        if let Some(node) = self.tcx.hir_owner(parent) {
             if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) = node.node
             {
                 return *abi;
@@ -899,21 +899,21 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_item(&self, id: LocalDefId) -> &'hir Item<'hir> {
         match self.tcx.hir_owner(id) {
-            MaybeOwner::Owner(Owner { node: OwnerNode::Item(item), .. }) => item,
+            Some(Owner { node: OwnerNode::Item(item), .. }) => item,
             _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_impl_item(&self, id: LocalDefId) -> &'hir ImplItem<'hir> {
         match self.tcx.hir_owner(id) {
-            MaybeOwner::Owner(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
+            Some(Owner { node: OwnerNode::ImplItem(item), .. }) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
 
     pub fn expect_trait_item(&self, id: LocalDefId) -> &'hir TraitItem<'hir> {
         match self.tcx.hir_owner(id) {
-            MaybeOwner::Owner(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
+            Some(Owner { node: OwnerNode::TraitItem(item), .. }) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
         }
     }
@@ -927,7 +927,7 @@ impl<'hir> Map<'hir> {
 
     pub fn expect_foreign_item(&self, id: LocalDefId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner(id) {
-            MaybeOwner::Owner(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
+            Some(Owner { node: OwnerNode::ForeignItem(item), .. }) => item,
             _ => {
                 bug!("expected foreign item, found {}", self.node_to_string(HirId::make_owner(id)))
             }

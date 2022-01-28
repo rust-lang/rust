@@ -65,6 +65,11 @@ pub fn provide(providers: &mut Providers) {
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.hir_owner = |tcx, id| {
+        let owner = tcx.hir_crate(()).owners.get(id)?.as_owner()?;
+        let node = owner.node();
+        Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
+    };
+    providers.local_def_id_to_hir_id = |tcx, id| {
         tcx.hir_crate(()).owners[id].map(|owner| {
             let node = owner.nodes.node();
             Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies }
