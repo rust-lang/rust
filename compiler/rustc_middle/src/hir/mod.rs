@@ -69,12 +69,7 @@ pub fn provide(providers: &mut Providers) {
         let node = owner.node();
         Some(Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies })
     };
-    providers.local_def_id_to_hir_id = |tcx, id| {
-        tcx.hir_crate(()).owners[id].map(|owner| {
-            let node = owner.nodes.node();
-            Owner { node, hash_without_bodies: owner.nodes.hash_without_bodies }
-        })
-    };
+    providers.local_def_id_to_hir_id = |tcx, id| tcx.hir_crate(()).owners[id].map(|_| ());
     providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id].map(|i| &i.nodes);
     providers.hir_owner_parent = |tcx, id| {
         // Accessing the def_key is ok since its value is hashed as part of `id`'s DefPathHash.
