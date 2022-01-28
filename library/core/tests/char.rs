@@ -319,7 +319,7 @@ fn test_decode_utf16_size_hint() {
 
             assert!(
                 lower <= count && count <= upper.unwrap(),
-                "lower = {lower}, upper = {upper:?}"
+                "lower = {lower}, count = {count}, upper = {upper:?}"
             );
 
             if let None = iter.next() {
@@ -328,6 +328,7 @@ fn test_decode_utf16_size_hint() {
         }
     }
 
+    check(&[0xD800, 0xD800, 0xDC00]);
     check(&[0xD800, 0x41, 0x42]);
     check(&[0xD800, 0]);
     check(&[0xD834, 0x006d]);
