@@ -1244,6 +1244,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
+                let def_kind = tcx.def_kind(projection_ty.skip_binder().item_def_id);
+                match (def_kind, term) {
+                    (hir::def::DefKind::AssocTy, ty::Term::Ty(_))
+                    | (hir::def::DefKind::AssocConst, ty::Term::Const(_)) => (),
+                    (_, _) => {
+                        tcx.sess
+                            .struct_span_err(
+                                binding.span,
+                                "type/const mismatch in equality bind of associated field",
+                            )
+                            .span_label(binding.span, "type/const Mismatch")
+                            .emit();
+                    }
+                }
                 bounds.projection_bounds.push((
                     projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
                         projection_ty,

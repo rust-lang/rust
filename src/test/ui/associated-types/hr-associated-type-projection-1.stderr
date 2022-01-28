@@ -4,8 +4,8 @@ error[E0271]: type mismatch resolving `<T as Deref>::Target == T`
 LL | impl<T: Copy + std::ops::Deref> UnsafeCopy<'_, T> for T {
    |      - this type parameter      ^^^^^^^^^^^^^^^^^ expected associated type, found type parameter `T`
    |
-   = note: expected associated type `<T as Deref>::Target`
-               found type parameter `T`
+   = note: expected type `<T as Deref>::Target`
+              found type `T`
 help: consider further restricting this bound
    |
 LL | impl<T: Copy + std::ops::Deref + Deref<Target = T>> UnsafeCopy<'_, T> for T {

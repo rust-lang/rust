@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
 LL | fn b() { blue_car(ModelT); }
    |          ^^^^^^^^ type mismatch resolving `<ModelT as Vehicle>::Color == Blue`
    |
-note: expected this to be `Blue`
+note: expected struct `Blue`, found struct `Black`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:16:40
    |
 LL | impl Vehicle for ModelT { type Color = Black; }
@@ -21,7 +21,7 @@ error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
 LL | fn c() { black_car(ModelU); }
    |          ^^^^^^^^^ type mismatch resolving `<ModelU as Vehicle>::Color == Black`
    |
-note: expected this to be `Black`
+note: expected struct `Black`, found struct `Blue`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:21:40
    |
 LL | impl Vehicle for ModelU { type Color = Blue; }

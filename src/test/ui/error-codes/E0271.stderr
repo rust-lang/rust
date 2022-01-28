@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
 LL |     foo(3_i8);
    |     ^^^ type mismatch resolving `<i8 as Trait>::AssociatedType == u32`
    |
-note: expected this to be `u32`
+note: expected `u32`, found `&str`
   --> $DIR/E0271.rs:7:43
    |
 LL | impl Trait for i8 { type AssociatedType = &'static str; }

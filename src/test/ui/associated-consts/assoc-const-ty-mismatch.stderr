@@ -1,0 +1,14 @@
+error: type/const mismatch in equality bind of associated field
+  --> $DIR/assoc-const-ty-mismatch.rs:23:15
+   |
+LL | fn foo<F: Foo<N=usize>>() {}
+   |               ^^^^^^^ type/const Mismatch
+
+error: type/const mismatch in equality bind of associated field
+  --> $DIR/assoc-const-ty-mismatch.rs:25:18
+   |
+LL | fn foo2<F: FooTy<T=3usize>>() {}
+   |                  ^^^^^^^^ type/const Mismatch
+
+error: aborting due to 2 previous errors
+

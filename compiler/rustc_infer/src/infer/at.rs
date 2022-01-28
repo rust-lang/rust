@@ -288,21 +288,13 @@ impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
 
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        match (a, b) {
-            (ty::Term::Ty(a), ty::Term::Ty(b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, a, b)
-            }
-            (ty::Term::Const(a), ty::Term::Const(b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, a, b)
-            }
-            (_, _) => span_bug!(cause.span, "Unexpected type/const mismatch"),
-        }
+        TypeTrace { cause: cause.clone(), values: Terms(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 

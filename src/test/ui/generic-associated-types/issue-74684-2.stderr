@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
 LL |     bug(Box::new(x));
    |     ^^^ type mismatch resolving `<{integer} as Fun>::F<'_> == [u8]`
    |
-note: expected this to be `[u8]`
+note: expected slice `[u8]`, found `i32`
   --> $DIR/issue-74684-2.rs:10:18
    |
 LL |     type F<'a> = i32;

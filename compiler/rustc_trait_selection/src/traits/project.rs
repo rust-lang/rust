@@ -22,6 +22,7 @@ use crate::traits::error_reporting::InferCtxtExt as _;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
@@ -200,7 +201,7 @@ fn project_and_unify_type<'cx, 'tcx>(
     let infcx = selcx.infcx();
     match obligation.predicate.term {
         ty::Term::Ty(obligation_pred_ty) => {
-            let normalized_ty = match opt_normalize_projection_type::<false>(
+            let normalized_ty = match opt_normalize_projection_type(
                 selcx,
                 obligation.param_env,
                 obligation.predicate.projection_ty,
@@ -215,7 +216,7 @@ fn project_and_unify_type<'cx, 'tcx>(
             debug!(?normalized_ty, ?obligations, "project_and_unify_type result");
             match infcx
                 .at(&obligation.cause, obligation.param_env)
-                .eq(normalized_ty, obligation_pred_ty.into())
+                .eq(normalized_ty, obligation_pred_ty)
             {
                 Ok(InferOk { obligations: inferred_obligations, value: () }) => {
                     obligations.extend(inferred_obligations);
@@ -228,7 +229,7 @@ fn project_and_unify_type<'cx, 'tcx>(
             }
         }
         ty::Term::Const(obligation_pred_const) => {
-            let normalized_const = match opt_normalize_projection_type::<true>(
+            let normalized_const = match opt_normalize_projection_type(
                 selcx,
                 obligation.param_env,
                 obligation.predicate.projection_ty,
@@ -492,7 +493,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 let (data, mapped_regions, mapped_types, mapped_consts) =
                     BoundVarReplacer::replace_bound_vars(infcx, &mut self.universes, data);
                 let data = data.super_fold_with(self);
-                let normalized_ty = opt_normalize_projection_type::<false>(
+                let normalized_ty = opt_normalize_projection_type(
                     self.selcx,
                     self.param_env,
                     data,
@@ -826,7 +827,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
     depth: usize,
     obligations: &mut Vec<PredicateObligation<'tcx>>,
 ) -> Term<'tcx> {
-    opt_normalize_projection_type::<false>(
+    opt_normalize_projection_type(
         selcx,
         param_env,
         projection_ty,
@@ -859,7 +860,7 @@ pub fn normalize_projection_type<'a, 'b, 'tcx>(
 /// function takes an obligations vector and appends to it directly, which is
 /// slightly uglier but avoids the need for an extra short-lived allocation.
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
-fn opt_normalize_projection_type<'a, 'b, 'tcx, const INTO_CONST: bool>(
+fn opt_normalize_projection_type<'a, 'b, 'tcx>(
     selcx: &'a mut SelectionContext<'b, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
@@ -946,7 +947,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx, const INTO_CONST: bool>(
 
     let obligation = Obligation::with_depth(cause.clone(), depth, param_env, projection_ty);
 
-    match project::<INTO_CONST>(selcx, &obligation) {
+    match project(selcx, &obligation) {
         Ok(Projected::Progress(Progress {
             term: projected_term,
             obligations: mut projected_obligations,
@@ -1087,7 +1088,7 @@ impl<'tcx> Progress<'tcx> {
 /// IMPORTANT:
 /// - `obligation` must be fully normalized
 #[tracing::instrument(level = "info", skip(selcx))]
-fn project<'cx, 'tcx, const INTO_CONST: bool>(
+fn project<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
 ) -> Result<Projected<'tcx>, ProjectionError<'tcx>> {
@@ -1123,7 +1124,7 @@ fn project<'cx, 'tcx, const INTO_CONST: bool>(
 
     match candidates {
         ProjectionCandidateSet::Single(candidate) => {
-            Ok(Projected::Progress(confirm_candidate::<INTO_CONST>(selcx, obligation, candidate)))
+            Ok(Projected::Progress(confirm_candidate(selcx, obligation, candidate)))
         }
         ProjectionCandidateSet::None => Ok(Projected::NoProgress(
             selcx
@@ -1525,7 +1526,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
     });
 }
 
-fn confirm_candidate<'cx, 'tcx, const INTO_CONST: bool>(
+fn confirm_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     candidate: ProjectionCandidate<'tcx>,
@@ -1542,7 +1543,7 @@ fn confirm_candidate<'cx, 'tcx, const INTO_CONST: bool>(
         }
 
         ProjectionCandidate::Select(impl_source) => {
-            confirm_select_candidate::<INTO_CONST>(selcx, obligation, impl_source)
+            confirm_select_candidate(selcx, obligation, impl_source)
         }
     };
 
@@ -1558,15 +1559,13 @@ fn confirm_candidate<'cx, 'tcx, const INTO_CONST: bool>(
     progress
 }
 
-fn confirm_select_candidate<'cx, 'tcx, const INTO_CONST: bool>(
+fn confirm_select_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     impl_source: Selection<'tcx>,
 ) -> Progress<'tcx> {
     match impl_source {
-        super::ImplSource::UserDefined(data) => {
-            confirm_impl_candidate::<INTO_CONST>(selcx, obligation, data)
-        }
+        super::ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         super::ImplSource::Generator(data) => confirm_generator_candidate(selcx, obligation, data),
         super::ImplSource::Closure(data) => confirm_closure_candidate(selcx, obligation, data),
         super::ImplSource::FnPointer(data) => confirm_fn_pointer_candidate(selcx, obligation, data),
@@ -1836,7 +1835,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     }
 }
 
-fn confirm_impl_candidate<'cx, 'tcx, const INTO_CONST: bool>(
+fn confirm_impl_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     impl_impl_source: ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>>,
@@ -1874,10 +1873,12 @@ fn confirm_impl_candidate<'cx, 'tcx, const INTO_CONST: bool>(
     let substs =
         translate_substs(selcx.infcx(), param_env, impl_def_id, substs, assoc_ty.defining_node);
     let ty = tcx.type_of(assoc_ty.item.def_id);
-    let term: ty::Term<'tcx> = if INTO_CONST {
-        // FIXME(associated_const_equality): what are the right substs?
+    let is_const = matches!(tcx.def_kind(assoc_ty.item.def_id), DefKind::AssocConst);
+    let term: ty::Term<'tcx> = if is_const {
+        let identity_substs =
+            crate::traits::InternalSubsts::identity_for_item(tcx, assoc_ty.item.def_id);
         let did = ty::WithOptConstParam::unknown(assoc_ty.item.def_id);
-        let val = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, substs));
+        let val = ty::ConstKind::Unevaluated(ty::Unevaluated::new(did, identity_substs));
         tcx.mk_const(ty::Const { ty, val }).into()
     } else {
         ty.into()
