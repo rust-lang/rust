@@ -515,7 +515,7 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
-    /// If both iterators have roughly equivalent syntax, it may me more readable to use [`zip`]:
+    /// If both iterators have roughly equivalent syntax, it may be more readable to use [`zip`]:
     ///
     /// ```
     /// use std::iter::zip;
