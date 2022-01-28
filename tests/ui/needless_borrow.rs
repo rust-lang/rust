@@ -62,7 +62,18 @@ fn main() {
         0 => &mut x,
         _ => &mut *x,
     };
-
+    let y: &mut i32 = match 0 {
+        // Lint here. The type given above triggers auto-borrow.
+        0 => &mut x,
+        _ => &mut *x,
+    };
+    fn ref_mut_i32(_: &mut i32) {}
+    ref_mut_i32(match 0 {
+        // Lint here. The type given above triggers auto-borrow.
+        0 => &mut x,
+        _ => &mut *x,
+    });
+    // use 'x' after to make sure it's still usable in the fixed code.
     *x = 5;
 
     let s = String::new();
