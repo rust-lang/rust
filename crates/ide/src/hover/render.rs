@@ -239,22 +239,20 @@ pub(super) fn keyword(
     }
     let parent = token.parent()?;
     let famous_defs = FamousDefs(sema, sema.scope(&parent).krate());
-    let keyword_mod = if token.kind() == T![fn] && ast::FnPtrType::cast(parent).is_some() {
-        // treat fn keyword inside function pointer type as primitive
-        format!("prim_{}", token.text())
-    } else {
-        // std exposes {}_keyword modules with docstrings on the root to document keywords
-        format!("{}_keyword", token.text())
-    };
-    let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
+
+    // some keywords get fancy type tooltips if they are apart of an expression, which require some extra work
+    // panic safety: we just checked that token is a keyword, and we have it's parent in scope, so it must have a parent
+    let KeywordHint { description, documentation, actions } = keyword_hints(sema, token);
+
+    let doc_owner = find_std_module(&famous_defs, &documentation)?;
     let docs = doc_owner.attrs(sema.db).docs()?;
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
-        &markup(Some(docs.into()), token.text().into(), None)?,
+        &markup(Some(docs.into()), description, None)?,
         config,
     );
-    Some(HoverResult { markup, actions: Default::default() })
+    Some(HoverResult { markup, actions })
 }
 
 pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<HoverResult> {
@@ -499,4 +497,95 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
         Either::Right(_) => format!("{}self: {}", is_mut, ty),
     };
     markup(None, desc, None)
+}
+
+struct KeywordHint {
+    description: String,
+    documentation: String,
+    actions: Vec<HoverAction>,
+}
+
+impl KeywordHint {
+    fn new(description: String, documentation: String) -> Self {
+        Self { description, documentation, actions: Vec::default() }
+    }
+}
+
+/// Panics
+/// ------
+/// `token` is assumed to:
+/// - have a parent, and
+/// - be a keyword
+fn keyword_hints<'t>(sema: &Semantics<RootDatabase>, token: &'t SyntaxToken) -> KeywordHint {
+    let parent = token.parent().expect("token was assumed to have a parent, but had none");
+
+    macro_rules! create_hint {
+        ($ty_info:expr, $doc:expr) => {{
+            let documentation = $doc;
+            match $ty_info {
+                Some(ty) => {
+                    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+                    let mut push_new_def = |item: hir::ModuleDef| {
+                        if !targets.contains(&item) {
+                            targets.push(item);
+                        }
+                    };
+                    walk_and_push_ty(sema.db, &ty.original, &mut push_new_def);
+
+                    let ty = ty.adjusted();
+                    let description = format!("{}: {}", token.text(), ty.display(sema.db));
+
+                    KeywordHint {
+                        description,
+                        documentation,
+                        actions: vec![HoverAction::goto_type_from_targets(sema.db, targets)],
+                    }
+                }
+                None => KeywordHint {
+                    description: token.text().to_string(),
+                    documentation,
+                    actions: Vec::new(),
+                },
+            }
+        }};
+    }
+
+    match token.kind() {
+        T![await] | T![loop] | T![match] | T![unsafe] => {
+            let ty = ast::Expr::cast(parent).and_then(|site| sema.type_of_expr(&site));
+            create_hint!(ty, format!("{}_keyword", token.text()))
+        }
+
+        T![if] | T![else] => {
+            fn if_has_else(site: &ast::IfExpr) -> bool {
+                match site.else_branch() {
+                    Some(ast::ElseBranch::IfExpr(inner)) => if_has_else(&inner),
+                    Some(ast::ElseBranch::Block(_)) => true,
+                    None => false,
+                }
+            }
+
+            // only include the type if there is an else branch; it isn't worth annotating
+            // an expression that always returns `()`, is it?
+            let ty = ast::IfExpr::cast(parent)
+                .and_then(|site| if_has_else(&site).then(|| site))
+                .and_then(|site| sema.type_of_expr(&ast::Expr::IfExpr(site)));
+            create_hint!(ty, format!("{}_keyword", token.text()))
+        }
+
+        T![fn] => {
+            let module = match ast::FnPtrType::cast(parent) {
+                // treat fn keyword inside function pointer type as primitive
+                Some(_) => format!("prim_{}", token.text()),
+                None => format!("{}_keyword", token.text()),
+            };
+            KeywordHint::new(token.text().to_string(), module)
+        }
+
+        kind if kind.is_keyword() => {
+            KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text()))
+        }
+
+        _ => panic!("{} was assumed to be a keyword, but it wasn't", token),
+    }
 }
