@@ -1346,8 +1346,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let mut cp_bx = self.new_block(&format!("cp_funclet{:?}", bb));
                     ret_llbb = cs_bx.llbb();
 
-                    let cs = cs_bx.catch_switch(None, None, 1);
-                    cs_bx.add_handler(cs, cp_bx.llbb());
+                    let cs = cs_bx.catch_switch(None, None, &[cp_bx.llbb()]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so
@@ -1374,8 +1373,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
-            let lp = bx.landing_pad(llretty, llpersonality, 1);
-            bx.set_cleanup(lp);
+            let lp = bx.cleanup_landing_pad(llretty, llpersonality);
 
             let slot = self.get_personality_slot(&mut bx);
             slot.storage_live(&mut bx);

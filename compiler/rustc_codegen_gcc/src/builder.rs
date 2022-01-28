@@ -1256,7 +1256,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>, _num_clauses: usize) -> RValue<'gcc> {
+    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
+
+    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
         let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
@@ -1267,11 +1271,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // rustc_codegen_ssa now calls the unwinding builder methods even on panic=abort.
     }
 
-    fn set_cleanup(&mut self, _landing_pad: RValue<'gcc>) {
-        // TODO(antoyo)
-    }
-
-    fn resume(&mut self, _exn: RValue<'gcc>) -> RValue<'gcc> {
+    fn resume(&mut self, _exn: RValue<'gcc>) {
         unimplemented!();
     }
 
@@ -1279,7 +1279,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) -> RValue<'gcc> {
+    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) {
         unimplemented!();
     }
 
@@ -1287,16 +1287,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn catch_switch(&mut self, _parent: Option<RValue<'gcc>>, _unwind: Option<Block<'gcc>>, _num_handlers: usize) -> RValue<'gcc> {
+    fn catch_switch(
+        &mut self,
+        _parent: Option<RValue<'gcc>>,
+        _unwind: Option<Block<'gcc>>,
+        _handlers: &[Block<'gcc>],
+    ) -> RValue<'gcc> {
         unimplemented!();
-    }
-
-    fn add_handler(&mut self, _catch_switch: RValue<'gcc>, _handler: Block<'gcc>) {
-        unimplemented!();
-    }
-
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
-        // TODO(antoyo)
     }
 
     // Atomic Operations
