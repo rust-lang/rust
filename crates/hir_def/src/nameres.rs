@@ -114,6 +114,7 @@ pub struct DefMap {
     registered_tools: Vec<SmolStr>,
 
     edition: Edition,
+    recursion_limit: Option<u32>,
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -272,6 +273,7 @@ impl DefMap {
             block: None,
             krate,
             edition,
+            recursion_limit: None,
             extern_prelude: FxHashMap::default(),
             exported_proc_macros: FxHashMap::default(),
             prelude: None,
@@ -461,6 +463,7 @@ impl DefMap {
             registered_tools,
             block: _,
             edition: _,
+            recursion_limit: _,
             krate: _,
             prelude: _,
             root: _,
@@ -481,6 +484,10 @@ impl DefMap {
     /// Get a reference to the def map's diagnostics.
     pub fn diagnostics(&self) -> &[DefDiagnostic] {
         self.diagnostics.as_slice()
+    }
+
+    pub fn recursion_limit(&self) -> Option<u32> {
+        self.recursion_limit
     }
 }
 

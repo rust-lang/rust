@@ -271,6 +271,17 @@ impl DefCollector<'_> {
                     None => continue,
                 };
 
+                if *attr_name == hir_expand::name![recursion_limit] {
+                    if let Some(input) = &attr.input {
+                        if let AttrInput::Literal(limit) = &**input {
+                            if let Ok(limit) = limit.parse() {
+                                self.def_map.recursion_limit = Some(limit);
+                            }
+                        }
+                    }
+                    continue;
+                }
+
                 let attr_is_register_like = *attr_name == hir_expand::name![register_attr]
                     || *attr_name == hir_expand::name![register_tool];
                 if !attr_is_register_like {

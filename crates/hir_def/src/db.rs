@@ -157,9 +157,26 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(visibility::function_visibility_query)]
     fn function_visibility(&self, def: FunctionId) -> Visibility;
+
+    #[salsa::transparent]
+    fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
     let _p = profile::span("crate_def_map:wait");
     db.crate_def_map_query(krate)
+}
+
+pub struct CrateLimits {
+    /// The maximum depth for potentially infinitely-recursive compile-time operations like macro expansion or auto-dereference.
+    pub recursion_limit: u32,
+}
+
+fn crate_limits(db: &dyn DefDatabase, crate_id: CrateId) -> CrateLimits {
+    let def_map = db.crate_def_map(crate_id);
+
+    CrateLimits {
+        // 128 is the default in rustc.
+        recursion_limit: def_map.recursion_limit().unwrap_or(128),
+    }
 }

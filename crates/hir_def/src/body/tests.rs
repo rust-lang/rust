@@ -62,6 +62,24 @@ fn main() { n_nuple!(1,2,3); }
 }
 
 #[test]
+fn recursion_limit() {
+    cov_mark::check!(your_stack_belongs_to_me);
+
+    lower(
+        r#"
+#![recursion_limit = "2"]
+macro_rules! n_nuple {
+    ($e:tt) => ();
+    ($first:tt $($rest:tt)*) => {{
+        n_nuple!($($rest)*)
+    }};
+}
+fn main() { n_nuple!(1,2,3); }
+"#,
+    );
+}
+
+#[test]
 fn macro_resolve() {
     // Regression test for a path resolution bug introduced with inner item handling.
     lower(
