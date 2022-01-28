@@ -462,6 +462,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
 
@@ -608,6 +609,7 @@ pub enum Conv {
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
     pub args: Vec<ArgAbi<'a, Ty>>,

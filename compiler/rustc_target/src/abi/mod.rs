@@ -1027,6 +1027,7 @@ rustc_index::newtype_index! {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
@@ -1046,6 +1047,7 @@ pub enum Variants {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum TagEncoding {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
     /// (so converting the tag to the discriminant can require sign extension).
@@ -1150,6 +1152,7 @@ impl Niche {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Layout {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
@@ -1204,6 +1207,7 @@ impl Layout {
 /// layouts for which Rust types do not exist, such as enum variants
 /// or synthetic fields of enums (i.e., discriminants) and fat pointers.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
     pub layout: &'a Layout,

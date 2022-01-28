@@ -268,6 +268,12 @@ impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
     }
 }
 
+impl HashStableEq for ::std::num::NonZeroUsize {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.get().hash_stable_eq(&other.get())
+    }
+}
+
 impl<CTX> HashStable<CTX> for f32 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let val: u32 = unsafe { ::std::mem::transmute(*self) };
@@ -335,6 +341,9 @@ where
 
 impl<T: HashStableEq> HashStableEq for [T] {
     fn hash_stable_eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
         for (first, second) in self.iter().zip(other.iter()) {
             if !first.hash_stable_eq(second) {
                 return false;
@@ -380,6 +389,13 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStableEq> HashStableEq for Vec<T> {
+    #[inline]
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (&self[..]).hash_stable_eq(other)
     }
 }
 
@@ -466,6 +482,20 @@ impl<CTX> HashStable<CTX> for String {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         (&self[..]).hash_stable(hcx, hasher);
+    }
+}
+
+impl HashStableEq for str {
+    #[inline]
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.as_bytes().hash_stable_eq(other.as_bytes())
+    }
+}
+
+impl HashStableEq for String {
+    #[inline]
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (&self[..]).hash_stable_eq(other)
     }
 }
 
@@ -567,6 +597,12 @@ where
         for v in &self.raw {
             v.hash_stable(ctx, hasher);
         }
+    }
+}
+
+impl<I: vec::Idx, T: HashStableEq> HashStableEq for vec::IndexVec<I, T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.iter().as_slice().hash_stable_eq(other.iter().as_slice())
     }
 }
 
