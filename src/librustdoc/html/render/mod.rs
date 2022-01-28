@@ -376,7 +376,7 @@ impl Setting {
                 description,
             ),
             Setting::Select { js_data_name, description, default_value, ref options } => format!(
-                "<div class=\"setting-line\"><div class=\"radio-line\" id=\"{}\"><span class=\"setting-name\">{}</span>{}</div></div>",
+                "<div class=\"setting-line\"><div class=\"radio-line\" id=\"{}\"><span class=\"setting-name\">{}</span><div class=\"choices\">{}</div></div></div>",
                 js_data_name,
                 description,
                 options
