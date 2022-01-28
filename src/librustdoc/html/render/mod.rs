@@ -62,6 +62,7 @@ use rustc_span::{
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
+use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -2671,8 +2672,9 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
           <span></span>\
           <h5 id=\"{id}\">\
              <a href=\"#{id}\">Examples found in repository</a>\
-             <a class=\"scrape-help\" href=\"https://doc.rust-lang.org/rustdoc/scraped-examples.html\" target=\"_blank\">?</a>\
+             <a class=\"scrape-help\" href=\"{doc_prefix}/rustdoc/scraped-examples.html\" target=\"_blank\">?</a>\
           </h5>",
+        doc_prefix = DOC_RUST_LANG_ORG_CHANNEL,
         id = id
     );
 

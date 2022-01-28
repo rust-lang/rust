@@ -2,14 +2,14 @@
 
 Rustdoc can automatically scrape examples of items being documented from the `examples/` directory of a Cargo workspace. These examples will be included within the generated documentation for that item. For example, if your library contains a public function:
 
-```rust,ignore(needs-other-file)
+```rust,ignore (needs-other-file)
 // a_crate/src/lib.rs
 pub fn a_func() {}
 ```
 
 And you have an example calling this function:
 
-```rust,ignore(needs-other-file)
+```rust,ignore (needs-other-file)
 // a_crate/examples/ex.rs
 fn main() {
   a_crate::a_func();
