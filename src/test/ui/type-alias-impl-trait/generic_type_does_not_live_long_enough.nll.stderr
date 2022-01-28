@@ -24,15 +24,6 @@ LL |     t
    |
    = help: consider adding an explicit lifetime bound `T: 'static`...
 
-error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generic_type_does_not_live_long_enough.rs:10:24
-   |
-LL | type WrongGeneric<T> = impl 'static;
-   |                        ^^^^^^^^^^^^
-   |
-   = help: consider adding an explicit lifetime bound `T: 'static`...
-   = note: ...so that the type `T` will meet its required lifetime bounds
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0310`.
