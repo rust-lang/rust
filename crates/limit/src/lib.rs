@@ -45,7 +45,7 @@ impl Limit {
                 }
                 if self
                     .max
-                    .compare_exchange(old_max, other, Ordering::Relaxed, Ordering::Relaxed)
+                    .compare_exchange_weak(old_max, other, Ordering::Relaxed, Ordering::Relaxed)
                     .is_ok()
                 {
                     eprintln!("new max: {}", other);
