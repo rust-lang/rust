@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_span::{symbol::sym, Span, Symbol, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -244,23 +244,22 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
 
         match (self.state.take(), kind) {
             (None, kind) => {
-                let parent = get_parent_node(cx.tcx, expr.hir_id);
                 let expr_ty = typeck.expr_ty(expr);
+                let (position, parent_ctxt) = get_expr_position(cx, expr);
                 match kind {
                     RefOp::Deref => {
-                        if let Some(Node::Expr(e)) = parent
-                            && let ExprKind::Field(_, name) = e.kind
-                            && !ty_contains_field(typeck.expr_ty(sub_expr), name.name)
+                        if let Position::FieldAccess(name) = position
+                            && !ty_contains_field(typeck.expr_ty(sub_expr), name)
                         {
                             self.state = Some((
-                                State::ExplicitDerefField { name: name.name },
+                                State::ExplicitDerefField { name },
                                 StateData { span: expr.span, hir_id: expr.hir_id },
                             ));
                         }
                     }
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
-                            && is_linted_explicit_deref_position(parent, expr.hir_id, expr.span) =>
+                            && (position.lint_explicit_deref() || parent_ctxt != expr.span.ctxt()) =>
                     {
                         self.state = Some((
                             State::DerefMethod {
@@ -322,8 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
 
-                        let (required_refs, required_precedence, msg) = if is_auto_borrow_position(parent, expr.hir_id)
-                        {
+                        let (required_refs, required_precedence, msg) = if position.can_auto_borrow() {
                             (1, PREC_POSTFIX, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
                             next_adjust.map(|a| &a.kind)
@@ -573,60 +571,41 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Checks whether the parent node is a suitable context for switching from a deref method to the
-// deref operator.
-fn is_linted_explicit_deref_position(parent: Option<Node<'_>>, child_id: HirId, child_span: Span) -> bool {
-    let parent = match parent {
-        Some(Node::Expr(e)) if e.span.ctxt() == child_span.ctxt() => e,
-        _ => return true,
-    };
-    match parent.kind {
-        // Leave deref calls in the middle of a method chain.
-        // e.g. x.deref().foo()
-        ExprKind::MethodCall(_, [self_arg, ..], _) if self_arg.hir_id == child_id => false,
+#[derive(Clone, Copy)]
+enum Position {
+    MethodReceiver,
+    FieldAccess(Symbol),
+    Callee,
+    Postfix,
+    Deref,
+    Other,
+}
+impl Position {
+    fn can_auto_borrow(self) -> bool {
+        matches!(self, Self::MethodReceiver | Self::FieldAccess(_) | Self::Callee)
+    }
 
-        // Leave deref calls resulting in a called function
-        // e.g. (x.deref())()
-        ExprKind::Call(func_expr, _) if func_expr.hir_id == child_id => false,
+    fn lint_explicit_deref(self) -> bool {
+        matches!(self, Self::Other)
+    }
+}
 
-        // Makes an ugly suggestion
-        // e.g. *x.deref() => *&*x
-        ExprKind::Unary(UnOp::Deref, _)
-        // Postfix expressions would require parens
-        | ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
-        | ExprKind::Field(..)
-        | ExprKind::Index(..)
-        | ExprKind::Err => false,
-
-        ExprKind::Box(..)
-        | ExprKind::ConstBlock(..)
-        | ExprKind::Array(_)
-        | ExprKind::Call(..)
-        | ExprKind::MethodCall(..)
-        | ExprKind::Tup(..)
-        | ExprKind::Binary(..)
-        | ExprKind::Unary(..)
-        | ExprKind::Lit(..)
-        | ExprKind::Cast(..)
-        | ExprKind::Type(..)
-        | ExprKind::DropTemps(..)
-        | ExprKind::If(..)
-        | ExprKind::Loop(..)
-        | ExprKind::Match(..)
-        | ExprKind::Let(..)
-        | ExprKind::Closure{..}
-        | ExprKind::Block(..)
-        | ExprKind::Assign(..)
-        | ExprKind::AssignOp(..)
-        | ExprKind::Path(..)
-        | ExprKind::AddrOf(..)
-        | ExprKind::Break(..)
-        | ExprKind::Continue(..)
-        | ExprKind::Ret(..)
-        | ExprKind::InlineAsm(..)
-        | ExprKind::Struct(..)
-        | ExprKind::Repeat(..)
-        | ExprKind::Yield(..) => true,
+/// Get which position an expression is in relative to it's parent.
+fn get_expr_position(cx: &LateContext<'_>, e: &Expr<'_>) -> (Position, SyntaxContext) {
+    if let Some(Node::Expr(parent)) = get_parent_node(cx.tcx, e.hir_id) {
+        let pos = match parent.kind {
+            ExprKind::MethodCall(_, [self_arg, ..], _) if self_arg.hir_id == e.hir_id => Position::MethodReceiver,
+            ExprKind::Field(_, name) => Position::FieldAccess(name.name),
+            ExprKind::Call(f, _) if f.hir_id == e.hir_id => Position::Callee,
+            ExprKind::Unary(UnOp::Deref, _) => Position::Deref,
+            ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar) | ExprKind::Index(..) => {
+                Position::Postfix
+            },
+            _ => Position::Other,
+        };
+        (pos, parent.span.ctxt())
+    } else {
+        (Position::Other, SyntaxContext::root())
     }
 }
 
@@ -746,20 +725,6 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
     })
     .unwrap_or(AutoDerefStability::None);
     (stability, adjustments)
-}
-
-/// Checks if the given expression is a position which can auto-borrow.
-fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
-    if let Some(Node::Expr(parent)) = parent {
-        match parent.kind {
-            // ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
-            ExprKind::Field(..) => true,
-            ExprKind::Call(f, _) => f.hir_id == child_id,
-            _ => false,
-        }
-    } else {
-        false
-    }
 }
 
 // Checks the stability of auto-deref when assigned to a binding with the given explicit type.
