@@ -762,6 +762,7 @@ pub trait LintContext: Sized {
                 }
                 BuiltinLintDiagnostics::NamedAsmLabel(help) => {
                     db.help(&help);
+                    db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 }
             }
             // Rewrap `db`, and pass control to the user.
