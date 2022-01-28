@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -print-type-analysis -type-analysis-func=callee -o /dev/null | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -print-type-analysis -enzyme-strict-aliasing=0 -type-analysis-func=callee -o /dev/null | FileCheck %s
 
 declare i64 @val()
 
