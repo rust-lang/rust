@@ -1567,7 +1567,6 @@ impl Type {
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
     /// [clean]: crate::clean
-    ///
     crate fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
     }
