@@ -14,6 +14,7 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty,
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::SelectionContext;
 
 use std::mem;
@@ -806,15 +807,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let obligation = Obligation::new(
-                        ObligationCause::dummy(),
-                        param_env,
-                        Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: ty::BoundConstness::NotConst,
-                            polarity: ty::ImplPolarity::Positive,
-                        }),
-                    );
+                    let poly_trait_pred = Binder::dummy(TraitPredicate {
+                        trait_ref,
+                        constness: ty::BoundConstness::ConstIfConst,
+                        polarity: ty::ImplPolarity::Positive,
+                    });
+                    let obligation =
+                        Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
                         let mut selcx = SelectionContext::new(&infcx);
@@ -858,15 +857,37 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             // #[default_method_body_is_const], and the callee is in the same
                             // trait.
                             let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some() {
-                                if tcx.has_attr(caller, sym::default_method_body_is_const) {
-                                    if tcx.trait_of_item(caller) == callee_trait {
-                                        nonconst_call_permission = true;
-                                    }
-                                }
+                            if callee_trait.is_some()
+                                && tcx.has_attr(caller, sym::default_method_body_is_const)
+                                && callee_trait == tcx.trait_of_item(caller)
+                                // Can only call methods when it's `<Self as TheTrait>::f`.
+                                && tcx.types.self_param == substs.type_at(0)
+                            {
+                                nonconst_call_permission = true;
                             }
 
                             if !nonconst_call_permission {
+                                let obligation = Obligation::new(
+                                    ObligationCause::dummy_with_span(*fn_span),
+                                    param_env,
+                                    tcx.mk_predicate(
+                                        poly_trait_pred.map_bound(ty::PredicateKind::Trait),
+                                    ),
+                                );
+
+                                // improve diagnostics by showing what failed. Our requirements are stricter this time
+                                // as we are going to error again anyways.
+                                tcx.infer_ctxt().enter(|infcx| {
+                                    if let Err(e) = implsrc {
+                                        infcx.report_selection_error(
+                                            obligation.clone(),
+                                            &obligation,
+                                            &e,
+                                            false,
+                                        );
+                                    }
+                                });
+
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
