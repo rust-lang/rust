@@ -1,0 +1,33 @@
+error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:6:34
+   |
+LL |     let _: Option<(i32, bool)> = Some(1, 2);
+   |                                  ^^^^ -  - supplied 2 arguments
+   |                                  |
+   |                                  expected 1 argument
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:8:5
+   |
+LL |     int_bool(1, 2);
+   |     ^^^^^^^^ -  - supplied 2 arguments
+   |     |
+   |     expected 1 argument
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple-errors.rs:15:4
+   |
+LL | fn int_bool(_: (i32, bool)) {
+   |    ^^^^^^^^ --------------
+
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
+  --> $DIR/args-instead-of-tuple-errors.rs:11:28
+   |
+LL |     let _: Option<(i8,)> = Some();
+   |                            ^^^^-- supplied 0 arguments
+   |                            |
+   |                            expected 1 argument
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0061`.
