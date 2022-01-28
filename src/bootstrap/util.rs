@@ -282,9 +282,10 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     if !path.starts_with(suite_path) {
         return None;
     }
-    let exists = path.is_dir() || path.is_file();
+    let abs_path = builder.src.join(path);
+    let exists = abs_path.is_dir() || abs_path.is_file();
     if !exists {
-        if let Some(p) = path.to_str() {
+        if let Some(p) = abs_path.to_str() {
             builder.info(&format!("Warning: Skipping \"{}\": not a regular file or directory", p));
         }
         return None;
