@@ -302,6 +302,7 @@ pub trait Try: FromResidual {
         enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
+#[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.

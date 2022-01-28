@@ -1,7 +1,7 @@
 #![feature(const_fn_fn_ptr_basics)]
 
 const fn foo() { (||{})() }
-//~^ ERROR calls in constant functions
+//~^ ERROR cannot call non-const closure
 
 const fn bad(input: fn()) {
     input()

@@ -291,13 +291,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp) {
+    pub fn check_op(&mut self, op: impl NonConstOp<'tcx>) {
         self.check_op_spanned(op, self.span);
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
-    pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
+    pub fn check_op_spanned<O: NonConstOp<'tcx>>(&mut self, op: O, span: Span) {
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return,
 
@@ -771,7 +771,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, .. } => {
+            TerminatorKind::Call { func, args, fn_span, from_hir_call, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 
@@ -795,7 +795,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(Some((callee, substs))));
+                        self.check_op(ops::FnCallNonConst {
+                            caller,
+                            callee,
+                            substs,
+                            span: *fn_span,
+                            from_hir_call: *from_hir_call,
+                        });
                         return;
                     }
 
@@ -854,7 +860,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
 
                             if !nonconst_call_permission {
-                                self.check_op(ops::FnCallNonConst(None));
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                });
                                 return;
                             }
                         }
@@ -923,7 +935,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     if !nonconst_call_permission {
-                        self.check_op(ops::FnCallNonConst(None));
+                        self.check_op(ops::FnCallNonConst {
+                            caller,
+                            callee,
+                            substs,
+                            span: *fn_span,
+                            from_hir_call: *from_hir_call,
+                        });
                         return;
                     }
                 }
