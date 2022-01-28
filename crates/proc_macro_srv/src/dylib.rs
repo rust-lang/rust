@@ -168,6 +168,10 @@ fn ensure_file_with_lock_free_access(path: &Path) -> io::Result<PathBuf> {
     use std::ffi::OsString;
     use std::hash::{BuildHasher, Hasher};
 
+    if std::env::var("RA_DONT_COPY_PROC_MACRO_DLL").is_ok() {
+        return Ok(path.to_path_buf());
+    }
+
     let mut to = std::env::temp_dir();
 
     let file_name = path.file_name().ok_or_else(|| {
