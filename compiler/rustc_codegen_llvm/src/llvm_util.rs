@@ -46,6 +46,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
     llvm::LLVMRustInstallFatalErrorHandler();
+    llvm::LLVMRustDisableSystemDialogsOnCrash();
 
     fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
         full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")

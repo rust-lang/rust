@@ -76,6 +76,10 @@ extern "C" void LLVMRustInstallFatalErrorHandler() {
   install_fatal_error_handler(FatalErrorHandler);
 }
 
+extern "C" void LLVMRustDisableSystemDialogsOnCrash() {
+  sys::DisableSystemDialogsOnCrash();
+}
+
 extern "C" char *LLVMRustGetLastError(void) {
   char *Ret = LastError;
   LastError = nullptr;
