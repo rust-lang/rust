@@ -521,6 +521,7 @@ pub struct Crate {
 ///
 /// E.g., the '..' in `#[name(..)]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum NestedMetaItem {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
@@ -534,6 +535,7 @@ pub enum NestedMetaItem {
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct MetaItem {
     pub path: Path,
     pub kind: MetaItemKind,
@@ -544,6 +546,7 @@ pub struct MetaItem {
 ///
 /// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
@@ -1527,6 +1530,7 @@ impl MacCall {
 
 /// Arguments passed to an attribute or a function-like macro.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum MacArgs {
     /// No arguments - `#[attr]`.
     Empty,
@@ -1602,6 +1606,7 @@ impl MacDelimiter {
 
 /// Represents a macro definition.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct MacroDef {
     pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.
@@ -1621,6 +1626,7 @@ pub enum StrStyle {
 
 /// An AST literal.
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Lit {
     /// The original literal token as written in source code.
     pub token: token::Lit,
@@ -2021,6 +2027,7 @@ bitflags::bitflags! {
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2425,6 +2432,7 @@ impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct AttrItem {
     pub path: Path,
     pub args: MacArgs,

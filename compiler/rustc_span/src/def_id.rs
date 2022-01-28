@@ -1,6 +1,6 @@
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;
@@ -232,6 +232,12 @@ pub struct DefId {
     pub krate: CrateNum,
     #[cfg(all(target_pointer_width = "64", target_endian = "big"))]
     pub index: DefIndex,
+}
+
+impl HashStableEq for DefId {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 // On 64-bit systems, we can hash the whole `DefId` as one `u64` instead of two `u32`s. This

@@ -178,6 +178,7 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -246,6 +247,7 @@ pub enum TokenKind {
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,

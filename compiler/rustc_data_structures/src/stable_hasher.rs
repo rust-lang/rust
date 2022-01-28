@@ -199,6 +199,10 @@ pub trait HashStable<CTX> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher);
 }
 
+pub trait HashStableEq {
+    fn hash_stable_eq(&self, other: &Self) -> bool;
+}
+
 /// Implement this for types that can be turned into stable keys like, for
 /// example, for DefId that can be converted to a DefPathHash. This is used for
 /// bringing maps into a predictable order before hashing them.
@@ -216,6 +220,13 @@ macro_rules! impl_stable_hash_via_hash {
             #[inline]
             fn hash_stable(&self, _: &mut CTX, hasher: &mut $crate::stable_hasher::StableHasher) {
                 ::std::hash::Hash::hash(self, hasher);
+            }
+        }
+
+        impl $crate::stable_hasher::HashStableEq for $t {
+            #[inline]
+            fn hash_stable_eq(&self, other: &Self) -> bool {
+                self == other
             }
         }
     };
@@ -322,7 +333,34 @@ where
     }
 }
 
+impl<T: HashStableEq> HashStableEq for [T] {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        for (first, second) in self.iter().zip(other.iter()) {
+            if !first.hash_stable_eq(second) {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl<T: HashStableEq, const N: usize> HashStableEq for [T; N] {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (self[..]).hash_stable_eq(other)
+    }
+}
+
+
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
+    default fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.len().hash_stable(ctx, hasher);
+        for item in self {
+            item.hash_stable(ctx, hasher);
+        }
+    }
+}
+
+impl<T: HashStable<CTX>, CTX, const N: usize> HashStable<CTX> for [T; N] {
     default fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.len().hash_stable(ctx, hasher);
         for item in self {
@@ -405,6 +443,18 @@ impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
     }
 }
 
+impl<T: ?Sized + HashStableEq> HashStableEq for ::std::rc::Rc<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (**self).hash_stable_eq(other)
+    }
+}
+
+impl<T: ?Sized + HashStableEq> HashStableEq for ::std::sync::Arc<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (**self).hash_stable_eq(other)
+    }
+}
+
 impl<CTX> HashStable<CTX> for str {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
@@ -431,6 +481,22 @@ impl<CTX> HashStable<CTX> for bool {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (if *self { 1u8 } else { 0u8 }).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T: HashStableEq> HashStableEq for Option<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Some(first), Some(second)) => first.hash_stable_eq(second),
+            (None, None) => true,
+            _ => false
+        }
+    }
+}
+
+impl HashStableEq for bool {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
     }
 }
 

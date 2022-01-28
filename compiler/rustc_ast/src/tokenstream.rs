@@ -38,6 +38,7 @@ use std::{fmt, iter, mem};
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum TokenTree {
     /// A single token.
     Token(Token),

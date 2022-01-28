@@ -25,6 +25,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
+decl_derive!([HashStableEq, attributes(stable_hasher)] => hash_stable::hash_stable_eq_derive);
 decl_derive!(
     [HashStable_Generic, attributes(stable_hasher)] =>
     hash_stable::hash_stable_generic_derive

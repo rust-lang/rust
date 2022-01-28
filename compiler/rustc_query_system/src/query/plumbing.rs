@@ -14,6 +14,7 @@ use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::stable_hasher::HashStableEq;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
@@ -70,6 +71,24 @@ struct QueryStateShard<K> {
     active: FxHashMap<K, QueryResult>,
 }
 
+#[derive(Copy, Clone, Hash)]
+#[repr(transparent)]
+pub struct HashStableKey<K>(pub K);
+
+impl<K> HashStableKey<K> {
+    pub fn from_ref(val: &K) -> &HashStableKey<K> {
+        unsafe { std::mem::transmute(val) }
+    }
+}
+
+impl<K: HashStableEq + Hash> PartialEq for HashStableKey<K> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.hash_stable_eq(&other.0)
+    }
+}
+
+impl<K: HashStableEq + Hash> Eq for HashStableKey<K> {}
+
 impl<K> Default for QueryStateShard<K> {
     fn default() -> QueryStateShard<K> {
         QueryStateShard { active: Default::default() }
@@ -92,7 +111,7 @@ enum QueryResult {
 
 impl<K> QueryState<K>
 where
-    K: Eq + Hash + Clone + Debug,
+    K: Clone + Debug,
 {
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
@@ -111,7 +130,7 @@ where
         for shard in shards.iter() {
             for (k, v) in shard.active.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    let query = make_query(tcx, k.clone());
+                    let query = make_query(tcx, k.0.clone());
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
@@ -131,7 +150,7 @@ impl<K> Default for QueryState<K> {
 /// This will poison the relevant query if dropped.
 struct JobOwner<'tcx, K>
 where
-    K: Eq + Hash + Clone,
+    K: HashStableEq + Hash + Clone,
 {
     state: &'tcx QueryState<K>,
     key: K,
@@ -158,7 +177,7 @@ where
 
 impl<'tcx, K> JobOwner<'tcx, K>
 where
-    K: Eq + Hash + Clone,
+    K: HashStableEq + Hash + Clone,
 {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
     /// start executing the query, or returns with the result of the query.
@@ -183,13 +202,13 @@ where
         let mut state_lock = state.shards.get_shard_by_index(shard).lock();
         let lock = &mut *state_lock;
 
-        match lock.active.entry(key) {
+        match lock.active.entry(HashStableKey(key)) {
             Entry::Vacant(entry) => {
                 let id = tcx.next_job_id();
                 let job = tcx.current_query_job();
                 let job = QueryJob::new(id, span, job);
 
-                let key = entry.key().clone();
+                let key = entry.key().0.clone();
                 entry.insert(QueryResult::Started(job));
 
                 let owner = JobOwner { state, id, key };
@@ -256,11 +275,11 @@ where
         mem::forget(self);
 
         let (job, result) = {
-            let key_hash = hash_for_shard(&key);
+            let key_hash = hash_for_shard(HashStableKey::from_ref(&key));
             let shard = get_shard_index_by_hash(key_hash);
             let job = {
                 let mut lock = state.shards.get_shard_by_index(shard).lock();
-                match lock.active.remove(&key).unwrap() {
+                match lock.active.remove(HashStableKey::from_ref(&key)).unwrap() {
                     QueryResult::Started(job) => job,
                     QueryResult::Poisoned => panic!(),
                 }
@@ -279,21 +298,21 @@ where
 
 impl<'tcx, K> Drop for JobOwner<'tcx, K>
 where
-    K: Eq + Hash + Clone,
+    K: HashStableEq + Hash + Clone,
 {
     #[inline(never)]
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
-        let shard = state.shards.get_shard_by_value(&self.key);
+        let shard = state.shards.get_shard_by_value(HashStableKey::from_ref(&self.key));
         let job = {
             let mut shard = shard.lock();
-            let job = match shard.active.remove(&self.key).unwrap() {
+            let job = match shard.active.remove(HashStableKey::from_ref(&self.key)).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            shard.active.insert(self.key.clone(), QueryResult::Poisoned);
+            shard.active.insert(HashStableKey(self.key.clone()), QueryResult::Poisoned);
             job
         };
         // Also signal the completion of the job, so waiters
@@ -312,7 +331,7 @@ pub(crate) struct CycleError {
 /// The result of `try_start`.
 enum TryGetJob<'tcx, K>
 where
-    K: Eq + Hash + Clone,
+    K: HashStableEq + Hash + Clone,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
     NotYetStarted(JobOwner<'tcx, K>),

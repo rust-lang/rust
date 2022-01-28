@@ -4,7 +4,7 @@
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -1709,6 +1709,12 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
+
+impl HashStableEq for Symbol {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
+    }
+}
 
 rustc_index::newtype_index! {
     struct SymbolIndex { .. }

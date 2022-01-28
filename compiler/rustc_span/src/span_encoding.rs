@@ -60,7 +60,7 @@ use rustc_data_structures::fx::FxIndexSet;
 /// the dependency to the parent definition's span. This is performed
 /// using the callback `SPAN_TRACK` to access the query engine.
 ///
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, HashStableEq)]
 // FIXME(@lcnr): Enable this attribute once the bootstrap
 // compiler knows of `rustc_pass_by_value`.
 //

@@ -1,10 +1,12 @@
 use crate::dep_graph::DepNodeIndex;
+use crate::query::HashStableKey;
 use crate::query::plumbing::{QueryCacheStore, QueryLookup};
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::WorkerLocal;
+use rustc_data_structures::stable_hasher::HashStableEq;
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -24,7 +26,7 @@ pub trait QueryStorage {
 }
 
 pub trait QueryCache: QueryStorage + Sized {
-    type Key: Hash + Eq + Clone + Debug;
+    type Key: Hash + HashStableEq + Clone + Debug;
     type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
@@ -58,7 +60,7 @@ pub trait QueryCache: QueryStorage + Sized {
 
 pub struct DefaultCacheSelector;
 
-impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
+impl<K: HashStableEq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
     type Cache = DefaultCache<K, V>;
 }
 
@@ -70,7 +72,7 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
+impl<K: HashStableEq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
 
@@ -83,11 +85,11 @@ impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
 
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
-    K: Eq + Hash + Clone + Debug,
+    K: HashStableEq + Hash + Clone + Debug,
     V: Clone + Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
+    type Sharded = FxHashMap<HashStableKey<K>, (V, DepNodeIndex)>;
 
     #[inline(always)]
     fn lookup<'s, R, OnHit>(
@@ -100,7 +102,7 @@ where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
         let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
@@ -118,7 +120,7 @@ where
         value: V,
         index: DepNodeIndex,
     ) -> Self::Stored {
-        lock_sharded_storage.insert(key, (value.clone(), index));
+        lock_sharded_storage.insert(HashStableKey(key), (value.clone(), index));
         value
     }
 
@@ -130,7 +132,7 @@ where
         let shards = shards.lock_shards();
         for shard in shards.iter() {
             for (k, v) in shard.iter() {
-                f(k, &v.0, v.1);
+                f(&k.0, &v.0, v.1);
             }
         }
     }
@@ -138,7 +140,7 @@ where
 
 pub struct ArenaCacheSelector<'tcx>(PhantomData<&'tcx ()>);
 
-impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tcx> {
+impl<'tcx, K: HashStableEq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tcx> {
     type Cache = ArenaCache<'tcx, K, V>;
 }
 
@@ -153,7 +155,7 @@ impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     }
 }
 
-impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
+impl<'tcx, K: HashStableEq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V> {
     type Value = V;
     type Stored = &'tcx V;
 
@@ -167,11 +169,11 @@ impl<'tcx, K: Eq + Hash, V: Debug + 'tcx> QueryStorage for ArenaCache<'tcx, K, V
 
 impl<'tcx, K, V: 'tcx> QueryCache for ArenaCache<'tcx, K, V>
 where
-    K: Eq + Hash + Clone + Debug,
+    K: HashStableEq + Hash + Clone + Debug,
     V: Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
+    type Sharded = FxHashMap<HashStableKey<K>, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
     fn lookup<'s, R, OnHit>(
@@ -184,7 +186,7 @@ where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
         let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);
@@ -204,7 +206,7 @@ where
     ) -> Self::Stored {
         let value = self.arena.alloc((value, index));
         let value = unsafe { &*(value as *const _) };
-        lock_sharded_storage.insert(key, value);
+        lock_sharded_storage.insert(HashStableKey(key), value);
         &value.0
     }
 
@@ -216,7 +218,7 @@ where
         let shards = shards.lock_shards();
         for shard in shards.iter() {
             for (k, v) in shard.iter() {
-                f(k, &v.0, v.1);
+                f(&k.0, &v.0, v.1);
             }
         }
     }
