@@ -65,6 +65,8 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -76,6 +78,8 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -95,6 +99,8 @@ pub fn do_not_run_ignored_tests() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -115,6 +121,8 @@ pub fn ignored_tests_result_in_ignored() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -139,6 +147,8 @@ fn test_should_panic() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -163,6 +173,8 @@ fn test_should_panic_good_message() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -192,6 +204,8 @@ fn test_should_panic_bad_message() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -225,6 +239,8 @@ fn test_should_panic_non_string_message_type() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -250,6 +266,8 @@ fn test_should_panic_but_succeeds() {
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(f)),
         };
@@ -283,6 +301,8 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -317,6 +337,8 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             compile_fail: false,
             no_run: false,
             test_type,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -355,6 +377,8 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
         compile_fail: false,
         no_run: false,
         test_type,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     }
 }
 
@@ -467,6 +491,8 @@ pub fn exclude_should_panic_option() {
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(move || {})),
     });
@@ -490,6 +516,8 @@ pub fn exact_filter_match() {
                     compile_fail: false,
                     no_run: false,
                     test_type: TestType::Unknown,
+                    #[cfg(bootstrap)]
+                    allow_fail: false,
                 },
                 testfn: DynTestFn(Box::new(move || {})),
             })
@@ -578,6 +606,8 @@ fn sample_tests() -> Vec<TestDescAndFn> {
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(testfn)),
         };
@@ -728,6 +758,8 @@ pub fn test_bench_no_iter() {
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     crate::bench::benchmark(TestId(0), desc, tx, true, f);
@@ -749,6 +781,8 @@ pub fn test_bench_iter() {
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     crate::bench::benchmark(TestId(0), desc, tx, true, f);
@@ -764,6 +798,8 @@ fn should_sort_failures_before_printing_them() {
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     let test_b = TestDesc {
@@ -773,6 +809,8 @@ fn should_sort_failures_before_printing_them() {
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);

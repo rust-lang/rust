@@ -925,6 +925,8 @@ pub fn make_test_description<R: Read>(
         compile_fail: false,
         no_run: false,
         test_type: test::TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     }
 }
 
