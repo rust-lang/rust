@@ -2671,6 +2671,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
           <span></span>\
           <h5 id=\"{id}\">\
              <a href=\"#{id}\">Examples found in repository</a>\
+             <a class=\"scrape-help\" href=\"https://doc.rust-lang.org/rustdoc/scraped-examples.html\" target=\"_blank\">?</a>\
           </h5>",
         id = id
     );
@@ -2842,6 +2843,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
                   <summary class=\"hideme\">\
                      <span>More examples</span>\
                   </summary>\
+                  <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
                     <div class=\"more-scraped-examples-inner\">"

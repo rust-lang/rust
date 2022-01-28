@@ -84,8 +84,10 @@
     onEach(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
-        toggle.querySelector('.toggle-line').addEventListener('click', function() {
-            toggle.open = false;
+        toggle.querySelectorAll('.toggle-line, .hide-more').forEach(button => {
+            button.addEventListener('click', function() {
+                toggle.open = false;
+            });
         });
 
         var moreExamples = toggle.querySelectorAll('.scraped-example');
