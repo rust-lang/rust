@@ -159,7 +159,7 @@ impl SocketAddr {
     ///
     /// assert!(SocketAddr::from_path("/path/with/\0/bytes").is_err());
     /// ```
-    #[unstable(feature = "unix_socket_creation", issue = "65275")]
+    #[unstable(feature = "unix_socket_creation", issue = "93423")]
     pub fn from_path<P>(path: P) -> io::Result<SocketAddr>
     where
         P: AsRef<Path>,
