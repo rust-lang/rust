@@ -12,10 +12,6 @@ LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
    |
    = note: expected tuple `(&mut u8,)`
                found type `{integer}`
-help: use a trailing comma to create a tuple with one element
-   |
-LL |     <F as FnOnce(&mut u8)>::call_once(f, (1,))
-   |                                          + ++
 
 error: aborting due to 2 previous errors
 

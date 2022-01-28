@@ -2044,26 +2044,34 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // If a tuple of length one was expected and the found expression has
                         // parentheses around it, perhaps the user meant to write `(expr,)` to
                         // build a tuple (issue #86100)
-                        (ty::Tuple(_), _) if expected.tuple_fields().count() == 1 => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                                if code.starts_with('(') && code.ends_with(')') {
-                                    let before_close = span.hi() - BytePos::from_u32(1);
+                        (ty::Tuple(_), _) => {
+                            if let [expected_tup_elem] =
+                                expected.tuple_fields().collect::<Vec<_>>()[..]
+                            {
+                                if same_type_modulo_infer(expected_tup_elem, found) {
+                                    if let Ok(code) =
+                                        self.tcx.sess().source_map().span_to_snippet(span)
+                                    {
+                                        if code.starts_with('(') && code.ends_with(')') {
+                                            let before_close = span.hi() - BytePos::from_u32(1);
 
-                                    err.span_suggestion(
-                                        span.with_hi(before_close).shrink_to_hi(),
-                                        "use a trailing comma to create a tuple with one element",
-                                        ",".into(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                } else {
-                                    err.multipart_suggestion(
-                                        "use a trailing comma to create a tuple with one element",
-                                        vec![
-                                            (span.shrink_to_lo(), "(".into()),
-                                            (span.shrink_to_hi(), ",)".into()),
-                                        ],
-                                        Applicability::MaybeIncorrect,
-                                    );
+                                            err.span_suggestion(
+                                                span.with_hi(before_close).shrink_to_hi(),
+                                                "use a trailing comma to create a tuple with one element",
+                                                ",".into(),
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                        } else {
+                                            err.multipart_suggestion(
+                                                "use a trailing comma to create a tuple with one element",
+                                                vec![
+                                                    (span.shrink_to_lo(), "(".into()),
+                                                    (span.shrink_to_hi(), ",)".into()),
+                                                ],
+                                                Applicability::MaybeIncorrect,
+                                            );
+                                        }
+                                    }
                                 }
                             }
                         }
