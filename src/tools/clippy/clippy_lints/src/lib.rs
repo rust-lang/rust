@@ -581,6 +581,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(needless_question_mark::NeedlessQuestionMark));
     store.register_late_pass(move || Box::new(casts::Casts::new(msrv)));
     store.register_early_pass(move || Box::new(unnested_or_patterns::UnnestedOrPatterns::new(msrv)));
+    store.register_late_pass(move || Box::new(map_clone::MapClone::new(msrv)));
 
     store.register_late_pass(|| Box::new(size_of_in_element_count::SizeOfInElementCount));
     store.register_late_pass(|| Box::new(same_name_method::SameNameMethod));
@@ -591,7 +592,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             msrv,
         ))
     });
-    store.register_late_pass(|| Box::new(map_clone::MapClone));
     store.register_late_pass(|| Box::new(map_err_ignore::MapErrIgnore));
     store.register_late_pass(|| Box::new(shadow::Shadow::default()));
     store.register_late_pass(|| Box::new(unit_types::UnitTypes));
@@ -703,7 +703,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(mut_key::MutableKeyType));
     store.register_late_pass(|| Box::new(modulo_arithmetic::ModuloArithmetic));
     store.register_early_pass(|| Box::new(reference::DerefAddrOf));
-    store.register_early_pass(|| Box::new(reference::RefInDeref));
     store.register_early_pass(|| Box::new(double_parens::DoubleParens));
     store.register_late_pass(|| Box::new(to_string_in_display::ToStringInDisplay::new()));
     store.register_early_pass(|| Box::new(unsafe_removed_from_name::UnsafeNameRemoval));
@@ -935,6 +934,7 @@ pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
     ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
     ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
     ls.register_renamed("clippy::disallowed_method", "clippy::disallowed_methods");
+    ls.register_renamed("clippy::ref_in_deref", "clippy::needless_borrow");
 
     // uplifted lints
     ls.register_renamed("clippy::invalid_ref", "invalid_value");

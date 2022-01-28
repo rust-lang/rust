@@ -19,7 +19,9 @@ use rustc_hir::{
     self as hir, def::DefKind, intravisit, intravisit::Visitor, ExprKind, Item, ItemKind, Mutability, QPath,
 };
 use rustc_lint::{CheckLintNameResult, LateContext, LateLintPass, LintContext, LintId};
+use rustc_middle::hir::nested_filter;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::Ident;
 use rustc_span::{sym, Loc, Span, Symbol};
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::collections::BinaryHeap;
@@ -578,9 +580,11 @@ fn get_lint_group_and_level_or_lint(
     lint_name: &str,
     item: &Item<'_>,
 ) -> Option<(String, &'static str)> {
-    let result = cx
-        .lint_store
-        .check_lint_name(lint_name, Some(sym::clippy), &[]);
+    let result = cx.lint_store.check_lint_name(
+        lint_name,
+        Some(sym::clippy),
+        &[Ident::with_dummy_span(sym::clippy)].into_iter().collect(),
+    );
     if let CheckLintNameResult::Tool(Ok(lint_lst)) = result {
         if let Some(group) = get_lint_group(cx, lint_lst[0]) {
             if EXCLUDED_LINT_GROUPS.contains(&group.as_str()) {

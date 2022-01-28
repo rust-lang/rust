@@ -9,7 +9,6 @@ fn do_vec(x: &Vec<i64>) {
 }
 
 fn do_vec_mut(x: &mut Vec<i64>) {
-    // no error here
     //Nothing here
 }
 
@@ -18,7 +17,6 @@ fn do_str(x: &String) {
 }
 
 fn do_str_mut(x: &mut String) {
-    // no error here
     //Nothing here either
 }
 
@@ -27,7 +25,6 @@ fn do_path(x: &PathBuf) {
 }
 
 fn do_path_mut(x: &mut PathBuf) {
-    // no error here
     //Nothing here either
 }
 
@@ -52,7 +49,7 @@ fn cloned(x: &Vec<u8>) -> Vec<u8> {
     let e = x.clone();
     let f = e.clone(); // OK
     let g = x;
-    let h = g.clone(); // Alas, we cannot reliably detect this without following data.
+    let h = g.clone();
     let i = (e).clone();
     x.clone()
 }
@@ -154,6 +151,30 @@ mod issue6509 {
         let _ = str.clone().pop();
         let _ = str.clone().clone();
     }
+}
+
+fn mut_vec_slice_methods(v: &mut Vec<u32>) {
+    v.copy_within(1..5, 10);
+}
+
+fn mut_vec_vec_methods(v: &mut Vec<u32>) {
+    v.clear();
+}
+
+fn vec_contains(v: &Vec<u32>) -> bool {
+    [vec![], vec![0]].as_slice().contains(v)
+}
+
+fn fn_requires_vec(v: &Vec<u32>) -> bool {
+    vec_contains(v)
+}
+
+fn impl_fn_requires_vec(v: &Vec<u32>, f: impl Fn(&Vec<u32>)) {
+    f(v);
+}
+
+fn dyn_fn_requires_vec(v: &Vec<u32>, f: &dyn Fn(&Vec<u32>)) {
+    f(v);
 }
 
 // No error for types behind an alias (#7699)
