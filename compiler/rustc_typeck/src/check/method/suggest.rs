@@ -1086,7 +1086,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
                         let trait_type = self.tcx.mk_ref(
-                            region,
+                            *region,
                             ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
                         err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
@@ -1462,8 +1462,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // just this list.
             for (rcvr_ty, post) in &[
                 (rcvr_ty, ""),
-                (self.tcx.mk_mut_ref(&ty::ReErased, rcvr_ty), "&mut "),
-                (self.tcx.mk_imm_ref(&ty::ReErased, rcvr_ty), "&"),
+                (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
+                (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
                 if let Ok(pick) = self.lookup_probe(
                     span,

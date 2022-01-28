@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                         };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[0],
                         };
                         self.apply_adjustments(lhs_expr, vec![autoref]);
@@ -238,7 +238,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                         };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[1],
                         };
                         // HACK(eddyb) Bypass checks due to reborrows being in

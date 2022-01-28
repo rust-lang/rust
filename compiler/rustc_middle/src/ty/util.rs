@@ -5,8 +5,9 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFolder};
 use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
-use crate::ty::TyKind::*;
-use crate::ty::{self, DebruijnIndex, DefIdTree, List, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{
+    self, DebruijnIndex, DefIdTree, List, ReEarlyBound, Region, Ty, TyCtxt, TyKind::*, TypeFoldable,
+};
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
@@ -390,7 +391,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = iter::zip(item_substs, impl_substs)
             .filter(|&(_, k)| {
                 match k.unpack() {
-                    GenericArgKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
+                    GenericArgKind::Lifetime(Region(Interned(ReEarlyBound(ref ebr), _))) => {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     GenericArgKind::Type(Ty(Interned(

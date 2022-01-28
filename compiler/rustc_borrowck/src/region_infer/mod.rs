@@ -1178,7 +1178,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                let r_vid = self.to_region_vid(r);
+                let r_vid = self.to_region_vid(*r);
                 self.eval_outlives(r_vid, lower_bound)
             }
 

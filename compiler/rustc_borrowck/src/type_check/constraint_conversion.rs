@@ -142,8 +142,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
-        if let ty::RePlaceholder(placeholder) = r {
-            self.constraints.placeholder_region(self.infcx, *placeholder).to_region_vid()
+        if let ty::RePlaceholder(placeholder) = *r {
+            self.constraints.placeholder_region(self.infcx, placeholder).to_region_vid()
         } else {
             self.universal_regions.to_region_vid(r)
         }

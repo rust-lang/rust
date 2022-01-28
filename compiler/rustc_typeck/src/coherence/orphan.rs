@@ -301,7 +301,7 @@ impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
         }
     }
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
+        match *r {
             ty::ReEarlyBound(p) => {
                 if self.seen.insert(p.index) {
                     ControlFlow::CONTINUE

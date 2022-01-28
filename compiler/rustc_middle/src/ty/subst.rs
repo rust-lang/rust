@@ -26,6 +26,9 @@ use std::ops::ControlFlow;
 /// To reduce memory usage, a `GenericArg` is an interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
 /// indicate the type (`Ty`, `Region`, or `Const`) it points to.
+///
+/// Note: the `PartialEq`, `Eq` and `Hash` derives are only valid because `Ty`,
+/// `Region` and `Const` are all interned.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
@@ -49,8 +52,8 @@ impl<'tcx> GenericArgKind<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(lt) & TAG_MASK, 0);
-                (REGION_TAG, lt as *const ty::RegionKind as usize)
+                assert_eq!(mem::align_of_val(lt.0.0) & TAG_MASK, 0);
+                (REGION_TAG, lt.0.0 as *const ty::RegionKind as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
@@ -117,9 +120,9 @@ impl<'tcx> GenericArg<'tcx> {
         // and this is just going in the other direction.
         unsafe {
             match ptr & TAG_MASK {
-                REGION_TAG => {
-                    GenericArgKind::Lifetime(&*((ptr & !TAG_MASK) as *const ty::RegionKind))
-                }
+                REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::RegionKind),
+                ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::TyS<'tcx>),
                 ))),

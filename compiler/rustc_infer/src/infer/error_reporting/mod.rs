@@ -239,7 +239,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     );
 
     // Explain the region we are capturing.
-    match hidden_region {
+    match *hidden_region {
         ty::ReEmpty(ty::UniverseIndex::ROOT) => {
             // All lifetimes shorter than the function body are `empty` in
             // lexical region resolution. The default explanation of "an empty
@@ -1114,7 +1114,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         fn push_ty_ref<'tcx>(
-            region: &ty::Region<'tcx>,
+            region: ty::Region<'tcx>,
             ty: Ty<'tcx>,
             mutbl: hir::Mutability,
             s: &mut DiagnosticStyledString,
@@ -1335,14 +1335,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // When finding T != &T, highlight only the borrow
             (&ty::Ref(r1, ref_ty1, mutbl1), _) if equals(ref_ty1, t2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
+                push_ty_ref(r1, ref_ty1, mutbl1, &mut values.0);
                 values.1.push_normal(t2.to_string());
                 values
             }
             (_, &ty::Ref(r2, ref_ty2, mutbl2)) if equals(t1, ref_ty2) => {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
                 values.0.push_normal(t1.to_string());
-                push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
+                push_ty_ref(r2, ref_ty2, mutbl2, &mut values.1);
                 values
             }
 
@@ -1351,8 +1351,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if equals(ref_ty1, ref_ty2) =>
             {
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                push_ty_ref(&r1, ref_ty1, mutbl1, &mut values.0);
-                push_ty_ref(&r2, ref_ty2, mutbl2, &mut values.1);
+                push_ty_ref(r1, ref_ty1, mutbl1, &mut values.0);
+                push_ty_ref(r2, ref_ty2, mutbl2, &mut values.1);
                 values
             }
 

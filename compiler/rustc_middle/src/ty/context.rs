@@ -860,10 +860,10 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Lifetime(r) => match r {
+                        GenericArgKind::Lifetime(r) => match *r {
                             ty::ReLateBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
-                                assert_eq!(*debruijn, ty::INNERMOST);
+                                assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == br.var
                             }
                             _ => false,
@@ -930,7 +930,11 @@ impl<'tcx> CommonTypes<'tcx> {
 
 impl<'tcx> CommonLifetimes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonLifetimes<'tcx> {
-        let mk = |r| interners.region.intern(r, |r| InternedInSet(interners.arena.alloc(r))).0;
+        let mk = |r| {
+            Region(Interned::new_unchecked(
+                interners.region.intern(r, |r| InternedInSet(interners.arena.alloc(r))).0,
+            ))
+        };
 
         CommonLifetimes {
             re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
@@ -1680,7 +1684,7 @@ macro_rules! nop_list_lift {
 }
 
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
-nop_lift_old! {region; Region<'a> => Region<'tcx>}
+nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift_old! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
 nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
@@ -2086,6 +2090,46 @@ impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
 }
 
 macro_rules! direct_interners {
+    ($($name:ident: $method:ident($ty:ty): $ret_ctor:ident -> $ret_ty:ty,)+) => {
+        $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
+            fn borrow<'a>(&'a self) -> &'a $ty {
+                &self.0
+            }
+        }
+
+        impl<'tcx> PartialEq for InternedInSet<'tcx, $ty> {
+            fn eq(&self, other: &Self) -> bool {
+                // The `Borrow` trait requires that `x.borrow() == y.borrow()`
+                // equals `x == y`.
+                self.0 == other.0
+            }
+        }
+
+        impl<'tcx> Eq for InternedInSet<'tcx, $ty> {}
+
+        impl<'tcx> Hash for InternedInSet<'tcx, $ty> {
+            fn hash<H: Hasher>(&self, s: &mut H) {
+                // The `Borrow` trait requires that `x.borrow().hash(s) ==
+                // x.hash(s)`.
+                self.0.hash(s)
+            }
+        }
+
+        impl<'tcx> TyCtxt<'tcx> {
+            pub fn $method(self, v: $ty) -> $ret_ty {
+                $ret_ctor(Interned::new_unchecked(self.interners.$name.intern(v, |v| {
+                    InternedInSet(self.interners.arena.alloc(v))
+                }).0))
+            }
+        })+
+    }
+}
+
+direct_interners! {
+    region: mk_region(RegionKind): Region -> Region<'tcx>,
+}
+
+macro_rules! direct_interners_old {
     ($($name:ident: $method:ident($ty:ty),)+) => {
         $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
             fn borrow<'a>(&'a self) -> &'a $ty {
@@ -2121,8 +2165,8 @@ macro_rules! direct_interners {
     }
 }
 
-direct_interners! {
-    region: mk_region(RegionKind),
+// FIXME: eventually these should all be converted to `direct_interners`.
+direct_interners_old! {
     const_: mk_const(Const<'tcx>),
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),

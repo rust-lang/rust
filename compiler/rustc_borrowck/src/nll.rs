@@ -8,7 +8,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid, Ty};
+use rustc_middle::ty::{self, OpaqueTypeKey, Region, RegionVid, Ty};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -443,9 +443,9 @@ pub trait ToRegionVid {
     fn to_region_vid(self) -> RegionVid;
 }
 
-impl<'tcx> ToRegionVid for &'tcx RegionKind {
+impl<'tcx> ToRegionVid for Region<'tcx> {
     fn to_region_vid(self) -> RegionVid {
-        if let ty::ReVar(vid) = self { *vid } else { bug!("region is not an ReVar: {:?}", self) }
+        if let ty::ReVar(vid) = *self { vid } else { bug!("region is not an ReVar: {:?}", self) }
     }
 }
 

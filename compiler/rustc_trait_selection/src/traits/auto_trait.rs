@@ -437,7 +437,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     for (new_region, old_region) in
                         iter::zip(new_substs.regions(), old_substs.regions())
                     {
-                        match (new_region, old_region) {
+                        match (*new_region, *old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.
                             (
@@ -880,8 +880,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match r {
-            ty::ReVar(vid) => self.vid_to_region.get(vid).cloned(),
+        (match *r {
+            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
             _ => None,
         })
         .unwrap_or_else(|| r.super_fold_with(self))

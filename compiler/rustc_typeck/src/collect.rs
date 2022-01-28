@@ -395,7 +395,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         _: Option<&ty::GenericParamDef>,
         span: Span,
     ) -> &'tcx Const<'tcx> {
-        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
+        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match *r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
         });
@@ -1878,7 +1878,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 Some(ty) => {
                     let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
                     // Typeck doesn't expect erased regions to be returned from `type_of`.
-                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match r {
+                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match *r {
                         ty::ReErased => tcx.lifetimes.re_static,
                         _ => r,
                     });

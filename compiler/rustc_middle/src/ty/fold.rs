@@ -960,10 +960,10 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => {
                 if self.bound_vars.len() <= br.var.as_usize() {
-                    bug!("Not enough bound vars: {:?} not found in {:?}", *br, self.bound_vars);
+                    bug!("Not enough bound vars: {:?} not found in {:?}", br, self.bound_vars);
                 }
                 let list_var = self.bound_vars[br.var.as_usize()];
                 match list_var {
@@ -1076,9 +1076,9 @@ pub fn shift_region<'tcx>(
     region: ty::Region<'tcx>,
     amount: u32,
 ) -> ty::Region<'tcx> {
-    match region {
+    match *region {
         ty::ReLateBound(debruijn, br) if amount > 0 => {
-            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), *br))
+            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), br))
         }
         _ => region,
     }

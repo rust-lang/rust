@@ -397,7 +397,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = tcx.mk_imm_ref(region, tcx.mk_slice(*elem_ty));
+                ty = tcx.mk_imm_ref(*region, tcx.mk_slice(*elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(

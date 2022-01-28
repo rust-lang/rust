@@ -10,8 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
 use rustc_middle::ty::{
-    self, AssocItemContainer, RegionKind, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable,
-    TypeVisitor,
+    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeFoldable, TypeVisitor,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{MultiSpan, Span};
@@ -33,25 +32,23 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sup_origin,
                 sup_r,
                 spans,
-            ) if **sub_r == RegionKind::ReStatic => {
-                (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans)
-            }
+            ) if sub_r.is_static() => (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans),
             RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, .. }),
                 sub_r,
                 sup_r,
-            ) if **sub_r == RegionKind::ReStatic => {
+            ) if sub_r.is_static() => {
                 // This is for an implicit `'static` requirement coming from `impl dyn Trait {}`.
                 if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
                     // This may have a closure and it would cause ICE
                     // through `find_param_with_region` (#78262).
-                    let anon_reg_sup = tcx.is_suitable_region(sup_r)?;
+                    let anon_reg_sup = tcx.is_suitable_region(*sup_r)?;
                     let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
                     if fn_returns.is_empty() {
                         return None;
                     }
 
-                    let param = self.find_param_with_region(sup_r, sub_r)?;
+                    let param = self.find_param_with_region(*sup_r, *sub_r)?;
                     let lifetime = if sup_r.has_name() {
                         format!("lifetime `{}`", sup_r)
                     } else {
@@ -101,11 +98,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             "try_report_static_impl_trait(var={:?}, sub={:?} {:?} sup={:?} {:?})",
             var_origin, sub_origin, sub_r, sup_origin, sup_r
         );
-        let anon_reg_sup = tcx.is_suitable_region(sup_r)?;
+        let anon_reg_sup = tcx.is_suitable_region(*sup_r)?;
         debug!("try_report_static_impl_trait: anon_reg_sup={:?}", anon_reg_sup);
         let sp = var_origin.span();
         let return_sp = sub_origin.span();
-        let param = self.find_param_with_region(sup_r, sub_r)?;
+        let param = self.find_param_with_region(*sup_r, *sub_r)?;
         let (lifetime_name, lifetime) = if sup_r.has_name() {
             (sup_r.to_string(), format!("lifetime `{}`", sup_r))
         } else {
@@ -560,7 +557,7 @@ pub(super) struct TraitObjectVisitor(pub(super) FxHashSet<DefId>);
 impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match t.kind() {
-            ty::Dynamic(preds, RegionKind::ReStatic) => {
+            ty::Dynamic(preds, re) if re.is_static() => {
                 if let Some(def_id) = preds.principal_def_id() {
                     self.0.insert(def_id);
                 }

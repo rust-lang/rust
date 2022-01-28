@@ -179,7 +179,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        match r {
+        match *r {
             ty::ReFree(_)
             | ty::ReErased
             | ty::ReStatic
@@ -187,12 +187,12 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
             | ty::ReEarlyBound(..) => r,
 
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
-                CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(*placeholder) },
+                CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(placeholder) },
                 r,
             ),
 
             ty::ReVar(vid) => {
-                let universe = canonicalizer.region_var_universe(*vid);
+                let universe = canonicalizer.region_var_universe(vid);
                 canonicalizer.canonical_var_for_region(
                     CanonicalVarInfo { kind: CanonicalVarKind::Region(universe) },
                     r,
@@ -240,7 +240,7 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        match r {
+        match *r {
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic => r,
             ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
             _ => {
@@ -311,11 +311,7 @@ impl CanonicalizeMode for CanonicalizeFreeRegionsOtherThanStatic {
         canonicalizer: &mut Canonicalizer<'_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        if let ty::ReStatic = r {
-            r
-        } else {
-            canonicalizer.canonical_var_for_region_in_root_universe(r)
-        }
+        if r.is_static() { r } else { canonicalizer.canonical_var_for_region_in_root_universe(r) }
     }
 
     fn any(&self) -> bool {

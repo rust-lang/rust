@@ -17,7 +17,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, RegionKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
@@ -269,7 +269,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                             ty::Adt(ref adt, _) => {
                                 adt.did == panic_info_did
                                     && mutbl == hir::Mutability::Not
-                                    && *region != RegionKind::ReStatic
+                                    && !region.is_static()
                             }
                             _ => false,
                         },
@@ -469,8 +469,8 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
             debug!("FindParentLifetimeVisitor: r={:?}", r);
-            if let RegionKind::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = r {
-                if *index < self.0.parent_count as u32 {
+            if let ty::ReEarlyBound(ty::EarlyBoundRegion { index, .. }) = *r {
+                if index < self.0.parent_count as u32 {
                     return ControlFlow::Break(FoundParentLifetime);
                 } else {
                     return ControlFlow::CONTINUE;

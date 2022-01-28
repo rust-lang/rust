@@ -218,9 +218,9 @@ impl Clean<Constant> for hir::ConstArg {
     }
 }
 
-impl Clean<Option<Lifetime>> for ty::RegionKind {
+impl Clean<Option<Lifetime>> for ty::Region<'_> {
     fn clean(&self, _cx: &mut DocContext<'_>) -> Option<Lifetime> {
-        match *self {
+        match **self {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
                 Some(Lifetime(name))
@@ -327,7 +327,7 @@ impl<'tcx> Clean<Option<WherePredicate>>
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(a, b) = self;
 
-        if let (ty::ReEmpty(_), ty::ReEmpty(_)) = (a, b) {
+        if a.is_empty() && b.is_empty() {
             return None;
         }
 
@@ -342,7 +342,7 @@ impl<'tcx> Clean<Option<WherePredicate>> for ty::OutlivesPredicate<Ty<'tcx>, ty:
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
         let ty::OutlivesPredicate(ty, lt) = self;
 
-        if let ty::ReEmpty(_) = lt {
+        if lt.is_empty() {
             return None;
         }
 

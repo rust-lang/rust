@@ -269,7 +269,7 @@ fn check_static_lifetimes<'tcx>(
     parent_substs: &Vec<GenericArg<'tcx>>,
     span: Span,
 ) {
-    if tcx.any_free_region_meets(parent_substs, |r| *r == ty::ReStatic) {
+    if tcx.any_free_region_meets(parent_substs, |r| r.is_static()) {
         tcx.sess.struct_span_err(span, "cannot specialize on `'static` lifetime").emit();
     }
 }

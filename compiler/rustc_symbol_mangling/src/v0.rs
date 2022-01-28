@@ -420,7 +420,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     hir::Mutability::Not => "R",
                     hir::Mutability::Mut => "Q",
                 });
-                if *r != ty::ReErased {
+                if !r.is_erased() {
                     self = r.print(self)?;
                 }
                 self = ty.print(self)?;
@@ -811,7 +811,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+            GenericArgKind::Lifetime(r) => !r.is_erased(),
             _ => false,
         });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {

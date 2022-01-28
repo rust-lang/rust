@@ -472,7 +472,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
         adjustments.push(Adjustment {
-            kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
+            kind: Adjust::Borrow(AutoBorrow::Ref(*r_borrow, mutbl)),
             target: ty,
         });
 

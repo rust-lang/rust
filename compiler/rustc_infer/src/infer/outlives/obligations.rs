@@ -285,7 +285,7 @@ where
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
-                    self.delegate.push_sub_region_constraint(origin, region, region1);
+                    self.delegate.push_sub_region_constraint(origin, region, *region1);
                 }
                 Component::Param(param_ty) => {
                     self.param_ty_must_outlive(origin, region, *param_ty);

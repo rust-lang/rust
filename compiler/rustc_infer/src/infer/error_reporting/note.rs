@@ -115,7 +115,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
                 let mut err = self.report_and_explain_type_error(trace, &terr);
-                match (sub, sup) {
+                match (*sub, *sup) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
                         note_and_explain_region(

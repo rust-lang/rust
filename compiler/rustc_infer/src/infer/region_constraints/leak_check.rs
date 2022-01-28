@@ -154,17 +154,17 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             let scc = self.mini_graph.sccs.scc(*leak_check_node);
 
             // Set the universe of each SCC to be the minimum of its constituent universes
-            let universe = self.rcc.universe(region);
+            let universe = self.rcc.universe(*region);
             debug!(
                 "assign_placeholder_values: scc={:?} universe={:?} region={:?}",
                 scc, universe, region
             );
-            self.scc_universes[scc].take_min(universe, region);
+            self.scc_universes[scc].take_min(universe, *region);
 
             // Detect those SCCs that directly contain a placeholder
-            if let ty::RePlaceholder(placeholder) = region {
+            if let ty::RePlaceholder(placeholder) = **region {
                 if self.universe_at_start_of_snapshot.cannot_name(placeholder.universe) {
-                    self.assign_scc_value(scc, *placeholder)?;
+                    self.assign_scc_value(scc, placeholder)?;
                 }
             }
         }

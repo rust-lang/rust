@@ -133,7 +133,7 @@ pub fn insert_outlives_predicate<'tcx>(
 
 fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
     // First, screen for regions that might appear in a type header.
-    match region {
+    match *region {
         // These correspond to `T: 'a` relationships:
         //
         //     struct Foo<'a, T> {

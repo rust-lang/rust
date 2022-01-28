@@ -89,7 +89,7 @@ fn external_generic_args(
     let args: Vec<_> = substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => match lt {
+            GenericArgKind::Lifetime(lt) => match *lt {
                 ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
                     Some(GenericArg::Lifetime(Lifetime::elided()))
                 }

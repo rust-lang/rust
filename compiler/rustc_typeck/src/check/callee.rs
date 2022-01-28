@@ -269,7 +269,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     };
                     autoref = Some(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                         target: method.sig.inputs()[0],
                     });
                 }

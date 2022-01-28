@@ -751,7 +751,7 @@ impl<'tcx> TypeFolder<'tcx> for EraseEarlyRegions<'tcx> {
         }
     }
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReLateBound(..) = r { r } else { self.tcx.lifetimes.re_erased }
+        if r.is_late_bound() { r } else { self.tcx.lifetimes.re_erased }
     }
 }
 

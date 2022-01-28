@@ -915,7 +915,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         debug_assert_eq!(r, _r);
         debug!("ConstInferUnifier: r={:?}", r);
 
-        match r {
+        match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReLateBound(..) | ty::ReErased => {

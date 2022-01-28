@@ -451,7 +451,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::Lifetime<RustInterner<'tcx>> {
         use rustc_middle::ty::RegionKind::*;
 
-        match self {
+        match *self {
             ReEarlyBound(_) => {
                 panic!("Should have already been substituted.");
             }
@@ -915,8 +915,8 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BoundRegionKind::BrNamed(def_id, _name) => {
                     if !self.named_parameters.iter().any(|d| *d == def_id) {
                         self.named_parameters.push(def_id);
@@ -977,12 +977,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
                         let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
-                        return self.tcx.mk_region(RegionKind::ReLateBound(*index, new_br));
+                        return self.tcx.mk_region(RegionKind::ReLateBound(index, new_br));
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
@@ -1054,7 +1054,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match r {
+        match *r {
             // FIXME(chalk) - jackh726 - this currently isn't hit in any tests,
             // since canonicalization will already change these to canonical
             // variables (ty::ReLateBound).
@@ -1144,7 +1144,7 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     }
 
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
+        match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
                 if let ty::BoundRegionKind::BrAnon(anon) = p.name {
                     self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);

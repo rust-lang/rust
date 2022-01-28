@@ -70,7 +70,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let ty = fn_sig.inputs()[index];
                 let mut found_anon_region = false;
                 let new_param_ty = self.tcx().fold_regions(ty, &mut false, |r, _| {
-                    if *r == *anon_region {
+                    if r == anon_region {
                         found_anon_region = true;
                         replace_region
                     } else {

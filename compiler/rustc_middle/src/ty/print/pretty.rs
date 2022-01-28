@@ -131,11 +131,13 @@ pub fn with_no_visible_paths<F: FnOnce() -> R, R>(f: F) -> R {
 ///
 /// Regions not selected by the region highlight mode are presently
 /// unaffected.
-#[derive(Copy, Clone, Default)]
-pub struct RegionHighlightMode {
+#[derive(Copy, Clone)]
+pub struct RegionHighlightMode<'tcx> {
+    tcx: TyCtxt<'tcx>,
+
     /// If enabled, when we see the selected region, use "`'N`"
     /// instead of the ordinary behavior.
-    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
+    highlight_regions: [Option<(ty::Region<'tcx>, usize)>; 3],
 
     /// If enabled, when printing a "free region" that originated from
     /// the given `ty::BoundRegionKind`, print it as "`'1`". Free regions that would ordinarily
@@ -147,12 +149,20 @@ pub struct RegionHighlightMode {
     highlight_bound_region: Option<(ty::BoundRegionKind, usize)>,
 }
 
-impl RegionHighlightMode {
+impl<'tcx> RegionHighlightMode<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            highlight_regions: Default::default(),
+            highlight_bound_region: Default::default(),
+        }
+    }
+
     /// If `region` and `number` are both `Some`, invokes
     /// `highlighting_region`.
     pub fn maybe_highlighting_region(
         &mut self,
-        region: Option<ty::Region<'_>>,
+        region: Option<ty::Region<'tcx>>,
         number: Option<usize>,
     ) {
         if let Some(k) = region {
@@ -163,24 +173,24 @@ impl RegionHighlightMode {
     }
 
     /// Highlights the region inference variable `vid` as `'N`.
-    pub fn highlighting_region(&mut self, region: ty::Region<'_>, number: usize) {
+    pub fn highlighting_region(&mut self, region: ty::Region<'tcx>, number: usize) {
         let num_slots = self.highlight_regions.len();
         let first_avail_slot =
             self.highlight_regions.iter_mut().find(|s| s.is_none()).unwrap_or_else(|| {
                 bug!("can only highlight {} placeholders at a time", num_slots,)
             });
-        *first_avail_slot = Some((*region, number));
+        *first_avail_slot = Some((region, number));
     }
 
     /// Convenience wrapper for `highlighting_region`.
     pub fn highlighting_region_vid(&mut self, vid: ty::RegionVid, number: usize) {
-        self.highlighting_region(&ty::ReVar(vid), number)
+        self.highlighting_region(self.tcx.mk_region(ty::ReVar(vid)), number)
     }
 
     /// Returns `Some(n)` with the number to use for the given region, if any.
     fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
         self.highlight_regions.iter().find_map(|h| match h {
-            Some((r, n)) if r == region => Some(*n),
+            Some((r, n)) if *r == region => Some(*n),
             _ => None,
         })
     }
@@ -1054,7 +1064,7 @@ pub trait PrettyPrinter<'tcx>:
 
                     // Don't print `'_` if there's no unerased regions.
                     let print_regions = args.iter().any(|arg| match arg.unpack() {
-                        GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+                        GenericArgKind::Lifetime(r) => !r.is_erased(),
                         _ => false,
                     });
                     let mut args = args.iter().cloned().filter(|arg| match arg.unpack() {
@@ -1536,7 +1546,7 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
     binder_depth: usize,
     printed_type_count: usize,
 
-    pub region_highlight_mode: RegionHighlightMode,
+    pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
     pub name_resolver: Option<Box<&'a dyn Fn(ty::TyVid) -> Option<String>>>,
 }
@@ -1566,7 +1576,7 @@ impl<'a, 'tcx, F> FmtPrinter<'a, 'tcx, F> {
             region_index: 0,
             binder_depth: 0,
             printed_type_count: 0,
-            region_highlight_mode: RegionHighlightMode::default(),
+            region_highlight_mode: RegionHighlightMode::new(tcx),
             name_resolver: None,
         }))
     }
@@ -1802,7 +1812,7 @@ impl<'tcx, F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
         // Don't print `'_` if there's no unerased regions.
         let print_regions = self.tcx.sess.verbose()
             || args.iter().any(|arg| match arg.unpack() {
-                GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+                GenericArgKind::Lifetime(r) => !r.is_erased(),
                 _ => false,
             });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {
@@ -2061,7 +2071,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match *r {
-            ty::ReLateBound(_, br) => self.region_map.entry(br).or_insert_with(|| name(br)),
+            ty::ReLateBound(_, br) => *self.region_map.entry(br).or_insert_with(|| name(br)),
             ty::RePlaceholder(ty::PlaceholderRegion { name: kind, .. }) => {
                 // If this is an anonymous placeholder, don't rename. Otherwise, in some
                 // async fns, we get a `for<'r> Send` bound
@@ -2070,7 +2080,7 @@ impl<'a, 'tcx> ty::TypeFolder<'tcx> for RegionFolder<'a, 'tcx> {
                     _ => {
                         // Index doesn't matter, since this is just for naming and these never get bound
                         let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind };
-                        self.region_map.entry(br).or_insert_with(|| name(br))
+                        *self.region_map.entry(br).or_insert_with(|| name(br))
                     }
                 }
             }
@@ -2272,7 +2282,7 @@ impl<'tcx, F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
             #[instrument(skip(self), level = "trace")]
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                trace!("address: {:p}", r);
+                trace!("address: {:p}", r.0.0);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
                     self.used_region_names.insert(name);
                 } else if let ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2369,7 +2379,7 @@ macro_rules! define_print_and_forward_display {
 }
 
 // HACK(eddyb) this is separate because `ty::RegionKind` doesn't need lifting.
-impl fmt::Display for ty::RegionKind {
+impl<'tcx> fmt::Display for ty::Region<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             self.print(FmtPrinter::new(tcx, f, Namespace::TypeNS))?;

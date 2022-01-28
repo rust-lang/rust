@@ -72,7 +72,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
         let old_region = *region;
-        *region = self.renumber_regions(&old_region);
+        *region = self.renumber_regions(old_region);
 
         debug!(?region);
     }

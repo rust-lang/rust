@@ -326,19 +326,11 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
     characteristic_def_id_of_type_cached(ty, &mut SsoHashSet::new())
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::RegionKind {
-    type Output = P::Region;
-    type Error = P::Error;
-    fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_region(self)
-    }
-}
-
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'_> {
     type Output = P::Region;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_region(self)
+        cx.print_region(*self)
     }
 }
 

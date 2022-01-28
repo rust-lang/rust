@@ -2669,7 +2669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
-        if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
+        if derived_region_bounds.iter().any(|r| r.is_static()) {
             return Some(tcx.lifetimes.re_static);
         }
 

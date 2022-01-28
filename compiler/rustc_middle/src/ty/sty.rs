@@ -12,6 +12,7 @@ use crate::ty::{self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, Typ
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
@@ -21,8 +22,9 @@ use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use std::cmp::Ordering;
+use std::fmt;
 use std::marker::PhantomData;
-use std::ops::Range;
+use std::ops::{Deref, Range};
 use ty::util::IntTypeExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
@@ -1391,13 +1393,33 @@ impl ParamConst {
     }
 }
 
-pub type Region<'tcx> = &'tcx RegionKind;
+/// Use this rather than `TyKind`, whenever possible.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct Region<'tcx>(pub Interned<'tcx, RegionKind>);
+
+impl<'tcx> Deref for Region<'tcx> {
+    type Target = RegionKind;
+
+    fn deref(&self) -> &RegionKind {
+        &self.0.0
+    }
+}
+
+impl<'tcx> fmt::Debug for Region<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.kind())
+    }
+}
 
 /// Representation of regions. Note that the NLL checker uses a distinct
 /// representation of regions. For this reason, it internally replaces all the
 /// regions with inference variables -- the index of the variable is then used
 /// to index into internal NLL data structures. See `rustc_const_eval::borrow_check`
 /// module for more information.
+///
+/// Note: operations are on the wrapper `Region` type, which is interned,
+/// rather than this type.
 ///
 /// ## The Region lattice within a given function
 ///
@@ -1655,9 +1677,13 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
 }
 
 /// Region utilities
-impl RegionKind {
+impl<'tcx> Region<'tcx> {
+    pub fn kind(self) -> RegionKind {
+        *self.0.0
+    }
+
     /// Is this region named by the user?
-    pub fn has_name(&self) -> bool {
+    pub fn has_name(self) -> bool {
         match *self {
             RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
             RegionKind::ReLateBound(_, br) => br.kind.is_named(),
@@ -1671,24 +1697,39 @@ impl RegionKind {
     }
 
     #[inline]
-    pub fn is_late_bound(&self) -> bool {
+    pub fn is_static(self) -> bool {
+        matches!(*self, ty::ReStatic)
+    }
+
+    #[inline]
+    pub fn is_erased(self) -> bool {
+        matches!(*self, ty::ReErased)
+    }
+
+    #[inline]
+    pub fn is_late_bound(self) -> bool {
         matches!(*self, ty::ReLateBound(..))
     }
 
     #[inline]
-    pub fn is_placeholder(&self) -> bool {
+    pub fn is_placeholder(self) -> bool {
         matches!(*self, ty::RePlaceholder(..))
     }
 
     #[inline]
-    pub fn bound_at_or_above_binder(&self, index: ty::DebruijnIndex) -> bool {
+    pub fn is_empty(self) -> bool {
+        matches!(*self, ty::ReEmpty(..))
+    }
+
+    #[inline]
+    pub fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn >= index,
             _ => false,
         }
     }
 
-    pub fn type_flags(&self) -> TypeFlags {
+    pub fn type_flags(self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
 
         match *self {
@@ -1746,8 +1787,8 @@ impl RegionKind {
     /// of the impl, and for all the other highlighted regions, it
     /// would return the `DefId` of the function. In other cases (not shown), this
     /// function might return the `DefId` of a closure.
-    pub fn free_region_binding_scope(&self, tcx: TyCtxt<'_>) -> DefId {
-        match self {
+    pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
+        match *self {
             ty::ReEarlyBound(br) => tcx.parent(br.def_id).unwrap(),
             ty::ReFree(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),

@@ -497,14 +497,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
         // lifetimes without names with the value `'0`.
-        match ty.kind() {
-            ty::Ref(
-                ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
-                _,
-                _,
-            ) => printer.region_highlight_mode.highlighting_bound_region(*br, counter),
-            _ => {}
+        if let ty::Ref(region, ..) = ty.kind() {
+            match **region {
+                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                | ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
+                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
+                }
+                _ => {}
+            }
         }
 
         let _ = ty.print(printer);
@@ -517,19 +517,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
-        let region = match ty.kind() {
-            ty::Ref(region, _, _) => {
-                match region {
-                    ty::RegionKind::ReLateBound(_, ty::BoundRegion { kind: br, .. })
-                    | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
-                        printer.region_highlight_mode.highlighting_bound_region(*br, counter)
-                    }
-                    _ => {}
+        let region = if let ty::Ref(region, ..) = ty.kind() {
+            match **region {
+                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                | ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
+                    printer.region_highlight_mode.highlighting_bound_region(br, counter)
                 }
-
-                region
+                _ => {}
             }
-            _ => bug!("ty for annotation of borrow region is not a reference"),
+            region
+        } else {
+            bug!("ty for annotation of borrow region is not a reference");
         };
 
         let _ = region.print(printer);

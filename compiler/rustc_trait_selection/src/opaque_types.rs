@@ -141,7 +141,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r {
+        match *r {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
             // from the function declaraion.

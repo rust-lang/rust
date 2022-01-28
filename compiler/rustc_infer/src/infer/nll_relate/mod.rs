@@ -244,8 +244,8 @@ where
         scopes: &[BoundRegionScope<'tcx>],
     ) -> ty::Region<'tcx> {
         debug!("replace_bound_regions(scopes={:?})", scopes);
-        if let ty::ReLateBound(debruijn, br) = r {
-            Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
+        if let ty::ReLateBound(debruijn, br) = *r {
+            Self::lookup_bound_region(debruijn, &br, first_free_index, scopes)
         } else {
             r
         }
@@ -779,9 +779,9 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let ScopeInstantiator { bound_region_scope, next_region, .. } = self;
 
-        match r {
-            ty::ReLateBound(debruijn, br) if *debruijn == self.target_index => {
-                bound_region_scope.map.entry(*br).or_insert_with(|| next_region(*br));
+        match *r {
+            ty::ReLateBound(debruijn, br) if debruijn == self.target_index => {
+                bound_region_scope.map.entry(br).or_insert_with(|| next_region(br));
             }
 
             _ => {}
@@ -963,8 +963,8 @@ where
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("TypeGeneralizer::regions(a={:?})", a);
 
-        if let ty::ReLateBound(debruijn, _) = a {
-            if *debruijn < self.first_free_index {
+        if let ty::ReLateBound(debruijn, _) = *a {
+            if debruijn < self.first_free_index {
                 return Ok(a);
             }
         }

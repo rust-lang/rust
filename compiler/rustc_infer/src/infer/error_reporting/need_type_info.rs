@@ -369,7 +369,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_inference_diagnostics_data(
         &self,
         arg: GenericArg<'tcx>,
-        highlight: Option<ty::print::RegionHighlightMode>,
+        highlight: Option<ty::print::RegionHighlightMode<'tcx>>,
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {

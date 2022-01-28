@@ -697,7 +697,7 @@ impl<'tcx> TypeFolder<'tcx> for PlaceholderReplacer<'_, 'tcx> {
     }
 
     fn fold_region(&mut self, r0: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let r1 = match r0 {
+        let r1 = match *r0 {
             ty::ReVar(_) => self
                 .infcx
                 .inner

@@ -10,7 +10,7 @@ use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::{Applicability, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_middle::ty::{self, TypeVisitor};
+use rustc_middle::ty::TypeVisitor;
 use rustc_span::MultiSpan;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -22,7 +22,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             RegionResolutionError::ConcreteFailure(origin, sub, sup) => (origin, sub, sup),
             _ => return None,
         };
-        if *sub != ty::RegionKind::ReStatic {
+        if !sub.is_static() {
             return None;
         }
         let cause = match origin {

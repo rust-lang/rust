@@ -336,7 +336,7 @@ fn check_gat_where_clauses(
             // Ignore `'static` lifetimes for the purpose of this lint: it's
             // because we know it outlives everything and so doesn't give meaninful
             // clues
-            if let ty::ReStatic = region {
+            if region.is_static() {
                 continue;
             }
             for (ty, ty_idx) in &types {
@@ -381,14 +381,14 @@ fn check_gat_where_clauses(
             // Ignore `'static` lifetimes for the purpose of this lint: it's
             // because we know it outlives everything and so doesn't give meaninful
             // clues
-            if let ty::ReStatic = region_a {
+            if region_a.is_static() {
                 continue;
             }
             for (region_b, region_b_idx) in &regions {
                 if region_a == region_b {
                     continue;
                 }
-                if let ty::ReStatic = region_b {
+                if region_b.is_static() {
                     continue;
                 }
 
@@ -569,7 +569,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     wf_tys: &FxHashSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(
         &'a InferCtxt<'a, 'tcx>,
-        &'a Vec<(&'tcx ty::RegionKind, GenericKind<'tcx>)>,
+        &'a Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
     ),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because

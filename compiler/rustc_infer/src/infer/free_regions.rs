@@ -41,8 +41,8 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
-    pub fn elements(&self) -> impl Iterator<Item = &Region<'tcx>> {
-        self.relation.elements()
+    pub fn elements(&self) -> impl Iterator<Item = Region<'tcx>> + '_ {
+        self.relation.elements().copied()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -91,7 +91,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
 
     /// True for free regions other than `'static`.
     pub fn is_free(&self, r: Region<'_>) -> bool {
-        matches!(r, ty::ReEarlyBound(_) | ty::ReFree(_))
+        matches!(*r, ty::ReEarlyBound(_) | ty::ReFree(_))
     }
 
     /// True if `r` is a free region or static of the sort that this

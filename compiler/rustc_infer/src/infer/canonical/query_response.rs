@@ -237,10 +237,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
-                (
-                    GenericArgKind::Lifetime(ty::ReErased),
-                    GenericArgKind::Lifetime(ty::ReErased),
-                ) => {
+                (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                    if re1.is_erased() && re2.is_erased() =>
+                {
                     // No action needed.
                 }
 
@@ -429,7 +428,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let &ty::RegionKind::ReLateBound(debruijn, br) = result_value {
+                    if let ty::RegionKind::ReLateBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
@@ -558,10 +557,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
-                    (
-                        GenericArgKind::Lifetime(ty::ReErased),
-                        GenericArgKind::Lifetime(ty::ReErased),
-                    ) => {
+                    (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                        if re1.is_erased() && re2.is_erased() =>
+                    {
                         // no action needed
                     }
                     (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {

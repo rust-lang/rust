@@ -194,7 +194,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_region(&mut self,
-                            region: & $($mutability)? ty::Region<'tcx>,
+                            region: $(& $mutability)? ty::Region<'tcx>,
                             _: Location) {
                 self.super_region(region);
             }
@@ -641,7 +641,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::ThreadLocalRef(_) => {}
 
                     Rvalue::Ref(r, bk, path) => {
-                        self.visit_region(r, location);
+                        self.visit_region($(& $mutability)? *r, location);
                         let ctx = match bk {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
@@ -900,7 +900,7 @@ macro_rules! make_mir_visitor {
             fn super_ty(&mut self, _ty: $(& $mutability)? Ty<'tcx>) {
             }
 
-            fn super_region(&mut self, _region: & $($mutability)? ty::Region<'tcx>) {
+            fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
             fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::Const<'tcx>) {

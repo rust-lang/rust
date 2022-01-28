@@ -323,7 +323,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// See `UniversalRegionIndices::to_region_vid`.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = r {
+        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = *r {
             self.root_empty
         } else {
             self.indices.to_region_vid(r)
@@ -805,7 +805,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReVar(..) = r {
+        if let ty::ReVar(..) = *r {
             r.to_region_vid()
         } else {
             *self

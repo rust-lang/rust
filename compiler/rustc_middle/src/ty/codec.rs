@@ -138,6 +138,12 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Predicate<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.kind().encode(e)
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AllocId {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         e.encode_alloc_id(self)
@@ -156,7 +162,6 @@ macro_rules! encodable_via_deref {
 
 encodable_via_deref! {
     &'tcx ty::TypeckResults<'tcx>,
-    ty::Region<'tcx>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,

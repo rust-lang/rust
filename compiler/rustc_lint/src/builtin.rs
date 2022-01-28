@@ -2050,7 +2050,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
                 },
@@ -2111,10 +2111,10 @@ impl ExplicitOutlivesRequirements {
                 if let hir::GenericBound::Outlives(lifetime) = bound {
                     let is_inferred = match tcx.named_region(lifetime.hir_id) {
                         Some(Region::Static) if infer_static => {
-                            inferred_outlives.iter().any(|r| matches!(r, ty::ReStatic))
+                            inferred_outlives.iter().any(|r| matches!(**r, ty::ReStatic))
                         }
                         Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = r { ebr.index == index } else { false }
+                            if let ty::ReEarlyBound(ebr) = **r { ebr.index == index } else { false }
                         }),
                         _ => false,
                     };
