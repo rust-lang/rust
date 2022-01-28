@@ -80,6 +80,7 @@ fn elided_not_bound(_: &i32) -> impl Future<Output = i32> {
     async { 42 }
 }
 
+#[allow(clippy::needless_lifetimes)]
 async fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> i32 { 42 }
 
 // should be ignored
