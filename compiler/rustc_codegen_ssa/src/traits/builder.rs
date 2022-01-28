@@ -421,29 +421,22 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 
-    fn landing_pad(
-        &mut self,
-        ty: Self::Type,
-        pers_fn: Self::Value,
-        num_clauses: usize,
-    ) -> Self::Value;
-    fn set_cleanup(&mut self, landing_pad: Self::Value);
-    fn resume(&mut self, exn: Self::Value) -> Self::Value;
+    fn set_personality_fn(&mut self, personality: Self::Value);
+
+    // These are used by everyone except msvc
+    fn cleanup_landing_pad(&mut self, ty: Self::Type, pers_fn: Self::Value) -> Self::Value;
+    fn resume(&mut self, exn: Self::Value);
+
+    // These are used only by msvc
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
-    fn cleanup_ret(
-        &mut self,
-        funclet: &Self::Funclet,
-        unwind: Option<Self::BasicBlock>,
-    ) -> Self::Value;
+    fn cleanup_ret(&mut self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>);
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
     fn catch_switch(
         &mut self,
         parent: Option<Self::Value>,
         unwind: Option<Self::BasicBlock>,
-        num_handlers: usize,
+        handlers: &[Self::BasicBlock],
     ) -> Self::Value;
-    fn add_handler(&mut self, catch_switch: Self::Value, handler: Self::BasicBlock);
-    fn set_personality_fn(&mut self, personality: Self::Value);
 
     fn atomic_cmpxchg(
         &mut self,

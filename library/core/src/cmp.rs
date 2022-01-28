@@ -880,7 +880,7 @@ impl PartialOrd for Ordering {
     }
 }
 
-/// Trait for values that can be compared for a sort-order.
+/// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).
 ///
 /// The `lt`, `le`, `gt`, and `ge` methods of this trait can be called using
 /// the `<`, `<=`, `>`, and `>=` operators, respectively.

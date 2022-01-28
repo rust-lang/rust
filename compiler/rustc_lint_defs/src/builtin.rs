@@ -2456,6 +2456,10 @@ declare_lint! {
     /// register size, to alert you of possibly using the incorrect width. To
     /// fix this, add the suggested modifier to the template, or cast the
     /// value to the correct size.
+    ///
+    /// See [register template modifiers] in the reference for more details.
+    ///
+    /// [register template modifiers]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html#template-modifiers
     pub ASM_SUB_REGISTER,
     Warn,
     "using only a subset of a register for inline asm inputs",
