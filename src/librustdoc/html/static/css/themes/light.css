@@ -464,8 +464,8 @@ div.files > .selected {
 }
 
 .scraped-example-list .section-header .scrape-help {
-	border-color: #999;
-	color: #999;
+	border-color: #555;
+	color: #333;
 }
 .scraped-example-list .section-header .scrape-help:hover {
 	border-color: black;

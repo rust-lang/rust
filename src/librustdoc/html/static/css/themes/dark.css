@@ -479,12 +479,12 @@ div.files > .selected {
 }
 
 .scraped-example-list .section-header .scrape-help {
-	border-color: #999;
-	color: #999;
+	border-color: #aaa;
+	color: #eee;
 }
 .scraped-example-list .section-header .scrape-help:hover {
-	border-color: #c5c5c5;
-	color: #c5c5c5;
+	border-color: white;
+	color: white;
 }
 .more-examples-toggle summary, .more-examples-toggle .hide-more {
 	color: #999;

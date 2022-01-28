@@ -2035,8 +2035,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 /* Begin: styles for --scrape-examples feature */
 
 .scraped-example-list .section-header .scrape-help {
-	cursor: pointer;
-	border-radius: 2px;
 	margin-left: 10px;
 	padding: 0 4px;
 	font-weight: normal;
@@ -2046,6 +2044,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	background: transparent;
 	border-width: 1px;
 	border-style: solid;
+	border-radius: 50px;
 }
 
 .scraped-example-title {
