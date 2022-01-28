@@ -1,0 +1,18 @@
+error: manual implementation of `split_once`
+  --> $DIR/ice-8250.rs:2:13
+   |
+LL |     let _ = s[1..].splitn(2, '.').next()?;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s[1..].split_once('.').map_or(s[1..], |x| x.0)`
+   |
+   = note: `-D clippy::manual-split-once` implied by `-D warnings`
+
+error: unnecessary use of `splitn`
+  --> $DIR/ice-8250.rs:2:13
+   |
+LL |     let _ = s[1..].splitn(2, '.').next()?;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s[1..].split('.')`
+   |
+   = note: `-D clippy::needless-splitn` implied by `-D warnings`
+
+error: aborting due to 2 previous errors
+
