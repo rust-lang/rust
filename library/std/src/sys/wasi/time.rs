@@ -10,7 +10,7 @@ pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
-fn current_time(clock: u32) -> Duration {
+fn current_time(clock: wasi::Clockid) -> Duration {
     let ts = unsafe {
         wasi::clock_time_get(
             clock, 1, // precision... seems ignored though?
