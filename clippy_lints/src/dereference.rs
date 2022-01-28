@@ -246,6 +246,8 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
                 let (position, parent_ctxt) = get_expr_position(cx, expr);
+                let (stability, adjustments) = walk_parents(cx, expr);
+
                 match kind {
                     RefOp::Deref => {
                         if let Position::FieldAccess(name) = position
@@ -253,6 +255,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         {
                             self.state = Some((
                                 State::ExplicitDerefField { name },
+                                StateData { span: expr.span, hir_id: expr.hir_id },
+                            ));
+                        } else if stability.is_deref_stable() {
+                            self.state = Some((
+                                State::ExplicitDeref { deref_span: expr.span, deref_hir_id: expr.hir_id },
                                 StateData { span: expr.span, hir_id: expr.hir_id },
                             ));
                         }
@@ -278,7 +285,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         ));
                     },
                     RefOp::AddrOf => {
-                        let (stability, adjustments) = walk_parents(cx, expr);
                         // Find the number of times the borrow is auto-derefed.
                         let mut iter = adjustments.iter();
                         let mut deref_count = 0usize;
@@ -632,6 +638,7 @@ impl AutoDerefStability {
 /// Walks up the parent expressions attempting to determine both how stable the auto-deref result
 /// is, and which adjustments will be applied to it. Note this will not consider auto-borrow
 /// locations as those follow different rules.
+#[allow(clippy::too_many_lines)]
 fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefStability, &'tcx [Adjustment<'tcx>]) {
     let mut adjustments = [].as_slice();
     let stability = walk_to_expr_usage(cx, e, &mut |node, child_id| {
@@ -643,16 +650,26 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
             Node::Local(Local { ty: Some(ty), .. }) => Some(binding_ty_auto_deref_stability(ty)),
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
+                def_id,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Const(..),
+                def_id,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Const(..),
+                def_id,
                 ..
-            }) => Some(AutoDerefStability::Deref),
+            }) => {
+                let ty = cx.tcx.type_of(def_id);
+                Some(if ty.is_ref() {
+                    AutoDerefStability::None
+                } else {
+                    AutoDerefStability::Deref
+                })
+            },
 
             Node::Item(&Item {
                 kind: ItemKind::Fn(..),
@@ -670,7 +687,9 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
                 ..
             }) => {
                 let output = cx.tcx.fn_sig(def_id.to_def_id()).skip_binder().output();
-                Some(if output.has_placeholders() || output.has_opaque_types() {
+                Some(if !output.is_ref() {
+                    AutoDerefStability::None
+                } else if output.has_placeholders() || output.has_opaque_types() {
                     AutoDerefStability::Reborrow
                 } else {
                     AutoDerefStability::Deref
@@ -684,7 +703,9 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
                         .fn_sig(cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()))
                         .skip_binder()
                         .output();
-                    Some(if output.has_placeholders() || output.has_opaque_types() {
+                    Some(if !output.is_ref() {
+                        AutoDerefStability::None
+                    } else if output.has_placeholders() || output.has_opaque_types() {
                         AutoDerefStability::Reborrow
                     } else {
                         AutoDerefStability::Deref

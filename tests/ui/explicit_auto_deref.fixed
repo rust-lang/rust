@@ -6,6 +6,7 @@
     unused_braces,
     clippy::borrowed_box,
     clippy::needless_borrow,
+    clippy::needless_return,
     clippy::ptr_arg,
     clippy::redundant_field_names,
     clippy::too_many_arguments,
@@ -184,4 +185,17 @@ fn main() {
     }
     let s6 = S6 { foo: S5 { foo: 5 } };
     let _ = (*s6).foo; // Don't lint. `S6` also has a field named `foo`
+
+    let ref_str = &"foo";
+    let _ = f_str(ref_str);
+    let ref_ref_str = &ref_str;
+    let _ = f_str(ref_ref_str);
+
+    fn _f5(x: &u32) -> u32 {
+        if true {
+            *x
+        } else {
+            return *x;
+        }
+    }
 }

@@ -168,5 +168,17 @@ error: deref which would be done by auto-deref
 LL |     let _ = (**b).foo;
    |             ^^^^^ help: try this: `b`
 
-error: aborting due to 28 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:189:19
+   |
+LL |     let _ = f_str(*ref_str);
+   |                   ^^^^^^^^ help: try this: `ref_str`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:191:19
+   |
+LL |     let _ = f_str(**ref_ref_str);
+   |                   ^^^^^^^^^^^^^ help: try this: `ref_ref_str`
+
+error: aborting due to 30 previous errors
 
