@@ -83,7 +83,7 @@ fn main() {
     // rustc target (arm-linux-androideabi).
     if llvm_target[0] == "armv4t"
         || llvm_target[0] == "armv5te"
-        || llvm_target.get(2) == Some(&"androideabi")
+        || target == "arm-linux-androideabi"
     {
         println!("cargo:rustc-cfg=kernel_user_helpers")
     }
