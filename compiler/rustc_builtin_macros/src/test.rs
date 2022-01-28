@@ -252,11 +252,6 @@ pub fn expand_test_or_bench(
                                         "ignore",
                                         cx.expr_bool(sp, should_ignore(&cx.sess, &item)),
                                     ),
-                                    // allow_fail: true | false
-                                    field(
-                                        "allow_fail",
-                                        cx.expr_bool(sp, should_fail(&cx.sess, &item)),
-                                    ),
                                     // compile_fail: true | false
                                     field("compile_fail", cx.expr_bool(sp, false)),
                                     // no_run: true | false
@@ -357,10 +352,6 @@ enum ShouldPanic {
 
 fn should_ignore(sess: &Session, i: &ast::Item) -> bool {
     sess.contains_name(&i.attrs, sym::ignore)
-}
-
-fn should_fail(sess: &Session, i: &ast::Item) -> bool {
-    sess.contains_name(&i.attrs, sym::allow_fail)
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {

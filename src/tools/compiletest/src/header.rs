@@ -922,7 +922,6 @@ pub fn make_test_description<R: Read>(
         name,
         ignore,
         should_panic,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: test::TestType::Unknown,

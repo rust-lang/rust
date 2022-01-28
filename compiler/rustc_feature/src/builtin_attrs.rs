@@ -403,7 +403,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     },
 
     // Testing:
-    gated!(allow_fail, Normal, template!(Word), WarnFollowing, experimental!(allow_fail)),
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing, custom_test_frameworks,
         "custom test frameworks are an unstable feature",

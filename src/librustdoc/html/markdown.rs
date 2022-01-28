@@ -847,7 +847,6 @@ crate struct LangString {
     crate test_harness: bool,
     crate compile_fail: bool,
     crate error_codes: Vec<String>,
-    crate allow_fail: bool,
     crate edition: Option<Edition>,
 }
 
@@ -869,7 +868,6 @@ impl Default for LangString {
             test_harness: false,
             compile_fail: false,
             error_codes: Vec::new(),
-            allow_fail: false,
             edition: None,
         }
     }
@@ -943,10 +941,6 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags;
                     }
                 }
-                "allow_fail" => {
-                    data.allow_fail = true;
-                    seen_rust_tags = !seen_other_tags;
-                }
                 "rust" => {
                     data.rust = true;
                     seen_rust_tags = true;
@@ -991,12 +985,6 @@ impl LangString {
                     } else if s == "no-run" || s == "no_run" || s == "norun" {
                         Some((
                             "no_run",
-                            "the code block will either not be tested if not marked as a rust one \
-                             or will be run (which you might not want)",
-                        ))
-                    } else if s == "allow-fail" || s == "allow_fail" || s == "allowfail" {
-                        Some((
-                            "allow_fail",
                             "the code block will either not be tested if not marked as a rust one \
                              or will be run (which you might not want)",
                         ))

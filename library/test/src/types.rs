@@ -118,7 +118,6 @@ pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
     pub should_panic: options::ShouldPanic,
-    pub allow_fail: bool,
     pub compile_fail: bool,
     pub no_run: bool,
     pub test_type: TestType,
@@ -149,9 +148,6 @@ impl TestDesc {
                 return Some("should panic");
             }
             options::ShouldPanic::No => {}
-        }
-        if self.allow_fail {
-            return Some("allow fail");
         }
         if self.compile_fail {
             return Some("compile fail");
