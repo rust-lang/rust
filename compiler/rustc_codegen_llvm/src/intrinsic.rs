@@ -525,9 +525,8 @@ fn codegen_msvc_try<'ll>(
 
         normal.ret(bx.const_i32(0));
 
-        let cs = catchswitch.catch_switch(None, None, 2);
-        catchswitch.add_handler(cs, catchpad_rust.llbb());
-        catchswitch.add_handler(cs, catchpad_foreign.llbb());
+        let cs =
+            catchswitch.catch_switch(None, None, &[catchpad_rust.llbb(), catchpad_foreign.llbb()]);
 
         // We can't use the TypeDescriptor defined in libpanic_unwind because it
         // might be in another DLL and the SEH encoding only supports specifying
