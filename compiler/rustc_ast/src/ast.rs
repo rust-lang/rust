@@ -930,6 +930,7 @@ pub struct Stmt {
 impl Stmt {
     pub fn tokens(&self) -> Option<&LazyTokenStream> {
         match self.kind {
+            StmtKind::LetElse(ref let_else) => let_else.tokens.as_ref(),
             StmtKind::Local(ref local) => local.tokens.as_ref(),
             StmtKind::Item(ref item) => item.tokens.as_ref(),
             StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => expr.tokens.as_ref(),
@@ -978,6 +979,8 @@ impl Stmt {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum StmtKind {
+    /// See [`LetElse`].
+    LetElse(P<LetElse>),
     /// A local (let) binding.
     Local(P<Local>),
     /// An item definition.
@@ -1013,6 +1016,17 @@ pub enum MacStmtStyle {
     NoBraces,
 }
 
+/// A `let .. && let && .. else { .. }` declaration.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct LetElse {
+    pub attrs: AttrVec,
+    pub expr: P<Expr>,
+    pub id: NodeId,
+    pub r#else: P<Block>,
+    pub span: Span,
+    pub tokens: Option<LazyTokenStream>,
+}
+
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Local {
@@ -1033,24 +1047,13 @@ pub enum LocalKind {
     /// Local declaration with an initializer.
     /// Example: `let x = y;`
     Init(P<Expr>),
-    /// Local declaration with an initializer and an `else` clause.
-    /// Example: `let Some(x) = y else { return };`
-    InitElse(P<Expr>, P<Block>),
 }
 
 impl LocalKind {
     pub fn init(&self) -> Option<&Expr> {
         match self {
             Self::Decl => None,
-            Self::Init(i) | Self::InitElse(i, _) => Some(i),
-        }
-    }
-
-    pub fn init_else_opt(&self) -> Option<(&Expr, Option<&Block>)> {
-        match self {
-            Self::Decl => None,
-            Self::Init(init) => Some((init, None)),
-            Self::InitElse(init, els) => Some((init, Some(els))),
+            Self::Init(i) => Some(i),
         }
     }
 }

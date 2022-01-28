@@ -16,7 +16,7 @@ use rustc_ast::util::classify;
 use rustc_ast::{
     AstLike, AttrStyle, AttrVec, Attribute, LocalKind, MacCall, MacCallStmt, MacStmtStyle,
 };
-use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
+use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, LetElse, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::source_map::{BytePos, Span};
@@ -60,7 +60,11 @@ impl<'a> Parser<'a> {
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
-            self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
+            if self.eat_keyword(kw::Else) {
+                self.parse_let_else_mk(lo, attrs, capture_semi, force_collect)?
+            } else {
+                self.parse_local_mk(lo, attrs, capture_semi, force_collect)?
+            }
         } else if self.is_kw_followed_by_ident(kw::Mut) {
             self.recover_stmt_local(lo, attrs, "missing keyword", "let mut")?
         } else if self.is_kw_followed_by_ident(kw::Auto) {
@@ -204,6 +208,42 @@ impl<'a> Parser<'a> {
         Ok(stmt)
     }
 
+    /// Parses a local variable declaration.
+    fn parse_let_else(&mut self, attrs: AttrVec) -> PResult<'a, P<LetElse>> {
+        if self.token.is_keyword(kw::If) {
+            // `let...else if`. Emit the same error that `parse_block()` would,
+            // but explicitly point out that this pattern is not allowed.
+            let msg = "conditional `else if` is not supported for `let...else`";
+            return Err(self.error_block_no_opening_brace_msg(msg));
+        }
+        let lo = self.prev_token.span;
+        let expr = self.parse_expr()?;
+        let r#else = self.parse_block()?;
+        self.check_let_else_init_bool_expr(&expr);
+        self.check_let_else_init_trailing_brace(&expr);
+        let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
+        Ok(P(LetElse { attrs, expr, id: DUMMY_NODE_ID, r#else, span: lo.to(hi), tokens: None }))
+    }
+
+    fn parse_let_else_mk(
+        &mut self,
+        lo: Span,
+        attrs: AttrWrapper,
+        capture_semi: bool,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Stmt> {
+        self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
+            this.expect_keyword(kw::Let)?;
+            let let_else = this.parse_let_else(attrs.into())?;
+            let trailing = if capture_semi && this.token.kind == token::Semi {
+                TrailingToken::Semi
+            } else {
+                TrailingToken::None
+            };
+            Ok((this.mk_stmt(lo.to(this.prev_token.span), StmtKind::LetElse(let_else)), trailing))
+        })
+    }
+
     fn parse_local_mk(
         &mut self,
         lo: Span,
@@ -304,22 +344,7 @@ impl<'a> Parser<'a> {
         };
         let kind = match init {
             None => LocalKind::Decl,
-            Some(init) => {
-                if self.eat_keyword(kw::Else) {
-                    if self.token.is_keyword(kw::If) {
-                        // `let...else if`. Emit the same error that `parse_block()` would,
-                        // but explicitly point out that this pattern is not allowed.
-                        let msg = "conditional `else if` is not supported for `let...else`";
-                        return Err(self.error_block_no_opening_brace_msg(msg));
-                    }
-                    let els = self.parse_block()?;
-                    self.check_let_else_init_bool_expr(&init);
-                    self.check_let_else_init_trailing_brace(&init);
-                    LocalKind::InitElse(init, els)
-                } else {
-                    LocalKind::Init(init)
-                }
-            }
+            Some(init) => LocalKind::Init(init),
         };
         let hi = if self.token == token::Semi { self.token.span } else { self.prev_token.span };
         Ok(P(ast::Local { ty, pat, kind, id: DUMMY_NODE_ID, span: lo.to(hi), attrs, tokens: None }))
@@ -327,6 +352,9 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
+            if let ast::BinOpKind::And = op.node {
+                return;
+            }
             if op.node.lazy() {
                 let suggs = vec![
                     (init.span.shrink_to_lo(), "(".to_string()),
@@ -574,7 +602,7 @@ impl<'a> Parser<'a> {
             StmtKind::Local(ref mut local) if let Err(e) = self.expect_semi() => {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
-                    LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
+                    LocalKind::Init(expr) => {
                             self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
                             // We found `foo<bar, baz>`, have we fully recovered?
                             self.expect_semi()?;
@@ -583,7 +611,7 @@ impl<'a> Parser<'a> {
                 }
                 eat_semi = false;
             }
-            StmtKind::Empty | StmtKind::Item(_) | StmtKind::Local(_) | StmtKind::Semi(_) => eat_semi = false,
+            StmtKind::Empty | StmtKind::Item(_) | StmtKind::LetElse(_)  | StmtKind::Local(_) | StmtKind::Semi(_) => eat_semi = false,
         }
 
         if eat_semi && self.eat(&token::Semi) {

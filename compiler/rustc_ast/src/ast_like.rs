@@ -2,7 +2,7 @@ use super::ptr::P;
 use super::token::Nonterminal;
 use super::tokenstream::LazyTokenStream;
 use super::{Arm, Crate, ExprField, FieldDef, GenericParam, Param, PatField, Variant};
-use super::{AssocItem, Expr, ForeignItem, Item, Local, MacCallStmt};
+use super::{AssocItem, Expr, ForeignItem, Item, LetElse, Local, MacCallStmt};
 use super::{AttrItem, AttrKind, Block, Pat, Path, Ty, Visibility};
 use super::{AttrVec, Attribute, Stmt, StmtKind};
 
@@ -104,6 +104,7 @@ impl AstLike for StmtKind {
 
     fn attrs(&self) -> &[Attribute] {
         match self {
+            StmtKind::LetElse(let_else) => let_else.attrs(),
             StmtKind::Local(local) => local.attrs(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.attrs(),
             StmtKind::Item(item) => item.attrs(),
@@ -114,6 +115,7 @@ impl AstLike for StmtKind {
 
     fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<Attribute>)) {
         match self {
+            StmtKind::LetElse(let_else) => let_else.visit_attrs(f),
             StmtKind::Local(local) => local.visit_attrs(f),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.visit_attrs(f),
             StmtKind::Item(item) => item.visit_attrs(f),
@@ -123,6 +125,7 @@ impl AstLike for StmtKind {
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyTokenStream>> {
         Some(match self {
+            StmtKind::LetElse(let_else) => &mut let_else.tokens,
             StmtKind::Local(local) => &mut local.tokens,
             StmtKind::Item(item) => &mut item.tokens,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => &mut expr.tokens,
@@ -271,7 +274,7 @@ derive_has_tokens_and_attrs! {
 
 derive_has_tokens_and_attrs! {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
-    Local, MacCallStmt, Expr
+    LetElse, Local, MacCallStmt, Expr
 }
 
 // These ast nodes only support inert attributes, so they don't

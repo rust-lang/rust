@@ -1500,13 +1500,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         walk_list!(self, visit_ty, &local.ty);
 
         // Resolve the initializer.
-        if let Some((init, els)) = local.kind.init_else_opt() {
+        if let Some(init) = local.kind.init() {
             self.visit_expr(init);
-
-            // Resolve the `else` block
-            if let Some(els) = els {
-                self.visit_block(els);
-            }
         }
 
         // Resolve the pattern.

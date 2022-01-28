@@ -232,8 +232,6 @@ pub fn eq_local_kind(l: &LocalKind, r: &LocalKind) -> bool {
     use LocalKind::*;
     match (l, r) {
         (Decl, Decl) => true,
-        (Init(l), Init(r)) => eq_expr(l, r),
-        (InitElse(li, le), InitElse(ri, re)) => eq_expr(li, ri) && eq_block(le, re),
         _ => false,
     }
 }

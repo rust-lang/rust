@@ -93,6 +93,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_item(&mut self, i: &'ast Item) {
         walk_item(self, i)
     }
+    fn visit_let_else(&mut self, let_else: &'ast LetElse) {
+        walk_let_else(self, let_else)
+    }
     fn visit_local(&mut self, l: &'ast Local) {
         walk_local(self, l)
     }
@@ -239,16 +242,20 @@ pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
     walk_list!(visitor, visit_attribute, &krate.attrs);
 }
 
+pub fn walk_let_else<'a, V: Visitor<'a>>(visitor: &mut V, let_else: &'a LetElse) {
+    for attr in let_else.attrs.iter() {
+        visitor.visit_attribute(attr);
+    }
+    visitor.visit_expr(&let_else.expr);
+    visitor.visit_block(&let_else.r#else);
+}
+
 pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
     for attr in local.attrs.iter() {
         visitor.visit_attribute(attr);
     }
     visitor.visit_pat(&local.pat);
     walk_list!(visitor, visit_ty, &local.ty);
-    if let Some((init, els)) = local.kind.init_else_opt() {
-        visitor.visit_expr(init);
-        walk_list!(visitor, visit_block, els);
-    }
 }
 
 pub fn walk_label<'a, V: Visitor<'a>>(visitor: &mut V, label: &'a Label) {
@@ -695,6 +702,7 @@ pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) {
 
 pub fn walk_stmt<'a, V: Visitor<'a>>(visitor: &mut V, statement: &'a Stmt) {
     match statement.kind {
+        StmtKind::LetElse(ref let_else) => visitor.visit_let_else(let_else),
         StmtKind::Local(ref local) => visitor.visit_local(local),
         StmtKind::Item(ref item) => visitor.visit_item(item),
         StmtKind::Expr(ref expr) | StmtKind::Semi(ref expr) => visitor.visit_expr(expr),

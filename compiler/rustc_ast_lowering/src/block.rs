@@ -1,5 +1,5 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
-use rustc_ast::{AttrVec, Block, BlockCheckMode, Expr, Local, LocalKind, Stmt, StmtKind};
+use rustc_ast::{AttrVec, Block, BlockCheckMode, LetElse, Local, Stmt, StmtKind};
 use rustc_hir as hir;
 use rustc_session::parse::feature_err;
 use rustc_span::{sym, DesugaringKind};
@@ -34,23 +34,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut expr = None;
         while let [s, tail @ ..] = ast_stmts {
             match s.kind {
+                StmtKind::LetElse(ref let_else) => {
+                    expr = Some(self.lower_let_else(let_else, tail));
+                    // remaining statements are in let-else expression
+                    break;
+                }
                 StmtKind::Local(ref local) => {
                     let hir_id = self.lower_node_id(s.id);
-                    match &local.kind {
-                        LocalKind::InitElse(init, els) => {
-                            let e = self.lower_let_else(hir_id, local, init, els, tail);
-                            expr = Some(e);
-                            // remaining statements are in let-else expression
-                            break;
-                        }
-                        _ => {
-                            let local = self.lower_local(local);
-                            self.alias_attrs(hir_id, local.hir_id);
-                            let kind = hir::StmtKind::Local(local);
-                            let span = self.lower_span(s.span);
-                            stmts.push(hir::Stmt { hir_id, kind, span });
-                        }
-                    }
+                    let local = self.lower_local(local);
+                    self.alias_attrs(hir_id, local.hir_id);
+                    let kind = hir::StmtKind::Local(local);
+                    let span = self.lower_span(s.span);
+                    stmts.push(hir::Stmt { hir_id, kind, span });
                 }
                 StmtKind::Item(ref it) => {
                     stmts.extend(self.lower_item_ref(it).into_iter().enumerate().map(
@@ -116,54 +111,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_let_else(
-        &mut self,
-        stmt_hir_id: hir::HirId,
-        local: &Local,
-        init: &Expr,
-        els: &Block,
-        tail: &[Stmt],
-    ) -> &'hir hir::Expr<'hir> {
-        let ty = local
-            .ty
-            .as_ref()
-            .map(|t| self.lower_ty(t, ImplTraitContext::Disallowed(ImplTraitPosition::Binding)));
-        let span = self.lower_span(local.span);
-        let span = self.mark_span_with_reason(DesugaringKind::LetElse, span, None);
-        let init = self.lower_expr(init);
-        let local_hir_id = self.lower_node_id(local.id);
-        self.lower_attrs(local_hir_id, &local.attrs);
-        let let_expr = {
-            let lex = self.arena.alloc(hir::Let {
-                hir_id: local_hir_id,
-                pat: self.lower_pat(&local.pat),
-                ty,
-                init,
-                span,
-            });
-            self.arena.alloc(self.expr(span, hir::ExprKind::Let(lex), AttrVec::new()))
-        };
+    fn lower_let_else(&mut self, let_else: &LetElse, tail: &[Stmt]) -> &'hir hir::Expr<'hir> {
+        let span = self.mark_span_with_reason(DesugaringKind::LetElse, let_else.span, None);
+        let local_hir_id = self.lower_node_id(let_else.id);
+        self.lower_attrs(local_hir_id, &let_else.attrs);
+        let cond = self.lower_expr(&let_else.expr);
         let then_expr = {
             let (stmts, expr) = self.lower_stmts(tail);
             let block = self.block_all(span, stmts, expr);
             self.arena.alloc(self.expr_block(block, AttrVec::new()))
         };
         let else_expr = {
-            let block = self.lower_block(els, false);
+            let block = self.lower_block(&let_else.r#else, false);
             self.arena.alloc(self.expr_block(block, AttrVec::new()))
         };
-        self.alias_attrs(let_expr.hir_id, local_hir_id);
+        self.alias_attrs(cond.hir_id, local_hir_id);
         self.alias_attrs(else_expr.hir_id, local_hir_id);
         let if_expr = self.arena.alloc(hir::Expr {
-            hir_id: stmt_hir_id,
+            hir_id: local_hir_id,
             span,
-            kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
+            kind: hir::ExprKind::If(cond, then_expr, Some(else_expr)),
         });
         if !self.sess.features_untracked().let_else {
             feature_err(
                 &self.sess.parse_sess,
                 sym::let_else,
-                local.span,
+                let_else.span,
                 "`let...else` statements are unstable",
             )
             .emit();

@@ -1073,26 +1073,27 @@ impl<'a> State<'a> {
     crate fn print_stmt(&mut self, st: &ast::Stmt) {
         self.maybe_print_comment(st.span.lo());
         match st.kind {
+            ast::StmtKind::LetElse(ref let_else) => {
+                self.print_outer_attributes(&let_else.attrs);
+                self.space_if_not_bol();
+                self.ibox(INDENT_UNIT);
+                self.word_nbsp("let");
+                self.print_expr(&let_else.expr);
+                self.cbox(INDENT_UNIT);
+                self.ibox(INDENT_UNIT);
+                self.word(" else ");
+                self.print_block(&let_else.r#else);
+                self.word(";");
+                self.end(); // `let` ibox
+            }
             ast::StmtKind::Local(ref loc) => {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
                 self.word_nbsp("let");
-
                 self.ibox(INDENT_UNIT);
                 self.print_local_decl(loc);
                 self.end();
-                if let Some((init, els)) = loc.kind.init_else_opt() {
-                    self.nbsp();
-                    self.word_space("=");
-                    self.print_expr(init);
-                    if let Some(els) = els {
-                        self.cbox(INDENT_UNIT);
-                        self.ibox(INDENT_UNIT);
-                        self.word(" else ");
-                        self.print_block(els);
-                    }
-                }
                 self.word(";");
                 self.end(); // `let` ibox
             }

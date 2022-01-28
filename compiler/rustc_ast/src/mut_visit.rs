@@ -201,6 +201,10 @@ pub trait MutVisitor: Sized {
         noop_visit_parenthesized_parameter_data(p, self);
     }
 
+    fn visit_let_else(&mut self, let_else: &mut P<LetElse>) {
+        noop_visit_let_else(let_else, self);
+    }
+
     fn visit_local(&mut self, l: &mut P<Local>) {
         noop_visit_local(l, self);
     }
@@ -569,6 +573,16 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(
     vis.visit_span(span);
 }
 
+pub fn noop_visit_let_else<T: MutVisitor>(let_else: &mut P<LetElse>, vis: &mut T) {
+    let LetElse { attrs, expr, id, r#else, span, tokens } = let_else.deref_mut();
+    visit_thin_attrs(attrs, vis);
+    vis.visit_expr(expr);
+    vis.visit_id(id);
+    vis.visit_block(r#else);
+    vis.visit_span(span);
+    visit_lazy_tts(tokens, vis);
+}
+
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
     let Local { id, pat, ty, kind, span, attrs, tokens } = local.deref_mut();
     vis.visit_id(id);
@@ -578,10 +592,6 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
         LocalKind::Decl => {}
         LocalKind::Init(init) => {
             vis.visit_expr(init);
-        }
-        LocalKind::InitElse(init, els) => {
-            vis.visit_expr(init);
-            vis.visit_block(els);
         }
     }
     vis.visit_span(span);
@@ -1408,6 +1418,10 @@ pub fn noop_flat_map_stmt_kind<T: MutVisitor>(
     vis: &mut T,
 ) -> SmallVec<[StmtKind; 1]> {
     match kind {
+        StmtKind::LetElse(mut let_else) => smallvec![StmtKind::LetElse({
+            vis.visit_let_else(&mut let_else);
+            let_else
+        })],
         StmtKind::Local(mut local) => smallvec![StmtKind::Local({
             vis.visit_local(&mut local);
             local

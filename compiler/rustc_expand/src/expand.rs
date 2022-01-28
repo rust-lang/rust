@@ -1364,7 +1364,7 @@ impl InvocationCollectorNode for ast::Stmt {
             StmtKind::Item(item) => matches!(item.kind, ItemKind::MacCall(..)),
             StmtKind::Semi(expr) => matches!(expr.kind, ExprKind::MacCall(..)),
             StmtKind::Expr(..) => unreachable!(),
-            StmtKind::Local(..) | StmtKind::Empty => false,
+            StmtKind::LetElse(..) | StmtKind::Local(..) | StmtKind::Empty => false,
         }
     }
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {

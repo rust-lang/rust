@@ -54,7 +54,7 @@ impl Rewrite for ast::Local {
 
         skip_out_of_file_lines_range!(context, self.span);
 
-        if contains_skip(&self.attrs) || matches!(self.kind, ast::LocalKind::InitElse(..)) {
+        if contains_skip(&self.attrs) {
             return None;
         }
 
@@ -112,7 +112,7 @@ impl Rewrite for ast::Local {
 
         result.push_str(&infix);
 
-        if let Some((init, _els)) = self.kind.init_else_opt() {
+        if let Some(init) = self.kind.init() {
             // 1 = trailing semicolon;
             let nested_shape = shape.sub_width(1)?;
 
