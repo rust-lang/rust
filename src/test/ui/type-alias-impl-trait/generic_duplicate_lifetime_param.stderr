@@ -10,11 +10,13 @@ note: lifetime used multiple times
 LL | type Two<'a, 'b> = impl std::fmt::Debug;
    |          ^^  ^^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_duplicate_lifetime_param.rs:5:20
    |
 LL | type Two<'a, 'b> = impl std::fmt::Debug;
    |                    ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Two` must be used in combination with a concrete type within the same module
 
 error: aborting due to 2 previous errors
 

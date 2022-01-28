@@ -15,11 +15,13 @@ LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
 LL |     t
    |     ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/bounds-are-checked.rs:6:14
    |
 LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `X` must be used in combination with a concrete type within the same module
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

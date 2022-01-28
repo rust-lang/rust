@@ -724,7 +724,12 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         Some((_, ty)) => ty,
         None => {
             let span = tcx.def_span(def_id);
-            tcx.sess.span_err(span, "could not find defining uses");
+            let name = tcx.item_name(tcx.parent(def_id.to_def_id()).unwrap());
+            let label = format!(
+                "`{}` must be used in combination with a concrete type within the same module",
+                name
+            );
+            tcx.sess.struct_span_err(span, "unconstrained opaque type").note(&label).emit();
             tcx.ty_error()
         }
     }

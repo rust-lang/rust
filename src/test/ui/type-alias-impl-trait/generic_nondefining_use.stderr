@@ -10,11 +10,13 @@ note: used non-generic type `u32` for generic parameter
 LL | type OneTy<T> = impl Debug;
    |            ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_nondefining_use.rs:7:17
    |
 LL | type OneTy<T> = impl Debug;
    |                 ^^^^^^^^^^
+   |
+   = note: `OneTy` must be used in combination with a concrete type within the same module
 
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_nondefining_use.rs:22:5
@@ -25,11 +27,13 @@ LL | type OneLifetime<'a> = impl Debug;
 LL |     6u32
    |     ^^^^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_nondefining_use.rs:9:24
    |
 LL | type OneLifetime<'a> = impl Debug;
    |                        ^^^^^^^^^^
+   |
+   = note: `OneLifetime` must be used in combination with a concrete type within the same module
 
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_nondefining_use.rs:27:5
@@ -43,11 +47,13 @@ note: used non-generic constant `123_usize` for generic parameter
 LL | type OneConst<const X: usize> = impl Debug;
    |                     ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_nondefining_use.rs:11:33
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |                                 ^^^^^^^^^^
+   |
+   = note: `OneConst` must be used in combination with a concrete type within the same module
 
 error: aborting due to 6 previous errors
 

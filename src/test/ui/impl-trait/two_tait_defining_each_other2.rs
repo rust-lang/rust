@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 type A = impl Foo;
-//~^ ERROR could not find defining uses
+//~^ ERROR unconstrained opaque type
 type B = impl Foo;
 
 trait Foo {}

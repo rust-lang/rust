@@ -29,11 +29,13 @@ LL | impl<'a> A<'a> for C {
 LL |     type B<'b> = impl Clone;
    |            ^^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/issue-88595.rs:19:18
    |
 LL |     type B<'b> = impl Clone;
    |                  ^^^^^^^^^^
+   |
+   = note: `B` must be used in combination with a concrete type within the same module
 
 error: aborting due to 3 previous errors
 

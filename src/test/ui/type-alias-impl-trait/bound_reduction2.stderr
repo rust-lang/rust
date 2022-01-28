@@ -10,11 +10,13 @@ note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
 LL | type Foo<V> = impl Trait<V>;
    |          ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/bound_reduction2.rs:9:15
    |
 LL | type Foo<V> = impl Trait<V>;
    |               ^^^^^^^^^^^^^
+   |
+   = note: `Foo` must be used in combination with a concrete type within the same module
 
 error: aborting due to 2 previous errors
 

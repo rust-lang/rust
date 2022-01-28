@@ -7,7 +7,7 @@ trait TraitWithAssoc {
 }
 
 type Foo<V> = impl Trait<V>;
-//~^ ERROR could not find defining uses
+//~^ ERROR unconstrained opaque type
 
 trait Trait<U> {}
 

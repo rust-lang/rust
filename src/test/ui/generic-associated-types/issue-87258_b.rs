@@ -15,7 +15,7 @@ pub trait Trait2 {
 }
 
 type Helper<'xenon, 'yttrium, KABOOM: Trait2> = impl Trait1;
-//~^ ERROR could not find defining uses
+//~^ ERROR unconstrained opaque type
 
 impl<'c, S: Trait2> Trait2 for &'c mut S {
     type FooFuture<'a> = Helper<'c, 'a, S>;

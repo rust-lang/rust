@@ -10,11 +10,13 @@ note: type used multiple times
 LL | type TwoTys<T, U> = impl Debug;
    |             ^  ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_duplicate_param_use.rs:8:21
    |
 LL | type TwoTys<T, U> = impl Debug;
    |                     ^^^^^^^^^^
+   |
+   = note: `TwoTys` must be used in combination with a concrete type within the same module
 
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:21:5
@@ -28,11 +30,13 @@ note: lifetime used multiple times
 LL | type TwoLifetimes<'a, 'b> = impl Debug;
    |                   ^^  ^^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_duplicate_param_use.rs:10:29
    |
 LL | type TwoLifetimes<'a, 'b> = impl Debug;
    |                             ^^^^^^^^^^
+   |
+   = note: `TwoLifetimes` must be used in combination with a concrete type within the same module
 
 error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:26:5
@@ -46,11 +50,13 @@ note: constant used multiple times
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                      ^               ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/generic_duplicate_param_use.rs:12:50
    |
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                                                  ^^^^^^^^^^
+   |
+   = note: `TwoConsts` must be used in combination with a concrete type within the same module
 
 error: aborting due to 6 previous errors
 

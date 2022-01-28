@@ -1,8 +1,10 @@
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/two_tait_defining_each_other2.rs:3:10
    |
 LL | type A = impl Foo;
    |          ^^^^^^^^
+   |
+   = note: `A` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 

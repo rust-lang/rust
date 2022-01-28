@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 type FooX = impl Debug;
-//~^ could not find defining uses
+//~^ unconstrained opaque type
 
 trait Foo<A> { }
 

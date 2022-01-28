@@ -2,7 +2,7 @@
 
 mod a {
     type Foo = impl PartialEq<(Foo, i32)>;
-    //~^ ERROR could not find defining uses
+    //~^ ERROR unconstrained opaque type
 
     struct Bar;
 
@@ -15,7 +15,7 @@ mod a {
 
 mod b {
     type Foo = impl PartialEq<(Foo, i32)>;
-    //~^ ERROR could not find defining uses
+    //~^ ERROR unconstrained opaque type
 
     struct Bar;
 

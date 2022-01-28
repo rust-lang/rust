@@ -10,11 +10,13 @@ note: used non-generic type `u8` for generic parameter
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                         ^
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/issue-60564.rs:8:30
    |
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `IterBitsIter` must be used in combination with a concrete type within the same module
 
 error: aborting due to 2 previous errors
 
