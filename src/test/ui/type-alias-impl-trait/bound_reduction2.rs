@@ -7,7 +7,6 @@ trait TraitWithAssoc {
 }
 
 type Foo<V> = impl Trait<V>;
-//~^ ERROR unconstrained opaque type
 
 trait Trait<U> {}
 

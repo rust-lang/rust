@@ -10,13 +10,5 @@ note: used non-generic type `()` for generic parameter
 LL | type Alias<'a, U> = impl Trait<U>;
    |                ^
 
-error: unconstrained opaque type
-  --> $DIR/issue-68368-non-defining-use-2.rs:7:21
-   |
-LL | type Alias<'a, U> = impl Trait<U>;
-   |                     ^^^^^^^^^^^^^
-   |
-   = note: `Alias` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

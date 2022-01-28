@@ -5,11 +5,11 @@ use std::fmt::Debug;
 fn main() {}
 
 type OneTy<T> = impl Debug;
-//~^ ERROR unconstrained opaque type
+
 type OneLifetime<'a> = impl Debug;
-//~^ ERROR unconstrained opaque type
+
 type OneConst<const X: usize> = impl Debug;
-//~^ ERROR unconstrained opaque type
+
 
 // Not defining uses, because they doesn't define *all* possible generics.
 

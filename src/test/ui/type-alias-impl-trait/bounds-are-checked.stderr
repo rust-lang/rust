@@ -1,5 +1,5 @@
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/bounds-are-checked.rs:9:6
+  --> $DIR/bounds-are-checked.rs:8:6
    |
 LL | fn f<'a: 'static>(t: &'a str) -> X<'a> {
    |      ^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL | fn f<'a: 'static>(t: &'a str) -> X<'a> {
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/bounds-are-checked.rs:11:5
+  --> $DIR/bounds-are-checked.rs:10:5
    |
 LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
    |        -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
@@ -15,13 +15,5 @@ LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
 LL |     t
    |     ^
 
-error: unconstrained opaque type
-  --> $DIR/bounds-are-checked.rs:6:14
-   |
-LL | type X<'a> = impl Into<&'static str> + From<&'a str>;
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `X` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to previous error; 1 warning emitted
 

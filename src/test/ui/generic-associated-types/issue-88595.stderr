@@ -16,7 +16,7 @@ LL |     type B<'b> = impl Clone;
    |            ^^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-88595.rs:23:35
+  --> $DIR/issue-88595.rs:22:35
    |
 LL |     fn a(&'a self) -> Self::B<'a> {}
    |                                   ^^
@@ -29,14 +29,6 @@ LL | impl<'a> A<'a> for C {
 LL |     type B<'b> = impl Clone;
    |            ^^
 
-error: unconstrained opaque type
-  --> $DIR/issue-88595.rs:19:18
-   |
-LL |     type B<'b> = impl Clone;
-   |                  ^^^^^^^^^^
-   |
-   = note: `B` must be used in combination with a concrete type within the same module
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0478`.

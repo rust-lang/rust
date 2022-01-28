@@ -58,7 +58,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>> {
         opaque_ty_decls
             .into_iter()
-            .filter_map(|(opaque_type_key, (concrete_type, decl_span, origin))| {
+            .map(|(opaque_type_key, (concrete_type, decl_span, origin))| {
                 let substs = opaque_type_key.substs;
                 // FIXME: why are the spans in decl_span often DUMMY_SP?
                 let span = decl_span.substitute_dummy(span);
@@ -112,8 +112,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     span,
                 );
 
-                check_opaque_type_parameter_valid(infcx.tcx, opaque_type_key, origin, span)
-                    .then_some((opaque_type_key, remapped_type))
+                (
+                    opaque_type_key,
+                    if check_opaque_type_parameter_valid(infcx.tcx, opaque_type_key, origin, span) {
+                        remapped_type
+                    } else {
+                        infcx.tcx.ty_error()
+                    },
+                )
             })
             .collect()
     }

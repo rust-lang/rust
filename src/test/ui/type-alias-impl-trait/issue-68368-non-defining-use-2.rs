@@ -5,7 +5,7 @@
 #![feature(type_alias_impl_trait)]
 trait Trait<T> {}
 type Alias<'a, U> = impl Trait<U>;
-//~^ ERROR unconstrained opaque type
+
 fn f<'a>() -> Alias<'a, ()> {}
 //~^ ERROR non-defining opaque type use in defining scope
 

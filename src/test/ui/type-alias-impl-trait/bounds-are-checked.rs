@@ -4,7 +4,6 @@
 #![feature(type_alias_impl_trait)]
 
 type X<'a> = impl Into<&'static str> + From<&'a str>;
-//~^ ERROR unconstrained opaque type
 
 fn f<'a: 'static>(t: &'a str) -> X<'a> {
     //~^ WARNING unnecessary lifetime parameter

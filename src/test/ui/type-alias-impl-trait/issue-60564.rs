@@ -6,7 +6,6 @@ trait IterBits {
 }
 
 type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
-//~^ ERROR unconstrained opaque type
 
 impl<T: Copy, E> IterBits for T
 where

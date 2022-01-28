@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-60564.rs:21:9
+  --> $DIR/issue-60564.rs:20:9
    |
 LL |         (0u8..n).rev().map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -10,13 +10,5 @@ note: used non-generic type `u8` for generic parameter
 LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
    |                         ^
 
-error: unconstrained opaque type
-  --> $DIR/issue-60564.rs:8:30
-   |
-LL | type IterBitsIter<T, E, I> = impl std::iter::Iterator<Item = I>;
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `IterBitsIter` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

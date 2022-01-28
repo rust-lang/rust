@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/bound_reduction2.rs:17:5
+  --> $DIR/bound_reduction2.rs:16:5
    |
 LL |     ()
    |     ^^
@@ -10,13 +10,5 @@ note: used non-generic type `<T as TraitWithAssoc>::Assoc` for generic parameter
 LL | type Foo<V> = impl Trait<V>;
    |          ^
 
-error: unconstrained opaque type
-  --> $DIR/bound_reduction2.rs:9:15
-   |
-LL | type Foo<V> = impl Trait<V>;
-   |               ^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
