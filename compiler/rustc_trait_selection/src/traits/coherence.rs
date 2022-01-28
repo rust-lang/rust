@@ -13,6 +13,7 @@ use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
     PredicateObligations, SelectionContext,
 };
+use rustc_ast::Attribute;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -160,24 +161,30 @@ impl OverlapMode {
 }
 
 fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
-    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence)
-        != tcx.has_attr(impl2_def_id, sym::rustc_strict_coherence)
-    {
-        bug!("Use strict coherence on both impls",);
-    }
+    // Find the possible coherence mode override opt-in attributes for each `DefId`
+    let find_coherence_attr = |attr: &Attribute| {
+        let name = attr.name_or_empty();
+        match name {
+            sym::rustc_with_negative_coherence | sym::rustc_strict_coherence => Some(name),
+            _ => None,
+        }
+    };
+    let impl1_coherence_mode = tcx.get_attrs(impl1_def_id).iter().find_map(find_coherence_attr);
+    let impl2_coherence_mode = tcx.get_attrs(impl2_def_id).iter().find_map(find_coherence_attr);
 
-    if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence)
-        != tcx.has_attr(impl2_def_id, sym::rustc_with_negative_coherence)
-    {
-        bug!("Use with negative coherence on both impls",);
-    }
-
-    if tcx.has_attr(impl1_def_id, sym::rustc_strict_coherence) {
-        OverlapMode::Strict
-    } else if tcx.has_attr(impl1_def_id, sym::rustc_with_negative_coherence) {
-        OverlapMode::WithNegative
-    } else {
-        OverlapMode::Stable
+    // If there are any (that currently happens in tests), they need to match. Otherwise, the
+    // default 1.0 rules are used.
+    match (impl1_coherence_mode, impl2_coherence_mode) {
+        (None, None) => OverlapMode::Stable,
+        (Some(sym::rustc_with_negative_coherence), Some(sym::rustc_with_negative_coherence)) => {
+            OverlapMode::WithNegative
+        }
+        (Some(sym::rustc_strict_coherence), Some(sym::rustc_strict_coherence)) => {
+            OverlapMode::Strict
+        }
+        (Some(mode), _) | (_, Some(mode)) => {
+            bug!("Use the same coherence mode on both impls: {}", mode)
+        }
     }
 }
 
