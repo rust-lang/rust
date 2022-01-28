@@ -380,6 +380,7 @@ mod desc {
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
+    pub const parse_cfprotection: &str = "`none`|`no`|`n` (default), `branch`, `return`, or `full`|`yes`|`y` (equivalent to `branch` and `return`)";
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavor::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
@@ -690,6 +691,25 @@ mod parse {
             None => CFGuard::Checks,
             Some("checks") => CFGuard::Checks,
             Some("nochecks") => CFGuard::NoChecks,
+            Some(_) => return false,
+        };
+        true
+    }
+
+    crate fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
+                return true;
+            }
+        }
+
+        *slot = match v {
+            None | Some("none") => CFProtection::None,
+            Some("branch") => CFProtection::Branch,
+            Some("return") => CFProtection::Return,
+            Some("full") => CFProtection::Full,
             Some(_) => return false,
         };
         true
@@ -1142,6 +1162,8 @@ options! {
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
     branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
+    cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
+        "instrument control-flow architecture protection"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],
