@@ -1243,7 +1243,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Hash, Debug, HashStableEq)]
 pub struct BodyId {
     pub hir_id: HirId,
 }
@@ -1476,7 +1476,7 @@ pub struct AnonConst {
 }
 
 /// An expression.
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct Expr<'hir> {
     pub hir_id: HirId,
     pub kind: ExprKind<'hir>,
@@ -2029,7 +2029,7 @@ pub struct FnSig<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStableEq)]
 pub struct TraitItemId {
     pub def_id: LocalDefId,
 }
@@ -2046,7 +2046,7 @@ impl TraitItemId {
 /// possibly including a default implementation. A trait item is
 /// either required (meaning it doesn't have an implementation, just a
 /// signature) or provided (meaning it has a default implementation).
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
@@ -2092,7 +2092,7 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStableEq)]
 pub struct ImplItemId {
     pub def_id: LocalDefId,
 }
@@ -2106,7 +2106,7 @@ impl ImplItemId {
 }
 
 /// Represents anything within an `impl` block.
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
@@ -2209,7 +2209,7 @@ impl TypeBinding<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct Ty<'hir> {
     pub hir_id: HirId,
     pub kind: TyKind<'hir>,
@@ -2607,7 +2607,7 @@ pub struct PolyTraitRef<'hir> {
 
 pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStableEq)]
 pub enum VisibilityKind<'hir> {
     Public,
     Crate(CrateSugar),
@@ -2683,7 +2683,7 @@ impl<'hir> VariantData<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, Hash, HashStableEq)]
 pub struct ItemId {
     pub def_id: LocalDefId,
 }
@@ -2699,7 +2699,7 @@ impl ItemId {
 /// An item
 ///
 /// The name might be a dummy name in case of anonymous items
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct Item<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
@@ -2926,7 +2926,7 @@ pub enum AssocItemKind {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStableEq)]
 pub struct ForeignItemId {
     pub def_id: LocalDefId,
 }
@@ -2952,7 +2952,7 @@ pub struct ForeignItemRef {
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStableEq)]
 pub struct ForeignItem<'hir> {
     pub ident: Ident,
     pub kind: ForeignItemKind<'hir>,

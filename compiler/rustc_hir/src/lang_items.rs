@@ -44,7 +44,7 @@ macro_rules! language_item_table {
 
         enum_from_u32! {
             /// A representation of all the valid language items in Rust.
-            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+            #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, HashStableEq)]
             pub enum LangItem {
                 $(
                     #[doc = concat!("The `", stringify!($name), "` lang item.")]
@@ -84,6 +84,7 @@ macro_rules! language_item_table {
         /// All of the language items, defined or not.
         /// Defined lang items can come from the current crate or its dependencies.
         #[derive(HashStable_Generic, Debug)]
+        #[stable_hasher(no_hash_stable_eq)]
         pub struct LanguageItems {
             /// Mappings from lang items to their possibly found [`DefId`]s.
             /// The index corresponds to the order in [`LangItem`].

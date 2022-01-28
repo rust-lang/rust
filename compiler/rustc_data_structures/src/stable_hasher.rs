@@ -232,6 +232,17 @@ macro_rules! impl_stable_hash_via_hash {
     };
 }
 
+#[macro_export]
+macro_rules! impl_hash_stable_eq_via_eq {
+    ($t:ty) => {
+        impl ::rustc_data_structures::stable_hasher::HashStableEq for $t {
+            fn hash_stable_eq(&self, other: &Self) -> bool {
+                self == other
+            }
+        }
+    }
+}
+
 impl_stable_hash_via_hash!(i8);
 impl_stable_hash_via_hash!(i16);
 impl_stable_hash_via_hash!(i32);
@@ -291,6 +302,12 @@ impl<CTX> HashStable<CTX> for f64 {
 impl<CTX> HashStable<CTX> for ::std::cmp::Ordering {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (*self as i8).hash_stable(ctx, hasher);
+    }
+}
+
+impl<T1: HashStableEq, T2: HashStableEq> HashStableEq for (T1, T2) {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.0.hash_stable_eq(&other.0) && self.1.hash_stable_eq(&other.1)
     }
 }
 
@@ -445,6 +462,12 @@ impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for Box<T> {
     }
 }
 
+impl<T: ?Sized + HashStableEq> HashStableEq for Box<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (**self).hash_stable_eq(other)
+    }
+}
+
 impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::rc::Rc<T> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
@@ -567,6 +590,12 @@ where
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (**self).hash_stable(ctx, hasher);
+    }
+}
+
+impl<'a, T: HashStableEq + ?Sized> HashStableEq for &'a T {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (**self).hash_stable_eq(other)
     }
 }
 

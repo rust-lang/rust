@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
 
 use crate::hir::{
     AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,
@@ -30,6 +30,12 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> (DefPathHash, ItemLocalId) {
         let def_path_hash = self.owner.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
+    }
+}
+
+impl HashStableEq for HirId {
+    fn hash_stable_eq(&self, other: &HirId) -> bool {
+        self == other
     }
 }
 

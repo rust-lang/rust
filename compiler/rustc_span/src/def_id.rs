@@ -192,6 +192,7 @@ rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
+    #[derive(HashStableEq)]
     pub struct DefIndex {
         ENCODABLE = custom // (only encodable in metadata)
 
@@ -333,7 +334,7 @@ rustc_data_structures::define_id_collections!(DefIdMap, DefIdSet, DefId);
 /// few cases where we know that only `DefId`s from the local crate are expected;
 /// a `DefId` from a different crate would signify a bug somewhere. This
 /// is when `LocalDefId` comes in handy.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStableEq)]
 pub struct LocalDefId {
     pub local_def_index: DefIndex,
 }
