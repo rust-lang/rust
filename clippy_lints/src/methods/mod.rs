@@ -566,17 +566,20 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)`
+    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
     ///
     /// ### Example
     /// ```rust
     /// let vec = vec![vec![1]];
+    /// let opt = Some(5);
     ///
     /// // Bad
     /// vec.iter().map(|x| x.iter()).flatten();
+    /// opt.map(|x| Some(x * 2)).flatten();
     ///
     /// // Good
     /// vec.iter().flat_map(|x| x.iter());
+    /// opt.and_then(|x| Some(x * 2));
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
