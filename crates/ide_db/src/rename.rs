@@ -25,7 +25,6 @@ use std::fmt;
 use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
 use hir::{AsAssocItem, FieldSource, HasSource, InFile, ModuleSource, Semantics};
-use stdx::never;
 use syntax::{
     ast::{self, HasName},
     AstNode, SyntaxKind, TextRange, T,
@@ -188,16 +187,16 @@ fn rename_mod(
         source_change.push_file_system_edit(move_file);
     }
 
-    if let Some(InFile { file_id, value: decl_source }) = module.declaration_source(sema.db) {
+    if let Some(InFile { file_id, value: _ }) = module.declaration_source(sema.db) {
         let file_id = file_id.original_file(sema.db);
-        match decl_source.name() {
-            Some(name) => source_change.insert_source_edit(
+        if let Some(file_range) = Definition::Module(module).range_for_rename(sema) {
+            source_change.insert_source_edit(
                 file_id,
-                TextEdit::replace(name.syntax().text_range(), new_name.to_string()),
-            ),
-            _ => never!("Module source node is missing a name"),
+                TextEdit::replace(file_range.range, new_name.to_string()),
+            )
         }
     }
+
     let def = Definition::Module(module);
     let usages = def.usages(sema).all();
     let ref_edits = usages.iter().map(|(&file_id, references)| {
