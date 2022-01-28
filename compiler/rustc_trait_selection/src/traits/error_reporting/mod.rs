@@ -439,6 +439,28 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         } else {
                             err.span_label(span, explanation);
                         }
+
+                        if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
+                            let non_const_predicate = trait_ref.without_const();
+                            let non_const_obligation = Obligation {
+                                cause: obligation.cause.clone(),
+                                param_env: obligation.param_env.without_const(),
+                                predicate: non_const_predicate.to_predicate(tcx),
+                                recursion_depth: obligation.recursion_depth,
+                            };
+                            if self.predicate_may_hold(&non_const_obligation) {
+                                err.span_note(
+                                    span,
+                                    &format!(
+                                        "the trait `{}` is implemented for `{}`, \
+                                        but that implementation is not `const`",
+                                        non_const_predicate.print_modifiers_and_trait_path(),
+                                        trait_ref.skip_binder().self_ty(),
+                                    ),
+                                );
+                            }
+                        }
+
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, &msg);
                         }

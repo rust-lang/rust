@@ -4,6 +4,11 @@ error[E0277]: the trait bound `(): ~const Tr` is not satisfied
 LL |         foo::<()>();
    |               ^^ the trait `~const Tr` is not implemented for `()`
    |
+note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
+  --> $DIR/default-method-body-is-const-body-checking.rs:12:15
+   |
+LL |         foo::<()>();
+   |               ^^
 note: required by a bound in `foo`
   --> $DIR/default-method-body-is-const-body-checking.rs:7:28
    |
