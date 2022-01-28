@@ -31,11 +31,3 @@ pub fn small_array_alignment(x: [i8; 4]) -> [i8; 4] {
     // CHECK: ret [4 x i8] [[VAR]]
     x
 }
-
-// CHECK-LABEL: @small_struct_alignment
-#[no_mangle]
-pub fn small_struct_alignment(x: Bytes) -> Bytes {
-    // TODO-CHECK: [[VAR:%[0-9]+]] = load {{(i32, )?}}i32* %{{.*}}, align 1
-    // TODO-CHECK: ret i32 [[VAR]]
-    x
-}
