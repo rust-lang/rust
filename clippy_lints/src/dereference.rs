@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{symbol::sym, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -181,6 +181,9 @@ enum State {
         deref_span: Span,
         deref_hir_id: HirId,
     },
+    ExplicitDerefField {
+        name: Symbol,
+    },
     Reborrow {
         deref_span: Span,
         deref_hir_id: HirId,
@@ -243,8 +246,18 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             (None, kind) => {
                 let parent = get_parent_node(cx.tcx, expr.hir_id);
                 let expr_ty = typeck.expr_ty(expr);
-
                 match kind {
+                    RefOp::Deref => {
+                        if let Some(Node::Expr(e)) = parent
+                            && let ExprKind::Field(_, name) = e.kind
+                            && !ty_contains_field(typeck.expr_ty(sub_expr), name.name)
+                        {
+                            self.state = Some((
+                                State::ExplicitDerefField { name: name.name },
+                                StateData { span: expr.span, hir_id: expr.hir_id },
+                            ));
+                        }
+                    }
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
                             && is_linted_explicit_deref_position(parent, expr.hir_id, expr.span) =>
@@ -349,7 +362,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             ));
                         }
                     },
-                    _ => (),
+                    RefOp::Method(..) => (),
                 }
             },
             (
@@ -435,6 +448,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
             },
             (state @ Some((State::ExplicitDeref { .. }, _)), RefOp::Deref) => {
                 self.state = state;
+            },
+            (Some((State::ExplicitDerefField { name }, data)), RefOp::Deref)
+                if !ty_contains_field(typeck.expr_ty(sub_expr), name) =>
+            {
+                self.state = Some((State::ExplicitDerefField { name }, data));
             },
 
             (Some((state, data)), _) => report(cx, expr, state, data),
@@ -879,6 +897,14 @@ fn param_auto_deref_stability(ty: Ty<'_>) -> AutoDerefStability {
     }
 }
 
+fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
+    if let ty::Adt(adt, _) = *ty.kind() {
+        adt.is_struct() && adt.non_enum_variant().fields.iter().any(|f| f.name == name)
+    } else {
+        false
+    }
+}
+
 #[expect(clippy::needless_pass_by_value)]
 fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data: StateData) {
     match state {
@@ -965,6 +991,20 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                     let mut app = Applicability::MachineApplicable;
                     let snip = snippet_with_context(cx, expr.span, span.ctxt(), "..", &mut app).0;
                     diag.span_suggestion(span, "try this", snip.into_owned(), app);
+                },
+            );
+        },
+        State::ExplicitDerefField { .. } => {
+            span_lint_hir_and_then(
+                cx,
+                EXPLICIT_AUTO_DEREF,
+                data.hir_id,
+                data.span,
+                "deref which would be done by auto-deref",
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
+                    diag.span_suggestion(data.span, "try this", snip.into_owned(), app);
                 },
             );
         },

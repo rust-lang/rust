@@ -156,5 +156,17 @@ error: deref which would be done by auto-deref
 LL |     let _ = E1::S2 { s: &*s };
    |                          ^^ help: try this: `s`
 
-error: aborting due to 26 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:173:13
+   |
+LL |     let _ = (*b).foo;
+   |             ^^^^ help: try this: `b`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:174:13
+   |
+LL |     let _ = (**b).foo;
+   |             ^^^^^ help: try this: `b`
+
+error: aborting due to 28 previous errors
 

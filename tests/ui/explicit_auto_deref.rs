@@ -164,4 +164,24 @@ fn main() {
     let ref_s = &s;
     let _: &String = &*ref_s; // Don't lint reborrow.
     f_string(&*ref_s); // Don't lint reborrow.
+
+    struct S5 {
+        foo: u32,
+    }
+    let b = Box::new(Box::new(S5 { foo: 5 }));
+    let _ = b.foo;
+    let _ = (*b).foo;
+    let _ = (**b).foo;
+
+    struct S6 {
+        foo: S5,
+    }
+    impl core::ops::Deref for S6 {
+        type Target = S5;
+        fn deref(&self) -> &Self::Target {
+            &self.foo
+        }
+    }
+    let s6 = S6 { foo: S5 { foo: 5 } };
+    let _ = (*s6).foo; // Don't lint. `S6` also has a field named `foo`
 }
