@@ -20,6 +20,7 @@
 #![feature(internal_output_capture)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
+#![feature(process_exitcode_placeholder)]
 #![feature(test)]
 #![feature(total_cmp)]
 
@@ -182,7 +183,7 @@ fn make_owned_test(test: &&TestDescAndFn) -> TestDescAndFn {
 /// Tests is considered a failure. By default, invokes `report()`
 /// and checks for a `0` result.
 pub fn assert_test_result<T: Termination>(result: T) {
-    let code = result.report();
+    let code = result.report().to_i32();
     assert_eq!(
         code, 0,
         "the test returned a termination value with a non-zero status code ({}) \
