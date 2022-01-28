@@ -1,0 +1,84 @@
+error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:7:36
+   |
+LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
+   |                                    ^^ -  - supplied 2 arguments
+   |
+help: use parentheses to construct a tuple
+   |
+LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
+   |                                       +    +
+
+error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:9:46
+   |
+LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
+   |                                              ^^^^ -  -  ---- supplied 3 arguments
+   |
+help: use parentheses to construct a tuple
+   |
+LL |     let _: Option<(i32, i8, &'static str)> = Some((1, 2, "hi"));
+   |                                                   +          +
+
+error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:11:25
+   |
+LL |     let _: Option<()> = Some();
+   |                         ^^^^-- supplied 0 arguments
+   |
+help: expected the unit value `()`; create it with empty parentheses
+   |
+LL |     let _: Option<()> = Some(());
+   |                              ++
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:14:5
+   |
+LL |     two_ints(1, 2);
+   |     ^^^^^^^^ -  - supplied 2 arguments
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:19:4
+   |
+LL | fn two_ints(_: (i32, i32)) {
+   |    ^^^^^^^^ -------------
+help: use parentheses to construct a tuple
+   |
+LL |     two_ints((1, 2));
+   |              +    +
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:16:5
+   |
+LL |     with_generic(3, 4);
+   |     ^^^^^^^^^^^^ -  - supplied 2 arguments
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:22:4
+   |
+LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
+   |    ^^^^^^^^^^^^                 ----------------
+help: use parentheses to construct a tuple
+   |
+LL |     with_generic((3, 4));
+   |                  +    +
+
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/args-instead-of-tuple.rs:25:9
+   |
+LL |         with_generic(a, b);
+   |         ^^^^^^^^^^^^ -  - supplied 2 arguments
+   |
+note: function defined here
+  --> $DIR/args-instead-of-tuple.rs:22:4
+   |
+LL | fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
+   |    ^^^^^^^^^^^^                 ----------------
+help: use parentheses to construct a tuple
+   |
+LL |         with_generic((a, b));
+   |                      +    +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0061`.
