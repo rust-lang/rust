@@ -19,6 +19,7 @@
 
 use cfg_if::cfg_if;
 
+#[cfg(not(doc))]
 #[macro_use]
 mod error_macros;
 
@@ -26,7 +27,50 @@ mod error_macros;
 mod macros;
 
 cfg_if! {
-    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
+    if #[cfg(doc)] {
+        // When building docs, emit the full macro for all supported arches.
+        #[allow(dead_code)]
+        mod arch {
+            #[path = "x86.rs"]
+            #[macro_use]
+            mod x86;
+            #[path = "arm.rs"]
+            #[macro_use]
+            mod arm;
+            #[path = "aarch64.rs"]
+            #[macro_use]
+            mod aarch64;
+            #[path = "riscv.rs"]
+            #[macro_use]
+            mod riscv;
+            #[path = "powerpc.rs"]
+            #[macro_use]
+            mod powerpc;
+            #[path = "powerpc64.rs"]
+            #[macro_use]
+            mod powerpc64;
+            #[path = "mips.rs"]
+            #[macro_use]
+            mod mips;
+            #[path = "mips64.rs"]
+            #[macro_use]
+            mod mips64;
+
+            #[doc(hidden)]
+            pub(crate) enum Feature {
+                Null
+            }
+            #[doc(hidden)]
+            pub mod __is_feature_detected {}
+
+            impl Feature {
+                #[doc(hidden)]
+                pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> { Err(()) }
+                #[doc(hidden)]
+                pub(crate) fn to_str(self) -> &'static str { "" }
+            }
+        }
+    } else if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         #[path = "arch/x86.rs"]
         #[macro_use]
         mod arch;
