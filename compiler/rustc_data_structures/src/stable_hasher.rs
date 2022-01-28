@@ -137,7 +137,35 @@ impl Hasher for StableHasher {
         // platforms. This is important for symbol hashes when cross compiling,
         // for example. Sign extending here is preferable as it means that the
         // same negative number hashes the same on both 32 and 64 bit platforms.
-        self.state.write_i64((i as i64).to_le());
+        let value = (i as i64).to_le() as u64;
+
+        // Cold path
+        #[cold]
+        #[inline(never)]
+        fn hash_value(state: &mut SipHasher128, value: u64) {
+            state.write_u8(0xFF);
+            state.write_u64(value);
+        }
+
+        // `isize` values often seem to have a small (positive) numeric value in practice.
+        // To exploit this, if the value is small, we will hash a smaller amount of bytes.
+        // However, we cannot just skip the leading zero bytes, as that would produce the same hash
+        // e.g. if you hash two values that have the same bit pattern when they are swapped.
+        // See https://github.com/rust-lang/rust/pull/93014 for context.
+        //
+        // Therefore, we employ the following strategy:
+        // 1) When we encounter a value that fits within a single byte (the most common case), we
+        // hash just that byte. This is the most common case that is being optimized. However, we do
+        // not do this for the value 0xFF, as that is a reserved prefix (a bit like in UTF-8).
+        // 2) When we encounter a larger value, we hash a "marker" 0xFF and then the corresponding
+        // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
+        // `isize`s that fit within a different amount of bytes, they should always produce a different
+        // byte stream for the hasher.
+        if value < 0xFF {
+            self.state.write_u8(value as u8);
+        } else {
+            hash_value(&mut self.state, value);
+        }
     }
 }
 

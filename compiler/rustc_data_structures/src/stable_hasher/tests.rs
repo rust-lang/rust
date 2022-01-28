@@ -39,7 +39,7 @@ fn test_hash_integers() {
     test_isize.hash(&mut h);
 
     // This depends on the hashing algorithm. See note at top of file.
-    let expected = (2736651863462566372, 8121090595289675650);
+    let expected = (1784307454142909076, 11471672289340283879);
 
     assert_eq!(h.finalize(), expected);
 }
@@ -67,7 +67,7 @@ fn test_hash_isize() {
     test_isize.hash(&mut h);
 
     // This depends on the hashing algorithm. See note at top of file.
-    let expected = (14721296605626097289, 11385941877786388409);
+    let expected = (2789913510339652884, 674280939192711005);
 
     assert_eq!(h.finalize(), expected);
 }
@@ -139,4 +139,24 @@ fn test_attribute_permutation() {
     test_type!(i32);
     test_type!(i64);
     test_type!(i128);
+}
+
+// Check that the `isize` hashing optimization does not produce the same hash when permuting two
+// values.
+#[test]
+fn test_isize_compression() {
+    fn check_hash(a: u64, b: u64) {
+        let hash_a = hash(&(a as isize, b as isize));
+        let hash_b = hash(&(b as isize, a as isize));
+        assert_ne!(
+            hash_a, hash_b,
+            "The hash stayed the same when permuting values `{a}` and `{b}!",
+        );
+    }
+
+    check_hash(0xAA, 0xAAAA);
+    check_hash(0xFF, 0xFFFF);
+    check_hash(0xAAAA, 0xAAAAAA);
+    check_hash(0xAAAAAA, 0xAAAAAAAA);
+    check_hash(0xFF, 0xFFFFFFFFFFFFFFFF);
 }
