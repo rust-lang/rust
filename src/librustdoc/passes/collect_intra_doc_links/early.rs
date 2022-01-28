@@ -32,6 +32,11 @@ crate fn early_resolve_intra_doc_links(
         all_trait_impls: Default::default(),
     };
 
+    // Because of the `crate::` prefix, any doc comment can reference
+    // the crate root's set of in-scope traits. This line makes sure
+    // it's available.
+    loader.add_traits_in_scope(CRATE_DEF_ID.to_def_id());
+
     // Overridden `visit_item` below doesn't apply to the crate root,
     // so we have to visit its attributes and reexports separately.
     loader.load_links_in_attrs(&krate.attrs, krate.span);
@@ -179,6 +184,11 @@ impl Visitor<'_> for IntraLinkCrateLoader<'_, '_> {
     fn visit_item(&mut self, item: &ast::Item) {
         if let ItemKind::Mod(..) = item.kind {
             let old_mod = mem::replace(&mut self.current_mod, self.resolver.local_def_id(item.id));
+
+            // A module written with a outline doc comments will resolve traits relative
+            // to the parent module. Make sure the parent module's traits-in-scope are
+            // loaded, even if the module itself has no doc comments.
+            self.add_traits_in_parent_scope(self.current_mod.to_def_id());
 
             self.load_links_in_attrs(&item.attrs, item.span);
             self.process_module_children_or_reexports(self.current_mod.to_def_id());
