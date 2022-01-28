@@ -540,6 +540,16 @@ jobs:
           - name: dist-x86_64-linux
             os: ubuntu-20.04-xl
             env: {}
+          - name: dist-x86_64-apple-alt
+            env:
+              SCRIPT: "./x.py dist"
+              RUST_CONFIGURE_ARGS: "--enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.7
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            os: macos-latest
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
