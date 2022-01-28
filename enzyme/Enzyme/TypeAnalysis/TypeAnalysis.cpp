@@ -800,6 +800,18 @@ void TypeAnalyzer::considerTBAA() {
           TT.insert({}, BaseType::Pointer);
           updateAnalysis(call->getOperand(0), TT.Only(-1), call);
         }
+        if (F) {
+          std::set<std::string> JuliaKnownTypes = {
+              "julia.gc_alloc_obj",
+              "jl_alloc_array_1d",
+              "jl_alloc_array_2d",
+              "jl_alloc_array_3d",
+          };
+          if (JuliaKnownTypes.count(F->getName().str())) {
+            visitCallInst(*call);
+            continue;
+          }
+        }
       }
 
       TypeTree vdptr = parseTBAA(I, DL);
@@ -994,13 +1006,64 @@ void TypeAnalyzer::run() {
     while (!Invalid && workList.size()) {
       auto todo = *workList.begin();
       workList.erase(workList.begin());
-      if (auto ci = dyn_cast<CallInst>(todo)) {
-        pendingCalls.push_back(ci);
-        continue;
+      if (auto call = dyn_cast<CallInst>(todo)) {
+
+        Function *ci = call->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              ci = fn;
+            }
+        }
+        if (ci && !ci->empty()) {
+
+          StringRef funcName = "";
+          if (ci->hasFnAttribute("enzyme_math"))
+            funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
+          else
+            funcName = ci->getName();
+
+          if (interprocedural.CustomRules.find(funcName.str()) ==
+              interprocedural.CustomRules.end()) {
+            pendingCalls.push_back(call);
+            continue;
+          }
+        }
       }
-      if (auto ci = dyn_cast<InvokeInst>(todo)) {
-        pendingCalls.push_back(ci);
-        continue;
+      if (auto call = dyn_cast<InvokeInst>(todo)) {
+        Function *ci = call->getCalledFunction();
+
+#if LLVM_VERSION_MAJOR >= 11
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledOperand()))
+#else
+        if (auto castinst = dyn_cast<ConstantExpr>(call->getCalledValue()))
+#endif
+        {
+          if (castinst->isCast())
+            if (auto fn = dyn_cast<Function>(castinst->getOperand(0))) {
+              ci = fn;
+            }
+        }
+        if (ci && !ci->empty()) {
+
+          StringRef funcName = "";
+          if (ci->hasFnAttribute("enzyme_math"))
+            funcName = ci->getFnAttribute("enzyme_math").getValueAsString();
+          else
+            funcName = ci->getName();
+
+          if (interprocedural.CustomRules.find(funcName.str()) ==
+              interprocedural.CustomRules.end()) {
+            pendingCalls.push_back(call);
+            continue;
+          }
+        }
       }
       visitValue(*todo);
     }
@@ -1329,11 +1392,12 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
   TypeTree gepData0;
   TypeTree pointerData0;
-  if (direction & DOWN)
-    gepData0 = getAnalysis(&gep).Data0();
   if (direction & UP)
+    gepData0 = getAnalysis(&gep).Data0();
+  if (direction & DOWN)
     pointerData0 = pointerAnalysis.Data0();
 
+  bool seenIdx = false;
   for (auto vec : getSet(idnext, idnext.size() - 1)) {
     auto g2 = GetElementPtrInst::Create(gep.getSourceElementType(),
                                         gep.getOperand(0), vec);
@@ -1360,19 +1424,30 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
                 8;
     }
 
-    if (direction & UP)
-      upTree |=
+    if (direction & DOWN) {
+      auto shft =
           pointerData0.ShiftIndices(DL, /*init offset*/ off,
                                     /*max size*/ maxSize, /*newoffset*/ 0);
+      if (seenIdx)
+        downTree &= shft;
+      else
+        downTree = shft;
+    }
 
-    if (direction & DOWN)
-      downTree |= gepData0.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
+    if (direction & UP) {
+      auto shft = gepData0.ShiftIndices(DL, /*init offset*/ 0, /*max size*/ -1,
                                         /*new offset*/ off);
+      if (seenIdx)
+        upTree |= shft;
+      else
+        upTree = shft;
+    }
+    seenIdx = true;
   }
-  if (direction & UP)
-    updateAnalysis(&gep, upTree.Only(-1), &gep);
   if (direction & DOWN)
-    updateAnalysis(gep.getPointerOperand(), downTree.Only(-1), &gep);
+    updateAnalysis(&gep, downTree.Only(-1), &gep);
+  if (direction & UP)
+    updateAnalysis(gep.getPointerOperand(), upTree.Only(-1), &gep);
 }
 
 void TypeAnalyzer::visitPHINode(PHINode &phi) {
