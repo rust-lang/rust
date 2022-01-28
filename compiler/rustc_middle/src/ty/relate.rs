@@ -340,15 +340,15 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::GeneratorWitnessInner<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::GeneratorWitnessInner<'tcx>,
-        b: ty::GeneratorWitnessInner<'tcx>,
-    ) -> RelateResult<'tcx, ty::GeneratorWitnessInner<'tcx>> {
+        a: ty::GeneratorInterior<'tcx>,
+        b: ty::GeneratorInterior<'tcx>,
+    ) -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>> {
         assert_eq!(a.tys.len(), b.tys.len());
         assert_eq!(a.predicates.len(), b.predicates.len());
-        Ok(ty::GeneratorWitnessInner {
+        Ok(ty::GeneratorInterior {
             tys: relation
                 .tcx()
                 .mk_type_list(a.tys.iter().zip(b.tys).map(|(a, b)| relation.relate(a, b)))?,

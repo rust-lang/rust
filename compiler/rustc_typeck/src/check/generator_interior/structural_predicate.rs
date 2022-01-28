@@ -4,6 +4,13 @@ use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
+/// This helper walks through generator-interior types, collecting projection types,
+/// and creating ProjectionPredicates that we can use in the param-env when checking
+/// auto traits later on.
+///
+/// We walk through the constituent types of a type, and when we encounter a projection,
+/// normalize that projection. If that normalization was successful, then create a
+/// ProjectionPredicate out of the old projection type and its normalized ty.
 pub(super) struct StructuralPredicateElaborator<'a, 'tcx> {
     stack: Vec<Ty<'tcx>>,
     seen: FxHashSet<Ty<'tcx>>,
@@ -19,18 +26,8 @@ impl<'a, 'tcx> StructuralPredicateElaborator<'a, 'tcx> {
         StructuralPredicateElaborator { seen, stack, fcx, span }
     }
 
-    /// For default impls, we need to break apart a type into its
-    /// "constituent types" -- meaning, the types that it contains.
-    ///
-    /// Here are some (simple) examples:
-    ///
-    /// ```
-    /// (i32, u32) -> [i32, u32]
-    /// Foo where struct Foo { x: i32, y: u32 } -> [i32, u32]
-    /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
-    /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
-    /// ```
-    fn constituent_types_for_auto_trait(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+    // Ripped from confirmation code, lol.
+    fn constituent_types(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
         match *t.kind() {
             ty::Projection(..) => {
                 bug!("this type should be handled separately: {:?}", t)
@@ -100,10 +97,12 @@ impl<'tcx> Iterator for StructuralPredicateElaborator<'_, 'tcx> {
         while let Some(ty) = self.stack.pop() {
             if let ty::Projection(projection_ty) = *ty.kind() {
                 let mut normalized_ty = self.fcx.normalize_associated_types_in(self.span, ty);
+                // Try to resolve the projection type
                 if normalized_ty.is_ty_var() {
                     self.fcx.select_obligations_where_possible(false, |_| {});
                     normalized_ty = self.fcx.resolve_vars_if_possible(normalized_ty);
                 }
+                // If we have a normalized type, then stash it
                 if !normalized_ty.is_ty_var() && normalized_ty != ty {
                     if self.seen.insert(normalized_ty) {
                         self.stack.push(normalized_ty);
@@ -115,7 +114,7 @@ impl<'tcx> Iterator for StructuralPredicateElaborator<'_, 'tcx> {
                 }
             } else {
                 let structural: Vec<_> = self
-                    .constituent_types_for_auto_trait(ty)
+                    .constituent_types(ty)
                     .into_iter()
                     .map(|ty| self.fcx.resolve_vars_if_possible(ty))
                     .filter(|ty| self.seen.insert(ty))

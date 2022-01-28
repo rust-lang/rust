@@ -17,7 +17,7 @@ use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
-    FloatVid, GeneratorPredicate, GeneratorWitnessInner, GenericParamDefKind, InferConst, InferTy,
+    FloatVid, GeneratorInterior, GeneratorPredicate, GenericParamDefKind, InferConst, InferTy,
     IntTy, IntVar, IntVid, List, ParamConst, ParamTy, PolyFnSig, Predicate, PredicateInner,
     PredicateKind, ProjectionTy, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
     TyS, TyVar, TyVid, TypeAndMut, UintTy,
@@ -2413,7 +2413,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_generator_witness(
         self,
-        inner: ty::Binder<'tcx, GeneratorWitnessInner<'tcx>>,
+        inner: ty::Binder<'tcx, GeneratorInterior<'tcx>>,
     ) -> Ty<'tcx> {
         self.mk_ty(GeneratorWitness(inner))
     }

@@ -317,7 +317,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let (param_env, nested) =
                 if let ty::GeneratorWitness(interior) = self_ty.skip_binder().kind() {
                     self.infcx().commit_unconditionally(|_| {
-                        let ty::GeneratorWitnessInner { tys: nested, predicates } =
+                        let ty::GeneratorInterior { tys: nested, predicates } =
                             self.infcx().replace_bound_vars_with_placeholders(*interior);
                         // FIXME(compiler-errors): Not sure if we should augment the param_env,
                         // or just make a new param_env from these predicates...

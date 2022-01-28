@@ -515,7 +515,7 @@ macro_rules! impl_binder_encode_decode {
 impl_binder_encode_decode! {
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::GeneratorPredicate<'tcx>>,
-    ty::GeneratorWitnessInner<'tcx>,
+    ty::GeneratorInterior<'tcx>,
     ty::FnSig<'tcx>,
     ty::ExistentialPredicate<'tcx>,
     ty::TraitRef<'tcx>,

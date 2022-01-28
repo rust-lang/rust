@@ -160,7 +160,7 @@ pub enum TyKind<'tcx> {
 
     /// A type representing the types stored inside a generator.
     /// This should only appear inside of a generator's interior types.
-    GeneratorWitness(Binder<'tcx, GeneratorWitnessInner<'tcx>>),
+    GeneratorWitness(Binder<'tcx, GeneratorInterior<'tcx>>),
 
     /// The never type `!`.
     Never,
@@ -2311,7 +2311,10 @@ impl<'tcx> VarianceDiagInfo<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
-pub struct GeneratorWitnessInner<'tcx> {
+pub struct GeneratorInterior<'tcx> {
+    /// types alive across await points in the generator
     pub tys: &'tcx List<Ty<'tcx>>,
+    /// predicates that we know hold in the environment where the generator was created,
+    /// which are used when checking auto traits on the generator witness
     pub predicates: &'tcx List<ty::GeneratorPredicate<'tcx>>,
 }

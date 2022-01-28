@@ -85,7 +85,9 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                         .find(|yield_data| {
                             trace!(
                                 "comparing counts yield: {} self: {}, source_span = {:?}",
-                                yield_data.expr_and_pat_count, self.expr_count, source_span
+                                yield_data.expr_and_pat_count,
+                                self.expr_count,
+                                source_span
                             );
 
                             if ENABLE_DROP_TRACKING
@@ -304,7 +306,7 @@ pub fn resolve_interior<'a, 'tcx>(
     );
 
     let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(
-        ty::GeneratorWitnessInner { tys: anon_tys, predicates: anon_predicates },
+        ty::GeneratorInterior { tys: anon_tys, predicates: anon_predicates },
         bound_vars.clone(),
     ));
 
