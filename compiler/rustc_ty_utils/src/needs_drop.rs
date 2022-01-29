@@ -199,16 +199,11 @@ fn drop_tys_helper<'tcx>(
     fn with_query_cache<'tcx>(
         tcx: TyCtxt<'tcx>,
         iter: impl IntoIterator<Item = Ty<'tcx>>,
-        only_significant: bool,
     ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
             match subty.kind() {
                 ty::Adt(adt_id, subst) => {
-                    for subty in if only_significant {
-                        tcx.adt_significant_drop_tys(adt_id.did)?
-                    } else {
-                        tcx.adt_drop_tys(adt_id.did)?
-                    } {
+                    for subty in tcx.adt_drop_tys(adt_id.did)? {
                         vec.push(subty.subst(tcx, subst));
                     }
                 }
@@ -234,25 +229,28 @@ fn drop_tys_helper<'tcx>(
                     // Since the destructor is insignificant, we just want to make sure all of
                     // the passed in type parameters are also insignificant.
                     // Eg: Vec<T> dtor is insignificant when T=i32 but significant when T=Mutex.
-                    with_query_cache(tcx, substs.types(), only_significant)
+                    Ok(substs.types().collect())
                 }
             }
         } else if adt_def.is_union() {
             debug!("drop_tys_helper: `{:?}` is a union", adt_def);
             Ok(Vec::new())
         } else {
-            with_query_cache(
-                tcx,
-                adt_def.all_fields().map(|field| {
-                    let r = tcx.type_of(field.did).subst(tcx, substs);
-                    debug!(
-                        "drop_tys_helper: Subst into {:?} with {:?} gettng {:?}",
-                        field, substs, r
-                    );
-                    r
-                }),
-                only_significant,
-            )
+            let field_tys = adt_def.all_fields().map(|field| {
+                let r = tcx.type_of(field.did).subst(tcx, substs);
+                debug!("drop_tys_helper: Subst into {:?} with {:?} gettng {:?}", field, substs, r);
+                r
+            });
+            if only_significant {
+                // We can't recurse through the query system here because we might induce a cycle
+                Ok(field_tys.collect())
+            } else {
+                // We can use the query system if we consider all drops significant. In that case,
+                // ADTs are `needs_drop` exactly if they `impl Drop` or if any of their "transitive"
+                // fields do. There can be no cycles here, because ADTs cannot contain themselves as
+                // fields.
+                with_query_cache(tcx, field_tys)
+            }
         }
         .map(|v| v.into_iter())
     };
