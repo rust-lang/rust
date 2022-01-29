@@ -92,6 +92,7 @@ store.register_lints(&[
     default::DEFAULT_TRAIT_ACCESS,
     default::FIELD_REASSIGN_WITH_DEFAULT,
     default_numeric_fallback::DEFAULT_NUMERIC_FALLBACK,
+    default_union_representation::DEFAULT_UNION_REPRESENTATION,
     dereference::EXPLICIT_DEREF_METHODS,
     dereference::NEEDLESS_BORROW,
     dereference::REF_BINDING_TO_REFERENCE,
