@@ -10,7 +10,8 @@
     clippy::ptr_arg,
     clippy::redundant_field_names,
     clippy::too_many_arguments,
-    clippy::borrow_deref_ref
+    clippy::borrow_deref_ref,
+    clippy::let_unit_value
 )]
 
 trait CallableStr {

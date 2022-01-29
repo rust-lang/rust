@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{expr_sig, peel_mid_ty_refs, variant_of_res};
-use clippy_utils::{get_parent_expr, get_parent_node, is_lint_allowed, path_to_local, walk_to_expr_usage};
+use clippy_utils::{get_parent_expr, is_lint_allowed, path_to_local, walk_to_expr_usage};
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -15,7 +15,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span, Symbol, SyntaxContext};
+use rustc_span::{symbol::sym, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -167,7 +167,6 @@ struct DerefedBorrow {
     count: usize,
     required_precedence: i8,
     msg: &'static str,
-    stability: AutoDerefStability,
     position: Position,
 }
 
@@ -249,8 +248,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
         match (self.state.take(), kind) {
             (None, kind) => {
                 let expr_ty = typeck.expr_ty(expr);
-                let (position, parent_ctxt) = get_expr_position(cx, expr);
-                let (stability, adjustments) = walk_parents(cx, expr);
+                let (position, adjustments) = walk_parents(cx, expr);
 
                 match kind {
                     RefOp::Deref => {
@@ -261,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                 State::ExplicitDerefField { name },
                                 StateData { span: expr.span, hir_id: expr.hir_id },
                             ));
-                        } else if stability.is_deref_stable() {
+                        } else if position.is_deref_stable() {
                             self.state = Some((
                                 State::ExplicitDeref { deref_span: expr.span, deref_hir_id: expr.hir_id },
                                 StateData { span: expr.span, hir_id: expr.hir_id },
@@ -270,7 +268,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     }
                     RefOp::Method(target_mut)
                         if !is_lint_allowed(cx, EXPLICIT_DEREF_METHODS, expr.hir_id)
-                            && (position.lint_explicit_deref() || parent_ctxt != expr.span.ctxt()) =>
+                            && position.lint_explicit_deref() =>
                     {
                         self.state = Some((
                             State::DerefMethod {
@@ -336,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
                             next_adjust.map(|a| &a.kind)
                         {
-                            if matches!(mutability, AutoBorrowMutability::Mut { .. }) && !stability.is_reborrow_stable()
+                            if matches!(mutability, AutoBorrowMutability::Mut { .. }) && !position.is_reborrow_stable()
                             {
                                 (3, 0, deref_msg)
                             } else {
@@ -354,12 +352,11 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     count: deref_count - required_refs,
                                     required_precedence,
                                     msg,
-                                    stability,
                                     position,
                                 }),
                                 StateData { span: expr.span, hir_id: expr.hir_id },
                             ));
-                        } else if stability.is_deref_stable() {
+                        } else if position.is_deref_stable() {
                             self.state = Some((
                                 State::Borrow,
                                 StateData {
@@ -406,9 +403,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                 ));
             },
             (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) => {
-                let stability = state.stability;
+                let position = state.position;
                 report(cx, expr, State::DerefedBorrow(state), data);
-                if stability.is_deref_stable() {
+                if position.is_deref_stable() {
                     self.state = Some((
                         State::Borrow,
                         StateData {
@@ -419,7 +416,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                 }
             },
             (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
-                let stability = state.stability;
                 let position = state.position;
                 report(cx, expr, State::DerefedBorrow(state), data);
                 if let Position::FieldAccess(name) = position
@@ -429,7 +425,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                         State::ExplicitDerefField { name },
                         StateData { span: expr.span, hir_id: expr.hir_id },
                     ));
-                } else if stability.is_deref_stable() {
+                } else if position.is_deref_stable() {
                     self.state = Some((
                         State::ExplicitDeref { deref_span: expr.span, deref_hir_id: expr.hir_id },
                         StateData { span: expr.span, hir_id: expr.hir_id },
@@ -601,61 +597,35 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
     }
 }
 
+/// The position of an expression relative to it's parent.
 #[derive(Clone, Copy)]
 enum Position {
     MethodReceiver,
-    FieldAccess(Symbol),
     Callee,
+    FieldAccess(Symbol),
     Postfix,
     Deref,
+    /// Any other location which will trigger auto-deref to a specific time.
+    DerefStable,
+    /// Any other location which will trigger auto-reborrowing.
+    ReborrowStable,
     Other,
 }
 impl Position {
+    fn is_deref_stable(self) -> bool {
+        matches!(self, Self::DerefStable)
+    }
+
+    fn is_reborrow_stable(self) -> bool {
+        matches!(self, Self::DerefStable | Self::ReborrowStable)
+    }
+
     fn can_auto_borrow(self) -> bool {
         matches!(self, Self::MethodReceiver | Self::FieldAccess(_) | Self::Callee)
     }
 
     fn lint_explicit_deref(self) -> bool {
-        matches!(self, Self::Other)
-    }
-}
-
-/// Get which position an expression is in relative to it's parent.
-fn get_expr_position(cx: &LateContext<'_>, e: &Expr<'_>) -> (Position, SyntaxContext) {
-    if let Some(Node::Expr(parent)) = get_parent_node(cx.tcx, e.hir_id) {
-        let pos = match parent.kind {
-            ExprKind::MethodCall(_, [self_arg, ..], _) if self_arg.hir_id == e.hir_id => Position::MethodReceiver,
-            ExprKind::Field(_, name) => Position::FieldAccess(name.name),
-            ExprKind::Call(f, _) if f.hir_id == e.hir_id => Position::Callee,
-            ExprKind::Unary(UnOp::Deref, _) => Position::Deref,
-            ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar) | ExprKind::Index(..) => {
-                Position::Postfix
-            },
-            _ => Position::Other,
-        };
-        (pos, parent.span.ctxt())
-    } else {
-        (Position::Other, SyntaxContext::root())
-    }
-}
-
-/// How stable the result of auto-deref is.
-#[derive(Clone, Copy)]
-enum AutoDerefStability {
-    /// Auto-deref will always choose the same type.
-    Deref,
-    /// Auto-deref will always reborrow a reference.
-    Reborrow,
-    /// Auto-deref will not occur, or it may select a different type.
-    None,
-}
-impl AutoDerefStability {
-    fn is_deref_stable(self) -> bool {
-        matches!(self, Self::Deref)
-    }
-
-    fn is_reborrow_stable(self) -> bool {
-        matches!(self, Self::Deref | Self::Reborrow)
+        matches!(self, Self::Other | Self::DerefStable | Self::ReborrowStable)
     }
 }
 
@@ -663,64 +633,73 @@ impl AutoDerefStability {
 /// is, and which adjustments will be applied to it. Note this will not consider auto-borrow
 /// locations as those follow different rules.
 #[allow(clippy::too_many_lines)]
-fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefStability, &'tcx [Adjustment<'tcx>]) {
+fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &'tcx [Adjustment<'tcx>]) {
     let mut adjustments = [].as_slice();
-    let stability = walk_to_expr_usage(cx, e, &mut |node, child_id| {
+    let ctxt = e.span.ctxt();
+    let position = walk_to_expr_usage(cx, e, &mut |parent, child_id| {
         // LocalTableInContext returns the wrong lifetime, so go use `expr_adjustments` instead.
         if adjustments.is_empty() && let Node::Expr(e) = cx.tcx.hir().get(child_id) {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
-        match node {
-            Node::Local(Local { ty: Some(ty), .. }) => Some(binding_ty_auto_deref_stability(ty)),
+        match parent {
+            Node::Local(Local { ty: Some(ty), span, .. }) if span.ctxt() == ctxt => {
+                Some(binding_ty_auto_deref_stability(ty))
+            },
             Node::Item(&Item {
                 kind: ItemKind::Static(..) | ItemKind::Const(..),
                 def_id,
+                span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Const(..),
                 def_id,
+                span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Const(..),
                 def_id,
+                span,
                 ..
-            }) => {
+            }) if span.ctxt() == ctxt => {
                 let ty = cx.tcx.type_of(def_id);
                 Some(if ty.is_ref() {
-                    AutoDerefStability::None
+                    Position::Other
                 } else {
-                    AutoDerefStability::Deref
+                    Position::DerefStable
                 })
             },
 
             Node::Item(&Item {
                 kind: ItemKind::Fn(..),
                 def_id,
+                span,
                 ..
             })
             | Node::TraitItem(&TraitItem {
                 kind: TraitItemKind::Fn(..),
                 def_id,
+                span,
                 ..
             })
             | Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(..),
                 def_id,
+                span,
                 ..
-            }) => {
+            }) if span.ctxt() == ctxt => {
                 let output = cx.tcx.fn_sig(def_id.to_def_id()).skip_binder().output();
                 Some(if !output.is_ref() {
-                    AutoDerefStability::None
+                    Position::Other
                 } else if output.has_placeholders() || output.has_opaque_types() {
-                    AutoDerefStability::Reborrow
+                    Position::ReborrowStable
                 } else {
-                    AutoDerefStability::Deref
+                    Position::DerefStable
                 })
             },
 
-            Node::Expr(e) => match e.kind {
+            Node::Expr(parent) if parent.span.ctxt() == ctxt => match parent.kind {
                 ExprKind::Ret(_) => {
                     let output = cx
                         .tcx
@@ -728,13 +707,14 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
                         .skip_binder()
                         .output();
                     Some(if !output.is_ref() {
-                        AutoDerefStability::None
+                        Position::Other
                     } else if output.has_placeholders() || output.has_opaque_types() {
-                        AutoDerefStability::Reborrow
+                        Position::ReborrowStable
                     } else {
-                        AutoDerefStability::Deref
+                        Position::DerefStable
                     })
                 },
+                ExprKind::Call(func, _) if func.hir_id == child_id => (child_id == e.hir_id).then(|| Position::Callee),
                 ExprKind::Call(func, args) => args
                     .iter()
                     .position(|arg| arg.hir_id == child_id)
@@ -746,16 +726,22 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
                         Some(ty) => binding_ty_auto_deref_stability(ty),
                         None => param_auto_deref_stability(ty.skip_binder()),
                     }),
-                ExprKind::MethodCall(_, [_, args @ ..], _) => {
-                    let id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
+                ExprKind::MethodCall(_, args, _) => {
+                    let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
-                        let arg = cx.tcx.fn_sig(id).skip_binder().inputs()[i + 1];
-                        param_auto_deref_stability(arg)
+                        if i == 0 {
+                            if e.hir_id == child_id {
+                                Position::MethodReceiver
+                            } else {
+                                Position::ReborrowStable
+                            }
+                        } else {
+                            param_auto_deref_stability(cx.tcx.fn_sig(id).skip_binder().inputs()[i])
+                        }
                     })
                 },
-                ExprKind::MethodCall(..) => Some(AutoDerefStability::Reborrow),
                 ExprKind::Struct(path, fields, _) => {
-                    let variant = variant_of_res(cx, cx.qpath_res(path, e.hir_id));
+                    let variant = variant_of_res(cx, cx.qpath_res(path, parent.hir_id));
                     fields
                         .iter()
                         .find(|f| f.expr.hir_id == child_id)
@@ -763,13 +749,21 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
                         .and_then(|(field, variant)| variant.fields.iter().find(|f| f.name == field.ident.name))
                         .map(|field| param_auto_deref_stability(cx.tcx.type_of(field.did)))
                 },
+                ExprKind::Field(child, name) if child.hir_id == e.hir_id => Some(Position::FieldAccess(name.name)),
+                ExprKind::Unary(UnOp::Deref, child) if child.hir_id == e.hir_id => Some(Position::Deref),
+                ExprKind::Match(child, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
+                | ExprKind::Index(child, _)
+                    if child.hir_id == e.hir_id =>
+                {
+                    Some(Position::Postfix)
+                },
                 _ => None,
             },
             _ => None,
         }
     })
-    .unwrap_or(AutoDerefStability::None);
-    (stability, adjustments)
+    .unwrap_or(Position::Other);
+    (position, adjustments)
 }
 
 // Checks the stability of auto-deref when assigned to a binding with the given explicit type.
@@ -781,9 +775,9 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (AutoDerefSt
 //
 // Here `y1` and `y2` would resolve to different types, so the type `&Box<_>` is not stable when
 // switching to auto-dereferencing.
-fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>) -> AutoDerefStability {
+fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>) -> Position {
     let TyKind::Rptr(_, ty) = &ty.kind else {
-        return AutoDerefStability::None;
+        return Position::Other;
     };
     let mut ty = ty;
 
@@ -809,9 +803,9 @@ fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>) -> AutoDerefStability {
                         _ => false,
                     })
                 {
-                    AutoDerefStability::Reborrow
+                    Position::ReborrowStable
                 } else {
-                    AutoDerefStability::Deref
+                    Position::DerefStable
                 }
             },
             TyKind::Slice(_)
@@ -821,8 +815,8 @@ fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>) -> AutoDerefStability {
             | TyKind::Tup(_)
             | TyKind::Ptr(_)
             | TyKind::TraitObject(..)
-            | TyKind::Path(_) => AutoDerefStability::Deref,
-            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::Err => AutoDerefStability::Reborrow,
+            | TyKind::Path(_) => Position::DerefStable,
+            TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(..) | TyKind::Err => Position::ReborrowStable,
         };
     }
 }
@@ -865,9 +859,9 @@ fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
 }
 
 // Checks whether a type is stable when switching to auto dereferencing,
-fn param_auto_deref_stability(ty: Ty<'_>) -> AutoDerefStability {
+fn param_auto_deref_stability(ty: Ty<'_>) -> Position {
     let ty::Ref(_, mut ty, _) = *ty.kind() else {
-        return AutoDerefStability::None;
+        return Position::Other;
     };
 
     loop {
@@ -893,16 +887,16 @@ fn param_auto_deref_stability(ty: Ty<'_>) -> AutoDerefStability {
             | ty::GeneratorWitness(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Projection(_) => AutoDerefStability::Deref,
+            | ty::Projection(_) => Position::DerefStable,
             ty::Infer(_)
             | ty::Error(_)
             | ty::Param(_)
             | ty::Bound(..)
             | ty::Opaque(..)
             | ty::Placeholder(_)
-            | ty::Dynamic(..) => AutoDerefStability::Reborrow,
-            ty::Adt(..) if ty.has_placeholders() || ty.has_param_types_or_consts() => AutoDerefStability::Reborrow,
-            ty::Adt(..) => AutoDerefStability::Deref,
+            | ty::Dynamic(..) => Position::ReborrowStable,
+            ty::Adt(..) if ty.has_placeholders() || ty.has_param_types_or_consts() => Position::ReborrowStable,
+            ty::Adt(..) => Position::DerefStable,
         };
     }
 }
