@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixes issue where wrapped strings would be incorrectly indented in macro defs when `format_strings` was enabled [#4036](https://github.com/rust-lang/rustfmt/issues/4036)
+
 ## [1.4.38] 2021-10-20
 
 ### Changed
