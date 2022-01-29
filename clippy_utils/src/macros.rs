@@ -452,7 +452,11 @@ impl<'tcx> FormatArgsExpn<'tcx> {
                     if let Ok(i) = usize::try_from(position);
                     if let Some(&(j, format_trait)) = self.formatters.get(i);
                     then {
-                        Some(FormatArgsArg { value: self.value_args[j], format_trait, spec: Some(spec) })
+                        Some(FormatArgsArg {
+                            value: self.value_args[j],
+                            format_trait,
+                            spec: Some(spec),
+                        })
                     } else {
                         None
                     }

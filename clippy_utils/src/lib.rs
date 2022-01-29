@@ -603,7 +603,9 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
         if parent_impl != CRATE_DEF_ID;
         if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl);
         if let hir::ItemKind::Impl(impl_) = &item.kind;
-        then { return impl_.of_trait.as_ref(); }
+        then {
+            return impl_.of_trait.as_ref();
+        }
     }
     None
 }
@@ -713,12 +715,7 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
         if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
         if is_diag_trait_item(cx, repl_def_id, sym::Default)
             || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
-        then {
-            true
-        }
-        else {
-            false
-        }
+        then { true } else { false }
     }
 }
 
@@ -1553,8 +1550,7 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
             if arms.len() == 2;
             if arms[0].guard.is_none();
             if arms[1].guard.is_none();
-            if (is_ok(cx, &arms[0]) && is_err(cx, &arms[1])) ||
-                (is_ok(cx, &arms[1]) && is_err(cx, &arms[0]));
+            if (is_ok(cx, &arms[0]) && is_err(cx, &arms[1])) || (is_ok(cx, &arms[1]) && is_err(cx, &arms[0]));
             then {
                 return Some(expr);
             }
@@ -1644,7 +1640,7 @@ pub fn match_function_call<'tcx>(
         if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
         if match_def_path(cx, fun_def_id, path);
         then {
-            return Some(args)
+            return Some(args);
         }
     };
     None
