@@ -107,7 +107,7 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1)
 
 declare dso_local float @__enzyme_autodiff(i8*, float*, float*, float*, float*)
 
-;CHECK:define internal void @diffeg(float* %m, float* %"m'", float* %n, float* %"n'", float %differeturn) {
+;CHECK:define internal void @diffeg(float* %m, float* %"m'", float* %n, float* %"n'", float %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %"x'ipa" = alloca float, align 4
 ;CHECK-NEXT:  store float 0.000000e+00, float* %"x'ipa", align 4
@@ -137,7 +137,7 @@ declare dso_local float @__enzyme_autodiff(i8*, float*, float*, float*, float*)
 ;CHECK-NEXT:  ret void
 ;CHECK-NEXT:}
 
-;CHECK:define internal { float*, float* } @augmented_outer(float* %out, float* %"out'", float* %a, float* %"a'", float* %b, float* %"b'") {
+;CHECK:define internal { float*, float* } @augmented_outer(float* %out, float* %"out'", float* %a, float* %"a'", float* %b, float* %"b'")
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %malloccall = tail call i8* @malloc(i64 mul (i64 ptrtoint (float* getelementptr (float, float* null, i32 1) to i64), i64 3))
 ;CHECK-NEXT:  %0 = bitcast i8* %malloccall to float*

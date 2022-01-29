@@ -109,7 +109,7 @@ exit:                                             ; preds = %bb23, %bb
 !11 = !{!12, !12, i64 0}
 !12 = !{!"double", !9, i64 0}
 
-; CHECK: define internal void @diffefunc(double* %arg, double* %"arg'", double* %arg1, double* %"arg1'") {
+; CHECK: define internal void @diffefunc(double* %arg, double* %"arg'", double* %arg1, double* %"arg1'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[i0:.+]] = alloca double*
 ; CHECK-NEXT:   %[[i1:.+]] = alloca double*

@@ -38,7 +38,7 @@ attributes #3 = { nounwind }
 !0 = !{i32 1, !"wchar_size", i32 4}
 !1 = !{!"clang version 7.1.0 "}
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffef(double %x, double %differeturn) #0 {
+; CHECK: define internal {{(dso_local )?}}{ double } @diffef(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = tail call fast double @h(double %x)
 ; CHECK-NEXT:   %m0diffecall = fmul fast double %differeturn, %x

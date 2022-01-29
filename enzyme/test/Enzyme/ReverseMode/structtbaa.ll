@@ -41,7 +41,7 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 !6 = !{!4, i64 8, !"long"}
 
-; CHECK: define internal void @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity) {
+; CHECK: define internal void @diffetodiff(%"struct.std::array.6"* dereferenceable(16) %arr, %"struct.std::array.6"* %"arr'", i64 %identity)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %arr.i = alloca %"struct.std::array.6", align 8
 ; CHECK-NEXT:   %agg.tmp.sroa.0.0..sroa_idx = getelementptr inbounds %"struct.std::array.6", %"struct.std::array.6"* %arr, i64 0, i32 0, i64 0

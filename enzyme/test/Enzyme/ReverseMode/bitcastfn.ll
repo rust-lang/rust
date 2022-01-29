@@ -291,7 +291,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 !19 = !{!16, !4, i64 16}
 !20 = !{!16, !17, i64 24}
 
-; CHECK: define internal { double } @diffe_Z6foobardm(double %t, i64 %iters, double %differeturn) #4 {
+; CHECK: define internal { double } @diffe_Z6foobardm(double %t, i64 %iters, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"x'ipa" = alloca %"class.boost::array.1", align 8
 ; CHECK-NEXT:   store %"class.boost::array.1" zeroinitializer, %"class.boost::array.1"* %"x'ipa", align 8
@@ -304,7 +304,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK-NEXT:   %"arrayidx.i1.i'ipg" = getelementptr inbounds %"class.boost::array.1", %"class.boost::array.1"* %"x'ipa", i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %arrayidx.i1.i = getelementptr inbounds %"class.boost::array.1", %"class.boost::array.1"* %x, i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %_augmented = call i8* @augmented_sub(i64 ptrtoint (void (%"class.boost::array.1"*)* @indir to i64), i64 ptrtoint ({ i8* (%"class.boost::array.1"*, %"class.boost::array.1"*)*, void (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)* }* @"_enzyme_reverse_indir'" to i64), %"class.boost::array.1"* nonnull %x, %"class.boost::array.1"* nonnull %"x'ipa")
-; CHECK-NEXT:   %call.i = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str, i64 0, i64 0), double 0.000000e+00) #3
+; CHECK-NEXT:   %call.i = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([22 x i8], [22 x i8]* @.str, i64 0, i64 0), double 0.000000e+00)
 ; CHECK-NEXT:   %1 = load double, double* %arrayidx.i1.i, align 8, !tbaa !8
 ; CHECK-NEXT:   %mul.i1 = fmul fast double %1, -1.200000e+00
 ; CHECK-NEXT:   %m0diffemul.i1 = fmul fast double %differeturn, %div
@@ -322,19 +322,19 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK-NEXT: }
 
 ; TODO no need for malloc/free
-; CHECK: define internal i8* @augmented_indir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'") {
+; CHECK: define internal i8* @augmented_indir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 0)
 ; CHECK-NEXT:   ret i8* %malloccall
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeindir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'", i8* %tapeArg) {
+; CHECK: define internal void @diffeindir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal i8* @augmented_sub(i64 %.unpack.i, i64 %".unpack.i'", %"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'") {
+; CHECK: define internal i8* @augmented_sub(i64 %.unpack.i, i64 %".unpack.i'", %"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"fn'ipc" = inttoptr i64 %".unpack.i'" to void (%"class.boost::array.1"*)*
 ; CHECK-NEXT:   %0 = bitcast void (%"class.boost::array.1"*)* %"fn'ipc" to { i8* } (%"class.boost::array.1"*, %"class.boost::array.1"*)**
@@ -344,7 +344,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; CHECK-NEXT:   ret i8* %subcache
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesub(i64 %.unpack.i, i64 %".unpack.i'", %"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'", i8* %tapeArg1) {
+; CHECK: define internal void @diffesub(i64 %.unpack.i, i64 %".unpack.i'", %"class.boost::array.1"* %Arg, %"class.boost::array.1"* %"Arg'", i8* %tapeArg1)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"fn'ipc" = inttoptr i64 %".unpack.i'" to void (%"class.boost::array.1"*)*
 ; CHECK-NEXT:   %0 = bitcast void (%"class.boost::array.1"*)* %"fn'ipc" to {} (%"class.boost::array.1"*, %"class.boost::array.1"*, i8*)**

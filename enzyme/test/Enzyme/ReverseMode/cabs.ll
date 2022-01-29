@@ -18,7 +18,7 @@ declare double @cabs(double, double)
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 
-; CHECK: define internal { double, double } @diffetester(double %x, double %y, double {{(noundef )?}}%differeturn) {
+; CHECK: define internal { double, double } @diffetester(double %x, double %y, double {{(noundef )?}}%differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast double @cabs(double %x, double %y)
 ; CHECK-NEXT:   %1 = fdiv fast double %differeturn, %0

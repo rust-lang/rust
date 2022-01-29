@@ -48,7 +48,7 @@ attributes #2 = { nounwind }
 ; CHECK: for.body.i:
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %extra.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %exitcond.i = call i1 @exitcond() #2
+; CHECK-NEXT:   %exitcond.i = call i1 @exitcond()
 ; CHECK-NEXT:   br i1 %exitcond.i, label %for.cond.cleanup.i, label %extra.i
 
 ; CHECK: extra.i:

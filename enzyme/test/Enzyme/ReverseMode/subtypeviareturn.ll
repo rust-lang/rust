@@ -33,7 +33,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 !6 = !{!7, !7, i64 0}
 !7 = !{!"double", !4, i64 0}
 
-; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
+; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call = call i64 @augmented_subload(i64* %inp, i64* %"inp'")
 ; CHECK-NEXT:   store i64 %call, i64* %out{{(, align 4)?}}, !tbaa !
@@ -43,13 +43,13 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal i64 @augmented_subload(i64* %inp, i64* %"inp'") {
+; CHECK: define internal i64 @augmented_subload(i64* %inp, i64* %"inp'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %res = load i64, i64* %inp
 ; CHECK-NEXT:   ret i64 %res
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubload(i64* %inp, i64* %"inp'", i64 %differeturn) {
+; CHECK: define internal void @diffesubload(i64* %inp, i64* %"inp'", i64 %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load i64, i64* %"inp'"
 ; CHECK-DAG:    %[[add1:.+]] = bitcast i64 %differeturn to double

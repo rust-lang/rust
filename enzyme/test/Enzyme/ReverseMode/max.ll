@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, double)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}{ double, double } @diffemax(double %x, double %y, double {{(noundef )?}}%[[differet:.+]]) {
+; CHECK: define internal {{(dso_local )?}}{ double, double } @diffemax(double %x, double %y, double {{(noundef )?}}%[[differet:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[cmp:.+]] = fcmp fast ogt double %x, %y
 ; CHECK-NEXT:   %[[diffex:.+]] = select {{(fast )?}}i1 %[[cmp]], double %[[differet]], double 0.000000e+00

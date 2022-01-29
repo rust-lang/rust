@@ -36,7 +36,7 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 !8 = !{!3, !7, i64 8}
 !9 = !{!3, !7, i64 16}
 
-; CHECK: define internal void @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'") {
+; CHECK: define internal void @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[numelemsipge:.+]] = getelementptr inbounds %struct.S, %struct.S* %"to'", i64 0, i32 0
 ; CHECK-NEXT:   %num_elems = getelementptr inbounds %struct.S, %struct.S* %to, i64 0, i32 0

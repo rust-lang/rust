@@ -29,7 +29,7 @@ entry:
 
 declare void @__enzyme_autodiff(i8*, ...)
 
-; CHECK: define internal void @diffempi_allreduce_test(double* %b, double* %"b'", i8* %global_sum_addr, i8* %"global_sum_addr'") {
+; CHECK: define internal void @diffempi_allreduce_test(double* %b, double* %"b'", i8* %global_sum_addr, i8* %"global_sum_addr'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca i32
 ; CHECK-NEXT:   %i8buf = bitcast double* %b to i8*

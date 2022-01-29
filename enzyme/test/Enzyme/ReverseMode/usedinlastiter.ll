@@ -57,7 +57,7 @@ entry:
 
 declare void @__enzyme_autodiff(i8*, float*, float*, float*, float*, i64* %l, i1)
 
-; CHECK: define internal void @diffefoo(float* noalias %out, float* %"out'", float* noalias %in, float* %"in'", i64* %x2.i.i, i1 %a9) {
+; CHECK: define internal void @diffefoo(float* noalias %out, float* %"out'", float* noalias %in, float* %"in'", i64* %x2.i.i, i1 %a9)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(80) dereferenceable_or_null(80) i8* @malloc(i64 80)
 ; CHECK-NEXT:   %a17_malloccache = bitcast i8* %malloccall to float**

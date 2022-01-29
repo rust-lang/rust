@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s
+; RUN: if [ %llvmver -le 12 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s ; fi
+; RUN: if [ %llvmver -ge 13 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -simplifycfg -adce -S | FileCheck %s --check-prefix=POST ; fi
 
 @.str = private unnamed_addr constant [25 x i8] c"xs[%d] = %f xp[%d] = %f\0A\00", align 1
 @.str.1 = private unnamed_addr constant [7 x i8] c"n != 0\00", align 1
@@ -87,7 +88,7 @@ attributes #6 = { noreturn nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal {{(dso_local )?}}void @diffesummer(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
+; CHECK: define internal {{(dso_local )?}}void @diffesummer(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp = icmp eq i64 %n, 0
 ; CHECK-NEXT:   br i1 %cmp, label %cond.false, label %cond.end
@@ -153,3 +154,60 @@ attributes #6 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[subd]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.for.body_crit_edge
 ; CHECK-NEXT: }
+
+; POST: define internal {{(dso_local )?}}void @diffesummer(double* noalias nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
+; POST-NEXT: entry:
+; POST-NEXT:   %cmp = icmp eq i64 %n, 0
+; POST-NEXT:   %0 = xor i1 %cmp, true
+; POST-NEXT:   call void @llvm.assume(i1 %0)
+; POST-NEXT:   %call = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([19 x i8], [19 x i8]* @.str.3, i64 0, i64 0), double 0.000000e+00)
+; POST-NEXT:   %cmp1 = icmp eq i64 %n, 1
+; POST-NEXT:   %1 = xor i1 %cmp1, true
+; POST-NEXT:   call void @llvm.assume(i1 %1)
+; POST-NEXT:   %[[i0:.+]] = load double, double* %x, align 8, !tbaa !2
+; POST-NEXT:   %[[nm2:.+]] = add i64 %n, -2
+; POST-NEXT:   br label %for.body.for.body_crit_edge
+
+; POST: for.body.for.body_crit_edge:
+; POST-NEXT:   %[[idx:.+]] = phi i64 [ 0, %entry ], [ %[[idx2:.+]], %for.body.for.body_crit_edge ]
+; POST-NEXT:   %[[iv:.+]] = phi i64 [ %[[idxadd:.+]], %for.body.for.body_crit_edge ], [ 0, %entry ]
+; POST-NEXT:   %cond.i28 = phi double [ %[[i0]], %entry ], [ %cond.i, %for.body.for.body_crit_edge ]
+; POST-NEXT:   %[[idxadd:.+]] = add nuw nsw i64 %[[iv]], 1
+; POST-NEXT:   %arrayidx9.phi.trans.insert = getelementptr inbounds double, double* %x, i64 %[[idxadd]]
+; POST-NEXT:   %.pre = load double, double* %arrayidx9.phi.trans.insert, align 8, !tbaa !2
+; POST-NEXT:   %cmp.i = fcmp fast ogt double %cond.i28, %.pre
+; POST-NEXT:   %[[idx2]] = select i1 %cmp.i, i64 %[[idx]], i64 %iv.next
+; POST-NEXT:   %cond.i = select{{( fast)?}} i1 %cmp.i, double %cond.i28, double %.pre
+; POST-NEXT:   %indvars.iv.next = add nuw i64 %[[idxadd]], 1
+; POST-NEXT:   %[[pcond:.+]] = icmp eq i64 %indvars.iv.next, %n
+; POST-NEXT:   br i1 %[[pcond]], label %invertfor.cond.cleanup, label %for.body.for.body_crit_edge
+
+; POST: invertfor.body.preheader:
+; POST-NEXT:   %[[lastload:.+]] = load double, double* %"x'"
+; POST-NEXT:   %[[output:.+]] = fadd fast double %[[lastload]], %[[decarry:.+]]
+; POST-NEXT:   store double %[[output]], double* %"x'"
+; POST-NEXT:   ret void
+
+; POST: invertfor.cond.cleanup:
+; POST-NEXT:   %[[negdiff:.+]] = {{(fsub fast double 0.000000e\+00,|fneg fast double)}} %differeturn
+; POST-NEXT:   br label %invertfor.body.for.body_crit_edge
+
+; POST: invertfor.body.for.body_crit_edge:
+; POST-NEXT:   %[[antivar:.+]] = phi i64 [ %[[nm2]], %invertfor.cond.cleanup ], [ %[[subd:.+]], %incinvertfor.body.for.body_crit_edge ]
+; POST-NEXT:   %[[nidx2:.+]] = add nuw nsw i64 %[[antivar]], 1
+; POST-NEXT:   %[[reload:.+]] = icmp eq i64 %[[idx2]], %[[nidx2]]
+; POST-NEXT:   %[[diffepre:.+]] = select{{( fast)?}} i1 %[[reload]], double %[[negdiff]], double 0.000000e+00
+; POST-NEXT:   %[[arrayidx9phitransinsertipg:.+]] = getelementptr inbounds double, double* %"x'", i64 %[[nidx2]]
+; POST-NEXT:   %[[loaded:.+]] = load double, double* %[[arrayidx9phitransinsertipg]]
+; POST-NEXT:   %[[tostore:.+]] = fadd fast double %[[loaded]], %[[diffepre]]
+; POST-NEXT:   store double %[[tostore]], double* %[[arrayidx9phitransinsertipg]]
+; POST-NEXT:   %[[lcond:.+]] = icmp eq i64 %[[antivar]], 0
+; POST-NEXT:   %[[first:.+]] = icmp eq i64 %[[idx2]], 0
+; POST-NEXT:   %[[diffecond:.+]] = select{{( fast)?}} i1 %[[first]], double %[[negdiff]], double 0.000000e+00
+; POST-NEXT:   %[[decarry]] = fadd fast double %differeturn, %[[diffecond]]
+; POST-NEXT:   br i1 %[[lcond]], label %invertfor.body.preheader, label %incinvertfor.body.for.body_crit_edge
+
+; POST: incinvertfor.body.for.body_crit_edge:
+; POST-NEXT:   %[[subd]] = add nsw i64 %[[antivar]], -1
+; POST-NEXT:   br label %invertfor.body.for.body_crit_edge
+; POST-NEXT: }

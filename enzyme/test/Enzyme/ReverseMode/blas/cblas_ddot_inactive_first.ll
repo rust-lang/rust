@@ -68,7 +68,7 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1)
 
 declare dso_local double @__enzyme_autodiff(double*, double*, double*)
 
-;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double %differeturn) {
+;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %n = alloca [3 x double], align 16
 ;CHECK-NEXT:  %0 = bitcast [3 x double]* %n to i8*

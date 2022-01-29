@@ -71,16 +71,16 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %1 = bitcast double** %phi_cache.0 to i8*
 ; CHECK-NEXT:   %2 = and i64 %iv.next, 1
 ; CHECK-NEXT:   %3 = icmp ne i64 %2, 0
-; CHECK-NEXT:   %4 = call i64 @llvm.ctpop.i64(i64 %iv.next) #3
+; CHECK-NEXT:   %4 = call i64 @llvm.ctpop.i64(i64 %iv.next)
 ; CHECK-NEXT:   %5 = icmp ult i64 %4, 3
 ; CHECK-NEXT:   %6 = and i1 %5, %3
 ; CHECK-NEXT:   br i1 %6, label %grow.i, label %__enzyme_exponentialallocation.exit
 
 ; CHECK: grow.i: 
-; CHECK-NEXT:   %7 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true) #3
+; CHECK-NEXT:   %7 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true)
 ; CHECK-NEXT:   %8 = sub nuw nsw i64 64, %7
 ; CHECK-NEXT:   %9 = shl i64 8, %8
-; CHECK-NEXT:   %10 = call i8* @realloc(i8* %1, i64 %9) #3
+; CHECK-NEXT:   %10 = call i8* @realloc(i8* %1, i64 %9)
 ; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit
 
 ; CHECK: __enzyme_exponentialallocation.exit:
@@ -90,10 +90,10 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   br i1 %6, label %grow.i7, label %[[nouterbody:.+]]
 
 ; CHECK: grow.i7:  
-; CHECK-NEXT:   %14 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true) #3
+; CHECK-NEXT:   %14 = call i64 @llvm.ctlz.i64(i64 %iv.next, i1 true)
 ; CHECK-NEXT:   %15 = sub nuw nsw i64 64, %14
 ; CHECK-NEXT:   %16 = shl i64 8, %15
-; CHECK-NEXT:   %17 = call i8* @realloc(i8* %13, i64 %16) #3
+; CHECK-NEXT:   %17 = call i8* @realloc(i8* %13, i64 %16)
 ; CHECK-NEXT:   br label %[[nouterbody]]
 
 ; CHECK: [[nouterbody]]:
@@ -118,16 +118,16 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK-NEXT:   %23 = and i64 %iv.next2, 1
 ; CHECK-NEXT:   %24 = icmp ne i64 %23, 0
-; CHECK-NEXT:   %25 = call i64 @llvm.ctpop.i64(i64 %iv.next2) #3
+; CHECK-NEXT:   %25 = call i64 @llvm.ctpop.i64(i64 %iv.next2)
 ; CHECK-NEXT:   %26 = icmp ult i64 %25, 3
 ; CHECK-NEXT:   %27 = and i1 %26, %24
 ; CHECK-NEXT:   br i1 %27, label %grow.i9, label %__enzyme_exponentialallocation.exit10
 
 ; CHECK: grow.i9:
-; CHECK-NEXT:   %28 = call i64 @llvm.ctlz.i64(i64 %iv.next2, i1 true) #3
+; CHECK-NEXT:   %28 = call i64 @llvm.ctlz.i64(i64 %iv.next2, i1 true)
 ; CHECK-NEXT:   %29 = sub nuw nsw i64 64, %28
 ; CHECK-NEXT:   %30 = shl i64 8, %29
-; CHECK-NEXT:   %31 = call i8* @realloc(i8* %22, i64 %30) #3
+; CHECK-NEXT:   %31 = call i8* @realloc(i8* %22, i64 %30)
 ; CHECK-NEXT:   br label %__enzyme_exponentialallocation.exit10
 
 ; CHECK: __enzyme_exponentialallocation.exit10: 

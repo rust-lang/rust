@@ -53,7 +53,7 @@ define dso_local void @derivative(double* %this, double* %dthis, i64* %xpr) {
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 
-; CHECK: define internal void @diffecaller(double* %data, double* %"data'", i64* %a4, double %differeturn) {
+; CHECK: define internal void @diffecaller(double* %data, double* %"data'", i64* %a4, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %res_augmented = call { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4)
 ; CHECK-NEXT:   %res = extractvalue { { i64, i64* }, double } %res_augmented, 1
@@ -68,18 +68,18 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @augmented_identity(double %res) {
+; CHECK: define internal void @augmented_identity(double %res)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffeidentity(double %res, double %differeturn) {
+; CHECK: define internal { double } @diffeidentity(double %res, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[drt:.+]] = insertvalue { double } undef, double %differeturn, 0
 ; CHECK-NEXT:   ret { double } %[[drt]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4) {
+; CHECK: define internal { { i64, i64* }, double } @augmented_badfunc(double* %data, double* %"data'", i64* %a4)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a5 = load i64, i64* %a4, align 4
 ; CHECK-NEXT:   %mallocsize = shl nuw nsw i64 %a5, 3
@@ -119,7 +119,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64*)
 ; CHECK-NEXT:   ret { { i64, i64* }, double } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %differeturn, { i64, i64* } %tapeArg) {
+; CHECK: define internal void @diffebadfunc(double* %data, double* %"data'", i64* %a4, double %differeturn, { i64, i64* } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[a19cache:.+]] = extractvalue { i64, i64* } %tapeArg, 1
 ; CHECK-NEXT:   %a5 = extractvalue { i64, i64* } %tapeArg, 0

@@ -39,12 +39,12 @@ entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @augmented_loader(double* %ptr, double* %"ptr'") {
+; CHECK: define internal void @augmented_loader(double* %ptr, double* %"ptr'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal i64 @augmented_pb(double* %__x, double* %"__x'", i64* %v) {
+; CHECK: define internal i64 @augmented_pb(double* %__x, double* %"__x'", i64* %v)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %n = load i64, i64* %v, align 8
 ; CHECK-NEXT:   %"ptr'ipg" = getelementptr inbounds double, double* %"__x'", i64 %n
@@ -55,7 +55,7 @@ entry:
 ; CHECK-NEXT:   ret i64 %n
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffepb(double* %__x, double* %"__x'", i64* %v, double %differeturn, i64 %n) {
+; CHECK: define internal void @diffepb(double* %__x, double* %"__x'", i64* %v, double %differeturn, i64 %n)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"ptr'ipg" = getelementptr inbounds double, double* %"__x'", i64 %n
 ; CHECK-NEXT:   %ptr = getelementptr inbounds double, double* %__x, i64 %n
@@ -65,7 +65,7 @@ entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeloader(double* %ptr, double* %"ptr'", double %differeturn) {
+; CHECK: define internal void @diffeloader(double* %ptr, double* %"ptr'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %"ptr'", align 8
 ; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn

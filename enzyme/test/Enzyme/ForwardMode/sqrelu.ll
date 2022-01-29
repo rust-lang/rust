@@ -54,12 +54,12 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp.i, label %cond.true.i, label %fwddiffesqrelu.exit
 
 ; CHECK: cond.true.i:
-; CHECK-NEXT:   %0 = call fast double @llvm.sin.f64(double %x) #3
-; CHECK-NEXT:   %1 = call fast double @llvm.cos.f64(double %x) #3
+; CHECK-NEXT:   %0 = call fast double @llvm.sin.f64(double %x)
+; CHECK-NEXT:   %1 = call fast double @llvm.cos.f64(double %x)
 ; CHECK-NEXT:   %mul.i = fmul fast double %0, %x
 ; CHECK-NEXT:   %2 = fmul fast double %1, %x
 ; CHECK-NEXT:   %3 = fadd fast double %2, %0
-; CHECK-NEXT:   %4 = call fast double @llvm.sqrt.f64(double %mul.i) #3
+; CHECK-NEXT:   %4 = call fast double @llvm.sqrt.f64(double %mul.i)
 ; CHECK-NEXT:   %5 = fmul fast double %3, 5.000000e-01
 ; CHECK-NEXT:   %6 = fdiv fast double %5, %4
 ; CHECK-NEXT:   %7 = fcmp fast oeq double %mul.i, 0.000000e+00

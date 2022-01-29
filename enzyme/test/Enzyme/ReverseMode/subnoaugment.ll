@@ -45,7 +45,7 @@ entry:
 
 attributes #3 = { readnone }
 
-; CHECK: define internal void @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'") {
+; CHECK: define internal void @diffematvec(%Type* %evaluator.i.i, %Type* %"evaluator.i.i'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[dimsipge:.+]] = getelementptr inbounds %Type, %Type* %"evaluator.i.i'", i64 0, i32 1
 ; CHECK-NEXT:   %dims = getelementptr inbounds %Type, %Type* %evaluator.i.i, i64 0, i32 1
@@ -61,14 +61,14 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal double @augmented_total(double* %this, double* %"this'") {
+; CHECK: define internal double @augmented_total(double* %this, double* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %loaded = load double, double* %this, align 8
 ; CHECK-NEXT:   %mcall = tail call double @meta(double %loaded)
 ; CHECK-NEXT:   ret double %mcall
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffetotal(double* %this, double* %"this'", double %differeturn) {
+; CHECK: define internal void @diffetotal(double* %this, double* %"this'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[loaded:.+]] = load double, double* %this, align 8
 ; CHECK-NEXT:   %[[dmetastruct:.+]] = call { double } @diffemeta(double %[[loaded]], double %differeturn)
@@ -79,7 +79,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn) #0 {
+; CHECK: define internal { double } @diffemeta(double %inp, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"arr'ipa" = alloca double, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arr'ipa", align 8
@@ -93,7 +93,7 @@ attributes #3 = { readnone }
 ; CHECK-NEXT:   ret { double } %[[res]]
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesub(double* %a, double* %"a'") {
+; CHECK: define internal void @diffesub(double* %a, double* %"a'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

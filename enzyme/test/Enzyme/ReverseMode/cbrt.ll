@@ -18,7 +18,7 @@ declare double @cbrt(double)
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal { double } @diffetester(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetester(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast double @cbrt(double %x)
 ; CHECK-DAG:    [[REG1:%[0-9]+]] = fmul fast double 3.000000e+00, %x

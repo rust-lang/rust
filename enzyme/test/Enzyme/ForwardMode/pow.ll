@@ -19,7 +19,7 @@ declare double @llvm.pow.f64(double, double)
 ; Function Attrs: nounwind
 declare double @__enzyme_fwddiff(double (double, double)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(double %x, double %"x'", double %y, double %"y'") {
+; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(double %x, double %"x'", double %y, double %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[i0:.+]] = fsub fast double %y, 1.000000e+00
 ; CHECK-NEXT:   %[[i1:.+]] = call fast double @llvm.pow.f64(double %x, double %[[i0]])

@@ -65,7 +65,7 @@ attributes #3 = { nounwind }
 !13 = !{!"omnipotent char", !14, i64 0}
 !14 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal void @diffe_Z4axpyfPfS_(double %x, double* nocapture readonly %y, double* nocapture %"y'", double* nocapture %z, double* nocapture %"z'") {
+; CHECK: define internal void @diffe_Z4axpyfPfS_(double %x, double* nocapture readonly %y, double* nocapture %"y'", double* nocapture %z, double* nocapture %"z'")
 ; CHECK-NEXT: invert:
 ; CHECK-NEXT:   %tix = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x()
 ; CHECK-NEXT:   %zext = zext i32 %tix to i64

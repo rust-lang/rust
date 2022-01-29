@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: nounwind
 declare <2 x double> @__enzyme_fwddiff(<2 x double> (<2 x double>)*, ...)
 
-; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'") {
+; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = {{(fsub fast <2 x double> <double \-?0.000000e\+00, double \-?0.000000e\+00>,|fneg fast <2 x double>)}} %"x'"
 ; CHECK-NEXT:   ret <2 x double> %0

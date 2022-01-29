@@ -29,7 +29,7 @@ declare void @__enzyme_autodiff(i8*, ...)
 ; CHECK: @"__enzyme_mpi_sumFloat@double" = internal global i8* undef
 ; CHECK: @"__enzyme_mpi_sumFloat@double_initd" = internal global i1 false
 
-; CHECK: define internal void @diffempi_allgather_test(double* %b, double* %"b'", i8* %recv_buf, i8* %"recv_buf'") {
+; CHECK: define internal void @diffempi_allgather_test(double* %b, double* %"b'", i8* %recv_buf, i8* %"recv_buf'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca i32
 ; CHECK-NEXT:   %1 = alloca i32

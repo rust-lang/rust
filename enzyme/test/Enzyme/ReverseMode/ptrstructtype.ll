@@ -59,7 +59,7 @@ attributes #2 = { nounwind }
 !10 = !{!11, !4, i64 0}
 !11 = !{!"_ZTSN5Eigen8internal31generic_dense_assignment_kernelINS0_9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEENS2_INS_13CwiseBinaryOpINS0_13scalar_sum_opIddEEKS4_S9_EEEENS0_9assign_opIddEELi0EEE", !4, i64 0, !4, i64 8, !4, i64 16, !4, i64 24}
 
-; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EEES3_PS1_(double* %ad, double* %"ad'", double* noalias %arraydecay, double* %"arraydecay'") #1 {
+; CHECK: define internal void @diffe_ZL6matvecPKN5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EEES3_PS1_(double* %ad, double* %"ad'", double* noalias %arraydecay, double* %"arraydecay'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[a1ipc:.+]] = bitcast double* %"ad'" to <2 x double>*
 ; CHECK-NEXT:   %a1 = bitcast double* %ad to <2 x double>*

@@ -61,7 +61,7 @@ exit:                                        ; preds = %.lr.ph
   ret double %res
 }
 
-; CHECK: define internal { double } @diffef(double %arg, double %differeturn) {
+; CHECK: define internal { double } @diffef(double %arg, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp0 = call i1 @bool()
 ; CHECK-NEXT:   br label %loop1

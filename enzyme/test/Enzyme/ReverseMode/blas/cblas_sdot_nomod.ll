@@ -76,7 +76,7 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1)
 
 declare dso_local float @__enzyme_autodiff(float*, float*, float*, float*, float*)
 
-;CHECK:define internal void @diffeg(float* noalias %m, float* %"m'", float* noalias %n, float* %"n'", float %differeturn) {
+;CHECK:define internal void @diffeg(float* noalias %m, float* %"m'", float* noalias %n, float* %"n'", float %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %call = call float @cblas_sdot(i32 3, float* nocapture readonly %m, i32 1, float* nocapture readonly %n, i32 1)
 ;CHECK-NEXT:  %m0diffecall = fmul fast float %differeturn, %call

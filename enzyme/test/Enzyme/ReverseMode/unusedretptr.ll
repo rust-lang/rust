@@ -25,7 +25,7 @@ entry:
 declare double @__enzyme_autodiff(i8*, ...)
 
 
-; CHECK: define internal void @diffecaller(float* readonly %a, float* %"a'", float %differeturn) {
+; CHECK: define internal void @diffecaller(float* readonly %a, float* %"a'", float %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"res'ipa" = alloca float, align 4
 ; CHECK-NEXT:   store float 0.000000e+00, float* %"res'ipa", align 4
@@ -37,7 +37,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesub(float* readonly %a, float* %"a'", float* nocapture %ret, float* nocapture %"ret'") {
+; CHECK: define internal void @diffesub(float* readonly %a, float* %"a'", float* nocapture %ret, float* nocapture %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ld = load float, float* %a, align 4
 ; CHECK-NEXT:   store float %ld, float* %ret, align 4

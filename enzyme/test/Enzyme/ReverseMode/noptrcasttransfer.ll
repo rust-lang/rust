@@ -19,7 +19,7 @@ entry:
 ; Function Attrs: alwaysinline
 declare double @__enzyme_autodiff(i8*, ...)
 
-; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'", i64* %ptr2, i64* %"ptr2'") {
+; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'", i64* %ptr2, i64* %"ptr2'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %loadnotype = load i64, i64* %ptr
 ; CHECK-NEXT:   store i64 %loadnotype, i64* %ptr2

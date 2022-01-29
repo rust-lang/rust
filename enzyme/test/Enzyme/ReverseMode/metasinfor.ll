@@ -80,15 +80,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   store double %a, double* %a.addr, align 8, !tbaa !2
 ; CHECK-NEXT:   %0 = zext i32 %n to i64
 ; CHECK-NEXT:   %1 = add {{(nuw nsw )?}}i64 %0, 1
-; CHECK-NEXT:   br label %for.cond
-
-; TODO THIS LOOP SHOULD BE KILLED
-; CHECK: for.cond: 
-; CHECK-NEXT:   %iv = phi i64 [ 0, %entry ], [ %iv.next, %for.cond ]
-; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %[[trunc:.+]] = trunc i64 %iv to i32
-; CHECK-NEXT:   %cmp = icmp ugt i32 %[[trunc]], %n
-; CHECK-NEXT:   br i1 %cmp, label %invertfor.cond, label %for.cond
+; CHECK-NEXT:   br label 
+; %invertfor.cond
 
 ; CHECK: invertentry:                                      ; preds = %invertfor.cond
 ; CHECK-NEXT:   %[[padd:.+]] = load double, double* %"a.addr'ipa", align 8
@@ -96,8 +89,8 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[res:.+]] = insertvalue { double } undef, double %[[padd]], 0
 ; CHECK-NEXT:   ret { double } %[[res]]
 
-; CHECK: invertfor.cond:                                   ; preds = %for.cond, %incinvertfor.cond
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[isub:.+]], %incinvertfor.cond ], [ %1, %for.cond ]
+; CHECK: invertfor.cond: 
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 {{.*}}[ %[[isub:.+]], %incinvertfor.cond ] 
 ; CHECK-NEXT:   %[[ecmp:.+]] = icmp eq i64 %"iv'ac.0", 0
 ; TODO why is this select still here
 ; CHECK-NEXT:   %[[sel:.+]] = select{{( fast)?}} i1 %[[ecmp]], double 0.000000e+00, double %differeturn

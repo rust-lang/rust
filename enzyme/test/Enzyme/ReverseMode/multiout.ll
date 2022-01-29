@@ -329,7 +329,7 @@ attributes #10 = { noreturn nounwind }
 ; CHECK-NEXT:   %nptr = bitcast i8* %alloc to double*
 ; CHECK-NEXT:   %insertptr = getelementptr inbounds double, double* %nptr, i64 %size
 ; CHECK-NEXT:   store double %arg2, double* %insertptr, align 8, !tbaa !7
-; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %alloc, i8* align 8 %i80, i64 %ptrsize, i1 false), !tbaa !7
+; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* nonnull align 8 %alloc, i8* align 8 %i80, i64 %ptrsize, i1 false)
 ; CHECK-NEXT:   %[[i5:.+]] = getelementptr inbounds { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0, i32 0, i32 1
 ; CHECK-NEXT:   store double* %nptr, double** %[[i5]]
 ; CHECK-NEXT:   %[[i6:.+]] = getelementptr inbounds { { i8*, i8*, double* }, double*, double* }, { { i8*, i8*, double* }, double*, double* }* %0, i32 0, i32 2

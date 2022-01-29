@@ -25,7 +25,7 @@ entry:
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal void @diffef(i64* %inp, i64* %"inp'", <2 x double> %differeturn) {
+; CHECK: define internal void @diffef(i64* %inp, i64* %"inp'", <2 x double> %differeturn)
 ; CHECK-NEXT: invert:
 ; CHECK-NEXT:   %0 = extractelement <2 x double> %differeturn, i64 0
 ; CHECK-NEXT:   %"bc'de.0.vec.insert" = insertelement <2 x double> zeroinitializer, double %0, i32 0

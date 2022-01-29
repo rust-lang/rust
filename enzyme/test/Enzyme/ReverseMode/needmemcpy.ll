@@ -251,7 +251,7 @@ attributes #8 = { noreturn nounwind }
 !16 = !{!13, !10, i64 16}
 !17 = !{!13, !14, i64 24}
 
-; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn) #2 {
+; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"x'ipa" = alloca double, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'ipa", align 8

@@ -461,7 +461,7 @@ attributes #9 = { cold }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"double", !3, i64 0}
 
-; CHECK: define internal void @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'") #3 {
+; CHECK: define internal void @diffematvec(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", %"class.Eigen::Matrix.6"* noalias %b, %"class.Eigen::Matrix.6"* %"b'", %"class.Eigen::Matrix.6"* noalias %output, %"class.Eigen::Matrix.6"* %"output'") 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ipc:.+]] = bitcast %"class.Eigen::Matrix.6"* %"output'" to %"struct.Eigen::EigenBase.13"*
 ; CHECK-NEXT:   %[[uw:.+]] = bitcast %"class.Eigen::Matrix.6"* %output to %"struct.Eigen::EigenBase.13"*
@@ -475,24 +475,24 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffecast(%"struct.Eigen::EigenBase.13"* %this, %"struct.Eigen::EigenBase.13"* %"this'") {
+; CHECK: define internal void @diffecast(%"struct.Eigen::EigenBase.13"* %this, %"struct.Eigen::EigenBase.13"* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @augmented_get2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
+; CHECK: define internal void @augmented_get2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
+; CHECK: define internal { <2 x double>*, <2 x double>* } @augmented_subcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %.fca.0.insert = insertvalue { <2 x double>*, <2 x double>* } undef, <2 x double>* %tmp.i, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { <2 x double>*, <2 x double>* } %.fca.0.insert, <2 x double>* %"tmp.i'", 1
 ; CHECK-NEXT:   ret { <2 x double>*, <2 x double>* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } @augmented_subfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'") {
+; CHECK: define internal { <2 x double>*, i8*, i8*, <2 x double>, double, <2 x double>, double } @augmented_subfn(<2 x double>* %dst, <2 x double>* %"dst'", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'", double* %B, double* %"B'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
@@ -606,12 +606,12 @@ attributes #9 = { cold }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeget2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") {
+; CHECK: define internal void @diffeget2(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'") #7 {
+; CHECK: define internal void @diffesubcast(<2 x double>* %tmp.i, <2 x double>* %"tmp.i'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

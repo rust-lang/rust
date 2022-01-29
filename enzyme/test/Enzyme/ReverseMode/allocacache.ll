@@ -439,7 +439,7 @@ attributes #11 = { cold }
 !8 = !{!9, !9, i64 0}
 !9 = !{!"double", !3, i64 0}
 
-; CHECK: define internal void @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'") #3 {
+; CHECK: define internal void @diffematvec(<2 x double>* %Wptr, <2 x double>* %"Wptr'", double* %B, double* %"B'", <2 x double>* %outvec, <2 x double>* %"outvec'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %B1 = load double, double* %B, align 8
 ; CHECK-NEXT:   %[[B2pprime:.+]] = getelementptr inbounds double, double* %"B'", i64 1
@@ -462,7 +462,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { <2 x double> } @diffecopy(<2 x double>* %to, <2 x double>* %"to'", <2 x double> %from) #4 {
+; CHECK: define internal { <2 x double> } @diffecopy(<2 x double>* %to, <2 x double>* %"to'", <2 x double> %from)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   store <2 x double> %from, <2 x double>* %to, align 16
 ; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %"to'", align 16
@@ -471,7 +471,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret { <2 x double> } %1
 ; CHECK-NEXT: }
 
-; CHECK: define internal { <2 x double>, <2 x double> } @augmented_loadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'") #4 {
+; CHECK: define internal { <2 x double>, <2 x double> } @augmented_loadmul(<2 x double>* %a, <2 x double>* %"a'", <2 x double>* %b, <2 x double>* %"b'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %a, align 16
 ; CHECK-NEXT:   %1 = load <2 x double>, <2 x double>* %b, align 16
@@ -481,7 +481,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret { <2 x double>, <2 x double> } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { { <2 x double>, i8*, i8*, <2 x double> }, <2 x double> } @augmented_subfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row) #8 {
+; CHECK: define internal { { <2 x double>, i8*, i8*, <2 x double> }, <2 x double> } @augmented_subfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
@@ -509,7 +509,7 @@ attributes #11 = { cold }
 ; CHECK-NEXT:   ret { { <2 x double>, i8*, i8*, <2 x double> }, <2 x double> } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { <2 x double>, i8*, i8*, <2 x double> } %tapeArg) #8 {
+; CHECK: define internal { double, double } @diffesubfn(<2 x double>* %W, <2 x double>* %"W'", double %B1, double %B2, i64 %row, <2 x double> %differeturn, { <2 x double>, i8*, i8*, <2 x double> } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { <2 x double>, i8*, i8*, <2 x double> } %tapeArg, 2
 ; CHECK-NEXT:   %[[malloccallmi:.+]] = extractvalue { <2 x double>, i8*, i8*, <2 x double> } %tapeArg, 1

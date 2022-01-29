@@ -932,6 +932,37 @@ PreProcessCache::getAAResultsFromFunction(llvm::Function *NewF) {
   return FAM.getResult<AAManager>(*NewF);
 }
 
+void setFullWillReturn(Function *NewF) {
+#if LLVM_VERSION_MAJOR >= 9
+  for (auto &BB : *NewF) {
+    for (auto &I : BB) {
+      if (auto CI = dyn_cast<CallInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 14
+        CI->addFnAttr(Attribute::WillReturn);
+        CI->addFnAttr(Attribute::MustProgress);
+#elif LLVM_VERSION_MAJOR >= 12
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::WillReturn);
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::MustProgress);
+#else
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::WillReturn);
+#endif
+      }
+      if (auto CI = dyn_cast<InvokeInst>(&I)) {
+#if LLVM_VERSION_MAJOR >= 14
+        CI->addFnAttr(Attribute::WillReturn);
+        CI->addFnAttr(Attribute::MustProgress);
+#elif LLVM_VERSION_MAJOR >= 12
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::WillReturn);
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::MustProgress);
+#else
+        CI->addAttribute(AttributeList::FunctionIndex, Attribute::WillReturn);
+#endif
+      }
+    }
+  }
+#endif
+}
+
 Function *PreProcessCache::preprocessForClone(Function *F,
                                               DerivativeMode mode) {
 
@@ -982,10 +1013,21 @@ Function *PreProcessCache::preprocessForClone(Function *F,
         j->addAttr(Attribute::NoAlias);
       }
     }
+#if LLVM_VERSION_MAJOR >= 14
+  NewF->addFnAttr(Attribute::WillReturn);
+  NewF->addFnAttr(Attribute::MustProgress);
+#elif LLVM_VERSION_MAJOR >= 9
+  NewF->addAttribute(AttributeList::FunctionIndex, Attribute::WillReturn);
+#if LLVM_VERSION_MAJOR >= 12
+  NewF->addAttribute(AttributeList::FunctionIndex, Attribute::MustProgress);
+#endif
+#endif
+  setFullWillReturn(NewF);
 
   if (EnzymePreopt) {
     if (EnzymeInline) {
       ForceRecursiveInlining(NewF, /*Limit*/ EnzymeInlineCount);
+      setFullWillReturn(NewF);
       PreservedAnalyses PA;
       FAM.invalidate(*NewF, PA);
     }

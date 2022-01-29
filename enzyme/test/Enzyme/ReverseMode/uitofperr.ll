@@ -164,7 +164,7 @@ attributes #10 = { noreturn nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn) #3 {
+; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %mul = fmul fast double %t, -1.200000e+00
 ; CHECK-NEXT:   br label %while

@@ -36,7 +36,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 !7 = !{!"double", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'") {
+; CHECK: define internal void @diffecallee(i64* %ptr, i64* %"ptr'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %ptr2_augmented = call { i64*, i64* } @augmented_gep.1(i64* %ptr, i64* %"ptr'", i64 2)
 ; CHECK-NEXT:   %ptr2 = extractvalue { i64*, i64* } %ptr2_augmented, 0

@@ -24,13 +24,13 @@ entry:
 
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal { double } @diffecaller(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffecaller(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call { double } @diffesub(double %x, i64 0, double %differeturn)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double } @diffesub(double %x, i64 %y, double %differeturn) {
+; CHECK: define internal { double } @diffesub(double %x, i64 %y, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 8)
 ; CHECK-NEXT:   %bc = bitcast i8* %malloccall to i64*

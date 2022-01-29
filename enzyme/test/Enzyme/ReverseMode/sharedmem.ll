@@ -105,12 +105,12 @@ attributes #4 = { nounwind }
 
 ; CHECK: invertbb:                                         ; preds = %shblock, %bb
 ; CHECK-NEXT:   call void @llvm.nvvm.barrier0()
-; CHECK-NEXT:   %tmp = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.y() #2, !range !12
-; CHECK-NEXT:   %tmp4 = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.y() #2, !range !13
+; CHECK-NEXT:   %tmp = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.y() #{{.*}}, !range !12
+; CHECK-NEXT:   %tmp4 = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.y() #{{.*}}, !range !13
 ; CHECK-NEXT:   %tmp5 = add nuw nsw i32 %tmp4, %tmp
 ; CHECK-NEXT:   %tmp6 = zext i32 %tmp5 to i64
-; CHECK-NEXT:   %tmp7 = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #2, !range !14
-; CHECK-NEXT:   %tmp8 = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x() #2, !range !13
+; CHECK-NEXT:   %tmp7 = tail call i32 @llvm.nvvm.read.ptx.sreg.ctaid.x() #{{.*}}, !range !14
+; CHECK-NEXT:   %tmp8 = tail call i32 @llvm.nvvm.read.ptx.sreg.tid.x() #{{.*}}, !range !13
 ; CHECK-NEXT:   %tmp9 = add nuw i32 %tmp8, %tmp7
 ; CHECK-NEXT:   %tmp10 = zext i32 %tmp9 to i64
 ; CHECK-NEXT:   %tmp11 = mul i64 %tmp6, %arg3

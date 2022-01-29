@@ -121,7 +121,7 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1)
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double*, double*)
 
-;CHECK:define internal void @diffeg(double* %m, double* %"m'", double* %n, double* %"n'", double %differeturn) {
+;CHECK:define internal void @diffeg(double* %m, double* %"m'", double* %n, double* %"n'", double %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %"x'ipa" = alloca double, align 8
 ;CHECK-NEXT:  store double 0.000000e+00, double* %"x'ipa", align 8

@@ -55,7 +55,7 @@ attributes #2 = { nounwind }
 ; CHECK: for.cond.i:                                       ; preds = %for.cond.i, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.cond.i ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[ivnext]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %call.i = call i32 (...) @done() #2
+; CHECK-NEXT:   %call.i = call i32 (...) @done()
 ; CHECK-NEXT:   %tobool.i = icmp eq i32 %call.i, 0
 ; CHECK-NEXT:   br i1 %tobool.i, label %for.cond.i, label %[[antiloop:.+]]
 

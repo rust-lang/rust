@@ -89,7 +89,7 @@ declare void @llvm.memset.p0i8.i64(i8* nocapture writeonly, i8, i64, i1)
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double*, double*)
 
-;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double* noalias %n, double* %"n'", double %differeturn) {
+;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double* noalias %n, double* %"n'", double %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %malloccall = tail call i8* @malloc(i64 mul (i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 3))
 ;CHECK-NEXT:  %0 = bitcast i8* %malloccall to double*

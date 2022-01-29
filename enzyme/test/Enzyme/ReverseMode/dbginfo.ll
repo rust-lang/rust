@@ -201,8 +201,8 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffecall(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = call noalias nonnull dereferenceable(24) dereferenceable_or_null(24) i8* @malloc(i64 24) #8, !dbg ![[DBG:[0-9]+]]
-; CHECK-NEXT:   %"call'mi" = call noalias nonnull dereferenceable(24) dereferenceable_or_null(24) i8* @malloc(i64 24) #8, !dbg !{{.*}}[[DBG]]
+; CHECK-NEXT:   %call = call noalias nonnull dereferenceable(24) dereferenceable_or_null(24) i8* @malloc(i64 24) #{{.*}}, !dbg ![[DBG:[0-9]+]]
+; CHECK-NEXT:   %"call'mi" = call noalias nonnull dereferenceable(24) dereferenceable_or_null(24) i8* @malloc(i64 24) #{{.*}}, !dbg !{{.*}}[[DBG]]
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(24) dereferenceable_or_null(24) %"call'mi", i8 0, i64 24, i1 false)
 ; CHECK-NEXT:   %"'ipc2" = bitcast i8* %"call'mi" to %struct.Data*
 ; CHECK-NEXT:   %0 = bitcast i8* %call to %struct.Data*

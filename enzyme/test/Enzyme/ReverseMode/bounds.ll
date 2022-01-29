@@ -221,7 +221,7 @@ attributes #10 = { cold }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"any pointer", !4, i64 0}
 
-; CHECK: define internal void @diffebounds(float* nocapture readonly %a, float* nocapture %"a'", i32 %bound, float %differeturn) #3 {
+; CHECK: define internal void @diffebounds(float* nocapture readonly %a, float* nocapture %"a'", i32 %bound, float %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %cmp7 = icmp sgt i32 %bound, 0
 ; CHECK-NEXT:   br i1 %cmp7, label %for.body.preheader, label %invertentry

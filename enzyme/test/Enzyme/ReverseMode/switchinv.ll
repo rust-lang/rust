@@ -97,7 +97,7 @@ attributes #8 = { noreturn nounwind }
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn) #2 {
+; CHECK: define internal { double } @diffetaylorlog(double %x, i64 %SINCOSN, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-DAG:    %[[zcmp:.+]] = icmp eq i64 1, %SINCOSN
 ; CHECK-DAG:    %[[or1:.+]] = icmp eq i64 0, %SINCOSN

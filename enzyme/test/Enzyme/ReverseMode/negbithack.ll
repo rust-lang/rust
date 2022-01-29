@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double)*, ...)
 
-; CHECK: define internal { double } @diffetester(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetester(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %differeturn
 ; CHECK-NEXT:   %1 = insertvalue { double } undef, double %0, 0

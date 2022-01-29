@@ -146,8 +146,8 @@ attributes #4 = { nounwind }
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[ivnext:.+]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8) #4
-; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8) #4
+; CHECK-NEXT:   %call = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
+; CHECK-NEXT:   %"call'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %[[storeloc:.+]] = bitcast i8* %"call'mi" to i64*
 ; CHECK-NEXT:   store i64 0, i64* %[[storeloc]], align 1
 ; CHECK-NEXT:   %[[bitcaster:.+]] = bitcast i8* %call to double*
@@ -167,8 +167,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT: }
 
 
-; CHECK: ; Function Attrs: noinline nounwind uwtable
-; CHECK-NEXT: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, { i8**, i8** } %tapeArg) local_unnamed_addr #0 {
+; CHECK: define internal {{(dso_local )?}}{ double } @diffeallocateAndSet(double** nocapture %arrayp, double** nocapture %"arrayp'", double %x, i32 %n, { i8**, i8** } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = extractvalue { i8**, i8** } %tapeArg, 0
 ; CHECK-NEXT:   %1 = extractvalue { i8**, i8** } %tapeArg, 1

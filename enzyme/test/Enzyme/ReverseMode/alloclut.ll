@@ -48,7 +48,7 @@ entry:
 
 declare double @__enzyme_autodiff(double (double, i32*)*, ...)
 
-; CHECK: define internal { double } @diffef(double %x, i32* %z, double %differeturn) {
+; CHECK: define internal { double } @diffef(double %x, i32* %z, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"a'ipa" = alloca [2 x double]
 ; CHECK-NEXT:   store [2 x double] zeroinitializer, [2 x double]* %"a'ipa"

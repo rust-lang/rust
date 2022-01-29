@@ -30,9 +30,9 @@ attributes #0 = { argmemonly nounwind }
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: define internal {{(dso_local )?}}void @diffememcpy_ptr(i8* nocapture %dst, i8* nocapture %"dst'", i8* nocapture readonly %src, i8* nocapture %"src'", i64 %num) {
+; CHECK: define internal {{(dso_local )?}}void @diffememcpy_ptr(i8* nocapture %dst, i8* nocapture %"dst'", i8* nocapture readonly %src, i8* nocapture %"src'", i64 %num)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %"dst'", i8* align 8 %"src'", i64 %num, i1 false)
-; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %dst, i8* align 8 %src, i64 %num, i1 false), !tbaa !0, !tbaa.struct !5
+; CHECK-NEXT:   tail call void @llvm.memcpy.p0i8.p0i8.i64(i8* align 8 %dst, i8* align 8 %src, i64 %num, i1 false)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

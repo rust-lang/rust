@@ -36,7 +36,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 !6 = !{!7, !7, i64 0}
 !7 = !{!"double", !4, i64 0}
 
-; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'") {
+; CHECK: define internal void @diffefoo(i64* %inp, i64* %"inp'", i64* %out, i64* %"out'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   store i64 3, i64* %"inp'", align 4
 ; CHECK-NEXT:   store i64 3, i64* %inp, align 4, !tbaa !6
@@ -44,7 +44,7 @@ declare dso_local void @__enzyme_autodiff(i8*, ...)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesub(i64* %inp, i64* %"inp'", i64 %idx) {
+; CHECK: define internal void @diffesub(i64* %inp, i64* %"inp'", i64 %idx)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[gepp:.+]] = getelementptr inbounds i64, i64* %"inp'", i64 %idx
 ; CHECK-NEXT:   %gep = getelementptr inbounds i64, i64* %inp, i64 %idx

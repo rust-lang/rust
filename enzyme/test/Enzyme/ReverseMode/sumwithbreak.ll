@@ -42,7 +42,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64)
 
 attributes #0 = { noinline nounwind uwtable }
 
-; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
+; CHECK: define internal {{(dso_local )?}}void @diffef(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %for.body
 

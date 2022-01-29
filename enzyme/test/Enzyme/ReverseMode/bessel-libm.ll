@@ -10,7 +10,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetestj0(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetestj0(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast double @j1(double %x)
 ; CHECK-NEXT:   %1 = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %0
@@ -34,7 +34,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetesty0(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetesty0(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = call fast double @y1(double %x)
 ; CHECK-NEXT:   %1 = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %0
@@ -59,7 +59,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetestj1(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetestj1(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:    %0 = call fast double @j0(double %x)
 ; CHECK-NEXT:    %1 = call fast double @jn(i32 2, double %x)
@@ -85,7 +85,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetesty1(double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetesty1(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:    %0 = call fast double @y0(double %x)
 ; CHECK-NEXT:    %1 = call fast double @yn(i32 2, double %x)
@@ -114,7 +114,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetestjn(i32 %n, double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetestjn(i32 %n, double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:    %0 = sub i32 %n, 1
 ; CHECK-NEXT:    %1 = call fast double @jn(i32 %0, double %x)
@@ -142,7 +142,7 @@ entry:
   ret double %call
 }
 
-; CHECK: define internal { double } @diffetestyn(i32 %n, double %x, double %differeturn) {
+; CHECK: define internal { double } @diffetestyn(i32 %n, double %x, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = sub i32 %n, 1
 ; CHECK-NEXT:   %1 = call fast double @yn(i32 %0, double %x)

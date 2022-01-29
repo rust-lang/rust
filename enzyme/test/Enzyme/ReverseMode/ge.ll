@@ -67,7 +67,7 @@ attributes #3 = { nounwind }
 !5 = !{!"Simple C/C++ TBAA"}
 
 
-; CHECK: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn) #0 {
+; CHECK: define internal void @diffecache(double* nocapture %x, double* nocapture %"x'", i32 %N, double %differeturn)
 ; CHECK-NEXT: entry:
 ; TODO-NEXT:   %[[a1:.+]] = zext i32 %N to i64
 ; CHECK:   %[[a2:.+]] = add{{( nuw)?}}{{( nsw)?}} i64 %[[a1:.+]], 1

@@ -159,7 +159,7 @@ attributes #0 = { readnone speculatable }
 ; CHECK-NEXT:   br label %invertfor.body59
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffeinner(double* %blockA, double* %"blockA'", double %ld) unnamed_addr align 2 {
+; CHECK: define internal void @diffeinner(double* %blockA, double* %"blockA'", double %ld)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %"blockA'", align 8
 ; CHECK-NEXT:   %m0diffeld = fmul fast double %0, %ld

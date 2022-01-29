@@ -28,7 +28,7 @@ declare void @__enzyme_autodiff(i8*, %struct.S*, %struct.S*, %struct.S*, %struct
 !4 = !{!"omnipotent char", !5, i64 0}
 !5 = !{!"Simple C/C++ TBAA"}
 
-; CHECK: define internal void @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'") {
+; CHECK: define internal void @diffedup(%struct.S* nocapture readonly %from, %struct.S* nocapture %"from'", %struct.S* nocapture %to, %struct.S* nocapture %"to'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[data1ipge:.+]] = getelementptr inbounds %struct.S, %struct.S* %"from'", i64 0, i32 1
 ; CHECK-NEXT:   %data1 = getelementptr inbounds %struct.S, %struct.S* %from, i64 0, i32 1

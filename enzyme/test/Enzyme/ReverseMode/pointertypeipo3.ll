@@ -80,14 +80,14 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64*, i64* } @augmented_cast(i64* %a, i64* %"a'") {
+; CHECK: define internal { i64*, i64* } @augmented_cast(i64* %a, i64* %"a'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64*, i64* } undef, i64* %a, 0
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i64*, i64* } %.fca.0.insert, i64* %"a'", 1
 ; CHECK-NEXT:   ret { i64*, i64* } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {{.*}}, i64 } @augmented_pop(i64 %arr.coerce0) {
+; CHECK: define internal { {{.*}}, i64 } @augmented_pop(i64 %arr.coerce0)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
@@ -108,7 +108,7 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   ret { { i64*, i8*, i8*, i64 }, i64 } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { {{.*}}, i64 } @augmented_sub(i64* %this, i64* %"this'") {
+; CHECK: define internal { {{.*}}, i64 } @augmented_sub(i64* %this, i64* %"this'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %agg = load i64, i64* %this
 ; CHECK-NEXT:   %call_augmented = call { {{.*}}, i64 } @augmented_pop(i64 %agg)
@@ -117,7 +117,7 @@ attributes #22 = { readnone }
 ; CHECK:    insertvalue {{.*}} i64 %agg
 ; CHECK:    insertvalue {{.*}} i64 %call
 
-; CHECK: define internal void @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { {{.*}}, i64 } %tapeArg) {
+; CHECK: define internal void @diffesub(i64* %this, i64* %"this'", i64 %differeturn, { {{.*}}, i64 } %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[agg:.+]] = extractvalue { {{.*}}, i64 } %tapeArg, 1
 ; CHECK-NEXT:   %[[pret:.+]] = extractvalue { {{.*}}, i64 } %tapeArg, 0
@@ -132,7 +132,7 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { i64 } @diffepop(i64 %arr.coerce0, i64 %differeturn, {{.*}} %tapeArg) {
+; CHECK: define internal { i64 } @diffepop(i64 %arr.coerce0, i64 %differeturn, {{.*}} %tapeArg)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[malloccall:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 2
 ; CHECK-NEXT:   %[[dmalloccall:.+]] = extractvalue { i64*, i8*, i8*, i64 } %tapeArg, 1
@@ -163,7 +163,7 @@ attributes #22 = { readnone }
 ; CHECK-NEXT:   ret { i64 } %0
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffecast(i64* %a, i64* %"a'") {
+; CHECK: define internal void @diffecast(i64* %a, i64* %"a'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -29,7 +29,7 @@ entry:
 }
 
 
-; CHECK: define internal void @diffematvec(double* %this, double* %"this'", i64* %d0, i64* %"d0'") {
+; CHECK: define internal void @diffematvec(double* %this, double* %"this'", i64* %d0, i64* %"d0'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { double, double } @augmented_metaloader(double* %this, double* %"this'")
 ; CHECK-NEXT:   %[[eca:.+]] = extractvalue { double, double } %call_augmented, 0
@@ -41,7 +41,7 @@ entry:
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double, double } @augmented_loader(double* %a, double* %"a'") {
+; CHECK: define internal { double, double } @augmented_loader(double* %a, double* %"a'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = load double, double* %a, align 8
 ; CHECK-NEXT:   %mul = fmul double %0, %0
@@ -50,13 +50,13 @@ entry:
 ; CHECK-NEXT:   ret { double, double } %.fca.1.insert
 ; CHECK-NEXT: }
 
-; CHECK: define internal { double, double } @augmented_metaloader(double* %a, double* %"a'") {
+; CHECK: define internal { double, double } @augmented_metaloader(double* %a, double* %"a'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %call_augmented = call { double, double } @augmented_loader(double* %a, double* %"a'")
 ; CHECK-NEXT:   ret { double, double } %call_augmented
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffemetaloader(double* %a, double* %"a'", double %differeturn, double %[[ev:.+]]) {
+; CHECK: define internal void @diffemetaloader(double* %a, double* %"a'", double %differeturn, double %[[ev:.+]])
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @diffeloader(double* %a, double* %"a'", double %differeturn, double %[[ev]])
 ; CHECK-NEXT:   ret void

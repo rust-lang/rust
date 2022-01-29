@@ -19052,7 +19052,7 @@ attributes #28 = { builtin }
 !175 = !{!173, !12, i64 8}
 
 
-; CHECK: define internal void @diffe_Z19brusselator_2d_loopPdS_PKdS1_S1_d(double* noalias nocapture readnone %arg, double* nocapture %"arg'", double* noalias nocapture %arg1, double* nocapture %"arg1'", double* noalias nocapture readonly %arg2, double* nocapture %"arg2'", double* noalias nocapture readonly %arg3, double* nocapture %"arg3'", double* noalias nocapture readonly %arg4, double* nocapture %"arg4'", double %arg5) #3 {
+; CHECK: define internal void @diffe_Z19brusselator_2d_loopPdS_PKdS1_S1_d(double* noalias nocapture readnone %arg, double* nocapture %"arg'", double* noalias nocapture %arg1, double* nocapture %"arg1'", double* noalias nocapture readonly %arg2, double* nocapture %"arg2'", double* noalias nocapture readonly %arg3, double* nocapture %"arg3'", double* noalias nocapture readonly %arg4, double* nocapture %"arg4'", double %arg5)
 ; CHECK-NEXT: bb:
 ; CHECK-NEXT:   %A = load double, double* %arg4, align 8, !tbaa !31
 ; CHECK-NEXT:   %v0 = load double, double* %arg3, align 8, !tbaa !31
@@ -19080,7 +19080,7 @@ attributes #28 = { builtin }
 ; CHECK-NEXT:   br i1 %tmp37, label %bb39, label %bb38
 
 ; CHECK: bb38:                                             ; preds = %bb25
-; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.85, i64 0, i64 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.86, i64 0, i64 0), i32 106, i8* getelementptr inbounds ([151 x i8], [151 x i8]* @__PRETTY_FUNCTION__._Z19brusselator_2d_loopPdS_PKdS1_S1_d, i64 0, i64 0)) #26
+; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.85, i64 0, i64 0), i8* getelementptr inbounds ([8 x i8], [8 x i8]* @.str.86, i64 0, i64 0), i32 106, i8* getelementptr inbounds ([151 x i8], [151 x i8]* @__PRETTY_FUNCTION__._Z19brusselator_2d_loopPdS_PKdS1_S1_d, i64 0, i64 0))
 ; CHECK-NEXT:   unreachable
 
 ; CHECK: bb39:                                             ; preds = %bb25

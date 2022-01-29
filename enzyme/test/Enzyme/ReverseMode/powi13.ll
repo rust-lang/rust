@@ -19,7 +19,7 @@ declare double @llvm.powi.f64.i32(double, i32)
 ; Function Attrs: nounwind
 declare double @__enzyme_autodiff(double (double, i32)*, ...)
 
-; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(double %x, i32 %y, double %differeturn) {
+; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(double %x, i32 %y, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ym1:.+]] = sub i32 %y, 1
 ; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.powi.f64.i32(double %x, i32 %[[ym1]])

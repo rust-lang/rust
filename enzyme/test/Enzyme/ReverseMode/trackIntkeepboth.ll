@@ -83,8 +83,8 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT:   %m_rows.i.i.i.i.i.i.i.i.i = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %W, i64 0, i32 0, i32 0, i32 1
 ; CHECK-NEXT:   %z0 = load i64, i64* %m_rows.i.i.i.i.i.i.i.i.i, align 8, !tbaa !2
 ; CHECK-NEXT:   %mul.i.i.i.i = shl i64 %z0, 3
-; CHECK-NEXT:   %call.i.i4.i.i.i.i = call noalias i8* @malloc(i64 %mul.i.i.i.i) #3
-; CHECK-NEXT:   %"call.i.i4.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 %mul.i.i.i.i) #3
+; CHECK-NEXT:   %call.i.i4.i.i.i.i = call noalias i8* @malloc(i64 %mul.i.i.i.i)
+; CHECK-NEXT:   %"call.i.i4.i.i.i.i'mi" = call noalias nonnull i8* @malloc(i64 %mul.i.i.i.i)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull %"call.i.i4.i.i.i.i'mi", i8 0, i64 %mul.i.i.i.i, i1 false)
 ; CHECK-NEXT:   %[[resipc:.+]] = bitcast i8* %"call.i.i4.i.i.i.i'mi" to double*
 ; CHECK-NEXT:   %res = bitcast i8* %call.i.i4.i.i.i.i to double*

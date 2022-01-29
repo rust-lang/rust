@@ -23,13 +23,13 @@ entry:
 
 declare double @__enzyme_autodiff(i8*, ...)
 
-; CHECK: define internal void @diffematvec(double* %W, double* %"W'", double %differeturn) {
+; CHECK: define internal void @diffematvec(double* %W, double* %"W'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   call void @diffesubfn(double* %W, double* %"W'", double* null, double %differeturn)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffesubfn(double* %a1, double* %"a1'", double* %res, double %differeturn) {
+; CHECK: define internal void @diffesubfn(double* %a1, double* %"a1'", double* %res, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %a2 = load double, double* %a1, align 8
 ; CHECK-NEXT:   store double %a2, double* %res, align 8

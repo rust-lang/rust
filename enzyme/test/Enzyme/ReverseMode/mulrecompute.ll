@@ -1,4 +1,5 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S -gvn -dse -dse | FileCheck %s
+; RUN: if [ %llvmver -le 12 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S -gvn -dse -dse | FileCheck %s ; fi
+; RUN: if [ %llvmver -ge 13 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S -gvn -dse -dse | FileCheck %s --check-prefix=POST ; fi
 
 declare double @__enzyme_autodiff(...)
 
@@ -48,3 +49,13 @@ declare void @llvm.trap()
 ; CHECK-NEXT:   %0 = call fastcc { double } @diffejulia_besselj_685(double %x, double %y, double %m1diffec)
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }
+
+; POST: define internal { double } @diffejulia_sphericalbesselj_672(double %x, double %y, double %differeturn)
+; POST-NEXT: top:
+; POST-NEXT:   %cmp = fcmp uge double %y, 0.000000e+00
+; POST-NEXT:   call void @llvm.assume(i1 %cmp)
+; POST-NEXT:   %sq = call double @llvm.sqrt.f64(double %y)
+; POST-NEXT:   %m1diffec = fmul fast double %differeturn, %sq
+; POST-NEXT:   %0 = call fastcc { double } @diffejulia_besselj_685(double %x, double %y, double %m1diffec)
+; POST-NEXT:   ret { double } %0
+; POST-NEXT: }

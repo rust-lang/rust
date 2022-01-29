@@ -217,8 +217,8 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[dstruct:.+]] = phi %struct.n* [ %[[ipci]], %for.cond.cleanup7.i ], [ null, %entry ]
 ; CHECK-NEXT:   %list.029.i = phi %struct.n* [ %[[bccast]], %for.cond.cleanup7.i ], [ null, %entry ]
 ; CHECK-NEXT:   %[[nextvar]] = add nuw nsw i64 %[[iv]], 1
-; CHECK-NEXT:   %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
-; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16) #4
+; CHECK-NEXT:   %call.i = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
+; CHECK-NEXT:   %"call'mi.i" = call noalias nonnull dereferenceable(16) dereferenceable_or_null(16) i8* @malloc(i64 16)
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* {{(noundef )?}}nonnull {{(align 1 )?}}dereferenceable(16) dereferenceable_or_null(16) %"call'mi.i", i8 0, i64 16, {{(i32 1, )?}}i1 false) #4
 ; CHECK-NEXT:   %[[nextipgi:.+]] = getelementptr inbounds i8, i8* %"call'mi.i", i64 8
 ; CHECK-NEXT:   %next.i = getelementptr inbounds i8, i8* %call.i, i64 8
@@ -230,9 +230,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[iv]]
 ; CHECK-NEXT:   store i8* %"call'mi.i", i8** %[[callpgep]]
 ; CHECK-NEXT:   store %struct.n* %list.029.i, %struct.n** %[[bc4]], align 8, !tbaa !7
-; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i) #4
-; CHECK-NEXT:   %"call2'mi.i" = call noalias nonnull i8* @malloc(i64 %mul.i) #4
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false) #4
+; CHECK-NEXT:   %call2.i = call noalias i8* @malloc(i64 %mul.i)
+; CHECK-NEXT:   %"call2'mi.i" = call noalias nonnull i8* @malloc(i64 %mul.i)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 1 )?}}%"call2'mi.i", i8 0, i64 %mul.i, {{(i32 1, )?}}i1 false)
 ; CHECK-NEXT:   %[[thatipc:.+]] = bitcast i8* %"call'mi.i" to i8**
 ; CHECK-NEXT:   %[[herebc:.+]] = bitcast i8* %call.i to i8**
 ; CHECK-NEXT:   store i8* %"call2'mi.i", i8** %[[thatipc]], align 8
@@ -259,16 +259,16 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br i1 %[[thiscmp]], label %for.cond.cleanup7.i, label %for.body8.i
 
 ; CHECK: invertfor.body.i:                                 ; preds = %invertfor.body8.i
-; CHECK-NEXT:   call void @free(i8* nonnull %[[loadcall2p:.+]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[loadcall2p:.+]])
 ; CHECK-NEXT:   %[[call2gep:.+]] = getelementptr inbounds i8*, i8** %call2_malloccache.i, i64 %[[antiiv:.+]]
 ; CHECK-NEXT:   %[[call2ptr:.+]] = load i8*, i8** %[[call2gep]]
-; CHECK-NEXT:   call void @free(i8* %[[call2ptr]]) #4
+; CHECK-NEXT:   call void @free(i8* %[[call2ptr]])
 ; CHECK-NEXT:   %[[callpgep:.+]] = getelementptr inbounds i8*, i8** %"call'mi_malloccache.i", i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[callpptr:.+]] = load i8*, i8** %[[callpgep]]
-; CHECK-NEXT:   call void @free(i8* nonnull %[[callpptr]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[callpptr]])
 ; CHECK-NEXT:   %[[callgep:.+]] = getelementptr inbounds i8*, i8** %call_malloccache.i, i64 %[[antiiv]]
 ; CHECK-NEXT:   %[[callptr:.+]] = load i8*, i8** %[[callgep]]
-; CHECK-NEXT:   call void @free(i8* %[[callptr]]) #4
+; CHECK-NEXT:   call void @free(i8* %[[callptr]])
 ; CHECK-NEXT:   %[[cmpne:.+]] = icmp eq i64 %[[antiiv]], 0
 ; CHECK-NEXT:   br i1 %[[cmpne]], label %diffelist_creator.exit, label %incinvertfor.body.i
 
@@ -299,10 +299,10 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   br label %invertfor.body8.i
 
 ; CHECK: diffelist_creator.exit:                           ; preds = %invertfor.body.i
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2p]]) #4
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2]]) #4
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcallp]]) #4
-; CHECK-NEXT:   call void @free(i8* nonnull %[[mcall2]]) #4
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2p]])
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcall2]])
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mallocforcallp]])
+; CHECK-NEXT:   call void @free(i8* nonnull %[[mcall2]])
 ; CHECK-NEXT:   ret double %[[faddloop]]
 ; CHECK-NEXT: }
 

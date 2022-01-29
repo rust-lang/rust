@@ -20,7 +20,7 @@ entry:
   ret double %a4
 }
 
-; CHECK: define internal void @diffematvec(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", double %differeturn) {
+; CHECK: define internal void @diffematvec(i64* %lhs, i64* %"lhs'", double* %res, double* %"res'", double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"loaded'ipl" = load i64, i64* %"lhs'", align 4
 ; CHECK-NEXT:   %loaded = load i64, i64* %lhs, align 4

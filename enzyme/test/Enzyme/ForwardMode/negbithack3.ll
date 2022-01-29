@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: nounwind
 declare <2 x double> @__enzyme_fwddiff(<2 x double> (<2 x double>)*, ...)
 
-; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'") {
+; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast <2 x double> %"x'" to <2 x i64>
 ; CHECK-NEXT:   %1 = extractelement <2 x i64> %0, i64 0

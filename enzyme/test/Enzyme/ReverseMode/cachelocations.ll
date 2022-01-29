@@ -33,7 +33,7 @@ entry:
 
 declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
-; CHECK: define internal void @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'") {
+; CHECK: define internal void @diffef(i1 zeroext %z, double* nocapture %x, double* nocapture %"x'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[augsubf:.+]] = call fast double @augmented_subf(i1 %z, double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[arrayidxipge:.+]] = getelementptr inbounds double, double* %"x'", i64 1

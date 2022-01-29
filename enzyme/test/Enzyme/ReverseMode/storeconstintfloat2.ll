@@ -44,7 +44,7 @@ loopexit:                                         ; preds = %while.body.i.i.i
 
 attributes #4 = { nounwind }
 
-; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn) {
+; CHECK: define internal { double } @diffe_Z6foobard(double %t, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
 ; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)

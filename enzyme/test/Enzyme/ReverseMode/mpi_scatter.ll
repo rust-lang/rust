@@ -26,7 +26,7 @@ entry:
 
 declare void @__enzyme_autodiff(i8*, ...)
 
-; CHECK: define internal void @diffempi_scatter_test(double* %send_buf, double* %"send_buf'", i8* %recv_buf, i8* %"recv_buf'") {
+; CHECK: define internal void @diffempi_scatter_test(double* %send_buf, double* %"send_buf'", i8* %recv_buf, i8* %"recv_buf'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = alloca i32
 ; CHECK-NEXT:   %1 = alloca i32

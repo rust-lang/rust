@@ -22,7 +22,7 @@ entry:
 
 declare <2 x double> @__enzyme_autodiff.f64(...) 
 
-; CHECK: define internal { <2 x double> } @diffeloader(<2 x double>* %ptr, <2 x double>* %"ptr'", <2 x i1> %mask, <2 x double> %val) {
+; CHECK: define internal { <2 x double> } @diffeloader(<2 x double>* %ptr, <2 x double>* %"ptr'", <2 x i1> %mask, <2 x double> %val)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"val'de" = alloca <2 x double>, align 16
 ; CHECK-NEXT:   store <2 x double> zeroinitializer, <2 x double>* %"val'de", align 16

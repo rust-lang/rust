@@ -54,7 +54,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, i64) local_un
 attributes #0 = { noinline norecurse nounwind uwtable }
 attributes #1 = { noinline nounwind uwtable }
 
-; CHECK: define internal void @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n, double %differeturn) #0 {
+; CHECK: define internal void @diffef(double* nocapture %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[np1:.+]] = add nuw i64 %n, 1
 ; CHECK-NEXT:   %mallocsize = mul nuw nsw i64 %[[np1]], 8

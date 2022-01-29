@@ -119,7 +119,7 @@ declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture writeonly, i8* nocapture r
 
 declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double*, double*)
 
-;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double* noalias %n, double* %"n'", double %differeturn) {
+;CHECK:define internal void @diffeg(double* noalias %m, double* %"m'", double* noalias %n, double* %"n'", double %differeturn)
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %"x'ipa" = alloca double, align 8
 ;CHECK-NEXT:  store double 0.000000e+00, double* %"x'ipa", align 8
@@ -149,7 +149,7 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*, double*, doub
 ;CHECK-NEXT:  ret void
 ;CHECK-NEXT:}
 
-;CHECK:define internal { double*, double* } @augmented_outer(double* %out, double* %"out'", double* %a, double* %"a'", double* %b, double* %"b'") {
+;CHECK:define internal { double*, double* } @augmented_outer(double* %out, double* %"out'", double* %a, double* %"a'", double* %b, double* %"b'")
 ;CHECK-NEXT:entry:
 ;CHECK-NEXT:  %malloccall = tail call i8* @malloc(i64 mul (i64 ptrtoint (double* getelementptr (double, double* null, i32 1) to i64), i64 3))
 ;CHECK-NEXT:  %0 = bitcast i8* %malloccall to double*

@@ -73,11 +73,11 @@ attributes #3 = { nounwind }
 !12 = !{!"double", !5, i64 0}
 
 
-; CHECK: define internal void @fwddiffesubcall(double** %m_data.i.i.i, double** %"m_data.i.i.i'", i64* %tmp7) local_unnamed_addr #2 {
+; CHECK: define internal void @fwddiffesubcall(double** %m_data.i.i.i, double** %"m_data.i.i.i'", i64* %tmp7) 
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %"mat'ipl" = load double*, double** %"m_data.i.i.i'", align 8
 ; CHECK-NEXT:   %mat = load double*, double** %m_data.i.i.i, align 8, !tbaa !8
-; CHECK-NEXT:   %cols = call i64 @_ZNK5Eigen9EigenBaseINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEEE4colsEv(i64* %tmp7) #3
+; CHECK-NEXT:   %cols = call i64 @_ZNK5Eigen9EigenBaseINS_6MatrixIdLin1ELin1ELi0ELin1ELin1EEEE4colsEv(i64* %tmp7)
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry

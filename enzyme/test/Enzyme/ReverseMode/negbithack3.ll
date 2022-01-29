@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: nounwind
 declare <2 x double> @__enzyme_autodiff(<2 x double> (<2 x double>)*, ...)
 
-; CHECK: define internal { <2 x double> } @diffetester(<2 x double> %x, <2 x double> %differeturn) {
+; CHECK: define internal { <2 x double> } @diffetester(<2 x double> %x, <2 x double> %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast <2 x double> %differeturn to <2 x i64>
 ; CHECK-NEXT:   %1 = extractelement <2 x i64> %0, i64 0

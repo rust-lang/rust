@@ -21,7 +21,7 @@ declare double @__enzyme_autodiff(i8*, ...)
 !7 = !{!"long", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: define internal void @diffecallee(i64* %from, i64* %"from'", i64* %to, i64* %"to'") {
+; CHECK: define internal void @diffecallee(i64* %from, i64* %"from'", i64* %to, i64* %"to'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %loadk = load i64, i64* %from, align 8
 ; CHECK-NEXT:   store i64 %loadk, i64* %"to'", align 8

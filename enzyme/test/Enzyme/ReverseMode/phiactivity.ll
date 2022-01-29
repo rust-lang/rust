@@ -35,7 +35,7 @@ entry:
 
 declare double @__enzyme_autodiff(i8*, double)
 
-; CHECK: define internal { double } @diffefoobar(double %t, double %differeturn) {
+; CHECK: define internal { double } @diffefoobar(double %t, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   br label %while
 

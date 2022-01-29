@@ -41,8 +41,7 @@ declare double @__enzyme_autodiff(double ({double, i64}*, i1)*, ...)
 
 ; CHECK: err:                                              ; preds = %entry
 ; CHECK-NEXT:   call void @baduse(i64 %ld, double* %gep0)
-; CHECK-NEXT:   call void @llvm.trap()
-; CHECK-NEXT:   unreachable
+; CHECK:   unreachable
 
 ; CHECK: invertexit:                                       ; preds = %entry
 ; CHECK-NEXT:   %0 = load double, double* %"gep0'ipg"

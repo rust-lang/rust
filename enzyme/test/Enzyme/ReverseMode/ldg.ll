@@ -23,7 +23,7 @@ entry:
 ; Function Attrs: nounwind
 declare float @__enzyme_autodiff(float (float addrspace(1)*)*, ...)
 
-; CHECK: define internal void @diffevmul(float addrspace(1)* %inp, float addrspace(1)* %"inp'", float %differeturn) {
+; CHECK: define internal void @diffevmul(float addrspace(1)* %inp, float addrspace(1)* %"inp'", float %differeturn)
 ; CHECK-NEXT: top:
 ; CHECK-NEXT:   %{{.+}} = atomicrmw fadd float addrspace(1)* %"inp'", float %differeturn monotonic
 ; CHECK-NEXT:   ret void
