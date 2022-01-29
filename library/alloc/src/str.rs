@@ -94,14 +94,14 @@ impl<S: Borrow<str>> Join<&str> for [S] {
     }
 }
 
-impl<'_, S> Join<&'_ str> for [S] 
+impl<S> Join<crate::string::ToString> for [S] 
 where S: crate::string::ToString + Clone {
     type Output = String;
     
     fn join(slice: &Self, sep: &S) -> String {
         // Reuse the [&str] impl of Join.
         let slice = slice.iter().map(
-            |s| s.to_string()
+            Self::to_string
         ).collect::<Vec<String>>();
         
         slice.join(sep)
