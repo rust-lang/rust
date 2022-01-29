@@ -45,6 +45,7 @@
 extern "C" {
 extern llvm::cl::opt<int> MaxTypeOffset;
 extern llvm::cl::opt<bool> EnzymeTypeWarning;
+constexpr int EnzymeMaxTypeDepth = 6;
 }
 
 /// Helper function to print a vector of ints to a string
@@ -77,7 +78,7 @@ public:
   TypeTree() {}
   TypeTree(ConcreteType dat) {
     if (dat != ConcreteType(BaseType::Unknown)) {
-      insert({}, dat);
+      mapping.insert(std::pair<const std::vector<int>, ConcreteType>({}, dat));
     }
   }
 
@@ -277,11 +278,12 @@ public:
         }
       }
     }
-    if (Seq.size() > 6) {
+    if (Seq.size() > EnzymeMaxTypeDepth) {
       if (EnzymeTypeWarning)
-        llvm::errs() << "not handling more than 6 pointer lookups deep dt:"
-                     << str() << " adding v: " << to_string(Seq) << ": "
-                     << CT.str() << "\n";
+        llvm::errs() << "not handling more than " << EnzymeMaxTypeDepth
+                     << " pointer lookups deep dt:" << str()
+                     << " adding v: " << to_string(Seq) << ": " << CT.str()
+                     << "\n";
       return changed;
     }
 
@@ -389,27 +391,32 @@ public:
     return vd;
   }
 
-  // TODO keep type information that is striated
-  // e.g. if you have an i8* [0:Int, 8:Int] => i64* [0:Int, 1:Int]
-  // After a depth len into the index tree, prune any lookups that are not {0}
-  // or {-1}
-  TypeTree KeepForCast(const llvm::DataLayout &dl, llvm::Type *from,
-                       llvm::Type *to) const;
-
-  /// Helper function to prepend an offset
-  static std::vector<int> prependIndex(int Off, const std::vector<int> &Array) {
-    std::vector<int> Result;
-    Result.push_back(Off);
-    for (auto Val : Array)
-      Result.push_back(Val);
-    return Result;
-  }
-
   /// Prepend an offset to all mappings
   TypeTree Only(int Off) const {
     TypeTree Result;
+    Result.minIndices.reserve(1 + minIndices.size());
+    Result.minIndices.push_back(Off);
+    for (auto midx : minIndices)
+      Result.minIndices.push_back(midx);
+
+    if (Result.minIndices.size() > EnzymeMaxTypeDepth) {
+      Result.minIndices.pop_back();
+      if (EnzymeTypeWarning)
+        llvm::errs() << "not handling more than " << EnzymeMaxTypeDepth
+                     << " pointer lookups deep dt:" << str() << " only(" << Off
+                     << "): " << str() << "\n";
+    }
+
     for (const auto &pair : mapping) {
-      Result.insert(prependIndex(Off, pair.first), pair.second);
+      if (pair.first.size() == EnzymeMaxTypeDepth)
+        continue;
+      std::vector<int> Vec;
+      Vec.reserve(pair.first.size() + 1);
+      Vec.push_back(Off);
+      for (auto Val : pair.first)
+        Vec.push_back(Val);
+      Result.mapping.insert(
+          std::pair<const std::vector<int>, ConcreteType>(Vec, pair.second));
     }
     return Result;
   }
@@ -425,9 +432,7 @@ public:
       assert(pair.first.size() != 0);
 
       if (pair.first[0] == -1) {
-        std::vector<int> next;
-        for (size_t i = 1; i < pair.first.size(); ++i)
-          next.push_back(pair.first[i]);
+        std::vector<int> next(pair.first.begin() + 1, pair.first.end());
         Result.insert(next, pair.second);
       }
     }
@@ -438,9 +443,7 @@ public:
       assert(pair.first.size() != 0);
 
       if (pair.first[0] == 0) {
-        std::vector<int> next;
-        for (size_t i = 1; i < pair.first.size(); ++i)
-          next.push_back(pair.first[i]);
+        std::vector<int> next(pair.first.begin() + 1, pair.first.end());
         // We do insertion like this to force an error
         // on the orIn operation if there is an incompatible
         // merge. The insert operation does not error.
@@ -521,10 +524,7 @@ public:
           continue;
       }
 
-      std::vector<int> next;
-      for (size_t i = 2; i < pair.first.size(); ++i) {
-        next.push_back(pair.first[i]);
-      }
+      std::vector<int> next(pair.first.begin() + 2, pair.first.end());
 
       staging[next][pair.second].insert(pair.first[1]);
     }
@@ -571,6 +571,7 @@ public:
         }
 
         std::vector<int> next;
+        next.reserve(pnext.size() + 1);
         next.push_back(-1);
         for (auto v : pnext)
           next.push_back(v);
@@ -591,18 +592,25 @@ public:
 
   /// Given that this tree represents something of at most size len,
   /// canonicalize this, creating -1's where possible
-  TypeTree CanonicalizeValue(size_t len, const llvm::DataLayout &dl) const {
-
-    // Map of indices[1:] => ( End => possible Index[0] )
-    std::map<std::vector<int>, std::map<ConcreteType, std::set<int>>> staging;
-
+  void CanonicalizeInPlace(size_t len, const llvm::DataLayout &dl) {
+    bool canonicalized = true;
     for (const auto &pair : mapping) {
       assert(pair.first.size() != 0);
-
-      std::vector<int> next;
-      for (size_t i = 1; i < pair.first.size(); ++i) {
-        next.push_back(pair.first[i]);
+      if (pair.first[0] != -1) {
+        canonicalized = false;
+        break;
       }
+    }
+    if (canonicalized)
+      return;
+
+    // Map of indices[1:] => ( End => possible Index[0] )
+    std::map<const std::vector<int>, std::map<ConcreteType, std::set<int>>>
+        staging;
+
+    for (const auto &pair : mapping) {
+
+      std::vector<int> next(pair.first.begin() + 1, pair.first.end());
       if (pair.first[0] != -1) {
         if ((size_t)pair.first[0] >= len) {
           llvm::errs() << str() << "\n";
@@ -613,7 +621,8 @@ public:
       staging[next][pair.second].insert(pair.first[0]);
     }
 
-    TypeTree dat;
+    mapping.clear();
+
     for (auto &pair : staging) {
       auto &pnext = pair.first;
       for (auto &pair2 : pair.second) {
@@ -658,22 +667,21 @@ public:
         }
 
         std::vector<int> next;
+        next.reserve(pnext.size() + 1);
         next.push_back(-1);
         for (auto v : pnext)
           next.push_back(v);
 
         if (legalCombine) {
-          dat.insert(next, dt, /*intsAreLegalPointerSub*/ true);
+          insert(next, dt, /*intsAreLegalPointerSub*/ true);
         } else {
           for (auto e : set) {
             next[0] = e;
-            dat.insert(next, dt);
+            insert(next, dt);
           }
         }
       }
     }
-
-    return dat;
   }
 
   /// Keep only pointers (or anything's) to a repeated value (represented by -1)
@@ -1060,17 +1068,6 @@ public:
     // TODO detect recursive merge and simplify
 
     bool changed = false;
-
-    if (RHS[{-1}] != BaseType::Unknown) {
-      for (auto &pair : mapping) {
-        if (pair.first.size() == 1 && pair.first[0] != -1) {
-          changed |=
-              pair.second.checkedOrIn(RHS[{-1}], PointerIntSame, LegalOr);
-          // if (pair.second == ) // NOTE DELETE the non -1
-        }
-      }
-    }
-
     for (auto &pair : RHS.mapping) {
       changed |= checkedOrIn(pair.first, pair.second, PointerIntSame, LegalOr);
     }
@@ -1085,6 +1082,22 @@ public:
     bool Result = checkedOrIn(RHS, PointerIntSame, Legal);
     if (!Legal) {
       llvm::errs() << "Illegal orIn: " << str() << " right: " << RHS.str()
+                   << " PointerIntSame=" << PointerIntSame << "\n";
+      assert(0 && "Performed illegal ConcreteType::orIn");
+      llvm_unreachable("Performed illegal ConcreteType::orIn");
+    }
+    return Result;
+  }
+
+  /// Set this to the logical or of itself and RHS, returning whether this value
+  /// changed Setting `PointerIntSame` considers pointers and integers as
+  /// equivalent This function will error if doing an illegal Operation
+  bool orIn(const std::vector<int> Seq, ConcreteType CT, bool PointerIntSame) {
+    bool Legal = true;
+    bool Result = checkedOrIn(Seq, CT, PointerIntSame, Legal);
+    if (!Legal) {
+      llvm::errs() << "Illegal orIn: " << str() << " right: " << to_string(Seq)
+                   << " CT: " << CT.str()
                    << " PointerIntSame=" << PointerIntSame << "\n";
       assert(0 && "Performed illegal ConcreteType::orIn");
       llvm_unreachable("Performed illegal ConcreteType::orIn");

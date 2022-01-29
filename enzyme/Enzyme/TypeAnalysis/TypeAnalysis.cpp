@@ -310,7 +310,7 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
                                  /*maxSize*/ ObjSize,
                                  /*addOffset*/ Off);
     }
-    Result = Result.CanonicalizeValue(
+    Result.CanonicalizeInPlace(
         (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
              CA->getType()) +
          7) /
@@ -365,7 +365,7 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
 
       Result |= mid;
     }
-    Result = Result.CanonicalizeValue(
+    Result.CanonicalizeInPlace(
         (TA.fntypeinfo.Function->getParent()->getDataLayout().getTypeSizeInBits(
              CD->getType()) +
          7) /
@@ -478,7 +478,7 @@ TypeTree TypeAnalyzer::getAnalysis(Value *Val) {
   // must be integral, since it cannot possibly represent a float or pointer
   if (!isa<UndefValue>(Val) && Val->getType()->isIntegerTy() &&
       cast<IntegerType>(Val->getType())->getBitWidth() < 16)
-    return TypeTree(ConcreteType(BaseType::Integer)).Only(-1);
+    return TypeTree(BaseType::Integer).Only(-1);
   if (auto C = dyn_cast<Constant>(Val)) {
     getConstantAnalysis(C, *this, analysis);
     return analysis[Val];
@@ -611,7 +611,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
 
   auto &DL = fntypeinfo.Function->getParent()->getDataLayout();
   auto RegSize = (DL.getTypeSizeInBits(Val->getType()) + 7) / 8;
-  Data = Data.CanonicalizeValue(RegSize, DL);
+  Data.CanonicalizeInPlace(RegSize, DL);
   bool Changed =
       analysis[Val].checkedOrIn(Data, /*PointerIntSame*/ false, LegalOr);
 
@@ -832,11 +832,13 @@ void TypeAnalyzer::considerTBAA() {
             copySize = max(copySize, val);
           }
           TypeTree update =
-              vdptr.ShiftIndices(DL, /*init offset*/ 0,
-                                 /*max size*/ copySize, /*new offset*/ 0);
+              vdptr
+                  .ShiftIndices(DL, /*init offset*/ 0,
+                                /*max size*/ copySize, /*new offset*/ 0)
+                  .Only(-1);
 
-          updateAnalysis(call->getOperand(0), update.Only(-1), call);
-          updateAnalysis(call->getOperand(1), update.Only(-1), call);
+          updateAnalysis(call->getOperand(0), update, call);
+          updateAnalysis(call->getOperand(1), update, call);
           continue;
         } else if (call->getCalledFunction() &&
                    call->getCalledFunction()->getIntrinsicID() ==
@@ -2215,10 +2217,12 @@ void TypeAnalyzer::visitBinaryOperation(const DataLayout &dl, llvm::Type *T,
     case BinaryOperator::Add:
     case BinaryOperator::Mul:
       // if a + b or a * b == int, then a and b must be ints
-      if (direction & UP)
-        LHS |= TypeTree(AnalysisRet.JustInt()[{}]).Only(-1);
-      if (direction & UP)
-        RHS |= TypeTree(AnalysisRet.JustInt()[{}]).Only(-1);
+      if (direction & UP) {
+        if (AnalysisRet[{}] == BaseType::Integer) {
+          LHS.orIn({-1}, BaseType::Integer);
+          RHS.orIn({-1}, BaseType::Integer);
+        }
+      }
       break;
 
     case BinaryOperator::Xor:
