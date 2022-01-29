@@ -163,6 +163,14 @@ struct StateData {
     hir_id: HirId,
 }
 
+struct DerefedBorrow {
+    count: usize,
+    required_precedence: i8,
+    msg: &'static str,
+    stability: AutoDerefStability,
+    position: Position,
+}
+
 enum State {
     // Any number of deref method calls.
     DerefMethod {
@@ -172,11 +180,7 @@ enum State {
         /// The required mutability
         target_mut: Mutability,
     },
-    DerefedBorrow {
-        count: usize,
-        required_precedence: i8,
-        msg: &'static str,
-    },
+    DerefedBorrow(DerefedBorrow),
     ExplicitDeref {
         deref_span: Span,
         deref_hir_id: HirId,
@@ -344,17 +348,16 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
 
                         if deref_count >= required_refs {
                             self.state = Some((
-                                State::DerefedBorrow {
+                                State::DerefedBorrow(DerefedBorrow {
                                     // One of the required refs is for the current borrow expression, the remaining ones
                                     // can't be removed without breaking the code. See earlier comment.
                                     count: deref_count - required_refs,
                                     required_precedence,
                                     msg,
-                                },
-                                StateData {
-                                    span: expr.span,
-                                    hir_id: expr.hir_id,
-                                },
+                                    stability,
+                                    position,
+                                }),
+                                StateData { span: expr.span, hir_id: expr.hir_id },
                             ));
                         } else if stability.is_deref_stable() {
                             self.state = Some((
@@ -393,26 +396,47 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                     data,
                 ));
             },
-            (
-                Some((
-                    State::DerefedBorrow {
-                        count,
-                        required_precedence,
-                        msg,
-                    },
-                    data,
-                )),
-                RefOp::AddrOf,
-            ) if count != 0 => {
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) if state.count != 0 => {
                 self.state = Some((
-                    State::DerefedBorrow {
-                        count: count - 1,
-                        required_precedence,
-                        msg,
-                    },
+                    State::DerefedBorrow(DerefedBorrow {
+                        count: state.count - 1,
+                        ..state
+                    }),
                     data,
                 ));
             },
+            (Some((State::DerefedBorrow(state), data)), RefOp::AddrOf) => {
+                let stability = state.stability;
+                report(cx, expr, State::DerefedBorrow(state), data);
+                if stability.is_deref_stable() {
+                    self.state = Some((
+                        State::Borrow,
+                        StateData {
+                            span: expr.span,
+                            hir_id: expr.hir_id,
+                        },
+                    ));
+                }
+            },
+            (Some((State::DerefedBorrow(state), data)), RefOp::Deref) => {
+                let stability = state.stability;
+                let position = state.position;
+                report(cx, expr, State::DerefedBorrow(state), data);
+                if let Position::FieldAccess(name) = position
+                    && !ty_contains_field(typeck.expr_ty(sub_expr), name)
+                {
+                    self.state = Some((
+                        State::ExplicitDerefField { name },
+                        StateData { span: expr.span, hir_id: expr.hir_id },
+                    ));
+                } else if stability.is_deref_stable() {
+                    self.state = Some((
+                        State::ExplicitDeref { deref_span: expr.span, deref_hir_id: expr.hir_id },
+                        StateData { span: expr.span, hir_id: expr.hir_id },
+                    ));
+                }
+            },
+
             (Some((State::Borrow, data)), RefOp::Deref) => {
                 if typeck.expr_ty(sub_expr).is_ref() {
                     self.state = Some((
@@ -942,15 +966,11 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
                 app,
             );
         },
-        State::DerefedBorrow {
-            required_precedence,
-            msg,
-            ..
-        } => {
+        State::DerefedBorrow(state) => {
             let mut app = Applicability::MachineApplicable;
             let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
-            span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, msg, |diag| {
-                let sugg = if required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
+            span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, state.msg, |diag| {
+                let sugg = if state.required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
                     format!("({})", snip)
                 } else {
                     snip.into()

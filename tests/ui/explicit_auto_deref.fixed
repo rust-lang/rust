@@ -198,4 +198,7 @@ fn main() {
             return *x;
         }
     }
+
+    f_str(&&ref_str); // `needless_borrow` will suggest removing both references
+    f_str(&ref_str); // `needless_borrow` will suggest removing only one reference
 }

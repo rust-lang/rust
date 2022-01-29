@@ -180,5 +180,17 @@ error: deref which would be done by auto-deref
 LL |     let _ = f_str(**ref_ref_str);
    |                   ^^^^^^^^^^^^^ help: try this: `ref_ref_str`
 
-error: aborting due to 30 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:201:13
+   |
+LL |     f_str(&&*ref_str); // `needless_borrow` will suggest removing both references
+   |             ^^^^^^^^ help: try this: `ref_str`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:202:12
+   |
+LL |     f_str(&&**ref_str); // `needless_borrow` will suggest removing only one reference
+   |            ^^^^^^^^^^ help: try this: `ref_str`
+
+error: aborting due to 32 previous errors
 
