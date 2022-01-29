@@ -65,6 +65,7 @@ pub enum LinkagePreference {
 }
 
 #[derive(Debug, Encodable, Decodable, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,

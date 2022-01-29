@@ -10,6 +10,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
+    #[derive(HashStableEq)]
     pub struct CrateNum {
         ENCODABLE = custom
         DEBUG_FORMAT = "crate{}"

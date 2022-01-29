@@ -93,6 +93,7 @@ pub enum OptimizeAttr {
 /// - `#[unstable]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -101,6 +102,7 @@ pub struct Stability {
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct ConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -111,6 +113,7 @@ pub struct ConstStability {
 /// The available stability levels.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },

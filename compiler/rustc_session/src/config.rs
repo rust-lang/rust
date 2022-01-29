@@ -397,7 +397,7 @@ pub enum TrimmedDefPaths {
 /// *Do not* switch `BTreeMap` out for an unsorted container type! That would break
 /// dependency tracking for command-line arguments. Also only hash keys, since tracking
 /// should only depend on the output types, not the paths they're written to.
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
 impl OutputTypes {
@@ -629,7 +629,7 @@ impl Input {
     }
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub struct OutputFilenames {
     pub out_directory: PathBuf,
     filestem: String,
