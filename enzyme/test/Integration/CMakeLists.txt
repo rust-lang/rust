@@ -1,4 +1,5 @@
 add_subdirectory(ForwardMode)
+add_subdirectory(ForwardModeVector)
 add_subdirectory(ReverseMode)
 
 # Run regression and unit tests
