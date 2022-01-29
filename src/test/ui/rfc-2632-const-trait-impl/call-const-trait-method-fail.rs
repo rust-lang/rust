@@ -22,7 +22,8 @@ pub const fn add_i32(a: i32, b: i32) -> i32 {
 
 pub const fn add_u32(a: u32, b: u32) -> u32 {
     a.plus(b)
-    //~^ ERROR calls in constant functions are limited to constant functions
+    //~^ ERROR the trait bound
+    //~| ERROR cannot call non-const fn
 }
 
 fn main() {}

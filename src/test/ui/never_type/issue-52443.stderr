@@ -38,11 +38,18 @@ LL |     [(); loop { break }];
    |                 expected `usize`, found `()`
    |                 help: give it a value of the expected type: `break 42`
 
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot convert `RangeFrom<usize>` into an iterator in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL | impl<I: Iterator> IntoIterator for I {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error[E0658]: mutable references are not allowed in constants
   --> $DIR/issue-52443.rs:9:21
@@ -53,11 +60,13 @@ LL |     [(); { for _ in 0usize.. {}; 0}];
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `<RangeFrom<usize> as Iterator>::next` in constants
   --> $DIR/issue-52443.rs:9:21
    |
 LL |     [(); { for _ in 0usize.. {}; 0}];
    |                     ^^^^^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
 error: aborting due to 6 previous errors; 1 warning emitted
 
