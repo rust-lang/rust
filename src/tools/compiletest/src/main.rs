@@ -379,6 +379,9 @@ pub fn run_tests(config: Config) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
+    // If we get panics in the compiler, we want backtraces of them.
+    env::set_var("RUST_BACKTRACE", "1");
+
     let opts = test_opts(&config);
 
     let mut configs = Vec::new();
