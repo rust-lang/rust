@@ -275,6 +275,21 @@ fn test_unsized_nonnull() {
 }
 
 #[test]
+fn test_const_nonnull_new() {
+    const {
+        assert!(NonNull::new(core::ptr::null_mut::<()>()).is_none());
+
+        let value = &mut 0u32;
+        let mut ptr = NonNull::new(value).unwrap();
+        unsafe { *ptr.as_mut() = 42 };
+
+        let reference = unsafe { &*ptr.as_ref() };
+        assert!(*reference == *value);
+        assert!(*reference == 42);
+    };
+}
+
+#[test]
 #[allow(warnings)]
 // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
 // ABI, or even point to an actual executable code, because the function itself is never invoked.
