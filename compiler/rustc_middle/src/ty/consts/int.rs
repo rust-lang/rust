@@ -117,7 +117,8 @@ impl std::fmt::Debug for ConstInt {
 ///
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
 /// (like Scalar).
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
+// FIXME - how are these impls correct if HashStable isnt'???
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, HashStableEq)]
 #[repr(packed)]
 pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.

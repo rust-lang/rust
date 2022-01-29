@@ -5,7 +5,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate rustc_macros;
 
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
 use std::mem::discriminant;
@@ -150,6 +150,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStableEq)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -215,7 +216,7 @@ impl DebruijnIndex {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStableEq)]
 #[derive(Encodable, Decodable)]
 pub enum IntTy {
     Isize,
@@ -262,7 +263,7 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, Debug, HashStableEq)]
 #[derive(Encodable, Decodable)]
 pub enum UintTy {
     Usize,
@@ -309,7 +310,7 @@ impl UintTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStableEq)]
 #[derive(Encodable, Decodable)]
 pub enum FloatTy {
     F32,
@@ -343,19 +344,20 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
+    #[derive(HashStableEq)]
     pub struct TyVid {
         DEBUG_FORMAT = "_#{}t"
     }
 }
 
 /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, HashStableEq)]
 pub struct IntVid {
     pub index: u32,
 }
 
 /// An **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, HashStableEq)]
 pub struct FloatVid {
     pub index: u32,
 }
@@ -365,7 +367,7 @@ pub struct FloatVid {
 /// E.g., if we have an empty array (`[]`), then we create a fresh
 /// type variable for the element type since we won't know until it's
 /// used what the element type is supposed to be.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, HashStableEq)]
 pub enum InferTy {
     /// A type variable.
     TyVar(TyVid),
@@ -555,6 +557,12 @@ impl<CTX> HashStable<CTX> for InferTy {
 impl<CTX> HashStable<CTX> for Variance {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         discriminant(self).hash_stable(ctx, hasher);
+    }
+}
+
+impl HashStableEq for Variance {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
     }
 }
 

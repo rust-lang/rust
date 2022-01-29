@@ -132,6 +132,7 @@ rustc_index::newtype_index! {
 
 /// The layout of generator state.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
     pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
@@ -207,6 +208,7 @@ impl Debug for GeneratorLayout<'_> {
 }
 
 #[derive(Debug, TyEncodable, TyDecodable, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has

@@ -1518,7 +1518,7 @@ impl<'tcx> fmt::Debug for Region<'tcx> {
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
-#[derive(Clone, PartialEq, Eq, Hash, Copy, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy, TyEncodable, TyDecodable, PartialOrd, Ord, HashStableEq)]
 pub enum RegionKind {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
@@ -1556,7 +1556,7 @@ pub enum RegionKind {
     ReErased,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord, HashStableEq)]
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
@@ -1564,7 +1564,7 @@ pub struct EarlyBoundRegion {
 }
 
 /// A **`const`** **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, HashStableEq)]
 pub struct ConstVid<'tcx> {
     pub index: u32,
     pub phantom: PhantomData<&'tcx ()>,
@@ -1572,6 +1572,7 @@ pub struct ConstVid<'tcx> {
 
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
+    #[derive(HashStableEq)]
     pub struct RegionVid {
         DEBUG_FORMAT = custom,
     }
@@ -1584,6 +1585,7 @@ impl Atom for RegionVid {
 }
 
 rustc_index::newtype_index! {
+    #[derive(HashStableEq)]
     pub struct BoundVar { .. }
 }
 

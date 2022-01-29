@@ -7,7 +7,7 @@ use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
 use std::slice;
 
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable, Encodable, HashStableEq};
 
 #[cfg(test)]
 mod tests;

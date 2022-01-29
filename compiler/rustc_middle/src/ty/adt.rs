@@ -5,7 +5,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -124,6 +124,12 @@ impl PartialEq for AdtDef {
 }
 
 impl Eq for AdtDef {}
+
+impl HashStableEq for AdtDef {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
+    }
+}
 
 /// There should be only one AdtDef for each `did`, therefore
 /// it is fine to implement `Hash` only based on `did`.

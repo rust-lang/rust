@@ -137,8 +137,7 @@ impl<T: PartialEq> PartialEq for List<T> {
 
 impl<T: HashStableEq> HashStableEq for List<T> {
     fn hash_stable_eq(&self, other: &Self) -> bool {
-        // FIXME - is this right?
-        self == other
+        (&self[..]).hash_stable_eq(other)
     }
 }
 

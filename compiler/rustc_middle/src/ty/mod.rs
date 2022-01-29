@@ -455,7 +455,7 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 impl<'tcx> Eq for TyS<'tcx> {}
 
 impl<'tcx> HashStableEq for TyS<'tcx> {
-    fn hash_stable_eq(&self, other: Self) -> bool {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
         self == other
     }
 }
@@ -1134,7 +1134,7 @@ impl UniverseIndex {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord, HashStableEq)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub name: T,

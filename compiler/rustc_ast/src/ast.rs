@@ -2027,7 +2027,6 @@ bitflags::bitflags! {
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic)]
-#[stable_hasher(no_hash_stable_eq)]
 pub enum InlineAsmTemplatePiece {
     String(String),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },

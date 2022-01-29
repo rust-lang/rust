@@ -195,6 +195,7 @@ impl<'tcx> MirSource<'tcx> {
 }
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct GeneratorInfo<'tcx> {
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
@@ -212,6 +213,7 @@ pub struct GeneratorInfo<'tcx> {
 
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Body<'tcx> {
     /// A list of basic blocks. References to basic block use a newtyped index type [`BasicBlock`]
     /// that indexes into this vector.
@@ -882,6 +884,7 @@ pub struct BlockTailInfo {
 /// This can be a binding declared by the user, a temporary inserted by the compiler, a function
 /// argument, or the return place.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct LocalDecl<'tcx> {
     /// Whether this is a mutable binding (i.e., `let x` or `let mut x`).
     ///
@@ -1017,6 +1020,7 @@ static_assert_size!(LocalDecl<'_>, 56);
 /// Not used for non-StaticRef temporaries, the return place, or anonymous
 /// function parameters.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
     ///

@@ -496,7 +496,7 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
 }
 
 /// "Relocations" stores the provenance information of pointers stored in memory.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable, HashStableEq)]
 pub struct Relocations<Tag = AllocId>(SortedMap<Size, Tag>);
 
 impl<Tag> Relocations<Tag> {

@@ -1,5 +1,5 @@
 use super::{Pointer, Tag};
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use std::fmt;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
@@ -159,6 +159,16 @@ where
     P: Pointer,
     T: Tag,
 {
+}
+
+impl<P, T> HashStableEq for CopyTaggedPtr<P, T, true>
+where
+    P: Pointer,
+    T: Tag,
+{
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
+    }
 }
 
 impl<P, T> std::hash::Hash for CopyTaggedPtr<P, T, true>

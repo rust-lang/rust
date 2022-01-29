@@ -11,6 +11,7 @@ use rustc_span::Span;
 /// Module child can be either a proper item or a reexport (including private imports).
 /// In case of reexport all the fields describe the reexport item itself, not what it refers to.
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct ModChild {
     /// Name of the item.
     pub ident: Ident,

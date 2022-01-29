@@ -53,6 +53,7 @@ impl LintLevelSource {
 pub type LevelAndSource = (Level, LintLevelSource);
 
 #[derive(Debug, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct LintLevelSets {
     pub list: IndexVec<LintStackIndex, LintSet>,
     pub lint_cap: Level,
@@ -66,6 +67,8 @@ rustc_index::newtype_index! {
 }
 
 #[derive(Debug, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
+// FIXME - how is LintId implementing HashStable ?
 pub struct LintSet {
     // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
     // flag.

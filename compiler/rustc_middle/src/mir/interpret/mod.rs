@@ -177,7 +177,7 @@ pub enum LitToConstError {
     Reported,
 }
 
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, HashStableEq)]
 pub struct AllocId(pub NonZeroU64);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for

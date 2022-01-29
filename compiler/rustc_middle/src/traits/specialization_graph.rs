@@ -22,6 +22,7 @@ use rustc_span::symbol::sym;
 ///   default items amongst other things. In the simple "chain" rule, every impl
 ///   has at most one parent.
 #[derive(TyEncodable, TyDecodable, HashStable, Debug)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct Graph {
     /// All impls have a parent; the "root" impls have as their parent the `def_id`
     /// of the trait.

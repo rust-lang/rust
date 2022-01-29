@@ -111,6 +111,7 @@ impl AssocKind {
 /// it is relatively expensive. Instead, items are indexed by `Symbol` and hygienic comparison is
 /// done only on items with the same name.
 #[derive(Debug, Clone, PartialEq, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct AssocItems<'tcx> {
     pub(super) items: SortedIndexMultiMap<u32, Symbol, &'tcx ty::AssocItem>,
 }

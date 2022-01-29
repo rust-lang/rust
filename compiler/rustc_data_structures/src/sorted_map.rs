@@ -1,4 +1,4 @@
-use crate::stable_hasher::{HashStable, StableHasher};
+use crate::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::iter::FromIterator;
@@ -295,6 +295,12 @@ impl<K: HashStable<CTX>, V: HashStable<CTX>, CTX> HashStable<CTX> for SortedMap<
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.data.hash_stable(ctx, hasher);
+    }
+}
+
+impl<K: HashStableEq, V: HashStableEq> HashStableEq for SortedMap<K, V> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.data.hash_stable_eq(&other.data)
     }
 }
 

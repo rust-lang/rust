@@ -2135,7 +2135,7 @@ pub enum TraitItemKind<'hir> {
 // The bodies for items are stored "out of line", in a separate
 // hashmap in the `Crate`. Here we just record the hir-id of the item
 // so it can fetched later.
-#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Encodable, Debug, HashStableEq)]
 pub struct ImplItemId {
     pub def_id: LocalDefId,
 }

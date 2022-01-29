@@ -4,6 +4,7 @@ use rustc_span::symbol::Symbol;
 use rustc_target::spec::SanitizerSet;
 
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute

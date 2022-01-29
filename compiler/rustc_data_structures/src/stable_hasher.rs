@@ -285,6 +285,18 @@ impl HashStableEq for ::std::num::NonZeroUsize {
     }
 }
 
+impl HashStableEq for ::std::num::NonZeroU32 {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.get().hash_stable_eq(&other.get())
+    }
+}
+
+impl HashStableEq for ::std::num::NonZeroU64 {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.get().hash_stable_eq(&other.get())
+    }
+}
+
 impl<CTX> HashStable<CTX> for f32 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let val: u32 = unsafe { ::std::mem::transmute(*self) };
@@ -424,6 +436,25 @@ impl<T: HashStableEq> HashStableEq for Vec<T> {
     }
 }
 
+impl<K: HashStableEq + Eq + Hash, V: HashStableEq, R: BuildHasher> HashStableEq for indexmap::IndexMap<K, V, R> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        // Equal maps will have equal iteration orders
+        // FIXME -is that actually right?
+        self.iter().zip(other.iter()).all(|(first, second)| {
+            first.hash_stable_eq(&second)
+        })
+    }
+}
+
+impl<T> HashStableEq for std::marker::PhantomData<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        true
+    }
+}
+
 impl<K, V, R, CTX> HashStable<CTX> for indexmap::IndexMap<K, V, R>
 where
     K: HashStable<CTX> + Eq + Hash,
@@ -460,6 +491,12 @@ where
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<A: smallvec::Array> HashStableEq for SmallVec<A> where <A as smallvec::Array>::Item: HashStableEq {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        (&self[..]).hash_stable_eq(other)
     }
 }
 
@@ -690,6 +727,49 @@ where
             key.hash_stable(hcx, hasher);
             value.hash_stable(hcx, hasher);
         });
+    }
+}
+
+impl<K, V, R> HashStableEq for ::std::collections::HashMap<K, V, R>
+where
+    K: HashStableEq + Eq + Hash,
+    V: HashStableEq,
+    R: BuildHasher,
+{
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().all(|(key, value)| {
+            match other.get_key_value(key) {
+                Some((other_key, other_value)) => {
+                    // Compare the key, since the `PartailEq` impl
+                    // used by the map may ignore information
+                    key.hash_stable_eq(other_key) && value.hash_stable_eq(other_value)
+                }
+                _ => false,
+            }
+        })
+    }
+}
+
+impl<K, R> HashStableEq for ::std::collections::HashSet<K, R>
+where
+    K: HashStableEq + Eq + Hash,
+    R: BuildHasher,
+{
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        self.iter().all(|key| {
+            match other.get(key) {
+                // Compare the key, since the `PartailEq` impl
+                // used by the map may ignore information
+                Some(other_key) => key.hash_stable_eq(other_key),
+                None => false,
+            }
+        })
     }
 }
 
