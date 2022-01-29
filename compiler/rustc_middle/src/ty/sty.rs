@@ -1810,7 +1810,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             Array(ty, _) | Slice(ty) => ty,
-            Str => tcx.mk_mach_uint(ty::UintTy::U8),
+            Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
