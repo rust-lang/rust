@@ -14,6 +14,7 @@
 #[test]
 #[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
 fn arm_linux() {
+    use std::arch::is_arm_feature_detected;
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
     println!("crypto: {}", is_arm_feature_detected!("crypto"));
@@ -25,6 +26,7 @@ fn arm_linux() {
 #[test]
 #[cfg(all(target_arch = "aarch64", any(target_os = "linux", target_os = "android")))]
 fn aarch64_linux() {
+    use std::arch::is_aarch64_feature_detected;
     println!("neon: {}", is_aarch64_feature_detected!("neon"));
     println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
     println!("pmull: {}", is_aarch64_feature_detected!("pmull"));
@@ -71,6 +73,7 @@ fn aarch64_linux() {
 #[test]
 #[cfg(all(target_arch = "powerpc", target_os = "linux"))]
 fn powerpc_linux() {
+    use std::arch::is_powerpc_feature_detected;
     println!("altivec: {}", is_powerpc_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc_feature_detected!("power8"));
@@ -79,6 +82,7 @@ fn powerpc_linux() {
 #[test]
 #[cfg(all(target_arch = "powerpc64", target_os = "linux"))]
 fn powerpc64_linux() {
+    use std::arch::is_powerpc64_feature_detected;
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));
@@ -87,6 +91,8 @@ fn powerpc64_linux() {
 #[test]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn x86_all() {
+    use std::arch::is_x86_feature_detected;
+
     // the below is the set of features we can test at runtime, but don't actually
     // use to gate anything and are thus not part of the X86_ALLOWED_FEATURES list
 
