@@ -1205,13 +1205,18 @@ public:
       getForwardBuilder(Builder2);
 
       Value *orig_vec = EEI.getVectorOperand();
+      Type *vecTy = gutils->getShadowType(orig_vec->getType());
 
       auto vec_diffe = gutils->isConstantValue(orig_vec)
-                           ? ConstantVector::getNullValue(orig_vec->getType())
+                           ? Constant::getNullValue(vecTy)
                            : diffe(orig_vec, Builder2);
-      auto diffe =
-          Builder2.CreateExtractElement(vec_diffe, EEI.getIndexOperand());
 
+      auto rule = [&](Value *vec_diffe) {
+        return Builder2.CreateExtractElement(
+            vec_diffe, gutils->getNewFromOriginal(EEI.getIndexOperand()));
+      };
+
+      auto diffe = applyChainRule(EEI.getType(), Builder2, rule, vec_diffe);
       setDiffe(&EEI, diffe, Builder2);
       return;
     }
@@ -1260,19 +1265,25 @@ public:
       Value *orig_inserted = IEI.getOperand(1);
       Value *orig_index = IEI.getOperand(2);
 
+      Type *insertedTy = gutils->getShadowType(orig_inserted->getType());
+      Type *vectorTy = gutils->getShadowType(orig_vector->getType());
+
       Value *diff_inserted = gutils->isConstantValue(orig_inserted)
-                                 ? ConstantFP::get(orig_inserted->getType(), 0)
+                                 ? Constant::getNullValue(insertedTy)
                                  : diffe(orig_inserted, Builder2);
 
-      Value *prediff =
-          gutils->isConstantValue(orig_vector)
-              ? ConstantVector::getNullValue(orig_vector->getType())
-              : diffe(orig_vector, Builder2);
+      Value *prediff = gutils->isConstantValue(orig_vector)
+                           ? Constant::getNullValue(vectorTy)
+                           : diffe(orig_vector, Builder2);
 
-      auto dindex = Builder2.CreateInsertElement(
-          prediff, diff_inserted, gutils->getNewFromOriginal(orig_index));
+      auto rule = [&](Value *diff_inserted, Value *prediff) {
+        return Builder2.CreateInsertElement(
+            prediff, diff_inserted, gutils->getNewFromOriginal(orig_index));
+      };
+
+      Value *dindex =
+          applyChainRule(IEI.getType(), Builder2, rule, diff_inserted, prediff);
       setDiffe(&IEI, dindex, Builder2);
-
       return;
     }
     case DerivativeMode::ReverseModeGradient:
@@ -1345,14 +1356,19 @@ public:
               ? ConstantVector::getNullValue(orig_vector2->getType())
               : diffe(orig_vector2, Builder2);
 
+      auto rule = [&](Value *diffe_vector1, Value *diffe_vector2) {
 #if LLVM_VERSION_MAJOR >= 11
-      auto diffe = Builder2.CreateShuffleVector(diffe_vector1, diffe_vector2,
-                                                SVI.getShuffleMaskForBitcode());
+        auto diffe = Builder2.CreateShuffleVector(
+            diffe_vector1, diffe_vector2, SVI.getShuffleMaskForBitcode());
 #else
-      auto diffe = Builder2.CreateShuffleVector(diffe_vector1, diffe_vector2,
-                                                SVI.getOperand(2));
+        auto diffe = Builder2.CreateShuffleVector(diffe_vector1, diffe_vector2,
+                                                  SVI.getOperand(2));
 #endif
+        return diffe;
+      };
 
+      auto diffe = applyChainRule(SVI.getType(), Builder2, rule, diffe_vector1,
+                                  diffe_vector2);
       setDiffe(&SVI, diffe, Builder2);
       return;
     }
@@ -1417,15 +1433,19 @@ public:
       getForwardBuilder(Builder2);
 
       Value *orig_aggregate = EVI.getAggregateOperand();
+      Type *agg_type = gutils->getShadowType(orig_aggregate->getType());
 
-      Value *diffe_aggregate =
-          gutils->isConstantValue(orig_aggregate)
-              ? ConstantAggregate::getNullValue(orig_aggregate->getType())
-              : diffe(orig_aggregate, Builder2);
-      Value *diffe =
-          Builder2.CreateExtractValue(diffe_aggregate, EVI.getIndices());
+      Value *diffe_aggregate = gutils->isConstantValue(orig_aggregate)
+                                   ? Constant::getNullValue(agg_type)
+                                   : diffe(orig_aggregate, Builder2);
 
-      setDiffe(&EVI, diffe, Builder2);
+      auto rule = [&](Value *diffe_aggregate) {
+        return Builder2.CreateExtractValue(diffe_aggregate, EVI.getIndices());
+      };
+
+      Value *diff =
+          applyChainRule(EVI.getType(), Builder2, rule, diffe_aggregate);
+      setDiffe(&EVI, diff, Builder2);
       return;
     }
     case DerivativeMode::ReverseModeGradient:
@@ -1526,20 +1546,27 @@ public:
       IRBuilder<> Builder2(&IVI);
       getForwardBuilder(Builder2);
 
-      Value *orig_inserted = IVI.getInsertedValueOperand();
+      Value *orig_val = IVI.getInsertedValueOperand();
       Value *orig_agg = IVI.getAggregateOperand();
 
-      Value *diff_inserted = gutils->isConstantValue(orig_inserted)
-                                 ? ConstantFP::get(orig_inserted->getType(), 0)
-                                 : diffe(orig_inserted, Builder2);
+      Type *val_type = gutils->getShadowType(orig_val->getType());
+      Type *agg_type = gutils->getShadowType(orig_agg->getType());
 
-      Value *prediff =
-          gutils->isConstantValue(orig_agg)
-              ? ConstantAggregate::getNullValue(orig_agg->getType())
-              : diffe(orig_agg, Builder2);
-      auto dindex =
-          Builder2.CreateInsertValue(prediff, diff_inserted, IVI.getIndices());
-      setDiffe(&IVI, dindex, Builder2);
+      Value *diff_val = gutils->isConstantValue(orig_val)
+                            ? Constant::getNullValue(val_type)
+                            : diffe(orig_val, Builder2);
+
+      Value *diff_agg = gutils->isConstantValue(orig_agg)
+                            ? Constant::getNullValue(agg_type)
+                            : diffe(orig_agg, Builder2);
+
+      auto rule = [&](Value *diff_agg, Value *diff_val) {
+        return Builder2.CreateInsertValue(diff_agg, diff_val, IVI.getIndices());
+      };
+
+      Value *diff = applyChainRule(orig_agg->getType(), Builder2, rule,
+                                   diff_agg, diff_val);
+      setDiffe(&IVI, diff, Builder2);
 
       return;
     }
