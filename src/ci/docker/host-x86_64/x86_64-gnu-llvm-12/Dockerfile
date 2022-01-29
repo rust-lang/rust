@@ -40,8 +40,10 @@ ENV SCRIPT python2.7 ../x.py --stage 2 test --exclude src/tools/tidy && \
            # the PR is approved and tested for merging.
            # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
            # despite having different output on 32-bit vs 64-bit targets.
-           python2.7 ../x.py --stage 2 test src/test/mir-opt \
-                             --host='' --target=i686-unknown-linux-gnu && \
+           # This is temporarily disabled due to unexplained failures,
+           # see https://github.com/rust-lang/rust/issues/93384.
+           #python2.7 ../x.py --stage 2 test src/test/mir-opt \
+           #                  --host='' --target=i686-unknown-linux-gnu && \
            # Run the UI test suite again, but in `--pass=check` mode
            #
            # This is intended to make sure that both `--pass=check` continues to
