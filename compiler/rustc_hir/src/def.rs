@@ -255,6 +255,7 @@ impl DefKind {
 //
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
 #[derive(HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub enum Res<Id = hir::HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
