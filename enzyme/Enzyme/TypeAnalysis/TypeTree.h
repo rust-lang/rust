@@ -862,7 +862,10 @@ public:
     if (*this == RHS)
       return false;
     minIndices = RHS.minIndices;
-    mapping = RHS.mapping;
+    mapping.clear();
+    for (const auto &elems : RHS.mapping) {
+      mapping.emplace(elems);
+    }
     return true;
   }
 
