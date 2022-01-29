@@ -8,7 +8,7 @@ use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, HashStableEq};
 use rustc_serialize::{self, Decodable, Encodable};
 use rustc_span::{Span, DUMMY_SP};
 use smallvec::SmallVec;
@@ -29,7 +29,7 @@ use std::ops::ControlFlow;
 ///
 /// Note: the `PartialEq`, `Eq` and `Hash` derives are only valid because `Ty`,
 /// `Region` and `Const` are all interned.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStableEq)]
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,

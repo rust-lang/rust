@@ -513,6 +513,12 @@ static_assert_size!(PredicateS<'_>, 56);
 #[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub struct Predicate<'tcx>(Interned<'tcx, PredicateS<'tcx>>);
 
+impl<'tcx> HashStableEq for Predicate<'tcx> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self == other
+    }
+}
+
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
     #[inline]
@@ -1289,7 +1295,7 @@ impl WithOptConstParam<DefId> {
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, HashStableEq)]
 pub struct ParamEnv<'tcx> {
     /// This packs both caller bounds and the reveal enum into one pointer.
     ///
@@ -1524,7 +1530,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, HashStableEq)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,

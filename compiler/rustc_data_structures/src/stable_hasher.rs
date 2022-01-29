@@ -311,6 +311,14 @@ impl<T1: HashStableEq, T2: HashStableEq> HashStableEq for (T1, T2) {
     }
 }
 
+impl<T1: HashStableEq, T2: HashStableEq, T3: HashStableEq> HashStableEq for (T1, T2, T3) {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        self.0.hash_stable_eq(&other.0) && self.1.hash_stable_eq(&other.1)
+            && self.2.hash_stable_eq(&other.2)
+    }
+}
+
+
 impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let (ref _0,) = *self;

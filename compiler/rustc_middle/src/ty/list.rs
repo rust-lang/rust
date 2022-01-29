@@ -1,5 +1,6 @@
 use crate::arena::Arena;
 use rustc_serialize::{Encodable, Encoder};
+use rustc_data_structures::stable_hasher::HashStableEq;
 use std::alloc::Layout;
 use std::cmp::Ordering;
 use std::fmt;
@@ -131,6 +132,13 @@ impl<T: PartialEq> PartialEq for List<T> {
         // Pointer equality implies list equality (due to the unique contents
         // assumption).
         ptr::eq(self, other)
+    }
+}
+
+impl<T: HashStableEq> HashStableEq for List<T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        // FIXME - is this right?
+        self == other
     }
 }
 
