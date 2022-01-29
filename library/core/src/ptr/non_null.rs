@@ -211,8 +211,9 @@ impl<T: ?Sized> NonNull<T> {
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[rustc_const_unstable(feature = "const_nonnull_new", issue = "93235")]
     #[inline]
-    pub fn new(ptr: *mut T) -> Option<Self> {
+    pub const fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
             // SAFETY: The pointer is already checked and is not null
             Some(unsafe { Self::new_unchecked(ptr) })

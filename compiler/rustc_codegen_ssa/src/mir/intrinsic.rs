@@ -369,6 +369,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
+            sym::const_allocate => {
+                // returns a null pointer at runtime.
+                bx.const_null(bx.type_i8p())
+            }
+
+            sym::const_deallocate => {
+                // nop at runtime.
+                return;
+            }
+
             // This requires that atomic intrinsics follow a specific naming pattern:
             // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
             name if name_str.starts_with("atomic_") => {

@@ -461,6 +461,7 @@ symbols! {
         const_async_blocks,
         const_compare_raw_pointers,
         const_constructor,
+        const_deallocate,
         const_eval_limit,
         const_eval_select,
         const_eval_select_ct,
