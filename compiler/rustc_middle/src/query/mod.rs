@@ -750,6 +750,22 @@ rustc_queries! {
         desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
     }
 
+    /// Return the live symbols in the crate for dead code check.
+    ///
+    /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
+    /// their respective impl (i.e., part of the derive macro)
+    query live_symbols_and_ignored_derived_traits(_: ()) -> (
+        FxHashSet<LocalDefId>,
+        FxHashMap<LocalDefId, Vec<(DefId, DefId)>>
+    ) {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { "find live symbols in crate" }
+    }
+
+    query check_mod_deathness(key: LocalDefId) -> () {
+        desc { |tcx| "checking deathness of variables in {}", describe_as_module(key, tcx) }
+    }
+
     query check_mod_impl_wf(key: LocalDefId) -> () {
         desc { |tcx| "checking that impls are well-formed in {}", describe_as_module(key, tcx) }
     }

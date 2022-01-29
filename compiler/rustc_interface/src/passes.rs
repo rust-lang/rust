@@ -999,7 +999,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         tcx.ensure().check_private_in_public(());
                     },
                     {
-                        sess.time("death_checking", || rustc_passes::dead::check_crate(tcx));
+                        tcx.hir()
+                            .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
                     },
                     {
                         sess.time("unused_lib_feature_checking", || {
