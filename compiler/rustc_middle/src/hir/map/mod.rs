@@ -231,8 +231,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn opt_def_kind(&self, local_def_id: LocalDefId) -> Option<DefKind> {
-        let hir_id = self.local_def_id_to_hir_id(local_def_id);
-        let def_kind = match self.find(hir_id)? {
+        let def_kind = match self.find_by_def_id(local_def_id)? {
             Node::Item(item) => match item.kind {
                 ItemKind::Static(..) => DefKind::Static,
                 ItemKind::Const(..) => DefKind::Const,
@@ -272,6 +271,7 @@ impl<'hir> Map<'hir> {
                 // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
                 assert_ne!(variant_data.ctor_hir_id(), None);
 
+                let hir_id = self.local_def_id_to_hir_id(local_def_id);
                 let ctor_of = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
@@ -280,6 +280,7 @@ impl<'hir> Map<'hir> {
                 DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
             Node::AnonConst(_) => {
+                let hir_id = self.local_def_id_to_hir_id(local_def_id);
                 let inline = match self.find(self.get_parent_node(hir_id)) {
                     Some(Node::Expr(&Expr {
                         kind: ExprKind::ConstBlock(ref anon_const), ..
@@ -292,7 +293,10 @@ impl<'hir> Map<'hir> {
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Closure(.., None) => DefKind::Closure,
                 ExprKind::Closure(.., Some(_)) => DefKind::Generator,
-                _ => bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id)),
+                _ => {
+                    let hir_id = self.local_def_id_to_hir_id(local_def_id);
+                    bug!("def_kind: unsupported node: {}", self.node_to_string(hir_id))
+                }
             },
             Node::GenericParam(param) => match param.kind {
                 GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
@@ -352,7 +356,12 @@ impl<'hir> Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
     #[inline]
     pub fn find_by_def_id(&self, id: LocalDefId) -> Option<Node<'hir>> {
-        self.find(self.local_def_id_to_hir_id(id))
+        let owner = self.tcx.hir_owner(id);
+        match owner {
+            MaybeOwner::Owner(o) => Some(o.node.into()),
+            MaybeOwner::NonOwner(hir_id) => self.find(hir_id),
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
+        }
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
@@ -367,7 +376,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn get_if_local(&self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local().and_then(|id| self.find(self.local_def_id_to_hir_id(id)))
+        id.as_local().and_then(|id| self.find_by_def_id(id))
     }
 
     pub fn get_generics(&self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
