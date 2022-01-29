@@ -215,12 +215,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        let owner = self.tcx.local_def_id_to_hir_id(def_id);
-        match owner {
-            MaybeOwner::Owner(_) => HirId::make_owner(def_id),
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
-            MaybeOwner::NonOwner(hir_id) => hir_id,
-        }
+        self.tcx.local_def_id_to_hir_id(def_id)
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {

@@ -60,7 +60,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::MaybeOwner<()> {
+    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
         desc { |tcx| "HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
