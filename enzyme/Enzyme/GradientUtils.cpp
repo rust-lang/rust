@@ -94,6 +94,7 @@ llvm::cl::opt<bool> EnzymeFreeInternalAllocations(
     "enzyme-free-internal-allocations", cl::init(true), cl::Hidden,
     cl::desc("Always free internal allocations (disable if allocation needs "
              "access outside)"));
+extern void (*CustomErrorHandler)(const char *);
 }
 
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
@@ -3416,6 +3417,13 @@ end:;
   assert(BuilderM.GetInsertBlock());
   assert(BuilderM.GetInsertBlock()->getParent());
   assert(oval);
+
+  if (CustomErrorHandler && isa<Constant>(oval)) {
+    std::string str;
+    raw_string_ostream ss(str);
+    ss << "cannot find shadow for " << *oval;
+    CustomErrorHandler(str.c_str());
+  }
 
   llvm::errs() << *newFunc->getParent() << "\n";
   llvm::errs() << "fn:" << *newFunc << "\noval=" << *oval
