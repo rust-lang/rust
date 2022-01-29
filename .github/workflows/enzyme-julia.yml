@@ -1,0 +1,45 @@
+name: Julia Enzyme CI
+
+on: [push]
+
+jobs:
+  build:
+    name: Enzyme CI Julia ${{ matrix.version }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.version == 'nightly' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - '1.7'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+          - macOS-latest
+        arch:
+          - x64
+    timeout-minutes: 30 
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 1
+    - uses: actions/checkout@v2
+      with:
+        repository: 'wsmoses/Enzyme.jl'
+        path: ./jl
+        ref: main
+    - uses: julia-actions/setup-julia@v1
+      with:
+        version: ${{ matrix.version }}
+        arch: ${{ matrix.arch }}
+    - name: Build libEnzyme
+      run: |
+        julia --project=jl/deps -e 'using Pkg; Pkg.instantiate()'
+        julia --project=jl/deps jl/deps/build_local.jl ./enzyme
+    - uses: julia-actions/julia-buildpkg@v1
+      with:
+        project: jl
+    - uses: julia-actions/julia-runtest@v1
+      with:
+        project: jl
