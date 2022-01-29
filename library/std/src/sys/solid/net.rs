@@ -107,7 +107,7 @@ impl FileDesc {
     }
 
     fn duplicate(&self) -> io::Result<FileDesc> {
-        super::unsupported()
+        cvt(unsafe { netc::dup(self.fd) }).map(Self::new)
     }
 }
 
