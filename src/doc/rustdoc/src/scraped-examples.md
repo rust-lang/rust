@@ -1,6 +1,6 @@
 # Scraped examples
 
-Rustdoc can automatically scrape examples of items being documented from the `examples/` directory of a Cargo workspace. These examples will be included within the generated documentation for that item. For example, if your library contains a public function:
+Rustdoc has an unstable feature where it can automatically scrape examples of items being documented from the `examples/` directory of a Cargo workspace. These examples will be included within the generated documentation for that item. For example, if your library contains a public function:
 
 ```rust,ignore (needs-other-file)
 // a_crate/src/lib.rs
