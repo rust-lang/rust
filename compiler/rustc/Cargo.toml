@@ -15,11 +15,7 @@ version = '0.4.0'
 optional = true
 features = ['unprefixed_malloc_on_supported_platforms']
 
-[dependencies.tikv-jemallocator]
-version = '0.4.0'
-optional = true
-
 [features]
-jemalloc = ['tikv-jemalloc-sys', 'tikv-jemallocator']
+jemalloc = ['tikv-jemalloc-sys']
 llvm = ['rustc_driver/llvm']
 max_level_info = ['rustc_driver/max_level_info']
