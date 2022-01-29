@@ -472,6 +472,7 @@ E0768: include_str!("./error_codes/E0768.md"),
 E0769: include_str!("./error_codes/E0769.md"),
 E0770: include_str!("./error_codes/E0770.md"),
 E0771: include_str!("./error_codes/E0771.md"),
+E0772: include_str!("./error_codes/E0772.md"),
 E0773: include_str!("./error_codes/E0773.md"),
 E0774: include_str!("./error_codes/E0774.md"),
 E0775: include_str!("./error_codes/E0775.md"),
@@ -642,5 +643,4 @@ E0787: include_str!("./error_codes/E0787.md"),
 //  E0723, // unstable feature in `const` context
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
 }
