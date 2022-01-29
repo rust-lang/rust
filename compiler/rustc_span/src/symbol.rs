@@ -4,7 +4,9 @@
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableEq, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};

@@ -240,7 +240,7 @@ macro_rules! impl_hash_stable_eq_via_eq {
                 self == other
             }
         }
-    }
+    };
 }
 
 impl_stable_hash_via_hash!(i8);
@@ -325,11 +325,11 @@ impl<T1: HashStableEq, T2: HashStableEq> HashStableEq for (T1, T2) {
 
 impl<T1: HashStableEq, T2: HashStableEq, T3: HashStableEq> HashStableEq for (T1, T2, T3) {
     fn hash_stable_eq(&self, other: &Self) -> bool {
-        self.0.hash_stable_eq(&other.0) && self.1.hash_stable_eq(&other.1)
+        self.0.hash_stable_eq(&other.0)
+            && self.1.hash_stable_eq(&other.1)
             && self.2.hash_stable_eq(&other.2)
     }
 }
-
 
 impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
@@ -396,7 +396,6 @@ impl<T: HashStableEq, const N: usize> HashStableEq for [T; N] {
     }
 }
 
-
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for [T] {
     default fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.len().hash_stable(ctx, hasher);
@@ -436,16 +435,16 @@ impl<T: HashStableEq> HashStableEq for Vec<T> {
     }
 }
 
-impl<K: HashStableEq + Eq + Hash, V: HashStableEq, R: BuildHasher> HashStableEq for indexmap::IndexMap<K, V, R> {
+impl<K: HashStableEq + Eq + Hash, V: HashStableEq, R: BuildHasher> HashStableEq
+    for indexmap::IndexMap<K, V, R>
+{
     fn hash_stable_eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
             return false;
         }
         // Equal maps will have equal iteration orders
         // FIXME -is that actually right?
-        self.iter().zip(other.iter()).all(|(first, second)| {
-            first.hash_stable_eq(&second)
-        })
+        self.iter().zip(other.iter()).all(|(first, second)| first.hash_stable_eq(&second))
     }
 }
 
@@ -494,7 +493,10 @@ where
     }
 }
 
-impl<A: smallvec::Array> HashStableEq for SmallVec<A> where <A as smallvec::Array>::Item: HashStableEq {
+impl<A: smallvec::Array> HashStableEq for SmallVec<A>
+where
+    <A as smallvec::Array>::Item: HashStableEq,
+{
     fn hash_stable_eq(&self, other: &Self) -> bool {
         (&self[..]).hash_stable_eq(other)
     }
@@ -587,7 +589,7 @@ impl<T: HashStableEq> HashStableEq for Option<T> {
         match (self, other) {
             (Some(first), Some(second)) => first.hash_stable_eq(second),
             (None, None) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -597,7 +599,7 @@ impl<T: HashStableEq, E: HashStableEq> HashStableEq for Result<T, E> {
         match (self, other) {
             (Ok(first), Ok(second)) => first.hash_stable_eq(second),
             (Err(first), Err(second)) => first.hash_stable_eq(second),
-            _ => false
+            _ => false,
         }
     }
 }

@@ -1,12 +1,12 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::HashStableKey;
 use crate::query::plumbing::{QueryCacheStore, QueryLookup};
+use crate::query::HashStableKey;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::Sharded;
-use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::stable_hasher::HashStableEq;
+use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -102,7 +102,8 @@ where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
         let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
+        let result =
+            lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
@@ -186,7 +187,8 @@ where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
         let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
+        let result =
+            lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, HashStableKey::from_ref(key));
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);

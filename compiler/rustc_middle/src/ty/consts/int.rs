@@ -1,8 +1,8 @@
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_data_structures::stable_hasher::HashStableEq;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
-use rustc_data_structures::stable_hasher::HashStableEq;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 

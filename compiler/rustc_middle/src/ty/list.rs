@@ -1,6 +1,6 @@
 use crate::arena::Arena;
-use rustc_serialize::{Encodable, Encoder};
 use rustc_data_structures::stable_hasher::HashStableEq;
+use rustc_serialize::{Encodable, Encoder};
 use std::alloc::Layout;
 use std::cmp::Ordering;
 use std::fmt;

@@ -1,4 +1,6 @@
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableEq, StableHasher, ToStableHashKey,
+};
 
 use crate::hir::{
     AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,

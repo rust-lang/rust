@@ -81,7 +81,6 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
         }
     });
 
-
     let discriminant = match s.ast().data {
         syn::Data::Enum(_) => quote! {
             ::std::mem::discriminant(self).hash_stable(__hcx, __hasher);
@@ -118,37 +117,45 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
 
 pub fn hash_stable_eq_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let mut other = s.clone();
-    other.binding_name(|_bi, i| Ident::new(&format!("__binding_other_{}", i), proc_macro2::Span::call_site()));
+    other.binding_name(|_bi, i| {
+        Ident::new(&format!("__binding_other_{}", i), proc_macro2::Span::call_site())
+    });
 
-    let eq_body: proc_macro2::TokenStream = s.variants().iter().zip(other.variants()).map(|(variant1, variant2)| {
+    let eq_body: proc_macro2::TokenStream = s
+        .variants()
+        .iter()
+        .zip(other.variants())
+        .map(|(variant1, variant2)| {
+            let first_pat = variant1.pat();
+            let second_pat = variant2.pat();
 
-        let first_pat = variant1.pat();
-        let second_pat = variant2.pat();
-
-        let compare = std::iter::once(quote! { true }).chain(variant1.bindings().iter().zip(variant2.bindings()).map(|(binding1, binding2)| {
-            let attrs = parse_attributes(binding1.ast());
-            if attrs.ignore {
-                quote! { true }
-            } else if let Some(project) = attrs.project {
-                quote! {
-                    ::rustc_data_structures::stable_hasher::HashStableEq::hash_stable_eq(
-                        #binding1.#project, #binding2.#project
-                    )
-                }
-            } else {
-                quote! {
-                    ::rustc_data_structures::stable_hasher::HashStableEq::hash_stable_eq(
-                        #binding1, #binding2
-                    )
+            let compare = std::iter::once(quote! { true }).chain(
+                variant1.bindings().iter().zip(variant2.bindings()).map(|(binding1, binding2)| {
+                    let attrs = parse_attributes(binding1.ast());
+                    if attrs.ignore {
+                        quote! { true }
+                    } else if let Some(project) = attrs.project {
+                        quote! {
+                            ::rustc_data_structures::stable_hasher::HashStableEq::hash_stable_eq(
+                                #binding1.#project, #binding2.#project
+                            )
+                        }
+                    } else {
+                        quote! {
+                            ::rustc_data_structures::stable_hasher::HashStableEq::hash_stable_eq(
+                                #binding1, #binding2
+                            )
+                        }
+                    }
+                }),
+            );
+            quote! {
+                (#first_pat, #second_pat) => {
+                    #(#compare)&&*
                 }
             }
-        }));
-        quote! {
-            (#first_pat, #second_pat) => {
-                #(#compare)&&*
-            }
-        }
-    }).collect();
+        })
+        .collect();
 
     s.add_bounds(synstructure::AddBounds::Generics);
     s.bound_impl(
@@ -160,8 +167,8 @@ pub fn hash_stable_eq_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
                     _ => false
                 }
             }
-        }
-    )    
+        },
+    )
 }
 
 pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {

@@ -1556,7 +1556,19 @@ pub enum RegionKind {
     ReErased,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, PartialOrd, Ord, HashStableEq)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    Debug,
+    PartialOrd,
+    Ord,
+    HashStableEq
+)]
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,

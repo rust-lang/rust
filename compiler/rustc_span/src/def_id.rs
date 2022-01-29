@@ -1,6 +1,8 @@
 use crate::HashStableContext;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey, HashStableEq};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableEq, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::AtomicRef;
 use rustc_index::vec::Idx;
 use rustc_macros::HashStable_Generic;

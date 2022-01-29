@@ -3013,8 +3013,8 @@ impl ForeignItemId {
 /// type or method, and whether it is public). This allows other
 /// passes to find the impl they want without loading the ID (which
 /// means fewer edges in the incremental compilation graph).
-#[derive(Debug, HashStable_Generic)
-]#[stable_hasher(no_hash_stable_eq)]
+#[derive(Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct ForeignItemRef {
     pub id: ForeignItemId,
     pub ident: Ident,

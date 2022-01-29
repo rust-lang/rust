@@ -12,9 +12,9 @@ use rustc_data_structures::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
+use rustc_data_structures::stable_hasher::HashStableEq;
 use rustc_data_structures::sync::{Lock, LockGuard};
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::stable_hasher::HashStableEq;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_session::Session;
 use rustc_span::{Span, DUMMY_SP};
