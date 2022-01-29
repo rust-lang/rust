@@ -168,6 +168,7 @@ fi
 #   do_make "$RUST_CHECK_TARGET"
 # fi
 
-sh -x -c "catchsegv $SCRIPT"
+catchsegv python2.7 ../x.py --stage 2 test src/test/mir-opt \
+    --host='' --target=i686-unknown-linux-gnu
 
 sccache --show-stats || true
