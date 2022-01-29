@@ -1973,7 +1973,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
         if self.is_tainted_by_errors()
             && crate_names.len() == 1
-            && crate_names[0] == "`core`"
+            && ["`core`", "`alloc`", "`std`"].contains(&crate_names[0].as_str())
             && spans.len() == 0
         {
             // Avoid complaining about other inference issues for expressions like
