@@ -739,7 +739,8 @@ impl<'tcx> OwnerNodes<'tcx> {
 }
 
 /// Full information resulting from lowering an AST node.
-#[derive(Debug)]
+#[derive(Debug, HashStable_Generic)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,

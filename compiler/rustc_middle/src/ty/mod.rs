@@ -28,9 +28,9 @@ use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::util::Discr;
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -444,7 +444,31 @@ static BOOL_TYS: TyS<'static> = TyS {
     outer_exclusive_binder: DebruijnIndex::from_usize(0),
 };
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
+impl<'tcx> PartialEq for TyS<'tcx> {
+    #[inline]
+    fn eq(&self, other: &TyS<'tcx>) -> bool {
+        // Pointer equality implies equality (due to the unique contents
+        // assumption).
+        ptr::eq(self, other)
+    }
+}
+impl<'tcx> Eq for TyS<'tcx> {}
+
+impl<'tcx> HashStableEq for TyS<'tcx> {
+    fn hash_stable_eq(&self, other: Self) -> bool {
+        self == other
+    }
+}
+
+impl<'tcx> Hash for TyS<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        // Pointer hashing is sufficient (due to the unique contents
+        // assumption).
+        (self as *const TyS<'_>).hash(s)
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TyS {
             ref kind,
