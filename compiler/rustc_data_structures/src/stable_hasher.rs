@@ -449,7 +449,7 @@ impl<K: HashStableEq + Eq + Hash, V: HashStableEq, R: BuildHasher> HashStableEq
 }
 
 impl<T> HashStableEq for std::marker::PhantomData<T> {
-    fn hash_stable_eq(&self, other: &Self) -> bool {
+    fn hash_stable_eq(&self, _other: &Self) -> bool {
         true
     }
 }
