@@ -1173,9 +1173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ImplCandidate(def_id)
                         if tcx.impl_constness(def_id) == hir::Constness::Const => {}
                     // const param
-                    ParamCandidate(trait_pred)
-                        if trait_pred.skip_binder().constness
-                            == ty::BoundConstness::ConstIfConst => {}
+                    ParamCandidate(trait_pred) if trait_pred.is_const_if_const() => {}
                     // auto trait impl
                     AutoImplCandidate(..) => {}
                     // generator, this will raise error in other places

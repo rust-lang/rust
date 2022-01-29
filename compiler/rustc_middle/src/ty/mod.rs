@@ -784,6 +784,11 @@ impl<'tcx> TraitPredicate<'tcx> {
     pub fn self_ty(self) -> Ty<'tcx> {
         self.trait_ref.self_ty()
     }
+
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.constness == BoundConstness::ConstIfConst
+    }
 }
 
 impl<'tcx> PolyTraitPredicate<'tcx> {
@@ -802,6 +807,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
             p.remap_constness_diag(param_env);
             p
         });
+    }
+
+    #[inline]
+    pub fn is_const_if_const(self) -> bool {
+        self.skip_binder().is_const_if_const()
     }
 }
 
@@ -1388,6 +1398,11 @@ impl<'tcx> ParamEnv<'tcx> {
         self.packed.tag().constness
     }
 
+    #[inline]
+    pub fn is_const(self) -> bool {
+        self.packed.tag().constness == hir::Constness::Const
+    }
+
     /// Construct a trait environment with no where-clauses in scope
     /// where the values of all `impl Trait` and other hidden types
     /// are revealed. This is suitable for monomorphized, post-typeck
@@ -1503,6 +1518,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         })
     }
+
     #[inline]
     pub fn without_const(self) -> PolyTraitPredicate<'tcx> {
         self.with_constness(BoundConstness::NotConst)

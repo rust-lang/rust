@@ -28,6 +28,11 @@ LL |         const _: () = check($exp);
 LL |     ConstImplWithDropGlue(NonTrivialDrop),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ within `ConstImplWithDropGlue`, the trait `~const Drop` is not implemented for `NonTrivialDrop`
    |
+note: the trait `Drop` is implemented for `NonTrivialDrop`, but that implementation is not `const`
+  --> $DIR/const-drop-fail.rs:46:5
+   |
+LL |     ConstImplWithDropGlue(NonTrivialDrop),
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required because it appears within the type `ConstImplWithDropGlue`
   --> $DIR/const-drop-fail.rs:17:8
    |
