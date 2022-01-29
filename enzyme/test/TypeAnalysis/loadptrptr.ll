@@ -22,7 +22,7 @@ entry:
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: caller - {} |{}:{}
+; CHECK: caller - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %q: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Integer, [-1,0,1]:Integer, [-1,0,2]:Integer, [-1,0,3]:Integer, [-1,0,4]:Integer, [-1,0,5]:Integer, [-1,0,6]:Integer, [-1,0,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %p = bitcast i64* %q to i64**: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Integer, [-1,0,1]:Integer, [-1,0,2]:Integer, [-1,0,3]:Integer, [-1,0,4]:Integer, [-1,0,5]:Integer, [-1,0,6]:Integer, [-1,0,7]:Integer}

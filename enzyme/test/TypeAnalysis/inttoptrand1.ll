@@ -13,7 +13,7 @@ entry:
 }
 
 
-; CHECK: matvec - {} |{}:{} {[-1,-1]:Float@double}:{} 
+; CHECK: matvec - {} |{[-1]:Pointer}:{} {[-1]:Pointer, [-1,-1]:Float@double}:{} 
 ; CHECK-NEXT: i64* %lhs: {[-1]:Pointer, [-1,0]:Pointer}
 ; CHECK-NEXT: double* %res: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT: entry

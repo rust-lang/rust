@@ -50,7 +50,7 @@ attributes #4 = { nounwind }
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: mv - {} |{}:{} {}:{}
+; CHECK: mv - {} |{[-1]:Pointer}:{} {[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %m_dims: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: i64* %out: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: entry
@@ -58,7 +58,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 %call4, i64* %out{{(, align 4)?}}: {}
 ; CHECK-NEXT:   ret void: {}
 
-; CHECK: sub - {} |{}:{}
+; CHECK: sub - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %this: {[-1]:Pointer, [-1,0]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %agg = load i64, i64* %this{{(, align 4)?}}: {[-1]:Float@double}

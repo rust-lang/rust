@@ -78,7 +78,7 @@ attributes #6 = { nounwind }
 !6 = !{!7, !7, i64 0}
 !7 = !{!"int", !4, i64 0}
 
-; CHECK: compute_loops - {} |{[-1]:Float@double}:{} {}:{} 
+; CHECK: compute_loops - {} |{[-1]:Float@double}:{} {[-1]:Pointer}:{} 
 ; CHECK-NEXT: double %x: {[-1]:Float@double}
 ; CHECK-NEXT: i8* %out: {[-1]:Pointer, [-1,32]:Float@double}
 ; CHECK-NEXT: entry

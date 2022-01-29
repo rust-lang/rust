@@ -23,8 +23,8 @@ intB:
 !9 = !{!"int", !5, i64 0}
 !10 = !{!9, !9, i64 0}
 
-; CHECK: matvec - {} |{}:{} {[-1]:Integer}:{}
-; CHECK-NEXT: i8* %ptr: {}
+; CHECK: matvec - {} |{[-1]:Pointer}:{} {[-1]:Integer}:{}
+; CHECK-NEXT: i8* %ptr: {[-1]:Pointer}
 ; CHECK-NEXT: i1 %cmp: {[-1]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br i1 %cmp, label %doubleB, label %intB: {}

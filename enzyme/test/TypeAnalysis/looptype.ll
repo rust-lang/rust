@@ -30,7 +30,7 @@ for.body:                                         ; preds = %for.body, %entry
 !7 = !{!"long", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: callee - {} |{}:{} {}:{} {}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} {[-1]:Pointer}:{} {[-1]:Pointer}:{} 
 ; CHECK-NEXT: i64* %call: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: i64* %call3: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: i64* %call6: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}

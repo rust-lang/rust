@@ -31,7 +31,7 @@ for.end.i.i:                                      ; preds = %for.body.i.i
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: inp - {} |{}:{} 
+; CHECK: inp - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i64* %arrayidx: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for.body.i.i: {}

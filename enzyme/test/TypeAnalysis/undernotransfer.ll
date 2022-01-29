@@ -19,7 +19,7 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 
 
-; CHECK: caller - {} |{}:{} 
+; CHECK: caller - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i8* %p: {[-1]:Pointer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   store i8 undef, i8* %p, align 1: {}

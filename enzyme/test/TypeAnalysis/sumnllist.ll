@@ -45,7 +45,7 @@ attributes #4 = { nounwind }
 
 ; TODO nicely present recursive structure
 
-; CHECK: sum_list - {} |{}:{}
+; CHECK: sum_list - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: %struct.n* %node: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Pointer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   br label %for: {}

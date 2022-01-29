@@ -91,7 +91,7 @@ start:
 !1568 = !DILocalVariable(name: "t", arg: 1, scope: !1562, file: !1563, line: 1, type: !460)
 !1569 = !DILocation(line: 1, column: 11, scope: !1562)
 
-; CHECK: callee - {} |{}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i8* %arg: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Float@float, [-1,8]:Integer, [-1,16]:Integer}
 ; CHECK-NEXT: start
 ; CHECK-NEXT:   %t = bitcast i8* %arg to %"std::vec::Vec<f32>"*: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Float@float, [-1,8]:Integer, [-1,16]:Integer}

@@ -13,7 +13,7 @@ entry:
 }
 
 
-; CHECK: caller - {} |{[-1,-1]:Float@double}:{} 
+; CHECK: caller - {} |{[-1]:Pointer, [-1,-1]:Float@double}:{} 
 ; CHECK-NEXT: double* %p: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %int = ptrtoint double* %p to i64: {[-1]:Pointer, [-1,-1]:Float@double}

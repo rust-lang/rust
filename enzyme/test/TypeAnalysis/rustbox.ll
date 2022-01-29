@@ -62,7 +62,7 @@ start:
 !990 = !DILocalVariable(name: "t", arg: 1, scope: !984, file: !985, line: 1, type: !419)
 !991 = !DILocation(line: 1, column: 11, scope: !984)
 
-; CHECK: callee - {} |{}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i8* %arg: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Float@float}
 ; CHECK-NEXT: start
 ; CHECK-NEXT:   %t = bitcast i8* %arg to float**: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,-1]:Float@float}

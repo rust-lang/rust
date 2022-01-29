@@ -10,7 +10,7 @@ entry:
   ret void
 }
 
-; CHECK: caller - {} |{[-1,-1]:Float@double}:{} 
+; CHECK: caller - {} |{[-1]:Pointer, [-1,-1]:Float@double}:{} 
 ; CHECK-NEXT: double* %inp: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %ptr = bitcast double* %inp to i8*: {[-1]:Pointer, [-1,-1]:Float@double}

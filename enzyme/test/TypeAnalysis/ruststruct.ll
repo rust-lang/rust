@@ -65,7 +65,7 @@ start:
 !383 = !DILocalVariable(name: "t", arg: 1, scope: !373, file: !374, line: 6, type: !378)
 !384 = !DILocation(line: 6, column: 11, scope: !373)
 
-; CHECK: callee - {} |{}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i8* %t: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float}
 ; CHECK-NEXT: start
 ; CHECK-NEXT:   %t.dbg.spill = bitcast i8* %t to { float, float }*: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float}

@@ -11,7 +11,7 @@ entry:
   ret void
 }
 
-; CHECK: callee - {} |{}:{}
+; CHECK: callee - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %ptr: {[-1]:Pointer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %load1 = load i64, i64* %ptr, align 8: {}

@@ -15,7 +15,7 @@ entry:
   ret void
 }
 
-; LCHECK: tload - {} |{}:{} 
+; LCHECK: tload - {} |{[-1]:Pointer}:{} 
 ; LCHECK-NEXT: i8 addrspace(1)* %in: {[-1]:Pointer, [-1,0]:Float@half}
 ; LCHECK-NEXT: entry
 ; LCHECK-NEXT:   %res = call { <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half>, <2 x half> } @llvm.nvvm.wmma.m16n16k16.load.a.col.stride.f16.p1i8(i8 addrspace(1)* %in, i32 16): {[-1]:Float@half}
@@ -45,7 +45,7 @@ entry:
   ret void
 }
 
-; SCHECK: tstore - {} |{}:{} {}:{} 
+; SCHECK: tstore - {} |{[-1]:Pointer}:{} {[-1]:Pointer}:{} 
 ; SCHECK-NEXT: i8 addrspace(1)* %out: {[-1]:Pointer, [-1,0]:Float@float}
 ; SCHECK-NEXT: i8* %in: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float, [-1,12]:Float@float, [-1,16]:Float@float, [-1,20]:Float@float, [-1,24]:Float@float, [-1,28]:Float@float}
 ; SCHECK-NEXT: entry
@@ -127,8 +127,8 @@ entry:
   ret void
 }
 
-; MCHECK: tmm - {} |{}:{} {}:{} {}:{} {}:{} 
-; MCHECK-NEXT: i8 addrspace(1)* %out: {}
+; MCHECK: tmm - {} |{[-1]:Pointer}:{} {[-1]:Pointer}:{} {[-1]:Pointer}:{} {[-1]:Pointer}:{} 
+; MCHECK-NEXT: i8 addrspace(1)* %out: {[-1]:Pointer}
 ; MCHECK-NEXT: i8* %in: {[-1]:Pointer, [-1,0]:Float@float, [-1,4]:Float@float, [-1,8]:Float@float, [-1,12]:Float@float, [-1,16]:Float@float, [-1,20]:Float@float, [-1,24]:Float@float, [-1,28]:Float@float}
 ; MCHECK-NEXT: i8* %ain: {[-1]:Pointer, [-1,0]:Float@half, [-1,2]:Float@half, [-1,4]:Float@half, [-1,6]:Float@half, [-1,8]:Float@half, [-1,10]:Float@half, [-1,12]:Float@half, [-1,14]:Float@half, [-1,16]:Float@half, [-1,18]:Float@half, [-1,20]:Float@half, [-1,22]:Float@half, [-1,24]:Float@half, [-1,26]:Float@half, [-1,28]:Float@half, [-1,30]:Float@half}
 ; MCHECK-NEXT: i8* %bin: {[-1]:Pointer, [-1,0]:Float@half, [-1,2]:Float@half, [-1,4]:Float@half, [-1,6]:Float@half, [-1,8]:Float@half, [-1,10]:Float@half, [-1,12]:Float@half, [-1,14]:Float@half, [-1,16]:Float@half, [-1,18]:Float@half, [-1,20]:Float@half, [-1,22]:Float@half, [-1,24]:Float@half, [-1,26]:Float@half, [-1,28]:Float@half, [-1,30]:Float@half}

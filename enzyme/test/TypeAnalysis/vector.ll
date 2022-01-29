@@ -152,7 +152,7 @@ attributes #5 = { nounwind }
 !9 = !{!"llvm.loop.unroll.runtime.disable"}
 
 
-; CHECK: reduce_max - {} |{[-1,-1]:Float@double}:{} {[-1]:Integer}:{} 
+; CHECK: reduce_max - {} |{[-1]:Pointer, [-1,-1]:Float@double}:{} {[-1]:Integer}:{} 
 ; CHECK-NEXT: double* %vec: {[-1]:Pointer, [-1,-1]:Float@double}
 ; CHECK-NEXT: i32 %size: {[-1]:Integer}
 ; CHECK-NEXT: entry

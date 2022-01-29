@@ -5,7 +5,7 @@ target triple = "x86_64-unknown-linux-gnu"
 
 declare void @f(i64 %x)
 
-define void @caller(i64* %p) {
+define void @caller() {
 entry:
   %agg.tmp.sroa.2.0.insert.ext = zext i48 undef to i64 
   %agg.tmp.sroa.2.0.insert.mask = and i64 undef, 65535 
@@ -32,8 +32,7 @@ entry:
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: caller - {} |{}:{} 
-; CHECK-NEXT: i64* %p: {}
+; CHECK: caller - {} |
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %agg.tmp.sroa.2.0.insert.ext = zext i48 undef to i64: {[-1]:Anything}
 ; CHECK-NEXT:   %agg.tmp.sroa.2.0.insert.mask = and i64 undef, 65535: {[-1]:Anything}

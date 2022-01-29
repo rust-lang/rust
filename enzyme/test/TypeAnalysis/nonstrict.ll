@@ -24,11 +24,11 @@ intB:
 !9 = !{!"int", !5, i64 0}
 !10 = !{!9, !9, i64 0}
 
-; CHECK: matvec - {} |{}:{} {[-1]:Integer}:{}
-; CHECK-NEXT: i32* %mptr: {}
+; CHECK: matvec - {} |{[-1]:Pointer}:{} {[-1]:Integer}:{}
+; CHECK-NEXT: i32* %mptr: {[-1]:Pointer}
 ; CHECK-NEXT: i1 %cmp: {[-1]:Integer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %ptr = bitcast i32* %mptr to i8*: {}
+; CHECK-NEXT:   %ptr = bitcast i32* %mptr to i8*: {[-1]:Pointer}
 ; CHECK-NEXT:   br i1 %cmp, label %doubleB, label %intB: {}
 ; CHECK-NEXT: doubleB
 ; CHECK-NEXT:   %dptr = bitcast i8* %ptr to double*: {[-1]:Pointer, [-1,0]:Float@double}

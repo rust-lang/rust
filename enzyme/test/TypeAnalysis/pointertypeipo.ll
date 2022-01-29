@@ -50,13 +50,13 @@ attributes #4 = { nounwind }
 !5 = !{!"Simple C++ TBAA"}
 
 
-; CHECK: mv - {} |{}:{}
+; CHECK: mv - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %m_dims: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %call4 = call i64 @sub(i64* nonnull %m_dims): {[-1]:Integer}
 ; CHECK-NEXT:   ret void: {}
 
-; CHECK: sub - {} |{}:{}
+; CHECK: sub - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %this: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %agg = load i64, i64* %this{{(, align 4)?}}: {[-1]:Integer}

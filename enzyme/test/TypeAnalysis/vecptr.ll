@@ -15,7 +15,7 @@ entry:
 !7 = !{!"double", !5, i64 0}
 !8 = !{!7, !7, i64 0}
 
-; CHECK: callee - {} |{}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: <2 x i64>* %argp: {[-1]:Pointer, [-1,0]:Pointer, [-1,0,0]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %arg = load <2 x i64>, <2 x i64>* %argp, align 16: {[0]:Pointer, [0,0]:Float@double}

@@ -17,7 +17,7 @@ define void @f(i64* %inp) {
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-; CHECK: f - {} |{}:{} 
+; CHECK: f - {} |{[-1]:Pointer}:{} 
 ; CHECK: i64* %inp: {[-1]:Pointer, [-1,0]:Float@double}
 
 ; CHECK:   %x = load i64, i64* %inp, align 8, !tbaa !0: {[-1]:Float@double}

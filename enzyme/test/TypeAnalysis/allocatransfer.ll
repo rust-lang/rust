@@ -19,7 +19,7 @@ entry:
 !8 = !{!7, !7, i64 0}
 
 
-; CHECK: callee - {} |{}:{} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i64* %ptr: {[-1]:Pointer, [-1,16]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %i = alloca i64, align 4: {[-1]:Pointer, [-1,-1]:Integer}

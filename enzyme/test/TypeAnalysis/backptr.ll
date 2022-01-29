@@ -21,10 +21,10 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 
 
-; CHECK: caller - {} |{}:{} 
-; CHECK-NEXT: i64* %p: {}
+; CHECK: caller - {} |{[-1]:Pointer}:{} 
+; CHECK-NEXT: i64* %p: {[-1]:Pointer}
 ; CHECK-NEXT: entry
-; CHECK-NEXT:   %z = bitcast i64* %p to double*: {}
-; CHECK-NEXT:   %int = ptrtoint double* %z to i64: {}
+; CHECK-NEXT:   %z = bitcast i64* %p to double*: {[-1]:Pointer}
+; CHECK-NEXT:   %int = ptrtoint double* %z to i64: {[-1]:Pointer}
 ; CHECK-NEXT:   %cmp = icmp eq i64 %int, %int: {[-1]:Integer}
 ; CHECK-NEXT:   ret void: {}

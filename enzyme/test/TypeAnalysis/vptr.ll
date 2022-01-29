@@ -2,7 +2,7 @@
 
 declare void @f(i64 %x)
 
-define void @caller(i64* %p) {
+define void @caller() {
 entry:
   %.fca.0.insert = insertvalue { i64, i64 } undef, i64 ptrtoint (void (i64)* @f to i64), 0
   %.fca.1.insert = insertvalue { i64, i64 } %.fca.0.insert, i64 0, 1
@@ -12,8 +12,7 @@ entry:
   ret void
 }
 
-; CHECK: caller - {} |{}:{} 
-; CHECK-NEXT: i64* %p: {}
+; CHECK: caller - {} |
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %.fca.0.insert = insertvalue { i64, i64 } undef, i64 ptrtoint (void (i64)* @f to i64), 0: {[0]:Pointer, [8]:Anything, [9]:Anything, [10]:Anything, [11]:Anything, [12]:Anything, [13]:Anything, [14]:Anything, [15]:Anything}
 ; CHECK-NEXT:   %.fca.1.insert = insertvalue { i64, i64 } %.fca.0.insert, i64 0, 1: {[0]:Pointer, [8]:Anything, [9]:Anything, [10]:Anything, [11]:Anything, [12]:Anything, [13]:Anything, [14]:Anything, [15]:Anything}

@@ -30,7 +30,7 @@ for.cond.cleanup:                                 ; preds = %for.body
 !4 = !{!5, i64 1, !"omnipotent char"}
 !5 = !{!"Simple C++ TBAA"}
 
-;CHECK:  caller - {} |{}:{} {[-1]:Integer}:{} 
+;CHECK:  caller - {} |{[-1]:Pointer}:{} {[-1]:Integer}:{} 
 ;CHECK-NEXT:  i64* %p: {[-1]:Pointer, [-1,0]:Float@double}
 ;CHECK-NEXT:  i64 %n: {[-1]:Integer}
 ;CHECK-NEXT:  entry

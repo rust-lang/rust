@@ -14,7 +14,7 @@ entry:
   ret void
 }
 
-; CHECK: caller - {} |{}:{} 
+; CHECK: caller - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i32* %l1: {[-1]:Pointer, [-1,0]:Integer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %inp = load i32, i32* %l1, align 4: {[-1]:Integer}

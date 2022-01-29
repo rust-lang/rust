@@ -19,7 +19,7 @@ good:
 }
 
 
-; CHECK: matvec - {} |{}:{} {}:{} 
+; CHECK: matvec - {} |{[-1]:Pointer}:{} {[-1]:Pointer}:{} 
 ; CHECK-NEXT: i64* %a: {[-1]:Pointer}
 ; CHECK-NEXT: i64* %b: {[-1]:Pointer}
 ; CHECK-NEXT: entry

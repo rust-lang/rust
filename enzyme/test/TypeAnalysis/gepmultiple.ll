@@ -93,7 +93,7 @@ if.end41:                                         ; preds = %if.then38, %if.end3
 !5 = !{!6, !6, i64 0}
 !6 = !{!"int", !3, i64 0}
 
-; CHECK: callee - {} |{}:{}
+; CHECK: callee - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i8* %data: {[-1]:Pointer, [-1,1]:Integer, [-1,2]:Integer, [-1,3]:Integer, [-1,4]:Integer, [-1,5]:Integer, [-1,6]:Integer, [-1,7]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %call = tail call i1 @cmp(): {[-1]:Integer}

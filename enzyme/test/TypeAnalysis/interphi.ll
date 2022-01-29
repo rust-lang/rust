@@ -30,8 +30,8 @@ for.cond.cleanup:                                 ; preds = %for.body
 ; CHECK-NEXT:   %res = load i64, i64* %all, align 8: {}
 ; CHECK-NEXT:   ret i64 %res: {}
 
-; CHECK: caller - {} |{}:{} 
-; CHECK-NEXT: i64* %p: {}
+; CHECK: caller - {} |{[-1]:Pointer}:{} 
+; CHECK-NEXT: i64* %p: {[-1]:Pointer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %sub = call i64 @f(): {}
 ; CHECK-NEXT:   br label %for.body: {}

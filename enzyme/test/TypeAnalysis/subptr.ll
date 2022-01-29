@@ -23,7 +23,7 @@ entry:
 !5 = !{!"Simple C++ TBAA"}
 
 
-; CHECK: caller - {} |{}:{} 
+; CHECK: caller - {} |{[-1]:Pointer}:{} 
 ; CHECK-NEXT: i8* %p: {[-1]:Pointer, [-1,0]:Integer}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %ld = load i8, i8* %p, align 4: {[-1]:Integer}

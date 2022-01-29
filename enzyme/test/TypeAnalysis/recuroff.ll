@@ -24,7 +24,7 @@ entry:
 !8 = !{!7, !7, i64 0}
 
 
-; CHECK: callee - {} |{}:{} {[-1]:Integer}:{23,} 
+; CHECK: callee - {} |{[-1]:Pointer}:{} {[-1]:Integer}:{23,} 
 ; CHECK-NEXT: i64* %x: {[-1]:Pointer, [-1,184]:Float@double, [-1,192]:Float@double, [-1,200]:Float@double, [-1,208]:Float@double, [-1,216]:Float@double, [-1,224]:Float@double, [-1,232]:Float@double, [-1,240]:Float@double, [-1,248]:Float@double, [-1,256]:Float@double, [-1,264]:Float@double, [-1,272]:Float@double, [-1,280]:Float@double, [-1,288]:Float@double, [-1,296]:Float@double, [-1,304]:Float@double, [-1,312]:Float@double, [-1,320]:Float@double, [-1,328]:Float@double, [-1,336]:Float@double, [-1,344]:Float@double, [-1,352]:Float@double, [-1,360]:Float@double, [-1,368]:Float@double, [-1,376]:Float@double, [-1,384]:Float@double, [-1,392]:Float@double, [-1,400]:Float@double, [-1,408]:Float@double, [-1,416]:Float@double, [-1,424]:Float@double, [-1,432]:Float@double, [-1,440]:Float@double, [-1,448]:Float@double, [-1,456]:Float@double, [-1,464]:Float@double, [-1,472]:Float@double, [-1,480]:Float@double, [-1,488]:Float@double, [-1,496]:Float@double}
 ; CHECK-NEXT: i64 %off: {[-1]:Integer}
 ; CHECK-NEXT: entry

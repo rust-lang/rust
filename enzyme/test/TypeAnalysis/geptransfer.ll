@@ -22,7 +22,7 @@ entry:
 !8 = !{!7, !7, i64 0}
 
 
-; CHECK: callee - {} |{}:{}
+; CHECK: callee - {} |{[-1]:Pointer}:{}
 ; CHECK-NEXT: i64* %ptr: {[-1]:Pointer, [-1,16]:Float@double, [-1,24]:Float@double, [-1,32]:Float@double}
 ; CHECK-NEXT: entry
 ; CHECK-NEXT:   %ptr2 = getelementptr inbounds i64, i64* %ptr, i64 2: {[-1]:Pointer, [-1,0]:Float@double, [-1,8]:Float@double, [-1,16]:Float@double}

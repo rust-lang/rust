@@ -93,6 +93,7 @@ public:
         } else if (et->isPointerTy()) {
           dt = TypeTree(ConcreteType(BaseType::Pointer)).Only(-1);
         }
+        dt.insert({}, BaseType::Pointer);
       } else if (a.getType()->isIntOrIntVectorTy()) {
         dt = ConcreteType(BaseType::Integer);
       }
