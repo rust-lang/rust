@@ -168,9 +168,8 @@ fi
 #   do_make "$RUST_CHECK_TARGET"
 # fi
 
-python2.7 ../x.py --stage 2 test --exclude src/tools/tidy
-
-catchsegv python2.7 ../x.py --stage 2 test src/test/mir-opt \
-    --host='' --target=i686-unknown-linux-gnu
+sh -x -c "python2.7 ../x.py --stage 2 test --exclude src/tools/tidy
+python2.7 ../x.py --stage 2 test src/test/mir-opt \
+    --host='' --target=i686-unknown-linux-gnu"
 
 sccache --show-stats || true
