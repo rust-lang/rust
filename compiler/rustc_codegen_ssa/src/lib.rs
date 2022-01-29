@@ -107,6 +107,7 @@ bitflags::bitflags! {
 }
 
 #[derive(Clone, Debug, Encodable, Decodable, HashStable)]
+#[stable_hasher(no_hash_stable_eq)]
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,

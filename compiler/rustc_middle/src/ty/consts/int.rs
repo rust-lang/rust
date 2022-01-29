@@ -2,6 +2,7 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
+use rustc_data_structures::stable_hasher::HashStableEq;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
@@ -118,7 +119,7 @@ impl std::fmt::Debug for ConstInt {
 /// This is a packed struct in order to allow this type to be optimally embedded in enums
 /// (like Scalar).
 // FIXME - how are these impls correct if HashStable isnt'???
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, HashStableEq)]
+#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(packed)]
 pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.
@@ -137,6 +138,13 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
         // which is UB.
         { self.data }.hash_stable(hcx, hasher);
         self.size.hash_stable(hcx, hasher);
+    }
+}
+
+impl HashStableEq for ScalarInt {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        let other_data = other.data;
+        { self.data }.hash_stable_eq(&other_data) && self.size.hash_stable_eq(&other.size)
     }
 }
 
