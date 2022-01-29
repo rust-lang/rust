@@ -547,6 +547,16 @@ impl<T: HashStableEq> HashStableEq for Option<T> {
     }
 }
 
+impl<T: HashStableEq, E: HashStableEq> HashStableEq for Result<T, E> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Ok(first), Ok(second)) => first.hash_stable_eq(second),
+            (Err(first), Err(second)) => first.hash_stable_eq(second),
+            _ => false
+        }
+    }
+}
+
 impl HashStableEq for bool {
     fn hash_stable_eq(&self, other: &Self) -> bool {
         self == other
