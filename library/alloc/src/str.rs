@@ -104,7 +104,7 @@ where S: crate::string::ToString + Clone {
             Self::to_string
         ).collect::<Vec<String>>();
         
-        slice.join(sep)
+        slice.join(&sep.to_string())
     }
 }
 
