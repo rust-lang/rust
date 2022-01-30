@@ -791,7 +791,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // Thus in the not nicely ordered case we emit the following instead:
         //
         //     match (&$arg0, &$arg1, …) {
-        //         _args => [ArgumentV1::new(_args.$i, …), ArgumentV1::new(_args.$j, …), …]
+        //         args => [ArgumentV1::new(args.$i, …), ArgumentV1::new(args.$j, …), …]
         //     }
         //
         // for the sequence of indices $i, $j, … governed by fmt_arg_index_and_ty.
@@ -804,7 +804,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.expr_addr_of(expansion_span, P(e.take()))
             } else {
                 let def_site = self.ecx.with_def_site_ctxt(span);
-                let args_tuple = self.ecx.expr_ident(def_site, Ident::new(sym::_args, def_site));
+                let args_tuple = self.ecx.expr_ident(def_site, Ident::new(sym::args, def_site));
                 let member = Ident::new(sym::integer(arg_index), def_site);
                 self.ecx.expr(def_site, ast::ExprKind::Field(args_tuple, member))
             };
@@ -828,7 +828,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     .map(|e| self.ecx.expr_addr_of(e.span.with_ctxt(self.macsp.ctxt()), e))
                     .collect();
 
-                let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::_args, self.macsp));
+                let pat = self.ecx.pat_ident(self.macsp, Ident::new(sym::args, self.macsp));
                 let arm = self.ecx.arm(self.macsp, pat, args_array);
                 let head = self.ecx.expr(self.macsp, ast::ExprKind::Tup(heads));
                 self.ecx.expr_match(self.macsp, head, vec![arm])

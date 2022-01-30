@@ -920,6 +920,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
 ///
 /// NOTE: this cannot be a query because more traits could be available when more crates are compiled!
 /// So it is not stable to serialize cross-crate.
+#[instrument(level = "debug", skip(cx))]
 fn trait_impls_for<'a>(
     cx: &mut DocContext<'a>,
     ty: Ty<'a>,

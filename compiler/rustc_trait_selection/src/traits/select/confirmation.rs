@@ -72,9 +72,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // CheckPredicate(&A: Super)
         // CheckPredicate(A: ~const Super) // <- still const env, failure
         // ```
-        if obligation.param_env.constness() == Constness::Const
-            && obligation.predicate.skip_binder().constness == ty::BoundConstness::NotConst
-        {
+        if obligation.param_env.is_const() && !obligation.predicate.is_const_if_const() {
             new_obligation = TraitObligation {
                 cause: obligation.cause.clone(),
                 param_env: obligation.param_env.without_const(),

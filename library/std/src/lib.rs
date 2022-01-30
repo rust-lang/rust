@@ -403,13 +403,6 @@ pub use alloc_crate::string;
 pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
-#[stable(feature = "simd_arch", since = "1.27.0")]
-// The `no_inline`-attribute is required to make the documentation of all
-// targets available.
-// See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
-// more information.
-#[doc(no_inline)] // Note (#82861): required for correct documentation
-pub use core::arch;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -527,6 +520,31 @@ pub mod task {
     pub use alloc::task::*;
 }
 
+#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
+#[stable(feature = "simd_arch", since = "1.27.0")]
+pub mod arch {
+    #[stable(feature = "simd_arch", since = "1.27.0")]
+    // The `no_inline`-attribute is required to make the documentation of all
+    // targets available.
+    // See https://github.com/rust-lang/rust/pull/57808#issuecomment-457390549 for
+    // more information.
+    #[doc(no_inline)] // Note (#82861): required for correct documentation
+    pub use core::arch::*;
+
+    #[stable(feature = "simd_x86", since = "1.27.0")]
+    pub use std_detect::is_x86_feature_detected;
+    #[unstable(feature = "stdsimd", issue = "48556")]
+    pub use std_detect::{
+        is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
+        is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
+        is_riscv_feature_detected,
+    };
+}
+
+// This was stabilized in the crate root so we have to keep it there.
+#[stable(feature = "simd_x86", since = "1.27.0")]
+pub use std_detect::is_x86_feature_detected;
+
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 #[macro_use]
@@ -544,18 +562,6 @@ mod panicking;
 #[path = "../../backtrace/src/lib.rs"]
 #[allow(dead_code, unused_attributes)]
 mod backtrace_rs;
-
-#[stable(feature = "simd_x86", since = "1.27.0")]
-pub use std_detect::is_x86_feature_detected;
-#[doc(hidden)]
-#[unstable(feature = "stdsimd", issue = "48556")]
-pub use std_detect::*;
-#[unstable(feature = "stdsimd", issue = "48556")]
-pub use std_detect::{
-    is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
-    is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
-    is_riscv_feature_detected,
-};
 
 // Re-export macros defined in libcore.
 #[stable(feature = "rust1", since = "1.0.0")]

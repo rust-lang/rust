@@ -20,7 +20,7 @@
         {% endif %}
         {%- match src_href -%}
             {%- when Some with (href) -%}
-                <a class="srclink" href="{{href|safe}}" title="goto source code">source</a> · {# -#}
+                <a class="srclink" href="{{href|safe}}">source</a> · {# -#}
             {%- else -%}
         {%- endmatch -%}
         <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs"> {#- -#}

@@ -305,7 +305,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.unsize_trait() == Some(def_id) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if lang_items.drop_trait() == Some(def_id)
-                && obligation.predicate.skip_binder().constness == ty::BoundConstness::ConstIfConst
+                && obligation.predicate.is_const_if_const()
             {
                 self.assemble_const_drop_candidates(obligation, &mut candidates);
             } else {

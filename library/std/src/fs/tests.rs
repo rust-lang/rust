@@ -1504,3 +1504,19 @@ fn create_dir_long_paths() {
     let path = Path::new("");
     assert_eq!(path.canonicalize().unwrap_err().kind(), crate::io::ErrorKind::NotFound);
 }
+
+/// Ensure ReadDir works on large directories.
+/// Regression test for https://github.com/rust-lang/rust/issues/93384.
+#[test]
+fn read_large_dir() {
+    let tmpdir = tmpdir();
+
+    let count = 32 * 1024;
+    for i in 0..count {
+        check!(fs::File::create(tmpdir.join(&i.to_string())));
+    }
+
+    for entry in fs::read_dir(tmpdir.path()).unwrap() {
+        entry.unwrap();
+    }
+}
