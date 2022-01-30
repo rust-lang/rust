@@ -31,7 +31,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::{sym, symbol::kw};
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
 use std::collections::hash_map::Entry;
 
 declare_clippy_lint! {
@@ -830,12 +830,12 @@ fn report_single_match_single_pattern(
     );
 }
 
-fn check_single_match_opt_like(
-    cx: &LateContext<'_>,
+fn check_single_match_opt_like<'a>(
+    cx: &LateContext<'a>,
     ex: &Expr<'_>,
     arms: &[Arm<'_>],
     expr: &Expr<'_>,
-    ty: Ty<'_>,
+    ty: Ty<'a>,
     els: Option<&Expr<'_>>,
 ) {
     // list of candidate `Enum`s we know will never get any more members
@@ -849,25 +849,120 @@ fn check_single_match_opt_like(
         (&paths::RESULT, "Ok"),
     ];
 
-    let path = match arms[1].pat.kind {
-        PatKind::TupleStruct(ref path, inner, _) => {
-            // Contains any non wildcard patterns (e.g., `Err(err)`)?
-            if !inner.iter().all(is_wild) {
-                return;
-            }
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
-        },
-        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => ident.to_string(),
-        PatKind::Path(ref path) => {
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false))
-        },
-        _ => return,
-    };
+    // We want to suggest to exclude an arm that contains only wildcards or forms the exhaustive
+    // match with the second branch, without enum variants in matches.
+    if !contains_only_wilds(arms[1].pat) && !form_exhaustive_matches(arms[0].pat, arms[1].pat) {
+        return;
+    }
 
-    for &(ty_path, pat_path) in candidates {
-        if path == *pat_path && match_type(cx, ty, ty_path) {
-            report_single_match_single_pattern(cx, ex, arms, expr, els);
+    let mut paths_and_types = Vec::new();
+    if !collect_pat_paths(&mut paths_and_types, cx, arms[1].pat, ty) {
+        return;
+    }
+
+    let in_candidate_enum = |path_info: &(String, &TyS<'_>)| -> bool {
+        let (path, ty) = path_info;
+        for &(ty_path, pat_path) in candidates {
+            if path == pat_path && match_type(cx, ty, ty_path) {
+                return true;
+            }
         }
+        false
+    };
+    if paths_and_types.iter().all(in_candidate_enum) {
+        report_single_match_single_pattern(cx, ex, arms, expr, els);
+    }
+}
+
+/// Collects paths and their types from the given patterns. Returns true if the given pattern could
+/// be simplified, false otherwise.
+fn collect_pat_paths<'a>(acc: &mut Vec<(String, Ty<'a>)>, cx: &LateContext<'a>, pat: &Pat<'_>, ty: Ty<'a>) -> bool {
+    match pat.kind {
+        PatKind::Wild => true,
+        PatKind::Tuple(inner, _) => inner.iter().all(|p| {
+            let p_ty = cx.typeck_results().pat_ty(p);
+            collect_pat_paths(acc, cx, p, p_ty)
+        }),
+        PatKind::TupleStruct(ref path, ..) => {
+            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(path, false);
+            });
+            acc.push((path, ty));
+            true
+        },
+        PatKind::Binding(BindingAnnotation::Unannotated, .., ident, None) => {
+            acc.push((ident.to_string(), ty));
+            true
+        },
+        PatKind::Path(ref path) => {
+            let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
+                s.print_qpath(path, false);
+            });
+            acc.push((path, ty));
+            true
+        },
+        _ => false,
+    }
+}
+
+/// Returns true if the given arm of pattern matching contains wildcard patterns.
+fn contains_only_wilds(pat: &Pat<'_>) -> bool {
+    match pat.kind {
+        PatKind::Wild => true,
+        PatKind::Tuple(inner, _) | PatKind::TupleStruct(_, inner, ..) => inner.iter().all(contains_only_wilds),
+        _ => false,
+    }
+}
+
+/// Returns true if the given patterns forms only exhaustive matches that don't contain enum
+/// patterns without a wildcard.
+fn form_exhaustive_matches(left: &Pat<'_>, right: &Pat<'_>) -> bool {
+    match (&left.kind, &right.kind) {
+        (PatKind::Wild, _) | (_, PatKind::Wild) => true,
+        (PatKind::Tuple(left_in, left_pos), PatKind::Tuple(right_in, right_pos)) => {
+            // We don't actually know the position and the presence of the `..` (dotdot) operator
+            // in the arms, so we need to evaluate the correct offsets here in order to iterate in
+            // both arms at the same time.
+            let len = max(
+                left_in.len() + {
+                    if left_pos.is_some() { 1 } else { 0 }
+                },
+                right_in.len() + {
+                    if right_pos.is_some() { 1 } else { 0 }
+                },
+            );
+            let mut left_pos = left_pos.unwrap_or(usize::MAX);
+            let mut right_pos = right_pos.unwrap_or(usize::MAX);
+            let mut left_dot_space = 0;
+            let mut right_dot_space = 0;
+            for i in 0..len {
+                let mut found_dotdot = false;
+                if i == left_pos {
+                    left_dot_space += 1;
+                    if left_dot_space < len - left_in.len() {
+                        left_pos += 1;
+                    }
+                    found_dotdot = true;
+                }
+                if i == right_pos {
+                    right_dot_space += 1;
+                    if right_dot_space < len - right_in.len() {
+                        right_pos += 1;
+                    }
+                    found_dotdot = true;
+                }
+                if found_dotdot {
+                    continue;
+                }
+                if !contains_only_wilds(&left_in[i - left_dot_space])
+                    && !contains_only_wilds(&right_in[i - right_dot_space])
+                {
+                    return false;
+                }
+            }
+            true
+        },
+        _ => false,
     }
 }
 

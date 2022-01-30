@@ -145,6 +145,84 @@ fn if_suggestion() {
     };
 }
 
+// See: issue #8282
+fn ranges() {
+    enum E {
+        V,
+    }
+    let x = (Some(E::V), Some(42));
+
+    // Don't lint, because the `E` enum can be extended with additional fields later. Thus, the
+    // proposed replacement to `if let Some(E::V)` may hide non-exhaustive warnings that appeared
+    // because of `match` construction.
+    match x {
+        (Some(E::V), _) => {},
+        (None, _) => {},
+    }
+
+    // lint
+    match x {
+        (Some(_), _) => {},
+        (None, _) => {},
+    }
+
+    // lint
+    match x {
+        (Some(E::V), _) => todo!(),
+        (_, _) => {},
+    }
+
+    // lint
+    match (Some(42), Some(E::V), Some(42)) {
+        (.., Some(E::V), _) => {},
+        (..) => {},
+    }
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (.., Some(E::V), _) => {},
+        (.., None, _) => {},
+    }
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (Some(E::V), ..) => {},
+        (None, ..) => {},
+    }
+
+    // Don't lint, see above.
+    match (Some(E::V), Some(E::V), Some(E::V)) {
+        (_, Some(E::V), ..) => {},
+        (_, None, ..) => {},
+    }
+}
+
+fn skip_type_aliases() {
+    enum OptionEx {
+        Some(i32),
+        None,
+    }
+    enum ResultEx {
+        Err(i32),
+        Ok(i32),
+    }
+
+    use OptionEx::{None, Some};
+    use ResultEx::{Err, Ok};
+
+    // don't lint
+    match Err(42) {
+        Ok(_) => dummy(),
+        Err(_) => (),
+    };
+
+    // don't lint
+    match Some(1i32) {
+        Some(_) => dummy(),
+        None => (),
+    };
+}
+
 macro_rules! single_match {
     ($num:literal) => {
         match $num {
