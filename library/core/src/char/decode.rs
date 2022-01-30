@@ -121,23 +121,31 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.iter.size_hint();
 
-        // If
-        // - `self.buf` contains a non surrogate (`u < 0xD800 || 0xDFFF < u`), or
-        // - `high == Some(0)` (and `self.buf` contains a leading surrogate since
-        //   it can never contain a trailing surrogate)
-        //
-        // then buf contains an additional character or error that doesn't
-        // need a pair from `self.iter`, so it's +1 additional element.
-        let addition_from_buf =
-            self.buf.map_or(false, |u| u < 0xD800 || 0xDFFF < u || high == Some(0)) as usize;
+        let (low_buf, high_buf) = match self.buf {
+            // buf is empty, no additional elements from it.
+            None => (0, 0),
+            // `u` is a non surrogate, so it's always an additional character.
+            Some(u) if u < 0xD800 || 0xDFFF < u => (1, 1),
+            // `u` is a leading surrogate (it can never be a trailing surrogate and
+            // it's a surrogate due to the previous branch) and `self.iter` is empty.
+            //
+            // `u` can't be paired, since the `self.iter` is empty,
+            // so it will always become an additional element (error).
+            Some(_u) if high == Some(0) => (1, 1),
+            // `u` is a leading surrogate and `iter` may be non-empty.
+            //
+            // `u` can either pair with a trailing surrogate, in which case no additional elements
+            // are produced, or it can become an error, in which case it's an additional character (error).
+            Some(_u) => (0, 1),
+        };
 
         // `self.iter` could contain entirely valid surrogates (2 elements per
         // char), or entirely non-surrogates (1 element per char).
         //
         // On odd lower bound, at least one element must stay unpaired
         // (with other elements from `self.iter`), so we round up.
-        let low = low.div_ceil(2) + addition_from_buf;
-        let high = high.and_then(|h| h.checked_add(addition_from_buf));
+        let low = low.div_ceil(2) + low_buf;
+        let high = high.and_then(|h| h.checked_add(high_buf));
 
         (low, high)
     }
