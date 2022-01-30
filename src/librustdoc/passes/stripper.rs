@@ -5,6 +5,7 @@ use std::mem;
 
 use crate::clean::{self, Item, ItemIdSet};
 use crate::fold::{strip_item, DocFolder};
+use crate::formats::cache::Cache;
 
 crate struct Stripper<'a> {
     crate retained: &'a mut ItemIdSet,
@@ -118,6 +119,7 @@ impl<'a> DocFolder for Stripper<'a> {
 /// This stripper discards all impls which reference stripped items
 crate struct ImplStripper<'a> {
     crate retained: &'a ItemIdSet,
+    crate cache: &'a Cache,
 }
 
 impl<'a> DocFolder for ImplStripper<'a> {
@@ -127,7 +129,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             if imp.trait_.is_none() && imp.items.is_empty() {
                 return None;
             }
-            if let Some(did) = imp.for_.def_id_no_primitives() {
+            if let Some(did) = imp.for_.def_id(self.cache) {
                 if did.is_local() && !imp.for_.is_assoc_ty() && !self.retained.contains(&did.into())
                 {
                     debug!("ImplStripper: impl item for stripped type; removing");
@@ -142,7 +144,7 @@ impl<'a> DocFolder for ImplStripper<'a> {
             }
             if let Some(generics) = imp.trait_.as_ref().and_then(|t| t.generics()) {
                 for typaram in generics {
-                    if let Some(did) = typaram.def_id_no_primitives() {
+                    if let Some(did) = typaram.def_id(self.cache) {
                         if did.is_local() && !self.retained.contains(&did.into()) {
                             debug!(
                                 "ImplStripper: stripped item in trait's generics; removing impl"

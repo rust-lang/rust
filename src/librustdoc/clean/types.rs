@@ -338,6 +338,7 @@ impl ExternalCrate {
 }
 
 /// Indicates where an external crate can be found.
+#[derive(Debug)]
 crate enum ExternalLocation {
     /// Remote URL root of the external crate
     Remote(String),
@@ -1539,22 +1540,9 @@ impl Type {
 
     /// Use this method to get the [DefId] of a [clean] AST node, including [PrimitiveType]s.
     ///
-    /// See [`Self::def_id_no_primitives`] for more.
-    ///
     /// [clean]: crate::clean
     crate fn def_id(&self, cache: &Cache) -> Option<DefId> {
         self.inner_def_id(Some(cache))
-    }
-
-    /// Use this method to get the [`DefId`] of a [`clean`] AST node.
-    /// This will return [`None`] when called on a primitive [`clean::Type`].
-    /// Use [`Self::def_id`] if you want to include primitives.
-    ///
-    /// [`clean`]: crate::clean
-    /// [`clean::Type`]: crate::clean::Type
-    // FIXME: get rid of this function and always use `def_id`
-    crate fn def_id_no_primitives(&self) -> Option<DefId> {
-        self.inner_def_id(None)
     }
 }
 
