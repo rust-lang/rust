@@ -13,7 +13,6 @@ use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
-use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{self as hir, AmbigArg, FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
@@ -411,7 +410,7 @@ struct MissingStabilityAnnotations<'tcx> {
 impl<'tcx> MissingStabilityAnnotations<'tcx> {
     /// Verify that deprecation and stability attributes make sense with one another.
     #[instrument(level = "trace", skip(self))]
-    fn check_compatible_stability(&self, def_id: LocalDefId, item_sp: Span) {
+    fn check_compatible_stability(&self, def_id: LocalDefId) {
         if !self.tcx.features().staged_api() {
             return;
         }
@@ -441,6 +440,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                 || (kind == AnnotationKind::Container && stab.level.is_stable() && depr.is_some())
             {
                 if let Some(span) = find_attr_span!(Stability) {
+                    let item_sp = self.tcx.def_span(def_id);
                     self.tcx.dcx().emit_err(errors::UselessStability { span, item_sp });
                 }
             }
@@ -452,6 +452,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
                 && let attrs::StabilityLevel::Stable { since: stab_since, .. } = stab.level
                 && let Some(span) = find_attr_span!(Stability)
             {
+                let item_sp = self.tcx.def_span(def_id);
                 match stab_since {
                     StableSince::Current => {
                         self.tcx
@@ -506,7 +507,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn check_missing_stability(&self, def_id: LocalDefId, span: Span) {
+    fn check_missing_stability(&self, def_id: LocalDefId) {
         let stab = self.tcx.lookup_stability(def_id);
         self.tcx.ensure_ok().lookup_const_stability(def_id);
         if !self.tcx.sess.is_test_crate()
@@ -514,11 +515,12 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && self.effective_visibilities.is_reachable(def_id)
         {
             let descr = self.tcx.def_descr(def_id.to_def_id());
+            let span = self.tcx.def_span(def_id);
             self.tcx.dcx().emit_err(errors::MissingStabilityAttr { span, descr });
         }
     }
 
-    fn check_missing_const_stability(&self, def_id: LocalDefId, span: Span) {
+    fn check_missing_const_stability(&self, def_id: LocalDefId) {
         let is_const = self.tcx.is_const_fn(def_id.to_def_id())
             || (self.tcx.def_kind(def_id.to_def_id()) == DefKind::Trait
                 && self.tcx.is_const_trait(def_id.to_def_id()));
@@ -528,6 +530,7 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && self.effective_visibilities.is_reachable(def_id)
             && self.tcx.lookup_const_stability(def_id).is_none()
         {
+            let span = self.tcx.def_span(def_id);
             let descr = self.tcx.def_descr(def_id.to_def_id());
             self.tcx.dcx().emit_err(errors::MissingConstStabAttr { span, descr });
         }
@@ -542,7 +545,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
-        self.check_compatible_stability(i.owner_id.def_id, i.span);
+        self.check_compatible_stability(i.owner_id.def_id);
 
         // Inherent impls and foreign modules serve only as containers for other items,
         // they don't have their own stability. They still can be annotated as unstable
@@ -553,54 +556,54 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
                 | hir::ItemKind::ForeignMod { .. }
         ) {
-            self.check_missing_stability(i.owner_id.def_id, i.span);
+            self.check_missing_stability(i.owner_id.def_id);
         }
 
         // Ensure stable `const fn` have a const stability attribute.
-        self.check_missing_const_stability(i.owner_id.def_id, i.span);
+        self.check_missing_const_stability(i.owner_id.def_id);
 
         intravisit::walk_item(self, i)
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
-        self.check_compatible_stability(ti.owner_id.def_id, ti.span);
-        self.check_missing_stability(ti.owner_id.def_id, ti.span);
+        self.check_compatible_stability(ti.owner_id.def_id);
+        self.check_missing_stability(ti.owner_id.def_id);
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
-        self.check_compatible_stability(ii.owner_id.def_id, ii.span);
+        self.check_compatible_stability(ii.owner_id.def_id);
         let impl_def_id = self.tcx.hir_get_parent_item(ii.hir_id());
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {
-            self.check_missing_stability(ii.owner_id.def_id, ii.span);
-            self.check_missing_const_stability(ii.owner_id.def_id, ii.span);
+            self.check_missing_stability(ii.owner_id.def_id);
+            self.check_missing_const_stability(ii.owner_id.def_id);
         }
         intravisit::walk_impl_item(self, ii);
     }
 
     fn visit_variant(&mut self, var: &'tcx Variant<'tcx>) {
-        self.check_compatible_stability(var.def_id, var.span);
-        self.check_missing_stability(var.def_id, var.span);
+        self.check_compatible_stability(var.def_id);
+        self.check_missing_stability(var.def_id);
         if let Some(ctor_def_id) = var.data.ctor_def_id() {
-            self.check_missing_stability(ctor_def_id, var.span);
+            self.check_missing_stability(ctor_def_id);
         }
         intravisit::walk_variant(self, var);
     }
 
     fn visit_field_def(&mut self, s: &'tcx FieldDef<'tcx>) {
-        self.check_compatible_stability(s.def_id, s.span);
-        self.check_missing_stability(s.def_id, s.span);
+        self.check_compatible_stability(s.def_id);
+        self.check_missing_stability(s.def_id);
         intravisit::walk_field_def(self, s);
     }
 
     fn visit_foreign_item(&mut self, i: &'tcx hir::ForeignItem<'tcx>) {
-        self.check_compatible_stability(i.owner_id.def_id, i.span);
-        self.check_missing_stability(i.owner_id.def_id, i.span);
+        self.check_compatible_stability(i.owner_id.def_id);
+        self.check_missing_stability(i.owner_id.def_id);
         intravisit::walk_foreign_item(self, i);
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
-        self.check_compatible_stability(p.def_id, p.span);
+        self.check_compatible_stability(p.def_id);
         // Note that we don't need to `check_missing_stability` for default generic parameters,
         // as we assume that any default generic parameters without attributes are automatically
         // stable (assuming they have not inherited instability from their parent).
@@ -619,6 +622,21 @@ fn stability_implications(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> UnordMap<S
 /// features and possibly prints errors.
 fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     tcx.hir_visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
+
+    let is_staged_api =
+        tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
+    if is_staged_api {
+        let effective_visibilities = &tcx.effective_visibilities(());
+        let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
+        if module_def_id.is_top_level_module() {
+            missing.check_missing_stability(CRATE_DEF_ID);
+        }
+        tcx.hir_visit_item_likes_in_module(module_def_id, &mut missing);
+    }
+
+    if module_def_id.is_top_level_module() {
+        check_unused_or_stable_features(tcx)
+    }
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -1002,16 +1020,9 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// Given the list of enabled features that were not language features (i.e., that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
+// This is `pub` for rustdoc. rustc should call it through `check_mod_unstable_api_usage`.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
-    let is_staged_api =
-        tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
-    if is_staged_api {
-        let effective_visibilities = &tcx.effective_visibilities(());
-        let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
-        missing.check_missing_stability(CRATE_DEF_ID, tcx.hir_span(CRATE_HIR_ID));
-        tcx.hir_walk_toplevel_module(&mut missing);
-        tcx.hir_visit_all_item_likes_in_crate(&mut missing);
-    }
+    let _prof_timer = tcx.sess.timer("unused_lib_feature_checking");
 
     let enabled_lang_features = tcx.features().enabled_lang_features();
     let mut lang_features = UnordSet::default();
