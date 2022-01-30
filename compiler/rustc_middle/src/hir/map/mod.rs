@@ -4,7 +4,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
+use rustc_data_structures::sync::{par_for_each_in, par_iter, ParallelIterator, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -533,7 +533,6 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn par_body_owners<F: Fn(LocalDefId) + Sync + Send>(self, f: F) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
         #[cfg(parallel_compiler)]
         use rustc_rayon::iter::IndexedParallelIterator;
 
@@ -554,10 +553,6 @@ impl<'hir> Map<'hir> {
         module: LocalDefId,
         f: F,
     ) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
-        #[cfg(parallel_compiler)]
-        use rustc_rayon::iter::IndexedParallelIterator;
-
         let module = self.tcx.hir_module_items(module);
 
         let handle_item_like = |owner: LocalDefId| {
@@ -702,7 +697,7 @@ impl<'hir> Map<'hir> {
 
     pub fn par_visit_item_likes_in_module<V>(&self, module: LocalDefId, visitor: &V)
     where
-        V: ParItemLikeVisitor<'hir>,
+        V: ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let module = self.tcx.hir_module_items(module);
 
@@ -745,7 +740,6 @@ impl<'hir> Map<'hir> {
 
     #[cfg(parallel_compiler)]
     pub fn par_for_each_module(&self, f: impl Fn(LocalDefId) + Sync) {
-        use rustc_data_structures::sync::{par_iter, ParallelIterator};
         par_iter_submodules(self.tcx, CRATE_DEF_ID, &f);
 
         fn par_iter_submodules<F>(tcx: TyCtxt<'_>, module: LocalDefId, f: &F)
