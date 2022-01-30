@@ -38,6 +38,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::PtrType(it) => validate_trait_object_ptr_ty(it, &mut errors),
                 ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, &mut errors),
                 ast::MacroRules(it) => validate_macro_rules(it, &mut errors),
+                ast::LetExpr(it) => validate_let_expr(it, &mut errors),
                 _ => (),
             }
         }
@@ -342,4 +343,34 @@ fn validate_const(const_: ast::Const, errors: &mut Vec<SyntaxError>) {
     {
         errors.push(SyntaxError::new("const globals cannot be mutable", mut_token.text_range()));
     }
+}
+
+fn validate_let_expr(let_: ast::LetExpr, errors: &mut Vec<SyntaxError>) {
+    let mut token = let_.syntax().clone();
+    loop {
+        token = match token.parent() {
+            Some(it) => it,
+            None => break,
+        };
+
+        if ast::ParenExpr::can_cast(token.kind()) {
+            continue;
+        } else if let Some(it) = ast::BinExpr::cast(token.clone()) {
+            if it.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And)) {
+                continue;
+            }
+        } else if ast::IfExpr::can_cast(token.kind())
+            || ast::WhileExpr::can_cast(token.kind())
+            || ast::MatchGuard::can_cast(token.kind())
+        {
+            // It must be part of the condition since the expressions are inside a block.
+            return;
+        }
+
+        break;
+    }
+    errors.push(SyntaxError::new(
+        "`let` expressions are not supported here",
+        let_.syntax().text_range(),
+    ));
 }
