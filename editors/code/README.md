@@ -12,7 +12,6 @@ Work on rust-analyzer is sponsored by
 
 - [Mozilla](https://www.mozilla.org/en-US/)
 - [Embark Studios](https://embark-studios.com/)
-- [freiheit.com](https://www.freiheit.com)
 
 If you want to sponsor:
 
