@@ -398,13 +398,13 @@ trait TraitAddUnsafeModifier {
     // -------------------------
     // --------------------------------------------------------------------
     // -------------------------
-    fn method()       ;
+    fn        method();
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddUnsafeModifier {
     #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig", cfg="cfail2")]
@@ -423,13 +423,13 @@ trait TraitAddExternModifier {
     // -------------------------
     // --------------------------------------------------------------------
     // -------------------------
-    fn method()           ;
+    fn            method();
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddExternModifier {
     #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig", cfg="cfail2")]
@@ -839,8 +839,16 @@ trait TraitAddAssociatedConstant {
 // Add initializer to associated constant
 #[cfg(any(cfail1,cfail4))]
 trait TraitAddInitializerToAssociatedConstant {
-    const Value: u32;
+    //------------------------------------------------------------------------------
+    //--------------------------
+    //------------------------------------------------------------------------------
+    //--------------------------
+    const Value: u32    ;
 
+    //--------------------------
+    //--------------------------
+    //--------------------------
+    //--------------------------
     fn method();
 }
 

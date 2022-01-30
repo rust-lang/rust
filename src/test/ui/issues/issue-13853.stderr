@@ -1,15 +1,3 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-13853.rs:14:9
-   |
-LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
-   |                  - this type parameter              - expected `I` because of return type
-...
-LL |         self.iter()
-   |         ^^^^^^^^^^^ expected type parameter `I`, found struct `std::slice::Iter`
-   |
-   = note: expected type parameter `I`
-                      found struct `std::slice::Iter<'_, N>`
-
 error[E0599]: no method named `iter` found for reference `&G` in the current scope
   --> $DIR/issue-13853.rs:27:23
    |
@@ -27,6 +15,18 @@ LL |     iterate(graph);
    |
    = note: expected reference `&_`
                  found struct `Vec<Stuff>`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-13853.rs:14:9
+   |
+LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
+   |                  - this type parameter              - expected `I` because of return type
+...
+LL |         self.iter()
+   |         ^^^^^^^^^^^ expected type parameter `I`, found struct `std::slice::Iter`
+   |
+   = note: expected type parameter `I`
+                      found struct `std::slice::Iter<'_, N>`
 
 error: aborting due to 3 previous errors
 

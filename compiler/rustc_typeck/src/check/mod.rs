@@ -941,8 +941,10 @@ impl<'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_foreign_item(&mut self, _: &'tcx hir::ForeignItem<'tcx>) {}
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
+fn typeck_item_bodies(tcx: TyCtxt<'_>, module: LocalDefId) {
+    tcx.hir().par_body_owners_in_module(module, |body_owner_def_id| {
+        tcx.ensure().typeck(body_owner_def_id)
+    });
 }
 
 fn fatally_break_rust(sess: &Session) {

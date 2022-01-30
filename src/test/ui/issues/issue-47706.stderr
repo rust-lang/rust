@@ -1,20 +1,3 @@
-error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
-  --> $DIR/issue-47706.rs:11:22
-   |
-LL |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
-   |     ------------------------------------------ takes 2 arguments
-...
-LL |         self.foo.map(Foo::new)
-   |                  --- ^^^^^^^^ expected function that takes 1 argument
-   |                  |
-   |                  required by a bound introduced by this call
-   |
-note: required by a bound in `Option::<T>::map`
-  --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |         F: ~const FnOnce(T) -> U,
-   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
-
 error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
   --> $DIR/issue-47706.rs:27:9
    |
@@ -34,6 +17,23 @@ LL | fn foo<F>(f: F)
 LL | where
 LL |     F: Fn(),
    |        ^^^^ required by this bound in `foo`
+
+error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
+  --> $DIR/issue-47706.rs:11:22
+   |
+LL |     pub fn new(foo: Option<i32>, _: ()) -> Foo {
+   |     ------------------------------------------ takes 2 arguments
+...
+LL |         self.foo.map(Foo::new)
+   |                  --- ^^^^^^^^ expected function that takes 1 argument
+   |                  |
+   |                  required by a bound introduced by this call
+   |
+note: required by a bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |         F: ~const FnOnce(T) -> U,
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::map`
 
 error: aborting due to 2 previous errors
 

@@ -1,3 +1,11 @@
+error[E0282]: type annotations needed for `ArrayHolder<{_: usize}>`
+  --> $DIR/issue-62504.rs:26:21
+   |
+LL |     let mut array = ArrayHolder::new();
+   |         ---------   ^^^^^^^^^^^^^^^^ cannot infer the value of const parameter `X`
+   |         |
+   |         consider giving `array` the explicit type `ArrayHolder<X>`, where the const parameter `X` is specified
+
 error[E0308]: mismatched types
   --> $DIR/issue-62504.rs:18:21
    |
@@ -15,6 +23,7 @@ LL |         ArrayHolder([0; Self::SIZE])
    |
    = note: this may fail depending on what value the parameter takes
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.

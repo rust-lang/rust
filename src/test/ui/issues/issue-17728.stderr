@@ -1,14 +1,3 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/issue-17728.rs:15:28
-   |
-LL |     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
-   |                                     -----                         -------------------
-   |                                     |
-   |                                     this parameter and the return type are declared with different lifetimes...
-...
-LL |             Some(entry) => Ok(entry),
-   |                            ^^^^^^^^^ ...but data from `room` is returned here
-
 error[E0308]: `match` arms have incompatible types
   --> $DIR/issue-17728.rs:109:14
    |
@@ -26,6 +15,17 @@ LL | |     }
    |
    = note: expected enum `RoomDirection`
               found enum `Option<_>`
+
+error[E0623]: lifetime mismatch
+  --> $DIR/issue-17728.rs:15:28
+   |
+LL |     fn attemptTraverse(&self, room: &Room, directionStr: &str) -> Result<&Room, &str> {
+   |                                     -----                         -------------------
+   |                                     |
+   |                                     this parameter and the return type are declared with different lifetimes...
+...
+LL |             Some(entry) => Ok(entry),
+   |                            ^^^^^^^^^ ...but data from `room` is returned here
 
 error: aborting due to 2 previous errors
 

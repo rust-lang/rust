@@ -1,18 +1,4 @@
 error[E0308]: mismatched types
-  --> $DIR/trait-with-missing-associated-type-restriction.rs:10:31
-   |
-LL |     fn funq(&self) -> Self::A {}
-   |                               ^^ expected associated type, found `()`
-   |
-   = note: expected associated type `<Self as Trait<T>>::A`
-                    found unit type `()`
-help: a method is available that returns `<Self as Trait<T>>::A`
-  --> $DIR/trait-with-missing-associated-type-restriction.rs:8:5
-   |
-LL |     fn func(&self) -> Self::A;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider calling `Trait::func`
-
-error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction.rs:14:9
    |
 LL |     qux(x.func())
@@ -114,6 +100,20 @@ help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn ban<T>(x: T) where T: Trait<A = usize> {
    |                               +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:10:31
+   |
+LL |     fn funq(&self) -> Self::A {}
+   |                               ^^ expected associated type, found `()`
+   |
+   = note: expected associated type `<Self as Trait<T>>::A`
+                    found unit type `()`
+help: a method is available that returns `<Self as Trait<T>>::A`
+  --> $DIR/trait-with-missing-associated-type-restriction.rs:8:5
+   |
+LL |     fn func(&self) -> Self::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider calling `Trait::func`
 
 error: aborting due to 9 previous errors
 

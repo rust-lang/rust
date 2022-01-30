@@ -1,30 +1,4 @@
 error[E0308]: mismatched types
-  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:13:13
-   |
-LL |         qux(x.func())
-   |             ^^^^^^^^ expected `usize`, found associated type
-   |
-   = note:         expected type `usize`
-           found associated type `<impl Trait as Trait>::A`
-help: consider constraining the associated type `<impl Trait as Trait>::A` to `usize`
-   |
-LL |     fn foo<'a, T: Trait + 'a>(&self, _: impl Trait, x: impl Trait<A = usize>, _: T) {
-   |                                                                  +++++++++++
-
-error[E0308]: mismatched types
-  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:17:13
-   |
-LL |         qux(x.func())
-   |             ^^^^^^^^ expected `usize`, found associated type
-   |
-   = note:         expected type `usize`
-           found associated type `<T as Trait>::A`
-help: consider constraining the associated type `<T as Trait>::A` to `usize`
-   |
-LL |     fn ban<T>(x: T) where T: Trait<A = usize> {
-   |                                   +++++++++++
-
-error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:22:9
    |
 LL |     qux(x.func())
@@ -88,6 +62,32 @@ help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn ban<T>(x: T) where T: Trait<A = usize> {
    |                               +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:13:13
+   |
+LL |         qux(x.func())
+   |             ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<impl Trait as Trait>::A`
+help: consider constraining the associated type `<impl Trait as Trait>::A` to `usize`
+   |
+LL |     fn foo<'a, T: Trait + 'a>(&self, _: impl Trait, x: impl Trait<A = usize>, _: T) {
+   |                                                                  +++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:17:13
+   |
+LL |         qux(x.func())
+   |             ^^^^^^^^ expected `usize`, found associated type
+   |
+   = note:         expected type `usize`
+           found associated type `<T as Trait>::A`
+help: consider constraining the associated type `<T as Trait>::A` to `usize`
+   |
+LL |     fn ban<T>(x: T) where T: Trait<A = usize> {
+   |                                   +++++++++++
 
 error: aborting due to 7 previous errors
 

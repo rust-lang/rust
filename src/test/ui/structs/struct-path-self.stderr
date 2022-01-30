@@ -1,3 +1,15 @@
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/struct-path-self.rs:20:24
+   |
+LL |         let z = Self::<u8> {};
+   |                        ^^ type argument not allowed
+
+error[E0109]: type arguments are not allowed for this type
+  --> $DIR/struct-path-self.rs:30:24
+   |
+LL |         let z = Self::<u8> {};
+   |                        ^^ type argument not allowed
+
 error[E0071]: expected struct, variant or union type, found type parameter `Self`
   --> $DIR/struct-path-self.rs:5:17
    |
@@ -21,18 +33,6 @@ error[E0071]: expected struct, variant or union type, found type parameter `Self
    |
 LL |             Self { .. } => {}
    |             ^^^^ not a struct
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/struct-path-self.rs:20:24
-   |
-LL |         let z = Self::<u8> {};
-   |                        ^^ type argument not allowed
-
-error[E0109]: type arguments are not allowed for this type
-  --> $DIR/struct-path-self.rs:30:24
-   |
-LL |         let z = Self::<u8> {};
-   |                        ^^ type argument not allowed
 
 error: aborting due to 6 previous errors
 

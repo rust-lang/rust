@@ -74,12 +74,6 @@ LL | extern "amdgpu-kernel" fn fu() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:12:5
-   |
-LL |     extern "amdgpu-kernel" fn dmu() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
   --> $DIR/feature-gate-abi_amdgpu_kernel.rs:18:5
    |
 LL |     extern "amdgpu-kernel" fn mu() {}
@@ -89,6 +83,12 @@ error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
   --> $DIR/feature-gate-abi_amdgpu_kernel.rs:23:5
    |
 LL |     extern "amdgpu-kernel" fn imu() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
+  --> $DIR/feature-gate-abi_amdgpu_kernel.rs:12:5
+   |
+LL |     extern "amdgpu-kernel" fn dmu() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors

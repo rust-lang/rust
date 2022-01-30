@@ -1,3 +1,16 @@
+error[E0277]: the size for values of type `(dyn ToString + 'static)` cannot be known at compilation time
+  --> $DIR/issue-42312.rs:8:10
+   |
+LL | pub fn f(_: dyn ToString) {}
+   |          ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn ToString + 'static)`
+   = help: unsized fn params are gated as an unstable feature
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | pub fn f(_: &dyn ToString) {}
+   |             +
+
 error[E0277]: the size for values of type `<Self as Deref>::Target` cannot be known at compilation time
   --> $DIR/issue-42312.rs:4:12
    |
@@ -14,19 +27,6 @@ help: function arguments must have a statically known size, borrowed types alway
    |
 LL |     fn baz(_: &Self::Target) where Self: Deref {}
    |               +
-
-error[E0277]: the size for values of type `(dyn ToString + 'static)` cannot be known at compilation time
-  --> $DIR/issue-42312.rs:8:10
-   |
-LL | pub fn f(_: dyn ToString) {}
-   |          ^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn ToString + 'static)`
-   = help: unsized fn params are gated as an unstable feature
-help: function arguments must have a statically known size, borrowed types always have a known size
-   |
-LL | pub fn f(_: &dyn ToString) {}
-   |             +
 
 error: aborting due to 2 previous errors
 

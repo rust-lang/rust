@@ -1,54 +1,3 @@
-error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/wf-static-method.rs:17:9
-   |
-LL |         u
-   |         ^
-   |
-note: ...the reference is valid for the lifetime `'a` as defined here...
-  --> $DIR/wf-static-method.rs:14:6
-   |
-LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
-   |      ^^
-note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
-  --> $DIR/wf-static-method.rs:14:10
-   |
-LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
-   |          ^^
-
-error[E0478]: lifetime bound not satisfied
-  --> $DIR/wf-static-method.rs:26:18
-   |
-LL |         let me = Self::make_me();
-   |                  ^^^^
-   |
-note: lifetime parameter instantiated with the lifetime `'b` as defined here
-  --> $DIR/wf-static-method.rs:23:10
-   |
-LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
-   |          ^^
-note: but lifetime parameter must outlive the lifetime `'a` as defined here
-  --> $DIR/wf-static-method.rs:23:6
-   |
-LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
-   |      ^^
-
-error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/wf-static-method.rs:33:9
-   |
-LL |         u
-   |         ^
-   |
-note: ...the reference is valid for the lifetime `'a` as defined here...
-  --> $DIR/wf-static-method.rs:31:6
-   |
-LL | impl<'a, 'b> Evil<'a, 'b> {
-   |      ^^
-note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
-  --> $DIR/wf-static-method.rs:31:10
-   |
-LL | impl<'a, 'b> Evil<'a, 'b> {
-   |          ^^
-
 error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
   --> $DIR/wf-static-method.rs:41:5
    |
@@ -129,6 +78,57 @@ note: ...so that reference does not outlive borrowed content
    |
 LL |     <Evil>::inherent_evil(b)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/wf-static-method.rs:17:9
+   |
+LL |         u
+   |         ^
+   |
+note: ...the reference is valid for the lifetime `'a` as defined here...
+  --> $DIR/wf-static-method.rs:14:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |      ^^
+note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
+  --> $DIR/wf-static-method.rs:14:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
+   |          ^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/wf-static-method.rs:26:18
+   |
+LL |         let me = Self::make_me();
+   |                  ^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'b` as defined here
+  --> $DIR/wf-static-method.rs:23:10
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |          ^^
+note: but lifetime parameter must outlive the lifetime `'a` as defined here
+  --> $DIR/wf-static-method.rs:23:6
+   |
+LL | impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
+   |      ^^
+
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/wf-static-method.rs:33:9
+   |
+LL |         u
+   |         ^
+   |
+note: ...the reference is valid for the lifetime `'a` as defined here...
+  --> $DIR/wf-static-method.rs:31:6
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |      ^^
+note: ...but the borrowed content is only valid for the lifetime `'b` as defined here
+  --> $DIR/wf-static-method.rs:31:10
+   |
+LL | impl<'a, 'b> Evil<'a, 'b> {
+   |          ^^
 
 error: aborting due to 6 previous errors
 

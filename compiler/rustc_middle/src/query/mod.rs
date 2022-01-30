@@ -768,8 +768,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query typeck_item_bodies(_: ()) -> () {
-        desc { "type-checking all item bodies" }
+    query typeck_item_bodies(key: LocalDefId) -> () {
+        desc { |tcx|
+            "type-checking all item bodies in `{}`",
+            tcx.def_path_str(key.to_def_id()),
+        }
     }
 
     query typeck(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
