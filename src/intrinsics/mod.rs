@@ -62,22 +62,21 @@ macro intrinsic_match {
     }
 }
 
-macro validate_atomic_type($fx:ident, $intrinsic:ident, $span:ident, $ty:expr) {
-    match $ty.kind() {
-        ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
-        _ => {
-            $fx.tcx.sess.span_err(
-                $span,
-                &format!(
-                    "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
-                    $intrinsic, $ty
-                ),
-            );
-            // Prevent verifier error
-            crate::trap::trap_unreachable($fx, "compilation should not have succeeded");
-            return;
-        }
-    }
+fn report_atomic_type_validation_error<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    intrinsic: Symbol,
+    span: Span,
+    ty: Ty<'tcx>,
+) {
+    fx.tcx.sess.span_err(
+        span,
+        &format!(
+            "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
+            intrinsic, ty
+        ),
+    );
+    // Prevent verifier error
+    crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Option<Type> {
@@ -743,7 +742,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_load"), (v ptr) {
             let ty = substs.type_at(0);
-            validate_atomic_type!(fx, intrinsic, span, ty);
+            match ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, ty);
+                    return;
+                }
+            }
             let clif_ty = fx.clif_type(ty).unwrap();
 
             let val = fx.bcx.ins().atomic_load(clif_ty, MemFlags::trusted(), ptr);
@@ -752,7 +757,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, val);
         };
         _ if intrinsic.as_str().starts_with("atomic_store"), (v ptr, c val) {
-            validate_atomic_type!(fx, intrinsic, span, val.layout().ty);
+            let ty = substs.type_at(0);
+            match ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, ty);
+                    return;
+                }
+            }
 
             let val = val.load_scalar(fx);
 
@@ -760,7 +772,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_xchg"), (v ptr, c new) {
             let layout = new.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let new = new.load_scalar(fx);
@@ -772,7 +790,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_cxchg"), (v ptr, c test_old, c new) { // both atomic_cxchg_* and atomic_cxchgweak_*
             let layout = new.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
 
             let test_old = test_old.load_scalar(fx);
             let new = new.load_scalar(fx);
@@ -786,7 +810,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         _ if intrinsic.as_str().starts_with("atomic_xadd"), (v ptr, c amount) {
             let layout = amount.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let amount = amount.load_scalar(fx);
@@ -798,7 +828,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_xsub"), (v ptr, c amount) {
             let layout = amount.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let amount = amount.load_scalar(fx);
@@ -810,7 +846,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_and"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -822,7 +864,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_or"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -834,7 +882,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_xor"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -846,7 +900,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_nand"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -858,7 +918,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_max"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -870,7 +936,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_umax"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -882,7 +954,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_min"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
@@ -894,7 +972,13 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
         _ if intrinsic.as_str().starts_with("atomic_umin"), (v ptr, c src) {
             let layout = src.layout();
-            validate_atomic_type!(fx, intrinsic, span, layout.ty);
+            match layout.ty.kind() {
+                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                _ => {
+                    report_atomic_type_validation_error(fx, intrinsic, span, layout.ty);
+                    return;
+                }
+            }
             let ty = fx.clif_type(layout.ty).unwrap();
 
             let src = src.load_scalar(fx);
