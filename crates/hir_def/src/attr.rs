@@ -73,8 +73,8 @@ impl ops::Deref for RawAttrs {
     }
 }
 impl Attrs {
-    pub fn get(&self, AttrId { ast_index, .. }: AttrId) -> Option<&Attr> {
-        (**self).get(ast_index as usize)
+    pub fn get(&self, id: AttrId) -> Option<&Attr> {
+        (**self).iter().find(|attr| attr.id == id)
     }
 }
 
@@ -86,14 +86,6 @@ impl ops::Deref for Attrs {
             Some(it) => &*it,
             None => &[],
         }
-    }
-}
-
-impl ops::Index<AttrId> for Attrs {
-    type Output = Attr;
-
-    fn index(&self, AttrId { ast_index, .. }: AttrId) -> &Self::Output {
-        &(**self)[ast_index as usize]
     }
 }
 
@@ -110,7 +102,7 @@ impl RawAttrs {
 
     pub(crate) fn new(db: &dyn DefDatabase, owner: &dyn ast::HasAttrs, hygiene: &Hygiene) -> Self {
         let entries = collect_attrs(owner)
-            .flat_map(|(id, attr)| match attr {
+            .filter_map(|(id, attr)| match attr {
                 Either::Left(attr) => {
                     attr.meta().and_then(|meta| Attr::from_src(db, meta, hygiene, id))
                 }

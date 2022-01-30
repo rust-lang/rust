@@ -1364,10 +1364,21 @@ impl Twait for Stwuct {
     fn goto_def_derive_input() {
         check(
             r#"
+        //- minicore:derive
+        #[rustc_builtin_macro]
+        pub macro Copy {}
+               // ^^^^
+        #[derive(Copy$0)]
+        struct Foo;
+                    "#,
+        );
+        check(
+            r#"
 //- minicore:derive
 #[rustc_builtin_macro]
 pub macro Copy {}
        // ^^^^
+#[cfg_attr(feature = "false", derive)]
 #[derive(Copy$0)]
 struct Foo;
             "#,
