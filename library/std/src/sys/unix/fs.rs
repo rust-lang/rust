@@ -1482,7 +1482,7 @@ mod remove_dir_impl {
     use crate::io;
     use crate::mem;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
-    use crate::os::unix::prelude::{OwnedFd, RawFd};
+    use crate::os::unix::prelude::{BorrowedFd, OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
@@ -1537,10 +1537,13 @@ mod remove_dir_impl {
 
     const MAX_OPEN_FDS: usize = 32;
 
-    pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
+    pub fn openat_nofollow_dironly(
+        parent_fd: Option<BorrowedFd<'_>>,
+        p: &CStr,
+    ) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {
             openat(
-                parent_fd.unwrap_or(libc::AT_FDCWD),
+                parent_fd.map(|fd| fd.as_raw_fd()).unwrap_or(libc::AT_FDCWD),
                 p.as_ptr(),
                 libc::O_CLOEXEC | libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_DIRECTORY,
             )
@@ -1548,7 +1551,7 @@ mod remove_dir_impl {
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
-    fn fdreaddir(dir_fd: OwnedFd) -> io::Result<(ReadDir, RawFd)> {
+    fn fdreaddir(dir_fd: OwnedFd) -> io::Result<CachedReadDir> {
         let ptr = unsafe { fdopendir(dir_fd.as_raw_fd()) };
         if ptr.is_null() {
             return Err(io::Error::last_os_error());
@@ -1559,8 +1562,8 @@ mod remove_dir_impl {
         // a valid root is not needed because we do not call any functions involving the full path
         // of the DirEntrys.
         let dummy_root = PathBuf::new();
-        Ok((
-            ReadDir {
+        Ok(CachedReadDir {
+            readdir: ReadDir {
                 inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
                 #[cfg(not(any(
                     target_os = "android",
@@ -1572,8 +1575,8 @@ mod remove_dir_impl {
                 )))]
                 end_of_stream: false,
             },
-            new_parent_fd,
-        ))
+            raw_fd: new_parent_fd,
+        })
     }
 
     #[cfg(any(
@@ -1600,15 +1603,15 @@ mod remove_dir_impl {
         }
     }
 
-    fn unlink_direntry(ent: &DirEntry, parent_fd: RawFd) -> io::Result<bool> {
+    fn unlink_direntry(ent: &DirEntry, parent_fd: BorrowedFd<'_>) -> io::Result<bool> {
         match is_dir(&ent) {
             Some(true) => Ok(false),
             Some(false) => {
-                cvt(unsafe { unlinkat(parent_fd, ent.name_cstr().as_ptr(), 0) })?;
+                cvt(unsafe { unlinkat(parent_fd.as_raw_fd(), ent.name_cstr().as_ptr(), 0) })?;
                 Ok(true)
             }
             None => {
-                match cvt(unsafe { unlinkat(parent_fd, ent.name_cstr().as_ptr(), 0) }) {
+                match cvt(unsafe { unlinkat(parent_fd.as_raw_fd(), ent.name_cstr().as_ptr(), 0) }) {
                     // type unknown - try to unlink
                     Err(err)
                         if err.raw_os_error() == Some(libc::EISDIR)
@@ -1629,6 +1632,12 @@ mod remove_dir_impl {
         raw_fd: RawFd,
     }
 
+    impl CachedReadDir {
+        fn as_fd(&self) -> BorrowedFd<'_> {
+            unsafe { BorrowedFd::borrow_raw_fd(self.raw_fd) }
+        }
+    }
+
     struct DirComponent {
         name: CString,
         ino: u64,
@@ -1640,22 +1649,19 @@ mod remove_dir_impl {
         // use fstat() to get the inode of the directory
         let mut stat = unsafe { mem::zeroed() };
         cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
-        let (readdir, raw_fd) = fdreaddir(dir_fd)?;
-        Ok((
-            DirComponent { name: CString::new("")?, ino: stat.st_ino },
-            CachedReadDir { readdir, raw_fd },
-        ))
+        let cached_readdir = fdreaddir(dir_fd)?;
+        Ok((DirComponent { name: CString::new("")?, ino: stat.st_ino }, cached_readdir))
     }
 
     fn readdir_open_child(
         readdir: &CachedReadDir,
         child: &DirEntry,
     ) -> io::Result<(DirComponent, CachedReadDir)> {
-        let dir_fd = openat_nofollow_dironly(Some(readdir.raw_fd), child.name_cstr())?;
-        let (readdir, raw_fd) = fdreaddir(dir_fd)?;
+        let dir_fd = openat_nofollow_dironly(Some(readdir.as_fd()), child.name_cstr())?;
+        let cached_readdir = fdreaddir(dir_fd)?;
         Ok((
             DirComponent { name: child.name_cstr().into(), ino: child.entry.d_ino },
-            CachedReadDir { readdir, raw_fd },
+            cached_readdir,
         ))
     }
 
@@ -1663,7 +1669,7 @@ mod remove_dir_impl {
         dir: &CachedReadDir,
         expected_parent_dir: &DirComponent,
     ) -> io::Result<CachedReadDir> {
-        let parent_dir_fd = openat_nofollow_dironly(Some(dir.raw_fd), unsafe {
+        let parent_dir_fd = openat_nofollow_dironly(Some(dir.as_fd()), unsafe {
             CStr::from_bytes_with_nul_unchecked(b"..\0")
         })?;
         let mut stat = unsafe { mem::zeroed() };
@@ -1676,8 +1682,7 @@ mod remove_dir_impl {
                 "parent directory inode does not match",
             ));
         }
-        let (readdir, raw_fd) = fdreaddir(parent_dir_fd)?;
-        Ok(CachedReadDir { readdir, raw_fd })
+        fdreaddir(parent_dir_fd)
     }
 
     fn remove_dir_all_loop(root: &Path) -> io::Result<()> {
@@ -1691,7 +1696,7 @@ mod remove_dir_impl {
         loop {
             while let Some(child) = current_readdir.readdir.next() {
                 let child = child?;
-                if !unlink_direntry(&child, current_readdir.raw_fd)? {
+                if !unlink_direntry(&child, current_readdir.as_fd())? {
                     // Descend into this child directory
 
                     let (child_dir_compoment, child_readdir) =
