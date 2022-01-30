@@ -279,15 +279,43 @@ mod prim_never {}
 ///
 /// The `char` type represents a single character. More specifically, since
 /// 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
-/// scalar value]', which is similar to, but not the same as, a '[Unicode code
-/// point]'.
-///
-/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
-/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// scalar value]'.
 ///
 /// This documentation describes a number of methods and trait implementations on the
 /// `char` type. For technical reasons, there is additional, separate
 /// documentation in [the `std::char` module](char/index.html) as well.
+///
+/// # Validity
+///
+/// A `char` is a '[Unicode scalar value]', which is any '[Unicode code point]'
+/// other than a [surrogate code point]. This has a fixed numerical definition:
+/// code points are in the range `'\0'` to `char::MAX` (`'\u{10FFFF}'`), inclusive.
+/// Surrogate code points, used by UTF-16, are in the range U+D800 to U+DFFF.
+///
+/// No `char` may be constructed, whether as a literal or at runtime, that is not a
+/// Unicode scalar value:
+///
+/// ```text
+/// let forbidden_chars = [
+///     // Each of these is a compiler error
+///     '\u{D800}', '\u{DFFF}', '\u{110000}',
+///
+///     // Panics; from_u32 returns None.
+///     char::from_u32(0xDE01).unwrap(),
+///
+///     // Undefined behaviour
+///     unsafe { char::from_u32_unchecked(0x110000) },
+/// ];
+/// ```
+///
+/// Unicode is regularly updated. Many USVs are not currently assigned to a
+/// character, but may be in the future ("reserved"); some will never be a character
+/// ("noncharacters"); and some may be given different meanings by different users
+/// ("private use").
+///
+/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
+/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// [surrogate code point]: https://www.unicode.org/glossary/#surrogate_code_point
 ///
 /// # Representation
 ///
