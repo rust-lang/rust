@@ -364,9 +364,6 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_derive_ident(derive, ident)
     }
 
-    // FIXME: use this instead?
-    // pub fn resolve_name_ref(&self, name_ref: &ast::NameRef) -> Option<???>;
-
     pub fn record_literal_missing_fields(&self, literal: &ast::RecordExpr) -> Vec<(Field, Type)> {
         self.imp.record_literal_missing_fields(literal)
     }
@@ -931,7 +928,6 @@ impl<'db> SemanticsImpl<'db> {
                 file.with_value(derive.clone()),
             )?;
             let attrs = adt_def.attrs(self.db);
-            // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/11298
             let mut derive_paths = attrs.get(attr_id)?.parse_path_comma_token_tree()?;
 
             let derive_idx = tt

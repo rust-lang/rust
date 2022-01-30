@@ -27,8 +27,8 @@ pub use self::{
     operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
     token_ext::{CommentKind, CommentPlacement, CommentShape, IsString, QuoteOffsets, Radix},
     traits::{
-        DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams, HasLoopBody,
-        HasModuleItem, HasName, HasTypeBounds, HasVisibility,
+        AttrDocCommentIter, DocCommentIter, HasArgList, HasAttrs, HasDocComments, HasGenericParams,
+        HasLoopBody, HasModuleItem, HasName, HasTypeBounds, HasVisibility,
     },
 };
 

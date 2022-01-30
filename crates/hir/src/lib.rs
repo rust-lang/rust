@@ -664,7 +664,7 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                     let attr = node
                         .doc_comments_and_attrs()
                         .nth((*invoc_attr_index) as usize)
-                        .and_then(Either::right)
+                        .and_then(Either::left)
                         .unwrap_or_else(|| panic!("cannot find attribute #{}", invoc_attr_index));
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),

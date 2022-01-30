@@ -205,7 +205,7 @@ impl HirFileId {
                             .to_node(db)
                             .doc_comments_and_attrs()
                             .nth(invoc_attr_index as usize)
-                            .and_then(Either::right)?
+                            .and_then(Either::left)?
                             .token_tree()?;
                         Some(InFile::new(ast_id.file_id, tt))
                     }
@@ -382,7 +382,7 @@ impl MacroCallKind {
                     .doc_comments_and_attrs()
                     .nth(derive_attr_index as usize)
                     .expect("missing derive")
-                    .expect_right("derive is a doc comment?")
+                    .expect_left("derive is a doc comment?")
                     .syntax()
                     .text_range()
             }
@@ -391,7 +391,7 @@ impl MacroCallKind {
                 .doc_comments_and_attrs()
                 .nth(invoc_attr_index as usize)
                 .expect("missing attribute")
-                .expect_right("attribute macro is a doc comment?")
+                .expect_left("attribute macro is a doc comment?")
                 .syntax()
                 .text_range(),
         };
@@ -483,7 +483,7 @@ impl ExpansionInfo {
                     let attr = item
                         .doc_comments_and_attrs()
                         .nth(*invoc_attr_index as usize)
-                        .and_then(Either::right)?;
+                        .and_then(Either::left)?;
                     match attr.token_tree() {
                         Some(token_tree)
                             if token_tree.syntax().text_range().contains_range(token_range) =>
