@@ -257,6 +257,7 @@ pub(super) fn specialization_graph_provider(
     trait_id: DefId,
 ) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
+    sg.set_overlap_mode(specialization_graph::OverlapMode::get(tcx, trait_id));
 
     let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 

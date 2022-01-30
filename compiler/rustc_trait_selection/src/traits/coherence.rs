@@ -13,8 +13,8 @@ use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
     PredicateObligations, SelectionContext,
 };
-use rustc_ast::Attribute;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
@@ -62,6 +62,7 @@ pub fn overlapping_impls<F1, F2, R>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
+    overlap_mode: OverlapMode,
     on_overlap: F1,
     no_overlap: F2,
 ) -> R
@@ -99,7 +100,7 @@ where
 
     let overlaps = tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx);
-        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).is_some()
+        overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).is_some()
     });
 
     if !overlaps {
@@ -112,7 +113,9 @@ where
     tcx.infer_ctxt().enter(|infcx| {
         let selcx = &mut SelectionContext::intercrate(&infcx);
         selcx.enable_tracking_intercrate_ambiguity_causes();
-        on_overlap(overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id).unwrap())
+        on_overlap(
+            overlap(selcx, skip_leak_check, impl1_def_id, impl2_def_id, overlap_mode).unwrap(),
+        )
     })
 }
 
@@ -138,56 +141,6 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
     header
 }
 
-/// What kind of overlap check are we doing -- this exists just for testing and feature-gating
-/// purposes.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-enum OverlapMode {
-    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for crate-local types)
-    Stable,
-    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of the where-clauses.
-    WithNegative,
-    /// Just check for negative impls, not for "where clause not implemented": used for testing.
-    Strict,
-}
-
-impl OverlapMode {
-    fn use_negative_impl(&self) -> bool {
-        *self == OverlapMode::Strict || *self == OverlapMode::WithNegative
-    }
-
-    fn use_implicit_negative(&self) -> bool {
-        *self == OverlapMode::Stable || *self == OverlapMode::WithNegative
-    }
-}
-
-fn overlap_mode<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> OverlapMode {
-    // Find the possible coherence mode override opt-in attributes for each `DefId`
-    let find_coherence_attr = |attr: &Attribute| {
-        let name = attr.name_or_empty();
-        match name {
-            sym::rustc_with_negative_coherence | sym::rustc_strict_coherence => Some(name),
-            _ => None,
-        }
-    };
-    let impl1_coherence_mode = tcx.get_attrs(impl1_def_id).iter().find_map(find_coherence_attr);
-    let impl2_coherence_mode = tcx.get_attrs(impl2_def_id).iter().find_map(find_coherence_attr);
-
-    // If there are any (that currently happens in tests), they need to match. Otherwise, the
-    // default 1.0 rules are used.
-    match (impl1_coherence_mode, impl2_coherence_mode) {
-        (None, None) => OverlapMode::Stable,
-        (Some(sym::rustc_with_negative_coherence), Some(sym::rustc_with_negative_coherence)) => {
-            OverlapMode::WithNegative
-        }
-        (Some(sym::rustc_strict_coherence), Some(sym::rustc_strict_coherence)) => {
-            OverlapMode::Strict
-        }
-        (Some(mode), _) | (_, Some(mode)) => {
-            bug!("Use the same coherence mode on both impls: {}", mode)
-        }
-    }
-}
-
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// where-clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'tcx>(
@@ -195,11 +148,19 @@ fn overlap<'cx, 'tcx>(
     skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
+    overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
     debug!("overlap(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(selcx, skip_leak_check, impl1_def_id, impl2_def_id, snapshot)
+        overlap_within_probe(
+            selcx,
+            skip_leak_check,
+            impl1_def_id,
+            impl2_def_id,
+            overlap_mode,
+            snapshot,
+        )
     })
 }
 
@@ -208,12 +169,10 @@ fn overlap_within_probe<'cx, 'tcx>(
     skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
+    overlap_mode: OverlapMode,
     snapshot: &CombinedSnapshot<'_, 'tcx>,
 ) -> Option<OverlapResult<'tcx>> {
     let infcx = selcx.infcx();
-    let tcx = infcx.tcx;
-
-    let overlap_mode = overlap_mode(tcx, impl1_def_id, impl2_def_id);
 
     if overlap_mode.use_negative_impl() {
         if negative_impl(selcx, impl1_def_id, impl2_def_id)

@@ -41,6 +41,7 @@ trait ChildrenExt<'tcx> {
         tcx: TyCtxt<'tcx>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
+        overlap_mode: OverlapMode,
     ) -> Result<Inserted, OverlapError>;
 }
 
@@ -92,6 +93,7 @@ impl ChildrenExt<'_> for Children {
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
         simplified_self: Option<SimplifiedType>,
+        overlap_mode: OverlapMode,
     ) -> Result<Inserted, OverlapError> {
         let mut last_lint = None;
         let mut replace_children = Vec::new();
@@ -142,6 +144,7 @@ impl ChildrenExt<'_> for Children {
                     possible_sibling,
                     impl_def_id,
                     traits::SkipLeakCheck::default(),
+                    overlap_mode,
                     |_| true,
                     || false,
                 );
@@ -166,6 +169,7 @@ impl ChildrenExt<'_> for Children {
                 possible_sibling,
                 impl_def_id,
                 traits::SkipLeakCheck::Yes,
+                overlap_mode,
                 |overlap| {
                     if let Some(overlap_kind) =
                         tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling)
@@ -327,8 +331,12 @@ impl GraphExt for Graph {
         loop {
             use self::Inserted::*;
 
-            let insert_result =
-                self.children.entry(parent).or_default().insert(tcx, impl_def_id, simplified)?;
+            let insert_result = self.children.entry(parent).or_default().insert(
+                tcx,
+                impl_def_id,
+                simplified,
+                self.overlap_mode,
+            )?;
 
             match insert_result {
                 BecameNewSibling(opt_lint) => {
