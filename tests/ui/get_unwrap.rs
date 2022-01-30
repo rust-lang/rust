@@ -1,6 +1,6 @@
 // run-rustfix
 #![allow(unused_mut, clippy::from_iter_instead_of_collect)]
-#![deny(clippy::get_unwrap)]
+#![deny(clippy::get_unwrap, clippy::unwrap_used)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
