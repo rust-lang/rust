@@ -11,6 +11,7 @@ use std::env::{self, remove_var, set_var, var_os};
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io;
+use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
 use test_utils::IS_RUSTC_TEST_SUITE;
 
@@ -64,11 +65,11 @@ extern crate tokio;
 /// dependencies must be added to Cargo.toml at the project root. Test
 /// dependencies that are not *directly* used by this test module require an
 /// `extern crate` declaration.
-fn extern_flags() -> String {
+static EXTERN_FLAGS: SyncLazy<String> = SyncLazy::new(|| {
     let current_exe_depinfo = {
         let mut path = env::current_exe().unwrap();
         path.set_extension("d");
-        std::fs::read_to_string(path).unwrap()
+        fs::read_to_string(path).unwrap()
     };
     let mut crates: HashMap<&str, &str> = HashMap::with_capacity(TEST_DEPENDENCIES.len());
     for line in current_exe_depinfo.lines() {
@@ -112,16 +113,17 @@ fn extern_flags() -> String {
         .into_iter()
         .map(|(name, path)| format!(" --extern {}={}", name, path))
         .collect()
-}
+});
 
-fn default_config() -> compiletest::Config {
+fn base_config(test_dir: &str) -> compiletest::Config {
     let mut config = compiletest::Config {
         edition: Some("2021".into()),
+        mode: TestMode::Ui,
         ..compiletest::Config::default()
     };
 
     if let Ok(filters) = env::var("TESTNAME") {
-        config.filters = filters.split(',').map(std::string::ToString::to_string).collect();
+        config.filters = filters.split(',').map(ToString::to_string).collect();
     }
 
     if let Some(path) = option_env!("RUSTC_LIB_PATH") {
@@ -129,7 +131,7 @@ fn default_config() -> compiletest::Config {
         config.run_lib_path = path.clone();
         config.compile_lib_path = path;
     }
-    let current_exe_path = std::env::current_exe().unwrap();
+    let current_exe_path = env::current_exe().unwrap();
     let deps_path = current_exe_path.parent().unwrap();
     let profile_path = deps_path.parent().unwrap();
 
@@ -143,10 +145,11 @@ fn default_config() -> compiletest::Config {
         "--emit=metadata -Dwarnings -Zui-testing -L dependency={}{}{}",
         deps_path.display(),
         host_libs,
-        extern_flags(),
+        &*EXTERN_FLAGS,
     ));
 
-    config.build_base = profile_path.join("test");
+    config.src_base = Path::new("tests").join(test_dir);
+    config.build_base = profile_path.join("test").join(test_dir);
     config.rustc_path = profile_path.join(if cfg!(windows) {
         "clippy-driver.exe"
     } else {
@@ -155,38 +158,31 @@ fn default_config() -> compiletest::Config {
     config
 }
 
-fn run_ui(cfg: &mut compiletest::Config) {
-    cfg.mode = TestMode::Ui;
-    cfg.src_base = Path::new("tests").join("ui");
+fn run_ui() {
+    let config = base_config("ui");
     // use tests/clippy.toml
-    let _g = VarGuard::set("CARGO_MANIFEST_DIR", std::fs::canonicalize("tests").unwrap());
-    compiletest::run_tests(cfg);
+    let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
+    compiletest::run_tests(&config);
 }
 
-fn run_ui_test(cfg: &mut compiletest::Config) {
-    cfg.mode = TestMode::Ui;
-    cfg.src_base = Path::new("tests").join("ui_test");
-    let _g = VarGuard::set("CARGO_MANIFEST_DIR", std::fs::canonicalize("tests").unwrap());
-    let rustcflags = cfg.target_rustcflags.get_or_insert_with(Default::default);
-    let len = rustcflags.len();
+fn run_ui_test() {
+    let mut config = base_config("ui_test");
+    let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
+    let rustcflags = config.target_rustcflags.get_or_insert_with(Default::default);
     rustcflags.push_str(" --test");
-    compiletest::run_tests(cfg);
-    if let Some(ref mut flags) = &mut cfg.target_rustcflags {
-        flags.truncate(len);
-    }
+    compiletest::run_tests(&config);
 }
 
-fn run_internal_tests(cfg: &mut compiletest::Config) {
+fn run_internal_tests() {
     // only run internal tests with the internal-tests feature
     if !RUN_INTERNAL_TESTS {
         return;
     }
-    cfg.mode = TestMode::Ui;
-    cfg.src_base = Path::new("tests").join("ui-internal");
-    compiletest::run_tests(cfg);
+    let config = base_config("ui-internal");
+    compiletest::run_tests(&config);
 }
 
-fn run_ui_toml(config: &mut compiletest::Config) {
+fn run_ui_toml() {
     fn run_tests(config: &compiletest::Config, mut tests: Vec<tester::TestDescAndFn>) -> Result<bool, io::Error> {
         let mut result = true;
         let opts = compiletest::test_opts(config);
@@ -222,12 +218,12 @@ fn run_ui_toml(config: &mut compiletest::Config) {
         Ok(result)
     }
 
-    config.mode = TestMode::Ui;
-    config.src_base = Path::new("tests").join("ui-toml").canonicalize().unwrap();
+    let mut config = base_config("ui-toml");
+    config.src_base = config.src_base.canonicalize().unwrap();
 
-    let tests = compiletest::make_tests(config);
+    let tests = compiletest::make_tests(&config);
 
-    let res = run_tests(config, tests);
+    let res = run_tests(&config, tests);
     match res {
         Ok(true) => {},
         Ok(false) => panic!("Some tests failed"),
@@ -237,7 +233,7 @@ fn run_ui_toml(config: &mut compiletest::Config) {
     }
 }
 
-fn run_ui_cargo(config: &mut compiletest::Config) {
+fn run_ui_cargo() {
     fn run_tests(
         config: &compiletest::Config,
         filters: &[String],
@@ -310,13 +306,13 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
         return;
     }
 
-    config.mode = TestMode::Ui;
-    config.src_base = Path::new("tests").join("ui-cargo").canonicalize().unwrap();
+    let mut config = base_config("ui-cargo");
+    config.src_base = config.src_base.canonicalize().unwrap();
 
-    let tests = compiletest::make_tests(config);
+    let tests = compiletest::make_tests(&config);
 
     let current_dir = env::current_dir().unwrap();
-    let res = run_tests(config, &config.filters, tests);
+    let res = run_tests(&config, &config.filters, tests);
     env::set_current_dir(current_dir).unwrap();
 
     match res {
@@ -331,12 +327,11 @@ fn run_ui_cargo(config: &mut compiletest::Config) {
 #[test]
 fn compile_test() {
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
-    let mut config = default_config();
-    run_ui(&mut config);
-    run_ui_test(&mut config);
-    run_ui_toml(&mut config);
-    run_ui_cargo(&mut config);
-    run_internal_tests(&mut config);
+    run_ui();
+    run_ui_test();
+    run_ui_toml();
+    run_ui_cargo();
+    run_internal_tests();
 }
 
 /// Restores an env var on drop
