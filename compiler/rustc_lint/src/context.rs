@@ -524,7 +524,7 @@ impl LintStore {
     }
 }
 
-/// Context for lint checking after type checking.
+/// Context for lint checking outside of type inference.
 pub struct LateContext<'tcx> {
     /// Type context we're checking in.
     pub tcx: TyCtxt<'tcx>,
