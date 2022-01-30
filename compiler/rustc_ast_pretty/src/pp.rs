@@ -457,7 +457,7 @@ impl Printer {
         self.break_offset(n, 0)
     }
 
-    crate fn zerobreak(&mut self) {
+    pub fn zerobreak(&mut self) {
         self.spaces(0)
     }
 
