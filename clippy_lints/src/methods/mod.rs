@@ -2402,10 +2402,13 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv);
             },
-            ("unwrap", []) => match method_call(recv) {
-                Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
-                Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
-                _ => unwrap_used::check(cx, expr, recv),
+            ("unwrap", []) => {
+                match method_call(recv) {
+                    Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
+                    Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
+                    _ => {},
+                }
+                unwrap_used::check(cx, expr, recv);
             },
             ("unwrap_or", [u_arg]) => match method_call(recv) {
                 Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {
