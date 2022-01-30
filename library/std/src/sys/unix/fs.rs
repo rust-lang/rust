@@ -1487,6 +1487,7 @@ mod remove_dir_impl {
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
     use alloc::collections::VecDeque;
+    use libc::dev_t;
 
     #[cfg(not(all(target_os = "macos", target_arch = "x86_64"),))]
     use libc::{fdopendir, openat, unlinkat};
@@ -1640,17 +1641,21 @@ mod remove_dir_impl {
 
     struct DirComponent {
         name: CString,
+        dev: dev_t,
         ino: u64,
     }
 
     fn readdir_open_path(path: &CStr) -> io::Result<(DirComponent, CachedReadDir)> {
         let dir_fd = openat_nofollow_dironly(None, path)?;
 
-        // use fstat() to get the inode of the directory
+        // use fstat() to get dev, inode of the directory
         let mut stat = unsafe { mem::zeroed() };
         cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
         let cached_readdir = fdreaddir(dir_fd)?;
-        Ok((DirComponent { name: CString::new("")?, ino: stat.st_ino }, cached_readdir))
+        Ok((
+            DirComponent { name: CString::new("")?, dev: stat.st_dev, ino: stat.st_ino },
+            cached_readdir,
+        ))
     }
 
     fn readdir_open_child(
@@ -1658,9 +1663,11 @@ mod remove_dir_impl {
         child: &DirEntry,
     ) -> io::Result<(DirComponent, CachedReadDir)> {
         let dir_fd = openat_nofollow_dironly(Some(readdir.as_fd()), child.name_cstr())?;
+        let mut stat = unsafe { mem::zeroed() };
+        cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
         let cached_readdir = fdreaddir(dir_fd)?;
         Ok((
-            DirComponent { name: child.name_cstr().into(), ino: child.entry.d_ino },
+            DirComponent { name: child.name_cstr().into(), dev: stat.st_dev, ino: stat.st_ino },
             cached_readdir,
         ))
     }
@@ -1676,7 +1683,7 @@ mod remove_dir_impl {
         cvt(unsafe { fstat64(parent_dir_fd.as_raw_fd(), &mut stat) })?;
         // Make sure that the reopened parent directory has the same inode as when we visited it descending
         // the directory tree. More detailed risk analysis TBD.
-        if expected_parent_dir.ino != stat.st_ino {
+        if expected_parent_dir.dev != stat.st_dev || expected_parent_dir.ino != stat.st_ino {
             return Err(io::Error::new(
                 io::ErrorKind::Uncategorized,
                 "parent directory inode does not match",
