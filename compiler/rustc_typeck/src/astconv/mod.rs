@@ -482,7 +482,20 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ) -> subst::GenericArg<'tcx> {
                 let tcx = self.astconv.tcx();
                 match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
+                    GenericParamDefKind::Lifetime => self
+                        .astconv
+                        .re_infer(Some(param), self.span)
+                        .unwrap_or_else(|| {
+                            debug!(?param, "unelided lifetime in signature");
+
+                            // This indicates an illegal lifetime in a non-assoc-trait position
+                            tcx.sess.delay_span_bug(self.span, "unelided lifetime in signature");
+
+                            // Supply some dummy value. We don't have an
+                            // `re_error`, annoyingly, so use `'static`.
+                            tcx.lifetimes.re_static
+                        })
+                        .into(),
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
