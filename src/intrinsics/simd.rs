@@ -280,7 +280,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_add | simd_sub | simd_mul | simd_div, (c x, c y) {
+        simd_add | simd_sub | simd_mul | simd_div | simd_rem
+        | simd_shl | simd_shr | simd_and | simd_or | simd_xor, (c x, c y) {
             if !x.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
                 return;
@@ -295,57 +296,31 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 (ty::Uint(_), sym::simd_sub) => fx.bcx.ins().isub(x_lane, y_lane),
                 (ty::Uint(_), sym::simd_mul) => fx.bcx.ins().imul(x_lane, y_lane),
                 (ty::Uint(_), sym::simd_div) => fx.bcx.ins().udiv(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_rem) => fx.bcx.ins().urem(x_lane, y_lane),
 
                 (ty::Int(_), sym::simd_add) => fx.bcx.ins().iadd(x_lane, y_lane),
                 (ty::Int(_), sym::simd_sub) => fx.bcx.ins().isub(x_lane, y_lane),
                 (ty::Int(_), sym::simd_mul) => fx.bcx.ins().imul(x_lane, y_lane),
                 (ty::Int(_), sym::simd_div) => fx.bcx.ins().sdiv(x_lane, y_lane),
+                (ty::Int(_), sym::simd_rem) => fx.bcx.ins().srem(x_lane, y_lane),
 
                 (ty::Float(_), sym::simd_add) => fx.bcx.ins().fadd(x_lane, y_lane),
                 (ty::Float(_), sym::simd_sub) => fx.bcx.ins().fsub(x_lane, y_lane),
                 (ty::Float(_), sym::simd_mul) => fx.bcx.ins().fmul(x_lane, y_lane),
                 (ty::Float(_), sym::simd_div) => fx.bcx.ins().fdiv(x_lane, y_lane),
+                (ty::Float(FloatTy::F32), sym::simd_rem) => fx.lib_call(
+                    "fmodf",
+                    vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
+                    vec![AbiParam::new(types::F32)],
+                    &[x_lane, y_lane],
+                )[0],
+                (ty::Float(FloatTy::F64), sym::simd_rem) => fx.lib_call(
+                    "fmod",
+                    vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
+                    vec![AbiParam::new(types::F64)],
+                    &[x_lane, y_lane],
+                )[0],
 
-                _ => unreachable!(),
-            });
-        };
-        simd_rem, (c x, c y) {
-            if !x.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
-                return;
-            }
-
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| {
-                match lane_ty.kind() {
-                    ty::Uint(_) => fx.bcx.ins().urem(x_lane, y_lane),
-                    ty::Int(_) => fx.bcx.ins().srem(x_lane, y_lane),
-                    ty::Float(FloatTy::F32) => fx.lib_call(
-                        "fmodf",
-                        vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
-                        vec![AbiParam::new(types::F32)],
-                        &[x_lane, y_lane],
-                    )[0],
-                    ty::Float(FloatTy::F64) => fx.lib_call(
-                        "fmod",
-                        vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
-                        vec![AbiParam::new(types::F64)],
-                        &[x_lane, y_lane],
-                    )[0],
-                    _ => unreachable!("{:?}", lane_ty),
-                }
-            });
-        };
-        simd_shl | simd_shr | simd_and | simd_or | simd_xor, (c x, c y) {
-            if !x.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
-                return;
-            }
-
-            // FIXME use vector instructions when possible
-            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| match (
-                lane_ty.kind(),
-                intrinsic,
-            ) {
                 (ty::Uint(_), sym::simd_shl) => fx.bcx.ins().ishl(x_lane, y_lane),
                 (ty::Uint(_), sym::simd_shr) => fx.bcx.ins().ushr(x_lane, y_lane),
                 (ty::Uint(_), sym::simd_and) => fx.bcx.ins().band(x_lane, y_lane),
