@@ -132,7 +132,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
-        ast::ExprKind::Let(..) => None,
+        ast::ExprKind::Let(ref pat, ref expr, _span) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
         | ast::ExprKind::ForLoop(..)
         | ast::ExprKind::Loop(..)
@@ -1832,6 +1832,37 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     let list_str = write_list(&item_vec, &fmt)?;
 
     Some(format!("({list_str})"))
+}
+
+fn rewrite_let(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    pat: &ast::Pat,
+    expr: &ast::Expr,
+) -> Option<String> {
+    let mut result = "let ".to_owned();
+
+    // 4 = "let ".len()
+    let pat_shape = shape.offset_left(4)?;
+    let pat_str = pat.rewrite(context, pat_shape)?;
+    result.push_str(&pat_str);
+
+    result.push_str(" =");
+
+    let comments_lo = context
+        .snippet_provider
+        .span_after(expr.span.with_lo(pat.span.hi()), "=");
+    let comments_span = mk_sp(comments_lo, expr.span.lo());
+    rewrite_assign_rhs_with_comments(
+        context,
+        result,
+        expr,
+        shape,
+        &RhsAssignKind::Expr(&expr.kind, expr.span),
+        RhsTactics::Default,
+        comments_span,
+        true,
+    )
 }
 
 pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(

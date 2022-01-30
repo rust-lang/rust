@@ -292,6 +292,9 @@ fn guards() {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             if fooooooooooooooooooooo &&
                (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {}
+        Hi { friend } if let None = friend => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if let Some(foooooooooooooo) = hiiiiiiiiiiiiiii => {}
+        aaaaaaaaaaaaaaaaa if let Superman { powers: Some(goteem), .. } = all::get_random_being::<Super>() => {}
     }
 }
 
