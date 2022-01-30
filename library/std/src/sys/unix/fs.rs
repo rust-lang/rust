@@ -1478,13 +1478,15 @@ mod remove_dir_impl {
 #[cfg(not(any(target_os = "redox", target_os = "espidf")))]
 mod remove_dir_impl {
     use super::{cstr, lstat, Dir, DirEntry, InnerReadDir, ReadDir};
-    use crate::ffi::CStr;
+    use crate::ffi::{CStr, CString};
     use crate::io;
+    use crate::mem;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
     use crate::os::unix::prelude::{OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
+    use alloc::collections::VecDeque;
 
     #[cfg(not(all(target_os = "macos", target_arch = "x86_64"),))]
     use libc::{fdopendir, openat, unlinkat};
@@ -1517,6 +1519,23 @@ mod remove_dir_impl {
 
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
     use macos_weak::{fdopendir, openat, unlinkat};
+
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "emscripten",
+        target_os = "l4re",
+        target_os = "android"
+    )))]
+    use libc::fstat as fstat64;
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "emscripten",
+        target_os = "l4re",
+        target_os = "android"
+    ))]
+    use libc::fstat64;
+
+    const MAX_OPEN_FDS: usize = 32;
 
     pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
         let fd = cvt_r(|| unsafe {
@@ -1605,55 +1624,120 @@ mod remove_dir_impl {
         }
     }
 
-    fn remove_dir_all_loop(p: &Path) -> io::Result<()> {
-        use crate::ffi::CString;
+    struct CachedReadDir {
+        readdir: ReadDir,
+        raw_fd: RawFd,
+    }
 
-        struct State {
-            dir: ReadDir,
-            fd: RawFd,
-            parent_fd: Option<RawFd>,
-            pcstr: CString,
+    struct DirComponent {
+        name: CString,
+        ino: u64,
+    }
+
+    fn readdir_open_path(path: &CStr) -> io::Result<(DirComponent, CachedReadDir)> {
+        let dir_fd = openat_nofollow_dironly(None, path)?;
+
+        // use fstat() to get the inode of the directory
+        let mut stat = unsafe { mem::zeroed() };
+        cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
+        let (readdir, raw_fd) = fdreaddir(dir_fd)?;
+        Ok((
+            DirComponent { name: CString::new("")?, ino: stat.st_ino },
+            CachedReadDir { readdir, raw_fd },
+        ))
+    }
+
+    fn readdir_open_child(
+        readdir: &CachedReadDir,
+        child: &DirEntry,
+    ) -> io::Result<(DirComponent, CachedReadDir)> {
+        let dir_fd = openat_nofollow_dironly(Some(readdir.raw_fd), child.name_cstr())?;
+        let (readdir, raw_fd) = fdreaddir(dir_fd)?;
+        Ok((
+            DirComponent { name: child.name_cstr().into(), ino: child.entry.d_ino },
+            CachedReadDir { readdir, raw_fd },
+        ))
+    }
+
+    fn readdir_reopen_parent(
+        dir: &CachedReadDir,
+        expected_parent_dir: &DirComponent,
+    ) -> io::Result<CachedReadDir> {
+        let parent_dir_fd = openat_nofollow_dironly(Some(dir.raw_fd), unsafe {
+            CStr::from_bytes_with_nul_unchecked(b"..\0")
+        })?;
+        let mut stat = unsafe { mem::zeroed() };
+        cvt(unsafe { fstat64(parent_dir_fd.as_raw_fd(), &mut stat) })?;
+        // Make sure that the reopened parent directory has the same inode as when we visited it descending
+        // the directory tree. More detailed risk analysis TBD.
+        if expected_parent_dir.ino != stat.st_ino {
+            return Err(io::Error::new(
+                io::ErrorKind::Uncategorized,
+                "parent directory inode does not match",
+            ));
         }
+        let (readdir, raw_fd) = fdreaddir(parent_dir_fd)?;
+        Ok(CachedReadDir { readdir, raw_fd })
+    }
 
-        impl State {
-            fn new(parent_fd: Option<RawFd>, pcstr: CString) -> io::Result<Self> {
-                // entry is expected to be a directory, open as such
-                let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
-
-                // open the directory passing ownership of the fd
-                let (dir, fd) = fdreaddir(fd)?;
-
-                Ok(Self { dir, fd, parent_fd, pcstr })
-            }
-        }
-
-        let mut parents = Vec::<State>::new();
-        let mut current = State::new(None, cstr(p)?)?;
+    fn remove_dir_all_loop(root: &Path) -> io::Result<()> {
+        // all ancestor names and inodes from the deletion root directory to the parent of the currently processed
+        // directory
+        let mut parent_dir_components = Vec::new();
+        // cache of up to MAX_OPEN_FDS ancestor ReadDirs and associated file descriptors
+        let mut readdir_cache = VecDeque::with_capacity(MAX_OPEN_FDS);
+        // the directory name, inode pair and ReadDir currently being processed
+        let (mut current_dir_component, mut current_readdir) = readdir_open_path(&cstr(root)?)?;
         loop {
-            while let Some(child) = current.dir.next() {
+            while let Some(child) = current_readdir.readdir.next() {
                 let child = child?;
-                if !unlink_direntry(&child, current.fd)? {
+                if !unlink_direntry(&child, current_readdir.raw_fd)? {
                     // Descend into this child directory
-                    let parent = current;
-                    current = State::new(Some(parent.fd), child.name_cstr().into())?;
-                    parents.push(parent);
+
+                    let (child_dir_compoment, child_readdir) =
+                        readdir_open_child(&current_readdir, &child)?;
+                    parent_dir_components.push(current_dir_component);
+
+                    // avoid growing the cache over capacity
+                    if readdir_cache.len() == readdir_cache.capacity() {
+                        readdir_cache.pop_front();
+                    }
+                    readdir_cache.push_back(current_readdir);
+
+                    current_readdir = child_readdir;
+                    current_dir_component = child_dir_compoment;
                 }
             }
 
-            // unlink the directory after removing its contents
-            cvt(unsafe {
-                unlinkat(
-                    current.parent_fd.unwrap_or(libc::AT_FDCWD),
-                    current.pcstr.as_ptr(),
-                    libc::AT_REMOVEDIR,
-                )
-            })?;
+            match parent_dir_components.pop() {
+                Some(parent) => {
+                    // Going back up...
+                    let parent_readdir = match readdir_cache.pop_back() {
+                        Some(readdir) => readdir,
+                        None => {
+                            // not cached -> reopen
+                            readdir_reopen_parent(&current_readdir, &parent)?
+                        }
+                    };
+                    // unlink the directory after having removed its contents
+                    cvt(unsafe {
+                        unlinkat(
+                            parent_readdir.raw_fd,
+                            current_dir_component.name.as_ptr(),
+                            libc::AT_REMOVEDIR,
+                        )
+                    })?;
 
-            match parents.pop() {
-                Some(parent) => current = parent,
-                None => return Ok(()),
+                    current_dir_component = parent;
+                    current_readdir = parent_readdir;
+                }
+                None => break,
             }
         }
+
+        // unlink root dir
+        cvt(unsafe { unlinkat(libc::AT_FDCWD, cstr(root)?.as_ptr(), libc::AT_REMOVEDIR) })?;
+        Ok(())
     }
 
     fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
