@@ -3,11 +3,16 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
-pub fn check_crate(tcx: TyCtxt<'_>) {
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { check_unused, ..*providers };
+}
+
+fn check_unused(tcx: TyCtxt<'_>, (): ()) {
     let mut used_trait_imports = FxHashSet::default();
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
