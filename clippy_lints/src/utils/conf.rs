@@ -333,10 +333,10 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
                     Err(e) => return Err(e),
                     Ok(md) if md.is_dir() => {},
                     Ok(_) => {
-                        // warn if we happen to find two config files
+                        // warn if we happen to find two config files #8323
                         if let Some(ref found_config_) = found_config {
                             eprintln!(
-                                "Warning: found two config files: {} and {}.\nUsing the first one!",
+                                "Using config file `{}`\nWarning: `{}` will be ignored.",
                                 found_config_.display(),
                                 config_file.display(),
                             );
