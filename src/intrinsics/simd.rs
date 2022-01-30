@@ -17,28 +17,6 @@ fn report_simd_type_validation_error(
     crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
 }
 
-macro simd_cmp($fx:expr, $intrinsic:ident, $span:ident, $cc_u:ident|$cc_s:ident|$cc_f:ident($x:ident, $y:ident) -> $ret:ident) {
-    if !$x.layout().ty.is_simd() {
-        report_simd_type_validation_error($fx, $intrinsic, $span, $x.layout().ty);
-        return;
-    }
-
-    // FIXME use vector instructions when possible
-    simd_pair_for_each_lane($fx, $x, $y, $ret, &|fx, lane_ty, res_lane_ty, x_lane, y_lane| {
-        let res_lane = match lane_ty.kind() {
-            ty::Uint(_) => fx.bcx.ins().icmp(IntCC::$cc_u, x_lane, y_lane),
-            ty::Int(_) => fx.bcx.ins().icmp(IntCC::$cc_s, x_lane, y_lane),
-            ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::$cc_f, x_lane, y_lane),
-            _ => unreachable!("{:?}", lane_ty),
-        };
-
-        let ty = fx.clif_type(res_lane_ty).unwrap();
-
-        let res_lane = fx.bcx.ins().bint(ty, res_lane);
-        fx.bcx.ins().ineg(res_lane)
-    });
-}
-
 macro simd_int_binop($fx:expr, $intrinsic:ident, $span:ident, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) {
     if !$x.layout().ty.is_simd() {
         report_simd_type_validation_error($fx, $intrinsic, $span, $x.layout().ty);
@@ -117,29 +95,61 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_eq, (c x, c y) {
-            simd_cmp!(fx, intrinsic, span, Equal|Equal|Equal(x, y) -> ret);
-        };
-        simd_ne, (c x, c y) {
-            simd_cmp!(fx, intrinsic, span, NotEqual|NotEqual|NotEqual(x, y) -> ret);
-        };
-        simd_lt, (c x, c y) {
-            simd_cmp!(fx, intrinsic, span, UnsignedLessThan|SignedLessThan|LessThan(x, y) -> ret);
-        };
-        simd_le, (c x, c y) {
-            simd_cmp!(fx, intrinsic, span, UnsignedLessThanOrEqual|SignedLessThanOrEqual|LessThanOrEqual(x, y) -> ret);
-        };
-        simd_gt, (c x, c y) {
-            simd_cmp!(fx, intrinsic, span, UnsignedGreaterThan|SignedGreaterThan|GreaterThan(x, y) -> ret);
-        };
-        simd_ge, (c x, c y) {
-            simd_cmp!(
-                fx,
-                intrinsic,
-                span,
-                UnsignedGreaterThanOrEqual|SignedGreaterThanOrEqual|GreaterThanOrEqual
-                (x, y) -> ret
-            );
+        simd_eq | simd_ne | simd_lt | simd_le | simd_gt | simd_ge, (c x, c y) {
+            if !x.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
+                return;
+            }
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, res_lane_ty, x_lane, y_lane| {
+                let res_lane = match (lane_ty.kind(), intrinsic) {
+                    (ty::Uint(_), sym::simd_eq) => fx.bcx.ins().icmp(IntCC::Equal, x_lane, y_lane),
+                    (ty::Uint(_), sym::simd_ne) => fx.bcx.ins().icmp(IntCC::NotEqual, x_lane, y_lane),
+                    (ty::Uint(_), sym::simd_lt) => {
+                        fx.bcx.ins().icmp(IntCC::UnsignedLessThan, x_lane, y_lane)
+                    }
+                    (ty::Uint(_), sym::simd_le) => {
+                        fx.bcx.ins().icmp(IntCC::UnsignedLessThanOrEqual, x_lane, y_lane)
+                    }
+                    (ty::Uint(_), sym::simd_gt) => {
+                        fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, x_lane, y_lane)
+                    }
+                    (ty::Uint(_), sym::simd_ge) => {
+                        fx.bcx.ins().icmp(IntCC::UnsignedGreaterThanOrEqual, x_lane, y_lane)
+                    }
+
+                    (ty::Int(_), sym::simd_eq) => fx.bcx.ins().icmp(IntCC::Equal, x_lane, y_lane),
+                    (ty::Int(_), sym::simd_ne) => fx.bcx.ins().icmp(IntCC::NotEqual, x_lane, y_lane),
+                    (ty::Int(_), sym::simd_lt) => fx.bcx.ins().icmp(IntCC::SignedLessThan, x_lane, y_lane),
+                    (ty::Int(_), sym::simd_le) => {
+                        fx.bcx.ins().icmp(IntCC::SignedLessThanOrEqual, x_lane, y_lane)
+                    }
+                    (ty::Int(_), sym::simd_gt) => {
+                        fx.bcx.ins().icmp(IntCC::SignedGreaterThan, x_lane, y_lane)
+                    }
+                    (ty::Int(_), sym::simd_ge) => {
+                        fx.bcx.ins().icmp(IntCC::SignedGreaterThanOrEqual, x_lane, y_lane)
+                    }
+
+                    (ty::Float(_), sym::simd_eq) => fx.bcx.ins().fcmp(FloatCC::Equal, x_lane, y_lane),
+                    (ty::Float(_), sym::simd_ne) => fx.bcx.ins().fcmp(FloatCC::NotEqual, x_lane, y_lane),
+                    (ty::Float(_), sym::simd_lt) => fx.bcx.ins().fcmp(FloatCC::LessThan, x_lane, y_lane),
+                    (ty::Float(_), sym::simd_le) => {
+                        fx.bcx.ins().fcmp(FloatCC::LessThanOrEqual, x_lane, y_lane)
+                    }
+                    (ty::Float(_), sym::simd_gt) => fx.bcx.ins().fcmp(FloatCC::GreaterThan, x_lane, y_lane),
+                    (ty::Float(_), sym::simd_ge) => {
+                        fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, x_lane, y_lane)
+                    }
+                    _ => unreachable!(),
+                };
+
+                let ty = fx.clif_type(res_lane_ty).unwrap();
+
+                let res_lane = fx.bcx.ins().bint(ty, res_lane);
+                fx.bcx.ins().ineg(res_lane)
+            });
         };
 
         // simd_shuffle32<T, U>(x: T, y: T, idx: [u32; 32]) -> U
