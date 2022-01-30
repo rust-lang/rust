@@ -68,13 +68,13 @@ macro simd_flt_binop($fx:expr, $op:ident($x:ident, $y:ident) -> $ret:ident) {
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
-    substs: SubstsRef<'tcx>,
+    _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     span: Span,
 ) {
     intrinsic_match! {
-        fx, intrinsic, substs, args,
+        fx, intrinsic, args,
         _ => {
             fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
         };

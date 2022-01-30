@@ -43,28 +43,21 @@ macro intrinsic_arg {
 }
 
 macro intrinsic_match {
-    ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr,
+    ($fx:expr, $intrinsic:expr, $args:expr,
     _ => $unknown:block;
     $(
         $($($name:tt).*)|+ $(if $cond:expr)?, ($($a:ident $arg:ident),*) $content:block;
     )*) => {
-        let _ = $substs; // Silence warning when substs is unused.
         match $intrinsic {
             $(
                 $(intrinsic_pat!($($name).*))|* $(if $cond)? => {
-                    #[allow(unused_parens, non_snake_case)]
-                    {
-                        if let [$($arg),*] = $args {
-                            let ($($arg,)*) = (
-                                $(intrinsic_arg!($a $fx, $arg),)*
-                            );
-                            #[warn(unused_parens, non_snake_case)]
-                            {
-                                $content
-                            }
-                        } else {
-                            bug!("wrong number of args for intrinsic {:?}", $intrinsic);
-                        }
+                    if let [$($arg),*] = $args {
+                        let ($($arg,)*) = (
+                            $(intrinsic_arg!($a $fx, $arg),)*
+                        );
+                        $content
+                    } else {
+                        bug!("wrong number of args for intrinsic {:?}", $intrinsic);
                     }
                 }
             )*
@@ -357,7 +350,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     let usize_layout = fx.layout_of(fx.tcx.types.usize);
 
     intrinsic_match! {
-        fx, intrinsic, substs, args,
+        fx, intrinsic, args,
         _ => {
             fx.tcx.sess.span_fatal(span, &format!("unsupported intrinsic {}", intrinsic));
         };

@@ -8,14 +8,14 @@ use rustc_middle::ty::subst::SubstsRef;
 pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
-    substs: SubstsRef<'tcx>,
+    _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     let ret = destination.unwrap().0;
 
     intrinsic_match! {
-        fx, intrinsic, substs, args,
+        fx, intrinsic, args,
         _ => {
             fx.tcx.sess.warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
