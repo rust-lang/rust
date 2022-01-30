@@ -525,38 +525,36 @@ impl AttrsWithOwner {
 
 fn inner_attributes(
     syntax: &SyntaxNode,
-) -> Option<(impl Iterator<Item = ast::Attr>, impl Iterator<Item = ast::Comment>)> {
-    let (attrs, docs) = match_ast! {
+) -> Option<impl Iterator<Item = Either<ast::Attr, ast::Comment>>> {
+    let node = match_ast! {
         match syntax {
-            ast::SourceFile(it) => (it.attrs(), ast::DocCommentIter::from_syntax_node(it.syntax())),
-            ast::ExternBlock(it) => {
-                let extern_item_list = it.extern_item_list()?;
-                (extern_item_list.attrs(), ast::DocCommentIter::from_syntax_node(extern_item_list.syntax()))
+            ast::SourceFile(_) => syntax.clone(),
+            ast::ExternBlock(it) => it.extern_item_list()?.syntax().clone(),
+            ast::Fn(it) => it.body()?.stmt_list()?.syntax().clone(),
+            ast::Impl(it) => it.assoc_item_list()?.syntax().clone(),
+            ast::Module(it) => it.item_list()?.syntax().clone(),
+            ast::BlockExpr(it) => {
+                use syntax::SyntaxKind::{BLOCK_EXPR , EXPR_STMT};
+                // Block expressions accept outer and inner attributes, but only when they are the outer
+                // expression of an expression statement or the final expression of another block expression.
+                let may_carry_attributes = matches!(
+                    it.syntax().parent().map(|it| it.kind()),
+                     Some(BLOCK_EXPR | EXPR_STMT)
+                );
+                if !may_carry_attributes {
+                    return None
+                }
+                syntax.clone()
             },
-            ast::Fn(it) => {
-                let body = it.body()?;
-                let stmt_list = body.stmt_list()?;
-                (stmt_list.attrs(), ast::DocCommentIter::from_syntax_node(body.syntax()))
-            },
-            ast::Impl(it) => {
-                let assoc_item_list = it.assoc_item_list()?;
-                (assoc_item_list.attrs(), ast::DocCommentIter::from_syntax_node(assoc_item_list.syntax()))
-            },
-            ast::Module(it) => {
-                let item_list = it.item_list()?;
-                (item_list.attrs(), ast::DocCommentIter::from_syntax_node(item_list.syntax()))
-            },
-            // FIXME: BlockExpr's only accept inner attributes in specific cases
-            // Excerpt from the reference:
-            // Block expressions accept outer and inner attributes, but only when they are the outer
-            // expression of an expression statement or the final expression of another block expression.
-            ast::BlockExpr(_it) => return None,
             _ => return None,
         }
     };
-    let attrs = attrs.filter(|attr| attr.kind().is_inner());
-    let docs = docs.filter(|doc| doc.is_inner());
-    Some((attrs, docs))
+
+    let attrs = ast::AttrDocCommentIter::from_syntax_node(&node).filter(|el| match el {
+        Either::Left(attr) => attr.kind().is_inner(),
+        Either::Right(comment) => comment.is_inner(),
+    });
+    Some(attrs)
 }
 
 #[derive(Debug)]
@@ -833,24 +831,16 @@ fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase
 fn collect_attrs(
     owner: &dyn ast::HasAttrs,
 ) -> impl Iterator<Item = (AttrId, Either<ast::Attr, ast::Comment>)> {
-    let (inner_attrs, inner_docs) = inner_attributes(owner.syntax())
-        .map_or((None, None), |(attrs, docs)| (Some(attrs), Some(docs)));
-
-    let outer_attrs = owner.attrs().filter(|attr| attr.kind().is_outer());
-    let attrs = outer_attrs
-        .chain(inner_attrs.into_iter().flatten())
-        .map(|attr| (attr.syntax().text_range().start(), Either::Left(attr)));
-
-    let outer_docs =
-        ast::DocCommentIter::from_syntax_node(owner.syntax()).filter(ast::Comment::is_outer);
-    let docs = outer_docs
-        .chain(inner_docs.into_iter().flatten())
-        .map(|docs_text| (docs_text.syntax().text_range().start(), Either::Right(docs_text)));
-    // sort here by syntax node offset because the source can have doc attributes and doc strings be interleaved
-    docs.chain(attrs)
-        .sorted_by_key(|&(offset, _)| offset)
+    let inner_attrs = inner_attributes(owner.syntax()).into_iter().flatten();
+    let outer_attrs =
+        ast::AttrDocCommentIter::from_syntax_node(owner.syntax()).filter(|el| match el {
+            Either::Left(attr) => attr.kind().is_outer(),
+            Either::Right(comment) => comment.is_outer(),
+        });
+    outer_attrs
+        .chain(inner_attrs)
         .enumerate()
-        .map(|(id, (_, attr))| (AttrId { ast_index: id as u32 }, attr))
+        .map(|(id, attr)| (AttrId { ast_index: id as u32 }, attr))
 }
 
 pub(crate) fn variants_attrs_source_map(

@@ -76,8 +76,8 @@ pub trait HasDocComments: HasAttrs {
     fn doc_comments(&self) -> DocCommentIter {
         DocCommentIter { iter: self.syntax().children_with_tokens() }
     }
-    fn doc_comments_and_attrs(&self) -> AttrCommentIter {
-        AttrCommentIter { iter: self.syntax().children_with_tokens() }
+    fn doc_comments_and_attrs(&self) -> AttrDocCommentIter {
+        AttrDocCommentIter { iter: self.syntax().children_with_tokens() }
     }
 }
 
@@ -113,17 +113,23 @@ impl Iterator for DocCommentIter {
     }
 }
 
-pub struct AttrCommentIter {
+pub struct AttrDocCommentIter {
     iter: SyntaxElementChildren,
 }
 
-impl Iterator for AttrCommentIter {
-    type Item = Either<ast::Comment, ast::Attr>;
+impl AttrDocCommentIter {
+    pub fn from_syntax_node(syntax_node: &ast::SyntaxNode) -> AttrDocCommentIter {
+        AttrDocCommentIter { iter: syntax_node.children_with_tokens() }
+    }
+}
+
+impl Iterator for AttrDocCommentIter {
+    type Item = Either<ast::Attr, ast::Comment>;
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.by_ref().find_map(|el| match el {
-            SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Right),
+            SyntaxElement::Node(node) => ast::Attr::cast(node).map(Either::Left),
             SyntaxElement::Token(tok) => {
-                ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Left)
+                ast::Comment::cast(tok).filter(ast::Comment::is_doc).map(Either::Right)
             }
         })
     }

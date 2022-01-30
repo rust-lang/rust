@@ -117,7 +117,7 @@ impl ChildBySource for ItemScope {
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db.upcast());
                 calls.for_each(|(attr_id, calls)| {
-                    if let Some(Either::Right(attr)) =
+                    if let Some(Either::Left(attr)) =
                         adt.doc_comments_and_attrs().nth(attr_id.ast_index as usize)
                     {
                         res[keys::DERIVE_MACRO_CALL].insert(attr, (attr_id, calls.into()));

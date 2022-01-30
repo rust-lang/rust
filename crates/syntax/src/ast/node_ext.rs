@@ -160,14 +160,9 @@ impl ast::Attr {
     }
 
     pub fn kind(&self) -> AttrKind {
-        let first_token = self.syntax().first_token();
-        let first_token_kind = first_token.as_ref().map(SyntaxToken::kind);
-        let second_token_kind =
-            first_token.and_then(|token| token.next_token()).as_ref().map(SyntaxToken::kind);
-
-        match (first_token_kind, second_token_kind) {
-            (Some(T![#]), Some(T![!])) => AttrKind::Inner,
-            _ => AttrKind::Outer,
+        match self.excl_token() {
+            Some(_) => AttrKind::Inner,
+            None => AttrKind::Outer,
         }
     }
 

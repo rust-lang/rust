@@ -157,7 +157,7 @@ pub fn expand_speculative(
             let attr = item
                 .doc_comments_and_attrs()
                 .nth(invoc_attr_index as usize)
-                .and_then(Either::right)?;
+                .and_then(Either::left)?;
             match attr.token_tree() {
                 Some(token_tree) => {
                     let (mut tree, map) = syntax_node_to_token_tree(attr.token_tree()?.syntax());
@@ -323,7 +323,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                 ast::Item::cast(node.clone())?
                     .doc_comments_and_attrs()
                     .nth(invoc_attr_index as usize)
-                    .and_then(Either::right)
+                    .and_then(Either::left)
                     .map(|attr| attr.syntax().clone())
                     .into_iter()
                     .collect()
