@@ -17,54 +17,6 @@ fn report_simd_type_validation_error(
     crate::trap::trap_unreachable(fx, "compilation should not have succeeded");
 }
 
-macro simd_int_binop($fx:expr, $intrinsic:ident, $span:ident, $op_u:ident|$op_s:ident($x:ident, $y:ident) -> $ret:ident) {
-    if !$x.layout().ty.is_simd() {
-        report_simd_type_validation_error($fx, $intrinsic, $span, $x.layout().ty);
-        return;
-    }
-
-    // FIXME use vector instructions when possible
-    simd_pair_for_each_lane($fx, $x, $y, $ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| {
-        match lane_ty.kind() {
-            ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-            ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-            _ => unreachable!("{:?}", lane_ty),
-        }
-    });
-}
-
-macro simd_int_flt_binop($fx:expr, $intrinsic:ident, $span:ident, $op_u:ident|$op_s:ident|$op_f:ident($x:ident, $y:ident) -> $ret:ident) {
-    if !$x.layout().ty.is_simd() {
-        report_simd_type_validation_error($fx, $intrinsic, $span, $x.layout().ty);
-        return;
-    }
-
-    // FIXME use vector instructions when possible
-    simd_pair_for_each_lane($fx, $x, $y, $ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| {
-        match lane_ty.kind() {
-            ty::Uint(_) => fx.bcx.ins().$op_u(x_lane, y_lane),
-            ty::Int(_) => fx.bcx.ins().$op_s(x_lane, y_lane),
-            ty::Float(_) => fx.bcx.ins().$op_f(x_lane, y_lane),
-            _ => unreachable!("{:?}", lane_ty),
-        }
-    });
-}
-
-macro simd_flt_binop($fx:expr, $intrinsic:ident, $span:ident, $op:ident($x:ident, $y:ident) -> $ret:ident) {
-    if !$x.layout().ty.is_simd() {
-        report_simd_type_validation_error($fx, $intrinsic, $span, $x.layout().ty);
-        return;
-    }
-
-    // FIXME use vector instructions when possible
-    simd_pair_for_each_lane($fx, $x, $y, $ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| {
-        match lane_ty.kind() {
-            ty::Float(_) => fx.bcx.ins().$op(x_lane, y_lane),
-            _ => unreachable!("{:?}", lane_ty),
-        }
-    });
-}
-
 pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: Symbol,
@@ -142,6 +94,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     (ty::Float(_), sym::simd_ge) => {
                         fx.bcx.ins().fcmp(FloatCC::GreaterThanOrEqual, x_lane, y_lane)
                     }
+
                     _ => unreachable!(),
                 };
 
@@ -327,17 +280,34 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_add, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, span, iadd|iadd|fadd(x, y) -> ret);
-        };
-        simd_sub, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, span, isub|isub|fsub(x, y) -> ret);
-        };
-        simd_mul, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, span, imul|imul|fmul(x, y) -> ret);
-        };
-        simd_div, (c x, c y) {
-            simd_int_flt_binop!(fx, intrinsic, span, udiv|sdiv|fdiv(x, y) -> ret);
+        simd_add | simd_sub | simd_mul | simd_div, (c x, c y) {
+            if !x.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
+                return;
+            }
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| match (
+                lane_ty.kind(),
+                intrinsic,
+            ) {
+                (ty::Uint(_), sym::simd_add) => fx.bcx.ins().iadd(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_sub) => fx.bcx.ins().isub(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_mul) => fx.bcx.ins().imul(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_div) => fx.bcx.ins().udiv(x_lane, y_lane),
+
+                (ty::Int(_), sym::simd_add) => fx.bcx.ins().iadd(x_lane, y_lane),
+                (ty::Int(_), sym::simd_sub) => fx.bcx.ins().isub(x_lane, y_lane),
+                (ty::Int(_), sym::simd_mul) => fx.bcx.ins().imul(x_lane, y_lane),
+                (ty::Int(_), sym::simd_div) => fx.bcx.ins().sdiv(x_lane, y_lane),
+
+                (ty::Float(_), sym::simd_add) => fx.bcx.ins().fadd(x_lane, y_lane),
+                (ty::Float(_), sym::simd_sub) => fx.bcx.ins().fsub(x_lane, y_lane),
+                (ty::Float(_), sym::simd_mul) => fx.bcx.ins().fmul(x_lane, y_lane),
+                (ty::Float(_), sym::simd_div) => fx.bcx.ins().fdiv(x_lane, y_lane),
+
+                _ => unreachable!(),
+            });
         };
         simd_rem, (c x, c y) {
             if !x.layout().ty.is_simd() {
@@ -365,20 +335,31 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 }
             });
         };
-        simd_shl, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, span, ishl|ishl(x, y) -> ret);
-        };
-        simd_shr, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, span, ushr|sshr(x, y) -> ret);
-        };
-        simd_and, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, span, band|band(x, y) -> ret);
-        };
-        simd_or, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, span, bor|bor(x, y) -> ret);
-        };
-        simd_xor, (c x, c y) {
-            simd_int_binop!(fx, intrinsic, span, bxor|bxor(x, y) -> ret);
+        simd_shl | simd_shr | simd_and | simd_or | simd_xor, (c x, c y) {
+            if !x.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
+                return;
+            }
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| match (
+                lane_ty.kind(),
+                intrinsic,
+            ) {
+                (ty::Uint(_), sym::simd_shl) => fx.bcx.ins().ishl(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_shr) => fx.bcx.ins().ushr(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_and) => fx.bcx.ins().band(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_or) => fx.bcx.ins().bor(x_lane, y_lane),
+                (ty::Uint(_), sym::simd_xor) => fx.bcx.ins().bxor(x_lane, y_lane),
+
+                (ty::Int(_), sym::simd_shl) => fx.bcx.ins().ishl(x_lane, y_lane),
+                (ty::Int(_), sym::simd_shr) => fx.bcx.ins().sshr(x_lane, y_lane),
+                (ty::Int(_), sym::simd_and) => fx.bcx.ins().band(x_lane, y_lane),
+                (ty::Int(_), sym::simd_or) => fx.bcx.ins().bor(x_lane, y_lane),
+                (ty::Int(_), sym::simd_xor) => fx.bcx.ins().bxor(x_lane, y_lane),
+
+                _ => unreachable!(),
+            });
         };
 
         simd_fma, (c a, c b, c c) {
@@ -407,11 +388,24 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         };
 
-        simd_fmin, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, span, fmin(x, y) -> ret);
-        };
-        simd_fmax, (c x, c y) {
-            simd_flt_binop!(fx, intrinsic, span, fmax(x, y) -> ret);
+        simd_fmin | simd_fmax, (c x, c y) {
+            if !x.layout().ty.is_simd() {
+                report_simd_type_validation_error(fx, intrinsic, span, x.layout().ty);
+                return;
+            }
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, _ret_lane_ty, x_lane, y_lane| {
+                match lane_ty.kind() {
+                    ty::Float(_) => {},
+                    _ => unreachable!("{:?}", lane_ty),
+                }
+                match intrinsic {
+                    sym::simd_fmin => fx.bcx.ins().fmin(x_lane, y_lane),
+                    sym::simd_fmax => fx.bcx.ins().fmax(x_lane, y_lane),
+                    _ => unreachable!(),
+                }
+            });
         };
 
         simd_round, (c a) {
