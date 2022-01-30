@@ -295,9 +295,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     err.span_suggestion_verbose(
                                         fn_call_span.shrink_to_lo(),
                                         &format!(
-                                        "consider calling `.{}()` to borrow the type's contents",
-                                        borrow_method
-                                    ),
+                                            "consider calling `.{}()` to borrow the type's contents",
+                                            borrow_method,
+                                        ),
                                         format!("{}().", borrow_method),
                                         Applicability::MachineApplicable,
                                     );
