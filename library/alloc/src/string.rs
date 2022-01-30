@@ -43,7 +43,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
-use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::char::{self, decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
@@ -1144,9 +1144,19 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
-        match ch.len_utf8() {
-            1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+        self.reserve(ch.len_utf8());
+
+        // SAFETY: we just reserved enough capacity for the utf8
+        // encoder to write into. `encode_utf8_raw` initializes
+        // the first `.len()` bytes returned by it, so it's safe
+        // to extend the Vec.
+        unsafe {
+            let len = self.len();
+
+            let dst = self.vec.spare_capacity_mut();
+            let bytes = char::encode_utf8_raw(ch as u32, dst);
+            let len = len + bytes.len();
+            self.vec.set_len(len);
         }
     }
 

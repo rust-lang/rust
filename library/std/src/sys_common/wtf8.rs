@@ -26,7 +26,7 @@ use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::iter::FromIterator;
-use crate::mem;
+use crate::mem::{self, MaybeUninit};
 use crate::ops;
 use crate::rc::Rc;
 use crate::slice;
@@ -205,7 +205,7 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let mut bytes = [0; 4];
+        let mut bytes = [MaybeUninit::uninit(); 4];
         let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
         self.bytes.extend_from_slice(bytes)
     }

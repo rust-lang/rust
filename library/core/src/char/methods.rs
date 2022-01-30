@@ -1,5 +1,6 @@
 //! impl char {}
 
+use crate::mem::MaybeUninit;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;
@@ -650,7 +651,12 @@ impl char {
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
-        unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
+        // `encode_utf8_raw` won't deinitialize `dst`.
+        unsafe {
+            let dst =
+                slice::from_raw_parts_mut(dst.as_mut_ptr().cast::<MaybeUninit<u8>>(), dst.len());
+            from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst))
+        }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -1654,26 +1660,26 @@ const fn len_utf8(code: u32) -> usize {
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
 #[inline]
-pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
+pub fn encode_utf8_raw(code: u32, dst: &mut [MaybeUninit<u8>]) -> &mut [u8] {
     let len = len_utf8(code);
     match (len, &mut dst[..]) {
         (1, [a, ..]) => {
-            *a = code as u8;
+            *a = MaybeUninit::new(code as u8);
         }
         (2, [a, b, ..]) => {
-            *a = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-            *b = (code & 0x3F) as u8 | TAG_CONT;
+            *a = MaybeUninit::new((code >> 6 & 0x1F) as u8 | TAG_TWO_B);
+            *b = MaybeUninit::new((code & 0x3F) as u8 | TAG_CONT);
         }
         (3, [a, b, c, ..]) => {
-            *a = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-            *b = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *c = (code & 0x3F) as u8 | TAG_CONT;
+            *a = MaybeUninit::new((code >> 12 & 0x0F) as u8 | TAG_THREE_B);
+            *b = MaybeUninit::new((code >> 6 & 0x3F) as u8 | TAG_CONT);
+            *c = MaybeUninit::new((code & 0x3F) as u8 | TAG_CONT);
         }
         (4, [a, b, c, d, ..]) => {
-            *a = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-            *b = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-            *c = (code >> 6 & 0x3F) as u8 | TAG_CONT;
-            *d = (code & 0x3F) as u8 | TAG_CONT;
+            *a = MaybeUninit::new((code >> 18 & 0x07) as u8 | TAG_FOUR_B);
+            *b = MaybeUninit::new((code >> 12 & 0x3F) as u8 | TAG_CONT);
+            *c = MaybeUninit::new((code >> 6 & 0x3F) as u8 | TAG_CONT);
+            *d = MaybeUninit::new((code & 0x3F) as u8 | TAG_CONT);
         }
         _ => panic!(
             "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
@@ -1682,7 +1688,10 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
             dst.len(),
         ),
     };
-    &mut dst[..len]
+    // SAFETY: we just initialized `..len`, which is also guaranteed to
+    // be in bounds by the above `panic` branch (at the time of writing
+    // LLVM can't prove it)
+    unsafe { MaybeUninit::slice_assume_init_mut(dst.get_unchecked_mut(..len)) }
 }
 
 /// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,

@@ -89,6 +89,7 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
+#![feature(char_internals)]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
