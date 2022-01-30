@@ -23,7 +23,7 @@ error: module has missing stability attribute
   --> $DIR/effective_visibilities_invariants.rs:5:1
    |
 LL | pub mod m {}
-   | ^^^^^^^^^^^^
+   | ^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

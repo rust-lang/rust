@@ -20,28 +20,20 @@ LL | | fn main() {}
 error: trait has missing stability attribute
   --> $DIR/issue-113860-1.rs:4:1
    |
-LL | / pub trait Trait {
-LL | |
-LL | |     fn fun() {}
-LL | |
-LL | | }
-   | |_^
+LL | pub trait Trait {
+   | ^^^^^^^^^^^^^^^
 
 error: implementation has missing stability attribute
   --> $DIR/issue-113860-1.rs:10:1
    |
-LL | / impl Trait for u8 {
-LL | |
-LL | |     pub(self) fn fun() {}
-LL | |
-LL | | }
-   | |_^
+LL | impl Trait for u8 {
+   | ^^^^^^^^^^^^^^^^^
 
 error: associated function has missing stability attribute
   --> $DIR/issue-113860-1.rs:6:5
    |
 LL |     fn fun() {}
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^
 
 error: aborting due to 5 previous errors
 

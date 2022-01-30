@@ -417,6 +417,14 @@ LL | #![cold]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
+warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:85:12
+   |
+LL | #![feature(rust1)]
+   |            ^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
+
 warning: `#[macro_use]` only has an effect on `extern crate` and modules
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:176:5
    |
@@ -1160,14 +1168,6 @@ warning: crate-level attribute should be an inner attribute: add an exclamation 
    |
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the feature `rust1` has been stable since 1.0.0 and no longer requires an attribute to enable
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:85:12
-   |
-LL | #![feature(rust1)]
-   |            ^^^^^
-   |
-   = note: `#[warn(stable_features)]` on by default
 
 warning: 173 warnings emitted
 

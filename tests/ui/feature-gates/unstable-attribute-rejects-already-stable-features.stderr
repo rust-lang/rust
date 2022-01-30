@@ -5,7 +5,7 @@ LL | #[unstable(feature = "arbitrary_enum_discriminant", issue = "42")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this feature is already stable
 LL | #[rustc_const_unstable(feature = "arbitrary_enum_discriminant", issue = "42")]
 LL | const fn my_fun() {}
-   | -------------------- the stability attribute annotates this item
+   | ----------------- the stability attribute annotates this item
    |
 help: consider removing the attribute
   --> $DIR/unstable-attribute-rejects-already-stable-features.rs:6:1
@@ -19,7 +19,7 @@ error: can't mark as unstable using an already stable feature
 LL | #[rustc_const_unstable(feature = "arbitrary_enum_discriminant", issue = "42")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this feature is already stable
 LL | const fn my_fun() {}
-   | -------------------- the stability attribute annotates this item
+   | ----------------- the stability attribute annotates this item
    |
 help: consider removing the attribute
   --> $DIR/unstable-attribute-rejects-already-stable-features.rs:7:1
