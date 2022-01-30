@@ -1020,6 +1020,16 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         };
 
+        const_allocate, (c _size, c _align) {
+            // returns a null pointer at runtime.
+            let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
+            ret.write_cvalue(fx, CValue::by_val(null, ret.layout()));
+        };
+
+        const_deallocate, (c _ptr, c _size, c _align) {
+            // nop at runtime.
+        };
+
         black_box, (c a) {
             // FIXME implement black_box semantics
             ret.write_cvalue(fx, a);
