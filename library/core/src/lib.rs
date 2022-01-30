@@ -60,32 +60,29 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(cfg_hide(
-        not(test),
-        any(not(feature = "miri-test-libstd"), test, doctest),
-        no_fp_fmt_parse,
-        target_pointer_width = "16",
-        target_pointer_width = "32",
-        target_pointer_width = "64",
-        target_has_atomic = "8",
-        target_has_atomic = "16",
-        target_has_atomic = "32",
-        target_has_atomic = "64",
-        target_has_atomic = "ptr",
-        target_has_atomic_equal_alignment = "8",
-        target_has_atomic_equal_alignment = "16",
-        target_has_atomic_equal_alignment = "32",
-        target_has_atomic_equal_alignment = "64",
-        target_has_atomic_equal_alignment = "ptr",
-        target_has_atomic_load_store = "8",
-        target_has_atomic_load_store = "16",
-        target_has_atomic_load_store = "32",
-        target_has_atomic_load_store = "64",
-        target_has_atomic_load_store = "ptr",
-    ))
-)]
+#![doc(cfg_hide(
+    not(test),
+    any(not(feature = "miri-test-libstd"), test, doctest),
+    no_fp_fmt_parse,
+    target_pointer_width = "16",
+    target_pointer_width = "32",
+    target_pointer_width = "64",
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr",
+    target_has_atomic_equal_alignment = "8",
+    target_has_atomic_equal_alignment = "16",
+    target_has_atomic_equal_alignment = "32",
+    target_has_atomic_equal_alignment = "64",
+    target_has_atomic_equal_alignment = "ptr",
+    target_has_atomic_load_store = "8",
+    target_has_atomic_load_store = "16",
+    target_has_atomic_load_store = "32",
+    target_has_atomic_load_store = "64",
+    target_has_atomic_load_store = "ptr",
+))]
 #![no_core]
 //
 // Lints:

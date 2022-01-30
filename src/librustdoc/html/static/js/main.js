@@ -72,7 +72,7 @@ function resourcePath(basename, extension) {
         var mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
         var locationTitle = document.querySelector(".sidebar h2.location");
         if (mobileLocationTitle && locationTitle) {
-            mobileLocationTitle.innerText = locationTitle.innerText;
+            mobileLocationTitle.innerHTML = locationTitle.innerHTML;
         }
     }
 }());

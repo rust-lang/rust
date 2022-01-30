@@ -251,7 +251,6 @@ fn test_set_memory() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn test_set_memory_const() {
     const XS: [u8; 20] = {
         let mut xs = [0u8; 20];

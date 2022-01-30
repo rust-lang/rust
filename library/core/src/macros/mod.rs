@@ -1003,7 +1003,6 @@ pub(crate) mod builtin {
     /// assert_eq!(s, b"ABCDEF");
     /// # }
     /// ```
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "concat_bytes", issue = "87555")]
     #[rustc_builtin_macro]
     #[macro_export]

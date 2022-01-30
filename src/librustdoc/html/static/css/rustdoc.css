@@ -1799,8 +1799,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		background-color: rgba(0,0,0,0);
 		margin: 0;
 		padding: 0;
-		padding-left: 15px;
 		z-index: 11;
+		/* Reduce height slightly to account for mobile topbar. */
+		height: calc(100vh - 45px);
 	}
 
 	/* The source view uses a different design for the sidebar toggle, and doesn't have a topbar,
@@ -1831,7 +1832,13 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		padding: 0.3em;
 		padding-right: 0.6em;
 		text-overflow: ellipsis;
-		overflow-x: hidden;
+		overflow: hidden;
+		white-space: nowrap;
+		/* Rare exception to specifying font sizes in rem. Since the topbar
+		   height is specified in pixels, this also has to be specified in
+		   pixels to avoid overflowing the topbar when the user sets a bigger
+		   font size. */
+		font-size: 22.4px;
 	}
 
 	.mobile-topbar .logo-container {
@@ -1864,6 +1871,9 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.sidebar-menu-toggle {
 		width: 45px;
+		/* Rare exception to specifying font sizes in rem. Since this is acting
+		   as an icon, it's okay to specify its sizes in pixels. */
+		font-size: 32px;
 		border: none;
 	}
 

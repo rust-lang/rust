@@ -35,3 +35,8 @@ assert-property: (".mobile-topbar", {"clientHeight": "45"})
 click: ".sidebar-menu-toggle"
 click: ".sidebar-links a"
 assert-position: ("#method\.must_use", {"y": 45})
+
+// Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
+click: ".sidebar-menu-toggle"
+scroll-to: ".block.keyword li:nth-child(1)"
+assert-position: (".block.keyword li:nth-child(1)", {"y": 542.96875})

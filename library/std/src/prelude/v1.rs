@@ -49,7 +49,6 @@ pub use core::prelude::v1::{
     issue = "87555",
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
-#[cfg(not(bootstrap))]
 #[doc(no_inline)]
 pub use core::prelude::v1::concat_bytes;
 
