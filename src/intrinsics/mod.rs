@@ -31,14 +31,12 @@ macro intrinsic_pat {
 }
 
 macro intrinsic_arg {
-    (o $fx:expr, $arg:ident) => {
-        $arg
-    },
+    (o $fx:expr, $arg:ident) => {},
     (c $fx:expr, $arg:ident) => {
-        codegen_operand($fx, $arg)
+        let $arg = codegen_operand($fx, $arg);
     },
     (v $fx:expr, $arg:ident) => {
-        codegen_operand($fx, $arg).load_scalar($fx)
+        let $arg = codegen_operand($fx, $arg).load_scalar($fx);
     }
 }
 
@@ -52,9 +50,7 @@ macro intrinsic_match {
             $(
                 $(intrinsic_pat!($($name).*))|* $(if $cond)? => {
                     if let [$($arg),*] = $args {
-                        let ($($arg,)*) = (
-                            $(intrinsic_arg!($a $fx, $arg),)*
-                        );
+                        $(intrinsic_arg!($a $fx, $arg);)*
                         $content
                     } else {
                         bug!("wrong number of args for intrinsic {:?}", $intrinsic);

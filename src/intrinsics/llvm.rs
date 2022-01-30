@@ -52,8 +52,8 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         };
         "llvm.x86.sse2.cmp.ps" | "llvm.x86.sse2.cmp.pd", (c x, c y, o kind) {
-            let kind_const = crate::constant::mir_operand_get_const_val(fx, kind).expect("llvm.x86.sse2.cmp.* kind not const");
-            let flt_cc = match kind_const.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind_const)) {
+            let kind = crate::constant::mir_operand_get_const_val(fx, kind).expect("llvm.x86.sse2.cmp.* kind not const");
+            let flt_cc = match kind.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind)) {
                 0 => FloatCC::Equal,
                 1 => FloatCC::LessThan,
                 2 => FloatCC::LessThanOrEqual,
