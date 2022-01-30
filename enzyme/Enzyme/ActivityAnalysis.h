@@ -122,12 +122,12 @@ public:
   bool isConstantValue(TypeResults &TR, llvm::Value *val);
 
 private:
-  std::map<llvm::Instruction *, std::set<llvm::Value *>>
+  llvm::DenseMap<llvm::Instruction *, llvm::SmallPtrSet<llvm::Value *, 4>>
       ReEvaluateValueIfInactiveInst;
-  std::map<llvm::Value *, std::set<llvm::Value *>>
+  llvm::DenseMap<llvm::Value *, llvm::SmallPtrSet<llvm::Value *, 4>>
       ReEvaluateValueIfInactiveValue;
 
-  std::map<llvm::Value *, std::set<llvm::Instruction *>>
+  llvm::DenseMap<llvm::Value *, llvm::SmallPtrSet<llvm::Instruction *, 4>>
       ReEvaluateInstIfInactiveValue;
 
   void InsertConstantInstruction(TypeResults &TR, llvm::Instruction *I);

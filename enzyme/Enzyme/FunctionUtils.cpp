@@ -1433,7 +1433,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     }
 
     {
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
       auto PA = SROAPass().run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
@@ -1444,7 +1444,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
     ReplaceReallocs(NewF);
 
     {
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
       auto PA = SROAPass().run(*NewF, FAM);
 #else
       auto PA = SROA().run(*NewF, FAM);
@@ -1973,12 +1973,12 @@ void SelectOptimization(Function *F) {
 }
 void PreProcessCache::optimizeIntermediate(Function *F) {
   PromotePass().run(*F, FAM);
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
   GVNPass().run(*F, FAM);
 #else
   GVN().run(*F, FAM);
 #endif
-#if LLVM_VERSION_MAJOR >= 14
+#if LLVM_VERSION_MAJOR >= 14 && !defined(FLANG)
   SROAPass().run(*F, FAM);
 #else
   SROA().run(*F, FAM);

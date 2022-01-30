@@ -893,7 +893,11 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 #if LLVM_VERSION_MAJOR >= 14
           malloccall->addDereferenceableRetAttr(
               ci->getLimitedValue() * byteSizeOfType->getLimitedValue());
+#ifndef FLANG
           AttrBuilder B(ci->getContext());
+#else
+          AttrBuilder B;
+#endif
           B.addDereferenceableOrNullAttr(ci->getLimitedValue() *
                                          byteSizeOfType->getLimitedValue());
           malloccall->setAttributes(

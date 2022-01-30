@@ -1619,7 +1619,7 @@ public:
       // code left here to re-enable upon Attributor patch
       Logic.PPC.FAM.clear(F, F.getName());
 
-#if LLVM_VERSION_MAJOR >= 13
+#if LLVM_VERSION_MAJOR >= 13 && !defined(FLANG)
 
       AnalysisGetter AG(Logic.PPC.FAM);
       SetVector<Function *> Functions;

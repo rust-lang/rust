@@ -749,7 +749,11 @@ public:
 #if LLVM_VERSION_MAJOR >= 14
         cast<CallInst>(anti)->addDereferenceableRetAttr(ci->getLimitedValue());
         cal->addDereferenceableRetAttr(ci->getLimitedValue());
+#ifndef FLANG
         AttrBuilder B(Fn->getContext());
+#else
+        AttrBuilder B;
+#endif
         B.addDereferenceableOrNullAttr(ci->getLimitedValue());
         cast<CallInst>(anti)->setAttributes(
             cast<CallInst>(anti)->getAttributes().addRetAttributes(
