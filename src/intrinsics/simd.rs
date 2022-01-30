@@ -258,28 +258,6 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         };
 
-        simd_fabs, (c a) {
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _ret_lane_ty, lane| {
-                fx.bcx.ins().fabs(lane)
-            });
-        };
-
-        simd_fsqrt, (c a) {
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _ret_lane_ty, lane| {
-                fx.bcx.ins().sqrt(lane)
-            });
-        };
-
         simd_add | simd_sub | simd_mul | simd_div | simd_rem
         | simd_shl | simd_shr | simd_and | simd_or | simd_xor, (c x, c y) {
             if !x.layout().ty.is_simd() {
@@ -407,34 +385,26 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 }
             });
         };
-        simd_ceil, (c a) {
+
+        simd_fabs | simd_fsqrt | simd_ceil | simd_floor | simd_trunc, (c a) {
             if !a.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
                 return;
             }
 
-            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _ret_lane_ty, lane| {
-                fx.bcx.ins().ceil(lane)
-            });
-        };
-        simd_floor, (c a) {
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _ret_lane_ty, lane| {
-                fx.bcx.ins().floor(lane)
-            });
-        };
-        simd_trunc, (c a) {
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _ret_lane_ty, lane| {
-                fx.bcx.ins().trunc(lane)
+            simd_for_each_lane(fx, a, ret, &|fx, lane_ty, _ret_lane_ty, lane| {
+                match lane_ty.kind() {
+                    ty::Float(_) => {},
+                    _ => unreachable!("{:?}", lane_ty),
+                }
+                match intrinsic {
+                    sym::simd_fabs => fx.bcx.ins().fabs(lane),
+                    sym::simd_fsqrt => fx.bcx.ins().sqrt(lane),
+                    sym::simd_ceil => fx.bcx.ins().ceil(lane),
+                    sym::simd_floor => fx.bcx.ins().floor(lane),
+                    sym::simd_trunc => fx.bcx.ins().trunc(lane),
+                    _ => unreachable!(),
+                }
             });
         };
 
