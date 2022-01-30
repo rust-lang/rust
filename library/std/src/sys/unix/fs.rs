@@ -1672,10 +1672,10 @@ mod remove_dir_impl {
         ))
     }
 
-    fn readdir_reopen_parent(
+    fn reopen_parent(
         dir: &CachedReadDir,
         expected_parent_dir: &DirComponent,
-    ) -> io::Result<CachedReadDir> {
+    ) -> io::Result<OwnedFd> {
         let parent_dir_fd = openat_nofollow_dironly(Some(dir.as_fd()), unsafe {
             CStr::from_bytes_with_nul_unchecked(b"..\0")
         })?;
@@ -1689,7 +1689,7 @@ mod remove_dir_impl {
                 "parent directory inode does not match",
             ));
         }
-        fdreaddir(parent_dir_fd)
+        Ok(parent_dir_fd)
     }
 
     fn remove_dir_all_loop(root: &Path) -> io::Result<()> {
@@ -1725,20 +1725,29 @@ mod remove_dir_impl {
                 Some(parent) => {
                     // Going back up...
                     let parent_readdir = match readdir_cache.pop_back() {
-                        Some(readdir) => readdir,
+                        Some(readdir) => {
+                            cvt(unsafe {
+                                unlinkat(
+                                    readdir.as_fd().as_raw_fd(),
+                                    current_dir_component.name.as_ptr(),
+                                    libc::AT_REMOVEDIR,
+                                )
+                            })?;
+                            readdir
+                        }
                         None => {
                             // not cached -> reopen
-                            readdir_reopen_parent(&current_readdir, &parent)?
+                            let parent_dir = reopen_parent(&current_readdir, &parent)?;
+                            cvt(unsafe {
+                                unlinkat(
+                                    parent_dir.as_raw_fd(),
+                                    current_dir_component.name.as_ptr(),
+                                    libc::AT_REMOVEDIR,
+                                )
+                            })?;
+                            fdreaddir(parent_dir)?
                         }
                     };
-                    // unlink the directory after having removed its contents
-                    cvt(unsafe {
-                        unlinkat(
-                            parent_readdir.raw_fd,
-                            current_dir_component.name.as_ptr(),
-                            libc::AT_REMOVEDIR,
-                        )
-                    })?;
 
                     current_dir_component = parent;
                     current_readdir = parent_readdir;
