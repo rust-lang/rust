@@ -10,12 +10,6 @@ error[E0515]: cannot return reference to function parameter `val`
 LL |         val.use_self()
    |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
-error[E0515]: cannot return reference to function parameter `val`
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
-   |
-LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
-
 error[E0772]: `val` has lifetime `'a` but calling `use_self` introduces an implicit `'static` lifetime requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:66:13
    |
@@ -35,6 +29,12 @@ help: consider relaxing the implicit `'static` requirement
    |
 LL |     impl MyTrait for Box<dyn ObjectTrait<Assoc = i32> + '_> {
    |                                                       ++++
+
+error[E0515]: cannot return reference to function parameter `val`
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound-needing-more-suggestions.rs:109:9
+   |
+LL |         val.use_self()
+   |         ^^^^^^^^^^^^^^ returns a reference to data owned by the current function
 
 error: aborting due to 4 previous errors
 

@@ -496,9 +496,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     // have valid types and not error
     // FIXME(matthewjasper) We shouldn't need to use `track_errors`.
     tcx.sess.track_errors(|| {
-        tcx.sess.time("type_collecting", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-        });
+        tcx.hir().par_for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
     })?;
 
     if tcx.features().rustc_attrs {
@@ -508,13 +506,14 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
                     outlives::test::test_inferred_outlives(tcx, module)
                 })
             });
+            tcx.sess.time("variance_testing", || {
+                tcx.hir().par_for_each_module(|module| variance::test::test_variance(tcx, module))
+            });
         })?;
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
-        });
+        tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
     })?;
 
     tcx.sess.track_errors(|| {
@@ -529,27 +528,14 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         });
     })?;
 
-    if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("variance_testing", || {
-                tcx.hir().par_for_each_module(|module| variance::test::test_variance(tcx, module))
-            });
-        })?;
-    }
-
     tcx.sess.track_errors(|| {
-        tcx.sess.time("wf_checking", || {
-            tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-        });
+        tcx.hir().par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     })?;
 
-    // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
-    });
-
-    tcx.sess.time("item_bodies_checking", || {
-        tcx.hir().par_for_each_module(|module| tcx.ensure().typeck_item_bodies(module))
+    tcx.hir().par_for_each_module(|module| {
+        // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
+        tcx.ensure().check_mod_item_types(module);
+        tcx.ensure().typeck_item_bodies(module);
     });
 
     tcx.ensure().check_unused(());
