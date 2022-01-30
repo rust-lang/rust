@@ -43,7 +43,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[cfg(not(no_global_oom_handling))]
-use core::char::{self, decode_utf16, REPLACEMENT_CHARACTER};
+use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
@@ -1154,7 +1154,7 @@ impl String {
             let len = self.len();
 
             let dst = self.vec.spare_capacity_mut();
-            let bytes = char::encode_utf8_raw(ch as u32, dst);
+            let bytes = core::char::encode_utf8_raw(ch as u32, dst);
             let len = len + bytes.len();
             self.vec.set_len(len);
         }
