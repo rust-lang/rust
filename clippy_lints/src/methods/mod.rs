@@ -2404,8 +2404,12 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("unwrap", []) => {
                 match method_call(recv) {
-                    Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
-                    Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
+                    Some(("get", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, false);
+                    },
+                    Some(("get_mut", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, true);
+                    },
                     _ => {},
                 }
                 unwrap_used::check(cx, expr, recv);
