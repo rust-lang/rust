@@ -4,13 +4,17 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
-pub fn check_crate(tcx: TyCtxt<'_>) {
-    let mut used_trait_imports: UnordSet<LocalDefId> = Default::default();
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { check_unused_traits, ..*providers };
+}
 
+fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
+    let mut used_trait_imports = UnordSet::<LocalDefId>::default();
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);

@@ -469,6 +469,7 @@ pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);
+    check_unused::provide(providers);
     variance::provide(providers);
     outlives::provide(providers);
     impl_wf_check::provide(providers);
@@ -531,7 +532,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.hir().par_for_each_module(|module| tcx.ensure().typeck_item_bodies(module));
 
-    check_unused::check_crate(tcx);
+    tcx.ensure().check_unused_traits(());
     check_for_entry_fn(tcx);
 
     if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
