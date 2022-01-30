@@ -146,8 +146,10 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &*tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck_item_bodies(tcx: TyCtxt<'_>, (): ()) {
-    tcx.hir().par_body_owners(|body_owner_def_id| tcx.ensure().typeck(body_owner_def_id));
+fn typeck_item_bodies(tcx: TyCtxt<'_>, module: LocalDefId) {
+    tcx.hir().par_body_owners_in_module(module, |body_owner_def_id| {
+        tcx.ensure().typeck(body_owner_def_id)
+    });
 }
 
 fn typeck_const_arg<'tcx>(
