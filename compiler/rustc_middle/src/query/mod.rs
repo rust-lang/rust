@@ -898,6 +898,10 @@ rustc_queries! {
         desc { |tcx| "linting {}", describe_as_module(key, tcx) }
     }
 
+    query check_unused_traits(_: ()) -> () {
+        desc { "checking unused trait imports in crate" }
+    }
+
     /// Checks the attributes in the module.
     query check_mod_attrs(key: LocalDefId) -> () {
         desc { |tcx| "checking attributes in {}", describe_as_module(key, tcx) }

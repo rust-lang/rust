@@ -1,11 +1,16 @@
 use rustc_data_structures::unord::{ExtendUnord, UnordSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 
-pub fn check_crate(tcx: TyCtxt<'_>) {
-    let mut used_trait_imports: UnordSet<LocalDefId> = Default::default();
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers { check_unused_traits, ..*providers };
+}
+
+fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
+    let mut used_trait_imports = UnordSet::<LocalDefId>::default();
 
     // FIXME: Use `tcx.hir().par_body_owners()` when we implement creating `DefId`s
     // for anon constants during their parents' typeck.

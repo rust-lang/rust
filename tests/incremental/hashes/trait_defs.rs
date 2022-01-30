@@ -420,13 +420,13 @@ trait TraitAddExternModifier {
     // -------------------------
     // --------------------------------------------------------------------
     // -------------------------
-    fn method()           ;
+    fn            method();
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 trait TraitAddExternModifier {
     #[rustc_clean(except="hir_owner,hir_owner_nodes,fn_sig", cfg="cfail2")]
