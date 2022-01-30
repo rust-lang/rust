@@ -1255,7 +1255,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn apply_attrs_to_cleanup_callsite(&mut self, _llret: RValue<'gcc>) {
-        unimplemented!();
+        // TODO
     }
 
     fn set_span(&mut self, _span: Span) {}
