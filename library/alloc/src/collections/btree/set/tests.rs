@@ -379,8 +379,8 @@ fn test_drain_filter_pred_panic_leak() {
     assert_eq!(b.dropped(), 0);
     assert_eq!(c.dropped(), 0);
     assert_eq!(set.len(), 2);
-    assert_eq!(set.first().unwrap().id(), 1);
-    assert_eq!(set.last().unwrap().id(), 2);
+    assert_eq!(set.get_min().unwrap().id(), 1);
+    assert_eq!(set.get_max().unwrap().id(), 2);
 }
 
 #[test]
@@ -690,36 +690,36 @@ fn test_append() {
 }
 
 #[test]
-fn test_first_last() {
+fn test_min_max() {
     let mut a = BTreeSet::new();
-    assert_eq!(a.first(), None);
-    assert_eq!(a.last(), None);
+    assert_eq!(a.get_min(), None);
+    assert_eq!(a.get_max(), None);
     a.insert(1);
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&1));
+    assert_eq!(a.get_min(), Some(&1));
+    assert_eq!(a.get_max(), Some(&1));
     a.insert(2);
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&2));
+    assert_eq!(a.get_min(), Some(&1));
+    assert_eq!(a.get_max(), Some(&2));
     for i in 3..=12 {
         a.insert(i);
     }
-    assert_eq!(a.first(), Some(&1));
-    assert_eq!(a.last(), Some(&12));
-    assert_eq!(a.pop_first(), Some(1));
-    assert_eq!(a.pop_last(), Some(12));
-    assert_eq!(a.pop_first(), Some(2));
-    assert_eq!(a.pop_last(), Some(11));
-    assert_eq!(a.pop_first(), Some(3));
-    assert_eq!(a.pop_last(), Some(10));
-    assert_eq!(a.pop_first(), Some(4));
-    assert_eq!(a.pop_first(), Some(5));
-    assert_eq!(a.pop_first(), Some(6));
-    assert_eq!(a.pop_first(), Some(7));
-    assert_eq!(a.pop_first(), Some(8));
-    assert_eq!(a.clone().pop_last(), Some(9));
-    assert_eq!(a.pop_first(), Some(9));
-    assert_eq!(a.pop_first(), None);
-    assert_eq!(a.pop_last(), None);
+    assert_eq!(a.get_min(), Some(&1));
+    assert_eq!(a.get_max(), Some(&12));
+    assert_eq!(a.pop_min(), Some(1));
+    assert_eq!(a.pop_max(), Some(12));
+    assert_eq!(a.pop_min(), Some(2));
+    assert_eq!(a.pop_max(), Some(11));
+    assert_eq!(a.pop_min(), Some(3));
+    assert_eq!(a.pop_max(), Some(10));
+    assert_eq!(a.pop_min(), Some(4));
+    assert_eq!(a.pop_min(), Some(5));
+    assert_eq!(a.pop_min(), Some(6));
+    assert_eq!(a.pop_min(), Some(7));
+    assert_eq!(a.pop_min(), Some(8));
+    assert_eq!(a.clone().pop_max(), Some(9));
+    assert_eq!(a.pop_min(), Some(9));
+    assert_eq!(a.pop_min(), None);
+    assert_eq!(a.pop_max(), None);
 }
 
 // Unlike the function with the same name in map/tests, returns no values.

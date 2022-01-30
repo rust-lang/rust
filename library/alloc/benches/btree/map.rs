@@ -227,17 +227,17 @@ pub fn iteration_mut_100000(b: &mut Bencher) {
     bench_iteration_mut(b, 100000);
 }
 
-fn bench_first_and_last_nightly(b: &mut Bencher, size: i32) {
+fn bench_min_and_max_nightly(b: &mut Bencher, size: i32) {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
     b.iter(|| {
         for _ in 0..10 {
-            black_box(map.first_key_value());
-            black_box(map.last_key_value());
+            black_box(map.min_key_value());
+            black_box(map.max_key_value());
         }
     });
 }
 
-fn bench_first_and_last_stable(b: &mut Bencher, size: i32) {
+fn bench_min_and_max_stable(b: &mut Bencher, size: i32) {
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
     b.iter(|| {
         for _ in 0..10 {
@@ -248,33 +248,33 @@ fn bench_first_and_last_stable(b: &mut Bencher, size: i32) {
 }
 
 #[bench]
-pub fn first_and_last_0_nightly(b: &mut Bencher) {
-    bench_first_and_last_nightly(b, 0);
+pub fn min_and_max_0_nightly(b: &mut Bencher) {
+    bench_min_and_max_nightly(b, 0);
 }
 
 #[bench]
-pub fn first_and_last_0_stable(b: &mut Bencher) {
-    bench_first_and_last_stable(b, 0);
+pub fn min_and_max_0_stable(b: &mut Bencher) {
+    bench_min_and_max_stable(b, 0);
 }
 
 #[bench]
-pub fn first_and_last_100_nightly(b: &mut Bencher) {
-    bench_first_and_last_nightly(b, 100);
+pub fn min_and_max_100_nightly(b: &mut Bencher) {
+    bench_min_and_max_nightly(b, 100);
 }
 
 #[bench]
-pub fn first_and_last_100_stable(b: &mut Bencher) {
-    bench_first_and_last_stable(b, 100);
+pub fn min_and_max_100_stable(b: &mut Bencher) {
+    bench_min_and_max_stable(b, 100);
 }
 
 #[bench]
-pub fn first_and_last_10k_nightly(b: &mut Bencher) {
-    bench_first_and_last_nightly(b, 10_000);
+pub fn min_and_max_10k_nightly(b: &mut Bencher) {
+    bench_min_and_max_nightly(b, 10_000);
 }
 
 #[bench]
-pub fn first_and_last_10k_stable(b: &mut Bencher) {
-    bench_first_and_last_stable(b, 10_000);
+pub fn min_and_max_10k_stable(b: &mut Bencher) {
+    bench_min_and_max_stable(b, 10_000);
 }
 
 const BENCH_RANGE_SIZE: i32 = 145;
@@ -410,7 +410,7 @@ pub fn clone_slim_100_and_pop_all(b: &mut Bencher) {
     let src = slim_map(100);
     b.iter(|| {
         let mut map = src.clone();
-        while map.pop_first().is_some() {}
+        while map.pop_min().is_some() {}
         map
     });
 }
@@ -481,7 +481,7 @@ pub fn clone_slim_10k_and_pop_all(b: &mut Bencher) {
     let src = slim_map(10_000);
     b.iter(|| {
         let mut map = src.clone();
-        while map.pop_first().is_some() {}
+        while map.pop_min().is_some() {}
         map
     });
 }
@@ -552,7 +552,7 @@ pub fn clone_fat_val_100_and_pop_all(b: &mut Bencher) {
     let src = fat_val_map(100);
     b.iter(|| {
         let mut map = src.clone();
-        while map.pop_first().is_some() {}
+        while map.pop_min().is_some() {}
         map
     });
 }

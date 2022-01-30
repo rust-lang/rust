@@ -144,7 +144,7 @@ fn test_levels() {
 
     map.insert(0, ());
     while map.height() == Some(0) {
-        let last_key = *map.last_key_value().unwrap().0;
+        let last_key = *map.max_key_value().unwrap().0;
         map.insert(last_key + 1, ());
     }
     map.check();
@@ -156,7 +156,7 @@ fn test_levels() {
     assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1, "{}", map.dump_keys());
 
     while map.height() == Some(1) {
-        let last_key = *map.last_key_value().unwrap().0;
+        let last_key = *map.max_key_value().unwrap().0;
         map.insert(last_key + 1, ());
     }
     map.check();
@@ -203,10 +203,10 @@ fn test_basic_large() {
         assert_eq!(map.len(), i + 1);
     }
 
-    assert_eq!(map.first_key_value(), Some((&0, &0)));
-    assert_eq!(map.last_key_value(), Some((&(size - 1), &(10 * (size - 1)))));
-    assert_eq!(map.first_entry().unwrap().key(), &0);
-    assert_eq!(map.last_entry().unwrap().key(), &(size - 1));
+    assert_eq!(map.min_key_value(), Some((&0, &0)));
+    assert_eq!(map.max_key_value(), Some((&(size - 1), &(10 * (size - 1)))));
+    assert_eq!(map.min_entry().unwrap().key(), &0);
+    assert_eq!(map.max_entry().unwrap().key(), &(size - 1));
 
     for i in 0..size {
         assert_eq!(map.get(&i).unwrap(), &(i * 10));
@@ -251,8 +251,8 @@ fn test_basic_small() {
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
     assert_eq!(map.get_mut(&1), None);
-    assert_eq!(map.first_key_value(), None);
-    assert_eq!(map.last_key_value(), None);
+    assert_eq!(map.min_key_value(), None);
+    assert_eq!(map.max_key_value(), None);
     assert_eq!(map.keys().count(), 0);
     assert_eq!(map.values().count(), 0);
     assert_eq!(map.range(..).next(), None);
@@ -269,16 +269,16 @@ fn test_basic_small() {
     assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&1));
     assert_eq!(map.get_mut(&1), Some(&mut 1));
-    assert_eq!(map.first_key_value(), Some((&1, &1)));
-    assert_eq!(map.last_key_value(), Some((&1, &1)));
+    assert_eq!(map.min_key_value(), Some((&1, &1)));
+    assert_eq!(map.max_key_value(), Some((&1, &1)));
     assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&1]);
     assert_eq!(map.insert(1, 2), Some(1));
     assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&2));
     assert_eq!(map.get_mut(&1), Some(&mut 2));
-    assert_eq!(map.first_key_value(), Some((&1, &2)));
-    assert_eq!(map.last_key_value(), Some((&1, &2)));
+    assert_eq!(map.min_key_value(), Some((&1, &2)));
+    assert_eq!(map.max_key_value(), Some((&1, &2)));
     assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1]);
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&2]);
     assert_eq!(map.insert(2, 4), None);
@@ -289,8 +289,8 @@ fn test_basic_small() {
     assert_eq!(map.len(), 2);
     assert_eq!(map.get(&2), Some(&4));
     assert_eq!(map.get_mut(&2), Some(&mut 4));
-    assert_eq!(map.first_key_value(), Some((&1, &2)));
-    assert_eq!(map.last_key_value(), Some((&2, &4)));
+    assert_eq!(map.min_key_value(), Some((&1, &2)));
+    assert_eq!(map.max_key_value(), Some((&2, &4)));
     assert_eq!(map.keys().collect::<Vec<_>>(), vec![&1, &2]);
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&2, &4]);
     assert_eq!(map.remove(&1), Some(2));
@@ -303,8 +303,8 @@ fn test_basic_small() {
     assert_eq!(map.get_mut(&1), None);
     assert_eq!(map.get(&2), Some(&4));
     assert_eq!(map.get_mut(&2), Some(&mut 4));
-    assert_eq!(map.first_key_value(), Some((&2, &4)));
-    assert_eq!(map.last_key_value(), Some((&2, &4)));
+    assert_eq!(map.min_key_value(), Some((&2, &4)));
+    assert_eq!(map.max_key_value(), Some((&2, &4)));
     assert_eq!(map.keys().collect::<Vec<_>>(), vec![&2]);
     assert_eq!(map.values().collect::<Vec<_>>(), vec![&4]);
     assert_eq!(map.remove(&2), Some(4));
@@ -315,8 +315,8 @@ fn test_basic_small() {
     assert_eq!(map.len(), 0);
     assert_eq!(map.get(&1), None);
     assert_eq!(map.get_mut(&1), None);
-    assert_eq!(map.first_key_value(), None);
-    assert_eq!(map.last_key_value(), None);
+    assert_eq!(map.min_key_value(), None);
+    assert_eq!(map.max_key_value(), None);
     assert_eq!(map.keys().count(), 0);
     assert_eq!(map.values().count(), 0);
     assert_eq!(map.range(..).next(), None);
@@ -1160,8 +1160,8 @@ mod test_drain_filter {
         assert_eq!(b.dropped(), 0);
         assert_eq!(c.dropped(), 0);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key().id(), 1);
-        assert_eq!(map.last_entry().unwrap().key().id(), 2);
+        assert_eq!(map.min_entry().unwrap().key().id(), 1);
+        assert_eq!(map.max_entry().unwrap().key().id(), 2);
         map.check();
     }
 
@@ -1192,8 +1192,8 @@ mod test_drain_filter {
         assert_eq!(b.dropped(), 0);
         assert_eq!(c.dropped(), 0);
         assert_eq!(map.len(), 2);
-        assert_eq!(map.first_entry().unwrap().key().id(), 1);
-        assert_eq!(map.last_entry().unwrap().key().id(), 2);
+        assert_eq!(map.min_entry().unwrap().key().id(), 1);
+        assert_eq!(map.max_entry().unwrap().key().id(), 2);
         map.check();
     }
 }
@@ -1823,27 +1823,27 @@ fn test_vacant_entry_key() {
 }
 
 #[test]
-fn test_first_last_entry() {
+fn test_min_max_entry() {
     let mut a = BTreeMap::new();
-    assert!(a.first_entry().is_none());
-    assert!(a.last_entry().is_none());
+    assert!(a.min_entry().is_none());
+    assert!(a.max_entry().is_none());
     a.insert(1, 42);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &1);
+    assert_eq!(a.min_entry().unwrap().key(), &1);
+    assert_eq!(a.max_entry().unwrap().key(), &1);
     a.insert(2, 24);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &2);
+    assert_eq!(a.min_entry().unwrap().key(), &1);
+    assert_eq!(a.max_entry().unwrap().key(), &2);
     a.insert(0, 6);
-    assert_eq!(a.first_entry().unwrap().key(), &0);
-    assert_eq!(a.last_entry().unwrap().key(), &2);
-    let (k1, v1) = a.first_entry().unwrap().remove_entry();
+    assert_eq!(a.min_entry().unwrap().key(), &0);
+    assert_eq!(a.max_entry().unwrap().key(), &2);
+    let (k1, v1) = a.min_entry().unwrap().remove_entry();
     assert_eq!(k1, 0);
     assert_eq!(v1, 6);
-    let (k2, v2) = a.last_entry().unwrap().remove_entry();
+    let (k2, v2) = a.max_entry().unwrap().remove_entry();
     assert_eq!(k2, 2);
     assert_eq!(v2, 24);
-    assert_eq!(a.first_entry().unwrap().key(), &1);
-    assert_eq!(a.last_entry().unwrap().key(), &1);
+    assert_eq!(a.min_entry().unwrap().key(), &1);
+    assert_eq!(a.max_entry().unwrap().key(), &1);
     a.check();
 }
 
@@ -2013,8 +2013,8 @@ fn test_split_off_tiny_left_height_2() {
     right.check();
     assert_eq!(left.len(), 1);
     assert_eq!(right.len(), MIN_INSERTS_HEIGHT_2 - 1);
-    assert_eq!(*left.first_key_value().unwrap().0, 0);
-    assert_eq!(*right.first_key_value().unwrap().0, 1);
+    assert_eq!(*left.min_key_value().unwrap().0, 0);
+    assert_eq!(*right.min_key_value().unwrap().0, 1);
 }
 
 // In a tree with 3 levels, if only part of the last leaf node is split off,
@@ -2024,14 +2024,14 @@ fn test_split_off_tiny_right_height_2() {
     let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
     let last = MIN_INSERTS_HEIGHT_2 - 1;
     let mut left = BTreeMap::from_iter(pairs.clone());
-    assert_eq!(*left.last_key_value().unwrap().0, last);
+    assert_eq!(*left.max_key_value().unwrap().0, last);
     let right = left.split_off(&last);
     left.check();
     right.check();
     assert_eq!(left.len(), MIN_INSERTS_HEIGHT_2 - 1);
     assert_eq!(right.len(), 1);
-    assert_eq!(*left.last_key_value().unwrap().0, last - 1);
-    assert_eq!(*right.last_key_value().unwrap().0, last);
+    assert_eq!(*left.max_key_value().unwrap().0, last - 1);
+    assert_eq!(*right.max_key_value().unwrap().0, last);
 }
 
 #[test]

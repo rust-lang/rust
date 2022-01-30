@@ -93,7 +93,7 @@ pub fn clone_100_and_pop_all(b: &mut Bencher) {
     let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
-        while set.pop_first().is_some() {}
+        while set.pop_min().is_some() {}
         set
     });
 }
@@ -164,7 +164,7 @@ pub fn clone_10k_and_pop_all(b: &mut Bencher) {
     let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
-        while set.pop_first().is_some() {}
+        while set.pop_min().is_some() {}
         set
     });
 }

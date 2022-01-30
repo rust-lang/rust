@@ -324,13 +324,13 @@ impl<T> BTreeSet<T> {
         T: Ord,
     {
         let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+            if let (Some(self_min), Some(self_max)) = (self.get_min(), self.get_max()) {
                 (self_min, self_max)
             } else {
                 return Difference { inner: DifferenceInner::Iterate(self.iter()) };
             };
         let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+            if let (Some(other_min), Some(other_max)) = (other.get_min(), other.get_max()) {
                 (other_min, other_max)
             } else {
                 return Difference { inner: DifferenceInner::Iterate(self.iter()) };
@@ -413,13 +413,13 @@ impl<T> BTreeSet<T> {
         T: Ord,
     {
         let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+            if let (Some(self_min), Some(self_max)) = (self.get_min(), self.get_max()) {
                 (self_min, self_max)
             } else {
                 return Intersection { inner: IntersectionInner::Answer(None) };
             };
         let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+            if let (Some(other_min), Some(other_max)) = (other.get_min(), other.get_max()) {
                 (other_min, other_max)
             } else {
                 return Intersection { inner: IntersectionInner::Answer(None) };
@@ -587,13 +587,13 @@ impl<T> BTreeSet<T> {
             return false;
         }
         let (self_min, self_max) =
-            if let (Some(self_min), Some(self_max)) = (self.first(), self.last()) {
+            if let (Some(self_min), Some(self_max)) = (self.get_min(), self.get_max()) {
                 (self_min, self_max)
             } else {
                 return true; // self is empty
             };
         let (other_min, other_max) =
-            if let (Some(other_min), Some(other_max)) = (other.first(), other.last()) {
+            if let (Some(other_min), Some(other_max)) = (other.get_min(), other.get_max()) {
                 (other_min, other_max)
             } else {
                 return false; // other is empty
@@ -664,8 +664,7 @@ impl<T> BTreeSet<T> {
         other.is_subset(self)
     }
 
-    /// Returns a reference to the first element in the set, if any.
-    /// This element is always the minimum of all elements in the set.
+    /// Returns a reference to the minumum element in the set, if any.
     ///
     /// # Examples
     ///
@@ -676,23 +675,22 @@ impl<T> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
-    /// assert_eq!(set.first(), None);
+    /// assert_eq!(set.get_min(), None);
     /// set.insert(1);
-    /// assert_eq!(set.first(), Some(&1));
+    /// assert_eq!(set.get_min(), Some(&1));
     /// set.insert(2);
-    /// assert_eq!(set.first(), Some(&1));
+    /// assert_eq!(set.get_min(), Some(&1));
     /// ```
     #[must_use]
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first(&self) -> Option<&T>
+    pub fn get_min(&self) -> Option<&T>
     where
         T: Ord,
     {
-        self.map.first_key_value().map(|(k, _)| k)
+        self.map.min_key_value().map(|(k, _)| k)
     }
 
-    /// Returns a reference to the last element in the set, if any.
-    /// This element is always the maximum of all elements in the set.
+    /// Returns a reference to the maximum element in the set, if any.
     ///
     /// # Examples
     ///
@@ -703,23 +701,22 @@ impl<T> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut set = BTreeSet::new();
-    /// assert_eq!(set.last(), None);
+    /// assert_eq!(set.get_max(), None);
     /// set.insert(1);
-    /// assert_eq!(set.last(), Some(&1));
+    /// assert_eq!(set.get_max(), Some(&1));
     /// set.insert(2);
-    /// assert_eq!(set.last(), Some(&2));
+    /// assert_eq!(set.get_max(), Some(&2));
     /// ```
     #[must_use]
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last(&self) -> Option<&T>
+    pub fn get_max(&self) -> Option<&T>
     where
         T: Ord,
     {
-        self.map.last_key_value().map(|(k, _)| k)
+        self.map.max_key_value().map(|(k, _)| k)
     }
 
-    /// Removes the first element from the set and returns it, if any.
-    /// The first element is always the minimum element in the set.
+    /// Removes the minimum element from the set and returns it, if any.
     ///
     /// # Examples
     ///
@@ -730,21 +727,20 @@ impl<T> BTreeSet<T> {
     /// let mut set = BTreeSet::new();
     ///
     /// set.insert(1);
-    /// while let Some(n) = set.pop_first() {
+    /// while let Some(n) = set.pop_min() {
     ///     assert_eq!(n, 1);
     /// }
     /// assert!(set.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_first(&mut self) -> Option<T>
+    pub fn pop_min(&mut self) -> Option<T>
     where
         T: Ord,
     {
-        self.map.pop_first().map(|kv| kv.0)
+        self.map.pop_min().map(|kv| kv.0)
     }
 
-    /// Removes the last element from the set and returns it, if any.
-    /// The last element is always the maximum element in the set.
+    /// Removes the maximum element from the set and returns it, if any.
     ///
     /// # Examples
     ///
@@ -755,17 +751,17 @@ impl<T> BTreeSet<T> {
     /// let mut set = BTreeSet::new();
     ///
     /// set.insert(1);
-    /// while let Some(n) = set.pop_last() {
+    /// while let Some(n) = set.pop_max() {
     ///     assert_eq!(n, 1);
     /// }
     /// assert!(set.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_last(&mut self) -> Option<T>
+    pub fn pop_max(&mut self) -> Option<T>
     where
         T: Ord,
     {
-        self.map.pop_last().map(|kv| kv.0)
+        self.map.pop_max().map(|kv| kv.0)
     }
 
     /// Adds a value to the set.

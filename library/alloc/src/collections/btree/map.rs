@@ -600,8 +600,7 @@ impl<K, V> BTreeMap<K, V> {
         }
     }
 
-    /// Returns the first key-value pair in the map.
-    /// The key in this pair is the minimum key in the map.
+    /// Returns the key-value pair with the minimum key in the map.
     ///
     /// # Examples
     ///
@@ -612,13 +611,13 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.first_key_value(), None);
+    /// assert_eq!(map.min_key_value(), None);
     /// map.insert(1, "b");
     /// map.insert(2, "a");
-    /// assert_eq!(map.first_key_value(), Some((&1, &"b")));
+    /// assert_eq!(map.min_key_value(), Some((&1, &"b")));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first_key_value(&self) -> Option<(&K, &V)>
+    pub fn min_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
     {
@@ -626,8 +625,7 @@ impl<K, V> BTreeMap<K, V> {
         root_node.first_leaf_edge().right_kv().ok().map(Handle::into_kv)
     }
 
-    /// Returns the first entry in the map for in-place manipulation.
-    /// The key of this entry is the minimum key in the map.
+    /// Returns the entry with the minimum key in the map for in-place manipulation.
     ///
     /// # Examples
     ///
@@ -638,16 +636,16 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// if let Some(mut entry) = map.first_entry() {
+    /// if let Some(mut entry) = map.min_entry() {
     ///     if *entry.key() > 0 {
-    ///         entry.insert("first");
+    ///         entry.insert("min");
     ///     }
     /// }
-    /// assert_eq!(*map.get(&1).unwrap(), "first");
+    /// assert_eq!(*map.get(&1).unwrap(), "min");
     /// assert_eq!(*map.get(&2).unwrap(), "b");
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn first_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
+    pub fn min_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
     {
@@ -657,8 +655,7 @@ impl<K, V> BTreeMap<K, V> {
         Some(OccupiedEntry { handle: kv.forget_node_type(), dormant_map, _marker: PhantomData })
     }
 
-    /// Removes and returns the first element in the map.
-    /// The key of this element is the minimum key that was in the map.
+    /// Removes and returns the key-value pair with the minimum key in the map.
     ///
     /// # Examples
     ///
@@ -671,21 +668,21 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// while let Some((key, _val)) = map.pop_first() {
+    /// while let Some((key, _val)) = map.pop_min() {
     ///     assert!(map.iter().all(|(k, _v)| *k > key));
     /// }
     /// assert!(map.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_first(&mut self) -> Option<(K, V)>
+    pub fn pop_min(&mut self) -> Option<(K, V)>
     where
         K: Ord,
     {
-        self.first_entry().map(|entry| entry.remove_entry())
+        self.min_entry().map(|entry| entry.remove_entry())
     }
 
-    /// Returns the last key-value pair in the map.
-    /// The key in this pair is the maximum key in the map.
+    /// Returns the key-value pair with the maximum key in the
+    /// map. The key in this pair is the maximum key in the map.
     ///
     /// # Examples
     ///
@@ -698,10 +695,10 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "b");
     /// map.insert(2, "a");
-    /// assert_eq!(map.last_key_value(), Some((&2, &"a")));
+    /// assert_eq!(map.max_key_value(), Some((&2, &"a")));
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last_key_value(&self) -> Option<(&K, &V)>
+    pub fn max_key_value(&self) -> Option<(&K, &V)>
     where
         K: Ord,
     {
@@ -709,8 +706,7 @@ impl<K, V> BTreeMap<K, V> {
         root_node.last_leaf_edge().left_kv().ok().map(Handle::into_kv)
     }
 
-    /// Returns the last entry in the map for in-place manipulation.
-    /// The key of this entry is the maximum key in the map.
+    /// Returns the entry with the maximum key in the map for in-place manipulation.
     ///
     /// # Examples
     ///
@@ -721,16 +717,16 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// if let Some(mut entry) = map.last_entry() {
+    /// if let Some(mut entry) = map.max_entry() {
     ///     if *entry.key() > 0 {
-    ///         entry.insert("last");
+    ///         entry.insert("max");
     ///     }
     /// }
     /// assert_eq!(*map.get(&1).unwrap(), "a");
-    /// assert_eq!(*map.get(&2).unwrap(), "last");
+    /// assert_eq!(*map.get(&2).unwrap(), "max");
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn last_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
+    pub fn max_entry(&mut self) -> Option<OccupiedEntry<'_, K, V>>
     where
         K: Ord,
     {
@@ -740,8 +736,7 @@ impl<K, V> BTreeMap<K, V> {
         Some(OccupiedEntry { handle: kv.forget_node_type(), dormant_map, _marker: PhantomData })
     }
 
-    /// Removes and returns the last element in the map.
-    /// The key of this element is the maximum key that was in the map.
+    /// Removes and returns the key-value pair with the maximum key in the map.
     ///
     /// # Examples
     ///
@@ -754,17 +749,17 @@ impl<K, V> BTreeMap<K, V> {
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
     /// map.insert(2, "b");
-    /// while let Some((key, _val)) = map.pop_last() {
+    /// while let Some((key, _val)) = map.pop_max() {
     ///     assert!(map.iter().all(|(k, _v)| *k < key));
     /// }
     /// assert!(map.is_empty());
     /// ```
     #[unstable(feature = "map_first_last", issue = "62924")]
-    pub fn pop_last(&mut self) -> Option<(K, V)>
+    pub fn pop_max(&mut self) -> Option<(K, V)>
     where
         K: Ord,
     {
-        self.last_entry().map(|entry| entry.remove_entry())
+        self.max_entry().map(|entry| entry.remove_entry())
     }
 
     /// Returns `true` if the map contains a value for the specified key.
