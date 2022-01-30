@@ -204,7 +204,6 @@ fn cmp_default() {
     assert_eq!(Fool(false), Fool(true));
 }
 
-#[cfg(not(bootstrap))]
 mod const_cmp {
     use super::*;
 

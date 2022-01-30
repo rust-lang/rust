@@ -67,17 +67,14 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(cfg_hide(
-        not(test),
-        not(any(test, bootstrap)),
-        any(not(feature = "miri-test-libstd"), test, doctest),
-        no_global_oom_handling,
-        not(no_global_oom_handling),
-        target_has_atomic = "ptr"
-    ))
-)]
+#![doc(cfg_hide(
+    not(test),
+    not(any(test, bootstrap)),
+    any(not(feature = "miri-test-libstd"), test, doctest),
+    no_global_oom_handling,
+    not(no_global_oom_handling),
+    target_has_atomic = "ptr"
+))]
 #![no_std]
 #![needs_allocator]
 //
@@ -151,7 +148,6 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_trait_impl)]
 #![feature(const_try)]
-#![cfg_attr(bootstrap, feature(destructuring_assignment))]
 #![feature(dropck_eyepatch)]
 #![feature(exclusive_range_pattern)]
 #![feature(fundamental)]
