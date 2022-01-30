@@ -108,5 +108,17 @@ error: this expression borrows a value the compiler would automatically borrow
 LL |     let _ = unsafe { (&*x).0 };
    |                      ^^^^^ help: change this to: `(*x)`
 
-error: aborting due to 18 previous errors
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:97:5
+   |
+LL |     (&&()).foo();
+   |     ^^^^^^ help: change this to: `(&())`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> $DIR/needless_borrow.rs:106:5
+   |
+LL |     (&&5).foo();
+   |     ^^^^^ help: change this to: `(&5)`
+
+error: aborting due to 20 previous errors
 

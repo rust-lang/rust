@@ -85,6 +85,36 @@ fn main() {
     let _ = (&x).0;
     let x = &x as *const (i32, i32);
     let _ = unsafe { (&*x).0 };
+
+    // Issue #8367
+    trait Foo {
+        fn foo(self);
+    }
+    impl Foo for &'_ () {
+        fn foo(self) {}
+    }
+    (&()).foo(); // Don't lint. `()` doesn't implement `Foo`
+    (&&()).foo();
+
+    impl Foo for i32 {
+        fn foo(self) {}
+    }
+    impl Foo for &'_ i32 {
+        fn foo(self) {}
+    }
+    (&5).foo(); // Don't lint. `5` will call `<i32 as Foo>::foo`
+    (&&5).foo();
+
+    trait FooRef {
+        fn foo_ref(&self);
+    }
+    impl FooRef for () {
+        fn foo_ref(&self) {}
+    }
+    impl FooRef for &'_ () {
+        fn foo_ref(&self) {}
+    }
+    (&&()).foo_ref(); // Don't lint. `&()` will call `<() as FooRef>::foo_ref`
 }
 
 #[allow(clippy::needless_borrowed_reference)]

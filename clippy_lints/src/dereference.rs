@@ -11,11 +11,13 @@ use rustc_hir::{
     ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span, Symbol};
+use rustc_trait_selection::infer::InferCtxtExt;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -165,7 +167,6 @@ struct StateData {
 
 struct DerefedBorrow {
     count: usize,
-    required_precedence: i8,
     msg: &'static str,
     position: Position,
 }
@@ -329,19 +330,19 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                             "this expression creates a reference which is immediately dereferenced by the compiler";
                         let borrow_msg = "this expression borrows a value the compiler would automatically borrow";
 
-                        let (required_refs, required_precedence, msg) = if position.can_auto_borrow() {
-                            (1, PREC_POSTFIX, if deref_count == 1 { borrow_msg } else { deref_msg })
+                        let (required_refs, msg) = if position.can_auto_borrow() {
+                            (1, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjust::Borrow(AutoBorrow::Ref(_, mutability))) =
                             next_adjust.map(|a| &a.kind)
                         {
                             if matches!(mutability, AutoBorrowMutability::Mut { .. }) && !position.is_reborrow_stable()
                             {
-                                (3, 0, deref_msg)
+                                (3, deref_msg)
                             } else {
-                                (2, 0, deref_msg)
+                                (2, deref_msg)
                             }
                         } else {
-                            (2, 0, deref_msg)
+                            (2, deref_msg)
                         };
 
                         if deref_count >= required_refs {
@@ -350,7 +351,6 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing {
                                     // One of the required refs is for the current borrow expression, the remaining ones
                                     // can't be removed without breaking the code. See earlier comment.
                                     count: deref_count - required_refs,
-                                    required_precedence,
                                     msg,
                                     position,
                                 }),
@@ -601,6 +601,8 @@ fn deref_method_same_type<'tcx>(result_ty: Ty<'tcx>, arg_ty: Ty<'tcx>) -> bool {
 #[derive(Clone, Copy)]
 enum Position {
     MethodReceiver,
+    /// The method is defined on a reference type. e.g. `impl Foo for &T`
+    MethodReceiverRefImpl,
     Callee,
     FieldAccess(Symbol),
     Postfix,
@@ -626,6 +628,13 @@ impl Position {
 
     fn lint_explicit_deref(self) -> bool {
         matches!(self, Self::Other | Self::DerefStable | Self::ReborrowStable)
+    }
+
+    fn needs_parens(self, precedence: i8) -> bool {
+        matches!(
+            self,
+            Self::MethodReceiver | Self::MethodReceiverRefImpl | Self::Callee | Self::FieldAccess(_) | Self::Postfix
+        ) && precedence < PREC_POSTFIX
     }
 }
 
@@ -730,10 +739,34 @@ fn walk_parents<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (Position, &
                     let id = cx.typeck_results().type_dependent_def_id(parent.hir_id).unwrap();
                     args.iter().position(|arg| arg.hir_id == child_id).map(|i| {
                         if i == 0 {
-                            if e.hir_id == child_id {
-                                Position::MethodReceiver
-                            } else {
+                            // Check for calls to trait methods where the trait is implemented on a reference.
+                            // Two cases need to be handled:
+                            // * `self` methods on `&T` will never have auto-borrow
+                            // * `&self` methods on `&T` can have auto-borrow, but `&self` methods on `T` will take
+                            //   priority.
+                            if e.hir_id != child_id {
                                 Position::ReborrowStable
+                            } else if let Some(trait_id) = cx.tcx.trait_of_item(id)
+                                && let arg_ty = cx.tcx.erase_regions(cx.typeck_results().expr_ty_adjusted(e))
+                                && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
+                                && let subs = cx.typeck_results().node_substs_opt(child_id).unwrap_or_else(
+                                    || cx.tcx.mk_substs([].iter())
+                                ) && let impl_ty = if cx.tcx.fn_sig(id).skip_binder().inputs()[0].is_ref() {
+                                    // Trait methods taking `&self`
+                                    sub_ty
+                                } else {
+                                    // Trait methods taking `self`
+                                    arg_ty
+                                } && impl_ty.is_ref()
+                                && cx.tcx.infer_ctxt().enter(|infcx|
+                                    infcx
+                                        .type_implements_trait(trait_id, impl_ty, subs, cx.param_env)
+                                        .must_apply_modulo_regions()
+                                )
+                            {
+                                Position::MethodReceiverRefImpl
+                            } else {
+                                Position::MethodReceiver
                             }
                         } else {
                             param_auto_deref_stability(cx.tcx.fn_sig(id).skip_binder().inputs()[i])
@@ -964,7 +997,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             let mut app = Applicability::MachineApplicable;
             let snip = snippet_with_context(cx, expr.span, data.span.ctxt(), "..", &mut app).0;
             span_lint_hir_and_then(cx, NEEDLESS_BORROW, data.hir_id, data.span, state.msg, |diag| {
-                let sugg = if state.required_precedence > expr.precedence().order() && !has_enclosing_paren(&snip) {
+                let sugg = if state.position.needs_parens(expr.precedence().order()) && !has_enclosing_paren(&snip) {
                     format!("({})", snip)
                 } else {
                     snip.into()
