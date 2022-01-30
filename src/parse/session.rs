@@ -12,6 +12,7 @@ use rustc_span::{
 
 use crate::config::file_lines::LineRange;
 use crate::ignore_path::IgnorePathSet;
+use crate::parse::parser::{ModError, ModulePathSuccess};
 use crate::source_map::LineRangeUtils;
 use crate::utils::starts_with_newline;
 use crate::visitor::SnippetProvider;
@@ -145,13 +146,30 @@ impl ParseSess {
         })
     }
 
+    /// Determine the submodule path for the given module identifier.
+    ///
+    /// * `id` - The name of the module
+    /// * `relative` - If Some(symbol), the symbol name is a directory relative to the dir_path.
+    ///   If relative is Some, resolve the submodle at {dir_path}/{symbol}/{id}.rs
+    ///   or {dir_path}/{symbol}/{id}/mod.rs. if None, resolve the module at {dir_path}/{id}.rs.
+    /// *  `dir_path` - Module resolution will occur relative to this direcotry.
     pub(crate) fn default_submod_path(
         &self,
         id: symbol::Ident,
         relative: Option<symbol::Ident>,
         dir_path: &Path,
-    ) -> Result<rustc_expand::module::ModulePathSuccess, rustc_expand::module::ModError<'_>> {
-        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path)
+    ) -> Result<ModulePathSuccess, ModError<'_>> {
+        rustc_expand::module::default_submod_path(&self.parse_sess, id, relative, dir_path).or_else(
+            |e| {
+                // If resloving a module relative to {dir_path}/{symbol} fails because a file
+                // could not be found, then try to resolve the module relative to {dir_path}.
+                if matches!(e, ModError::FileNotFound(..)) && relative.is_some() {
+                    rustc_expand::module::default_submod_path(&self.parse_sess, id, None, dir_path)
+                } else {
+                    Err(e)
+                }
+            },
+        )
     }
 
     pub(crate) fn is_file_parsed(&self, path: &Path) -> bool {

@@ -64,3 +64,19 @@ fn fmt_out_of_line_test_modules() {
         ],
     )
 }
+
+#[test]
+fn fallback_and_try_to_resolve_external_submod_relative_to_current_dir_path() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5198
+    verify_mod_resolution(
+        "tests/mod-resolver/issue-5198/lib.rs",
+        &[
+            "tests/mod-resolver/issue-5198/a.rs",
+            "tests/mod-resolver/issue-5198/lib/b.rs",
+            "tests/mod-resolver/issue-5198/lib/c/mod.rs",
+            "tests/mod-resolver/issue-5198/lib/c/e.rs",
+            "tests/mod-resolver/issue-5198/lib/c/d/f.rs",
+            "tests/mod-resolver/issue-5198/lib/c/d/g/mod.rs",
+        ],
+    )
+}
