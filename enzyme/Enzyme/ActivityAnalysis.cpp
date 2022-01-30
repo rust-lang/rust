@@ -404,6 +404,25 @@ bool ActivityAnalyzer::isConstantInstruction(TypeResults &TR, Instruction *I) {
     return true;
   }
 
+  if (auto CI = dyn_cast<CallInst>(I)) {
+    if (CI->hasFnAttr("enzyme_active")) {
+      if (EnzymePrintActivity)
+        llvm::errs() << "forced active " << *I << "\n";
+      ActiveInstructions.insert(I);
+      return false;
+    }
+    Function *called = getFunctionFromCall(CI);
+
+    if (called) {
+      if (called->hasFnAttribute("enzyme_active")) {
+        if (EnzymePrintActivity)
+          llvm::errs() << "forced active " << *I << "\n";
+        ActiveInstructions.insert(I);
+        return false;
+      }
+    }
+  }
+
   /// A store into all integral memory is inactive
   if (auto SI = dyn_cast<StoreInst>(I)) {
     auto StoreSize = SI->getParent()
