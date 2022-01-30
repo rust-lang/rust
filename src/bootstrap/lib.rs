@@ -851,7 +851,7 @@ impl Build {
             return;
         }
         self.verbose(&format!("running: {:?}", cmd));
-        run(cmd)
+        run(cmd, self.is_verbose())
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -871,7 +871,7 @@ impl Build {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
-        try_run(cmd)
+        try_run(cmd, self.is_verbose())
     }
 
     /// Runs a command, printing out nice contextual information if it fails.

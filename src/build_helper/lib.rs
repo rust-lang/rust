@@ -55,18 +55,18 @@ pub fn restore_library_path() {
     }
 }
 
-pub fn run(cmd: &mut Command) {
-    if !try_run(cmd) {
+pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
+    if !try_run(cmd, print_cmd_on_fail) {
         std::process::exit(1);
     }
 }
 
-pub fn try_run(cmd: &mut Command) -> bool {
+pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
     };
-    if !status.success() {
+    if !status.success() && print_cmd_on_fail {
         println!(
             "\n\ncommand did not execute successfully: {:?}\n\
              expected success, got: {}\n\n",
