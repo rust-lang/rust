@@ -4,23 +4,23 @@ struct Foo < #[cfg(FALSE)] A, B >
     #[cfg(FALSE)] first : String, #[cfg_attr(FALSE, deny(warnings))] second :
     bool, third :
     [u8 ;
-     {
-         #[cfg(FALSE)] struct Bar ; #[cfg(not(FALSE))] struct Inner ;
-         #[cfg(FALSE)] let a = 25 ; match true
-         {
-             #[cfg(FALSE)] true => {},
-             #[cfg_attr(not(FALSE), allow(warnings))] false => {}, _ => {}
-         } ; #[print_helper(should_be_removed)] fn removed_fn()
-         { #! [cfg(FALSE)] } #[print_helper(c)] #[cfg(not(FALSE))] fn
-         kept_fn() { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
-         {
-             Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32,
-                 #[cfg(FALSE)] String, u8)
-         } struct
-         TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32,
-                     #[cfg(FALSE)] bool, u8) ; fn plain_removed_fn()
-         { #! [cfg_attr(not(FALSE), cfg(FALSE))] } 0
-     }], #[print_helper(d)] fourth : B
+    {
+        #[cfg(FALSE)] struct Bar ; #[cfg(not(FALSE))] struct Inner ;
+        #[cfg(FALSE)] let a = 25 ; match true
+        {
+            #[cfg(FALSE)] true => {}, #[cfg_attr(not(FALSE), allow(warnings))]
+            false => {}, _ => {}
+        } ; #[print_helper(should_be_removed)] fn removed_fn()
+        { #! [cfg(FALSE)] } #[print_helper(c)] #[cfg(not(FALSE))] fn kept_fn()
+        { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
+        {
+            Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32,
+            #[cfg(FALSE)] String, u8)
+        } struct
+        TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32,
+        #[cfg(FALSE)] bool, u8) ; fn plain_removed_fn()
+        { #! [cfg_attr(not(FALSE), cfg(FALSE))] } 0
+    }], #[print_helper(d)] fourth : B
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
@@ -1276,14 +1276,14 @@ PRINT-DERIVE INPUT (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[print_hel
 {
     second : bool, third :
     [u8 ;
-     {
-         #[cfg(not(FALSE))] struct Inner ; match true
-         { #[allow(warnings)] false => {}, _ => {} } ; #[print_helper(c)]
-         #[cfg(not(FALSE))] fn kept_fn()
-         { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
-         { Foo(#[cfg(not(FALSE))] i32, u8) } struct
-         TupleStruct(#[cfg(not(FALSE))] i32, u8) ; 0
-     }], #[print_helper(d)] fourth : B
+    {
+        #[cfg(not(FALSE))] struct Inner ; match true
+        { #[allow(warnings)] false => {}, _ => {} } ; #[print_helper(c)]
+        #[cfg(not(FALSE))] fn kept_fn()
+        { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
+        { Foo(#[cfg(not(FALSE))] i32, u8) } struct
+        TupleStruct(#[cfg(not(FALSE))] i32, u8) ; 0
+    }], #[print_helper(d)] fourth : B
 }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Punct {

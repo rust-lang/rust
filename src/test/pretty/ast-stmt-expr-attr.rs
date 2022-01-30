@@ -28,67 +28,67 @@ fn syntax() {
     let _ = #[attr] (x as Y);
     let _ =
         #[attr] while true {
-                    #![attr]
-                };
+            #![attr]
+        };
     let _ =
         #[attr] while let Some(false) = true {
-                    #![attr]
-                };
+            #![attr]
+        };
     let _ =
         #[attr] for x in y {
-                    #![attr]
-                };
+            #![attr]
+        };
     let _ =
         #[attr] loop {
-                    #![attr]
-                };
+            #![attr]
+        };
     let _ =
         #[attr] match true {
-                    #![attr]
-                            #[attr]
-                            _ => false,
-                };
+            #![attr]
+                #[attr]
+                _ => false,
+        };
     let _ = #[attr] || #[attr] foo;
     let _ = #[attr] move || #[attr] foo;
     let _ =
         #[attr] ||
-                    #[attr] {
-                                #![attr]
-                                foo
-                            };
+            #[attr] {
+                #![attr]
+                foo
+            };
     let _ =
         #[attr] move ||
-                    #[attr] {
-                                #![attr]
-                                foo
-                            };
+            #[attr] {
+                #![attr]
+                foo
+            };
     let _ =
         #[attr] ||
-                    {
-                        #![attr]
-                        foo
-                    };
+            {
+                #![attr]
+                foo
+            };
     let _ =
         #[attr] move ||
-                    {
-                        #![attr]
-                        foo
-                    };
+            {
+                #![attr]
+                foo
+            };
     let _ =
         #[attr] {
-                    #![attr]
-                };
+            #![attr]
+        };
     let _ =
         #[attr] {
-                    #![attr]
-                    let _ = ();
-                };
+            #![attr]
+            let _ = ();
+        };
     let _ =
         #[attr] {
-                    #![attr]
-                    let _ = ();
-                    foo
-                };
+            #![attr]
+            let _ = ();
+            foo
+        };
     let _ = #[attr] x = y;
     let _ = #[attr] (x = y);
     let _ = #[attr] x += y;
