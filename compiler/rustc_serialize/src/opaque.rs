@@ -130,8 +130,7 @@ impl serialize::Encoder for Encoder {
 
     #[inline]
     fn emit_i8(&mut self, v: i8) -> EncodeResult {
-        let as_u8: u8 = unsafe { std::mem::transmute(v) };
-        self.emit_u8(as_u8)
+        self.emit_u8(v as u8)
     }
 
     #[inline]
@@ -629,9 +628,9 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
     #[inline]
     fn read_i8(&mut self) -> i8 {
-        let as_u8 = self.data[self.position];
+        let value = self.data[self.position];
         self.position += 1;
-        unsafe { ::std::mem::transmute(as_u8) }
+        value as i8
     }
 
     #[inline]
