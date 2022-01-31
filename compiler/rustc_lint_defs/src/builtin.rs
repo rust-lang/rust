@@ -1793,6 +1793,10 @@ declare_lint! {
     Warn,
     "detects name collision with an existing but unstable method",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "once this associated item is added to the standard library, \
+             the ambiguity may cause an error or change in behavior!"
+        ),
         reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
         // Note: this item represents future incompatibility of all unstable functions in the
         //       standard library, and thus should never be removed or changed to an error.
@@ -2335,6 +2339,10 @@ declare_lint! {
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "this borrowing pattern was not meant to be accepted, \
+            and may become a hard error in the future"
+        ),
         reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
     };
 }
@@ -3046,6 +3054,7 @@ declare_lint_pass! {
         DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
+        SUSPICIOUS_AUTO_TRAIT_IMPLS,
     ]
 }
 
@@ -3621,4 +3630,38 @@ declare_lint! {
     pub DUPLICATE_MACRO_ATTRIBUTES,
     Warn,
     "duplicated attribute"
+}
+
+declare_lint! {
+    /// The `suspicious_auto_trait_impls` lint checks for potentially incorrect
+    /// implementations of auto traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct Foo<T>(T);
+    ///
+    /// unsafe impl<T> Send for Foo<*const T> {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A type can implement auto traits, e.g. `Send`, `Sync` and `Unpin`,
+    /// in two different ways: either by writing an explicit impl or if
+    /// all fields of the type implement that auto trait.
+    ///
+    /// The compiler disables the automatic implementation if an explicit one
+    /// exists for given type constructor. The exact rules governing this
+    /// are currently unsound and quite subtle and and will be modified in the future.
+    /// This change will cause the automatic implementation to be disabled in more
+    /// cases, potentially breaking some code.
+    pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
+    Warn,
+    "the rules governing auto traits will change in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
+    };
 }
