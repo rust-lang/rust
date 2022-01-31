@@ -156,3 +156,53 @@ impl A {
         "#]],
     )
 }
+
+// doesn't complete qux due to there being no expression after
+// see source_analyzer::adjust comment
+#[test]
+fn local_fn_shows_locals_for_params() {
+    check(
+        r#"
+fn outer() {
+    let foo = 3;
+    {
+        let bar = 3;
+        fn inner($0) {}
+        let baz = 3;
+        let qux = 3;
+    }
+    let fez = 3;
+}
+"#,
+        expect![[r#"
+            bn foo: i32
+            bn baz: i32
+            bn bar: i32
+            kw mut
+        "#]],
+    )
+}
+
+#[test]
+fn closure_shows_locals_for_params() {
+    check(
+        r#"
+fn outer() {
+    let foo = 3;
+    {
+        let bar = 3;
+        |$0| {};
+        let baz = 3;
+        let qux = 3;
+    }
+    let fez = 3;
+}
+"#,
+        expect![[r#"
+            bn baz: i32
+            bn bar: i32
+            bn foo: i32
+            kw mut
+        "#]],
+    )
+}
