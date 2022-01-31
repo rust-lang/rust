@@ -7,6 +7,8 @@ use crate::cmp;
 use crate::fmt::{self, Debug, Formatter};
 use crate::mem::MaybeUninit;
 
+use core::ops::Deref;
+
 /// A wrapper around a byte buffer that is incrementally filled and initialized.
 ///
 /// This type is a sort of "double cursor". It tracks three regions in the buffer: a region at the beginning of the
@@ -262,30 +264,10 @@ impl<'a, 'b> ReadBufRef<'a, 'b> {
         ReadBufRef { read_buf: self.read_buf }
     }
 
-    /// Returns the total capacity of the buffer.
-    #[inline]
-    pub fn capacity(&self) -> usize {
-        self.read_buf.capacity()
-    }
-
-    /// Returns a shared reference to the filled portion of the buffer.
-    #[inline]
-    pub fn filled(&self) -> &[u8] {
-        self.read_buf.filled()
-    }
-
     /// Returns a mutable reference to the filled portion of the buffer.
     #[inline]
     pub fn filled_mut(&mut self) -> &mut [u8] {
         self.read_buf.filled_mut()
-    }
-
-    /// Returns a shared reference to the initialized portion of the buffer.
-    ///
-    /// This includes the filled portion.
-    #[inline]
-    pub fn initialized(&self) -> &[u8] {
-        self.read_buf.initialized()
     }
 
     /// Returns a mutable reference to the initialized portion of the buffer.
@@ -333,12 +315,6 @@ impl<'a, 'b> ReadBufRef<'a, 'b> {
     #[inline]
     pub fn initialize_unfilled_to(&mut self, n: usize) -> &mut [u8] {
         self.read_buf.initialize_unfilled_to(n)
-    }
-
-    /// Returns the number of bytes at the end of the slice that have not yet been filled.
-    #[inline]
-    pub fn remaining(&self) -> usize {
-        self.read_buf.remaining()
     }
 
     /// Clears the buffer, resetting the filled region to empty.
@@ -398,16 +374,12 @@ impl<'a, 'b> ReadBufRef<'a, 'b> {
     pub fn append(&mut self, buf: &[u8]) {
         self.read_buf.append(buf)
     }
+}
 
-    /// Returns the amount of bytes that have been filled.
-    #[inline]
-    pub fn filled_len(&self) -> usize {
-        self.read_buf.filled_len()
-    }
+impl<'a, 'b> Deref for ReadBufRef<'a, 'b> {
+    type Target = ReadBuf<'b>;
 
-    /// Returns the amount of bytes that have been initialized.
-    #[inline]
-    pub fn initialized_len(&self) -> usize {
-        self.read_buf.initialized_len()
+    fn deref(&self) -> &ReadBuf<'b> {
+        &*self.read_buf
     }
 }
