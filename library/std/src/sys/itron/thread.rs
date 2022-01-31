@@ -77,7 +77,8 @@ const LIFECYCLE_DETACHED_OR_JOINED: usize = usize::MAX;
 const LIFECYCLE_EXITED_OR_FINISHED_OR_JOIN_FINALIZE: usize = usize::MAX;
 // there's no single value for `JOINING`
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * crate::mem::size_of::<usize>();
+// 64KiB for 32-bit ISAs, 128KiB for 64-bit ISAs.
+pub const DEFAULT_MIN_STACK_SIZE: usize = 0x4000 * crate::mem::size_of::<usize>();
 
 impl Thread {
     /// # Safety
