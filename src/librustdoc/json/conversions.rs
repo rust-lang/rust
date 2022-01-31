@@ -42,7 +42,15 @@ impl JsonRenderer<'_> {
         let span = item.span(self.tcx);
         let clean::Item { name, attrs: _, kind: _, visibility, def_id, cfg: _ } = item;
         let inner = match *item.kind {
-            clean::StrippedItem(_) => return None,
+            clean::StrippedItem(ref inner) => {
+                match &**inner {
+                    // We document non-empty stripped modules as a special StrippedModule type, to
+                    // prevent contained items from being orphaned for downstream users, as JSON
+                    // does no inlining.
+                    clean::ModuleItem(m) if !m.items.is_empty() => from_clean_item(item, self.tcx),
+                    _ => return None,
+                }
+            }
             _ => from_clean_item(item, self.tcx),
         };
         Some(Item {
@@ -226,8 +234,13 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             bounds: g.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             default: t.map(|x| x.into_tcx(tcx)),
         },
-        // `convert_item` early returns `None` for striped items
-        StrippedItem(_) => unreachable!(),
+        StrippedItem(inner) => {
+            match *inner {
+                ModuleItem(m) => ItemEnum::StrippedModule { items: ids(m.items) },
+                // `convert_item` early returns `None` for stripped items we're not including
+                _ => unreachable!(),
+            }
+        }
         KeywordItem(_) => {
             panic!("{:?} is not supported for JSON output", item)
         }

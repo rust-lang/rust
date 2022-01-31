@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 10;
+pub const FORMAT_VERSION: u32 = 11;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -192,6 +192,9 @@ pub enum ItemKind {
 #[serde(tag = "kind", content = "inner", rename_all = "snake_case")]
 pub enum ItemEnum {
     Module(Module),
+    StrippedModule {
+        items: Vec<Id>,
+    },
     ExternCrate {
         name: String,
         rename: Option<String>,

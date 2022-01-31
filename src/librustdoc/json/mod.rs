@@ -19,6 +19,7 @@ use rustc_session::Session;
 use rustdoc_json_types as types;
 
 use crate::clean::types::{ExternalCrate, ExternalLocation};
+use crate::clean::ItemKind;
 use crate::config::RenderOptions;
 use crate::docfs::PathError;
 use crate::error::Error;
@@ -172,7 +173,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     /// the hashmap because certain items (traits and types) need to have their mappings for trait
     /// implementations filled out before they're inserted.
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
-        // Flatten items that recursively store other items
+        trace!("rendering {} {:?}", item.type_(), item.name);
+
+        // Flatten items that recursively store other items. We include orphaned items from
+        // stripped modules and etc that are otherwise reachable.
+        if let ItemKind::StrippedItem(inner) = &*item.kind {
+            inner.inner_items().for_each(|i| self.item(i.clone()).unwrap());
+        }
+
         item.kind.inner_items().for_each(|i| self.item(i.clone()).unwrap());
 
         let id = item.def_id;
