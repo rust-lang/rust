@@ -176,7 +176,12 @@ pub struct Instant(time::Instant);
 /// }
 /// ```
 ///
-/// # Underlying System calls
+/// # Platform-specific behavior
+///
+/// The precision of `SystemTime` can depend on the underlying OS-specific time format.
+/// For example, on Windows the time is represented in 100 nanosecond intervals whereas Linux
+/// can represent nanosecond intervals.
+///
 /// Currently, the following system calls are being used to get the current time using `now()`:
 ///
 /// |  Platform |               System call                                            |

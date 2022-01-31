@@ -598,7 +598,7 @@ impl DirEntry {
         target_os = "vxworks"
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
-        lstat(&self.path()).map(|m| m.file_type())
+        self.metadata().map(|m| m.file_type())
     }
 
     #[cfg(not(any(
@@ -616,7 +616,7 @@ impl DirEntry {
             libc::DT_SOCK => Ok(FileType { mode: libc::S_IFSOCK }),
             libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
             libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
-            _ => lstat(&self.path()).map(|m| m.file_type()),
+            _ => self.metadata().map(|m| m.file_type()),
         }
     }
 

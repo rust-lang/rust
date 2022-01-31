@@ -4,10 +4,10 @@ error: expected identifier, found keyword `where`
 LL |     let where = "foo";
    |         ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `where` to use it as an identifier
    |
 LL |     let r#where = "foo";
-   |         ~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

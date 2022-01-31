@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `abstract`
 LL |     let abstract = ();
    |         ^^^^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `abstract` to use it as an identifier
    |
 LL |     let r#abstract = ();
-   |         ~~~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

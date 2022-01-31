@@ -8,10 +8,10 @@ LL | impl
 LL | }
    | - the item list ends here
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `impl` to use it as an identifier
    |
 LL | r#impl
-   | ~~~~~~
+   | ++
 
 error: aborting due to previous error
 
