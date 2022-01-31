@@ -91,7 +91,8 @@ pre, .rustdoc.source .example-wrap {
 	background-color: #5c6773;
 }
 
-.sidebar .current {
+.sidebar .current,
+.sidebar a:hover {
 	background-color: transparent;
 	color: #ffb44c;
 }
@@ -102,15 +103,6 @@ pre, .rustdoc.source .example-wrap {
 
 .sidebar-elems .location {
 	color: #ff7733;
-}
-
-.sidebar-elems .location a {
-	color: #fff;
-}
-
-.block a:hover {
-	background: transparent;
-	color: #ffb44c;
 }
 
 .line-numbers span { color: #5c6773; }
@@ -219,6 +211,10 @@ pre.rust a,
 .mobile-topbar h2 a,
 .in-band a {
 	color: #c5c5c5;
+}
+.sidebar h2 a,
+.sidebar h3 a {
+	color: white;
 }
 .search-results a {
 	color: #0096cf;
