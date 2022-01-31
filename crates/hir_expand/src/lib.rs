@@ -705,19 +705,21 @@ fn ascend_node_border_tokens(
 ) -> Option<InFile<(SyntaxToken, SyntaxToken)>> {
     let expansion = file_id.expansion_info(db)?;
 
-    // the input node has only one token ?
-    let first = skip_trivia_token(node.first_token()?, Direction::Next)?;
-    let last = skip_trivia_token(node.last_token()?, Direction::Prev)?;
+    let first_token = |node: &SyntaxNode| skip_trivia_token(node.first_token()?, Direction::Next);
+    let last_token = |node: &SyntaxNode| skip_trivia_token(node.last_token()?, Direction::Prev);
+
+    let first = first_token(node)?;
+    let last = last_token(node)?;
     let is_single_token = first == last;
 
     node.descendants().find_map(|it| {
-        let first = skip_trivia_token(it.first_token()?, Direction::Next)?;
+        let first = first_token(&it)?;
         let first = ascend_call_token(db, &expansion, InFile::new(file_id, first))?;
 
-        let last = skip_trivia_token(it.last_token()?, Direction::Prev)?;
+        let last = last_token(&it)?;
         let last = ascend_call_token(db, &expansion, InFile::new(file_id, last))?;
 
-        if (!is_single_token && first == last) || (first.file_id != last.file_id) {
+        if (is_single_token && first != last) || (first.file_id != last.file_id) {
             return None;
         }
 
