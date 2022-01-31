@@ -162,7 +162,7 @@ impl<'hir> Map<'hir> {
 
     pub fn items(&self) -> impl Iterator<Item = &'hir Item<'hir>> + 'hir {
         let krate = self.krate();
-        krate.owners.iter().filter_map(|owner| match owner.as_ref()?.node() {
+        krate.owners.iter().filter_map(|owner| match owner.as_owner()?.node() {
             OwnerNode::Item(item) => Some(item),
             _ => None,
         })
@@ -205,7 +205,8 @@ impl<'hir> Map<'hir> {
             Some(hir_id.owner)
         } else {
             self.tcx
-                .hir_owner_nodes(hir_id.owner)?
+                .hir_owner_nodes(hir_id.owner)
+                .as_owner()?
                 .local_id_to_def_id
                 .get(&hir_id.local_id)
                 .copied()
@@ -214,8 +215,7 @@ impl<'hir> Map<'hir> {
 
     #[inline]
     pub fn local_def_id_to_hir_id(&self, def_id: LocalDefId) -> HirId {
-        // FIXME(#85914) is this access safe for incr. comp.?
-        self.tcx.untracked_resolutions.definitions.local_def_id_to_hir_id(def_id)
+        self.tcx.local_def_id_to_hir_id(def_id)
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
@@ -321,7 +321,7 @@ impl<'hir> Map<'hir> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner)?;
+            let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
             let node = owner.nodes[id.local_id].as_ref()?;
             let hir_id = HirId { owner: id.owner, local_id: node.parent };
             Some(hir_id)
@@ -338,7 +338,7 @@ impl<'hir> Map<'hir> {
             let owner = self.tcx.hir_owner(id.owner)?;
             Some(owner.node.into())
         } else {
-            let owner = self.tcx.hir_owner_nodes(id.owner)?;
+            let owner = self.tcx.hir_owner_nodes(id.owner).as_owner()?;
             let node = owner.nodes[id.local_id].as_ref()?;
             Some(node.node)
         }
@@ -522,7 +522,7 @@ impl<'hir> Map<'hir> {
             .owners
             .iter_enumerated()
             .flat_map(move |(owner, owner_info)| {
-                let bodies = &owner_info.as_ref()?.nodes.bodies;
+                let bodies = &owner_info.as_owner()?.nodes.bodies;
                 Some(bodies.iter().map(move |&(local_id, _)| {
                     let hir_id = HirId { owner, local_id };
                     let body_id = BodyId { hir_id };
@@ -539,7 +539,7 @@ impl<'hir> Map<'hir> {
 
         par_iter(&self.krate().owners.raw).enumerate().for_each(|(owner, owner_info)| {
             let owner = LocalDefId::new(owner);
-            if let Some(owner_info) = owner_info {
+            if let MaybeOwner::Owner(owner_info) = owner_info {
                 par_iter(owner_info.nodes.bodies.range(..)).for_each(|(local_id, _)| {
                     let hir_id = HirId { owner, local_id: *local_id };
                     let body_id = BodyId { hir_id };
@@ -601,7 +601,7 @@ impl<'hir> Map<'hir> {
     pub fn walk_attributes(self, visitor: &mut impl Visitor<'hir>) {
         let krate = self.krate();
         for (owner, info) in krate.owners.iter_enumerated() {
-            if let Some(info) = info {
+            if let MaybeOwner::Owner(info) = info {
                 for (local_id, attrs) in info.attrs.map.iter() {
                     let id = HirId { owner, local_id: *local_id };
                     for a in *attrs {
@@ -625,7 +625,7 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ItemLikeVisitor<'hir>,
     {
         let krate = self.krate();
-        for owner in krate.owners.iter().filter_map(Option::as_ref) {
+        for owner in krate.owners.iter().filter_map(|i| i.as_owner()) {
             match owner.node() {
                 OwnerNode::Item(item) => visitor.visit_item(item),
                 OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -642,12 +642,14 @@ impl<'hir> Map<'hir> {
         V: itemlikevisit::ParItemLikeVisitor<'hir> + Sync + Send,
     {
         let krate = self.krate();
-        par_for_each_in(&krate.owners.raw, |owner| match owner.as_ref().map(OwnerInfo::node) {
-            Some(OwnerNode::Item(item)) => visitor.visit_item(item),
-            Some(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
-            Some(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
-            Some(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
-            Some(OwnerNode::Crate(_)) | None => {}
+        par_for_each_in(&krate.owners.raw, |owner| match owner.map(OwnerInfo::node) {
+            MaybeOwner::Owner(OwnerNode::Item(item)) => visitor.visit_item(item),
+            MaybeOwner::Owner(OwnerNode::ForeignItem(item)) => visitor.visit_foreign_item(item),
+            MaybeOwner::Owner(OwnerNode::ImplItem(item)) => visitor.visit_impl_item(item),
+            MaybeOwner::Owner(OwnerNode::TraitItem(item)) => visitor.visit_trait_item(item),
+            MaybeOwner::Owner(OwnerNode::Crate(_))
+            | MaybeOwner::NonOwner(_)
+            | MaybeOwner::Phantom => {}
         })
     }
 
@@ -1121,7 +1123,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
             .owners
             .iter_enumerated()
             .filter_map(|(def_id, info)| {
-                let _ = info.as_ref()?;
+                let _ = info.as_owner()?;
                 let def_path_hash = definitions.def_path_hash(def_id);
                 let span = definitions.def_span(def_id);
                 debug_assert_eq!(span.parent(), None);

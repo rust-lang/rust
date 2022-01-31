@@ -7,7 +7,6 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
-use crate::hir;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -100,13 +99,6 @@ impl DefPathTable {
 #[derive(Clone, Debug)]
 pub struct Definitions {
     table: DefPathTable,
-
-    /// Only [`LocalDefId`]s for items and item-like are HIR owners.
-    /// The associated `HirId` has a `local_id` of `0`.
-    /// Generic parameters and closures are also assigned a `LocalDefId` but are not HIR owners.
-    /// Their `HirId`s are defined by their position while lowering the enclosing owner.
-    // FIXME(cjgillot) Some `LocalDefId`s from `use` items are dropped during lowering and lack a `HirId`.
-    pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
 
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
@@ -322,12 +314,6 @@ impl Definitions {
         })
     }
 
-    #[inline]
-    #[track_caller]
-    pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
-        self.def_id_to_hir_id[id].unwrap()
-    }
-
     /// Adds a root definition (no parent) and a few other reserved definitions.
     pub fn new(stable_crate_id: StableCrateId, crate_span: Span) -> Definitions {
         let key = DefKey {
@@ -354,7 +340,6 @@ impl Definitions {
 
         Definitions {
             table,
-            def_id_to_hir_id: Default::default(),
             expansions_that_defined: Default::default(),
             def_id_to_span,
             stable_crate_id,
@@ -406,20 +391,6 @@ impl Definitions {
         def_id
     }
 
-    /// Initializes the `LocalDefId` to `HirId` mapping once it has been generated during
-    /// AST to HIR lowering.
-    pub fn init_def_id_to_hir_id_mapping(
-        &mut self,
-        mapping: IndexVec<LocalDefId, Option<hir::HirId>>,
-    ) {
-        assert!(
-            self.def_id_to_hir_id.is_empty(),
-            "trying to initialize `LocalDefId` <-> `HirId` mappings twice"
-        );
-
-        self.def_id_to_hir_id = mapping;
-    }
-
     pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
         self.expansions_that_defined.get(&id).copied().unwrap_or_else(ExpnId::root)
     }
@@ -431,7 +402,7 @@ impl Definitions {
     }
 
     pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
+        self.table.def_path_hashes.indices().map(|local_def_index| LocalDefId { local_def_index })
     }
 
     #[inline(always)]
