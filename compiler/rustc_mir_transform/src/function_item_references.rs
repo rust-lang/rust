@@ -43,53 +43,27 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
         } = &terminator.kind
         {
             let source_info = *self.body.source_info(location);
-            // Only handle function calls outside macros
-            if !source_info.span.from_expansion() {
-                let func_ty = func.ty(self.body, self.tcx);
-                if let ty::FnDef(def_id, substs_ref) = *func_ty.kind() {
-                    // Handle calls to `transmute`
-                    if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
-                        let arg_ty = args[0].ty(self.body, self.tcx);
-                        for generic_inner_ty in arg_ty.walk() {
-                            if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
-                                if let Some((fn_id, fn_substs)) =
-                                    FunctionItemRefChecker::is_fn_ref(inner_ty)
-                                {
-                                    let span = self.nth_arg_span(&args, 0);
-                                    self.emit_lint(fn_id, fn_substs, source_info, span);
-                                }
+            let func_ty = func.ty(self.body, self.tcx);
+            if let ty::FnDef(def_id, substs_ref) = *func_ty.kind() {
+                // Handle calls to `transmute`
+                if self.tcx.is_diagnostic_item(sym::transmute, def_id) {
+                    let arg_ty = args[0].ty(self.body, self.tcx);
+                    for generic_inner_ty in arg_ty.walk() {
+                        if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
+                            if let Some((fn_id, fn_substs)) =
+                                FunctionItemRefChecker::is_fn_ref(inner_ty)
+                            {
+                                let span = self.nth_arg_span(&args, 0);
+                                self.emit_lint(fn_id, fn_substs, source_info, span);
                             }
                         }
-                    } else {
-                        self.check_bound_args(def_id, substs_ref, &args, source_info);
                     }
+                } else {
+                    self.check_bound_args(def_id, substs_ref, &args, source_info);
                 }
             }
         }
         self.super_terminator(terminator, location);
-    }
-
-    /// Emits a lint for function references formatted with `fmt::Pointer::fmt` by macros. These
-    /// cases are handled as operands instead of call terminators to avoid any dependence on
-    /// unstable, internal formatting details like whether `fmt` is called directly or not.
-    fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
-        let source_info = *self.body.source_info(location);
-        if source_info.span.from_expansion() {
-            let op_ty = operand.ty(self.body, self.tcx);
-            if let ty::FnDef(def_id, substs_ref) = *op_ty.kind() {
-                if self.tcx.is_diagnostic_item(sym::pointer_trait_fmt, def_id) {
-                    let param_ty = substs_ref.type_at(0);
-                    if let Some((fn_id, fn_substs)) = FunctionItemRefChecker::is_fn_ref(param_ty) {
-                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
-                        // we have to use the callsite's ctxt.
-                        let callsite_ctxt = source_info.span.source_callsite().ctxt();
-                        let span = source_info.span.with_ctxt(callsite_ctxt);
-                        self.emit_lint(fn_id, fn_substs, source_info, span);
-                    }
-                }
-            }
-        }
-        self.super_operand(operand, location);
     }
 }
 
@@ -120,7 +94,13 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                                 if let Some((fn_id, fn_substs)) =
                                     FunctionItemRefChecker::is_fn_ref(subst_ty)
                                 {
-                                    let span = self.nth_arg_span(args, arg_num);
+                                    let mut span = self.nth_arg_span(args, arg_num);
+                                    if span.from_expansion() {
+                                        // The operand's ctxt wouldn't display the lint since it's inside a macro so
+                                        // we have to use the callsite's ctxt.
+                                        let callsite_ctxt = span.source_callsite().ctxt();
+                                        span = span.with_ctxt(callsite_ctxt);
+                                    }
                                     self.emit_lint(fn_id, fn_substs, source_info, span);
                                 }
                             }
