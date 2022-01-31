@@ -1,5 +1,5 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
+use crate::pprust::state::{AnnNode, PrintState, State};
 
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
@@ -377,7 +377,7 @@ impl<'a> State<'a> {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
             self.print_outer_attributes(&v.attrs);
-            self.ibox(INDENT_UNIT);
+            self.ibox(0);
             self.print_variant(v);
             self.word(",");
             self.end();

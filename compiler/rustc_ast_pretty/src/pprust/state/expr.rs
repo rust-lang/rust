@@ -320,7 +320,9 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.head("while");
+                self.cbox(0);
+                self.ibox(0);
+                self.word_nbsp("while");
                 self.print_expr_as_cond(test);
                 self.space();
                 self.print_block_with_attrs(blk, attrs);
@@ -330,7 +332,9 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.head("for");
+                self.cbox(0);
+                self.ibox(0);
+                self.word_nbsp("for");
                 self.print_pat(pat);
                 self.space();
                 self.word_space("in");
@@ -343,12 +347,14 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.head("loop");
+                self.cbox(0);
+                self.ibox(0);
+                self.word_nbsp("loop");
                 self.print_block_with_attrs(blk, attrs);
             }
             ast::ExprKind::Match(ref expr, ref arms) => {
-                self.cbox(INDENT_UNIT);
-                self.ibox(INDENT_UNIT);
+                self.cbox(0);
+                self.ibox(0);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(expr);
                 self.space();
@@ -388,7 +394,7 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at }
-                self.cbox(INDENT_UNIT);
+                self.cbox(0);
                 // head-box, will be closed by print-block after {
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
@@ -397,7 +403,7 @@ impl<'a> State<'a> {
                 self.word_nbsp("async");
                 self.print_capture_clause(capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
-                self.cbox(INDENT_UNIT);
+                self.cbox(0);
                 self.ibox(0);
                 self.print_block_with_attrs(blk, attrs);
             }
@@ -500,7 +506,9 @@ impl<'a> State<'a> {
                 self.word("?")
             }
             ast::ExprKind::TryBlock(ref blk) => {
-                self.head("try");
+                self.cbox(0);
+                self.ibox(0);
+                self.word_nbsp("try");
                 self.print_block_with_attrs(blk, attrs)
             }
             ast::ExprKind::Err => {

@@ -444,7 +444,7 @@ impl InlineAsmRegClass {
     }
 
     /// Returns a suggested register class to use for this type. This is called
-    /// after type checking via `supported_types` fails to give a better error
+    /// when `supported_types` fails to give a better error
     /// message to the user.
     pub fn suggest_class(self, arch: InlineAsmArch, ty: InlineAsmType) -> Option<Self> {
         match self {
