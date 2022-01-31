@@ -382,7 +382,7 @@ impl ErrorKind {
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
             FileTooLarge => "file too large",
-            FilenameInvalid => "filename too long",
+            FilenameInvalid => "filename invalid",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             FilesystemQuotaExceeded => "filesystem quota exceeded",
             HostUnreachable => "host unreachable",
