@@ -445,7 +445,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let named_type_param_count =
             param_counts.types - has_self as usize - synth_type_param_count;
         let infer_lifetimes =
-            gen_pos != GenericArgPosition::Type && !gen_args.has_lifetime_params();
+            (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();
 
         if gen_pos != GenericArgPosition::Type && !gen_args.bindings.is_empty() {
             Self::prohibit_assoc_ty_binding(tcx, gen_args.bindings[0].span);
