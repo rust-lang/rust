@@ -234,15 +234,6 @@ fn highlight_name_ref(
         None if syntactic_name_ref_highlighting => {
             return highlight_name_ref_by_syntax(name_ref, sema, krate)
         }
-        // FIXME: Workaround for https://github.com/rust-analyzer/rust-analyzer/issues/10708
-        //
-        // Some popular proc macros (namely async_trait) will rewrite `self` in such a way that it no
-        // longer resolves via NameRefClass. If we can't be resolved, but we know we're a self token,
-        // within a function with a self param, pretend to still be `self`, rather than
-        // an unresolved reference.
-        None if name_ref.self_token().is_some() && is_in_fn_with_self_param(&name_ref) => {
-            return SymbolKind::SelfParam.into()
-        }
         // FIXME: This is required for helper attributes used by proc-macros, as those do not map down
         // to anything when used.
         // We can fix this for derive attributes since derive helpers are recorded, but not for
@@ -711,15 +702,4 @@ fn parents_match(mut node: NodeOrToken<SyntaxNode, SyntaxToken>, mut kinds: &[Sy
 
 fn parent_matches<N: AstNode>(token: &SyntaxToken) -> bool {
     token.parent().map_or(false, |it| N::can_cast(it.kind()))
-}
-
-fn is_in_fn_with_self_param(node: &ast::NameRef) -> bool {
-    node.syntax()
-        .ancestors()
-        .find_map(ast::Item::cast)
-        .and_then(|item| match item {
-            ast::Item::Fn(fn_) => fn_.param_list()?.self_param(),
-            _ => None,
-        })
-        .is_some()
 }
