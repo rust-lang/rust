@@ -893,7 +893,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }) = &self.body[location.block].terminator
         {
             let (method_did, method_substs) = if let Some(info) =
-                rustc_const_eval::util::find_self_call(
+                rustc_mir_transform::util::find_self_call(
                     self.infcx.tcx,
                     &self.body,
                     target_temp,

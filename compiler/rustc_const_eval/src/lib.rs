@@ -18,8 +18,6 @@ Rust MIR: a lowered representation of Rust.
 #![feature(option_get_or_insert_default)]
 #![feature(never_type)]
 #![feature(trait_alias)]
-#![feature(trusted_len)]
-#![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 
@@ -31,7 +29,6 @@ extern crate rustc_middle;
 pub mod const_eval;
 pub mod interpret;
 pub mod transform;
-pub mod util;
 
 use rustc_middle::ty::query::Providers;
 

@@ -7,6 +7,7 @@
 #![feature(option_get_or_insert_default)]
 #![feature(once_cell)]
 #![feature(never_type)]
+#![feature(trusted_len)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
@@ -17,7 +18,6 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use required_consts::RequiredConstsVisitor;
-use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
@@ -80,6 +80,7 @@ mod simplify_comparison_integral;
 mod simplify_try;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
+pub mod util;
 
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::promote_consts;
