@@ -322,12 +322,33 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     // The target doesn't care; the subtarget reads our attribute.
     apply_tune_cpu_attr(cx, llfn);
 
-    let mut function_features = codegen_fn_attrs
-        .target_features
+    let function_features =
+        codegen_fn_attrs.target_features.iter().map(|f| f.as_str()).collect::<Vec<&str>>();
+
+    if let Some(f) = llvm_util::check_tied_features(
+        cx.tcx.sess,
+        &function_features.iter().map(|f| (*f, true)).collect(),
+    ) {
+        let span = cx
+            .tcx
+            .get_attrs(instance.def_id())
+            .iter()
+            .find(|a| a.has_name(rustc_span::sym::target_feature))
+            .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
+        let msg = format!(
+            "the target features {} must all be either enabled or disabled together",
+            f.join(", ")
+        );
+        let mut err = cx.tcx.sess.struct_span_err(span, &msg);
+        err.help("add the missing features in a `target_feature` attribute");
+        err.emit();
+        return;
+    }
+
+    let mut function_features = function_features
         .iter()
-        .flat_map(|f| {
-            let feature = f.as_str();
-            llvm_util::to_llvm_feature(cx.tcx.sess, feature)
+        .flat_map(|feat| {
+            llvm_util::to_llvm_feature(cx.tcx.sess, feat)
                 .into_iter()
                 .map(|f| format!("+{}", f))
                 .collect::<Vec<String>>()

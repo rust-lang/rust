@@ -1,0 +1,4 @@
+error: Target features paca, pacg must all be enabled or disabled together
+
+error: aborting due to previous error
+
