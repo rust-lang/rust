@@ -4785,16 +4785,10 @@ void GradientUtils::branchToCorrespondingTarget(
           // Condition cond1 splits off uniqueTargets[0] from
           // the remainder of foundTargets.
           auto cond1 = lookupM(bi1->getCondition(), BuilderM);
-          llvm::errs() << " uniqueTarget: "
-                       << (*uniqueTargets.begin())->getName() << "\n";
-          llvm::errs() << " block: " << block->getName() << "\n";
-          llvm::errs() << " bi1: " << *bi1->getCondition() << "\n";
 
           // Condition cond2 splits off the two blocks in
           // (foundTargets-uniqueTargets) from each other.
           auto cond2 = lookupM(bi2->getCondition(), BuilderM);
-          llvm::errs() << " subblock: " << subblock->getName() << "\n";
-          llvm::errs() << " bi2: " << *bi2->getCondition() << "\n";
 
           if (replacePHIs == nullptr) {
             BasicBlock *staging =
