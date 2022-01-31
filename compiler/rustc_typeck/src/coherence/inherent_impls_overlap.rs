@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_index::vec::IndexVec;
+use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Symbol;
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
@@ -99,7 +100,12 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         }
     }
 
-    fn check_for_overlapping_inherent_impls(&self, impl1_def_id: DefId, impl2_def_id: DefId) {
+    fn check_for_overlapping_inherent_impls(
+        &self,
+        overlap_mode: OverlapMode,
+        impl1_def_id: DefId,
+        impl2_def_id: DefId,
+    ) {
         traits::overlapping_impls(
             self.tcx,
             impl1_def_id,
@@ -107,6 +113,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // We go ahead and just skip the leak check for
             // inherent impls without warning.
             SkipLeakCheck::Yes,
+            overlap_mode,
             |overlap| {
                 self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id, overlap);
                 false
@@ -131,6 +138,8 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentOverlapChecker<'tcx> {
                     return;
                 }
 
+                let overlap_mode = OverlapMode::get(self.tcx, item.def_id.to_def_id());
+
                 let impls_items = impls
                     .iter()
                     .map(|impl_def_id| (impl_def_id, self.tcx.associated_items(*impl_def_id)))
@@ -145,6 +154,7 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentOverlapChecker<'tcx> {
                         for &(&impl2_def_id, impl_items2) in &impls_items[(i + 1)..] {
                             if self.impls_have_common_items(impl_items1, impl_items2) {
                                 self.check_for_overlapping_inherent_impls(
+                                    overlap_mode,
                                     impl1_def_id,
                                     impl2_def_id,
                                 );
@@ -288,6 +298,7 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentOverlapChecker<'tcx> {
                                 let &(&impl2_def_id, impl_items2) = &impls_items[impl2_items_idx];
                                 if self.impls_have_common_items(impl_items1, impl_items2) {
                                     self.check_for_overlapping_inherent_impls(
+                                        overlap_mode,
                                         impl1_def_id,
                                         impl2_def_id,
                                     );

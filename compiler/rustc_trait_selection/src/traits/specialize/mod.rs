@@ -257,6 +257,7 @@ pub(super) fn specialization_graph_provider(
     trait_id: DefId,
 ) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
+    let overlap_mode = specialization_graph::OverlapMode::get(tcx, trait_id);
 
     let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 
@@ -270,7 +271,7 @@ pub(super) fn specialization_graph_provider(
     for impl_def_id in trait_impls {
         if let Some(impl_def_id) = impl_def_id.as_local() {
             // This is where impl overlap checking happens:
-            let insert_result = sg.insert(tcx, impl_def_id.to_def_id());
+            let insert_result = sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
                 Err(overlap) => (Some(overlap), None),
