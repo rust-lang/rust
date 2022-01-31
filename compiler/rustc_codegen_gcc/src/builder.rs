@@ -354,7 +354,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for Builder<'_, '_, 'tcx> {
     #[inline]
     fn handle_fn_abi_err(
         &self,
-        err: FnAbiError<'tcx>,
+        err: &'tcx FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {

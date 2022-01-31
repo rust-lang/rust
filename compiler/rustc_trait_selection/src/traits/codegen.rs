@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
+) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorReported> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
@@ -96,7 +96,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         drop(infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types());
 
         debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
-        Ok(impl_source)
+        Ok(&*tcx.arena.alloc(impl_source))
     })
 }
 

@@ -1742,7 +1742,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hash: self.tcx.crate_hash(cnum),
                     host_hash: self.tcx.crate_host_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
-                    extra_filename: self.tcx.extra_filename(cnum),
+                    extra_filename: self.tcx.extra_filename(cnum).clone(),
                 };
                 (cnum, dep)
             })

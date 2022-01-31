@@ -2509,7 +2509,13 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             };
             if let Some(def_id) = def_id.as_local() {
                 let id = self.tcx.hir().local_def_id_to_hir_id(def_id);
-                self.tcx.object_lifetime_defaults(id).unwrap().iter().map(set_to_region).collect()
+                self.tcx
+                    .object_lifetime_defaults(id)
+                    .as_ref()
+                    .unwrap()
+                    .iter()
+                    .map(set_to_region)
+                    .collect()
             } else {
                 let tcx = self.tcx;
                 self.xcrate_object_lifetime_defaults

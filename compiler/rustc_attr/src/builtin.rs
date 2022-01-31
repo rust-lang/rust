@@ -604,7 +604,7 @@ pub fn eval_condition(
     }
 }
 
-#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     /// The note to issue a reason.

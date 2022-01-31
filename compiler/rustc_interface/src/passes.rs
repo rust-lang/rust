@@ -658,13 +658,13 @@ fn write_out_deps(
             boxed_resolver.borrow_mut().access(|resolver| {
                 for cnum in resolver.cstore().crates_untracked() {
                     let source = resolver.cstore().crate_source_untracked(cnum);
-                    if let Some((path, _)) = source.dylib {
+                    if let Some((path, _)) = &source.dylib {
                         files.push(escape_dep_filename(&path.display().to_string()));
                     }
-                    if let Some((path, _)) = source.rlib {
+                    if let Some((path, _)) = &source.rlib {
                         files.push(escape_dep_filename(&path.display().to_string()));
                     }
-                    if let Some((path, _)) = source.rmeta {
+                    if let Some((path, _)) = &source.rmeta {
                         files.push(escape_dep_filename(&path.display().to_string()));
                     }
                 }

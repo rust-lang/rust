@@ -3,7 +3,6 @@ use crate::foreign_modules;
 use crate::native_libs;
 
 use rustc_ast as ast;
-use rustc_data_structures::stable_map::FxHashMap;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -13,7 +12,7 @@ use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
-use rustc_session::cstore::{CrateSource, CrateStore, ForeignModule};
+use rustc_session::cstore::{CrateSource, CrateStore};
 use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
@@ -179,10 +178,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         reachable_non_generics
     }
-    native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess).collect()) }
-    foreign_modules => {
-        Lrc::new(cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect())
-    }
+    native_libraries => { cdata.get_native_libraries(tcx.sess).collect() }
+    foreign_modules => { cdata.get_foreign_modules(tcx.sess).map(|m| (m.def_id, m)).collect() }
     crate_hash => { cdata.root.hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.name }
@@ -212,7 +209,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         r
     }
 
-    used_crate_source => { Lrc::new(cdata.source.clone()) }
+    used_crate_source => { Lrc::clone(&cdata.source) }
 
     exported_symbols => {
         let syms = cdata.exported_symbols(tcx);
@@ -266,13 +263,11 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(native_libs::collect(tcx))
+            native_libs::collect(tcx)
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            let modules: FxHashMap<DefId, ForeignModule> =
-                foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect();
-            Lrc::new(modules)
+            foreign_modules::collect(tcx).into_iter().map(|m| (m.def_id, m)).collect()
         },
 
         // Returns a map from a sufficiently visible external item (i.e., an
@@ -354,7 +349,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 visible_parent_map.entry(child).or_insert(parent);
             }
 
-            Lrc::new(visible_parent_map)
+            visible_parent_map
         },
 
         dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
@@ -438,7 +433,7 @@ impl CStore {
         self.get_crate_data(def.krate).get_fn_has_self_parameter(def.index)
     }
 
-    pub fn crate_source_untracked(&self, cnum: CrateNum) -> CrateSource {
+    pub fn crate_source_untracked(&self, cnum: CrateNum) -> Lrc<CrateSource> {
         self.get_crate_data(cnum).source.clone()
     }
 

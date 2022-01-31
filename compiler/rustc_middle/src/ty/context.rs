@@ -2713,7 +2713,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
     }
 
-    pub fn object_lifetime_defaults(self, id: HirId) -> Option<Vec<ObjectLifetimeDefault>> {
+    pub fn object_lifetime_defaults(self, id: HirId) -> &'tcx Option<Vec<ObjectLifetimeDefault>> {
         self.object_lifetime_defaults_map(id.owner)
     }
 
@@ -2728,8 +2728,8 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn lifetime_scope(self, id: HirId) -> Option<LifetimeScopeForPath> {
-        self.lifetime_scope_map(id.owner).and_then(|mut map| map.remove(&id.local_id))
+    pub fn lifetime_scope(self, id: HirId) -> Option<&'tcx LifetimeScopeForPath> {
+        self.lifetime_scope_map(id.owner).as_ref().and_then(|map| map.get(&id.local_id))
     }
 
     /// Whether the `def_id` counts as const fn in the current crate, considering all active
@@ -2902,7 +2902,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         |tcx, id| tcx.stability().local_deprecation_entry(id.expect_local());
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.output_filenames = |tcx, ()| tcx.output_filenames.clone();
+    providers.output_filenames = |tcx, ()| &tcx.output_filenames;
     providers.features_query = |tcx, ()| tcx.sess.features_untracked();
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

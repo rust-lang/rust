@@ -477,7 +477,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         codegen_worker_receive,
         shared_emitter_main,
         future: coordinator_thread,
-        output_filenames: tcx.output_filenames(()),
+        output_filenames: tcx.output_filenames(()).clone(),
     }
 }
 
@@ -1050,7 +1050,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
-        output_filenames: tcx.output_filenames(()),
+        output_filenames: tcx.output_filenames(()).clone(),
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,

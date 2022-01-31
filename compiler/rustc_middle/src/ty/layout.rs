@@ -2893,7 +2893,7 @@ pub trait FnAbiOfHelpers<'tcx>: LayoutOfHelpers<'tcx> {
     /// (and any `FnAbiError`s are turned into fatal errors or ICEs).
     fn handle_fn_abi_err(
         &self,
-        err: FnAbiError<'tcx>,
+        err: &'tcx FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> <Self::FnAbiOfResult as MaybeResult<&'tcx FnAbi<'tcx, Ty<'tcx>>>>::Error;
@@ -2915,9 +2915,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         let span = self.layout_tcx_at_span();
         let tcx = self.tcx().at(span);
 
-        MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
-            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
-        ))
+        MaybeResult::from(
+            tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).as_ref().map_err(|err| {
+                self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args })
+            }),
+        )
     }
 
     /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
@@ -2936,14 +2938,21 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         let tcx = self.tcx().at(span);
 
         MaybeResult::from(
-            tcx.fn_abi_of_instance(self.param_env().and((instance, extra_args))).map_err(|err| {
-                // HACK(eddyb) at least for definitions of/calls to `Instance`s,
-                // we can get some kind of span even if one wasn't provided.
-                // However, we don't do this early in order to avoid calling
-                // `def_span` unconditionally (which may have a perf penalty).
-                let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
-            }),
+            tcx.fn_abi_of_instance(self.param_env().and((instance, extra_args))).as_ref().map_err(
+                |err| {
+                    // HACK(eddyb) at least for definitions of/calls to `Instance`s,
+                    // we can get some kind of span even if one wasn't provided.
+                    // However, we don't do this early in order to avoid calling
+                    // `def_span` unconditionally (which may have a perf penalty).
+                    let span =
+                        if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
+                    self.handle_fn_abi_err(
+                        err,
+                        span,
+                        FnAbiRequest::OfInstance { instance, extra_args },
+                    )
+                },
+            ),
         )
     }
 }
@@ -2953,7 +2962,7 @@ impl<'tcx, C: FnAbiOfHelpers<'tcx>> FnAbiOf<'tcx> for C {}
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
     let (param_env, (sig, extra_args)) = query.into_parts();
 
     LayoutCx { tcx, param_env }.fn_abi_new_uncached(
@@ -2968,7 +2977,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 fn fn_abi_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
     let (param_env, (instance, extra_args)) = query.into_parts();
 
     let sig = instance.fn_sig_for_fn_abi(tcx, param_env);
@@ -3001,7 +3010,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         codegen_fn_attr_flags: CodegenFnAttrFlags,
         // FIXME(eddyb) replace this with something typed, like an `enum`.
         force_thin_self_ptr: bool,
-    ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+    ) -> Result<FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
         debug!("fn_abi_new_uncached({:?}, {:?})", sig, extra_args);
 
         let sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, sig);
@@ -3165,7 +3174,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         };
         self.fn_abi_adjust_for_abi(&mut fn_abi, sig.abi)?;
         debug!("fn_abi_new_uncached = {:?}", fn_abi);
-        Ok(self.tcx.arena.alloc(fn_abi))
+        Ok(fn_abi)
     }
 
     fn fn_abi_adjust_for_abi(
