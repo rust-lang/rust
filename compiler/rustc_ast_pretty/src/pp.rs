@@ -199,10 +199,11 @@ enum PrintFrame {
 
 const SIZE_INFINITY: isize = 0xffff;
 
+/// Target line width.
+const MARGIN: isize = 78;
+
 pub struct Printer {
     out: String,
-    /// Width of lines we're constrained to
-    margin: isize,
     /// Number of spaces left on line
     space: isize,
     /// Ring-buffer of tokens and calculated sizes
@@ -237,11 +238,9 @@ struct BufEntry {
 
 impl Printer {
     pub fn new() -> Self {
-        let linewidth = 78;
         Printer {
             out: String::new(),
-            margin: linewidth as isize,
-            space: linewidth as isize,
+            space: MARGIN,
             buf: RingBuffer::new(),
             left_total: 0,
             right_total: 0,
@@ -395,7 +394,7 @@ impl Printer {
             self.print_stack.push(PrintFrame::Broken { indent: self.indent, breaks: token.breaks });
             self.indent = match token.indent {
                 IndentStyle::Block { offset } => (self.indent as isize + offset) as usize,
-                IndentStyle::Visual => (self.margin - self.space) as usize,
+                IndentStyle::Visual => (MARGIN - self.space) as usize,
             };
         } else {
             self.print_stack.push(PrintFrame::Fits);
@@ -421,7 +420,7 @@ impl Printer {
             self.out.push('\n');
             let indent = self.indent as isize + token.offset;
             self.pending_indentation = indent;
-            self.space = self.margin - indent;
+            self.space = MARGIN - indent;
         }
     }
 
