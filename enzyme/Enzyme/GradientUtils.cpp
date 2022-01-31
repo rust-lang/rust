@@ -927,6 +927,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           continue;
         done[edge].insert(target);
 
+        if (DT.dominates(block, phi->getParent()))
+          continue;
+
         Loop *blockLoop = LI.getLoopFor(block);
 
         for (BasicBlock *Pred : predecessors(block)) {
@@ -951,6 +954,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     if (targetToPreds.size() == 3) {
       for (auto block : blocks) {
+        if (!DT.dominates(block, phi->getParent()))
+          continue;
         std::set<BasicBlock *> foundtargets;
         std::set<BasicBlock *> uniqueTargets;
         for (BasicBlock *succ : successors(block)) {
@@ -972,35 +977,55 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         {
           BasicBlock *subblock = nullptr;
           for (auto block2 : blocks) {
-            std::set<BasicBlock *> seen2;
-            for (BasicBlock *succ : successors(block2)) {
-              auto edge = std::make_pair(block2, succ);
-              if (done[edge].size() != 1) {
-                // llvm::errs() << " -- failed from noonesize\n";
+            {
+              // The second split block must not have a parent with an edge
+              // to a block other than to itself, which can reach any of its
+              // two targets.
+              // TODO verify this
+              for (auto P : predecessors(block2)) {
+                for (auto S : successors(P)) {
+                  if (S == block2)
+                    continue;
+                  auto edge = std::make_pair(P, S);
+                  if (done.find(edge) != done.end()) {
+                    for (auto target : done[edge]) {
+                      if (foundtargets.find(target) != foundtargets.end() &&
+                          uniqueTargets.find(target) == uniqueTargets.end())
+                        goto nextblock;
+                    }
+                  }
+                }
+              }
+              std::set<BasicBlock *> seen2;
+              for (BasicBlock *succ : successors(block2)) {
+                auto edge = std::make_pair(block2, succ);
+                if (done[edge].size() != 1) {
+                  // llvm::errs() << " -- failed from noonesize\n";
+                  goto nextblock;
+                }
+                for (BasicBlock *target : done[edge]) {
+                  if (seen2.find(target) != seen2.end()) {
+                    // llvm::errs() << " -- failed from not uniqueTargets\n";
+                    goto nextblock;
+                  }
+                  seen2.insert(target);
+                  if (foundtargets.find(target) == foundtargets.end()) {
+                    // llvm::errs() << " -- failed from not unknown target\n";
+                    goto nextblock;
+                  }
+                  if (uniqueTargets.find(target) != uniqueTargets.end()) {
+                    // llvm::errs() << " -- failed from not same target\n";
+                    goto nextblock;
+                  }
+                }
+              }
+              if (seen2.size() != 2) {
+                // llvm::errs() << " -- failed from not 2 seen\n";
                 goto nextblock;
               }
-              for (BasicBlock *target : done[edge]) {
-                if (seen2.find(target) != seen2.end()) {
-                  // llvm::errs() << " -- failed from not uniqueTargets\n";
-                  goto nextblock;
-                }
-                seen2.insert(target);
-                if (foundtargets.find(target) == foundtargets.end()) {
-                  // llvm::errs() << " -- failed from not unknown target\n";
-                  goto nextblock;
-                }
-                if (uniqueTargets.find(target) != uniqueTargets.end()) {
-                  // llvm::errs() << " -- failed from not same target\n";
-                  goto nextblock;
-                }
-              }
+              subblock = block2;
+              break;
             }
-            if (seen2.size() != 2) {
-              // llvm::errs() << " -- failed from not 2 seen\n";
-              goto nextblock;
-            }
-            subblock = block2;
-            break;
           nextblock:;
           }
 
@@ -1167,6 +1192,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
     Instruction *equivalentTerminator = nullptr;
     for (auto block : blocks) {
+      if (!DT.dominates(block, phi->getParent()))
+        continue;
       std::set<BasicBlock *> foundtargets;
       for (BasicBlock *succ : successors(block)) {
         auto edge = std::make_pair(block, succ);
@@ -1187,7 +1214,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         equivalentTerminator = block->getTerminator();
         goto fast;
       }
-
     nextpair:;
     }
     goto endCheck;
@@ -4601,6 +4627,11 @@ void GradientUtils::branchToCorrespondingTarget(
         continue;
       done[edge].insert(target);
 
+      // If this block dominates the context, don't go back up as any
+      // predecessors won't contain the conditions.
+      if (DT.dominates(block, ctx))
+        continue;
+
       Loop *blockLoop = LI.getLoopFor(block);
 
       for (BasicBlock *Pred : predecessors(block)) {
@@ -4624,84 +4655,146 @@ void GradientUtils::branchToCorrespondingTarget(
   Instruction *equivalentTerminator = nullptr;
 
   std::set<BasicBlock *> blocks;
+
+  // llvm::errs() << "\n\n<DONE = " << ctx->getName() << ">\n";
   for (auto pair : done) {
     const auto &edge = pair.first;
     blocks.insert(edge.first);
+    // llvm::errs() << " edge  (" << edge.first->getName() << ", "
+    //             << edge.second->getName() << ") : [";
+    // for (auto s : pair.second)
+    //  llvm::errs() << s->getName() << ",";
+    // llvm::errs() << "]\n";
   }
+  // llvm::errs() << "</DONE>\n";
 
   if (targetToPreds.size() == 3) {
+    // Try `block` as a potential first split point.
     for (auto block : blocks) {
-      std::set<BasicBlock *> foundtargets;
-      std::set<BasicBlock *> uniqueTargets;
-      for (BasicBlock *succ : successors(block)) {
-        auto edge = std::make_pair(block, succ);
-        for (BasicBlock *target : done[edge]) {
-          if (foundtargets.find(target) != foundtargets.end()) {
-            goto rnextpair;
-          }
-          foundtargets.insert(target);
-          if (done[edge].size() == 1)
-            uniqueTargets.insert(target);
-        }
-      }
-      if (foundtargets.size() != 3)
-        goto rnextpair;
-      if (uniqueTargets.size() != 1)
-        goto rnextpair;
-
       {
-        BasicBlock *subblock = nullptr;
-        for (auto block2 : blocks) {
-          std::set<BasicBlock *> seen2;
-          for (BasicBlock *succ : successors(block2)) {
-            auto edge = std::make_pair(block2, succ);
-            if (done[edge].size() != 1) {
-              // llvm::errs() << " -- failed from noonesize\n";
-              goto nextblock;
+        // The original split block must not have a parent with an edge
+        // to a block other than to itself, which can reach any targets.
+        if (!DT.dominates(block, ctx))
+          continue;
+
+        // For all successors and thus edges (block, succ):
+        // 1) Ensure that no successors have overlapping potential
+        // destinations (a list of destinations previously seen is in
+        // foundtargets).
+        // 2) The block branches to all 3 destinations (foundTargets==3)
+        std::set<BasicBlock *> foundtargets;
+        // 3) The unique target split off from the others is stored in
+        //   uniqueTarget.
+        std::set<BasicBlock *> uniqueTargets;
+        for (BasicBlock *succ : successors(block)) {
+          auto edge = std::make_pair(block, succ);
+          for (BasicBlock *target : done[edge]) {
+            if (foundtargets.find(target) != foundtargets.end()) {
+              goto rnextpair;
             }
-            for (BasicBlock *target : done[edge]) {
-              if (seen2.find(target) != seen2.end()) {
-                // llvm::errs() << " -- failed from not uniqueTargets\n";
-                goto nextblock;
-              }
-              seen2.insert(target);
-              if (foundtargets.find(target) == foundtargets.end()) {
-                // llvm::errs() << " -- failed from not unknown target\n";
-                goto nextblock;
-              }
-              if (uniqueTargets.find(target) != uniqueTargets.end()) {
-                // llvm::errs() << " -- failed from not same target\n";
-                goto nextblock;
-              }
-            }
+            foundtargets.insert(target);
+            if (done[edge].size() == 1)
+              uniqueTargets.insert(target);
           }
-          if (seen2.size() != 2) {
-            // llvm::errs() << " -- failed from not 2 seen\n";
-            goto nextblock;
-          }
-          subblock = block2;
-          break;
-        nextblock:;
         }
-
-        if (subblock == nullptr)
+        if (foundtargets.size() != 3)
+          goto rnextpair;
+        if (uniqueTargets.size() != 1)
           goto rnextpair;
 
-        if (!isa<BranchInst>(block->getTerminator()))
-          goto rnextpair;
-
-        if (!isa<BranchInst>(subblock->getTerminator()))
+        // Only handle cases where the split was due to a conditional
+        // branch. This branch, `bi`, splits off uniqueTargets[0] from
+        // the remainder of foundTargets.
+        auto bi1 = dyn_cast<BranchInst>(block->getTerminator());
+        if (!bi1)
           goto rnextpair;
 
         {
-          if (!isa<BranchInst>(block->getTerminator())) {
-            llvm::errs() << *block << "\n";
-          }
-          auto bi1 = cast<BranchInst>(block->getTerminator());
+          // Find a second block `subblock` which splits the two merged
+          // targets from each other.
+          BasicBlock *subblock = nullptr;
+          for (auto block2 : blocks) {
+            {
+              // The second split block must not have a parent with an edge
+              // to a block other than to itself, which can reach any of its two
+              // targets.
+              // TODO verify this
+              for (auto P : predecessors(block2)) {
+                for (auto S : successors(P)) {
+                  if (S == block2)
+                    continue;
+                  auto edge = std::make_pair(P, S);
+                  if (done.find(edge) != done.end()) {
+                    for (auto target : done[edge]) {
+                      if (foundtargets.find(target) != foundtargets.end() &&
+                          uniqueTargets.find(target) == uniqueTargets.end()) {
+                        goto nextblock;
+                      }
+                    }
+                  }
+                }
+              }
 
+              // Again, a successful split must have unique targets.
+              std::set<BasicBlock *> seen2;
+              for (BasicBlock *succ : successors(block2)) {
+                auto edge = std::make_pair(block2, succ);
+                // Since there are only two targets, a successful split
+                // condition has only 1 target per successor of block2.
+                if (done[edge].size() != 1) {
+                  goto nextblock;
+                }
+                for (BasicBlock *target : done[edge]) {
+                  // block2 has non-unique targets.
+                  if (seen2.find(target) != seen2.end()) {
+                    goto nextblock;
+                  }
+                  seen2.insert(target);
+                  // block2 has a target which is not part of the two needing
+                  // to be split. The two needing to be split is equal to
+                  //    foundtargets-uniqueTargets.
+                  if (foundtargets.find(target) == foundtargets.end()) {
+                    goto nextblock;
+                  }
+                  if (uniqueTargets.find(target) != uniqueTargets.end()) {
+                    goto nextblock;
+                  }
+                }
+              }
+              // If we didn't find two valid successors, continue.
+              if (seen2.size() != 2) {
+                // llvm::errs() << " -- failed from not 2 seen\n";
+                goto nextblock;
+              }
+              subblock = block2;
+              break;
+            }
+          nextblock:;
+          }
+
+          // If no split block was found, try again.
+          if (subblock == nullptr)
+            goto rnextpair;
+
+          // This branch, `bi2`, splits off the two blocks in
+          // (foundTargets-uniqueTargets) from each other.
+          auto bi2 = dyn_cast<BranchInst>(subblock->getTerminator());
+          if (!bi2)
+            goto rnextpair;
+
+          // Condition cond1 splits off uniqueTargets[0] from
+          // the remainder of foundTargets.
           auto cond1 = lookupM(bi1->getCondition(), BuilderM);
-          auto bi2 = cast<BranchInst>(subblock->getTerminator());
+          llvm::errs() << " uniqueTarget: "
+                       << (*uniqueTargets.begin())->getName() << "\n";
+          llvm::errs() << " block: " << block->getName() << "\n";
+          llvm::errs() << " bi1: " << *bi1->getCondition() << "\n";
+
+          // Condition cond2 splits off the two blocks in
+          // (foundTargets-uniqueTargets) from each other.
           auto cond2 = lookupM(bi2->getCondition(), BuilderM);
+          llvm::errs() << " subblock: " << subblock->getName() << "\n";
+          llvm::errs() << " bi2: " << *bi2->getCondition() << "\n";
 
           if (replacePHIs == nullptr) {
             BasicBlock *staging =
@@ -4711,6 +4804,7 @@ void GradientUtils::branchToCorrespondingTarget(
               if (done[edge].size() == 1) {
                 return *done[edge].begin();
               } else {
+                assert(done[edge].size() == 2);
                 return staging;
               }
             };
@@ -4781,27 +4875,41 @@ void GradientUtils::branchToCorrespondingTarget(
   }
 
   for (auto block : blocks) {
-    std::set<BasicBlock *> foundtargets;
-    for (BasicBlock *succ : successors(block)) {
-      auto edge = std::make_pair(block, succ);
-      if (done[edge].size() != 1) {
+    {
+      // The original split block must not have a parent with an edge
+      // to a block other than to itself, which can reach any targets.
+      if (!DT.dominates(block, ctx))
+        for (auto P : predecessors(block)) {
+          for (auto S : successors(P)) {
+            if (S == block)
+              continue;
+            auto edge = std::make_pair(P, S);
+            if (done.find(edge) != done.end() && done[edge].size())
+              goto nextpair;
+          }
+        }
+
+      std::set<BasicBlock *> foundtargets;
+      for (BasicBlock *succ : successors(block)) {
+        auto edge = std::make_pair(block, succ);
+        if (done[edge].size() != 1) {
+          goto nextpair;
+        }
+        BasicBlock *target = *done[edge].begin();
+        if (foundtargets.find(target) != foundtargets.end()) {
+          goto nextpair;
+        }
+        foundtargets.insert(target);
+      }
+      if (foundtargets.size() != targetToPreds.size()) {
         goto nextpair;
       }
-      BasicBlock *target = *done[edge].begin();
-      if (foundtargets.find(target) != foundtargets.end()) {
-        goto nextpair;
+
+      if (forwardBlock == block || DT.dominates(block, forwardBlock)) {
+        equivalentTerminator = block->getTerminator();
+        goto fast;
       }
-      foundtargets.insert(target);
     }
-    if (foundtargets.size() != targetToPreds.size()) {
-      goto nextpair;
-    }
-
-    if (forwardBlock == block || DT.dominates(block, forwardBlock)) {
-      equivalentTerminator = block->getTerminator();
-      goto fast;
-    }
-
   nextpair:;
   }
   goto nofast;
