@@ -84,10 +84,6 @@ impl Thread {
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        // Inherit the current task's priority
-        let current_task = task::try_current_task_id().map_err(|e| e.as_io_error())?;
-        let priority = task::try_task_priority(current_task).map_err(|e| e.as_io_error())?;
-
         let inner = Box::new(ThreadInner {
             start: UnsafeCell::new(ManuallyDrop::new(p)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
@@ -175,7 +171,8 @@ impl Thread {
                 exinf: inner_ptr as abi::EXINF,
                 // The entry point
                 task: Some(trampoline),
-                itskpri: priority,
+                // Inherit the calling task's base priority
+                itskpri: abi::TPRI_SELF,
                 stksz: stack,
                 // Let the kernel allocate the stack,
                 stk: crate::ptr::null_mut(),
