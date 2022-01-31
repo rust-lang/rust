@@ -219,14 +219,20 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.find_file(syntax_node).file_id
     }
 
+    /// Attempts to map the node out of macro expanded files returning the original file range.
+    /// If upmapping is not possible, this will fall back to the range of the macro call of the
+    /// macro file the node resides in.
     pub fn original_range(&self, node: &SyntaxNode) -> FileRange {
         self.imp.original_range(node)
     }
 
+    /// Attempts to map the node out of macro expanded files returning the original file range.
     pub fn original_range_opt(&self, node: &SyntaxNode) -> Option<FileRange> {
         self.imp.original_range_opt(node)
     }
 
+    /// Attempts to map the node out of macro expanded files.
+    /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.imp.original_ast_node(node)
     }
@@ -445,7 +451,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
-        let src = self.find_file(item.syntax()).with_value(item.clone());
+        let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
         let file_id = macro_call_id.as_file();
         let node = self.parse_or_expand(file_id)?;
@@ -519,8 +525,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &ast::Item,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
-        let file_id = self.find_file(actual_macro_call.syntax()).file_id;
-        let macro_call = InFile::new(file_id, actual_macro_call.clone());
+        let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call))?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -740,8 +745,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        let InFile { file_id, .. } = self.find_file(node.syntax());
-        InFile::new(file_id, node).original_ast_node(self.db.upcast()).map(|it| it.value)
+        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(|it| it.value)
     }
 
     fn diagnostics_display_range(&self, src: InFile<SyntaxNodePtr>) -> FileRange {
@@ -792,8 +796,7 @@ impl<'db> SemanticsImpl<'db> {
             gpl.lifetime_params()
                 .find(|tp| tp.lifetime().as_ref().map(|lt| lt.text()).as_ref() == Some(&text))
         })?;
-        let file_id = self.find_file(lifetime_param.syntax()).file_id;
-        let src = InFile::new(file_id, lifetime_param);
+        let src = self.wrap_node_infile(lifetime_param);
         ToDef::to_def(self, src)
     }
 
@@ -815,8 +818,7 @@ impl<'db> SemanticsImpl<'db> {
                     .map_or(false, |lt| lt.text() == text)
             })
         })?;
-        let file_id = self.find_file(label.syntax()).file_id;
-        let src = InFile::new(file_id, label);
+        let src = self.wrap_node_infile(label);
         ToDef::to_def(self, src)
     }
 
@@ -880,7 +882,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
-        let item_in_file = self.find_file(item.syntax()).with_value(item.clone());
+        let item_in_file = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(item_in_file))?;
         Some(MacroDef { id: self.db.lookup_intern_macro_call(macro_call_id).def })
     }
@@ -1078,6 +1080,11 @@ impl<'db> SemanticsImpl<'db> {
     fn lookup(&self, root_node: &SyntaxNode) -> Option<HirFileId> {
         let cache = self.cache.borrow();
         cache.get(root_node).copied()
+    }
+
+    fn wrap_node_infile<N: AstNode>(&self, node: N) -> InFile<N> {
+        let InFile { file_id, .. } = self.find_file(node.syntax());
+        InFile::new(file_id, node)
     }
 
     fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {

@@ -14,7 +14,7 @@ use ide_db::{
 use ide_db::{defs::Definition, RootDatabase};
 use syntax::{
     ast::{self, HasName},
-    match_ast, AstNode, SmolStr, TextRange,
+    match_ast, AstNode, SmolStr, SyntaxNode, TextRange,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -90,10 +90,8 @@ impl NavigationTarget {
         let name = module.name(db).map(|it| it.to_smol_str()).unwrap_or_default();
         if let Some(src @ InFile { value, .. }) = &module.declaration_source(db) {
             let FileRange { file_id, range: full_range } = src.syntax().original_file_range(db);
-            let focus_range = value
-                .name()
-                .and_then(|name| src.with_value(name.syntax()).original_file_range_opt(db))
-                .map(|it| it.range);
+            let focus_range =
+                value.name().and_then(|it| orig_focus_range(db, src.file_id, it.syntax()));
             let mut res = NavigationTarget::from_syntax(
                 file_id,
                 name,
@@ -129,15 +127,11 @@ impl NavigationTarget {
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
         db: &RootDatabase,
-        node: InFile<&dyn ast::HasName>,
+        node @ InFile { file_id, value }: InFile<&dyn ast::HasName>,
         kind: SymbolKind,
     ) -> NavigationTarget {
-        let name = node.value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
-        let focus_range = node
-            .value
-            .name()
-            .and_then(|it| node.with_value(it.syntax()).original_file_range_opt(db))
-            .map(|it| it.range);
+        let name = value.name().map(|it| it.text().into()).unwrap_or_else(|| "_".into());
+        let focus_range = value.name().and_then(|it| orig_focus_range(db, file_id, it.syntax()));
         let FileRange { file_id, range } = node.map(|it| it.syntax()).original_file_range(db);
 
         NavigationTarget::from_syntax(file_id, name, focus_range, range, kind)
@@ -279,9 +273,7 @@ impl ToNav for hir::Module {
             ModuleSource::SourceFile(node) => (node.syntax(), None),
             ModuleSource::Module(node) => (
                 node.syntax(),
-                node.name()
-                    .and_then(|it| InFile::new(file_id, it.syntax()).original_file_range_opt(db))
-                    .map(|it| it.range),
+                node.name().and_then(|it| orig_focus_range(db, file_id, it.syntax())),
             ),
             ModuleSource::BlockExpr(node) => (node.syntax(), None),
         };
@@ -299,10 +291,7 @@ impl TryToNav for hir::Impl {
         let focus_range = if derive_attr.is_some() {
             None
         } else {
-            value
-                .self_ty()
-                .and_then(|ty| InFile::new(file_id, ty.syntax()).original_file_range_opt(db))
-                .map(|it| it.range)
+            value.self_ty().and_then(|ty| orig_focus_range(db, file_id, ty.syntax()))
         };
 
         let FileRange { file_id, range: full_range } = match &derive_attr {
@@ -397,9 +386,7 @@ impl ToNav for hir::Local {
             Either::Left(bind_pat) => (bind_pat.syntax(), bind_pat.name()),
             Either::Right(it) => (it.syntax(), it.name()),
         };
-        let focus_range = name
-            .and_then(|it| InFile::new(file_id, it.syntax()).original_file_range_opt(db))
-            .map(|it| it.range);
+        let focus_range = name.and_then(|it| orig_focus_range(db, file_id, it.syntax()));
         let FileRange { file_id, range: full_range } =
             InFile::new(file_id, node).original_file_range(db);
 
@@ -505,10 +492,7 @@ impl TryToNav for hir::ConstParam {
         let InFile { file_id, value } = self.source(db)?;
         let name = self.name(db).to_smol_str();
 
-        let focus_range = value
-            .name()
-            .and_then(|it| InFile::new(file_id, it.syntax()).original_file_range_opt(db))
-            .map(|it| it.range);
+        let focus_range = value.name().and_then(|it| orig_focus_range(db, file_id, it.syntax()));
         let FileRange { file_id, range: full_range } =
             InFile::new(file_id, value.syntax()).original_file_range(db);
         Some(NavigationTarget {
@@ -547,6 +531,14 @@ pub(crate) fn description_from_symbol(db: &RootDatabase, symbol: &FileSymbol) ->
             _ => None,
         }
     }
+}
+
+fn orig_focus_range(
+    db: &RootDatabase,
+    file_id: hir::HirFileId,
+    syntax: &SyntaxNode,
+) -> Option<TextRange> {
+    InFile::new(file_id, syntax).original_file_range_opt(db).map(|it| it.range)
 }
 
 #[cfg(test)]
