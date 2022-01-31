@@ -650,8 +650,16 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
+        let len = self.len_utf8();
+        assert!(
+            dst.len() >= len,
+            "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+            len,
+            self as u32,
+            dst.len()
+        );
         // SAFETY: `char` is not a surrogate, so this is valid UTF-8.
-        // `encode_utf8_raw` won't deinitialize `dst`.
+        // `encode_utf8_raw` won't deinitialize `dst`, and `dst` is long enough.
         unsafe {
             let dst =
                 slice::from_raw_parts_mut(dst.as_mut_ptr().cast::<MaybeUninit<u8>>(), dst.len());
@@ -1653,15 +1661,16 @@ const fn len_utf8(code: u32) -> usize {
 ///
 /// [generalized UTF-8]: https://simonsapin.github.io/wtf-8/#generalized-utf8
 ///
-/// # Panics
+/// # Safety
 ///
-/// Panics if the buffer is not large enough.
+/// The buffer must be large enough to encode `code`.
 /// A buffer of length four is large enough to encode any `char`.
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 #[doc(hidden)]
 #[inline]
-pub fn encode_utf8_raw(code: u32, dst: &mut [MaybeUninit<u8>]) -> &mut [u8] {
+pub unsafe fn encode_utf8_raw(code: u32, dst: &mut [MaybeUninit<u8>]) -> &mut [u8] {
     let len = len_utf8(code);
+    debug_assert!(dst.len() >= len);
     match (len, &mut dst[..]) {
         (1, [a, ..]) => {
             *a = MaybeUninit::new(code as u8);
@@ -1681,12 +1690,12 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [MaybeUninit<u8>]) -> &mut [u8] {
             *c = MaybeUninit::new((code >> 6 & 0x3F) as u8 | TAG_CONT);
             *d = MaybeUninit::new((code & 0x3F) as u8 | TAG_CONT);
         }
-        _ => panic!(
-            "encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-            len,
-            code,
-            dst.len(),
-        ),
+        _ => {
+            // SAFETY: the caller guarantees that `dst.len() >= len_utf8(code)`
+            unsafe {
+                crate::hint::unreachable_unchecked();
+            }
+        }
     };
     // SAFETY: we just initialized `..len`, which is also guaranteed to
     // be in bounds by the above `panic` branch (at the time of writing
