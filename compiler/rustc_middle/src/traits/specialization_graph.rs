@@ -32,23 +32,11 @@ pub struct Graph {
 
     /// Whether an error was emitted while constructing the graph.
     pub has_errored: bool,
-
-    /// Overlap mode to be used
-    pub overlap_mode: OverlapMode,
 }
 
 impl Graph {
     pub fn new() -> Graph {
-        Graph {
-            parent: Default::default(),
-            children: Default::default(),
-            has_errored: false,
-            overlap_mode: OverlapMode::Stable,
-        }
-    }
-
-    pub fn set_overlap_mode(&mut self, overlap_mode: OverlapMode) {
-        self.overlap_mode = overlap_mode;
+        Graph { parent: Default::default(), children: Default::default(), has_errored: false }
     }
 
     /// The parent of a given impl, which is the `DefId` of the trait when the

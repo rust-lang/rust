@@ -277,6 +277,7 @@ pub trait GraphExt {
         &mut self,
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
+        overlap_mode: OverlapMode,
     ) -> Result<Option<FutureCompatOverlapError>, OverlapError>;
 
     /// Insert cached metadata mapping from a child impl back to its parent.
@@ -291,6 +292,7 @@ impl GraphExt for Graph {
         &mut self,
         tcx: TyCtxt<'_>,
         impl_def_id: DefId,
+        overlap_mode: OverlapMode,
     ) -> Result<Option<FutureCompatOverlapError>, OverlapError> {
         assert!(impl_def_id.is_local());
 
@@ -335,7 +337,7 @@ impl GraphExt for Graph {
                 tcx,
                 impl_def_id,
                 simplified,
-                self.overlap_mode,
+                overlap_mode,
             )?;
 
             match insert_result {
