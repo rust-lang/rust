@@ -806,7 +806,7 @@ pub(crate) mod builtin {
     /// This macro functions by taking a formatting string literal containing
     /// `{}` for each additional argument passed. `format_args!` prepares the
     /// additional parameters to ensure the output can be interpreted as a string
-    /// and canonicalizes the arguments into a single type. Any value that implements
+    /// and canonicalize the arguments into a single type. Any value that implements
     /// the [`Display`] trait can be passed to `format_args!`, as can any
     /// [`Debug`] implementation be passed to a `{:?}` within the formatting string.
     ///

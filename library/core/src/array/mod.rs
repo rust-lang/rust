@@ -787,7 +787,7 @@ where
 /// `next` at most `N` times, the iterator can still be used afterwards to
 /// retrieve the remaining items.
 ///
-/// If `iter.next()` panicks, all items already yielded by the iterator are
+/// If `iter.next()` panics, all items already yielded by the iterator are
 /// dropped.
 fn try_collect_into_array<I, T, R, const N: usize>(iter: &mut I) -> Option<R::TryType>
 where
@@ -821,8 +821,8 @@ where
     let mut array = MaybeUninit::uninit_array::<N>();
     let mut guard = Guard { array_mut: &mut array, initialized: 0 };
 
-    while let Some(item_rslt) = iter.next() {
-        let item = match item_rslt.branch() {
+    while let Some(item_result) = iter.next() {
+        let item = match item_result.branch() {
             ControlFlow::Break(r) => {
                 return Some(FromResidual::from_residual(r));
             }
