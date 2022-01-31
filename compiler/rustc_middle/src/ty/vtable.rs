@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fmt;
 
-use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar, ScalarMaybeUninit};
+use crate::mir::interpret::{alloc_range, Allocation, Pointer, Scalar, ScalarMaybeUninit};
 use crate::ty::{self, Instance, PolyTraitRef, Ty, TyCtxt};
 use rustc_ast::Mutability;
 
@@ -48,7 +48,7 @@ pub const COMMON_VTABLE_ENTRIES_ALIGN: usize = 2;
 pub(super) fn vtable_allocation_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>),
-) -> AllocId {
+) -> &'tcx Allocation {
     let (ty, poly_trait_ref) = key;
 
     let vtable_entries = if let Some(poly_trait_ref) = poly_trait_ref {
@@ -99,7 +99,8 @@ pub(super) fn vtable_allocation_provider<'tcx>(
             VtblEntry::TraitVPtr(trait_ref) => {
                 let super_trait_ref = trait_ref
                     .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-                let supertrait_alloc_id = tcx.vtable_allocation((ty, Some(super_trait_ref)));
+                let supertrait_alloc = tcx.vtable_allocation((ty, Some(super_trait_ref)));
+                let supertrait_alloc_id = tcx.create_memory_alloc(supertrait_alloc);
                 let vptr = Pointer::from(supertrait_alloc_id);
                 ScalarMaybeUninit::from_pointer(vptr, &tcx)
             }
@@ -110,5 +111,5 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     }
 
     vtable.mutability = Mutability::Not;
-    tcx.create_memory_alloc(tcx.intern_const_alloc(vtable))
+    tcx.intern_const_alloc(vtable)
 }
