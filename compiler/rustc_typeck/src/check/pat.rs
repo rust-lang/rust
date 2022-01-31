@@ -15,7 +15,7 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, MultiSpan, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -2033,12 +2033,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             if let (Some(span), true) = (ti.span, ti.origin_expr) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion(
-                        span,
-                        "consider slicing here",
-                        format!("{}[..]", snippet),
-                        Applicability::MachineApplicable,
-                    );
+                    let applicability = match self.resolve_vars_if_possible(ti.expected).kind() {
+                        ty::Adt(adt_def, _)
+                            if self.tcx.is_diagnostic_item(sym::Option, adt_def.did)
+                                || self.tcx.is_diagnostic_item(sym::Result, adt_def.did) =>
+                        {
+                            // Slicing won't work here, but `.as_deref()` might (issue #91328).
+                            err.span_suggestion(
+                                span,
+                                "consider using `as_deref` here",
+                                format!("{}.as_deref()", snippet),
+                                Applicability::MaybeIncorrect,
+                            );
+                            None
+                        }
+                        // FIXME: instead of checking for Vec only, we could check whether the
+                        // type implements `Deref<Target=X>`; see
+                        // https://github.com/rust-lang/rust/pull/91343#discussion_r761466979
+                        ty::Adt(adt_def, _)
+                            if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did) =>
+                        {
+                            Some(Applicability::MachineApplicable)
+                        }
+                        _ => Some(Applicability::MaybeIncorrect),
+                    };
+
+                    if let Some(applicability) = applicability {
+                        err.span_suggestion(
+                            span,
+                            "consider slicing here",
+                            format!("{}[..]", snippet),
+                            applicability,
+                        );
+                    }
                 }
             }
         }
