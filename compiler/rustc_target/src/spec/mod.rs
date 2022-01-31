@@ -1016,6 +1016,8 @@ supported_targets! {
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
     ("x86_64-unknown-none", x86_64_unknown_none),
+
+    ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 }
 
 /// Warnings encountered when parsing the target `json`.
