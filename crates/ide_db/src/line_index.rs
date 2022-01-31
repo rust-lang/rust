@@ -102,8 +102,10 @@ impl LineIndex {
         LineCol { line: line as u32, col: col.into() }
     }
 
-    pub fn offset(&self, line_col: LineCol) -> TextSize {
-        self.newlines[line_col.line as usize] + TextSize::from(line_col.col)
+    pub fn offset(&self, line_col: LineCol) -> Option<TextSize> {
+        self.newlines
+            .get(line_col.line as usize)
+            .map(|offset| offset + TextSize::from(line_col.col))
     }
 
     pub fn to_utf16(&self, line_col: LineCol) -> LineColUtf16 {

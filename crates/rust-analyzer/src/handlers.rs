@@ -108,7 +108,7 @@ pub(crate) fn handle_syntax_tree(
     let _p = profile::span("handle_syntax_tree");
     let id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(id)?;
-    let text_range = params.range.map(|r| from_proto::text_range(&line_index, r));
+    let text_range = params.range.and_then(|r| from_proto::text_range(&line_index, r).ok());
     let res = snap.analysis.syntax_tree(id, text_range)?;
     Ok(res)
 }
@@ -149,7 +149,7 @@ pub(crate) fn handle_expand_macro(
     let _p = profile::span("handle_expand_macro");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = from_proto::offset(&line_index, params.position);
+    let offset = from_proto::offset(&line_index, params.position)?;
 
     let res = snap.analysis.expand_macro(FilePosition { file_id, offset })?;
     Ok(res.map(|it| lsp_ext::ExpandedMacro { name: it.name, expansion: it.expansion }))
@@ -166,7 +166,7 @@ pub(crate) fn handle_selection_range(
         .positions
         .into_iter()
         .map(|position| {
-            let offset = from_proto::offset(&line_index, position);
+            let offset = from_proto::offset(&line_index, position)?;
             let mut ranges = Vec::new();
             {
                 let mut range = TextRange::new(offset, offset);
@@ -205,19 +205,20 @@ pub(crate) fn handle_matching_brace(
     let _p = profile::span("handle_matching_brace");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let res = params
+    params
         .positions
         .into_iter()
         .map(|position| {
             let offset = from_proto::offset(&line_index, position);
-            let offset = match snap.analysis.matching_brace(FilePosition { file_id, offset }) {
-                Ok(Some(matching_brace_offset)) => matching_brace_offset,
-                Err(_) | Ok(None) => offset,
-            };
-            to_proto::position(&line_index, offset)
+            offset.map(|offset| {
+                let offset = match snap.analysis.matching_brace(FilePosition { file_id, offset }) {
+                    Ok(Some(matching_brace_offset)) => matching_brace_offset,
+                    Err(_) | Ok(None) => offset,
+                };
+                to_proto::position(&line_index, offset)
+            })
         })
-        .collect();
-    Ok(res)
+        .collect()
 }
 
 pub(crate) fn handle_join_lines(
@@ -232,7 +233,7 @@ pub(crate) fn handle_join_lines(
 
     let mut res = TextEdit::default();
     for range in params.ranges {
-        let range = from_proto::text_range(&line_index, range);
+        let range = from_proto::text_range(&line_index, range)?;
         let edit = snap.analysis.join_lines(&config, FileRange { file_id, range })?;
         match res.union(edit) {
             Ok(()) => (),
@@ -675,7 +676,7 @@ pub(crate) fn handle_runnables(
     let _p = profile::span("handle_runnables");
     let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = params.position.map(|it| from_proto::offset(&line_index, it));
+    let offset = params.position.and_then(|it| from_proto::offset(&line_index, it).ok());
     let cargo_spec = CargoTargetSpec::for_file(&snap, file_id)?;
 
     let expect_test = match offset {
@@ -839,7 +840,7 @@ pub(crate) fn handle_completion_resolve(
 
     let file_id = from_proto::file_id(&snap, &resolve_data.position.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let offset = from_proto::offset(&line_index, resolve_data.position.position);
+    let offset = from_proto::offset(&line_index, resolve_data.position.position)?;
 
     let additional_edits = snap
         .analysis
@@ -1089,7 +1090,7 @@ pub(crate) fn handle_code_action(
             .ranges
             .iter()
             .copied()
-            .map(|range| from_proto::text_range(&line_index, range))
+            .filter_map(|range| from_proto::text_range(&line_index, range).ok())
             .any(|fix_range| fix_range.intersect(frange.range).is_some());
         if intersect_fix_range {
             res.push(fix.action.clone());
@@ -1111,7 +1112,7 @@ pub(crate) fn handle_code_action_resolve(
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let range = from_proto::text_range(&line_index, params.code_action_params.range);
+    let range = from_proto::text_range(&line_index, params.code_action_params.range)?;
     let frange = FileRange { file_id, range };
 
     let mut assists_config = snap.config.assist();
