@@ -48,9 +48,9 @@ fn _4() {
 
     let _ =
         #[rustc_dummy] match () {
-                           #![rustc_dummy]
-                           () => (),
-                       };
+            #![rustc_dummy]
+            () => (),
+        };
 }
 
 fn _5() {
@@ -156,56 +156,56 @@ fn _11() {
     let _ = #[rustc_dummy] 0 as usize;
     let _ =
         #[rustc_dummy] while false {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] while let None = Some(()) {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] for _ in 0..0 {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] loop {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] match false {
-                           #![rustc_dummy]
-                           _ => (),
-                       };
+            #![rustc_dummy]
+            _ => (),
+        };
     let _ = #[rustc_dummy] || #[rustc_dummy] ();
     let _ = #[rustc_dummy] move || #[rustc_dummy] ();
     let _ =
         #[rustc_dummy] ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] move ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                       };
+            #![rustc_dummy]
+            let _ = ();
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                           ()
-                       };
+            #![rustc_dummy]
+            let _ = ();
+            ()
+        };
     let mut x = 0;
     let _ = #[rustc_dummy] x = 15;
     let _ = #[rustc_dummy] x += 15;
