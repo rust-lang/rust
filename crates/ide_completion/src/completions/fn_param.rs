@@ -1,9 +1,11 @@
 //! See [`complete_fn_param`].
 
+use hir::HirDisplay;
 use rustc_hash::FxHashMap;
 use syntax::{
+    algo,
     ast::{self, HasModuleItem},
-    match_ast, AstNode, SyntaxKind,
+    match_ast, AstNode, Direction, SyntaxKind,
 };
 
 use crate::{
@@ -15,14 +17,48 @@ use crate::{
 /// functions in a file have a `spam: &mut Spam` parameter, a completion with
 /// `spam: &mut Spam` insert text/label and `spam` lookup string will be
 /// suggested.
+///
+/// Also complete parameters for closure or local functions from the surrounding defined locals.
 pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    let param_of_fn =
-        matches!(ctx.pattern_ctx, Some(PatternContext { is_param: Some(ParamKind::Function), .. }));
+    let (param_list, _, param_kind) = match &ctx.pattern_ctx {
+        Some(PatternContext { param_ctx: Some(kind), .. }) => kind,
+        _ => return None,
+    };
 
-    if !param_of_fn {
-        return None;
+    let comma_wrapper = comma_wrapper(ctx);
+    let mut add_new_item_to_acc = |label: &str, lookup: String| {
+        let mk_item = |label: &str| {
+            CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label)
+        };
+        let mut item = match &comma_wrapper {
+            Some(fmt) => mk_item(&fmt(&label)),
+            None => mk_item(label),
+        };
+        item.lookup_by(lookup);
+        item.add_to(acc)
+    };
+
+    match param_kind {
+        ParamKind::Function(function) => {
+            fill_fn_params(ctx, function, &param_list, add_new_item_to_acc);
+        }
+        ParamKind::Closure(closure) => {
+            let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
+            params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
+                add_new_item_to_acc(&format!("{name}: {ty}"), name.to_string());
+            });
+        }
     }
 
+    Some(())
+}
+
+fn fill_fn_params(
+    ctx: &CompletionContext,
+    function: &ast::Fn,
+    param_list: &ast::ParamList,
+    mut add_new_item_to_acc: impl FnMut(&str, String),
+) {
     let mut file_params = FxHashMap::default();
 
     let mut extract_params = |f: ast::Fn| {
@@ -56,23 +92,46 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
         };
     }
 
-    let function = ctx.token.ancestors().find_map(ast::Fn::cast)?;
-    let param_list = function.param_list()?;
-
-    remove_duplicated(&mut file_params, param_list.params());
-
-    let self_completion_items = ["self", "&self", "mut self", "&mut self"];
-    if should_add_self_completions(ctx, param_list) {
-        self_completion_items.into_iter().for_each(|self_item| {
-            add_new_item_to_acc(ctx, acc, self_item.to_string(), self_item.to_string())
+    if let Some(stmt_list) = function.syntax().parent().and_then(ast::StmtList::cast) {
+        params_from_stmt_list_scope(ctx, stmt_list, |name, ty| {
+            file_params.entry(format!("{name}: {ty}")).or_insert(name.to_string());
         });
     }
 
-    file_params.into_iter().try_for_each(|(whole_param, binding)| {
-        Some(add_new_item_to_acc(ctx, acc, surround_with_commas(ctx, whole_param), binding))
-    })?;
+    remove_duplicated(&mut file_params, param_list.params());
+    let self_completion_items = ["self", "&self", "mut self", "&mut self"];
+    if should_add_self_completions(ctx, param_list) {
+        self_completion_items
+            .into_iter()
+            .for_each(|self_item| add_new_item_to_acc(self_item, self_item.to_string()));
+    }
 
-    Some(())
+    file_params
+        .into_iter()
+        .for_each(|(whole_param, binding)| add_new_item_to_acc(&whole_param, binding));
+}
+
+fn params_from_stmt_list_scope(
+    ctx: &CompletionContext,
+    stmt_list: ast::StmtList,
+    mut cb: impl FnMut(hir::Name, String),
+) {
+    let syntax_node = match stmt_list.syntax().last_child() {
+        Some(it) => it,
+        None => return,
+    };
+    let scope = ctx.sema.scope_at_offset(stmt_list.syntax(), syntax_node.text_range().end());
+    let module = match scope.module() {
+        Some(it) => it,
+        None => return,
+    };
+    scope.process_all_names(&mut |name, def| {
+        if let hir::ScopeDef::Local(local) = def {
+            if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module.into()) {
+                cb(name, ty);
+            }
+        }
+    });
 }
 
 fn remove_duplicated(
@@ -96,52 +155,32 @@ fn remove_duplicated(
     })
 }
 
-fn should_add_self_completions(ctx: &CompletionContext, param_list: ast::ParamList) -> bool {
+fn should_add_self_completions(ctx: &CompletionContext, param_list: &ast::ParamList) -> bool {
     let inside_impl = ctx.impl_def.is_some();
     let no_params = param_list.params().next().is_none() && param_list.self_param().is_none();
 
     inside_impl && no_params
 }
 
-fn surround_with_commas(ctx: &CompletionContext, param: String) -> String {
-    match fallible_surround_with_commas(ctx, &param) {
-        Some(surrounded) => surrounded,
-        // fallback to the original parameter
-        None => param,
-    }
-}
-
-fn fallible_surround_with_commas(ctx: &CompletionContext, param: &str) -> Option<String> {
-    let next_token = {
+fn comma_wrapper(ctx: &CompletionContext) -> Option<impl Fn(&str) -> String> {
+    let next_token_kind = {
         let t = ctx.token.next_token()?;
-        match t.kind() {
-            SyntaxKind::WHITESPACE => t.next_token()?,
-            _ => t,
-        }
+        let t = algo::skip_whitespace_token(t, Direction::Next)?;
+        t.kind()
+    };
+    let prev_token_kind = {
+        let t = ctx.previous_token.clone()?;
+        let t = algo::skip_whitespace_token(t, Direction::Prev)?;
+        t.kind()
     };
 
-    let trailing_comma_missing = matches!(next_token.kind(), SyntaxKind::IDENT);
-    let trailing = if trailing_comma_missing { "," } else { "" };
+    let has_trailing_comma =
+        matches!(next_token_kind, SyntaxKind::COMMA | SyntaxKind::R_PAREN | SyntaxKind::PIPE);
+    let trailing = if has_trailing_comma { "" } else { "," };
 
-    let previous_token = if matches!(ctx.token.kind(), SyntaxKind::IDENT | SyntaxKind::WHITESPACE) {
-        ctx.previous_token.as_ref()?
-    } else {
-        &ctx.token
-    };
+    let has_leading_comma =
+        matches!(prev_token_kind, SyntaxKind::COMMA | SyntaxKind::L_PAREN | SyntaxKind::PIPE);
+    let leading = if has_leading_comma { "" } else { ", " };
 
-    let needs_leading = !matches!(previous_token.kind(), SyntaxKind::L_PAREN | SyntaxKind::COMMA);
-    let leading = if needs_leading { ", " } else { "" };
-
-    Some(format!("{}{}{}", leading, param, trailing))
-}
-
-fn add_new_item_to_acc(
-    ctx: &CompletionContext,
-    acc: &mut Completions,
-    label: String,
-    lookup: String,
-) {
-    let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label);
-    item.lookup_by(lookup);
-    item.add_to(acc)
+    Some(move |param: &_| format!("{}{}{}", leading, param, trailing))
 }

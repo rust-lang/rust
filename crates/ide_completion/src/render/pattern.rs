@@ -87,7 +87,7 @@ fn render_pat(
     if matches!(
         ctx.completion.pattern_ctx,
         Some(PatternContext {
-            is_param: Some(ParamKind::Function),
+            param_ctx: Some((.., ParamKind::Function(_))),
             has_type_ascription: false,
             ..
         })

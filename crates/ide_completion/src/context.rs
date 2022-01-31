@@ -27,6 +27,8 @@ use crate::{
     CompletionConfig,
 };
 
+const COMPLETION_MARKER: &str = "intellijRulezz";
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum PatternRefutability {
     Refutable,
@@ -68,7 +70,7 @@ pub(crate) struct PathCompletionContext {
 #[derive(Debug)]
 pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
-    pub(super) is_param: Option<ParamKind>,
+    pub(super) param_ctx: Option<(ast::ParamList, ast::Param, ParamKind)>,
     pub(super) has_type_ascription: bool,
 }
 
@@ -80,10 +82,10 @@ pub(super) enum LifetimeContext {
     LabelDef,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ParamKind {
-    Function,
-    Closure,
+    Function(ast::Fn),
+    Closure(ast::ClosureExpr),
 }
 
 /// `CompletionContext` is created early during completion to figure out, where
@@ -382,7 +384,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, "intellijRulezz".to_string());
+            let edit = Indel::insert(offset, COMPLETION_MARKER.to_string());
             parse.reparse(&edit).tree()
         };
         let fake_ident_token =
@@ -390,7 +392,7 @@ impl<'a> CompletionContext<'a> {
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
         let token = sema.descend_into_macros_single(original_token.clone());
-        let scope = sema.scope_at_offset(&token, offset);
+        let scope = sema.scope_at_offset(&token.parent()?, offset);
         let krate = scope.krate();
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
@@ -723,7 +725,7 @@ impl<'a> CompletionContext<'a> {
                 }
             }
             ast::NameLike::Name(name) => {
-                self.pattern_ctx = Self::classify_name(&self.sema, name);
+                self.pattern_ctx = Self::classify_name(&self.sema, original_file, name);
             }
         }
     }
@@ -750,7 +752,11 @@ impl<'a> CompletionContext<'a> {
         })
     }
 
-    fn classify_name(_sema: &Semantics<RootDatabase>, name: ast::Name) -> Option<PatternContext> {
+    fn classify_name(
+        _sema: &Semantics<RootDatabase>,
+        original_file: &SyntaxNode,
+        name: ast::Name,
+    ) -> Option<PatternContext> {
         let bind_pat = name.syntax().parent().and_then(ast::IdentPat::cast)?;
         let is_name_in_field_pat = bind_pat
             .syntax()
@@ -763,7 +769,7 @@ impl<'a> CompletionContext<'a> {
         if !bind_pat.is_simple_ident() {
             return None;
         }
-        Some(pattern_context_for(bind_pat.into()))
+        Some(pattern_context_for(original_file, bind_pat.into()))
     }
 
     fn classify_name_ref(
@@ -799,15 +805,15 @@ impl<'a> CompletionContext<'a> {
                     },
                     ast::TupleStructPat(it) => {
                         path_ctx.has_call_parens = true;
-                        pat_ctx = Some(pattern_context_for(it.into()));
+                        pat_ctx = Some(pattern_context_for(original_file, it.into()));
                         Some(PathKind::Pat)
                     },
                     ast::RecordPat(it) => {
-                        pat_ctx = Some(pattern_context_for(it.into()));
+                        pat_ctx = Some(pattern_context_for(original_file, it.into()));
                         Some(PathKind::Pat)
                     },
                     ast::PathPat(it) => {
-                        pat_ctx = Some(pattern_context_for(it.into()));
+                        pat_ctx = Some(pattern_context_for(original_file, it.into()));
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => it.excl_token().and(Some(PathKind::Mac)),
@@ -824,12 +830,7 @@ impl<'a> CompletionContext<'a> {
             path_ctx.use_tree_parent = use_tree_parent;
             path_ctx.qualifier = path
                 .segment()
-                .and_then(|it| {
-                    find_node_with_range::<ast::PathSegment>(
-                        original_file,
-                        it.syntax().text_range(),
-                    )
-                })
+                .and_then(|it| find_node_in_file(original_file, &it))
                 .map(|it| it.parent_path());
             return Some((path_ctx, pat_ctx));
         }
@@ -864,7 +865,7 @@ impl<'a> CompletionContext<'a> {
     }
 }
 
-fn pattern_context_for(pat: ast::Pat) -> PatternContext {
+fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternContext {
     let mut is_param = None;
     let (refutability, has_type_ascription) =
     pat
@@ -877,18 +878,21 @@ fn pattern_context_for(pat: ast::Pat) -> PatternContext {
                 match node {
                     ast::LetStmt(let_) => return (PatternRefutability::Irrefutable, let_.ty().is_some()),
                     ast::Param(param) => {
-                        let is_closure_param = param
-                            .syntax()
-                            .ancestors()
-                            .nth(2)
-                            .and_then(ast::ClosureExpr::cast)
-                            .is_some();
-                        is_param = Some(if is_closure_param {
-                            ParamKind::Closure
-                        } else {
-                            ParamKind::Function
-                        });
-                        return (PatternRefutability::Irrefutable, param.ty().is_some())
+                        let has_type_ascription = param.ty().is_some();
+                        is_param = (|| {
+                            let fake_param_list = param.syntax().parent().and_then(ast::ParamList::cast)?;
+                            let param_list = find_node_in_file_compensated(original_file, &fake_param_list)?;
+                            let param_list_owner = param_list.syntax().parent()?;
+                            let kind = match_ast! {
+                                match param_list_owner {
+                                    ast::ClosureExpr(closure) => ParamKind::Closure(closure),
+                                    ast::Fn(fn_) => ParamKind::Function(fn_),
+                                    _ => return None,
+                                }
+                            };
+                            Some((param_list, param, kind))
+                        })();
+                        return (PatternRefutability::Irrefutable, has_type_ascription)
                     },
                     ast::MatchArm(_) => PatternRefutability::Refutable,
                     ast::Condition(_) => PatternRefutability::Refutable,
@@ -898,11 +902,29 @@ fn pattern_context_for(pat: ast::Pat) -> PatternContext {
             };
             (refutability, false)
         });
-    PatternContext { refutability, is_param, has_type_ascription }
+    PatternContext { refutability, param_ctx: is_param, has_type_ascription }
 }
 
-fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
-    syntax.covering_element(range).ancestors().find_map(N::cast)
+fn find_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
+    let syntax_range = syntax.text_range();
+    let range = node.syntax().text_range();
+    let intersection = range.intersect(syntax_range)?;
+    syntax.covering_element(intersection).ancestors().find_map(N::cast)
+}
+
+/// Compensates for the offset introduced by the fake ident
+/// This is wrong if `node` comes before the insertion point! Use `find_node_in_file` instead.
+fn find_node_in_file_compensated<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {
+    let syntax_range = syntax.text_range();
+    let range = node.syntax().text_range();
+    let end = range.end().checked_sub(TextSize::try_from(COMPLETION_MARKER.len()).ok()?)?;
+    if end < range.start() {
+        return None;
+    }
+    let range = TextRange::new(range.start(), end);
+    // our inserted ident could cause `range` to be go outside of the original syntax, so cap it
+    let intersection = range.intersect(syntax_range)?;
+    syntax.covering_element(intersection).ancestors().find_map(N::cast)
 }
 
 fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
