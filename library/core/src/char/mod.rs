@@ -89,14 +89,19 @@ const MAX_THREE_B: u32 = 0x10000;
     Cn  Unassigned              a reserved unassigned code point or a noncharacter
 */
 
-/// The highest valid code point a `char` can have.
+/// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
 ///
-/// A [`char`] is a [Unicode Scalar Value], which means that it is a [Code
-/// Point], but only ones within a certain range. `MAX` is the highest valid
-/// code point that's a valid [Unicode Scalar Value].
+/// # Examples
 ///
-/// [Unicode Scalar Value]: https://www.unicode.org/glossary/#unicode_scalar_value
-/// [Code Point]: https://www.unicode.org/glossary/#code_point
+/// ```
+/// # fn something_which_returns_char() -> char { 'a' }
+/// let c: char = something_which_returns_char();
+/// assert!(c <= char::MAX);
+///
+/// let value_at_max = char::MAX as u32;
+/// assert_eq!(char::from_u32(value_at_max), Some('\u{10FFFF}'));
+/// assert_eq!(char::from_u32(value_at_max + 1), None);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: char = char::MAX;
 
