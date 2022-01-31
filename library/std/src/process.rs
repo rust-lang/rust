@@ -1683,8 +1683,9 @@ impl ExitCode {
     // representation of an ExitCode
     //
     // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
-    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
     /// Convert an ExitCode into an i32
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    #[inline]
     pub fn to_i32(self) -> i32 {
         self.0.as_i32()
     }
