@@ -382,7 +382,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:39:37
    |
 LL |     let mut foo = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const foo`
+   |     ----------- help: consider using `const` instead of `let`: `const foo`
 ...
 LL |         asm!("{}", options(), const foo);
    |                                     ^^^ non-constant value
@@ -391,7 +391,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:48:44
    |
 LL |     let mut foo = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const foo`
+   |     ----------- help: consider using `const` instead of `let`: `const foo`
 ...
 LL |         asm!("{}", clobber_abi("C"), const foo);
    |                                            ^^^ non-constant value
@@ -400,7 +400,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:55:31
    |
 LL |     let mut foo = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const foo`
+   |     ----------- help: consider using `const` instead of `let`: `const foo`
 ...
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                               ^^^ non-constant value
@@ -409,7 +409,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:55:46
    |
 LL |     let mut bar = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const bar`
+   |     ----------- help: consider using `const` instead of `let`: `const bar`
 ...
 LL |         asm!("{a}", a = const foo, a = const bar);
    |                                              ^^^ non-constant value
@@ -418,7 +418,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:62:45
    |
 LL |     let mut bar = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const bar`
+   |     ----------- help: consider using `const` instead of `let`: `const bar`
 ...
 LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                                             ^^^ non-constant value
@@ -427,7 +427,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:65:45
    |
 LL |     let mut bar = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const bar`
+   |     ----------- help: consider using `const` instead of `let`: `const bar`
 ...
 LL |         asm!("{a}", in("x0") foo, a = const bar);
    |                                             ^^^ non-constant value
@@ -436,7 +436,7 @@ error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/parse-error.rs:68:41
    |
 LL |     let mut bar = 0;
-   |      ---------- help: consider using `const` instead of `let`: `const bar`
+   |     ----------- help: consider using `const` instead of `let`: `const bar`
 ...
 LL |         asm!("{1}", in("x0") foo, const bar);
    |                                         ^^^ non-constant value
