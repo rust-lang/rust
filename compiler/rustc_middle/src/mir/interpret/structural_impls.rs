@@ -30,6 +30,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ConstValue<'_> {
                         let (ptr, offset) = ptr.into_parts();
                         tcx.get_global_alloc(ptr).hash_stable(hcx, hasher);
                         offset.hash_stable(hcx, hasher);
+                        // FIXME(compiler-errors): Do we need to hash `size`?
                         size.hash_stable(hcx, hasher);
                     }
                 }
@@ -322,6 +323,7 @@ impl Hash for ConstValue<'_> {
                         let (ptr, offset) = ptr.into_parts();
                         tcx.get_global_alloc(ptr).hash(state);
                         offset.hash(state);
+                        // FIXME(compiler-errors): Do we need to hash `size`?
                         size.hash(state);
                     }
                 }
