@@ -405,7 +405,7 @@ fn caller() {
     call!(call$0ee);
 }
 "#,
-            expect![[r#"callee Function FileId(0) 152..158 152..158"#]],
+            expect![[r#"callee Function FileId(0) 144..159 152..158"#]],
             expect![[r#"caller Function FileId(0) 160..194 163..169 : [184..190]"#]],
             expect![[]],
         );
@@ -426,7 +426,7 @@ fn caller() {
     call!(callee);
 }
 "#,
-            expect![[r#"callee Function FileId(0) 152..158 152..158"#]],
+            expect![[r#"callee Function FileId(0) 144..159 152..158"#]],
             expect![[r#"caller Function FileId(0) 160..194 163..169 : [184..190]"#]],
             expect![[]],
         );

@@ -1484,12 +1484,12 @@ fn f() {
 }
             "#,
             expect![[r#"
-                func Function FileId(0) 140..144 140..144
+                func Function FileId(0) 137..146 140..144
 
                 FileId(0) 161..165
 
 
-                func Function FileId(0) 140..144 140..144
+                func Function FileId(0) 137..146 140..144
 
                 FileId(0) 181..185
             "#]],

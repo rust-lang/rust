@@ -710,21 +710,9 @@ fn ascend_node_border_tokens(
 
     let first = first_token(node)?;
     let last = last_token(node)?;
-    let is_single_token = first == last;
-
-    node.descendants().find_map(|it| {
-        let first = first_token(&it)?;
-        let first = ascend_call_token(db, &expansion, InFile::new(file_id, first))?;
-
-        let last = last_token(&it)?;
-        let last = ascend_call_token(db, &expansion, InFile::new(file_id, last))?;
-
-        if (is_single_token && first != last) || (first.file_id != last.file_id) {
-            return None;
-        }
-
-        Some(InFile::new(first.file_id, (first.value, last.value)))
-    })
+    let first = ascend_call_token(db, &expansion, InFile::new(file_id, first))?;
+    let last = ascend_call_token(db, &expansion, InFile::new(file_id, last))?;
+    (first.file_id == last.file_id).then(|| InFile::new(first.file_id, (first.value, last.value)))
 }
 
 fn ascend_call_token(
@@ -760,20 +748,28 @@ impl<N: AstNode> InFile<N> {
     }
 
     pub fn original_ast_node(self, db: &dyn db::AstDatabase) -> Option<InFile<N>> {
-        match ascend_node_border_tokens(db, self.syntax()) {
-            Some(InFile { file_id, value: (first, last) }) => {
-                let original_file = file_id.original_file(db);
-                if file_id != original_file.into() {
-                    let range = first.text_range().cover(last.text_range());
-                    tracing::error!("Failed mapping up more for {:?}", range);
-                    return None;
-                }
-                let anc = algo::least_common_ancestor(&first.parent()?, &last.parent()?)?;
-                Some(InFile::new(file_id, anc.ancestors().find_map(N::cast)?))
-            }
-            _ if !self.file_id.is_macro() => Some(self),
-            _ => None,
+        // This kind of upmapping can only be achieved in attribute expanded files,
+        // as we don't have node inputs otherwise and  therefor can't find an `N` node in the input
+        if !self.file_id.is_macro() {
+            return Some(self);
+        } else if !self.file_id.is_attr_macro(db) {
+            return None;
         }
+
+        if let Some(InFile { file_id, value: (first, last) }) =
+            ascend_node_border_tokens(db, self.syntax())
+        {
+            if file_id.is_macro() {
+                let range = first.text_range().cover(last.text_range());
+                tracing::error!("Failed mapping out of macro file for {:?}", range);
+                return None;
+            }
+            // FIXME: This heuristic is brittle and with the right macro may select completely unrelated nodes
+            let anc = algo::least_common_ancestor(&first.parent()?, &last.parent()?)?;
+            let value = anc.ancestors().find_map(N::cast)?;
+            return Some(InFile::new(file_id, value));
+        }
+        None
     }
 
     pub fn syntax(&self) -> InFile<&SyntaxNode> {
