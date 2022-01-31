@@ -181,6 +181,7 @@ mod bool_assert_comparison;
 mod booleans;
 mod borrow_as_ptr;
 mod bytecount;
+mod bytes_count_to_len;
 mod cargo;
 mod case_sensitive_file_extension_comparisons;
 mod casts;
@@ -875,6 +876,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
     store.register_late_pass(|| Box::new(format_push_string::FormatPushString));
+    store.register_late_pass(|| Box::new(bytes_count_to_len::BytesCountToLen));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

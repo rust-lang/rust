@@ -64,6 +64,7 @@ store.register_lints(&[
     booleans::NONMINIMAL_BOOL,
     borrow_as_ptr::BORROW_AS_PTR,
     bytecount::NAIVE_BYTECOUNT,
+    bytes_count_to_len::BYTES_COUNT_TO_LEN,
     cargo::CARGO_COMMON_METADATA,
     cargo::MULTIPLE_CRATE_VERSIONS,
     cargo::NEGATIVE_FEATURE_NAMES,

@@ -1,0 +1,19 @@
+error: using long and hard to read `.bytes().count()`
+  --> $DIR/bytes_count_to_len.rs:7:5
+   |
+LL |     "hello".bytes().count();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::bytes-count-to-len` implied by `-D warnings`
+   = note: `.len()` achieves same functionality
+
+error: using long and hard to read `.bytes().count()`
+  --> $DIR/bytes_count_to_len.rs:10:5
+   |
+LL |     s1.bytes().count();
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: `.len()` achieves same functionality
+
+error: aborting due to 2 previous errors
+
