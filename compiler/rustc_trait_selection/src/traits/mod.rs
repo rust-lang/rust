@@ -291,7 +291,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     //
     // In any case, in practice, typeck constructs all the
     // parameter environments once for every fn as it goes,
-    // and errors will get reported then; so after typeck we
+    // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
 
     debug!(

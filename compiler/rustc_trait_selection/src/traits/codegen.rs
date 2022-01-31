@@ -18,7 +18,6 @@ use rustc_middle::ty::{self, TyCtxt};
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
 ///
-/// Assumes that this is run after the entire crate has been successfully type-checked.
 /// This also expects that `trait_ref` is fully normalized.
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -101,7 +100,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
 /// Finishes processes any obligations that remain in the
 /// fulfillment context, and then returns the result with all type
 /// variables removed and regions erased. Because this is intended
-/// for use after type-check has completed, if any errors occur,
+/// for use outside of type inference, if any errors occur,
 /// it will panic. It is used during normalization and other cases
 /// where processing the obligations in `fulfill_cx` may cause
 /// type inference variables that appear in `result` to be
@@ -124,7 +123,10 @@ where
     if !errors.is_empty() {
         infcx.tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
-            &format!("Encountered errors `{:?}` resolving bounds after type-checking", errors),
+            &format!(
+                "Encountered errors `{:?}` resolving bounds outside of type inference",
+                errors
+            ),
         );
     }
 

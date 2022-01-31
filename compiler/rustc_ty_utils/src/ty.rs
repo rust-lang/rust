@@ -149,7 +149,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // kind of an "idempotent" action, but I'm not sure where would be
     // a better place. In practice, we construct environments for
     // every fn once during type checking, and we'll abort if there
-    // are any errors at that point, so after type checking you can be
+    // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
 
     if tcx.sess.opts.debugging_opts.chalk {

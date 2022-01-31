@@ -34,8 +34,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///
-    /// This is appropriate to use only after type-check: it assumes
-    /// that normalization will succeed, for example.
+    /// This should only be used outside of type inference. For example,
+    /// it assumes that normalization will succeed.
     pub fn normalize_erasing_regions<T>(self, param_env: ty::ParamEnv<'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,

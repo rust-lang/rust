@@ -195,7 +195,7 @@ pub struct InferCtxtInner<'tcx> {
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    // 'de-opaque' OpaqueTypeDecl outside of type inference.
     pub opaque_types: OpaqueTypeMap<'tcx>,
 
     /// A map from inference variables created from opaque

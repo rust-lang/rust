@@ -894,7 +894,7 @@ pub struct LocalDecl<'tcx> {
     /// across a suspension point against the type components of the generator
     /// which type checking knows are live across a suspension point. We need to
     /// flag drop flags to avoid triggering this check as they are introduced
-    /// after typeck.
+    /// outside of type inference.
     ///
     /// This should be sound because the drop flags are fully algebraic, and
     /// therefore don't affect the auto-trait or outlives properties of the

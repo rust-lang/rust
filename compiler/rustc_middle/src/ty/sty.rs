@@ -1464,11 +1464,11 @@ pub enum RegionKind {
     /// Static data that has an "infinite" lifetime. Top in the region lattice.
     ReStatic,
 
-    /// A region variable. Should not exist after typeck.
+    /// A region variable. Should not exist outside of type inference.
     ReVar(RegionVid),
 
     /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
-    /// Should not exist after typeck.
+    /// Should not exist outside of type inference.
     RePlaceholder(ty::PlaceholderRegion),
 
     /// Empty lifetime is for data that is never accessed.  We tag the
