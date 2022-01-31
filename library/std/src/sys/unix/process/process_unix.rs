@@ -279,7 +279,7 @@ impl Command {
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
     ) -> Result<!, io::Error> {
-        use crate::sys::{self, cvt_r};
+        use crate::sys::{self, cvt_nz, cvt_r};
 
         if let Some(fd) = stdio.stdin.fd() {
             cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
@@ -333,7 +333,7 @@ impl Command {
             // we're about to run.
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
 
             #[cfg(target_os = "android")] // see issue #88585
             {
