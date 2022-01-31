@@ -153,7 +153,9 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 cx.tcx.fn_sig(item.def_id).skip_binder().inputs(),
                 sig.decl.inputs,
                 &[],
-            ) {
+            )
+            .filter(|arg| arg.mutability() == Mutability::Not)
+            {
                 span_lint_and_sugg(
                     cx,
                     PTR_ARG,
@@ -170,10 +172,10 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
         let hir = cx.tcx.hir();
         let mut parents = hir.parent_iter(body.value.hir_id);
-        let (item_id, decl) = match parents.next() {
+        let (item_id, decl, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
                 if let ItemKind::Fn(sig, ..) = &i.kind {
-                    (i.def_id, sig.decl)
+                    (i.def_id, sig.decl, false)
                 } else {
                     return;
                 }
@@ -185,14 +187,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return;
                 }
                 if let ImplItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig.decl)
+                    (i.def_id, sig.decl, false)
                 } else {
                     return;
                 }
             },
             Some((_, Node::TraitItem(i))) => {
                 if let TraitItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig.decl)
+                    (i.def_id, sig.decl, true)
                 } else {
                     return;
                 }
@@ -202,7 +204,9 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, decl);
         let sig = cx.tcx.fn_sig(item_id).skip_binder();
-        let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, body.params).collect();
+        let lint_args: Vec<_> = check_fn_args(cx, sig.inputs(), decl.inputs, body.params)
+            .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
+            .collect();
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
         for (result, args) in results.iter().zip(lint_args.iter()).filter(|(r, _)| !r.skip) {
@@ -317,6 +321,10 @@ impl PtrArg<'_> {
             self.ref_prefix.mutability.prefix_str(),
             self.deref_ty.argless_str(),
         )
+    }
+
+    fn mutability(&self) -> Mutability {
+        self.ref_prefix.mutability
     }
 }
 
