@@ -554,13 +554,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ty_op: |ty| match *ty.kind() {
                     // We can't normalize associated types from `rustc_infer`,
                     // but we can eagerly register inference variables for them.
-                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => self.infer_projection(
-                        param_env,
-                        projection_ty,
-                        cause.clone(),
-                        0,
-                        &mut obligations,
-                    ),
+                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
+                        self.infer_projection(
+                            param_env,
+                            projection_ty,
+                            cause.clone(),
+                            0,
+                            &mut obligations,
+                        )
+                    }
                     // Replace all other mentions of the same opaque type with the hidden type,
                     // as the bounds must hold on the hidden type after all.
                     ty::Opaque(def_id2, substs2) if def_id == def_id2 && substs == substs2 => {
