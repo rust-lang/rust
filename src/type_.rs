@@ -7,7 +7,6 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
-use crate::common::TypeReflection;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
@@ -119,8 +118,14 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if typ.is_integral() {
+        if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
+        }
+        else if typ == self.float_type {
+            TypeKind::Float
+        }
+        else if typ == self.double_type {
+            TypeKind::Double
         }
         else if typ.dyncast_vector().is_some() {
             TypeKind::Vector
@@ -175,24 +180,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn int_width(&self, typ: Type<'gcc>) -> u64 {
-        if typ.is_i8(self) || typ.is_u8(self) {
-            8
-        }
-        else if typ.is_i16(self) || typ.is_u16(self) {
-            16
-        }
-        else if typ.is_i32(self) || typ.is_u32(self) {
-            32
-        }
-        else if typ.is_i64(self) || typ.is_u64(self) {
-            64
-        }
-        else if typ.is_i128(self) || typ.is_u128(self) {
-            128
-        }
-        else {
-            panic!("Cannot get width of int type {:?}", typ);
-        }
+        self.gcc_int_width(typ)
     }
 
     fn val_ty(&self, value: RValue<'gcc>) -> Type<'gcc> {

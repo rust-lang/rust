@@ -18,3 +18,4 @@ gimple*
 res
 test-backend
 gcc_path
+benchmarks

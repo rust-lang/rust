@@ -62,6 +62,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub ulonglong_type: Type<'gcc>,
     pub sizet_type: Type<'gcc>,
 
+    pub supports_128bit_integers: bool,
+
     pub float_type: Type<'gcc>,
     pub double_type: Type<'gcc>,
 
@@ -110,22 +112,29 @@ pub struct CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
-        // TODO(antoyo): fix this mess. libgccjit seems to return random type when using new_int_type().
-        let isize_type = context.new_c_type(CType::LongLong);
-        let usize_type = context.new_c_type(CType::ULongLong);
-        let bool_type = context.new_type::<bool>();
-        let i8_type = context.new_type::<i8>();
-        let i16_type = context.new_type::<i16>();
-        let i32_type = context.new_type::<i32>();
-        let i64_type = context.new_c_type(CType::LongLong);
-        let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
-        let u8_type = context.new_type::<u8>();
-        let u16_type = context.new_type::<u16>();
-        let u32_type = context.new_type::<u32>();
-        let u64_type = context.new_c_type(CType::ULongLong);
-        let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?
+
+        let i8_type = context.new_c_type(CType::Int8t);
+        let i16_type = context.new_c_type(CType::Int16t);
+        let i32_type = context.new_c_type(CType::Int32t);
+        let i64_type = context.new_c_type(CType::Int64t);
+        let u8_type = context.new_c_type(CType::UInt8t);
+        let u16_type = context.new_c_type(CType::UInt16t);
+        let u32_type = context.new_c_type(CType::UInt32t);
+        let u64_type = context.new_c_type(CType::UInt64t);
+
+        let (i128_type, u128_type) =
+            if supports_128bit_integers {
+                let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                (i128_type, u128_type)
+            }
+            else {
+                let i128_type = context.new_array_type(None, i64_type, 2);
+                let u128_type = context.new_array_type(None, u64_type, 2);
+                (i128_type, u128_type)
+            };
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
@@ -139,8 +148,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ulonglong_type = context.new_c_type(CType::ULongLong);
         let sizet_type = context.new_c_type(CType::SizeT);
 
-        assert_eq!(isize_type, i64_type);
-        assert_eq!(usize_type, u64_type);
+        let isize_type = context.new_c_type(CType::LongLong);
+        let usize_type = context.new_c_type(CType::ULongLong);
+        let bool_type = context.new_type::<bool>();
+
+        // TODO(antoyo): only have those assertions on x86_64.
+        assert_eq!(isize_type.get_size(), i64_type.get_size());
+        assert_eq!(usize_type.get_size(), u64_type.get_size());
 
         let mut functions = FxHashMap::default();
         let builtins = [
@@ -190,6 +204,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             ulonglong_type,
             sizet_type,
 
+            supports_128bit_integers,
+
             float_type,
             double_type,
 
@@ -219,6 +235,41 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
             "{:?} ({:?}) is not a function", value, value.get_type());
         function
+    }
+
+    pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
+        let types = [
+            self.u8_type,
+            self.u16_type,
+            self.u32_type,
+            self.u64_type,
+            self.i8_type,
+            self.i16_type,
+            self.i32_type,
+            self.i64_type,
+        ];
+
+        for native_type in types {
+            if native_type.is_compatible_with(typ) {
+                return true;
+            }
+        }
+
+        self.supports_128bit_integers &&
+            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+    }
+
+    pub fn is_non_native_int_type(&self, typ: Type<'gcc>) -> bool {
+        !self.supports_128bit_integers &&
+            (self.u128_type.is_compatible_with(typ) || self.i128_type.is_compatible_with(typ))
+    }
+
+    pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
+        self.is_native_int_type(typ) || typ == self.bool_type
+    }
+
+    pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
+        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ == self.bool_type
     }
 
     pub fn sess(&self) -> &Session {

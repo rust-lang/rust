@@ -4,7 +4,7 @@
 
 set -e
 
-if [ -f ./gcc_path ]; then 
+if [ -f ./gcc_path ]; then
     export GCC_PATH=$(cat gcc_path)
 else
     echo 'Please put the path to your custom build of libgccjit in the file `gcc_path`, see Readme.md for details'
@@ -14,14 +14,26 @@ fi
 export LD_LIBRARY_PATH="$GCC_PATH"
 export LIBRARY_PATH="$GCC_PATH"
 
+features=
+
+if [[ "$1" == "--features" ]]; then
+    shift
+    features="--features $1"
+    shift
+fi
+
 if [[ "$1" == "--release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release
+    CARGO_INCREMENTAL=1 cargo rustc --release $features
     shift
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
-    cargo rustc
+    cargo rustc $features
+fi
+
+if [[ "$1" == "--build" ]]; then
+    exit
 fi
 
 source config.sh
@@ -204,6 +216,14 @@ case $1 in
 
     "--clean-ui-tests")
         clean_ui_tests
+        ;;
+
+    "--std-tests")
+        std_tests
+        ;;
+
+    "--build-sysroot")
+        build_sysroot
         ;;
 
     *)

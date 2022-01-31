@@ -109,6 +109,13 @@ Or add a breakpoint to `add_error` in gdb and print the line number using:
 
 ```
 p loc->m_line
+p loc->m_filename->m_buffer
+```
+
+To print a debug representation of a tree:
+
+```c
+debug_tree(expr);
 ```
 
 To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
@@ -134,4 +141,5 @@ To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo b
  * Set `linker='-Clinker=m68k-linux-gcc'`.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
  * Disable the 128-bit integer types if the target doesn't support them by using `let i128_type = context.new_type::<i64>();` in `context.rs` (same for u128_type).
+ * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
  * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?).
