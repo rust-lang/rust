@@ -10,15 +10,18 @@ pub fn main() {
         create_dir("tmpdir").unwrap();
     }
     set_current_dir("tmpdir").unwrap();
-    let depth = if cfg!(target_os = "windows") {
-        // On Windows the absolute path length is limited.
-        8192
+    let depth = if cfg!(target_os = "linux") {
+        // Should work on all Linux filesystems.
+        65536
     } else if cfg!(target_os = "macos") {
-        // On Macos increasing depth leads to  a superlinear slowdown
-        // and - if one digs deep enough - unremovable directories.
+        // On Macos increasing depth leads to a superlinear slowdown.
+        1024
+    } else if cfg!(unix) {
+        // Should be no problem on other UNIXes either.
         1024
     } else {
-        65536
+        // "Safe" fallback for other platforms.
+        64
     };
     for _ in 0..depth {
         if !Path::exists(Path::new("a")) {
