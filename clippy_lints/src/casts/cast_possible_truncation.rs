@@ -2,6 +2,7 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::expr_or_init;
 use clippy_utils::ty::is_isize_or_usize;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
@@ -75,8 +76,8 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    let msg = match (cast_from.is_integral(), cast_to.is_integral()) {
-        (true, true) => {
+    let msg = match (cast_from.kind(), cast_to.is_integral()) {
+        (ty::Int(_) | ty::Uint(_), true) => {
             let from_nbits = apply_reductions(
                 cx,
                 utils::int_ty_to_nbits(cast_from, cx.tcx),
@@ -108,19 +109,43 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             )
         },
 
-        (false, true) => {
+        (ty::Adt(def, _), true) if def.is_enum() => {
+            if let ExprKind::Path(p) = &cast_expr.kind
+                && let Res::Def(DefKind::Ctor(..), _) = cx.qpath_res(p, cast_expr.hir_id)
+            {
+                return
+            }
+
+            let from_nbits = utils::enum_ty_to_nbits(def, cx.tcx);
+            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
+
+            let suffix = if is_isize_or_usize(cast_to) {
+                if from_nbits > 32 {
+                    " on targets with 32-bit wide pointers"
+                } else {
+                    return;
+                }
+            } else if to_nbits < from_nbits {
+                ""
+            } else {
+                return;
+            };
+
+            format!(
+                "casting `{}` to `{}` may truncate the value{}",
+                cast_from, cast_to, suffix,
+            )
+        },
+
+        (ty::Float(_), true) => {
             format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to)
         },
 
-        (_, _) => {
-            if matches!(cast_from.kind(), &ty::Float(FloatTy::F64))
-                && matches!(cast_to.kind(), &ty::Float(FloatTy::F32))
-            {
-                "casting `f64` to `f32` may truncate the value".to_string()
-            } else {
-                return;
-            }
+        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
+            "casting `f64` to `f32` may truncate the value".to_string()
         },
+
+        _ => return,
     };
 
     span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg);
