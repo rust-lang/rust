@@ -2,6 +2,7 @@
 #![feature(derive_default_enum)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
+#![feature(option_get_or_insert_default)]
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 

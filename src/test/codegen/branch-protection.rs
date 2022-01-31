@@ -1,12 +1,12 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
-// revisions: bti pac-ret leaf b-key
+// revisions: BTI PACRET LEAF BKEY NONE
 // min-llvm-version: 12.0.0
 // needs-llvm-components: aarch64
-// [bti] compile-flags: -Z branch-protection=bti
-// [pac-ret] compile-flags: -Z branch-protection=pac-ret
-// [leaf] compile-flags: -Z branch-protection=pac-ret,leaf
-// [b-key] compile-flags: -Z branch-protection=pac-ret,b-key
+// [BTI] compile-flags: -Z branch-protection=bti
+// [PACRET] compile-flags: -Z branch-protection=pac-ret
+// [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
+// [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
 // compile-flags: --target aarch64-unknown-linux-gnu
 
 #![crate_type = "lib"]
@@ -20,22 +20,27 @@ trait Sized { }
 pub fn test() {
 }
 
-// bti: !"branch-target-enforcement", i32 1
-// bti: !"sign-return-address", i32 0
-// bti: !"sign-return-address-all", i32 0
-// bti: !"sign-return-address-with-bkey", i32 0
+// BTI: !"branch-target-enforcement", i32 1
+// BTI: !"sign-return-address", i32 0
+// BTI: !"sign-return-address-all", i32 0
+// BTI: !"sign-return-address-with-bkey", i32 0
 
-// pac-ret: !"branch-target-enforcement", i32 0
-// pac-ret: !"sign-return-address", i32 1
-// pac-ret: !"sign-return-address-all", i32 0
-// pac-ret: !"sign-return-address-with-bkey", i32 0
+// PACRET: !"branch-target-enforcement", i32 0
+// PACRET: !"sign-return-address", i32 1
+// PACRET: !"sign-return-address-all", i32 0
+// PACRET: !"sign-return-address-with-bkey", i32 0
 
-// leaf: !"branch-target-enforcement", i32 0
-// leaf: !"sign-return-address", i32 1
-// leaf: !"sign-return-address-all", i32 1
-// leaf: !"sign-return-address-with-bkey", i32 0
+// LEAF: !"branch-target-enforcement", i32 0
+// LEAF: !"sign-return-address", i32 1
+// LEAF: !"sign-return-address-all", i32 1
+// LEAF: !"sign-return-address-with-bkey", i32 0
 
-// b-key: !"branch-target-enforcement", i32 0
-// b-key: !"sign-return-address", i32 1
-// b-key: !"sign-return-address-all", i32 0
-// b-key: !"sign-return-address-with-bkey", i32 1
+// BKEY: !"branch-target-enforcement", i32 0
+// BKEY: !"sign-return-address", i32 1
+// BKEY: !"sign-return-address-all", i32 0
+// BKEY: !"sign-return-address-with-bkey", i32 1
+
+// NONE-NOT: branch-target-enforcement
+// NONE-NOT: sign-return-address
+// NONE-NOT: sign-return-address-all
+// NONE-NOT: sign-return-address-with-bkey
