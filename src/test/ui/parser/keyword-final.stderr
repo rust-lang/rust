@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `final`
 LL |     let final = ();
    |         ^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `final` to use it as an identifier
    |
 LL |     let r#final = ();
-   |         ~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 
