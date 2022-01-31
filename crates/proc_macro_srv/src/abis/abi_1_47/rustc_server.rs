@@ -463,13 +463,8 @@ impl server::Punct for Rustc {
 }
 
 impl server::Ident for Rustc {
-    fn new(&mut self, string: &str, _span: Self::Span, _is_raw: bool) -> Self::Ident {
-        IdentId(
-            self.ident_interner.intern(&IdentData(tt::Ident {
-                text: string.into(),
-                id: tt::TokenId::unspecified(),
-            })),
-        )
+    fn new(&mut self, string: &str, span: Self::Span, _is_raw: bool) -> Self::Ident {
+        IdentId(self.ident_interner.intern(&IdentData(tt::Ident { text: string.into(), id: span })))
     }
 
     fn span(&mut self, ident: Self::Ident) -> Self::Span {
