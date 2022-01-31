@@ -136,6 +136,7 @@ mod ring;
 
 use ring::RingBuffer;
 use std::borrow::Cow;
+use std::cmp;
 use std::collections::VecDeque;
 use std::iter;
 
@@ -201,6 +202,8 @@ const SIZE_INFINITY: isize = 0xffff;
 
 /// Target line width.
 const MARGIN: isize = 78;
+/// Every line is allowed at least this much space, even if highly indented.
+const MIN_SPACE: isize = 60;
 
 pub struct Printer {
     out: String,
@@ -420,7 +423,7 @@ impl Printer {
             self.out.push('\n');
             let indent = self.indent as isize + token.offset;
             self.pending_indentation = indent;
-            self.space = MARGIN - indent;
+            self.space = cmp::max(MARGIN - indent, MIN_SPACE);
         }
     }
 
