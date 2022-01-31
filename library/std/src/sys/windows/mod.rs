@@ -104,7 +104,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
         c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
-        c::ERROR_FILENAME_EXCED_RANGE => return FilenameTooLong,
+        c::ERROR_FILENAME_EXCED_RANGE => return FilenameInvalid,
         _ => {}
     }
 

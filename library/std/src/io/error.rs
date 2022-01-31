@@ -301,7 +301,7 @@ pub enum ErrorKind {
     /// The limit might be from the underlying filesystem or API, or an administratively imposed
     /// resource limit.
     #[unstable(feature = "io_error_more", issue = "86442")]
-    FilenameTooLong,
+    FilenameInvalid,
     /// Program argument list too long.
     ///
     /// When trying to run an external program, a system or process limit on the size of the
@@ -382,7 +382,7 @@ impl ErrorKind {
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
             FileTooLarge => "file too large",
-            FilenameTooLong => "filename too long",
+            FilenameInvalid => "filename too long",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             FilesystemQuotaExceeded => "filesystem quota exceeded",
             HostUnreachable => "host unreachable",
