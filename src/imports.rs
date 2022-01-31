@@ -238,7 +238,8 @@ impl fmt::Display for UseSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             UseSegment::Glob => write!(f, "*"),
-            UseSegment::Ident(ref s, _) => write!(f, "{}", s),
+            UseSegment::Ident(ref s, Some(ref alias)) => write!(f, "{} as {}", s, alias),
+            UseSegment::Ident(ref s, None) => write!(f, "{}", s),
             UseSegment::Slf(..) => write!(f, "self"),
             UseSegment::Super(..) => write!(f, "super"),
             UseSegment::Crate(..) => write!(f, "crate"),
@@ -622,7 +623,8 @@ impl UseTree {
     fn merge(&mut self, other: &UseTree, merge_by: SharedPrefix) {
         let mut prefix = 0;
         for (a, b) in self.path.iter().zip(other.path.iter()) {
-            if a.equal_except_alias(b) {
+            // only discard the alias at the root of the tree
+            if (prefix == 0 && a.equal_except_alias(b)) || a == b {
                 prefix += 1;
             } else {
                 break;
