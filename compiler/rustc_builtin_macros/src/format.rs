@@ -4,6 +4,7 @@ use Position::*;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{token, BlockCheckMode, UnsafeSource};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
@@ -788,17 +789,31 @@ impl<'a, 'b> Context<'a, 'b> {
         // the order provided to fmt::Arguments. When arguments are repeated, we
         // want the expression evaluated only once.
         //
-        // Thus in the not nicely ordered case we emit the following instead:
+        // Further, if any arg _after the first one_ contains a yield point such
+        // as `await` or `yield`, the above short form is inconvenient for the
+        // caller because it would keep a temporary of type ArgumentV1 alive
+        // across the yield point. ArgumentV1 can't implement Send since it
+        // holds a type-erased arbitrary type.
+        //
+        // Thus in the not nicely ordered case, and in the yielding case, we
+        // emit the following instead:
         //
         //     match (&$arg0, &$arg1, …) {
         //         args => [ArgumentV1::new(args.$i, …), ArgumentV1::new(args.$j, …), …]
         //     }
         //
         // for the sequence of indices $i, $j, … governed by fmt_arg_index_and_ty.
+        // This more verbose representation ensures that all arguments are
+        // evaluated a single time each, in the order written by the programmer,
+        // and that the surrounding future/generator (if any) is Send whenever
+        // possible.
+        let no_need_for_match =
+            nicely_ordered && !original_args.iter().skip(1).any(|e| may_contain_yield_point(e));
+
         for (arg_index, arg_ty) in fmt_arg_index_and_ty {
             let e = &mut original_args[arg_index];
             let span = e.span;
-            let arg = if nicely_ordered {
+            let arg = if no_need_for_match {
                 let expansion_span = e.span.with_ctxt(self.macsp.ctxt());
                 // The indices are strictly ordered so e has not been taken yet.
                 self.ecx.expr_addr_of(expansion_span, P(e.take()))
@@ -814,10 +829,10 @@ impl<'a, 'b> Context<'a, 'b> {
         let args_array = self.ecx.expr_vec(self.macsp, fmt_args);
         let args_slice = self.ecx.expr_addr_of(
             self.macsp,
-            if nicely_ordered {
+            if no_need_for_match {
                 args_array
             } else {
-                // In the !nicely_ordered case, none of the exprs were moved
+                // In the !no_need_for_match case, none of the exprs were moved
                 // away in the previous loop.
                 //
                 // This uses the arg span for `&arg` so that borrowck errors
@@ -1225,4 +1240,36 @@ pub fn expand_preparsed_format_args(
     }
 
     cx.into_expr()
+}
+
+fn may_contain_yield_point(e: &ast::Expr) -> bool {
+    struct MayContainYieldPoint(bool);
+
+    impl Visitor<'_> for MayContainYieldPoint {
+        fn visit_expr(&mut self, e: &ast::Expr) {
+            if let ast::ExprKind::Await(_) | ast::ExprKind::Yield(_) = e.kind {
+                self.0 = true;
+            } else {
+                visit::walk_expr(self, e);
+            }
+        }
+
+        fn visit_mac_call(&mut self, _: &ast::MacCall) {
+            self.0 = true;
+        }
+
+        fn visit_attribute(&mut self, _: &ast::Attribute) {
+            // Conservatively assume this may be a proc macro attribute in
+            // expression position.
+            self.0 = true;
+        }
+
+        fn visit_item(&mut self, _: &ast::Item) {
+            // Do not recurse into nested items.
+        }
+    }
+
+    let mut visitor = MayContainYieldPoint(false);
+    visitor.visit_expr(e);
+    visitor.0
 }
