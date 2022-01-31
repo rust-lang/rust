@@ -2047,6 +2047,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                             None
                         }
+                        // FIXME: instead of checking for Vec only, we could check whether the
+                        // type implements `Deref<Target=X>`; see
+                        // https://github.com/rust-lang/rust/pull/91343#discussion_r761466979
                         ty::Adt(adt_def, _)
                             if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did) =>
                         {
