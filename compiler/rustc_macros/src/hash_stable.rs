@@ -161,6 +161,7 @@ pub fn hash_stable_eq_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.bound_impl(
         quote!(::rustc_data_structures::stable_hasher::HashStableEq),
         quote! {
+            #[inline]
             fn hash_stable_eq(&self, other: &Self) -> bool {
                 match (self, other) {
                     #eq_body
