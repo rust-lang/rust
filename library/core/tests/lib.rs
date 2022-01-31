@@ -90,6 +90,7 @@
 #![feature(unzip_option)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(waker_getters)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
@@ -131,3 +132,4 @@ mod task;
 mod time;
 mod tuple;
 mod unicode;
+mod waker;
