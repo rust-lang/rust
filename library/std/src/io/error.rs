@@ -87,6 +87,16 @@ enum ErrorData<C> {
 // higher already. We include it just because repr_bitpacked.rs's encoding
 // requires an alignment >= 4 (note that `#[repr(align)]` will not reduce the
 // alignment required by the struct, only increase it).
+//
+// If we add more variants to ErrorData, this can be increased to 8, but it
+// should probably be behind `#[cfg_attr(target_pointer_width = "64", ...)]` or
+// whatever cfg we're using to enable the `repr_bitpacked` code, since only the
+// that version needs the alignment, and 8 is higher than the alignment we'll
+// have on 32 bit platforms.
+//
+// (For the sake of being explicit: the alignment requirement here only matters
+// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
+// matter at all)
 #[repr(align(4))]
 pub(crate) struct SimpleMessage {
     kind: ErrorKind,

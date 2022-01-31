@@ -321,23 +321,26 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
 // that our encoding relies on for correctness and soundness. (Some of these are
 // a bit overly thorough/cautious, admittedly)
 //
-// If any of these are hit on a platform that libstd supports, we should just
-// make sure `repr_unpacked.rs` is used instead.
+// If any of these are hit on a platform that libstd supports, we should likely
+// just use `repr_unpacked.rs` there instead (unless the fix is easy).
 macro_rules! static_assert {
     ($condition:expr) => {
-        const _: [(); 0] = [(); (!$condition) as usize];
+        const _: () = assert!($condition);
+    };
+    (@usize_eq: $lhs:expr, $rhs:expr) => {
+        const _: [(); $lhs] = [(); $rhs];
     };
 }
 
 // The bitpacking we use requires pointers be exactly 64 bits.
-static_assert!(size_of::<NonNull<()>>() == 8);
+static_assert!(@usize_eq: size_of::<NonNull<()>>(), 8);
 
 // We also require pointers and usize be the same size.
-static_assert!(size_of::<NonNull<()>>() == size_of::<usize>());
+static_assert!(@usize_eq: size_of::<NonNull<()>>(), size_of::<usize>());
 
 // `Custom` and `SimpleMessage` need to be thin pointers.
-static_assert!(size_of::<&'static SimpleMessage>() == 8);
-static_assert!(size_of::<Box<Custom>>() == 8);
+static_assert!(@usize_eq: size_of::<&'static SimpleMessage>(), 8);
+static_assert!(@usize_eq: size_of::<Box<Custom>>(), 8);
 
 // And they must have >= 4 byte alignment.
 static_assert!(align_of::<SimpleMessage>() >= 4);
@@ -346,12 +349,13 @@ static_assert!(align_of::<Custom>() >= 4);
 // This is obviously true (`TAG_CUSTOM` is `0b01`), but our implementation of
 // `Repr::new_custom` and such would be wrong if it were not, so we check.
 static_assert!(size_of::<Custom>() >= TAG_CUSTOM);
+
 // These two store a payload which is allowed to be zero, so they must be
 // non-zero to preserve the `NonNull`'s range invariant.
 static_assert!(TAG_OS != 0);
 static_assert!(TAG_SIMPLE != 0);
 // We can't tag `SimpleMessage`s, the tag must be 0.
-static_assert!(TAG_SIMPLE_MESSAGE == 0);
+static_assert!(@usize_eq: TAG_SIMPLE_MESSAGE, 0);
 
 // Check that the point of all of this still holds.
 //
@@ -359,7 +363,7 @@ static_assert!(TAG_SIMPLE_MESSAGE == 0);
 // as it's not `#[repr(transparent)]`/`#[repr(C)]`. We could add that, but
 // the `#[repr()]` would show up in rustdoc, which might be seen as a stable
 // commitment.
-static_assert!(size_of::<Repr>() == 8);
-static_assert!(size_of::<Option<Repr>>() == 8);
-static_assert!(size_of::<Result<(), Repr>>() == 8);
-static_assert!(size_of::<Result<usize, Repr>>() == 16);
+static_assert!(@usize_eq: size_of::<Repr>(), 8);
+static_assert!(@usize_eq: size_of::<Option<Repr>>(), 8);
+static_assert!(@usize_eq: size_of::<Result<(), Repr>>(), 8);
+static_assert!(@usize_eq: size_of::<Result<usize, Repr>>(), 16);
