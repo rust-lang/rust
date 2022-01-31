@@ -357,6 +357,7 @@ Expr =
 | TupleExpr
 | WhileExpr
 | YieldExpr
+| LetExpr
 
 Literal =
   Attr* value:(
@@ -448,12 +449,8 @@ ClosureExpr =
   body:Expr
 
 IfExpr =
-  Attr* 'if' Condition then_branch:BlockExpr
+  Attr* 'if' condition:Expr then_branch:BlockExpr
   ('else' else_branch:(IfExpr | BlockExpr))?
-
-Condition =
-  'let' Pat '=' Expr
-| Expr
 
 LoopExpr =
   Attr* Label? 'loop'
@@ -464,7 +461,7 @@ ForExpr =
   loop_body:BlockExpr
 
 WhileExpr =
-  Attr* Label? 'while' Condition
+  Attr* Label? 'while' condition:Expr
   loop_body:BlockExpr
 
 Label =
@@ -492,13 +489,16 @@ MatchArm =
   Attr* Pat guard:MatchGuard? '=>' Expr ','?
 
 MatchGuard =
-  'if' ('let' Pat '=')? Expr
+  'if' condition:Expr
 
 ReturnExpr =
   Attr* 'return' Expr?
 
 YieldExpr =
   Attr* 'yield' Expr?
+
+LetExpr =
+  Attr* 'let' Pat '=' Expr
 
 AwaitExpr =
   Attr* Expr '.' 'await'
