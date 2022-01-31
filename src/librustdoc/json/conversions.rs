@@ -602,22 +602,11 @@ impl FromWithTcx<clean::VariantStruct> for Struct {
 }
 
 impl FromWithTcx<clean::Variant> for Variant {
-    fn from_tcx(variant: clean::Variant, tcx: TyCtxt<'_>) -> Self {
+    fn from_tcx(variant: clean::Variant, _tcx: TyCtxt<'_>) -> Self {
         use clean::Variant::*;
         match variant {
             CLike => Variant::Plain,
-            Tuple(fields) => Variant::Tuple(
-                fields
-                    .into_iter()
-                    .map(|f| {
-                        if let clean::StructFieldItem(ty) = *f.kind {
-                            ty.into_tcx(tcx)
-                        } else {
-                            unreachable!()
-                        }
-                    })
-                    .collect(),
-            ),
+            Tuple(fields) => Variant::Tuple(ids(fields)),
             Struct(s) => Variant::Struct(ids(s.fields)),
         }
     }
