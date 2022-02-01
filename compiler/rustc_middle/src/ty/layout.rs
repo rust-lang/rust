@@ -3189,7 +3189,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         let max_by_val_size = Pointer.size(self) * 2;
                         let size = arg.layout.size;
 
-                        if arg.layout.is_unsized() || size >= max_by_val_size {
+                        if arg.layout.is_unsized() || size > max_by_val_size {
                             arg.make_indirect();
                         }
                     }

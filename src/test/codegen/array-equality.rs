@@ -42,9 +42,8 @@ pub fn array_eq_long(a: &[u16; 1234], b: &[u16; 1234]) -> bool {
 // CHECK-LABEL: @array_eq_zero
 #[no_mangle]
 pub fn array_eq_zero(x: [u16; 8]) -> bool {
-    // CHECK-NEXT: start:
-    // CHECK-NEXT: bitcast [8 x i16]
-    // CHECK-NEXT: %[[CMP:.+]] = tail call i32 @{{bcmp|memcmp}}(i8* {{.*}} dereferenceable(16) %{{.+}}, i8* {{.*}} dereferenceable(16) {{.+}}, i64 16)
+    // CHECK: bitcast [8 x i16]
+    // CHECK-NEXT: %[[CMP:.+]] = call i32 @{{bcmp|memcmp}}(i8* {{.*}} dereferenceable(16) %{{.+}}, i8* {{.*}} dereferenceable(16) {{.+}}, i64 16)
     // CHECK-NEXT: %[[EQ:.+]] = icmp eq i32 %[[CMP]], 0
     // CHECK-NEXT: ret i1 %[[EQ]]
     x == [0; 8]
