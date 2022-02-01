@@ -232,7 +232,7 @@ impl HandleOrNull {
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
@@ -254,7 +254,7 @@ impl HandleOrInvalid {
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
