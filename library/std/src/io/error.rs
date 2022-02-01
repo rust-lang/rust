@@ -361,13 +361,29 @@ impl ErrorKind {
     }
 }
 
+#[stable(feature = "io_errorkind_display", since = "1.60.0")]
+impl fmt::Display for ErrorKind {
+    /// Shows a human-readable description of the `ErrorKind`.
+    ///
+    /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::io::ErrorKind;
+    /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());
+    /// ```
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.as_str())
+    }
+}
+
 /// Intended for use for errors not exposed to the user, where allocating onto
 /// the heap (for normal construction via Error::new) is too costly.
 #[stable(feature = "io_error_from_errorkind", since = "1.14.0")]
 impl From<ErrorKind> for Error {
     /// Converts an [`ErrorKind`] into an [`Error`].
     ///
-    /// This conversion allocates a new error with a simple representation of error kind.
+    /// This conversion creates a new error with a simple representation of error kind.
     ///
     /// # Examples
     ///
