@@ -1,7 +1,7 @@
 //! Parsing of CfgFlags as command line arguments, as in
 //!
 //! rustc main.rs --cfg foo --cfg 'feature="bar"'
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use cfg::CfgOptions;
 
@@ -44,6 +44,19 @@ impl Extend<CfgFlag> for CfgOptions {
             match cfg_flag {
                 CfgFlag::Atom(it) => self.insert_atom(it.into()),
                 CfgFlag::KeyValue { key, value } => self.insert_key_value(key.into(), value.into()),
+            }
+        }
+    }
+}
+
+impl fmt::Display for CfgFlag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CfgFlag::Atom(atom) => f.write_str(atom),
+            CfgFlag::KeyValue { key, value } => {
+                f.write_str(key)?;
+                f.write_str("=")?;
+                f.write_str(value)
             }
         }
     }
