@@ -17,26 +17,56 @@
 //! Note: Because the term "leading byte" can sometimes be ambiguous (for
 //! example, it could also refer to the first byte of a slice), we'll often use
 //! the term "non-continuation byte" to refer to these bytes in the code.
+use core::intrinsics::unlikely;
 
+const USIZE_SIZE: usize = core::mem::size_of::<usize>();
+const UNROLL_INNER: usize = 4;
+
+#[inline]
 pub(super) fn count_chars(s: &str) -> usize {
+    if s.len() < USIZE_SIZE * UNROLL_INNER {
+        // Avoid entering the optimized implementation for strings where the
+        // difference is not likely to matter, or where it might even be slower.
+        // That said, a ton of thought was not spent on the particular threshold
+        // here, beyond "this value seems to make sense".
+        char_count_general_case(s.as_bytes())
+    } else {
+        do_count_chars(s)
+    }
+}
+
+fn do_count_chars(s: &str) -> usize {
     // For correctness, `CHUNK_SIZE` must be:
+    //
     // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
     // - A multiple of `UNROLL_INNER`, otherwise our `break` inside the
     //   `body.chunks(CHUNK_SIZE)` loop.
     //
     // For performance, `CHUNK_SIZE` should be:
-    // - Relatively cheap to `%` against.
+    // - Relatively cheap to `/` against (so some simple sum of powers of two).
     // - Large enough to avoid paying for the cost of the `sum_bytes_in_usize`
     //   too often.
     const CHUNK_SIZE: usize = 192;
-    const UNROLL_INNER: usize = 4;
 
-    // Check the properties of `CHUNK_SIZE` / `UNROLL_INNER` that are required
+    // Check the properties of `CHUNK_SIZE` and `UNROLL_INNER` that are required
     // for correctness.
-    const _: [(); 1] = [(); (CHUNK_SIZE < 256 && (CHUNK_SIZE % UNROLL_INNER) == 0) as usize];
+    const _: () = assert!(CHUNK_SIZE < 256);
+    const _: () = assert!(CHUNK_SIZE % UNROLL_INNER == 0);
+
     // SAFETY: transmuting `[u8]` to `[usize]` is safe except for size
     // differences which are handled by `align_to`.
     let (head, body, tail) = unsafe { s.as_bytes().align_to::<usize>() };
+
+    // This should be quite rare, and basically exists to handle the degenerate
+    // cases where align_to fails (as well as miri under symbolic alignment
+    // mode).
+    //
+    // The `unlikely` helps discourage LLVM from inlining the body, which is
+    // nice, as we would rather not mark the `char_count_general_case` function
+    // as cold.
+    if unlikely(body.is_empty() || head.len() > USIZE_SIZE || tail.len() > USIZE_SIZE) {
+        return char_count_general_case(s.as_bytes());
+    }
 
     let mut total = char_count_general_case(head) + char_count_general_case(tail);
     // Split `body` into `CHUNK_SIZE` chunks to reduce the frequency with which
@@ -45,11 +75,8 @@ pub(super) fn count_chars(s: &str) -> usize {
         // We accumulate intermediate sums in `counts`, where each byte contains
         // a subset of the sum of this chunk, like a `[u8; size_of::<usize>()]`.
         let mut counts = 0;
-        let unrolled_chunks = chunk.array_chunks::<UNROLL_INNER>();
-        // If there's a remainder (know can only happen for the last item in
-        // `chunks`, because `CHUNK_SIZE % UNROLL == 0`), then we need to
-        // account for that (although we don't use it to later).
-        let remainder = unrolled_chunks.remainder();
+
+        let (unrolled_chunks, remainder) = chunk.as_chunks::<UNROLL_INNER>();
         for unrolled in unrolled_chunks {
             for &word in unrolled {
                 // Because `CHUNK_SIZE` is < 256, this addition can't cause the
@@ -85,8 +112,8 @@ pub(super) fn count_chars(s: &str) -> usize {
 // true)
 #[inline]
 fn contains_non_continuation_byte(w: usize) -> usize {
-    let lsb = 0x0101_0101_0101_0101u64 as usize;
-    ((!w >> 7) | (w >> 6)) & lsb
+    const LSB: usize = 0x0101_0101_0101_0101u64 as usize;
+    ((!w >> 7) | (w >> 6)) & LSB
 }
 
 // Morally equivalent to `values.to_ne_bytes().into_iter().sum::<usize>()`, but
@@ -97,7 +124,7 @@ fn sum_bytes_in_usize(values: usize) -> usize {
     const SKIP_BYTES: usize = 0x00ff_00ff_00ff_00ff_u64 as usize;
 
     let pair_sum: usize = (values & SKIP_BYTES) + ((values >> 8) & SKIP_BYTES);
-    pair_sum.wrapping_mul(LSB_SHORTS) >> ((core::mem::size_of::<usize>() - 2) * 8)
+    pair_sum.wrapping_mul(LSB_SHORTS) >> ((USIZE_SIZE - 2) * 8)
 }
 
 // This is the most direct implementation of the concept of "count the number of
@@ -105,12 +132,5 @@ fn sum_bytes_in_usize(values: usize) -> usize {
 // head and tail of the input string (the first and last item in the tuple
 // returned by `slice::align_to`).
 fn char_count_general_case(s: &[u8]) -> usize {
-    const CONT_MASK_U8: u8 = 0b0011_1111;
-    const TAG_CONT_U8: u8 = 0b1000_0000;
-    let mut leads = 0;
-    for &byte in s {
-        let is_lead = (byte & !CONT_MASK_U8) != TAG_CONT_U8;
-        leads += is_lead as usize;
-    }
-    leads
+    s.iter().filter(|&&byte| !super::validations::utf8_is_cont_byte(byte)).count()
 }

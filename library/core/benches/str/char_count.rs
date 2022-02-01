@@ -3,21 +3,25 @@ use test::{black_box, Bencher};
 
 macro_rules! define_benches {
     ($( fn $name: ident($arg: ident: &str) $body: block )+) => {
+        define_benches!(mod en_tiny, en::TINY, $($name $arg $body)+);
         define_benches!(mod en_small, en::SMALL, $($name $arg $body)+);
         define_benches!(mod en_medium, en::MEDIUM, $($name $arg $body)+);
         define_benches!(mod en_large, en::LARGE, $($name $arg $body)+);
         define_benches!(mod en_huge, en::HUGE, $($name $arg $body)+);
 
+        define_benches!(mod zh_tiny, zh::TINY, $($name $arg $body)+);
         define_benches!(mod zh_small, zh::SMALL, $($name $arg $body)+);
         define_benches!(mod zh_medium, zh::MEDIUM, $($name $arg $body)+);
         define_benches!(mod zh_large, zh::LARGE, $($name $arg $body)+);
         define_benches!(mod zh_huge, zh::HUGE, $($name $arg $body)+);
 
+        define_benches!(mod ru_tiny, ru::TINY, $($name $arg $body)+);
         define_benches!(mod ru_small, ru::SMALL, $($name $arg $body)+);
         define_benches!(mod ru_medium, ru::MEDIUM, $($name $arg $body)+);
         define_benches!(mod ru_large, ru::LARGE, $($name $arg $body)+);
         define_benches!(mod ru_huge, ru::HUGE, $($name $arg $body)+);
 
+        define_benches!(mod emoji_tiny, emoji::TINY, $($name $arg $body)+);
         define_benches!(mod emoji_small, emoji::SMALL, $($name $arg $body)+);
         define_benches!(mod emoji_medium, emoji::MEDIUM, $($name $arg $body)+);
         define_benches!(mod emoji_large, emoji::LARGE, $($name $arg $body)+);
@@ -43,12 +47,12 @@ macro_rules! define_benches {
 }
 
 define_benches! {
-    fn case00_cur_libcore(s: &str) {
-        cur_libcore(s)
+    fn case00_libcore(s: &str) {
+        libcore(s)
     }
 
-    fn case01_old_libcore(s: &str) {
-        old_libcore(s)
+    fn case01_filter_count_cont_bytes(s: &str) {
+        filter_count_cont_bytes(s)
     }
 
     fn case02_iter_increment(s: &str) {
@@ -60,14 +64,16 @@ define_benches! {
     }
 }
 
-fn cur_libcore(s: &str) -> usize {
+fn libcore(s: &str) -> usize {
     s.chars().count()
 }
+
 #[inline]
 fn utf8_is_cont_byte(byte: u8) -> bool {
     (byte as i8) < -64
 }
-fn old_libcore(s: &str) -> usize {
+
+fn filter_count_cont_bytes(s: &str) -> usize {
     s.as_bytes().iter().filter(|&&byte| !utf8_is_cont_byte(byte)).count()
 }
 

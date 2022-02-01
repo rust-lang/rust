@@ -1,8 +1,9 @@
 //! Exposes a number of modules with different kinds of strings.
 //!
-//! Each module contains `&str` constants named `SMALL`, `MEDIUM`, `LARGE`, and
-//! `HUGE`.
+//! Each module contains `&str` constants named `TINY`, `SMALL`, `MEDIUM`,
+//! `LARGE`, and `HUGE`.
 //!
+//! - The `TINY` string is generally around 8 bytes.
 //! - The `SMALL` string is generally around 30-40 bytes.
 //! - The `MEDIUM` string is generally around 600-700 bytes.
 //! - The `LARGE` string is the `MEDIUM` string repeated 8x, and is around 5kb.
@@ -27,6 +28,7 @@ macro_rules! define_consts {
 }
 
 pub mod en {
+    pub const TINY: &str = "Mary had";
     pub const SMALL: &str = "Mary had a little lamb, Little lamb";
     define_consts! {
         "Rust is blazingly fast and memory-efficient: with no runtime or garbage
@@ -42,6 +44,7 @@ pub mod en {
 }
 
 pub mod zh {
+    pub const TINY: &str = "速度惊";
     pub const SMALL: &str = "速度惊人且内存利用率极高";
     define_consts! {
         "Rust   速度惊人且内存利用率极高。由于\
@@ -59,6 +62,7 @@ pub mod zh {
 }
 
 pub mod ru {
+    pub const TINY: &str = "Сотни";
     pub const SMALL: &str = "Сотни компаний по";
     define_consts! {
         "Сотни компаний по всему миру используют Rust в реальных\
@@ -72,6 +76,7 @@ pub mod ru {
 }
 
 pub mod emoji {
+    pub const TINY: &str = "😀😃";
     pub const SMALL: &str = "😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘";
     define_consts! {
         "😀😃😄😁😆😅🤣😂🙂🙃😉😊😇🥰😍🤩😘😗☺😚😙🥲😋😛😜🤪😝🤑🤗🤭🤫🤔🤐🤨😐😑😶😶‍🌫️😏😒\
