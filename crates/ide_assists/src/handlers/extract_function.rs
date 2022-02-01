@@ -482,9 +482,7 @@ impl FunctionBody {
         let full_body = parent.syntax().children_with_tokens();
 
         let mut text_range = full_body
-            .filter(|it| {
-                matches!(it.kind().is_punct() || it.kind() == SyntaxKind::WHITESPACE, false)
-            })
+            .filter(|it| ast::Stmt::can_cast(it.kind()) || it.kind() == COMMENT)
             .map(|element| element.text_range())
             .filter(|&range| selected.intersect(range).filter(|it| !it.is_empty()).is_some())
             .reduce(|acc, stmt| acc.cover(stmt));
