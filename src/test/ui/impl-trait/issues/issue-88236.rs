@@ -10,6 +10,10 @@ impl<'a> Hrtb<'a> for () {
     type Assoc = ();
 }
 
+impl<'a> Hrtb<'a> for &'a () {
+    type Assoc = ();
+}
+
 fn make_impl() -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {}
 
 fn main() {}
