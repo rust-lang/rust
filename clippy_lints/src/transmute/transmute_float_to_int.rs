@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
     const_context: bool,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
                 e.span,
                 &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                 |diag| {
-                    let mut expr = &args[0];
+                    let mut expr = arg;
                     let mut arg = sugg::Sugg::hir(cx, expr, "..");
 
                     if let ExprKind::Unary(UnOp::Neg, inner_expr) = &expr.kind {

@@ -372,10 +372,9 @@ declare_lint_pass!(Transmute => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Transmute {
-    #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(path_expr, args) = e.kind;
+            if let ExprKind::Call(path_expr, [arg]) = e.kind;
             if let ExprKind::Path(ref qpath) = path_expr.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
@@ -385,28 +384,28 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 // And see https://github.com/rust-lang/rust/issues/51911 for dereferencing raw pointers.
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty(&args[0]);
+                let from_ty = cx.typeck_results().expr_ty(arg);
                 let to_ty = cx.typeck_results().expr_ty(e);
 
                 // If useless_transmute is triggered, the other lints can be skipped.
-                if useless_transmute::check(cx, e, from_ty, to_ty, args) {
+                if useless_transmute::check(cx, e, from_ty, to_ty, arg) {
                     return;
                 }
 
-                let mut linted = wrong_transmute::check(cx, e, from_ty, to_ty);
-                linted |= crosspointer_transmute::check(cx, e, from_ty, to_ty);
-                linted |= transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, args, qpath);
-                linted |= transmute_int_to_char::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_ref_to_ref::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_num_to_bytes::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= unsound_collection_transmute::check(cx, e, from_ty, to_ty);
+                let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
+                    | crosspointer_transmute::check(cx, e, from_ty, to_ty)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, qpath)
+                    | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | unsound_collection_transmute::check(cx, e, from_ty, to_ty);
 
                 if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, args);
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
                 }
             }
         }
