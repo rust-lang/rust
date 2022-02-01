@@ -1,7 +1,5 @@
 #![feature(type_alias_impl_trait)]
 
-// check-pass
-
 type FooArg<'a> = &'a dyn ToString;
 type FooRet = impl std::fmt::Debug;
 
@@ -30,7 +28,7 @@ fn ham() -> Foo {
 fn oof() -> impl std::fmt::Debug {
     let mut bar = ham();
     let func = bar.next().unwrap();
-    return func(&"oof");
+    return func(&"oof"); //~ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 fn main() {

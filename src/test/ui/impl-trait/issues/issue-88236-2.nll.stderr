@@ -1,0 +1,39 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-88236-2.rs:17:5
+   |
+LL |     &()
+   |     ^^^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-88236-2.rs:17:5
+   |
+LL |     &()
+   |     ^^^
+
+error: lifetime may not live long enough
+  --> $DIR/issue-88236-2.rs:20:5
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> {
+   |                  -- lifetime `'b` defined here
+LL |     x
+   |     ^ returning this value requires that `'b` must outlive `'static`
+   |
+help: to allow this `impl Trait` to capture borrowed data with lifetime `'b`, add `'b` as a bound
+   |
+LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> + 'b {
+   |                                                                                  ++++
+
+error: higher-ranked subtype error
+  --> $DIR/issue-88236-2.rs:20:5
+   |
+LL |     x
+   |     ^
+
+error: higher-ranked subtype error
+  --> $DIR/issue-88236-2.rs:20:5
+   |
+LL |     x
+   |     ^
+
+error: aborting due to 5 previous errors
+
