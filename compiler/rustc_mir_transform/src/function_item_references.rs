@@ -6,7 +6,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self,
     subst::{GenericArgKind, Subst, SubstsRef},
-    PredicateKind, Ty, TyCtxt, TyS,
+    PredicateKind, Ty, TyCtxt,
 };
 use rustc_session::lint::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_span::{symbol::sym, Span};
@@ -88,7 +88,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
                     for generic_inner_ty in arg_def.walk() {
                         if let GenericArgKind::Type(inner_ty) = generic_inner_ty.unpack() {
                             // If the inner type matches the type bound by `Pointer`
-                            if TyS::same_type(inner_ty, bound_ty) {
+                            if inner_ty == bound_ty {
                                 // Do a substitution using the parameters from the callsite
                                 let subst_ty = inner_ty.subst(self.tcx, substs_ref);
                                 if let Some((fn_id, fn_substs)) =

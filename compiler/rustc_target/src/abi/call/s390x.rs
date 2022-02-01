@@ -2,31 +2,13 @@
 // for a pre-z13 machine or using -mno-vx.
 
 use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::abi::{self, HasDataLayout, TyAbiInterface, TyAndLayout};
+use crate::abi::{HasDataLayout, TyAbiInterface};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
         ret.make_indirect();
-    }
-}
-
-fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
-where
-    Ty: TyAbiInterface<'a, C>,
-    C: HasDataLayout,
-{
-    match layout.abi {
-        abi::Abi::Scalar(scalar) => scalar.value.is_float(),
-        abi::Abi::Aggregate { .. } => {
-            if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
-                is_single_fp_element(cx, layout.field(cx, 0))
-            } else {
-                false
-            }
-        }
-        _ => false,
     }
 }
 
@@ -40,7 +22,7 @@ where
         return;
     }
 
-    if is_single_fp_element(cx, arg.layout) {
+    if arg.layout.is_single_fp_element(cx) {
         match arg.layout.size.bytes() {
             4 => arg.cast_to(Reg::f32()),
             8 => arg.cast_to(Reg::f64()),

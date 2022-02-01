@@ -2833,7 +2833,7 @@ impl ClashingExternDeclarations {
                 return true;
             }
             let tcx = cx.tcx;
-            if a == b || rustc_middle::ty::TyS::same_type(a, b) {
+            if a == b {
                 // All nominally-same types are structurally same, too.
                 true
             } else {

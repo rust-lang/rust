@@ -26,7 +26,7 @@ use rustc_hir::{
 };
 use rustc_hir::{HirIdMap, HirIdSet};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyS, VariantDef};
+use rustc_middle::ty::{self, Ty, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::{Span, Spanned};
@@ -2262,7 +2262,7 @@ fn lint_match_arms<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
                     };
                     // the names technically don't have to match; this makes the lint more conservative
                     if cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id);
-                    if TyS::same_type(cx.typeck_results().expr_ty(a), cx.typeck_results().expr_ty(b));
+                    if cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b);
                     if pat_contains_local(lhs.pat, a_id);
                     if pat_contains_local(rhs.pat, b_id);
                     then {

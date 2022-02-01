@@ -69,6 +69,7 @@ This API is completely unstable and subject to change.
 #![feature(control_flow_enum)]
 #![feature(hash_drain_filter)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;
