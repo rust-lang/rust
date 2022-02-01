@@ -3346,12 +3346,15 @@ public:
         if (gutils->isConstantInstruction(&I))
           return;
 
+        Type *acctype = gutils->getShadowType(orig_ops[0]->getType());
+        Type *vectype = gutils->getShadowType(orig_ops[1]->getType());
+
         auto accdif = gutils->isConstantValue(orig_ops[0])
-                          ? ConstantFP::get(orig_ops[0]->getType(), 0)
+                          ? Constant::getNullValue(acctype)
                           : diffe(orig_ops[0], Builder2);
 
         auto vecdif = gutils->isConstantValue(orig_ops[1])
-                          ? ConstantVector::getNullValue(orig_ops[1]->getType())
+                          ? Constant::getNullValue(vectype)
                           : diffe(orig_ops[1], Builder2);
 
 #if LLVM_VERSION_MAJOR < 12
@@ -3360,12 +3363,17 @@ public:
 #else
         auto vfra = Intrinsic::getDeclaration(M, ID, {orig_ops[1]->getType()});
 #endif
-        auto cal = Builder2.CreateCall(vfra, {accdif, vecdif});
-        cal->setCallingConv(vfra->getCallingConv());
-        cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-        setDiffe(&I, cal, Builder2);
+        auto rule = [&](Value *accdif, Value *vecdif) {
+          auto cal = Builder2.CreateCall(vfra, {accdif, vecdif});
+          cal->setCallingConv(vfra->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
+          return cal;
+        };
 
+        Value *dif =
+            applyChainRule(I.getType(), Builder2, rule, accdif, vecdif);
+        setDiffe(&I, dif, Builder2);
         return;
       }
 #endif
@@ -3373,28 +3381,33 @@ public:
       case Intrinsic::sqrt: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
+        Value *op = diffe(orig_ops[0], Builder2);
+        Type *opType = orig_ops[0]->getType();
         Value *args[1] = {gutils->getNewFromOriginal(orig_ops[0])};
         Type *tys[] = {orig_ops[0]->getType()};
+
         Function *SqrtF;
         if (ID == Intrinsic::sqrt)
           SqrtF = Intrinsic::getDeclaration(M, ID, tys);
         else
           SqrtF = Intrinsic::getDeclaration(M, ID);
 
-        auto cal = cast<CallInst>(Builder2.CreateCall(SqrtF, args));
-        cal->setCallingConv(SqrtF->getCallingConv());
-        cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
+        auto rule = [&](Value *op) {
+          CallInst *cal = cast<CallInst>(Builder2.CreateCall(SqrtF, args));
+          cal->setCallingConv(SqrtF->getCallingConv());
+          cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-        Value *dif0 = Builder2.CreateFDiv(
-            Builder2.CreateFMul(ConstantFP::get(I.getType(), 0.5), op), cal);
+          Value *half = ConstantFP::get(orig_ops[0]->getType(), 0.5);
+          Value *dif0 = Builder2.CreateFDiv(Builder2.CreateFMul(half, op), cal);
 
-        Value *cmp = Builder2.CreateFCmpOEQ(
-            args[0], ConstantFP::get(orig_ops[0]->getType(), 0));
-        dif0 = Builder2.CreateSelect(
-            cmp, ConstantFP::get(orig_ops[0]->getType(), 0), dif0);
+          Value *cmp =
+              Builder2.CreateFCmpOEQ(args[0], Constant::getNullValue(tys[0]));
+          return Builder2.CreateSelect(cmp, Constant::getNullValue(opType),
+                                       dif0);
+        };
 
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
@@ -3402,16 +3415,21 @@ public:
       case Intrinsic::fabs: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
-        Value *cmp =
-            Builder2.CreateFCmpOLT(gutils->getNewFromOriginal(orig_ops[0]),
-                                   ConstantFP::get(orig_ops[0]->getType(), 0));
-        Value *dif0 = Builder2.CreateFMul(
-            Builder2.CreateSelect(cmp,
-                                  ConstantFP::get(orig_ops[0]->getType(), -1),
-                                  ConstantFP::get(orig_ops[0]->getType(), 1)),
-            op);
+        Value *op = diffe(orig_ops[0], Builder2);
+        Type *ty = orig_ops[0]->getType();
+
+        auto rule = [&](Value *op) {
+          Value *cmp =
+              Builder2.CreateFCmpOLT(gutils->getNewFromOriginal(orig_ops[0]),
+                                     Constant::getNullValue(ty));
+          Value *select = Builder2.CreateSelect(cmp, ConstantFP::get(ty, -1),
+                                                ConstantFP::get(ty, 1));
+          return Builder2.CreateFMul(select, op);
+        };
+
+        auto dif0 = applyChainRule(I.getType(), Builder2, rule, op);
+
         setDiffe(&I, dif0, Builder2);
         return;
       }
@@ -3427,16 +3445,23 @@ public:
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
         Value *cmp = Builder2.CreateFCmpOLT(op0, op1);
 
+        Type *opType0 = gutils->getShadowType(orig_ops[0]->getType());
+        Type *opType1 = gutils->getShadowType(orig_ops[1]->getType());
+
         Value *diffe0 = gutils->isConstantValue(orig_ops[0])
-                            ? ConstantFP::get(orig_ops[0]->getType(), 0)
+                            ? Constant::getNullValue(opType0)
                             : diffe(orig_ops[0], Builder2);
         Value *diffe1 = gutils->isConstantValue(orig_ops[1])
-                            ? ConstantFP::get(orig_ops[1]->getType(), 0)
+                            ? Constant::getNullValue(opType1)
                             : diffe(orig_ops[1], Builder2);
 
-        Value *dif = Builder2.CreateSelect(cmp, diffe0, diffe1);
-        setDiffe(&I, dif, Builder2);
+        auto rule = [&](Value *diffe0, Value *diffe1) {
+          return Builder2.CreateSelect(cmp, diffe0, diffe1);
+        };
 
+        Value *dif =
+            applyChainRule(I.getType(), Builder2, rule, diffe0, diffe1);
+        setDiffe(&I, dif, Builder2);
         return;
       }
 
@@ -3451,14 +3476,22 @@ public:
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
         Value *cmp = Builder2.CreateFCmpOLT(op0, op1);
 
+        Type *opType0 = gutils->getShadowType(orig_ops[0]->getType());
+        Type *opType1 = gutils->getShadowType(orig_ops[1]->getType());
+
         Value *diffe0 = gutils->isConstantValue(orig_ops[0])
-                            ? ConstantFP::get(orig_ops[0]->getType(), 0)
+                            ? Constant::getNullValue(opType0)
                             : diffe(orig_ops[0], Builder2);
         Value *diffe1 = gutils->isConstantValue(orig_ops[1])
-                            ? ConstantFP::get(orig_ops[1]->getType(), 0)
+                            ? Constant::getNullValue(opType1)
                             : diffe(orig_ops[1], Builder2);
 
-        Value *dif = Builder2.CreateSelect(cmp, diffe0, diffe1);
+        auto rule = [&](Value *diffe0, Value *diffe1) {
+          return Builder2.CreateSelect(cmp, diffe0, diffe1);
+        };
+
+        Value *dif =
+            applyChainRule(I.getType(), Builder2, rule, diffe0, diffe1);
         setDiffe(&I, dif, Builder2);
 
         return;
@@ -3467,23 +3500,32 @@ public:
       case Intrinsic::fma: {
         if (gutils->isConstantInstruction(&I))
           return;
+
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
         Value *op2 = gutils->getNewFromOriginal(orig_ops[2]);
 
+        Type *opType0 = gutils->getShadowType(orig_ops[0]->getType());
+        Type *opType1 = gutils->getShadowType(orig_ops[1]->getType());
+        Type *opType2 = gutils->getShadowType(orig_ops[2]->getType());
+
         Value *dif0 = gutils->isConstantValue(orig_ops[0])
-                          ? ConstantFP::get(orig_ops[0]->getType(), 0)
+                          ? Constant::getNullValue(opType0)
                           : diffe(orig_ops[0], Builder2);
         Value *dif1 = gutils->isConstantValue(orig_ops[1])
-                          ? ConstantFP::get(orig_ops[1]->getType(), 0)
+                          ? Constant::getNullValue(opType1)
                           : diffe(orig_ops[1], Builder2);
         Value *dif2 = gutils->isConstantValue(orig_ops[2])
-                          ? ConstantFP::get(orig_ops[2]->getType(), 0)
+                          ? Constant::getNullValue(opType2)
                           : diffe(orig_ops[2], Builder2);
 
-        Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op1, dif2),
-                                         Builder2.CreateFMul(dif1, op2));
+        auto rule = [&](Value *dif0, Value *dif1, Value *dif2) {
+          Value *dif = Builder2.CreateFAdd(Builder2.CreateFMul(op1, dif2),
+                                           Builder2.CreateFMul(dif1, op2));
+          return Builder2.CreateFAdd(dif, dif0);
+        };
 
-        dif = Builder2.CreateFAdd(dif, dif0);
+        Value *dif =
+            applyChainRule(I.getType(), Builder2, rule, dif0, dif1, dif2);
         setDiffe(&I, dif, Builder2);
 
         return;
@@ -3493,9 +3535,11 @@ public:
         if (gutils->isConstantInstruction(&I))
           return;
         Value *op = diffe(orig_ops[0], Builder2);
+        Value *origOp = gutils->getNewFromOriginal(orig_ops[0]);
 
-        Value *dif0 =
-            Builder2.CreateFDiv(op, gutils->getNewFromOriginal(orig_ops[0]));
+        auto rule = [&](Value *op) { return Builder2.CreateFDiv(op, origOp); };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
@@ -3503,24 +3547,30 @@ public:
       case Intrinsic::log2: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
-        Value *dif0 = Builder2.CreateFDiv(
-            op, Builder2.CreateFMul(
-                    ConstantFP::get(I.getType(), 0.6931471805599453),
-                    gutils->getNewFromOriginal(orig_ops[0])));
+        Value *op = diffe(orig_ops[0], Builder2);
+        Value *c = ConstantFP::get(I.getType(), 0.6931471805599453);
+        Value *origOp = gutils->getNewFromOriginal(orig_ops[0]);
+        Value *mul = Builder2.CreateFMul(c, origOp);
+
+        auto rule = [&](Value *op) { return Builder2.CreateFDiv(op, mul); };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
       case Intrinsic::log10: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
-        Value *dif0 = Builder2.CreateFDiv(
-            op,
-            Builder2.CreateFMul(ConstantFP::get(I.getType(), 2.302585092994046),
-                                gutils->getNewFromOriginal(orig_ops[0])));
+        Value *op = diffe(orig_ops[0], Builder2);
+        Value *c = ConstantFP::get(I.getType(), 2.302585092994046);
+        Value *origOp = gutils->getNewFromOriginal(orig_ops[0]);
+        Value *mul = Builder2.CreateFMul(c, origOp);
+
+        auto rule = [&](Value *op) { return Builder2.CreateFDiv(op, mul); };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
@@ -3532,22 +3582,27 @@ public:
       case Intrinsic::nvvm_ex2_approx_d: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
+        Value *op = diffe(orig_ops[0], Builder2);
         Value *args[1] = {gutils->getNewFromOriginal(orig_ops[0])};
         SmallVector<Type *, 1> tys;
         if (ID == Intrinsic::exp || ID == Intrinsic::exp2)
           tys.push_back(orig_ops[0]->getType());
         auto ExpF = Intrinsic::getDeclaration(M, ID, tys);
-        auto cal = cast<CallInst>(Builder2.CreateCall(ExpF, args));
+        CallInst *cal = Builder2.CreateCall(ExpF, args);
         cal->setCallingConv(ExpF->getCallingConv());
         cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-        Value *dif0 = Builder2.CreateFMul(op, cal);
-        if (ID != Intrinsic::exp) {
-          dif0 = Builder2.CreateFMul(
-              dif0, ConstantFP::get(I.getType(), 0.6931471805599453));
-        }
+        Value *c = ConstantFP::get(I.getType(), 0.6931471805599453);
+
+        auto rule = [&](Value *op) {
+          Value *dif0 = Builder2.CreateFMul(op, cal);
+          if (ID != Intrinsic::exp)
+            dif0 = Builder2.CreateFMul(dif0, c);
+          return dif0;
+        };
+
+        auto dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
@@ -3581,10 +3636,14 @@ public:
           ysign = cal;
         }
 
-        Value *dif0 = Builder2.CreateFMul(Builder2.CreateFMul(xsign, ysign),
-                                          diffe(orig_ops[0], Builder2));
-        setDiffe(&I, dif0, Builder2);
+        Value *op = diffe(orig_ops[0], Builder2);
 
+        auto rule = [&](Value *op) {
+          return Builder2.CreateFMul(Builder2.CreateFMul(xsign, ysign), op);
+        };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
+        setDiffe(&I, dif0, Builder2);
         return;
       }
       case Intrinsic::powi: {
@@ -3604,14 +3663,19 @@ public:
 #endif
           };
           Function *PowF = Intrinsic::getDeclaration(M, Intrinsic::powi, tys);
-          auto cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
+          auto *cal = cast<CallInst>(Builder2.CreateCall(PowF, args));
           cal->setCallingConv(PowF->getCallingConv());
           cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-          Value *dif0 = Builder2.CreateFMul(
-              Builder2.CreateFMul(diffe(orig_ops[0], Builder2), cal),
-              Builder2.CreateSIToFP(op1, op0->getType()->getScalarType()));
+          Value *cast =
+              Builder2.CreateSIToFP(op1, op0->getType()->getScalarType());
+          Value *op = diffe(orig_ops[0], Builder2);
 
+          auto rule = [&](Value *op) {
+            return Builder2.CreateFMul(Builder2.CreateFMul(op, cal), cast);
+          };
+
+          Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
           setDiffe(&I, dif0, Builder2);
         }
         return;
@@ -3619,13 +3683,15 @@ public:
       case Intrinsic::pow: {
         if (gutils->isConstantInstruction(&I))
           return;
+
         Type *tys[] = {orig_ops[0]->getType()};
         Function *PowF = Intrinsic::getDeclaration(M, Intrinsic::pow, tys);
 
         Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
+        Type *op0Ty = gutils->getShadowType(orig_ops[0]->getType());
 
-        Value *res = ConstantFP::get(orig_ops[0]->getType(), 0);
+        Value *res = Constant::getNullValue(op0Ty);
 
         if (!gutils->isConstantValue(orig_ops[0])) {
           Value *args[2] = {
@@ -3634,9 +3700,15 @@ public:
           powcall1->setCallingConv(PowF->getCallingConv());
           powcall1->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
 
-          Value *dfdx = Builder2.CreateFMul(Builder2.CreateFMul(op1, powcall1),
-                                            diffe(orig_ops[0], Builder2));
-          res = Builder2.CreateFAdd(res, dfdx);
+          Value *mul = Builder2.CreateFMul(op1, powcall1);
+          Value *op = diffe(orig_ops[0], Builder2);
+
+          auto rule = [&](Value *op, Value *res) {
+            Value *dfdx = Builder2.CreateFMul(mul, op);
+            return Builder2.CreateFAdd(res, dfdx);
+          };
+
+          res = applyChainRule(I.getType(), Builder2, rule, op, res);
         }
         if (!gutils->isConstantValue(orig_ops[1])) {
           CallInst *powcall =
@@ -3647,38 +3719,49 @@ public:
           CallInst *logcall = Builder2.CreateCall(
               Intrinsic::getDeclaration(M, Intrinsic::log, tys), {op0});
 
-          Value *dfdy =
-              Builder2.CreateFMul(Builder2.CreateFMul(powcall, logcall),
-                                  diffe(orig_ops[1], Builder2));
-          res = Builder2.CreateFAdd(res, dfdy);
-        }
-        setDiffe(&I, res, Builder2);
+          Value *mul = Builder2.CreateFMul(powcall, logcall);
+          Value *op = diffe(orig_ops[1], Builder2);
 
+          auto rule = [&](Value *op, Value *res) {
+            Value *dfdy = Builder2.CreateFMul(mul, op);
+            return Builder2.CreateFAdd(res, dfdy);
+          };
+
+          res = applyChainRule(I.getType(), Builder2, rule, op, res);
+        }
+
+        setDiffe(&I, res, Builder2);
         return;
       }
       case Intrinsic::sin: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
-
         Value *args[] = {gutils->getNewFromOriginal(orig_ops[0])};
         Type *tys[] = {orig_ops[0]->getType()};
-        CallInst *cal = cast<CallInst>(Builder2.CreateCall(
-            Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args));
-        Value *dif0 = Builder2.CreateFMul(op, cal);
+        Value *cal = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::cos, tys), args);
+        Value *op = diffe(orig_ops[0], Builder2);
+
+        auto rule = [&](Value *op) { return Builder2.CreateFMul(op, cal); };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
       case Intrinsic::cos: {
         if (gutils->isConstantInstruction(&I))
           return;
-        Value *op = diffe(orig_ops[0], Builder2);
 
         Value *args[] = {gutils->getNewFromOriginal(orig_ops[0])};
         Type *tys[] = {orig_ops[0]->getType()};
-        CallInst *cal = cast<CallInst>(Builder2.CreateCall(
-            Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args));
-        Value *dif0 = Builder2.CreateFMul(op, Builder2.CreateFNeg(cal));
+        Value *cal = Builder2.CreateCall(
+            Intrinsic::getDeclaration(M, Intrinsic::sin, tys), args);
+        cal = Builder2.CreateFNeg(cal);
+        Value *op = diffe(orig_ops[0], Builder2);
+
+        auto rule = [&](Value *op) { return Builder2.CreateFMul(op, cal); };
+
+        Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
         setDiffe(&I, dif0, Builder2);
         return;
       }
