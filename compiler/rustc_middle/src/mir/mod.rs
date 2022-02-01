@@ -1642,7 +1642,7 @@ pub enum FakeReadCause {
     ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
-    /// in a match guard to ensure that it's value hasn't change by the time
+    /// in a match guard to ensure that its value hasn't change by the time
     /// we create the OutsideGuard version.
     ForGuardBinding,
 
@@ -2939,7 +2939,7 @@ impl Location {
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
-            // If we haven't visited this block before, then make sure we visit it's predecessors.
+            // If we haven't visited this block before, then make sure we visit its predecessors.
             if visited.insert(block) {
                 queue.extend(predecessors[block].iter().cloned());
             } else {
