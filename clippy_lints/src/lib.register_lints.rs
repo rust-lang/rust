@@ -109,6 +109,7 @@ store.register_lints(&[
     doc::MISSING_PANICS_DOC,
     doc::MISSING_SAFETY_DOC,
     doc::NEEDLESS_DOCTEST_MAIN,
+    doc_link_with_quotes::DOC_LINK_WITH_QUOTES,
     double_comparison::DOUBLE_COMPARISONS,
     double_parens::DOUBLE_PARENS,
     drop_forget_ref::DROP_COPY,

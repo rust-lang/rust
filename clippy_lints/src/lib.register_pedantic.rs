@@ -28,6 +28,7 @@ store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
     LintId::of(doc::DOC_MARKDOWN),
     LintId::of(doc::MISSING_ERRORS_DOC),
     LintId::of(doc::MISSING_PANICS_DOC),
+    LintId::of(doc_link_with_quotes::DOC_LINK_WITH_QUOTES),
     LintId::of(empty_enum::EMPTY_ENUM),
     LintId::of(enum_variants::MODULE_NAME_REPETITIONS),
     LintId::of(eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS),
