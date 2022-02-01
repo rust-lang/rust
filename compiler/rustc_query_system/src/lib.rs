@@ -5,6 +5,7 @@
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(extern_types)]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;
