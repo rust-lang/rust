@@ -1700,6 +1700,19 @@ impl<'a> Parser<'a> {
             s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
         }
 
+        // Try to lowercase the prefix if it's a valid base prefix.
+        fn fix_base_capitalisation(s: &str) -> Option<String> {
+            if let Some(stripped) = s.strip_prefix("B") {
+                Some(format!("0b{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix("O") {
+                Some(format!("0o{stripped}"))
+            } else if let Some(stripped) = s.strip_prefix("X") {
+                Some(format!("0x{stripped}"))
+            } else {
+                None
+            }
+        }
+
         let token::Lit { kind, suffix, .. } = lit;
         match err {
             // `NotLiteral` is not an error by itself, so we don't report
@@ -1723,6 +1736,18 @@ impl<'a> Parser<'a> {
                     let msg = format!("invalid width `{}` for integer literal", &suf[1..]);
                     self.struct_span_err(span, &msg)
                         .help("valid widths are 8, 16, 32, 64 and 128")
+                        .emit();
+                } else if let Some(fixed) = fix_base_capitalisation(suf) {
+                    let msg = "invalid base prefix for number literal";
+
+                    self.struct_span_err(span, &msg)
+                        .note("base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase")
+                        .span_suggestion(
+                            span,
+                            "try making the prefix lowercase",
+                            fixed,
+                            Applicability::MaybeIncorrect,
+                        )
                         .emit();
                 } else {
                     let msg = format!("invalid suffix `{}` for number literal", suf);
