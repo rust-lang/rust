@@ -649,7 +649,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                     },
                     _ => {
                         skip_count += 1;
-                        results[arg.idx].skip = true;
+                        results[i].skip = true;
                         None
                     },
                 }
