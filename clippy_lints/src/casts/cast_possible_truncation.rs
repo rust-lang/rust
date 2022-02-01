@@ -2,12 +2,14 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::expr_or_init;
 use clippy_utils::ty::is_isize_or_usize;
+use rustc_ast::ast;
+use rustc_attr::IntType;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_middle::ty::{self, FloatTy, Ty, VariantDiscr};
 
-use super::{utils, CAST_POSSIBLE_TRUNCATION};
+use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
 fn constant_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
     if let Some((Constant::Int(c), _)) = constant(cx, cx.typeck_results(), expr) {
@@ -110,27 +112,54 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         },
 
         (ty::Adt(def, _), true) if def.is_enum() => {
-            if let ExprKind::Path(p) = &cast_expr.kind
-                && let Res::Def(DefKind::Ctor(..), _) = cx.qpath_res(p, cast_expr.hir_id)
+            let (from_nbits, variant) = if let ExprKind::Path(p) = &cast_expr.kind
+                && let Res::Def(DefKind::Ctor(..), id) = cx.qpath_res(p, cast_expr.hir_id)
             {
-                return
-            }
-
-            let from_nbits = utils::enum_ty_to_nbits(def, cx.tcx);
+                let i = def.variant_index_with_ctor_id(id);
+                let variant = &def.variants[i];
+                let nbits: u64 = match variant.discr {
+                    VariantDiscr::Explicit(id) => utils::read_explicit_enum_value(cx.tcx, id).unwrap().nbits(),
+                    VariantDiscr::Relative(x) => {
+                        match def.variants[(i.as_usize() - x as usize).into()].discr {
+                            VariantDiscr::Explicit(id) => {
+                                utils::read_explicit_enum_value(cx.tcx, id).unwrap().add(x).nbits()
+                            }
+                            VariantDiscr::Relative(_) => (32 - x.leading_zeros()).into(),
+                        }
+                    }
+                };
+                (nbits, Some(variant))
+            } else {
+                (utils::enum_ty_to_nbits(def, cx.tcx), None)
+            };
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
-            let suffix = if is_isize_or_usize(cast_to) {
-                if from_nbits > 32 {
-                    " on targets with 32-bit wide pointers"
-                } else {
-                    return;
-                }
-            } else if to_nbits < from_nbits {
-                ""
-            } else {
-                return;
+            let cast_from_ptr_size = def.repr.int.map_or(true, |ty| {
+                matches!(
+                    ty,
+                    IntType::SignedInt(ast::IntTy::Isize) | IntType::UnsignedInt(ast::UintTy::Usize)
+                )
+            });
+            let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
+                (false, false) if from_nbits > to_nbits => "",
+                (true, false) if from_nbits > to_nbits => "",
+                (false, true) if from_nbits > 64 => "",
+                (false, true) if from_nbits > 32 => " on targets with 32-bit wide pointers",
+                _ => return,
             };
 
+            if let Some(variant) = variant {
+                span_lint(
+                    cx,
+                    CAST_ENUM_TRUNCATION,
+                    expr.span,
+                    &format!(
+                        "casting `{}::{}` to `{}` will truncate the value{}",
+                        cast_from, variant.name, cast_to, suffix,
+                    ),
+                );
+                return;
+            }
             format!(
                 "casting `{}` to `{}` may truncate the value{}",
                 cast_from, cast_to, suffix,

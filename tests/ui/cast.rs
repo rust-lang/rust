@@ -139,7 +139,9 @@ fn main() {
     impl E2 {
         fn test(self) {
             let _ = self as u8;
+            let _ = Self::B as u8;
             let _ = self as i16; // Don't lint. `255..=256` fits in i16
+            let _ = Self::A as u8; // Don't lint.
         }
     }
 
@@ -174,7 +176,9 @@ fn main() {
     impl E5 {
         fn test(self) {
             let _ = self as i8;
+            let _ = Self::A as i8;
             let _ = self as i16; // Don't lint. `-129..=127` fits in i16
+            let _ = Self::B as u8; // Don't lint.
         }
     }
 
@@ -189,6 +193,7 @@ fn main() {
             let _ = self as i16;
             let _ = Self::A as u16; // Don't lint. `2^16-1` fits in u16
             let _ = self as u32; // Don't lint. `2^16-1..=2^16` fits in u32
+            let _ = Self::A as u16; // Don't lint.
         }
     }
 
@@ -201,6 +206,7 @@ fn main() {
     impl E7 {
         fn test(self) {
             let _ = self as usize;
+            let _ = Self::A as usize; // Don't lint.
             let _ = self as u64; // Don't lint. `2^32-1..=2^32` fits in u64
         }
     }
@@ -227,7 +233,22 @@ fn main() {
     }
     impl E9 {
         fn test(self) {
+            let _ = Self::A as u8; // Don't lint.
             let _ = self as u128; // Don't lint. `0..=2^128-1` fits in u128
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(usize)]
+    enum E10 {
+        A,
+        B = u32::MAX as usize,
+    }
+    impl E10 {
+        fn test(self) {
+            let _ = self as u16;
+            let _ = Self::B as u32; // Don't lint.
+            let _ = self as u64; // Don't lint.
         }
     }
 }
