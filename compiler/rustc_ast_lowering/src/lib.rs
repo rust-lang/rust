@@ -42,7 +42,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -65,7 +65,8 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::SmallVec;
-use std::collections::hash_map::Entry;
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 use tracing::{debug, trace};
 
 macro_rules! arena_vec {
@@ -155,7 +156,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     item_local_id_counter: hir::ItemLocalId,
 
     /// NodeIds that are lowered inside the current HIR owner.
-    node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
+    node_id_to_local_id: BTreeMap<NodeId, hir::ItemLocalId>,
 
     allow_try_trait: Option<Lrc<[Symbol]>>,
     allow_gen_future: Option<Lrc<[Symbol]>>,
@@ -309,7 +310,7 @@ pub fn lower_crate<'a, 'hir>(
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
         current_hir_id_owner: CRATE_DEF_ID,
         item_local_id_counter: hir::ItemLocalId::new(0),
-        node_id_to_local_id: FxHashMap::default(),
+        node_id_to_local_id: BTreeMap::new(),
         generator_kind: None,
         task_context: None,
         current_item: None,
@@ -553,6 +554,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         assert_ne!(ast_node_id, DUMMY_NODE_ID);
+
+        // let owner = self.current_hir_id_owner;
+        // let local_id = match self.node_id_to_local_id.get(&ast_node_id) {
+        //     Some(item_local_id) => *item_local_id,
+        //     None => {
+        //         // Generate a new `HirId`.
+        //         let local_id = self.item_local_id_counter;
+        //         self.item_local_id_counter.increment_by(1);
+        //         self.node_id_to_local_id.insert(ast_node_id, local_id);
+        //         local_id
+        //     }
+        // };
+        // hir::HirId { owner, local_id }
 
         let owner = self.current_hir_id_owner;
         let local_id = match self.node_id_to_local_id.entry(ast_node_id) {
