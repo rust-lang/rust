@@ -14,7 +14,8 @@ use rustc_session::{config::OptLevel, DataTypeKind, FieldInfo, SizeKind, Variant
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::call::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, HomogeneousAggregate, PassMode,
+    Reg, RegKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
@@ -3369,10 +3370,27 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
 
                         if arg.layout.is_unsized() || size > max_by_val_size {
                             arg.make_indirect();
+                        } else if let Ok(HomogeneousAggregate::Homogeneous(Reg {
+                            kind: RegKind::Float,
+                            ..
+                        })) = arg.layout.homogeneous_aggregate(self)
+                        {
+                            // We don't want to aggregate floats as an aggregates of Integer
+                            // because this will hurt the generated assembly (#93490)
+                            //
+                            // As an optimization we want to pass homogeneous aggregate of floats
+                            // greater than pointer size as indirect
+                            if size > Pointer.size(self) {
+                                arg.make_indirect();
+                            }
                         } else {
                             // We want to pass small aggregates as immediates, but using
                             // a LLVM aggregate type for this leads to bad optimizations,
                             // so we pick an appropriately sized integer type instead.
+                            //
+                            // NOTE: This is sub-optimal because in the case of (f32, f32, u32, u32)
+                            // we could do ([f32; 2], u64) which is better but this is the best we
+                            // can do right now.
                             arg.cast_to(Reg { kind: RegKind::Integer, size });
                         }
                     }
@@ -3403,7 +3421,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                         arg.make_indirect();
                     }
 
-                    _ => {},
+                    _ => {}
                 }
             };
             fixup(&mut fn_abi.ret);
