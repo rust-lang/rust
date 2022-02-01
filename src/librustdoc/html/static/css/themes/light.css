@@ -15,10 +15,6 @@ h2, h3, h4 {
 	border-bottom-color: #DDDDDD;
 }
 
-.in-band {
-	background-color: white;
-}
-
 .invisible {
 	background: rgba(0, 0, 0, 0);
 }

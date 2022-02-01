@@ -13,10 +13,6 @@ h2, h3, h4 {
 	border-bottom-color: #d2d2d2;
 }
 
-.in-band {
-	background-color: #353535;
-}
-
 .invisible {
 	background: rgba(0, 0, 0, 0);
 }
