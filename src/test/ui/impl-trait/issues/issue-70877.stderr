@@ -1,16 +1,19 @@
 error[E0271]: type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
   --> $DIR/issue-70877.rs:7:12
    |
+LL | type FooRet = impl std::fmt::Debug;
+   |               -------------------- the found opaque type
+...
 LL | type Foo = impl Iterator<Item = FooItem>;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
    |
-note: expected enum `Option`, found opaque type
+note: expected this to be `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
   --> $DIR/issue-70877.rs:13:17
    |
 LL |     type Item = FooItem;
    |                 ^^^^^^^
-   = note: expected type `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
-              found type `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`
+   = note: expected struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
+              found struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`
 
 error: aborting due to previous error
 

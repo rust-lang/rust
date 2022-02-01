@@ -161,40 +161,26 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // We've encountered an `AnonConst` in some path, so we need to
             // figure out which generic parameter it corresponds to and return
             // the relevant type.
-            let filtered = path
-                .segments
-                .iter()
-                .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
-                .find_map(|(args, seg)| {
-                    args.iter()
-                        .filter(|arg| arg.is_ty_or_const())
-                        .position(|arg| arg.id() == hir_id)
-                        .map(|index| (index, seg))
-                });
-            // FIXME(associated_const_equality): recursively search through the bindings instead
-            // of just top level.
+            let filtered = path.segments.iter().find_map(|seg| {
+                seg.args?
+                    .args
+                    .iter()
+                    .filter(|arg| arg.is_ty_or_const())
+                    .position(|arg| arg.id() == hir_id)
+                    .map(|index| (index, seg))
+            });
 
+            // FIXME(associated_const_generics): can we blend this with iteration above?
             let (arg_index, segment) = match filtered {
                 None => {
-                    let binding_filtered = path
-                        .segments
-                        .iter()
-                        .filter_map(|seg| seg.args.map(|args| (args.bindings, seg)))
-                        .find_map(|(bindings, seg)| {
-                            bindings
-                                .iter()
-                                .filter_map(|binding| {
-                                    if let hir::TypeBindingKind::Equality { term: Term::Const(c) } =
-                                        binding.kind
-                                    {
-                                        Some(c)
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .position(|ct| ct.hir_id == hir_id)
-                                .map(|idx| (idx, seg))
-                        });
+                    let binding_filtered = path.segments.iter().find_map(|seg| {
+                        seg.args?
+                            .bindings
+                            .iter()
+                            .filter_map(TypeBinding::opt_const)
+                            .position(|ct| ct.hir_id == hir_id)
+                            .map(|idx| (idx, seg))
+                    });
                     match binding_filtered {
                         Some(inner) => inner,
                         None => {
@@ -518,20 +504,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                   path
                       .segments
                       .iter()
-                      .filter_map(|seg| seg.args.map(|args| (args.bindings, seg)))
-                      .find_map(|(bindings, seg)| {
-                          bindings
+                      .find_map(|seg| {
+                          seg.args?.bindings
                               .iter()
-                              .filter_map(|binding| {
-                                  if let hir::TypeBindingKind::Equality { term: Term::Const(c) } =
-                                      binding.kind
-                                  {
-                                          Some((binding, c))
-                                  } else {
-                                      None
-                                  }
-                              })
-                              .find_map(|(binding, ct)| if ct.hir_id == hir_id {
+                              .find_map(|binding| if binding.opt_const()?.hir_id == hir_id {
                                 Some((binding, seg))
                               } else {
                                 None

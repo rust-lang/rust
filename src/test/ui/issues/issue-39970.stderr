@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `for<'a> <() as Array<'a>>::Element == ()`
    |
-note: expected `()`, found `&()`
+note: expected this to be `()`
   --> $DIR/issue-39970.rs:10:20
    |
 LL |     type Element = &'a ();

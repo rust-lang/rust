@@ -8,8 +8,8 @@ LL | |         panic!("Can't connect to server.");
 LL | |     }) as Box<dyn FnMut()>);
    | |______^ expected `()`, found `!`
    |
-   = note: expected type `()`
-              found type `!`
+   = note: expected unit type `()`
+                   found type `!`
    = note: required for the cast to the object type `dyn FnMut()`
 
 error: aborting due to previous error

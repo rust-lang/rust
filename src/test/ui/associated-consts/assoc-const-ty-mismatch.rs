@@ -21,9 +21,9 @@ impl FooTy for Bar {
 
 
 fn foo<F: Foo<N=usize>>() {}
-//~^ ERROR type/const mismatch
+//~^ ERROR mismatch in
 fn foo2<F: FooTy<T=3usize>>() {}
-//~^ ERROR type/const mismatch
+//~^ ERROR mismatch in
 
 fn main() {
   foo::<Bar>();

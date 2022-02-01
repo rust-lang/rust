@@ -2127,7 +2127,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Types(exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Consts(exp_found) => self.expected_found_str(exp_found),
-            infer::Terms(exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),

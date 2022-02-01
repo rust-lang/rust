@@ -199,61 +199,30 @@ fn project_and_unify_type<'cx, 'tcx>(
     let mut obligations = vec![];
 
     let infcx = selcx.infcx();
-    match obligation.predicate.term {
-        ty::Term::Ty(obligation_pred_ty) => {
-            let normalized_ty = match opt_normalize_projection_type(
-                selcx,
-                obligation.param_env,
-                obligation.predicate.projection_ty,
-                obligation.cause.clone(),
-                obligation.recursion_depth,
-                &mut obligations,
-            ) {
-                Ok(Some(n)) => n.ty().unwrap(),
-                Ok(None) => return Ok(Ok(None)),
-                Err(InProgress) => return Ok(Err(InProgress)),
-            };
-            debug!(?normalized_ty, ?obligations, "project_and_unify_type result");
-            match infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(normalized_ty, obligation_pred_ty)
-            {
-                Ok(InferOk { obligations: inferred_obligations, value: () }) => {
-                    obligations.extend(inferred_obligations);
-                    Ok(Ok(Some(obligations)))
-                }
-                Err(err) => {
-                    debug!("project_and_unify_type: equating types encountered error {:?}", err);
-                    Err(MismatchedProjectionTypes { err })
-                }
-            }
+    let normalized = match opt_normalize_projection_type(
+        selcx,
+        obligation.param_env,
+        obligation.predicate.projection_ty,
+        obligation.cause.clone(),
+        obligation.recursion_depth,
+        &mut obligations,
+    ) {
+        Ok(Some(n)) => n,
+        Ok(None) => return Ok(Ok(None)),
+        Err(InProgress) => return Ok(Err(InProgress)),
+    };
+    debug!(?normalized, ?obligations, "project_and_unify_type result");
+    match infcx
+        .at(&obligation.cause, obligation.param_env)
+        .eq(normalized, obligation.predicate.term)
+    {
+        Ok(InferOk { obligations: inferred_obligations, value: () }) => {
+            obligations.extend(inferred_obligations);
+            Ok(Ok(Some(obligations)))
         }
-        ty::Term::Const(obligation_pred_const) => {
-            let normalized_const = match opt_normalize_projection_type(
-                selcx,
-                obligation.param_env,
-                obligation.predicate.projection_ty,
-                obligation.cause.clone(),
-                obligation.recursion_depth,
-                &mut obligations,
-            ) {
-                Ok(Some(n)) => n.ct().unwrap(),
-                Ok(None) => return Ok(Ok(None)),
-                Err(InProgress) => return Ok(Err(InProgress)),
-            };
-            match infcx
-                .at(&obligation.cause, obligation.param_env)
-                .eq(normalized_const, obligation_pred_const)
-            {
-                Ok(InferOk { obligations: inferred_obligations, value: () }) => {
-                    obligations.extend(inferred_obligations);
-                    Ok(Ok(Some(obligations)))
-                }
-                Err(err) => {
-                    debug!("project_and_unify_type: equating consts encountered error {:?}", err);
-                    Err(MismatchedProjectionTypes { err })
-                }
-            }
+        Err(err) => {
+            debug!("project_and_unify_type: equating types encountered error {:?}", err);
+            Err(MismatchedProjectionTypes { err })
         }
     }
 }
@@ -934,6 +903,8 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
             // created (and hence the new ones will quickly be
             // discarded as duplicated). But when doing trait
             // evaluation this is not the case, and dropping the trait
+            // evaluations can causes ICEs (e.g., #43132).
+            debug!(?ty, "found normalized ty");
             obligations.extend(ty.obligations);
             return Ok(Some(ty.value));
         }
@@ -1127,6 +1098,8 @@ fn project<'cx, 'tcx>(
             Ok(Projected::Progress(confirm_candidate(selcx, obligation, candidate)))
         }
         ProjectionCandidateSet::None => Ok(Projected::NoProgress(
+            // FIXME(associated_const_generics): this may need to change in the future?
+            // need to investigate whether or not this is fine.
             selcx
                 .tcx()
                 .mk_projection(obligation.predicate.item_def_id, obligation.predicate.substs)

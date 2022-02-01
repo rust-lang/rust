@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<i32 as Is>::T == i64`
 LL |     is_obj(x)
    |     ^^^^^^ type mismatch resolving `<i32 as Is>::T == i64`
    |
-note: expected `i64`, found `i32`
+note: expected this to be `i64`
   --> $DIR/check-trait-object-bounds-5.rs:9:14
    |
 LL |     type T = U;

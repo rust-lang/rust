@@ -4,7 +4,7 @@ error[E0271]: type mismatch resolving `<() as Array>::Element == &()`
 LL |     <() as Visit>::visit();
    |     ^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Array>::Element == &()`
    |
-note: expected `&()`, found `()`
+note: expected this to be `&()`
   --> $DIR/issue-44153.rs:10:20
    |
 LL |     type Element = ();
