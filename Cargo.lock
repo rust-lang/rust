@@ -2894,6 +2894,7 @@ dependencies = [
 name = "proc_macro"
 version = "0.0.0"
 dependencies = [
+ "core",
  "std",
 ]
 
