@@ -16,7 +16,7 @@ use std::fmt;
 /// Monomorphization happens on-the-fly and no monomorphized MIR is ever created. Instead, this type
 /// simply couples a potentially generic `InstanceDef` with some substs, and codegen and const eval
 /// will do all required substitution as they run.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Ord, PartialOrd, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, Lift)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,

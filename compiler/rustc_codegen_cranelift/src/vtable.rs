@@ -68,7 +68,7 @@ pub(crate) fn get_vtable<'tcx>(
     ty: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
 ) -> Value {
-    let alloc = fx.tcx.vtable_allocation((ty, trait_ref));
+    let alloc = fx.tcx.vtable_allocation((ty, trait_ref)).0;
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
     let data_id =
         data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, Mutability::Not);

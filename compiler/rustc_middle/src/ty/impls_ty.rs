@@ -2,13 +2,14 @@
 //! from `rustc_middle::ty` in no particular order.
 
 use crate::middle::region;
-use crate::mir;
 use crate::ty;
+
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_query_system::ich::StableHashingContext;
+
 use std::cell::RefCell;
 use std::mem;
 
@@ -129,30 +130,6 @@ where
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         self.as_ref().skip_binder().hash_stable(hcx, hasher);
         self.bound_vars().hash_stable(hcx, hasher);
-    }
-}
-
-// AllocIds get resolved to whatever they point to (to be stable)
-impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ty::tls::with_opt(|tcx| {
-            trace!("hashing {:?}", *self);
-            let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            tcx.get_global_alloc(*self).hash_stable(hcx, hasher);
-        });
-    }
-}
-
-// `Relocations` with default type parameters is a sorted map.
-impl<'a, Tag> HashStable<StableHashingContext<'a>> for mir::interpret::Relocations<Tag>
-where
-    Tag: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.len().hash_stable(hcx, hasher);
-        for reloc in self.iter() {
-            reloc.hash_stable(hcx, hasher);
-        }
     }
 }
 

@@ -223,6 +223,12 @@ impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
     }
 }
 
+impl<CTX> HashStable<CTX> for ::std::num::NonZeroU64 {
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.get().hash_stable(ctx, hasher)
+    }
+}
+
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)

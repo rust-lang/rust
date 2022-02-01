@@ -30,7 +30,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ensure_monomorphic_enough(*self.tcx, ty)?;
         ensure_monomorphic_enough(*self.tcx, poly_trait_ref)?;
 
-        let vtable_allocation = self.tcx.vtable_allocation((ty, poly_trait_ref));
+        let vtable_allocation = self.tcx.vtable_allocation((ty, poly_trait_ref)).0;
         let vtable_allocation_id = self.tcx.create_memory_alloc(vtable_allocation);
         let vtable_ptr = self.memory.global_base_pointer(Pointer::from(vtable_allocation_id))?;
 

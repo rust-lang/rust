@@ -72,7 +72,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
         return val;
     }
 
-    let vtable_allocation = tcx.vtable_allocation((ty, trait_ref));
+    let vtable_allocation = tcx.vtable_allocation((ty, trait_ref)).0;
     let vtable_const = cx.const_data_from_alloc(vtable_allocation);
     let align = cx.data_layout().pointer_align.abi;
     let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));

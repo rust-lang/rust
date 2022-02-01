@@ -15,7 +15,7 @@ use super::{
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
-#[derive(Copy, Clone, HashStable, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, TyEncodable, TyDecodable, Debug)]
 pub struct ConstAlloc<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -25,8 +25,7 @@ pub struct ConstAlloc<'tcx> {
 
 /// Represents a constant value in Rust. `Scalar` and `Slice` are optimizations for
 /// array length computations, enum discriminants and the pattern matching logic.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-#[derive(HashStable)]
+#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///

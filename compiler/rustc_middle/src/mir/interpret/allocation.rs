@@ -24,18 +24,17 @@ use crate::ty;
 /// type to account for the lack of an AllocId on this level. The Miri/CTFE core engine `memory`
 /// module provides higher-level access.
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Box<[u8]>,
+    pub(super) bytes: Box<[u8]>,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
     /// at the given offset.
-    relocations: Relocations<Tag>,
+    pub(super) relocations: Relocations<Tag>,
     /// Denotes which part of this allocation is initialized.
-    init_mask: InitMask,
+    pub(super) init_mask: InitMask,
     /// The alignment of the allocation to detect unaligned reads.
     /// (`Align` guarantees that this is a power of two.)
     pub align: Align,
@@ -46,6 +45,12 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// Extra state for the machine.
     pub extra: Extra,
 }
+
+/// This type wraps an Allocation, but hashes its contents (specifically its relocations)
+/// according to the contents of the AllocId that the relocation points to. This is important
+/// for HashStable and Eq to be stable and compatible.
+#[derive(Copy, Clone, Debug)]
+pub struct AllocationModuloRelocations<'tcx>(pub &'tcx Allocation);
 
 /// We have our own error type that does not know about the `AllocId`; that information
 /// is added when converting to `InterpError`.

@@ -93,6 +93,7 @@ mod allocation;
 mod error;
 mod pointer;
 mod queries;
+mod structural_impls;
 mod value;
 
 use std::convert::TryFrom;
@@ -126,7 +127,8 @@ pub use self::error::{
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
 
 pub use self::allocation::{
-    alloc_range, AllocRange, Allocation, InitChunk, InitChunkIter, InitMask, Relocations,
+    alloc_range, AllocRange, Allocation, AllocationModuloRelocations, InitChunk, InitChunkIter,
+    InitMask, Relocations,
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
@@ -379,7 +381,7 @@ impl<'s> AllocDecodingSession<'s> {
 
 /// An allocation in the global (tcx-managed) memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(Debug, Clone, TyDecodable, TyEncodable)]
 pub enum GlobalAlloc<'tcx> {
     /// The alloc ID is used as a function pointer.
     Function(Instance<'tcx>),
