@@ -4600,35 +4600,4 @@ fn $0fun_name() {
 "#,
         );
     }
-
-    #[test]
-    fn extract_function_long_form_comment_multiline() {
-        check_assist(
-            extract_function,
-            r#"
-fn func() {
-    let i = 0;
-    $0/*
-    a
-    comment
-    */
-    let x = 0;$0
-}
-"#,
-            r#"
-fn func() {
-    let i = 0;
-    fun_name();
-}
-
-fn $0fun_name() {
-    /*
-    a
-    comment
-    */
-    let x = 0;
-}
-"#,
-        );
-    }
 }
