@@ -76,6 +76,9 @@ impl CheckAttrVisitor<'_> {
                 sym::inline => self.check_inline(hir_id, attr, span, target),
                 sym::non_exhaustive => self.check_non_exhaustive(hir_id, attr, span, target),
                 sym::marker => self.check_marker(hir_id, attr, span, target),
+                sym::rustc_must_implement_one_of => {
+                    self.check_rustc_must_implement_one_of(attr, span, target)
+                }
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, &attr.span, attrs, span, target)
@@ -466,6 +469,26 @@ impl CheckAttrVisitor<'_> {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "marker");
                 true
             }
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute can only be applied to a trait")
+                    .span_label(*span, "not a trait")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    /// Checks if the `#[rustc_must_implement_one_of]` attribute on a `target` is valid. Returns `true` if valid.
+    fn check_rustc_must_implement_one_of(
+        &self,
+        attr: &Attribute,
+        span: &Span,
+        target: Target,
+    ) -> bool {
+        match target {
+            Target::Trait => true,
             _ => {
                 self.tcx
                     .sess
