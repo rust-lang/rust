@@ -1,8 +1,8 @@
 // Integration tests for cargo-fmt.
 
 use std::env;
-use std::process::Command;
 use std::path::Path;
+use std::process::Command;
 
 /// Run the cargo-fmt executable and return its output.
 fn cargo_fmt(args: &[&str]) -> (String, String) {
