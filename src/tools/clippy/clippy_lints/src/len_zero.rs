@@ -10,7 +10,7 @@ use rustc_hir::{
     ItemKind, Mutability, Node, TraitItemRef, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, AssocKind, FnSig, Ty, TyS};
+use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{
     source_map::{Span, Spanned, Symbol},
@@ -265,7 +265,7 @@ impl LenOutput<'_> {
             (_, &ty::Bool) => true,
             (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did => subs.type_at(0).is_bool(),
             (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did => {
-                subs.type_at(0).is_bool() && TyS::same_type(subs.type_at(1), err_ty)
+                subs.type_at(0).is_bool() && subs.type_at(1) == err_ty
             },
             _ => false,
         }

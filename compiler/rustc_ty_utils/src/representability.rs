@@ -322,7 +322,7 @@ fn is_type_structurally_recursive_inner<'tcx>(
                 // struct Foo { Option<Option<Foo>> }
 
                 for &seen_adt in iter {
-                    if ty::TyS::same_type(ty, seen_adt) {
+                    if ty == seen_adt {
                         debug!("ContainsRecursive: {:?} contains {:?}", seen_adt, ty);
                         return Representability::ContainsRecursive;
                     }
