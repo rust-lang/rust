@@ -375,43 +375,21 @@ fn idempotence_tests() {
     });
 }
 
-// Run rustfmt on itself. This operation must be idempotent. We also check that
-// no warnings are emitted.
-// Issue-3443: these tests require nightly
 #[nightly_only_test]
 #[test]
 fn self_tests() {
-    init_log();
-    let mut files = get_test_files(Path::new("tests"), false);
-    let bin_directories = vec!["cargo-fmt", "git-rustfmt", "bin", "format-diff"];
-    for dir in bin_directories {
-        let mut path = PathBuf::from("src");
-        path.push(dir);
-        path.push("main.rs");
-        files.push(path);
-    }
-    files.push(PathBuf::from("src/lib.rs"));
-
-    let (reports, count, fails) = check_files(files, &Some(PathBuf::from("rustfmt.toml")));
-    let mut warnings = 0;
-
-    // Display results.
-    println!("Ran {} self tests.", count);
-    assert_eq!(fails, 0, "{} self tests failed", fails);
-
-    for format_report in reports {
-        println!(
-            "{}",
-            FormatReportFormatterBuilder::new(&format_report).build()
-        );
-        warnings += format_report.warning_count();
-    }
-
-    assert_eq!(
-        warnings, 0,
-        "Rustfmt's code generated {} warnings",
-        warnings
-    );
+    let get_exe_path = |name| {
+        let mut path = env::current_exe().unwrap();
+        path.pop();
+        path.set_file_name(format!("{name}{}", env::consts::EXE_SUFFIX));
+        path
+    };
+    let status = Command::new(get_exe_path("cargo-fmt"))
+        .args(["--check", "--all"])
+        .env("RUSTFMT", get_exe_path("rustfmt"))
+        .status()
+        .unwrap();
+    assert!(status.success());
 }
 
 #[test]
