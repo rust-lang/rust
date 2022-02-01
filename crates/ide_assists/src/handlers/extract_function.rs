@@ -1459,12 +1459,9 @@ fn make_body(
                 .collect();
 
             let mut tail_expr = match &elements.last() {
-                Some(element) => match element {
-                    syntax::NodeOrToken::Node(node) if ast::Expr::can_cast(node.kind()) => {
-                        ast::Expr::cast(node.clone())
-                    }
-                    _ => None,
-                },
+                Some(syntax::NodeOrToken::Node(node)) if ast::Expr::can_cast(node.kind()) => {
+                    ast::Expr::cast(node.clone())
+                }
                 _ => None,
             };
 
