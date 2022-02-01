@@ -300,6 +300,7 @@
 #![feature(thin_box)]
 #![feature(toowned_clone_into)]
 #![feature(try_reserve_kind)]
+#![feature(try_trait_v2)]
 #![feature(vec_into_raw_parts)]
 //
 // Library features (unwind):

@@ -112,10 +112,12 @@ use crate::fmt;
 use crate::fs;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::num::NonZeroI32;
+use crate::ops::{ControlFlow, FromResidual, Try};
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
 use crate::sys::process as imp;
+
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -1542,6 +1544,29 @@ impl fmt::Display for ExitStatus {
     }
 }
 
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl Try for ExitStatus {
+    type Output = ();
+    type Residual = Result<Infallible, ExitStatusError>;
+
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+        self.0.try_branch()
+    }
+
+    fn from_output((): ()) -> Self {
+        Self(imp::ExitStatus::zero_status())
+    }
+}
+
+#[unstable(feature = "exit_status_error", issue = "84908")]
+impl FromResidual<Result<Infallible, ExitStatusError>> for ExitStatus {
+    fn from_residual(residual: Result<Infallible, ExitStatusError>) -> Self {
+        match residual {
+            Err(exit_status_error) => exit_status_error.into(),
+        }
+    }
+}
+
 /// Allows extension traits within `std`.
 #[unstable(feature = "sealed", issue = "none")]
 impl crate::sealed::Sealed for ExitStatusError {}
@@ -1574,6 +1599,9 @@ pub struct ExitStatusError(imp::ExitStatusError);
 
 #[unstable(feature = "exit_status_error", issue = "84908")]
 impl ExitStatusError {
+    pub(crate) fn new(exit_status_error: imp::ExitStatusError) -> Self {
+        ExitStatusError(exit_status_error)
+    }
     /// Reports the exit code, if applicable, from an `ExitStatusError`.
     ///
     /// In Unix terms the return value is the **exit status**: the value passed to `exit`, if the

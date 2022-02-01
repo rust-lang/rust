@@ -1,7 +1,9 @@
+use crate::convert::Infallible;
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
+use crate::ops::ControlFlow;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
@@ -647,6 +649,12 @@ impl ExitStatus {
         ExitStatus(status)
     }
 
+    // Returns a new 0 status, to avoid hard coding zero
+    // in crate::process::ExitStatus.
+    pub fn zero_status() -> ExitStatus {
+        ExitStatus(0)
+    }
+
     fn exited(&self) -> bool {
         libc::WIFEXITED(self.0)
     }
@@ -660,6 +668,17 @@ impl ExitStatus {
         match NonZero_c_int::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
+        }
+    }
+
+    pub fn try_branch(
+        self,
+    ) -> ControlFlow<Result<Infallible, crate::process::ExitStatusError>, ()> {
+        match NonZero_c_int::try_from(self.0) {
+            Ok(failure) => ControlFlow::Break(Err(crate::process::ExitStatusError::new(
+                ExitStatusError(failure),
+            ))),
+            Err(_) => ControlFlow::Continue(()),
         }
     }
 
