@@ -482,8 +482,11 @@ impl FunctionBody {
         let full_body = parent.syntax().children_with_tokens();
 
         let mut text_range = full_body
-            .map(|stmt| stmt.text_range())
-            .filter(|&stmt| selected.intersect(stmt).filter(|it| !it.is_empty()).is_some())
+            .filter(|it| {
+                matches!(it.kind().is_punct() || it.kind() == SyntaxKind::WHITESPACE, false)
+            })
+            .map(|element| element.text_range())
+            .filter(|&range| selected.intersect(range).filter(|it| !it.is_empty()).is_some())
             .reduce(|acc, stmt| acc.cover(stmt));
 
         if let Some(tail_range) = parent
@@ -4121,6 +4124,27 @@ fn $0fun_name() {
     foo();
     foo();
     /**/
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_does_not_tear_body_apart() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    $0foo();
+}$0
+"#,
+            r#"
+fn foo() {
+    fun_name();
+}
+
+fn $0fun_name() {
+    foo();
 }
 "#,
         );
