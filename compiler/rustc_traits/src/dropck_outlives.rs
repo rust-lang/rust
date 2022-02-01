@@ -275,12 +275,12 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Adt(def, substs) => {
             let DtorckConstraint { dtorck_types, outlives, overflows } =
-                tcx.at(span).adt_dtorck_constraint(def.did)?.clone();
+                tcx.at(span).adt_dtorck_constraint(def.did)?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
-            constraints.outlives.extend(outlives.subst(tcx, substs));
-            constraints.overflows.extend(overflows.subst(tcx, substs));
+            constraints.dtorck_types.extend(dtorck_types.iter().map(|t| t.subst(tcx, substs)));
+            constraints.outlives.extend(outlives.iter().map(|t| t.subst(tcx, substs)));
+            constraints.overflows.extend(overflows.iter().map(|t| t.subst(tcx, substs)));
         }
 
         // Objects must be alive in order for their destructor
