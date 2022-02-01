@@ -173,8 +173,6 @@ h4.code-header {
 	border-bottom-style: none;
 	margin: 0;
 	padding: 0;
-	margin-top: 0.6em;
-	margin-bottom: 0.4em;
 }
 .impl,
 .impl-items .method,
@@ -621,7 +619,6 @@ h2.location a {
 }
 
 .method > .code-header, .trait-impl > .code-header {
-	max-width: calc(100% - 41px);
 	display: block;
 }
 
@@ -1083,20 +1080,19 @@ body.blur > :not(#help) {
 	font-size: initial;
 }
 
-.rightside {
-	padding-left: 12px;
-	padding-right: 2px;
-	position: initial;
-}
-
 .impl-items .srclink, .impl .srclink, .methods .srclink {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
 }
 
-.rightside {
-	float: right;
+.has-srclink {
+	display: flex;
+	flex-wrap: wrap;
+	font-size: 1rem;
+	margin-bottom: 0.75rem;
+	/* Push the src link out to the right edge consistently */
+	justify-content: space-between;
 }
 
 .variants_table {
@@ -1713,7 +1709,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	.rustdoc,
-	.main-heading {
+	.main-heading,
+	.has-srclink {
 		flex-direction: column;
 	}
 
@@ -1854,12 +1851,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		display: none !important;
 	}
 
-	.notable-traits {
-		position: absolute;
-		left: -22px;
-		top: 24px;
-	}
-
 	#titles > button > div.count {
 		float: left;
 		width: 100%;
@@ -1959,7 +1950,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	/* Position of the "[-]" element. */
 	details.rustdoc-toggle:not(.top-doc) > summary {
-		margin-left: 10px;
+		margin-left: 12px;
 	}
 	.impl-items > details.rustdoc-toggle > summary:not(.hideme)::before,
 	#main-content > details.rustdoc-toggle:not(.top-doc) > summary::before,

@@ -1403,7 +1403,6 @@ fn render_impl(
                         "<section id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
-                    render_rightside(w, cx, item, containing_item, render_mode);
                     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                     w.write_str("<h4 class=\"code-header\">");
                     render_assoc_item(
@@ -1415,6 +1414,7 @@ fn render_impl(
                         render_mode,
                     );
                     w.write_str("</h4>");
+                    render_rightside(w, cx, item, containing_item, render_mode);
                     w.write_str("</section>");
                 }
             }
@@ -1426,7 +1426,6 @@ fn render_impl(
                     "<section id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
-                render_rightside(w, cx, item, containing_item, render_mode);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_const(
@@ -1443,6 +1442,7 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</h4>");
+                render_rightside(w, cx, item, containing_item, render_mode);
                 w.write_str("</section>");
             }
             clean::TyAssocTypeItem(generics, bounds) => {
@@ -1698,7 +1698,6 @@ pub(crate) fn render_impl_summary(
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
     write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
-    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
     write!(w, "<h3 class=\"code-header in-band\">");
 
@@ -1726,6 +1725,9 @@ pub(crate) fn render_impl_summary(
         write!(w, "{}", i.inner_impl().print(false, cx));
     }
     write!(w, "</h3>");
+    render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
+
+    w.write_str("</section>");
 
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {
@@ -1733,8 +1735,6 @@ pub(crate) fn render_impl_summary(
             write!(w, "<span class=\"item-info\">{}</span>", portability);
         }
     }
-
-    w.write_str("</section>");
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
