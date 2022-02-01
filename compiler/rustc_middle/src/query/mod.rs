@@ -1681,6 +1681,10 @@ rustc_queries! {
         desc { "optimization level used by backend" }
     }
 
+    /// Return the filenames where output artefacts shall be stored.
+    ///
+    /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
+    /// has been destroyed.
     query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
         eval_always
         desc { "output_filenames" }
