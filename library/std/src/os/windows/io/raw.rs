@@ -6,7 +6,7 @@ use crate::fs;
 use crate::io;
 use crate::net;
 #[cfg(doc)]
-use crate::os::windows::io::{AsHandle, AsSocket, FromHandle, FromSocket, IntoHandle, IntoSocket};
+use crate::os::windows::io::{AsHandle, AsSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
 use crate::sys;
@@ -48,8 +48,9 @@ pub trait FromRawHandle {
     /// will take responsibility for closing it when the object goes out of
     /// scope.
     ///
-    /// However, consuming ownership is not strictly required. See
-    /// [`FromHandle::from_handle`] for an API which strictly consumes ownership.
+    /// However, consuming ownership is not strictly required. Use a
+    /// `From<OwnedHandle>::from` implementation for an API which strictly
+    /// consumes ownership.
     ///
     /// # Safety
     ///
@@ -79,8 +80,9 @@ pub trait IntoRawHandle {
     /// handle to the caller. When used in this way, callers are then the unique
     /// owners of the handle and must close it once it's no longer needed.
     ///
-    /// However, transferring ownership is not strictly required. See
-    /// [`IntoHandle::into_handle`] for an API which strictly transfers ownership.
+    /// However, transferring ownership is not strictly required. Use a
+    /// `Into<OwnedHandle>::into` implementation for an API which strictly
+    /// transfers ownership.
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_handle(self) -> RawHandle;
 }
@@ -181,8 +183,9 @@ pub trait FromRawSocket {
     /// will take responsibility for closing it when the object goes out of
     /// scope.
     ///
-    /// However, consuming ownership is not strictly required. See
-    /// [`FromSocket::from_socket`] for an API which strictly consumes ownership.
+    /// However, consuming ownership is not strictly required. Use a
+    /// `From<OwnedSocket>::from` implementation for an API which strictly
+    /// consumes ownership.
     ///
     /// # Safety
     ///
@@ -205,8 +208,9 @@ pub trait IntoRawSocket {
     /// socket to the caller. When used in this way, callers are then the unique
     /// owners of the socket and must close it once it's no longer needed.
     ///
-    /// However, transferring ownership is not strictly required. See
-    /// [`IntoSocket::into_socket`] for an API which strictly transfers ownership.
+    /// However, transferring ownership is not strictly required. Use a
+    /// `Into<OwnedSocket>::into` implementation for an API which strictly
+    /// transfers ownership.
     #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_socket(self) -> RawSocket;
 }

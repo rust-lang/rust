@@ -8,9 +8,9 @@ use crate::os::raw;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
 #[cfg(all(doc, unix))]
-use crate::os::unix::io::{AsFd, FromFd, IntoFd};
+use crate::os::unix::io::AsFd;
 #[cfg(all(doc, target_os = "wasi"))]
-use crate::os::unix::io::{AsFd, FromFd, IntoFd};
+use crate::os::unix::io::AsFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};
@@ -69,8 +69,9 @@ pub trait FromRawFd {
     /// will take responsibility for closing it when the object goes out of
     /// scope.
     ///
-    /// However, consuming ownership is not strictly required. See
-    /// [`FromFd::from_fd`] for an API which strictly consumes ownership.
+    /// However, consuming ownership is not strictly required. Use a
+    /// [`From<OwnedFd>::from`] implementation for an API which strictly
+    /// consumes ownership.
     ///
     /// # Safety
     ///
@@ -109,8 +110,9 @@ pub trait IntoRawFd {
     /// file descriptor to the caller. When used in this way, callers are then the unique
     /// owners of the file descriptor and must close it once it's no longer needed.
     ///
-    /// However, transferring ownership is not strictly required. See
-    /// [`IntoFd::into_fd`] for an API which strictly transfers ownership.
+    /// However, transferring ownership is not strictly required. Use a
+    /// [`Into<OwnedFd>::into`] implementation for an API which strictly
+    /// transfers ownership.
     ///
     /// # Example
     ///
