@@ -4549,6 +4549,7 @@ fn $0fun_name() {
         );
     }
 
+    // FIXME: we do want to preserve whitespace
     #[test]
     fn extract_function_does_not_preserve_whitespace() {
         check_assist(
