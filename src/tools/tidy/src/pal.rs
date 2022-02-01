@@ -58,6 +58,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
+    "library/std/src/panic.rs",   // fuchsia-specific panic backtrace handling
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
