@@ -19,38 +19,42 @@ pub(crate) fn get(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Ve
     }
 
     match get_rust_cfgs(cargo_toml, target) {
-        Ok(rustc_cfgs) => res.extend(rustc_cfgs.lines().map(|it| it.parse().unwrap())),
-        Err(e) => tracing::error!("failed to get rustc cfgs: {:#}", e),
+        Ok(rustc_cfgs) => {
+            tracing::debug!(
+                "rustc cfgs found: {:?}",
+                rustc_cfgs
+                    .lines()
+                    .map(|it| it.parse::<CfgFlag>().map(|it| it.to_string()))
+                    .collect::<Vec<_>>()
+            );
+            res.extend(rustc_cfgs.lines().filter_map(|it| it.parse().ok()));
+        }
+        Err(e) => tracing::error!("failed to get rustc cfgs: {e:?}"),
     }
 
     res
 }
 
 fn get_rust_cfgs(cargo_toml: Option<&ManifestPath>, target: Option<&str>) -> Result<String> {
-    let cargo_rust_cfgs = match cargo_toml {
-        Some(cargo_toml) => {
-            let mut cargo_config = Command::new(toolchain::cargo());
-            cargo_config
-                .current_dir(cargo_toml.parent())
-                .args(&["-Z", "unstable-options", "rustc", "--print", "cfg"])
-                .env("RUSTC_BOOTSTRAP", "1");
-            if let Some(target) = target {
-                cargo_config.args(&["--target", target]);
-            }
-            utf8_stdout(cargo_config).ok()
+    if let Some(cargo_toml) = cargo_toml {
+        let mut cargo_config = Command::new(toolchain::cargo());
+        cargo_config
+            .current_dir(cargo_toml.parent())
+            .args(&["-Z", "unstable-options", "rustc", "--print", "cfg"])
+            .env("RUSTC_BOOTSTRAP", "1");
+        if let Some(target) = target {
+            cargo_config.args(&["--target", target]);
         }
-        None => None,
-    };
-    match cargo_rust_cfgs {
-        Some(stdout) => Ok(stdout),
-        None => {
-            // using unstable cargo features failed, fall back to using plain rustc
-            let mut cmd = Command::new(toolchain::rustc());
-            cmd.args(&["--print", "cfg", "-O"]);
-            if let Some(target) = target {
-                cmd.args(&["--target", target]);
-            }
-            utf8_stdout(cmd)
+        match utf8_stdout(cargo_config) {
+            Ok(it) => return Ok(it),
+            Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
         }
     }
+    // using unstable cargo features failed, fall back to using plain rustc
+    let mut cmd = Command::new(toolchain::rustc());
+    cmd.args(&["--print", "cfg", "-O"]);
+    if let Some(target) = target {
+        cmd.args(&["--target", target]);
+    }
+    utf8_stdout(cmd)
 }
