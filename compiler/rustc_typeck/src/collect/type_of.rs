@@ -726,7 +726,10 @@ fn infer_placeholder_type<'a>(
             if !ty.references_error() {
                 // The parser provided a sub-optimal `HasPlaceholders` suggestion for the type.
                 // We are typeck and have the real type, so remove that and suggest the actual type.
-                err.suggestions.clear();
+                // FIXME(eddyb) this looks like it should be functionality on `Diagnostic`.
+                if let Ok(suggestions) = &mut err.suggestions {
+                    suggestions.clear();
+                }
 
                 // Suggesting unnameable types won't help.
                 let mut mk_nameable = MakeNameable::new(tcx);

@@ -11,6 +11,11 @@ use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+/// Error type for `Diagnostic`'s `suggestions` field, indicating that
+/// `.disable_suggestions()` was called on the `Diagnostic`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub struct SuggestionsDisabled;
+
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
@@ -19,7 +24,7 @@ pub struct Diagnostic {
     pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
-    pub suggestions: Vec<CodeSuggestion>,
+    pub suggestions: Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
 
     /// This is not used for highlighting or rendering any error message.  Rather, it can be used
     /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
@@ -106,7 +111,7 @@ impl Diagnostic {
             code,
             span: MultiSpan::new(),
             children: vec![],
-            suggestions: vec![],
+            suggestions: Ok(vec![]),
             sort_span: DUMMY_SP,
             is_lint: false,
         }
@@ -300,6 +305,21 @@ impl Diagnostic {
         self
     }
 
+    /// Disallow attaching suggestions this diagnostic.
+    /// Any suggestions attached e.g. with the `span_suggestion_*` methods
+    /// (before and after the call to `disable_suggestions`) will be ignored.
+    pub fn disable_suggestions(&mut self) -> &mut Self {
+        self.suggestions = Err(SuggestionsDisabled);
+        self
+    }
+
+    /// Helper for pushing to `self.suggestions`, if available (not disable).
+    fn push_suggestion(&mut self, suggestion: CodeSuggestion) {
+        if let Ok(suggestions) = &mut self.suggestions {
+            suggestions.push(suggestion);
+        }
+    }
+
     /// Show a suggestion that has multiple parts to it.
     /// In other words, multiple changes need to be applied as part of this suggestion.
     pub fn multipart_suggestion(
@@ -340,7 +360,7 @@ impl Diagnostic {
         style: SuggestionStyle,
     ) -> &mut Self {
         assert!(!suggestion.is_empty());
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
                     .into_iter()
@@ -368,7 +388,7 @@ impl Diagnostic {
         applicability: Applicability,
     ) -> &mut Self {
         assert!(!suggestion.is_empty());
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: suggestion
                     .into_iter()
@@ -426,7 +446,7 @@ impl Diagnostic {
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart { snippet: suggestion, span: sp }],
             }],
@@ -471,7 +491,7 @@ impl Diagnostic {
             .into_iter()
             .map(|snippet| Substitution { parts: vec![SubstitutionPart { snippet, span: sp }] })
             .collect();
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions,
             msg: msg.to_owned(),
             style: SuggestionStyle::ShowCode,
@@ -489,7 +509,7 @@ impl Diagnostic {
         suggestions: impl Iterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self {
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions: suggestions
                 .map(|sugg| Substitution {
                     parts: sugg
@@ -578,7 +598,7 @@ impl Diagnostic {
         applicability: Applicability,
         tool_metadata: Json,
     ) {
-        self.suggestions.push(CodeSuggestion {
+        self.push_suggestion(CodeSuggestion {
             substitutions: vec![],
             msg: msg.to_owned(),
             style: SuggestionStyle::CompletelyHidden,
@@ -668,7 +688,7 @@ impl Diagnostic {
         &Vec<(String, Style)>,
         &Option<DiagnosticId>,
         &MultiSpan,
-        &Vec<CodeSuggestion>,
+        &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
         Option<&Vec<SubDiagnostic>>,
     ) {
         (

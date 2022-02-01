@@ -315,7 +315,7 @@ mod tests {
                 code: None,
                 message: vec![],
                 children: vec![],
-                suggestions: vec![],
+                suggestions: Ok(vec![]),
                 span: span.unwrap_or_else(MultiSpan::new),
                 sort_span: DUMMY_SP,
                 is_lint: false,
