@@ -253,7 +253,7 @@ fn enum_variants_with_paths(
 ) {
     let variants = enum_.variants(ctx.db);
 
-    let module = if let Some(module) = ctx.scope.module() {
+    let module = if let Some(module) = ctx.module {
         // Compute path from the completion site if available.
         module
     } else {

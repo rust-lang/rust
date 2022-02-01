@@ -84,12 +84,19 @@ fn complete_methods(
             traits_in_scope.remove(&drop_trait.into());
         }
 
-        receiver.iterate_method_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, func| {
-            if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
-                f(func);
-            }
-            None::<()>
-        });
+        receiver.iterate_method_candidates(
+            ctx.db,
+            krate,
+            &traits_in_scope,
+            ctx.module,
+            None,
+            |_ty, func| {
+                if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
+                    f(func);
+                }
+                None::<()>
+            },
+        );
     }
 }
 
@@ -261,6 +268,37 @@ fn foo(a: lib::A) { a.$0 }
 "#,
             expect![[r#"
                 me pub_method() fn(&self)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_local_impls() {
+        check(
+            r#"
+//- /lib.rs crate:lib
+pub struct A {}
+mod m {
+    impl super::A {
+        pub fn pub_module_method(&self) {}
+    }
+    fn f() {
+        impl super::A {
+            pub fn pub_foreign_local_method(&self) {}
+        }
+    }
+}
+//- /main.rs crate:main deps:lib
+fn foo(a: lib::A) {
+    impl lib::A {
+        fn local_method(&self) {}
+    }
+    a.$0
+}
+"#,
+            expect![[r#"
+                me local_method()      fn(&self)
+                me pub_module_method() fn(&self)
             "#]],
         );
     }

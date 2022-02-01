@@ -227,7 +227,7 @@ impl<'a> InferenceContext<'a> {
             self.table.trait_env.clone(),
             krate,
             &traits_in_scope,
-            self.resolver.module(),
+            self.resolver.module().into(),
             Some(name),
             method_resolution::LookupMode::Path,
             move |_ty, item| {
