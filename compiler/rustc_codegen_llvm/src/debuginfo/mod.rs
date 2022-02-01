@@ -345,6 +345,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         type_names::push_generic_params(
             tcx,
+            generics,
             tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
             &mut name,
         );

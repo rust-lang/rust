@@ -47,10 +47,10 @@
 
 // BOX
 // gdb-command:whatis box1
-// gdb-check:type = (alloc::boxed::Box<f32, alloc::alloc::Global>, i32)
+// gdb-check:type = (alloc::boxed::Box<f32>, i32)
 
 // gdb-command:whatis box2
-// gdb-check:type = (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>, alloc::alloc::Global>, i32)
+// gdb-check:type = (alloc::boxed::Box<type_names::mod1::mod2::Enum3<f32>>, i32)
 
 // REFERENCES
 // gdb-command:whatis ref1
@@ -99,7 +99,7 @@
 
 // TRAITS
 // gdb-command:whatis box_trait
-// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait1, alloc::alloc::Global>
+// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait1>
 
 // gdb-command:whatis ref_trait
 // gdb-check:type = &dyn type_names::Trait1
@@ -108,7 +108,7 @@
 // gdb-check:type = &mut dyn type_names::Trait1
 
 // gdb-command:whatis generic_box_trait
-// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait2<i32, type_names::mod1::Struct2>, alloc::alloc::Global>
+// gdb-check:type = alloc::boxed::Box<dyn type_names::Trait2<i32, type_names::mod1::Struct2>>
 
 // gdb-command:whatis generic_ref_trait
 // gdb-check:type = &dyn type_names::Trait2<type_names::Struct1, type_names::Struct1>
@@ -117,7 +117,7 @@
 // gdb-check:type = &mut dyn type_names::Trait2<type_names::mod1::mod2::Struct3, type_names::GenericStruct<usize, isize>>
 
 // gdb-command:whatis no_principal_trait
-// gdb-check:type = alloc::boxed::Box<(dyn core::marker::Send + core::marker::Sync), alloc::alloc::Global>
+// gdb-check:type = alloc::boxed::Box<(dyn core::marker::Send + core::marker::Sync)>
 
 // gdb-command:whatis has_associated_type_trait
 // gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)

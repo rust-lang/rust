@@ -17,8 +17,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
+use rustc_middle::ty::{
+    self, AdtDef, ExistentialProjection, GenericParamDefKind, Generics, Ty, TyCtxt,
+};
 use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
@@ -75,7 +77,8 @@ fn push_debuginfo_type_name<'tcx>(
                 msvc_enum_fallback(tcx, t, def, substs, output, visited);
             } else {
                 push_item_name(tcx, def.did, qualified, output);
-                push_generic_params_internal(tcx, substs, output, visited);
+                let generics = tcx.generics_of(def.did);
+                push_generic_params_internal(tcx, generics, substs, output, visited);
             }
         }
         ty::Tuple(component_types) => {
@@ -197,8 +200,15 @@ fn push_debuginfo_type_name<'tcx>(
                 let principal =
                     tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), principal);
                 push_item_name(tcx, principal.def_id, qualified, output);
-                let principal_has_generic_params =
-                    push_generic_params_internal(tcx, principal.substs, output, visited);
+                let principal_generics = tcx.generics_of(principal.def_id);
+
+                let principal_has_generic_params = push_generic_params_internal(
+                    tcx,
+                    principal_generics,
+                    principal.substs,
+                    output,
+                    visited,
+                );
 
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
@@ -377,7 +387,7 @@ fn push_debuginfo_type_name<'tcx>(
             // Truncate the substs to the length of the above generics. This will cut off
             // anything closure- or generator-specific.
             let substs = substs.truncate_to(tcx, generics);
-            push_generic_params_internal(tcx, substs, output, visited);
+            push_generic_params_internal(tcx, generics, substs, output, visited);
         }
         // Type parameters from polymorphized functions.
         ty::Param(_) => {
@@ -414,7 +424,8 @@ fn push_debuginfo_type_name<'tcx>(
 
         output.push_str("enum$<");
         push_item_name(tcx, def.did, true, output);
-        push_generic_params_internal(tcx, substs, output, visited);
+        let generics = tcx.generics_of(def.did);
+        push_generic_params_internal(tcx, generics, substs, output, visited);
 
         if let Variants::Multiple {
             tag_encoding: TagEncoding::Niche { dataful_variant, .. },
@@ -506,8 +517,15 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
         let trait_ref =
             tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
+        let generics = tcx.generics_of(trait_ref.def_id);
         visited.clear();
-        push_generic_params_internal(tcx, trait_ref.substs, &mut vtable_name, &mut visited);
+        push_generic_params_internal(
+            tcx,
+            generics,
+            trait_ref.substs,
+            &mut vtable_name,
+            &mut visited,
+        );
     } else {
         vtable_name.push_str("_");
     }
@@ -595,33 +613,70 @@ fn push_unqualified_item_name(
 
 fn push_generic_params_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generics: &'tcx Generics,
     substs: SubstsRef<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    if substs.non_erasable_generics().next().is_none() {
+    debug_assert_eq!(substs, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs));
+
+    let arg_count = std::cmp::min(generics.count(), substs.len());
+    if arg_count == 0 {
         return false;
     }
-
-    debug_assert_eq!(substs, tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs));
 
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
     output.push('<');
 
-    for type_parameter in substs.non_erasable_generics() {
-        match type_parameter {
-            GenericArgKind::Type(type_parameter) => {
-                push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
+    for param_index in 0..arg_count {
+        let generic_arg = substs[param_index];
+        match generic_arg.unpack() {
+            GenericArgKind::Lifetime(_) => {
+                // We don't emit these at all.
+            }
+            GenericArgKind::Type(type_arg) => {
+                let param_def = generics.param_at(param_index, tcx);
+                let &GenericParamDefKind::Type { has_default, .. } = &param_def.kind else {
+                    bug!()
+                };
+                let default_value = if has_default {
+                    let param_type = tcx.type_of(param_def.def_id);
+                    Some(GenericArg::from(param_type.subst(tcx, substs)))
+                } else {
+                    None
+                };
+
+                if Some(substs[param_index]) != default_value {
+                    push_debuginfo_type_name(tcx, type_arg, true, output, visited);
+                    push_arg_separator(cpp_like_debuginfo, output);
+                }
             }
             GenericArgKind::Const(ct) => {
-                push_const_param(tcx, ct, output);
-            }
-            other => bug!("Unexpected non-erasable generic: {:?}", other),
-        }
+                let param_def = generics.param_at(param_index, tcx);
+                let &GenericParamDefKind::Const { has_default  } = &param_def.kind else {
+                    bug!()
+                };
+                let default_value = if has_default {
+                    Some(GenericArg::from(tcx.const_param_default(param_def.def_id)))
+                } else {
+                    None
+                };
 
-        push_arg_separator(cpp_like_debuginfo, output);
+                if Some(substs[param_index]) != default_value {
+                    push_const_param(tcx, ct, output);
+                    push_arg_separator(cpp_like_debuginfo, output);
+                }
+            }
+        }
     }
+
+    if output.ends_with('<') {
+        // It looks all generic arguments where filtered out
+        output.pop();
+        return false;
+    }
+
     pop_arg_separator(output);
     push_close_angle_bracket(cpp_like_debuginfo, output);
 
@@ -673,10 +728,15 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: 
     .unwrap();
 }
 
-pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, output: &mut String) {
+pub fn push_generic_params<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    generics: &'tcx Generics,
+    substs: SubstsRef<'tcx>,
+    output: &mut String,
+) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
-    push_generic_params_internal(tcx, substs, output, &mut visited);
+    push_generic_params_internal(tcx, generics, substs, output, &mut visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {
