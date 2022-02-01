@@ -487,7 +487,7 @@ impl CheckAttrVisitor<'_> {
     fn check_rustc_must_implement_one_of(
         &self,
         attr: &Attribute,
-        span: &Span,
+        span: Span,
         target: Target,
     ) -> bool {
         match target {
@@ -496,7 +496,7 @@ impl CheckAttrVisitor<'_> {
                 self.tcx
                     .sess
                     .struct_span_err(attr.span, "attribute can only be applied to a trait")
-                    .span_label(*span, "not a trait")
+                    .span_label(span, "not a trait")
                     .emit();
                 false
             }

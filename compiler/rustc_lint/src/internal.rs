@@ -5,7 +5,8 @@ use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext}
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::*;
+use rustc_hir::{Expr, ExprKind, GenericArg, Path, PathSegment, QPath};
+use rustc_hir::{HirId, Item, ItemKind, Node, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -75,10 +76,10 @@ impl LateLintPass<'_> for QueryStability {
         }
 
         let (span, def_id, substs) = match expr.kind {
-            ExprKind::MethodCall(_, span, _, _)
+            ExprKind::MethodCall(segment, _, _)
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
             {
-                (span, def_id, cx.typeck_results().node_substs(expr.hir_id))
+                (segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id))
             },
             _ => {
                 let &ty::FnDef(def_id, substs) =
