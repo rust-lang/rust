@@ -2203,6 +2203,12 @@ impl TypeBinding<'_> {
             _ => panic!("expected equality type binding for parenthesized generic args"),
         }
     }
+    pub fn opt_const(&self) -> Option<&'_ AnonConst> {
+        match self.kind {
+            TypeBindingKind::Equality { term: Term::Const(ref c) } => Some(c),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]

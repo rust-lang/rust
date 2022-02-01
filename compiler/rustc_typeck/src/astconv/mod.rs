@@ -1145,7 +1145,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
-        let assoc_ty = tcx
+        let assoc_item = tcx
             .associated_items(candidate.def_id())
             .filter_by_name_unhygienic(assoc_ident.name)
             .find(|i| {
@@ -1153,35 +1153,32 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
             })
             .expect("missing associated type");
-        // FIXME(associated_const_equality): need to handle assoc_consts here as well.
-        if assoc_ty.kind == ty::AssocKind::Const {
-            tcx.sess
-                .struct_span_err(path_span, &format!("associated const equality is incomplete"))
-                .span_label(path_span, "cannot yet relate associated const")
-                .emit();
-            return Err(ErrorReported);
-        }
 
-        if !assoc_ty.vis.is_accessible_from(def_scope, tcx) {
+        if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
+            let kind = match assoc_item.kind {
+                ty::AssocKind::Type => "type",
+                ty::AssocKind::Const => "const",
+                _ => unreachable!(),
+            };
             tcx.sess
                 .struct_span_err(
                     binding.span,
-                    &format!("associated type `{}` is private", binding.item_name),
+                    &format!("associated {kind} `{}` is private", binding.item_name),
                 )
-                .span_label(binding.span, "private associated type")
+                .span_label(binding.span, &format!("private associated {kind}"))
                 .emit();
         }
-        tcx.check_stability(assoc_ty.def_id, Some(hir_ref_id), binding.span, None);
+        tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
 
         if !speculative {
             dup_bindings
-                .entry(assoc_ty.def_id)
+                .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
                     self.tcx().sess.emit_err(ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
-                        def_path: tcx.def_path_str(assoc_ty.container.id()),
+                        def_path: tcx.def_path_str(assoc_item.container.id()),
                     });
                 })
                 .or_insert(binding.span);
@@ -1189,7 +1186,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // Include substitutions for generic parameters of associated types
         let projection_ty = candidate.map_bound(|trait_ref| {
-            let ident = Ident::new(assoc_ty.name, binding.item_name.span);
+            let ident = Ident::new(assoc_item.name, binding.item_name.span);
             let item_segment = hir::PathSegment {
                 ident,
                 hir_id: Some(binding.hir_id),
@@ -1201,7 +1198,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let substs_trait_ref_and_assoc_item = self.create_substs_for_associated_item(
                 tcx,
                 path_span,
-                assoc_ty.def_id,
+                assoc_item.def_id,
                 &item_segment,
                 trait_ref.substs,
             );
@@ -1212,14 +1209,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             );
 
             ty::ProjectionTy {
-                item_def_id: assoc_ty.def_id,
+                item_def_id: assoc_item.def_id,
                 substs: substs_trait_ref_and_assoc_item,
             }
         });
 
         if !speculative {
             // Find any late-bound regions declared in `ty` that are not
-            // declared in the trait-ref or assoc_ty. These are not well-formed.
+            // declared in the trait-ref or assoc_item. These are not well-formed.
             //
             // Example:
             //
@@ -1260,6 +1257,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
+                let assoc_item_def_id = projection_ty.skip_binder().item_def_id;
+                let def_kind = tcx.def_kind(assoc_item_def_id);
+                match (def_kind, term) {
+                    (hir::def::DefKind::AssocTy, ty::Term::Ty(_))
+                    | (hir::def::DefKind::AssocConst, ty::Term::Const(_)) => (),
+                    (_, _) => {
+                        let got = if let ty::Term::Ty(_) = term { "type" } else { "const" };
+                        let expected = def_kind.descr(assoc_item_def_id);
+                        tcx.sess
+                            .struct_span_err(
+                                binding.span,
+                                &format!("mismatch in bind of {expected}, got {got}"),
+                            )
+                            .span_note(
+                                tcx.def_span(assoc_item_def_id),
+                                &format!("{expected} defined here does not match {got}"),
+                            )
+                            .emit();
+                    }
+                }
                 bounds.projection_bounds.push((
                     projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
                         projection_ty,

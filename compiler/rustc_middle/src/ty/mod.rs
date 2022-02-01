@@ -867,6 +867,9 @@ impl<'tcx> Term<'tcx> {
     pub fn ty(&self) -> Option<Ty<'tcx>> {
         if let Term::Ty(ty) = self { Some(ty) } else { None }
     }
+    pub fn ct(&self) -> Option<&'tcx Const<'tcx>> {
+        if let Term::Const(c) = self { Some(c) } else { None }
+    }
 }
 
 /// This kind of predicate has no *direct* correspondent in the

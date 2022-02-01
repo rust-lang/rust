@@ -1373,19 +1373,31 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(_)
                         | ObligationCauseCode::OpaqueType
                 );
-                // FIXME(associated_const_equality): Handle Consts here
-                let data_ty = data.term.ty().unwrap();
                 if let Err(error) = self.at(&obligation.cause, obligation.param_env).eq_exp(
                     is_normalized_ty_expected,
                     normalized_ty,
-                    data_ty,
+                    data.term,
                 ) {
-                    values = Some(infer::ValuePairs::Types(ExpectedFound::new(
-                        is_normalized_ty_expected,
-                        normalized_ty,
-                        data_ty,
-                    )));
-
+                    values = Some(match (normalized_ty, data.term) {
+                        (ty::Term::Ty(normalized_ty), ty::Term::Ty(ty)) => {
+                            infer::ValuePairs::Types(ExpectedFound::new(
+                                is_normalized_ty_expected,
+                                normalized_ty,
+                                ty,
+                            ))
+                        }
+                        (ty::Term::Const(normalized_ct), ty::Term::Const(ct)) => {
+                            infer::ValuePairs::Consts(ExpectedFound::new(
+                                is_normalized_ty_expected,
+                                normalized_ct,
+                                ct,
+                            ))
+                        }
+                        (_, _) => span_bug!(
+                            obligation.cause.span,
+                            "found const or type where other expected"
+                        ),
+                    });
                     err_buf = error;
                     err = &err_buf;
                 }

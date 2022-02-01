@@ -1,5 +1,6 @@
 use rustc_errors::{Applicability, ErrorReported, StashKey};
 use rustc_hir as hir;
+use rustc_hir::def::CtorOf;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit;
@@ -160,21 +161,36 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // We've encountered an `AnonConst` in some path, so we need to
             // figure out which generic parameter it corresponds to and return
             // the relevant type.
-            let filtered = path
-                .segments
-                .iter()
-                .filter_map(|seg| seg.args.map(|args| (args.args, seg)))
-                .find_map(|(args, seg)| {
-                    args.iter()
-                        .filter(|arg| arg.is_ty_or_const())
-                        .position(|arg| arg.id() == hir_id)
-                        .map(|index| (index, seg))
-                });
+            let filtered = path.segments.iter().find_map(|seg| {
+                seg.args?
+                    .args
+                    .iter()
+                    .filter(|arg| arg.is_ty_or_const())
+                    .position(|arg| arg.id() == hir_id)
+                    .map(|index| (index, seg))
+            });
+
+            // FIXME(associated_const_generics): can we blend this with iteration above?
             let (arg_index, segment) = match filtered {
                 None => {
-                    tcx.sess
-                        .delay_span_bug(tcx.def_span(def_id), "no arg matching AnonConst in path");
-                    return None;
+                    let binding_filtered = path.segments.iter().find_map(|seg| {
+                        seg.args?
+                            .bindings
+                            .iter()
+                            .filter_map(TypeBinding::opt_const)
+                            .position(|ct| ct.hir_id == hir_id)
+                            .map(|idx| (idx, seg))
+                    });
+                    match binding_filtered {
+                        Some(inner) => inner,
+                        None => {
+                            tcx.sess.delay_span_bug(
+                                tcx.def_span(def_id),
+                                "no arg matching AnonConst in path",
+                            );
+                            return None;
+                        }
+                    }
                 }
                 Some(inner) => inner,
             };
@@ -182,7 +198,6 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // Try to use the segment resolution if it is valid, otherwise we
             // default to the path resolution.
             let res = segment.res.filter(|&r| r != Res::Err).unwrap_or(path.res);
-            use def::CtorOf;
             let generics = match res {
                 Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => tcx
                     .generics_of(tcx.parent(def_id).and_then(|def_id| tcx.parent(def_id)).unwrap()),
@@ -483,15 +498,49 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     .discr_type()
                     .to_ty(tcx),
 
+                Node::TraitRef(trait_ref @ &TraitRef {
+                  path, ..
+                }) if let Some((binding, seg)) =
+                  path
+                      .segments
+                      .iter()
+                      .find_map(|seg| {
+                          seg.args?.bindings
+                              .iter()
+                              .find_map(|binding| if binding.opt_const()?.hir_id == hir_id {
+                                Some((binding, seg))
+                              } else {
+                                None
+                              })
+                      }) =>
+                {
+                  // FIXME(associated_const_equality) when does this unwrap fail? I have no idea what case it would.
+                  let trait_def_id = trait_ref.trait_def_id().unwrap();
+                  let assoc_items = tcx.associated_items(trait_def_id);
+                  let assoc_item = assoc_items.find_by_name_and_kind(
+                    tcx, binding.ident, ty::AssocKind::Const, def_id.to_def_id(),
+                  );
+                  if let Some(assoc_item) = assoc_item {
+                    tcx.type_of(assoc_item.def_id)
+                  } else {
+                      // FIXME(associated_const_equality): add a useful error message here.
+                      tcx.ty_error_with_message(
+                        DUMMY_SP,
+                        &format!("Could not find associated const on trait"),
+                    )
+                  }
+                }
+
                 Node::GenericParam(&GenericParam {
                     hir_id: param_hir_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
                 }) if ct.hir_id == hir_id => tcx.type_of(tcx.hir().local_def_id(param_hir_id)),
 
-                x => tcx.ty_error_with_message(
+                x =>
+                  tcx.ty_error_with_message(
                     DUMMY_SP,
-                    &format!("unexpected const parent in type_of(): {:?}", x),
+                    &format!("unexpected const parent in type_of(): {x:?}"),
                 ),
             }
         }

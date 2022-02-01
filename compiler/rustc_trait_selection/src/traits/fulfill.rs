@@ -200,7 +200,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
 
         debug!(?normalized_ty);
 
-        normalized_ty
+        normalized_ty.ty().unwrap()
     }
 
     fn register_predicate_obligation(
