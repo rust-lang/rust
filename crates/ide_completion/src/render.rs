@@ -1354,7 +1354,7 @@ fn main() {
     }
 
     #[test]
-    fn op_method_relevances() {
+    fn op_function_relevances() {
         check_relevance(
             r#"
 #[lang = "sub"]
@@ -1367,7 +1367,30 @@ fn foo(a: u32) { a.$0 }
             expect![[r#"
                 me sub(…) (as Sub) [op_method]
             "#]],
-        )
+        );
+        check_relevance(
+            r#"
+struct Foo;
+impl Foo {
+    fn new() -> Self {}
+}
+#[lang = "eq"]
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool;
+}
+
+impl PartialEq for Foo {}
+fn main() {
+    Foo::$0
+}
+"#,
+            expect![[r#"
+                fn new() []
+                me eq(…) (as PartialEq) [op_method]
+                me ne(…) (as PartialEq) [op_method]
+            "#]],
+        );
     }
 
     #[test]

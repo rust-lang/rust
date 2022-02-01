@@ -67,16 +67,14 @@ fn render(
     );
 
     let ret_type = func.ret_type(db);
+    let is_op_method = func
+        .as_assoc_item(ctx.db())
+        .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
+        .map_or(false, |trait_| completion.is_ops_trait(trait_));
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(completion, &ret_type),
         exact_name_match: compute_exact_name_match(completion, &call),
-        is_op_method: match func_type {
-            FuncType::Method(_) => func
-                .as_assoc_item(ctx.db())
-                .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
-                .map_or(false, |trait_| completion.is_ops_trait(trait_)),
-            _ => false,
-        },
+        is_op_method,
         ..CompletionRelevance::default()
     });
 
