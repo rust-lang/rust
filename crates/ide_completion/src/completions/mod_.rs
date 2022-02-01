@@ -22,7 +22,7 @@ pub(crate) fn complete_mod(acc: &mut Completions, ctx: &CompletionContext) -> Op
 
     let _p = profile::span("completion::complete_mod");
 
-    let current_module = ctx.scope.module()?;
+    let current_module = ctx.module?;
 
     let module_definition_file =
         current_module.definition_source(ctx.db).file_id.original_file(ctx.db);

@@ -2787,6 +2787,7 @@ impl Type {
         db: &dyn HirDatabase,
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
+        with_local_impls: Option<Module>,
         name: Option<&Name>,
         mut callback: impl FnMut(Type, Function) -> Option<T>,
     ) -> Option<T> {
@@ -2797,6 +2798,7 @@ impl Type {
             db,
             krate,
             traits_in_scope,
+            with_local_impls,
             name,
             &mut |ty, assoc_item_id| {
                 if let AssocItemId::FunctionId(func) = assoc_item_id {
@@ -2816,6 +2818,7 @@ impl Type {
         db: &dyn HirDatabase,
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
+        with_local_impls: Option<Module>,
         name: Option<&Name>,
         callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
     ) {
@@ -2831,7 +2834,7 @@ impl Type {
             env,
             krate,
             traits_in_scope,
-            None,
+            with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
             method_resolution::LookupMode::MethodCall,
             &mut |ty, id| callback(&ty.value, id),
@@ -2843,6 +2846,7 @@ impl Type {
         db: &dyn HirDatabase,
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
+        with_local_impls: Option<Module>,
         name: Option<&Name>,
         mut callback: impl FnMut(Type, AssocItem) -> Option<T>,
     ) -> Option<T> {
@@ -2852,6 +2856,7 @@ impl Type {
             db,
             krate,
             traits_in_scope,
+            with_local_impls,
             name,
             &mut |ty, assoc_item_id| {
                 if let Some(res) = callback(self.derived(ty.clone()), assoc_item_id.into()) {
@@ -2869,6 +2874,7 @@ impl Type {
         db: &dyn HirDatabase,
         krate: Crate,
         traits_in_scope: &FxHashSet<TraitId>,
+        with_local_impls: Option<Module>,
         name: Option<&Name>,
         callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
     ) {
@@ -2883,7 +2889,7 @@ impl Type {
             env,
             krate,
             traits_in_scope,
-            None,
+            with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
             method_resolution::LookupMode::Path,
             &mut |ty, id| callback(&ty.value, id),

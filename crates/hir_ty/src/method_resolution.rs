@@ -437,7 +437,7 @@ pub(crate) fn lookup_method(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: &Name,
 ) -> Option<(Canonical<Ty>, FunctionId)> {
     iterate_method_candidates(
@@ -468,6 +468,34 @@ pub enum LookupMode {
     Path,
 }
 
+#[derive(Clone, Copy)]
+pub enum VisibleFromModule {
+    /// Filter for results that are visible from the given module
+    Filter(ModuleId),
+    /// Include impls from the given block.
+    IncludeBlock(BlockId),
+    /// Do nothing special in regards visibility
+    None,
+}
+
+impl From<Option<ModuleId>> for VisibleFromModule {
+    fn from(module: Option<ModuleId>) -> Self {
+        match module {
+            Some(module) => Self::Filter(module),
+            None => Self::None,
+        }
+    }
+}
+
+impl From<Option<BlockId>> for VisibleFromModule {
+    fn from(block: Option<BlockId>) -> Self {
+        match block {
+            Some(block) => Self::IncludeBlock(block),
+            None => Self::None,
+        }
+    }
+}
+
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplDefs`.
 // FIXME add a context type here?
@@ -477,7 +505,7 @@ pub fn iterate_method_candidates<T>(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
     mut callback: impl FnMut(&Canonical<Ty>, AssocItemId) -> Option<T>,
@@ -510,7 +538,7 @@ pub fn iterate_method_candidates_dyn(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
     callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
@@ -578,7 +606,7 @@ fn iterate_method_candidates_with_autoref(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
@@ -644,7 +672,7 @@ fn iterate_method_candidates_by_receiver(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
@@ -686,7 +714,7 @@ fn iterate_method_candidates_for_self_ty(
     env: Arc<TraitEnvironment>,
     krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
@@ -797,7 +825,7 @@ fn iterate_inherent_methods(
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
     krate: CrateId,
-    visible_from_module: Option<ModuleId>,
+    visible_from_module: VisibleFromModule,
     callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let def_crates = match def_crates(db, &self_ty.value, krate) {
@@ -805,35 +833,30 @@ fn iterate_inherent_methods(
         None => return ControlFlow::Continue(()),
     };
 
-    if let Some(module_id) = visible_from_module {
-        if let Some(block_id) = module_id.containing_block() {
-            if let Some(impls) = db.inherent_impls_in_block(block_id) {
-                impls_for_self_ty(
-                    &impls,
-                    self_ty,
-                    db,
-                    env.clone(),
-                    name,
-                    receiver_ty,
-                    visible_from_module,
-                    callback,
-                )?;
-            }
+    let (module, block) = match visible_from_module {
+        VisibleFromModule::Filter(module) => (Some(module), module.containing_block()),
+        VisibleFromModule::IncludeBlock(block) => (None, Some(block)),
+        VisibleFromModule::None => (None, None),
+    };
+
+    if let Some(block_id) = block {
+        if let Some(impls) = db.inherent_impls_in_block(block_id) {
+            impls_for_self_ty(
+                &impls,
+                self_ty,
+                db,
+                env.clone(),
+                name,
+                receiver_ty,
+                module,
+                callback,
+            )?;
         }
     }
 
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
-        impls_for_self_ty(
-            &impls,
-            self_ty,
-            db,
-            env.clone(),
-            name,
-            receiver_ty,
-            visible_from_module,
-            callback,
-        )?;
+        impls_for_self_ty(&impls, self_ty, db, env.clone(), name, receiver_ty, module, callback)?;
     }
     return ControlFlow::Continue(());
 

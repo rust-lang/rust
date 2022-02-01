@@ -59,8 +59,7 @@ pub(crate) fn complete_record_literal(
     }
 
     if let hir::Adt::Struct(strukt) = ctx.expected_type.as_ref()?.as_adt()? {
-        let module =
-            if let Some(module) = ctx.scope.module() { module } else { strukt.module(ctx.db) };
+        let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
 
         let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
 

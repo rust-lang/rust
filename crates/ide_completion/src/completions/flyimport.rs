@@ -217,7 +217,7 @@ pub(crate) fn position_for_import(
 }
 
 fn import_assets(ctx: &CompletionContext, fuzzy_name: String) -> Option<ImportAssets> {
-    let current_module = ctx.scope.module()?;
+    let current_module = ctx.module?;
     if let Some(dot_receiver) = ctx.dot_receiver() {
         ImportAssets::for_fuzzy_method_call(
             current_module,

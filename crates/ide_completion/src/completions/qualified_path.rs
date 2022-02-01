@@ -51,7 +51,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         None => return,
     };
 
-    let context_module = ctx.scope.module();
+    let context_module = ctx.module;
 
     match ctx.completion_location {
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
@@ -75,7 +75,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     match kind {
         Some(PathKind::Vis { .. }) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-                if let Some(current_module) = ctx.scope.module() {
+                if let Some(current_module) = ctx.module {
                     if let Some(next) = current_module
                         .path_to_root(ctx.db)
                         .into_iter()
@@ -189,7 +189,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     ty
                 }
                 hir::ModuleDef::BuiltinType(builtin) => {
-                    let module = match ctx.scope.module() {
+                    let module = match ctx.module {
                         Some(it) => it,
                         None => return,
                     };
@@ -205,10 +205,17 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             let krate = ctx.krate;
             if let Some(krate) = krate {
                 let traits_in_scope = ctx.scope.visible_traits();
-                ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
-                    add_assoc_item(acc, ctx, item);
-                    None::<()>
-                });
+                ty.iterate_path_candidates(
+                    ctx.db,
+                    krate,
+                    &traits_in_scope,
+                    ctx.module,
+                    None,
+                    |_ty, item| {
+                        add_assoc_item(acc, ctx, item);
+                        None::<()>
+                    },
+                );
 
                 // Iterate assoc types separately
                 ty.iterate_assoc_items(ctx.db, krate, |item| {
@@ -239,14 +246,21 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
                 let traits_in_scope = ctx.scope.visible_traits();
                 let mut seen = FxHashSet::default();
-                ty.iterate_path_candidates(ctx.db, krate, &traits_in_scope, None, |_ty, item| {
-                    // We might iterate candidates of a trait multiple times here, so deduplicate
-                    // them.
-                    if seen.insert(item) {
-                        add_assoc_item(acc, ctx, item);
-                    }
-                    None::<()>
-                });
+                ty.iterate_path_candidates(
+                    ctx.db,
+                    krate,
+                    &traits_in_scope,
+                    ctx.module,
+                    None,
+                    |_ty, item| {
+                        // We might iterate candidates of a trait multiple times here, so deduplicate
+                        // them.
+                        if seen.insert(item) {
+                            add_assoc_item(acc, ctx, item);
+                        }
+                        None::<()>
+                    },
+                );
             }
         }
         hir::PathResolution::Macro(mac) => acc.add_macro(ctx, None, mac),

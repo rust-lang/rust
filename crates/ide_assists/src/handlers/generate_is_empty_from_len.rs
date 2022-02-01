@@ -93,7 +93,9 @@ fn get_impl_method(
     let krate = impl_def.module(db).krate();
     let ty = impl_def.self_ty(db);
     let traits_in_scope = scope.visible_traits();
-    ty.iterate_method_candidates(db, krate, &traits_in_scope, Some(fn_name), |_, func| Some(func))
+    ty.iterate_method_candidates(db, krate, &traits_in_scope, None, Some(fn_name), |_, func| {
+        Some(func)
+    })
 }
 
 #[cfg(test)]

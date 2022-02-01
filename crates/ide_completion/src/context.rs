@@ -103,6 +103,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) token: SyntaxToken,
     /// The crate of the current file.
     pub(super) krate: Option<hir::Crate>,
+    /// The crate of the `scope`.
+    pub(super) module: Option<hir::Module>,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
 
@@ -338,7 +340,7 @@ impl<'a> CompletionContext<'a> {
         attrs: &hir::Attrs,
         defining_crate: hir::Crate,
     ) -> bool {
-        let module = match self.scope.module() {
+        let module = match self.module {
             Some(it) => it,
             None => return false,
         };
@@ -394,6 +396,7 @@ impl<'a> CompletionContext<'a> {
         let token = sema.descend_into_macros_single(original_token.clone());
         let scope = sema.scope_at_offset(&token.parent()?, offset);
         let krate = scope.krate();
+        let module = scope.module();
         let mut locals = vec![];
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
@@ -410,6 +413,7 @@ impl<'a> CompletionContext<'a> {
             original_token,
             token,
             krate,
+            module,
             expected_name: None,
             expected_type: None,
             function_def: None,

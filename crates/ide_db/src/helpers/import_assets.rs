@@ -505,6 +505,7 @@ fn trait_applicable_items(
             current_crate,
             &trait_candidates,
             None,
+            None,
             |_, assoc| {
                 if required_assoc_items.contains(&assoc) {
                     if let AssocItem::Function(f) = assoc {
@@ -530,6 +531,7 @@ fn trait_applicable_items(
             db,
             current_crate,
             &trait_candidates,
+            None,
             None,
             |_, function| {
                 let assoc = function.as_assoc_item(db)?;

@@ -80,7 +80,7 @@ fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
         return None;
     };
     let potential_import_name = ctx.token.to_string();
-    let module = ctx.scope.module()?;
+    let module = ctx.module?;
     let parent = ctx.token.parent()?;
     let user_input_lowercased = potential_import_name.to_lowercase();
     let import_assets = ImportAssets::for_fuzzy_path(
