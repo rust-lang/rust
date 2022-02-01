@@ -33,7 +33,7 @@ use rustc_data_structures::sync::{Lrc, RwLock};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
-use rustc_hir::def::{self, CtorOf, DefKind, LifetimeRes, PartialRes};
+use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPathData, Definitions};
@@ -78,6 +78,7 @@ mod ident;
 mod imports;
 mod late;
 mod macros;
+pub mod rustdoc;
 
 enum Weak {
     Yes,
@@ -138,17 +139,17 @@ enum ScopeSet<'a> {
 /// This struct is currently used only for early resolution (imports and macros),
 /// but not for late resolution yet.
 #[derive(Clone, Copy, Debug)]
-pub struct ParentScope<'a> {
-    pub module: Module<'a>,
+struct ParentScope<'a> {
+    module: Module<'a>,
     expansion: LocalExpnId,
-    pub macro_rules: MacroRulesScopeRef<'a>,
+    macro_rules: MacroRulesScopeRef<'a>,
     derives: &'a [ast::Path],
 }
 
 impl<'a> ParentScope<'a> {
     /// Creates a parent scope with the passed argument used as the module scope component,
     /// and other scope components set to default empty values.
-    pub fn module(module: Module<'a>, resolver: &Resolver<'a>) -> ParentScope<'a> {
+    fn module(module: Module<'a>, resolver: &Resolver<'a>) -> ParentScope<'a> {
         ParentScope {
             module,
             expansion: LocalExpnId::ROOT,
@@ -1046,6 +1047,8 @@ pub struct Resolver<'a> {
     lifetime_elision_allowed: FxHashSet<NodeId>,
 
     effective_visibilities: EffectiveVisibilities,
+    doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
+    doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
 }
 
 /// Nothing really interesting here; it just provides memory for the rest of the crate.
@@ -1374,6 +1377,8 @@ impl<'a> Resolver<'a> {
             confused_type_with_std_module: Default::default(),
             lifetime_elision_allowed: Default::default(),
             effective_visibilities: Default::default(),
+            doc_link_resolutions: Default::default(),
+            doc_link_traits_in_scope: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1450,6 +1455,8 @@ impl<'a> Resolver<'a> {
             proc_macros,
             confused_type_with_std_module,
             registered_tools: self.registered_tools,
+            doc_link_resolutions: self.doc_link_resolutions,
+            doc_link_traits_in_scope: self.doc_link_traits_in_scope,
         };
         let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args,
@@ -1494,6 +1501,8 @@ impl<'a> Resolver<'a> {
             confused_type_with_std_module: self.confused_type_with_std_module.clone(),
             registered_tools: self.registered_tools.clone(),
             effective_visibilities: self.effective_visibilities.clone(),
+            doc_link_resolutions: self.doc_link_resolutions.clone(),
+            doc_link_traits_in_scope: self.doc_link_traits_in_scope.clone(),
         };
         let ast_lowering = ty::ResolverAstLowering {
             legacy_const_generic_args: self.legacy_const_generic_args.clone(),
@@ -1575,7 +1584,7 @@ impl<'a> Resolver<'a> {
         });
     }
 
-    pub fn traits_in_scope(
+    fn traits_in_scope(
         &mut self,
         current_trait: Option<Module<'a>>,
         parent_scope: &ParentScope<'a>,
@@ -1927,7 +1936,7 @@ impl<'a> Resolver<'a> {
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    pub fn resolve_rustdoc_path(
+    fn resolve_rustdoc_path(
         &mut self,
         path_str: &str,
         ns: Namespace,
@@ -1960,27 +1969,12 @@ impl<'a> Resolver<'a> {
     }
 
     /// For rustdoc.
-    /// For local modules returns only reexports, for external modules returns all children.
-    pub fn module_children_or_reexports(&self, def_id: DefId) -> Vec<ModChild> {
-        if let Some(def_id) = def_id.as_local() {
-            self.reexport_map.get(&def_id).cloned().unwrap_or_default()
-        } else {
-            self.cstore().module_children_untracked(def_id, self.session).collect()
-        }
-    }
-
-    /// For rustdoc.
     pub fn macro_rules_scope(&self, def_id: LocalDefId) -> (MacroRulesScopeRef<'a>, Res) {
         let scope = *self.macro_rules_scopes.get(&def_id).expect("not a `macro_rules` item");
         match scope.get() {
             MacroRulesScope::Binding(mb) => (scope, mb.binding.res()),
             _ => unreachable!(),
         }
-    }
-
-    /// For rustdoc.
-    pub fn get_partial_res(&self, node_id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&node_id).copied()
     }
 
     /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.

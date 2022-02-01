@@ -8,7 +8,7 @@
 
 use RibKind::*;
 
-use crate::{path_names_to_string, BindingError, Finalize, LexicalScopeBinding};
+use crate::{path_names_to_string, rustdoc, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
@@ -24,9 +24,10 @@ use rustc_hir::{BindingAnnotation, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_lifetime::Set1;
 use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, SyntaxContext};
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
@@ -620,7 +621,9 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &'ast Block) {
+        let old_macro_rules = self.parent_scope.macro_rules;
         self.resolve_block(block);
+        self.parent_scope.macro_rules = old_macro_rules;
     }
     fn visit_anon_const(&mut self, constant: &'ast AnonConst) {
         // We deal with repeat expressions explicitly in `resolve_expr`.
@@ -771,6 +774,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         );
     }
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+        self.resolve_doc_links(&foreign_item.attrs);
         match foreign_item.kind {
             ForeignItemKind::TyAlias(box TyAlias { ref generics, .. }) => {
                 self.with_generic_param_rib(
@@ -1158,6 +1162,16 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                 });
             })
         });
+    }
+
+    fn visit_variant(&mut self, v: &'ast Variant) {
+        self.resolve_doc_links(&v.attrs);
+        visit::walk_variant(self, v)
+    }
+
+    fn visit_field_def(&mut self, f: &'ast FieldDef) {
+        self.resolve_doc_links(&f.attrs);
+        visit::walk_field_def(self, f)
     }
 }
 
@@ -2185,6 +2199,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
+        self.resolve_doc_links(&item.attrs);
+
         let name = item.ident.name;
         debug!("(resolving item) resolving {} ({:?})", name, item.kind);
 
@@ -2274,9 +2290,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 );
             }
 
-            ItemKind::Mod(..) | ItemKind::ForeignMod(_) => {
+            ItemKind::Mod(..) => {
                 self.with_scope(item.id, |this| {
+                    this.resolve_doc_links(&item.attrs);
+                    let old_macro_rules = this.parent_scope.macro_rules;
                     visit::walk_item(this, item);
+                    // Maintain macro_rules scopes in the same way as during early resolution
+                    // for diagnostics and doc links.
+                    if item.attrs.iter().all(|attr| {
+                        !attr.has_name(sym::macro_use) && !attr.has_name(sym::macro_escape)
+                    }) {
+                        this.parent_scope.macro_rules = old_macro_rules;
+                    }
                 });
             }
 
@@ -2309,13 +2334,21 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.future_proof_import(use_tree);
             }
 
-            ItemKind::ExternCrate(..) | ItemKind::MacroDef(..) => {
-                // do nothing, these are just around to be encoded
+            ItemKind::MacroDef(ref macro_def) => {
+                // Maintain macro_rules scopes in the same way as during early resolution
+                // for diagnostics and doc links.
+                if macro_def.macro_rules {
+                    let (macro_rules_scope, _) =
+                        self.r.macro_rules_scope(self.r.local_def_id(item.id));
+                    self.parent_scope.macro_rules = macro_rules_scope;
+                }
             }
 
-            ItemKind::GlobalAsm(_) => {
+            ItemKind::ForeignMod(_) | ItemKind::GlobalAsm(_) => {
                 visit::walk_item(self, item);
             }
+
+            ItemKind::ExternCrate(..) => {}
 
             ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
         }
@@ -2544,6 +2577,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
 
         for item in trait_items {
+            self.resolve_doc_links(&item.attrs);
             match &item.kind {
                 AssocItemKind::Const(_, ty, default) => {
                     self.visit_ty(ty);
@@ -2714,6 +2748,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
     ) {
         use crate::ResolutionError::*;
+        self.resolve_doc_links(&item.attrs);
         match &item.kind {
             AssocItemKind::Const(_, ty, default) => {
                 debug!("resolve_implementation AssocItemKind::Const");
@@ -4116,6 +4151,86 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.r.extra_lifetime_params_map.insert(async_node_id, extra_lifetime_params);
         }
     }
+
+    fn resolve_and_cache_rustdoc_path(&mut self, path_str: &str, ns: Namespace) -> bool {
+        // FIXME: This caching may be incorrect in case of multiple `macro_rules`
+        // items with the same name in the same module.
+        // Also hygiene is not considered.
+        let mut doc_link_resolutions = std::mem::take(&mut self.r.doc_link_resolutions);
+        let res = doc_link_resolutions
+            .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+            .or_default()
+            .entry((Symbol::intern(path_str), ns))
+            .or_insert_with_key(|(path, ns)| {
+                let res = self.r.resolve_rustdoc_path(path.as_str(), *ns, self.parent_scope);
+                if let Some(res) = res
+                    && let Some(def_id) = res.opt_def_id()
+                    && !def_id.is_local()
+                    && self.r.session.crate_types().contains(&CrateType::ProcMacro) {
+                    // Encoding foreign def ids in proc macro crate metadata will ICE.
+                    return None;
+                }
+                res
+            })
+            .is_some();
+        self.r.doc_link_resolutions = doc_link_resolutions;
+        res
+    }
+
+    fn resolve_doc_links(&mut self, attrs: &[Attribute]) {
+        if !attrs.iter().any(|attr| attr.may_have_doc_links()) {
+            return;
+        }
+
+        let mut need_traits_in_scope = false;
+        for path_str in rustdoc::attrs_to_preprocessed_links(attrs) {
+            // Resolve all namespaces due to no disambiguator or for diagnostics.
+            let mut any_resolved = false;
+            let mut need_assoc = false;
+            for ns in [TypeNS, ValueNS, MacroNS] {
+                if self.resolve_and_cache_rustdoc_path(&path_str, ns) {
+                    any_resolved = true;
+                } else if ns != MacroNS {
+                    need_assoc = true;
+                }
+            }
+
+            // Resolve all prefixes for type-relative resolution or for diagnostics.
+            if need_assoc || !any_resolved {
+                let mut path = &path_str[..];
+                while let Some(idx) = path.rfind("::") {
+                    path = &path[..idx];
+                    need_traits_in_scope = true;
+                    for ns in [TypeNS, ValueNS, MacroNS] {
+                        self.resolve_and_cache_rustdoc_path(path, ns);
+                    }
+                }
+            }
+        }
+
+        if need_traits_in_scope {
+            // FIXME: hygiene is not considered.
+            let mut doc_link_traits_in_scope = std::mem::take(&mut self.r.doc_link_traits_in_scope);
+            doc_link_traits_in_scope
+                .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+                .or_insert_with(|| {
+                    self.r
+                        .traits_in_scope(None, &self.parent_scope, SyntaxContext::root(), None)
+                        .into_iter()
+                        .filter_map(|tr| {
+                            if !tr.def_id.is_local()
+                                && self.r.session.crate_types().contains(&CrateType::ProcMacro)
+                            {
+                                // Encoding foreign def ids in proc macro crate metadata will ICE.
+                                return None;
+                            }
+                            Some(tr.def_id)
+                        })
+                        .collect()
+                });
+            self.r.doc_link_traits_in_scope = doc_link_traits_in_scope;
+        }
+    }
 }
 
 struct LifetimeCountVisitor<'a, 'b> {
@@ -4162,6 +4277,7 @@ impl<'a> Resolver<'a> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
         visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
+        late_resolution_visitor.resolve_doc_links(&krate.attrs);
         visit::walk_crate(&mut late_resolution_visitor, krate);
         for (id, span) in late_resolution_visitor.diagnostic_metadata.unused_labels.iter() {
             self.lint_buffer.buffer_lint(lint::builtin::UNUSED_LABELS, *id, *span, "unused label");
