@@ -14,6 +14,7 @@ use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
 };
+use crate::ptr;
 use crate::slice::{Iter, IterMut};
 
 mod equality;
@@ -225,6 +226,43 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
             unsafe { Ok(&mut *ptr) }
         } else {
             Err(TryFromSliceError(()))
+        }
+    }
+}
+
+#[stable(feature = "char_array_from_str", since = "1.60.0")]
+impl<const N: usize> TryFrom<&str> for [char; N] {
+    type Error = TryFromSliceError;
+
+    fn try_from(text: &str) -> Result<[char; N], TryFromSliceError> {
+        if N == 0 {
+            return if text.is_empty() {
+                // SAFETY: An empty array is always inhabited and has no validity invariants.
+                Ok(unsafe { mem::zeroed() })
+            } else {
+                Err(TryFromSliceError(()))
+            };
+        }
+
+        let mut guard = ArrayInitGuard::new();
+        let mut iter = text.chars();
+
+        for _ in 0..N {
+            let next_ch = iter.next().ok_or(TryFromSliceError(()))?;
+            // SAFETY: This is called at most N times (from loop range)
+            unsafe {
+                guard.add(next_ch);
+            }
+        }
+
+        // SAFETY: There must be exactly `N` elements in the array
+        let out = unsafe { guard.into_inner().unwrap_unchecked() };
+
+        if iter.next().is_some() {
+            // too many chars in str
+            Err(TryFromSliceError(()))
+        } else {
+            Ok(out)
         }
     }
 }
@@ -800,26 +838,7 @@ where
         return unsafe { Some(Try::from_output(mem::zeroed())) };
     }
 
-    struct Guard<'a, T, const N: usize> {
-        array_mut: &'a mut [MaybeUninit<T>; N],
-        initialized: usize,
-    }
-
-    impl<T, const N: usize> Drop for Guard<'_, T, N> {
-        fn drop(&mut self) {
-            debug_assert!(self.initialized <= N);
-
-            // SAFETY: this slice will contain only initialized objects.
-            unsafe {
-                crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
-                    &mut self.array_mut.get_unchecked_mut(..self.initialized),
-                ));
-            }
-        }
-    }
-
-    let mut array = MaybeUninit::uninit_array::<N>();
-    let mut guard = Guard { array_mut: &mut array, initialized: 0 };
+    let mut guard = ArrayInitGuard::new();
 
     while let Some(item_rslt) = iter.next() {
         let item = match item_rslt.branch() {
@@ -829,22 +848,17 @@ where
             ControlFlow::Continue(elem) => elem,
         };
 
-        // SAFETY: `guard.initialized` starts at 0, is increased by one in the
-        // loop and the loop is aborted once it reaches N (which is
-        // `array.len()`).
-        unsafe {
-            guard.array_mut.get_unchecked_mut(guard.initialized).write(item);
-        }
-        guard.initialized += 1;
+        // SAFETY: For N = 0, we do not enter this loop. For N > 0, we know guard is not full
+        // because the check below would return.
+        unsafe { guard.add(item) };
 
         // Check if the whole array was initialized.
-        if guard.initialized == N {
-            mem::forget(guard);
-
+        if guard.is_complete() {
             // SAFETY: the condition above asserts that all elements are
             // initialized.
-            let out = unsafe { MaybeUninit::array_assume_init(array) };
-            return Some(Try::from_output(out));
+            unsafe {
+                return Some(Try::from_output(guard.into_inner().unwrap_unchecked()));
+            }
         }
     }
 
@@ -852,4 +866,66 @@ where
     // `guard.initialized` reaches `N`. Also note that `guard` is dropped here,
     // dropping all already initialized elements.
     None
+}
+
+/// Responsible for initializing an array and clearing up in case of a panic. Zero-cost and unsafe.
+struct ArrayInitGuard<T, const N: usize> {
+    array: [MaybeUninit<T>; N],
+    initialized: usize,
+}
+
+impl<T, const N: usize> ArrayInitGuard<T, N> {
+    fn new() -> Self {
+        Self { array: MaybeUninit::uninit_array::<N>(), initialized: 0 }
+    }
+
+    /// Adds an element to the array
+    ///
+    /// # Safety
+    ///
+    /// This function must be called at most `N` times.
+    unsafe fn add(&mut self, item: T) {
+        debug_assert!(self.initialized < N);
+        // SAFETY: `self.initialized` starts at 0, is increased by one each time `add` is called
+        // and `add` is called at most `N` times (from function contract)
+        unsafe {
+            self.array.get_unchecked_mut(self.initialized).write(item);
+        }
+        self.initialized += 1;
+    }
+
+    fn is_complete(&self) -> bool {
+        self.initialized == N
+    }
+
+    /// Safely take the contents of the array.
+    fn take_array(&mut self) -> [MaybeUninit<T>; N] {
+        let array = mem::replace(&mut self.array, MaybeUninit::uninit_array());
+        // IMPORTANT: otherwise `drop` will try to drop elements that we have moved.
+        self.initialized = 0;
+        array
+    }
+
+    fn into_inner(mut self) -> Option<[T; N]> {
+        if self.initialized == N {
+            let array = self.take_array();
+            // SAFETY: All elements must have been initialized.
+            unsafe { Some(MaybeUninit::array_assume_init(array)) }
+        } else {
+            None
+        }
+    }
+}
+
+impl<T, const N: usize> Drop for ArrayInitGuard<T, N> {
+    fn drop(&mut self) {
+        debug_assert!(self.initialized <= N);
+
+        // SAFETY: this slice will contain only initialized objects.
+        unsafe {
+            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(
+                &mut self.array.get_unchecked_mut(..self.initialized),
+            ));
+        }
+    }
 }
