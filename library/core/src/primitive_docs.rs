@@ -275,6 +275,7 @@ mod prim_bool {}
 mod prim_never {}
 
 #[doc(primitive = "char")]
+#[allow(rustdoc::invalid_rust_codeblocks)]
 /// A character type.
 ///
 /// The `char` type represents a single character. More specifically, since
@@ -295,7 +296,7 @@ mod prim_never {}
 /// No `char` may be constructed, whether as a literal or at runtime, that is not a
 /// Unicode scalar value:
 ///
-/// ```text
+/// ```compile_fail
 /// // Each of these is a compiler error
 /// ['\u{D800}', '\u{DFFF}', '\u{110000}'];
 /// ```
@@ -305,7 +306,7 @@ mod prim_never {}
 /// char::from_u32(0xDE01).unwrap();
 /// ```
 ///
-/// ```
+/// ```no_run
 /// // Undefined behaviour
 /// unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
