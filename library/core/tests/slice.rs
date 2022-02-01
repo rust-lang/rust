@@ -252,6 +252,40 @@ fn test_chunks_nth() {
 }
 
 #[test]
+fn test_chunks_next() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+    assert_eq!(c.next(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.chunks(3);
+    assert_eq!(c.next().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next().unwrap(), &[3, 4, 5]);
+    assert_eq!(c.next().unwrap(), &[6, 7]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_chunks_next_back() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.chunks(3);
+    assert_eq!(c.next_back().unwrap(), &[6, 7]);
+    assert_eq!(c.next_back().unwrap(), &[3, 4, 5]);
+    assert_eq!(c.next_back().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next_back(), None);
+}
+
+#[test]
 fn test_chunks_nth_back() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let mut c = v.chunks(2);
@@ -810,6 +844,40 @@ fn test_rchunks_nth_back() {
 }
 
 #[test]
+fn test_rchunks_next() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.next().unwrap(), &[4, 5]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks(3);
+    assert_eq!(c.next().unwrap(), &[5, 6, 7]);
+    assert_eq!(c.next().unwrap(), &[2, 3, 4]);
+    assert_eq!(c.next().unwrap(), &[0, 1]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_rchunks_next_back() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks(2);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[4, 5]);
+    assert_eq!(c.next_back(), None);
+
+    let v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks(3);
+    assert_eq!(c.next_back().unwrap(), &[0, 1]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3, 4]);
+    assert_eq!(c.next_back().unwrap(), &[5, 6, 7]);
+    assert_eq!(c.next_back(), None);
+}
+
+#[test]
 fn test_rchunks_last() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.rchunks(2);
@@ -872,6 +940,40 @@ fn test_rchunks_mut_nth_back() {
     let mut c2 = v2.rchunks_mut(3);
     assert_eq!(c2.nth_back(1).unwrap(), &[2, 3, 4]);
     assert_eq!(c2.next_back(), None);
+}
+
+#[test]
+fn test_rchunks_mut_next() {
+    let mut v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.next().unwrap(), &mut [4, 5]);
+    assert_eq!(c.next().unwrap(), &mut [2, 3]);
+    assert_eq!(c.next().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next(), None);
+
+    let mut v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks_mut(3);
+    assert_eq!(c.next().unwrap(), &mut [5, 6, 7]);
+    assert_eq!(c.next().unwrap(), &mut [2, 3, 4]);
+    assert_eq!(c.next().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_rchunks_mut_next_back() {
+    let mut v = [0, 1, 2, 3, 4, 5];
+    let mut c = v.rchunks_mut(2);
+    assert_eq!(c.next_back().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next_back().unwrap(), &mut [2, 3]);
+    assert_eq!(c.next_back().unwrap(), &mut [4, 5]);
+    assert_eq!(c.next_back(), None);
+
+    let mut v = [0, 1, 2, 3, 4, 5, 6, 7];
+    let mut c = v.rchunks_mut(3);
+    assert_eq!(c.next_back().unwrap(), &mut [0, 1]);
+    assert_eq!(c.next_back().unwrap(), &mut [2, 3, 4]);
+    assert_eq!(c.next_back().unwrap(), &mut [5, 6, 7]);
+    assert_eq!(c.next_back(), None);
 }
 
 #[test]
