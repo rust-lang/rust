@@ -31,7 +31,7 @@ pub trait AsRawFd {
     /// destroyed.
     ///
     /// However, borrowing is not strictly required. See [`AsFd::as_fd`]
-    /// for an API which strictly borrows a handle.
+    /// for an API which strictly borrows a file descriptor.
     ///
     /// # Example
     ///

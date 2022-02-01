@@ -186,7 +186,7 @@ pub trait FromRawSocket {
     ///
     /// The `socket` passed in must:
     ///   - be a valid an open socket,
-    ///   - be a handle for a resource that may be freed via [`closesocket`].
+    ///   - be a socket that may be freed via [`closesocket`].
     ///
     /// [`closesocket`]: https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-closesocket
     #[stable(feature = "from_raw_os", since = "1.1.0")]
