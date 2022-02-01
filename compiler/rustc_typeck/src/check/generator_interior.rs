@@ -416,7 +416,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                 let tcx = self.fcx.tcx;
                 let ref_ty = tcx.mk_ref(
                     // Use `ReErased` as `resolve_interior` is going to replace all the regions anyway.
-                    tcx.mk_region(ty::RegionKind::ReErased),
+                    tcx.mk_region(ty::ReErased),
                     ty::TypeAndMut { ty, mutbl: hir::Mutability::Not },
                 );
                 self.record(

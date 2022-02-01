@@ -428,7 +428,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let ty::RegionKind::ReLateBound(debruijn, br) = *result_value {
+                    if let ty::ReLateBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

@@ -937,9 +937,9 @@ impl<'tcx> CommonLifetimes<'tcx> {
         };
 
         CommonLifetimes {
-            re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
-            re_static: mk(RegionKind::ReStatic),
-            re_erased: mk(RegionKind::ReErased),
+            re_root_empty: mk(ty::ReEmpty(ty::UniverseIndex::ROOT)),
+            re_static: mk(ty::ReStatic),
+            re_erased: mk(ty::ReErased),
         }
     }
 }

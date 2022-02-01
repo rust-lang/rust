@@ -1685,14 +1685,14 @@ impl<'tcx> Region<'tcx> {
     /// Is this region named by the user?
     pub fn has_name(self) -> bool {
         match *self {
-            RegionKind::ReEarlyBound(ebr) => ebr.has_name(),
-            RegionKind::ReLateBound(_, br) => br.kind.is_named(),
-            RegionKind::ReFree(fr) => fr.bound_region.is_named(),
-            RegionKind::ReStatic => true,
-            RegionKind::ReVar(..) => false,
-            RegionKind::RePlaceholder(placeholder) => placeholder.name.is_named(),
-            RegionKind::ReEmpty(_) => false,
-            RegionKind::ReErased => false,
+            ty::ReEarlyBound(ebr) => ebr.has_name(),
+            ty::ReLateBound(_, br) => br.kind.is_named(),
+            ty::ReFree(fr) => fr.bound_region.is_named(),
+            ty::ReStatic => true,
+            ty::ReVar(..) => false,
+            ty::RePlaceholder(placeholder) => placeholder.name.is_named(),
+            ty::ReEmpty(_) => false,
+            ty::ReErased => false,
         }
     }
 
