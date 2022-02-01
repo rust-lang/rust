@@ -4969,9 +4969,21 @@ fast:;
       }
     } else {
       for (auto pair : *replacePHIs) {
-        Value *cas = si->findCaseDest(pair.first);
+        Value *cas = nullptr;
+        for (auto c : si->cases()) {
+          if (pair.first ==
+              *done[std::make_pair(block, c.getCaseSuccessor())].begin()) {
+            cas = c.getCaseValue();
+            break;
+          }
+        }
+        if (cas == nullptr) {
+          assert(pair.first ==
+                 *done[std::make_pair(block, si->getDefaultDest())].begin());
+        }
         Value *val = nullptr;
         Value *phi = lookupM(si->getCondition(), BuilderM);
+
         if (cas) {
           val = BuilderM.CreateICmpEQ(cas, phi);
         } else {

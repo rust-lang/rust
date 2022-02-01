@@ -525,6 +525,15 @@ public:
           if (hasMetadata(CI, "enzyme_fromstack")) {
             allocationsWithGuaranteedFree[CI].insert(CI);
           }
+          // TODO compute if an only load/store (non capture)
+          // allocaion by traversing its users. If so, mark
+          // all of its load/stores, as now the loads can
+          // potentially be rematerialized without a cache
+          // of the allocation, but the operands of all stores.
+          // This info needs to be provided to minCutCache
+          // the derivative of store needs to redo the store,
+          // isValueNeededInReverse needs to know to preserve the
+          // store operands in this case, etc
         }
       }
     }

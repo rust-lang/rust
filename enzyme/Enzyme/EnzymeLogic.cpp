@@ -895,6 +895,21 @@ void calculateUnusedValuesInFunction(
       });
 
   if (EnzymePrintUnnecessary) {
+    llvm::errs() << " val use analysis of " << func.getName()
+                 << ": mode=" << to_string(mode) << "\n";
+    for (auto &BB : func)
+      for (auto &I : BB) {
+        bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
+            TR, gutils, &I, mode, PrimalSeen, oldUnreachable);
+        bool isn = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+            TR, gutils, &I, mode, PrimalSeen, oldUnreachable);
+        llvm::errs() << I << " ivn=" << (int)ivn << " isn: " << (int)isn;
+        auto found = gutils->knownRecomputeHeuristic.find(&I);
+        if (found != gutils->knownRecomputeHeuristic.end()) {
+          llvm::errs() << " krc=" << (int)found->second;
+        }
+        llvm::errs() << "\n";
+      }
     llvm::errs() << "unnecessaryValues of " << func.getName()
                  << ": mode=" << to_string(mode) << "\n";
     for (auto a : unnecessaryValues) {
