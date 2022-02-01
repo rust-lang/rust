@@ -33,7 +33,6 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         _shuffle_seed: Option<u64>,
     ) -> io::Result<()> {
         // We write xml header on run start
-        self.out.write_all(b"\n")?;
         self.write_message("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
     }
 
@@ -138,7 +137,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
         self.write_message("</testsuite>")?;
         self.write_message("</testsuites>")?;
 
-        self.out.write_all(b"\n\n")?;
+        self.out.write_all(b"\n")?;
 
         Ok(state.failed == 0)
     }
