@@ -7,6 +7,7 @@ mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
+mod transmute_undefined_repr;
 mod transmutes_expressible_as_ptr_casts;
 mod unsound_collection_transmute;
 mod useless_transmute;
@@ -355,6 +356,30 @@ declare_clippy_lint! {
     "transmute between collections of layout-incompatible types"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmutes either to or from a type which does not have a defined representation.
+    ///
+    /// ### Why is this bad?
+    /// The results of such a transmute are not defined.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Foo<T>(u32, T);
+    /// let _ = unsafe { core::mem::transmute::<Foo<u32>, Foo<i32>>(Foo(0u32, 0u32)) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// #[repr(C)]
+    /// struct Foo<T>(u32, T);
+    /// let _ = unsafe { core::mem::transmute::<Foo<u32>, Foo<i32>>(Foo(0u32, 0u32)) };
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub TRANSMUTE_UNDEFINED_REPR,
+    correctness,
+    "transmute to or from a type with an undefined representation"
+}
+
 declare_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
@@ -369,6 +394,7 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+    TRANSMUTE_UNDEFINED_REPR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Transmute {
@@ -402,7 +428,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                     | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
-                    | unsound_collection_transmute::check(cx, e, from_ty, to_ty);
+                    | (
+                        unsound_collection_transmute::check(cx, e, from_ty, to_ty)
+                        || transmute_undefined_repr::check(cx, e, from_ty, to_ty)
+                    );
 
                 if !linted {
                     transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
