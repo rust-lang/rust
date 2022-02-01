@@ -3360,7 +3360,22 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 match arg.layout.abi {
-                    Abi::Aggregate { .. } => {}
+                    Abi::Aggregate { .. } => {
+                        // Pass and return structures up to 2 pointers in size by value,
+                        // matching `ScalarPair`. LLVM will usually pass these in 2 registers
+                        // which is more efficient than by-ref.
+                        let max_by_val_size = Pointer.size(self) * 2;
+                        let size = arg.layout.size;
+
+                        if arg.layout.is_unsized() || size > max_by_val_size {
+                            arg.make_indirect();
+                        } else {
+                            // We want to pass small aggregates as immediates, but using
+                            // a LLVM aggregate type for this leads to bad optimizations,
+                            // so we pick an appropriately sized integer type instead.
+                            arg.cast_to(Reg { kind: RegKind::Integer, size });
+                        }
+                    }
 
                     // This is a fun case! The gist of what this is doing is
                     // that we want callers and callees to always agree on the
@@ -3386,20 +3401,9 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                             && self.tcx.sess.target.simd_types_indirect =>
                     {
                         arg.make_indirect();
-                        return;
                     }
 
-                    _ => return,
-                }
-
-                let size = arg.layout.size;
-                if arg.layout.is_unsized() || size > Pointer.size(self) {
-                    arg.make_indirect();
-                } else {
-                    // We want to pass small aggregates as immediates, but using
-                    // a LLVM aggregate type for this leads to bad optimizations,
-                    // so we pick an appropriately sized integer type instead.
-                    arg.cast_to(Reg { kind: RegKind::Integer, size });
+                    _ => {},
                 }
             };
             fixup(&mut fn_abi.ret);
