@@ -1369,10 +1369,27 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
+    /// Decodes all inherent impls in the crate (for rustdoc).
+    fn get_inherent_impls(self) -> impl Iterator<Item = (DefId, DefId)> + 'a {
+        (0..self.root.tables.inherent_impls.size()).flat_map(move |i| {
+            let ty_index = DefIndex::from_usize(i);
+            let ty_def_id = self.local_def_id(ty_index);
+            self.root
+                .tables
+                .inherent_impls
+                .get(self, ty_index)
+                .unwrap_or_else(Lazy::empty)
+                .decode(self)
+                .map(move |impl_index| (ty_def_id, self.local_def_id(impl_index)))
+        })
+    }
+
+    /// Decodes all traits in the crate (for rustdoc and rustc diagnostics).
     fn get_traits(self) -> impl Iterator<Item = DefId> + 'a {
         self.root.traits.decode(self).map(move |index| self.local_def_id(index))
     }
 
+    /// Decodes all trait impls in the crate (for rustdoc).
     fn get_trait_impls(self) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + 'a {
         self.cdata.trait_impls.iter().flat_map(move |((trait_cnum_raw, trait_index), impls)| {
             let trait_def_id = DefId {
