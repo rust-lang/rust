@@ -144,7 +144,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
-    FnAbiAdjustForForeignAbi(&'tcx call::AdjustForForeignAbiError),
+    FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
     /// An invalid transmute happened.
     TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
     /// SizeOf of unsized type was requested.

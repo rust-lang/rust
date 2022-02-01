@@ -341,12 +341,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> FnAbiOfHelpers<'tcx> for InterpCx
 
     fn handle_fn_abi_err(
         &self,
-        err: &'tcx FnAbiError<'tcx>,
+        err: FnAbiError<'tcx>,
         _span: Span,
         _fn_abi_request: FnAbiRequest<'tcx>,
     ) -> InterpErrorInfo<'tcx> {
         match err {
-            FnAbiError::Layout(err) => err_inval!(Layout(*err)).into(),
+            FnAbiError::Layout(err) => err_inval!(Layout(err)).into(),
             FnAbiError::AdjustForForeignAbi(err) => {
                 err_inval!(FnAbiAdjustForForeignAbi(err)).into()
             }

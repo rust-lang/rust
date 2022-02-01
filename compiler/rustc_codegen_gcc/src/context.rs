@@ -397,7 +397,7 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_fn_abi_err(
         &self,
-        err: &'tcx FnAbiError<'tcx>,
+        err: FnAbiError<'tcx>,
         span: Span,
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
