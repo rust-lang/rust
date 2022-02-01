@@ -66,6 +66,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
                 let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
+                    if let ty::RePlaceholder(..) = region {
+                        // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                        return region;
+                    }
                     let vid = self.to_region_vid(region);
                     trace!(?vid);
                     let scc = self.constraint_sccs.scc(vid);
