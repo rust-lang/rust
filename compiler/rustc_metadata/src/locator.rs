@@ -223,7 +223,7 @@ use rustc_data_structures::sync::MetadataRef;
 use rustc_errors::{struct_span_err, FatalError};
 use rustc_session::config::{self, CrateType};
 use rustc_session::cstore::{CrateSource, MetadataLoader};
-use rustc_session::filesearch::{FileDoesntMatch, FileMatches, FileSearch};
+use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
 use rustc_session::Session;
@@ -396,7 +396,7 @@ impl<'a> CrateLocator<'a> {
         // The goal of this step is to look at as little metadata as possible.
         self.filesearch.search(|spf, kind| {
             let file = match &spf.file_name_str {
-                None => return FileDoesntMatch,
+                None => return,
                 Some(file) => file,
             };
             let (hash, found_kind) = if file.starts_with(&rlib_prefix) && file.ends_with(".rlib") {
@@ -415,7 +415,7 @@ impl<'a> CrateLocator<'a> {
                     staticlibs
                         .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
                 }
-                return FileDoesntMatch;
+                return;
             };
 
             info!("lib candidate: {}", spf.path.display());
@@ -423,7 +423,7 @@ impl<'a> CrateLocator<'a> {
             let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
             let path = fs::canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
             if seen_paths.contains(&path) {
-                return FileDoesntMatch;
+                return;
             };
             seen_paths.insert(path.clone());
             match found_kind {
@@ -431,7 +431,6 @@ impl<'a> CrateLocator<'a> {
                 CrateFlavor::Rmeta => rmetas.insert(path, kind),
                 CrateFlavor::Dylib => dylibs.insert(path, kind),
             };
-            FileMatches
         });
         self.crate_rejections.via_kind.extend(staticlibs);
 

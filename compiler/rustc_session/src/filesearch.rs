@@ -1,7 +1,5 @@
 //! A module for searching for libraries
 
-pub use self::FileMatch::*;
-
 use std::env;
 use std::fs;
 use std::iter::FromIterator;
@@ -45,21 +43,13 @@ impl<'a> FileSearch<'a> {
 
     pub fn search<F>(&self, mut pick: F)
     where
-        F: FnMut(&SearchPathFile, PathKind) -> FileMatch,
+        F: FnMut(&SearchPathFile, PathKind),
     {
         for search_path in self.search_paths() {
             debug!("searching {}", search_path.dir.display());
             for spf in search_path.files.iter() {
                 debug!("testing {}", spf.path.display());
-                let maybe_picked = pick(spf, search_path.kind);
-                match maybe_picked {
-                    FileMatches => {
-                        debug!("picked {}", spf.path.display());
-                    }
-                    FileDoesntMatch => {
-                        debug!("rejected {}", spf.path.display());
-                    }
-                }
+                pick(spf, search_path.kind);
             }
         }
     }
