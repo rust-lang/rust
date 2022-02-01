@@ -1676,6 +1676,21 @@ impl ExitCode {
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
 }
 
+impl ExitCode {
+    // This should not be stabilized when stabilizing ExitCode, we don't know that i32 will serve
+    // all usecases, for example windows seems to use u32, unix uses the 8-15th bits of an i32, we
+    // likely want to isolate users anything that could restrict the platform specific
+    // representation of an ExitCode
+    //
+    // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
+    /// Convert an ExitCode into an i32
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    #[inline]
+    pub fn to_i32(self) -> i32 {
+        self.0.as_i32()
+    }
+}
+
 impl Child {
     /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
     /// error is returned.
@@ -2016,20 +2031,20 @@ pub fn id() -> u32 {
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
-    fn report(self) -> i32;
+    fn report(self) -> ExitCode;
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
     #[inline]
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         ExitCode::SUCCESS.report()
     }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         match self {
             Ok(()) => ().report(),
             Err(err) => Err::<!, _>(err).report(),
@@ -2039,14 +2054,14 @@ impl<E: fmt::Debug> Termination for Result<(), E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ! {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         self
     }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
         eprintln!("Error: {:?}", err);
         ExitCode::FAILURE.report()
@@ -2055,7 +2070,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
         Err::<!, _>(err).report()
     }
@@ -2064,7 +2079,7 @@ impl<E: fmt::Debug> Termination for Result<Infallible, E> {
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ExitCode {
     #[inline]
-    fn report(self) -> i32 {
-        self.0.as_i32()
+    fn report(self) -> ExitCode {
+        self
     }
 }
