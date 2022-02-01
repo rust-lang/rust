@@ -8,7 +8,7 @@ use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind}
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{Ty, TyS, TypeckResults};
+use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
@@ -346,7 +346,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
             if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
             if let Some(ty_did) = ty_path.res.opt_def_id();
             then {
-                if !TyS::same_type(self.target.ty(), self.maybe_typeck_results.unwrap().expr_ty(e)) {
+                if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
                     return;
                 }
 

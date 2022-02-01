@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use rustc_hir::BinOpKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyS, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -138,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             // Find a size_of call in the count parameter expression and
             // check that it's the same type
             if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false);
-            if TyS::same_type(pointee_ty, ty_used_for_size_of);
+            if pointee_ty == ty_used_for_size_of;
             then {
                 span_lint_and_help(
                     cx,
