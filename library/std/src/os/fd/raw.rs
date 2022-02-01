@@ -7,6 +7,10 @@ use crate::io;
 use crate::os::raw;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
+#[all(cfg(doc), unix)]
+use crate::os::unix::io::{AsFd, FromFd, IntoFd};
+#[all(cfg(doc), target_os = "wasi")]
+use crate::os::unix::io::{AsFd, FromFd, IntoFd};
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
 use crate::sys_common::{AsInner, IntoInner};

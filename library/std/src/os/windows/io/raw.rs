@@ -5,6 +5,8 @@
 use crate::fs;
 use crate::io;
 use crate::net;
+#[all(cfg(doc), unix)]
+use crate::os::windows::io::{AsHandle, AsSocket, FromHandle, FromSocket, IntoHandle, IntoSocket};
 use crate::os::windows::io::{OwnedHandle, OwnedSocket};
 use crate::os::windows::raw;
 use crate::sys;
