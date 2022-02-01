@@ -35,8 +35,7 @@ pub fn bar() ({
                             for<'r> fn(Arguments<'r>) -> String {format})(((::core::fmt::Arguments::new_v1
                                 as
                                 fn(&[&'static str], &[ArgumentV1]) -> Arguments {Arguments::new_v1})((&([("test"
-                                            as &str)] as [&str; 1]) as
-                                &[&str; 1]),
+                                            as &str)] as [&str; 1]) as &[&str; 1]),
                             (&([] as [ArgumentV1; 0]) as &[ArgumentV1; 0])) as
                             Arguments)) as String);
                 (res as String)
