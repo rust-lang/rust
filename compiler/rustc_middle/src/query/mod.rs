@@ -1515,8 +1515,7 @@ rustc_queries! {
     /// check whether the forest is empty.
     query type_uninhabited_from(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-    ) -> ty::inhabitedness::DefIdForest {
-        storage(ArenaCacheSelector<'tcx>)
+    ) -> ty::inhabitedness::DefIdForest<'tcx> {
         desc { "computing the inhabitedness of `{:?}`", key }
         remap_env_constness
     }
