@@ -234,14 +234,19 @@ details.undocumented > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
+#theme-picker, #settings-menu, #help-button,
+#crate-search, .search-input, .search-input::placeholder {
 	background-color: #141920;
 	border-color: #424c57;
-	color: #c5c5c5;
+	color: grey;
+}
+
+#crate-search {
+	color: white;
 }
 
 .search-input {
-	color: #ffffff;
+	color: white;
 }
 
 .module-item .stab,
@@ -531,14 +536,12 @@ kbd {
 	box-shadow: inset 0 -1px 0 #5c6773;
 }
 
-#theme-picker, #settings-menu, #help-button {
-	border-color: #5c6773;
-	background-color: #0f1419;
-	color: #fff;
-}
-
 #theme-picker > img, #settings-menu > img {
 	filter: invert(100);
+}
+
+.sub-container img {
+	opacity: 50%;
 }
 
 #copy-path {

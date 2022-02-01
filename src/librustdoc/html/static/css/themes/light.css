@@ -208,10 +208,25 @@ details.undocumented > summary::before {
 	color: #999;
 }
 
-#crate-search, .search-input {
-	color: #555;
+#theme-picker:hover, #theme-picker:focus,
+#settings-menu:hover, #settings-menu:focus,
+#help-button:hover, #help-button:focus {
+	border-color: #717171;
+}
+
+#theme-picker, #settings-menu, #help-button,
+#crate-search, .search-input, .search-input::placeholder {
+	color: grey;
 	background-color: white;
 	border-color: #e0e0e0;
+}
+
+#crate-search {
+	color: black;
+}
+
+.sub-container img {
+	opacity: 50%;
 }
 
 .search-input:focus {
@@ -392,17 +407,6 @@ kbd {
 	border-color: #d1d5da;
 	border-bottom-color: #c6cbd1;
 	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#theme-picker, #settings-menu, #help-button {
-	border-color: #e0e0e0;
-	background-color: #fff;
-}
-
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus,
-#help-button:hover, #help-button:focus {
-	border-color: #717171;
 }
 
 #copy-path {

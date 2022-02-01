@@ -214,14 +214,23 @@ details.undocumented > summary::before {
 	filter: invert(100%);
 }
 
-#crate-search, .search-input {
-	color: #111;
-	background-color: #f0f0f0;
-	border-color: #000;
+#theme-picker, #settings-menu, #help-button,
+#crate-search, .search-input, .search-input::placeholder {
+	color: grey;
+	background-color: #353535;
+	border-color: #505050;
+}
+
+#theme-picker > img, #settings-menu > img {
+	filter: invert(50%);
+}
+
+#crate-search {
+	color: white;
 }
 
 .search-input {
-	border-color: #e0e0e0;
+	color: white;
 }
 
 .search-input:focus {
@@ -406,12 +415,6 @@ kbd {
 	border-color: #d1d5da;
 	border-bottom-color: #c6cbd1;
 	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#theme-picker, #settings-menu, #help-button {
-	border-color: #e0e0e0;
-	background: #f0f0f0;
-	color: #000;
 }
 
 #theme-picker:hover, #theme-picker:focus,
