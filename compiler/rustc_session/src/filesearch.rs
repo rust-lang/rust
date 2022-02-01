@@ -5,7 +5,7 @@ use std::fs;
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
-use crate::search_paths::{PathKind, SearchPath, SearchPathFile};
+use crate::search_paths::{PathKind, SearchPath};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use tracing::debug;
 
@@ -39,19 +39,6 @@ impl<'a> FileSearch<'a> {
 
     pub fn get_self_contained_lib_path(&self) -> PathBuf {
         self.get_lib_path().join("self-contained")
-    }
-
-    pub fn search<F>(&self, mut pick: F)
-    where
-        F: FnMut(&SearchPathFile, PathKind),
-    {
-        for search_path in self.search_paths() {
-            debug!("searching {}", search_path.dir.display());
-            for spf in search_path.files.iter() {
-                debug!("testing {}", spf.path.display());
-                pick(spf, search_path.kind);
-            }
-        }
     }
 
     pub fn new(

@@ -394,44 +394,55 @@ impl<'a> CrateLocator<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
-        self.filesearch.search(|spf, kind| {
-            let file = match &spf.file_name_str {
-                None => return,
-                Some(file) => file,
-            };
-            let (hash, found_kind) = if file.starts_with(&rlib_prefix) && file.ends_with(".rlib") {
-                (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
-            } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
-                (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
-            } else if file.starts_with(&dylib_prefix) && file.ends_with(&self.target.dll_suffix) {
-                (
-                    &file[(dylib_prefix.len())..(file.len() - self.target.dll_suffix.len())],
-                    CrateFlavor::Dylib,
-                )
-            } else {
-                if file.starts_with(&staticlib_prefix)
-                    && file.ends_with(&self.target.staticlib_suffix)
+        for search_path in self.filesearch.search_paths() {
+            debug!("searching {}", search_path.dir.display());
+            for spf in search_path.files.iter() {
+                debug!("testing {}", spf.path.display());
+
+                let file = match &spf.file_name_str {
+                    None => continue,
+                    Some(file) => file,
+                };
+                let (hash, found_kind) = if file.starts_with(&rlib_prefix)
+                    && file.ends_with(".rlib")
                 {
-                    staticlibs
-                        .push(CrateMismatch { path: spf.path.clone(), got: "static".to_string() });
-                }
-                return;
-            };
+                    (&file[(rlib_prefix.len())..(file.len() - ".rlib".len())], CrateFlavor::Rlib)
+                } else if file.starts_with(&rlib_prefix) && file.ends_with(".rmeta") {
+                    (&file[(rlib_prefix.len())..(file.len() - ".rmeta".len())], CrateFlavor::Rmeta)
+                } else if file.starts_with(&dylib_prefix) && file.ends_with(&self.target.dll_suffix)
+                {
+                    (
+                        &file[(dylib_prefix.len())..(file.len() - self.target.dll_suffix.len())],
+                        CrateFlavor::Dylib,
+                    )
+                } else {
+                    if file.starts_with(&staticlib_prefix)
+                        && file.ends_with(&self.target.staticlib_suffix)
+                    {
+                        staticlibs.push(CrateMismatch {
+                            path: spf.path.clone(),
+                            got: "static".to_string(),
+                        });
+                    }
+                    continue;
+                };
 
-            info!("lib candidate: {}", spf.path.display());
+                info!("lib candidate: {}", spf.path.display());
 
-            let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
-            let path = fs::canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
-            if seen_paths.contains(&path) {
-                return;
-            };
-            seen_paths.insert(path.clone());
-            match found_kind {
-                CrateFlavor::Rlib => rlibs.insert(path, kind),
-                CrateFlavor::Rmeta => rmetas.insert(path, kind),
-                CrateFlavor::Dylib => dylibs.insert(path, kind),
-            };
-        });
+                let (rlibs, rmetas, dylibs) = candidates.entry(hash.to_string()).or_default();
+                let path = fs::canonicalize(&spf.path).unwrap_or_else(|_| spf.path.clone());
+                if seen_paths.contains(&path) {
+                    continue;
+                };
+                seen_paths.insert(path.clone());
+                match found_kind {
+                    CrateFlavor::Rlib => rlibs.insert(path, search_path.kind),
+                    CrateFlavor::Rmeta => rmetas.insert(path, search_path.kind),
+                    CrateFlavor::Dylib => dylibs.insert(path, search_path.kind),
+                };
+            }
+        }
+
         self.crate_rejections.via_kind.extend(staticlibs);
 
         // We have now collected all known libraries into a set of candidates
