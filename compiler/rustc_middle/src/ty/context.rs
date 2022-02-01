@@ -5,7 +5,7 @@ use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
-use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath, ObjectLifetimeDefault};
+use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
 use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
@@ -2711,10 +2711,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_late_bound(self, id: HirId) -> bool {
         self.is_late_bound_map(id.owner)
             .map_or(false, |(owner, set)| owner == id.owner && set.contains(&id.local_id))
-    }
-
-    pub fn object_lifetime_defaults(self, id: HirId) -> &'tcx Option<Vec<ObjectLifetimeDefault>> {
-        self.object_lifetime_defaults_map(id.owner)
     }
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
