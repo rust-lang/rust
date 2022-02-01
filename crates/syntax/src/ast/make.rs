@@ -329,6 +329,31 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {}", buf))
 }
 
+/// Ideally this function wouldn't exist since it involves manual indenting.
+/// It differs from `make::block_expr` by also supporting comments.
+///
+/// FIXME: replace usages of this with the mutable syntax tree API
+pub fn hacky_block_expr_with_comments(
+    elements: impl IntoIterator<Item = crate::SyntaxElement>,
+    tail_expr: Option<ast::Expr>,
+) -> ast::BlockExpr {
+    let mut buf = "{\n".to_string();
+    for node_or_token in elements.into_iter() {
+        match node_or_token {
+            rowan::NodeOrToken::Node(n) => format_to!(buf, "    {}\n", n),
+            rowan::NodeOrToken::Token(t) if t.kind() == SyntaxKind::COMMENT => {
+                format_to!(buf, "    {}\n", t)
+            }
+            _ => (),
+        }
+    }
+    if let Some(tail_expr) = tail_expr {
+        format_to!(buf, "    {}\n", tail_expr);
+    }
+    buf += "}";
+    ast_from_text(&format!("fn f() {}", buf))
+}
+
 pub fn expr_unit() -> ast::Expr {
     expr_from_text("()")
 }

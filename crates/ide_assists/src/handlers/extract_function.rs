@@ -34,12 +34,13 @@ use crate::{
 
 // Assist: extract_function
 //
-// Extracts selected statements into new function.
+// Extracts selected statements and comments into new function.
 //
 // ```
 // fn main() {
 //     let n = 1;
 //     $0let m = n + 2;
+//     // calculate
 //     let k = m + n;$0
 //     let g = 3;
 // }
@@ -54,6 +55,7 @@ use crate::{
 //
 // fn $0fun_name(n: i32) {
 //     let m = n + 2;
+//     // calculate
 //     let k = m + n;
 // }
 // ```
@@ -73,6 +75,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
         syntax::NodeOrToken::Node(n) => n,
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
+
     let body = extraction_target(&node, range)?;
     let container_info = body.analyze_container(&ctx.sema)?;
 
@@ -476,11 +479,14 @@ impl FunctionBody {
     }
 
     fn from_range(parent: ast::StmtList, selected: TextRange) -> FunctionBody {
-        let mut text_range = parent
-            .statements()
-            .map(|stmt| stmt.syntax().text_range())
-            .filter(|&stmt| selected.intersect(stmt).filter(|it| !it.is_empty()).is_some())
+        let full_body = parent.syntax().children_with_tokens();
+
+        let mut text_range = full_body
+            .filter(|it| ast::Stmt::can_cast(it.kind()) || it.kind() == COMMENT)
+            .map(|element| element.text_range())
+            .filter(|&range| selected.intersect(range).filter(|it| !it.is_empty()).is_some())
             .reduce(|acc, stmt| acc.cover(stmt));
+
         if let Some(tail_range) = parent
             .tail_expr()
             .map(|it| it.syntax().text_range())
@@ -1420,6 +1426,7 @@ fn make_body(
     } else {
         FlowHandler::from_ret_ty(fun, &ret_ty)
     };
+
     let block = match &fun.body {
         FunctionBody::Expr(expr) => {
             let expr = rewrite_body_segment(ctx, &fun.params, &handler, expr.syntax());
@@ -1441,21 +1448,28 @@ fn make_body(
         FunctionBody::Span { parent, text_range } => {
             let mut elements: Vec<_> = parent
                 .syntax()
-                .children()
+                .children_with_tokens()
                 .filter(|it| text_range.contains_range(it.text_range()))
-                .map(|it| rewrite_body_segment(ctx, &fun.params, &handler, &it))
+                .map(|it| match &it {
+                    syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
+                        rewrite_body_segment(ctx, &fun.params, &handler, &n),
+                    ),
+                    _ => it,
+                })
                 .collect();
 
-            let mut tail_expr = match elements.pop() {
-                Some(node) => ast::Expr::cast(node.clone()).or_else(|| {
-                    elements.push(node);
-                    None
-                }),
-                None => None,
+            let mut tail_expr = match &elements.last() {
+                Some(syntax::NodeOrToken::Node(node)) if ast::Expr::can_cast(node.kind()) => {
+                    ast::Expr::cast(node.clone())
+                }
+                _ => None,
             };
 
-            if tail_expr.is_none() {
-                match fun.outliving_locals.as_slice() {
+            match tail_expr {
+                Some(_) => {
+                    elements.pop();
+                }
+                None => match fun.outliving_locals.as_slice() {
                     [] => {}
                     [var] => {
                         tail_expr = Some(path_expr_from_local(ctx, var.local));
@@ -1465,22 +1479,27 @@ fn make_body(
                         let expr = make::expr_tuple(exprs);
                         tail_expr = Some(expr);
                     }
-                }
-            }
-
-            let elements = elements.into_iter().filter_map(|node| match ast::Stmt::cast(node) {
-                Some(stmt) => Some(stmt),
-                None => {
-                    stdx::never!("block contains non-statement");
-                    None
-                }
-            });
+                },
+            };
 
             let body_indent = IndentLevel(1);
-            let elements = elements.map(|stmt| stmt.dedent(old_indent).indent(body_indent));
+            let elements = elements
+                .into_iter()
+                .map(|node_or_token| match &node_or_token {
+                    syntax::NodeOrToken::Node(node) => match ast::Stmt::cast(node.clone()) {
+                        Some(stmt) => {
+                            let indented = stmt.dedent(old_indent).indent(body_indent);
+                            let ast_node = indented.syntax().clone_subtree();
+                            syntax::NodeOrToken::Node(ast_node)
+                        }
+                        _ => node_or_token,
+                    },
+                    _ => node_or_token,
+                })
+                .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
 
-            make::block_expr(elements, tail_expr)
+            make::hacky_block_expr_with_comments(elements, tail_expr)
         }
     };
 
@@ -4092,13 +4111,34 @@ fn foo() {
 "#,
             r#"
 fn foo() {
-    /**/
     fun_name();
-    /**/
 }
 
 fn $0fun_name() {
+    /**/
     foo();
+    foo();
+    /**/
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_does_not_tear_body_apart() {
+        check_assist(
+            extract_function,
+            r#"
+fn foo() {
+    $0foo();
+}$0
+"#,
+            r#"
+fn foo() {
+    fun_name();
+}
+
+fn $0fun_name() {
     foo();
 }
 "#,
@@ -4393,6 +4433,164 @@ pub fn testfn(arg: &mut Foo) {
 
 fn $0fun_name(arg: &mut Foo) {
     arg.field = 8;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_copies_comment_at_start() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0// comment here!
+    let x = 0;$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    // comment here!
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_copies_comment_in_between() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;$0
+    let a = 0;
+    // comment here!
+    let x = 0;$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    let a = 0;
+    // comment here!
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_copies_comment_at_end() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0let x = 0;
+    // comment here!$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    let x = 0;
+    // comment here!
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_copies_comment_indented() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0let x = 0;
+    while(true) {
+        // comment here!
+    }$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    let x = 0;
+    while(true) {
+        // comment here!
+    }
+}
+"#,
+        );
+    }
+
+    // FIXME: we do want to preserve whitespace
+    #[test]
+    fn extract_function_does_not_preserve_whitespace() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0let a = 0;
+
+    let x = 0;$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    let a = 0;
+    let x = 0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn extract_function_long_form_comment() {
+        check_assist(
+            extract_function,
+            r#"
+fn func() {
+    let i = 0;
+    $0/* a comment */
+    let x = 0;$0
+}
+"#,
+            r#"
+fn func() {
+    let i = 0;
+    fun_name();
+}
+
+fn $0fun_name() {
+    /* a comment */
+    let x = 0;
 }
 "#,
         );
