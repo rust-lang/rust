@@ -221,7 +221,6 @@ pub fn struct_lint_level<'s, 'd>(
         decorate: Box<dyn for<'b> FnOnce(LintDiagnosticBuilder<'b>) + 'd>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
-        let lint_id = LintId::of(lint);
         let future_incompatible = lint.future_incompatible;
 
         let has_future_breakage = future_incompatible.map_or(
@@ -345,31 +344,29 @@ pub fn struct_lint_level<'s, 'd>(
         err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 
         if let Some(future_incompatible) = future_incompatible {
-            let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-                "once this associated item is added to the standard library, the ambiguity may \
-                 cause an error or change in behavior!"
-                    .to_owned()
-            } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-                "this borrowing pattern was not meant to be accepted, and may become a hard error \
-                 in the future"
-                    .to_owned()
-            } else if let FutureIncompatibilityReason::EditionError(edition) =
-                future_incompatible.reason
-            {
-                let current_edition = sess.edition();
-                format!(
-                    "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
-                    current_edition, edition
-                )
-            } else if let FutureIncompatibilityReason::EditionSemanticsChange(edition) =
-                future_incompatible.reason
-            {
-                format!("this changes meaning in Rust {}", edition)
-            } else {
-                "this was previously accepted by the compiler but is being phased out; \
-                 it will become a hard error in a future release!"
-                    .to_owned()
+            let explanation = match future_incompatible.reason {
+                FutureIncompatibilityReason::FutureReleaseError
+                | FutureIncompatibilityReason::FutureReleaseErrorReportNow => {
+                    "this was previously accepted by the compiler but is being phased out; \
+                         it will become a hard error in a future release!"
+                        .to_owned()
+                }
+                FutureIncompatibilityReason::FutureReleaseSemanticsChange => {
+                    "this will change its meaning in a future release!".to_owned()
+                }
+                FutureIncompatibilityReason::EditionError(edition) => {
+                    let current_edition = sess.edition();
+                    format!(
+                        "this is accepted in the current edition (Rust {}) but is a hard error in Rust {}!",
+                        current_edition, edition
+                    )
+                }
+                FutureIncompatibilityReason::EditionSemanticsChange(edition) => {
+                    format!("this changes meaning in Rust {}", edition)
+                }
+                FutureIncompatibilityReason::Custom(reason) => reason.to_owned(),
             };
+
             if future_incompatible.explain_reason {
                 err.warn(&explanation);
             }
