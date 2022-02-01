@@ -8079,7 +8079,7 @@ public:
               shouldFree()) {
             IRBuilder<> Builder2(call.getParent());
             getReverseBuilder(Builder2);
-            auto dbgLoc = gutils->getNewFromOriginal(orig)->getDebugLoc();
+            auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
             freeKnownAllocation(Builder2, lookup(nop, Builder2), *called,
                                 dbgLoc, gutils->TLI);
           }
