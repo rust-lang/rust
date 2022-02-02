@@ -111,6 +111,10 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
 
 fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let call: ast::MethodCallExpr = ctx.find_node_at_offset()?;
+    if ctx.sema.resolve_method_call(&call).is_some() {
+        return None;
+    }
+
     let fn_name = call.name_ref()?;
     let adt = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
@@ -481,7 +485,12 @@ fn fn_arg_name(sema: &Semantics<RootDatabase>, arg_expr: &ast::Expr) -> String {
     let name = (|| match arg_expr {
         ast::Expr::CastExpr(cast_expr) => Some(fn_arg_name(sema, &cast_expr.expr()?)),
         expr => {
-            let name_ref = expr.syntax().descendants().filter_map(ast::NameRef::cast).last()?;
+            let name_ref = expr
+                .syntax()
+                .descendants()
+                .filter_map(ast::NameRef::cast)
+                .filter(|name| name.ident_token().is_some())
+                .last()?;
             if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_))) =
                 NameRefClass::classify(sema, &name_ref)
             {
