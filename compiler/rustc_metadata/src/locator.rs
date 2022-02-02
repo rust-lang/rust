@@ -399,10 +399,7 @@ impl<'a> CrateLocator<'a> {
             for spf in search_path.files.iter() {
                 debug!("testing {}", spf.path.display());
 
-                let file = match &spf.file_name_str {
-                    None => continue,
-                    Some(file) => file,
-                };
+                let file = &spf.file_name_str;
                 let (hash, found_kind) = if file.starts_with(&rlib_prefix)
                     && file.ends_with(".rlib")
                 {
