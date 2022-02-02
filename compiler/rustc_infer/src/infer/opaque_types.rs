@@ -82,7 +82,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
                 ty::Opaque(def_id, substs) => {
                     if let ty::Opaque(did2, _) = *b.kind() {
-                        if self.opaque_type_origin(did2, cause.span).is_some() {
+                        // We could accept this, but there are various ways to handle this situation, and we don't
+                        // want to make a decision on it right now. Likely this case is so super rare anyway, that
+                        // no one encounters it in practice.
+                        // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
+                        // where it is of no concern, so we only check for TAITs.
+                        if let Some(OpaqueTyOrigin::TyAlias) =
+                            self.opaque_type_origin(did2, cause.span)
+                        {
                             self.tcx
                                 .sess
                                 .struct_span_err(

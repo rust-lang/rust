@@ -1,3 +1,4 @@
+// run-pass
 // ignore-compare-mode-chalk
 
 #![feature(fn_traits,
@@ -589,7 +590,7 @@ fn test_format_month() {
 fn format_months(it: impl Iterator<Item = impl DateIterator>)
                 -> impl Iterator<Item=impl Iterator<Item=String>>
 {
-    it.map(format_month) //~ ERROR opaque type's hidden type cannot be another opaque type
+    it.map(format_month)
 }
 
 /// Takes an iterator of iterators of strings; the sub-iterators are consumed
