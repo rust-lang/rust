@@ -400,6 +400,8 @@ struct DiagnosticMetadata<'ast> {
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     current_where_predicate: Option<&'ast WherePredicate>,
+
+    current_type_path: Option<&'ast Ty>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -472,8 +474,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_ty(&mut self, ty: &'ast Ty) {
         let prev = self.diagnostic_metadata.current_trait_object;
+        let prev_ty = self.diagnostic_metadata.current_type_path;
         match ty.kind {
             TyKind::Path(ref qself, ref path) => {
+                self.diagnostic_metadata.current_type_path = Some(ty);
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
@@ -490,6 +494,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
         visit::walk_ty(self, ty);
         self.diagnostic_metadata.current_trait_object = prev;
+        self.diagnostic_metadata.current_type_path = prev_ty;
     }
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
         self.smart_resolve_path(
@@ -1936,7 +1941,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
-                // get_from_node_id
 
                 this.r.use_injections.push(UseError {
                     err,
