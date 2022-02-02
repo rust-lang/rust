@@ -37,7 +37,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> DropRanges {
-    if super::ENABLE_DROP_TRACKING {
+    if fcx.sess().opts.debugging_opts.drop_tracking {
         let consumed_borrowed_places = find_consumed_and_borrowed(fcx, def_id, body);
 
         let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
