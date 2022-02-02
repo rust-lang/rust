@@ -47,11 +47,10 @@ use rls_data::{
 
 use tracing::{debug, error};
 
+#[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5213
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
-        let $id = if let super::Data::$kind(data) = $id {
-            data
-        } else {
+        let super::Data::$kind($id) = $id else {
             span_bug!($sp, "unexpected data kind: {:?}", $id);
         };
     };
