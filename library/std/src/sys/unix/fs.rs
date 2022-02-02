@@ -1700,12 +1700,12 @@ mod remove_dir_impl {
         fn verify_dev_ino(&self, fd: BorrowedFd<'_>) -> io::Result<()> {
             let mut stat = unsafe { mem::zeroed() };
             cvt(unsafe { fstat64(fd.as_raw_fd(), &mut stat) })?;
-            // Make sure that the reopened parent directory has the same inode as when we visited it descending
+            // Make sure that the reopened directory has the same inode as when we visited it descending
             // the directory tree. More detailed risk analysis TBD.
             if self.dev != stat.st_dev || self.ino != stat.st_ino {
                 return Err(io::Error::new(
                     io::ErrorKind::Uncategorized,
-                    "parent directory inode does not match",
+                    "directory inode does not match",
                 ));
             }
             Ok(())
@@ -1752,10 +1752,24 @@ mod remove_dir_impl {
                     let parent_readdir = match readdir_cache.pop_back() {
                         Some(readdir) => readdir,
                         None => {
-                            // not cached -> reopen
+                            // cache is empty
+
+                            // reopen direct parent
                             let parent_readdir = current_readdir.get_parent()?;
                             parent.verify_dev_ino(parent_readdir.as_fd())?;
-                            parent_readdir
+                            readdir_cache.push_front(parent_readdir);
+
+                            // refill cache and verify ancestors
+                            for ancester_component in parent_dir_components
+                                .iter()
+                                .rev()
+                                .take(readdir_cache.capacity() - 1)
+                            {
+                                let parent_readdir = readdir_cache.front().unwrap().get_parent()?;
+                                ancester_component.verify_dev_ino(parent_readdir.as_fd())?;
+                                readdir_cache.push_front(parent_readdir);
+                            }
+                            readdir_cache.pop_back().unwrap()
                         }
                     };
                     cvt(unsafe {
