@@ -280,9 +280,6 @@ fn implicit_negative<'cx, 'tcx>(
         })
         .chain(obligations)
         .find(|o| loose_check(selcx, o));
-    // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
-    // to the canonical trait query form, `infcx.predicate_may_hold`, once
-    // the new system supports intercrate mode (which coherence needs).
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -361,6 +358,9 @@ fn loose_check<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
+    // FIXME: the call to `selcx.predicate_may_hold_fatal` below should be ported
+    // to the canonical trait query form, `infcx.predicate_may_hold`, once
+    // the new system supports intercrate mode (which coherence needs).
     !selcx.predicate_may_hold_fatal(o)
 }
 
