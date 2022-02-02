@@ -498,14 +498,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> &'tcx ty::Const<'tcx> {
+    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
             hir::ArrayLen::Body(anon_const) => self.to_const(anon_const),
         }
     }
 
-    pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
+    pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
         self.register_wf_obligation(
@@ -520,7 +520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ast_c: &hir::AnonConst,
         param_def_id: DefId,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         let const_def = ty::WithOptConstParam {
             did: self.tcx.hir().local_def_id(ast_c.hir_id),
             const_param_did: Some(param_def_id),

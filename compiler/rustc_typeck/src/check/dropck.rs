@@ -362,9 +362,9 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug!("SimpleEqRelation::consts(a={:?}, b={:?})", a, b);
         ty::relate::super_relate_consts(self, a, b)
     }

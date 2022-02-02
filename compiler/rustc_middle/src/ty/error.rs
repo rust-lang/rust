@@ -60,13 +60,13 @@ pub enum TypeError<'tcx> {
     /// created a cycle (because it appears somewhere within that
     /// type).
     CyclicTy(Ty<'tcx>),
-    CyclicConst(&'tcx ty::Const<'tcx>),
+    CyclicConst(ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ExistentialMismatch(
         ExpectedFound<&'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>>,
     ),
     ObjectUnsafeCoercion(DefId),
-    ConstMismatch(ExpectedFound<&'tcx ty::Const<'tcx>>),
+    ConstMismatch(ExpectedFound<ty::Const<'tcx>>),
 
     IntrinsicCast,
     /// Safe `#[target_feature]` functions are not assignable to safe function pointers.
@@ -255,7 +255,7 @@ impl<'tcx> Ty<'tcx> {
                 }
 
                 let n = tcx.lift(n).unwrap();
-                if let ty::ConstKind::Value(v) = n.val {
+                if let ty::ConstKind::Value(v) = n.val() {
                     if let Some(n) = v.try_to_machine_usize(tcx) {
                         return format!("array of {} element{}", n, pluralize!(n)).into();
                     }

@@ -2181,7 +2181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
-        len: &ty::Const<'tcx>,
+        len: ty::Const<'tcx>,
     ) {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())

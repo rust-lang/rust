@@ -974,7 +974,7 @@ impl<'tcx> LateContext<'tcx> {
                 Ok(())
             }
 
-            fn print_const(self, _ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
                 Ok(())
             }
 

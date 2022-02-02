@@ -25,11 +25,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Convenience function for creating a literal operand, one
     /// without any user type annotation.
-    crate fn literal_operand(
-        &mut self,
-        span: Span,
-        literal: &'tcx ty::Const<'tcx>,
-    ) -> Operand<'tcx> {
+    crate fn literal_operand(&mut self, span: Span, literal: ty::Const<'tcx>) -> Operand<'tcx> {
         let literal = literal.into();
         let constant = Box::new(Constant { span, user_ty: None, literal });
         Operand::Constant(constant)

@@ -475,8 +475,8 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match ct.val {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.val() {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {
@@ -493,7 +493,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
                             ui = ty::UniverseIndex::ROOT;
                         }
                         return self.canonicalize_const_var(
-                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty) },
+                            CanonicalVarInfo { kind: CanonicalVarKind::Const(ui, ct.ty()) },
                             ct,
                         );
                     }
@@ -769,17 +769,17 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     fn canonicalize_const_var(
         &mut self,
         info: CanonicalVarInfo<'tcx>,
-        const_var: &'tcx ty::Const<'tcx>,
-    ) -> &'tcx ty::Const<'tcx> {
+        const_var: ty::Const<'tcx>,
+    ) -> ty::Const<'tcx> {
         let infcx = self.infcx;
         let bound_to = infcx.shallow_resolve(const_var);
         if bound_to != const_var {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(ty::Const {
+            self.tcx().mk_const(ty::ConstS {
                 val: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty),
+                ty: self.fold_ty(const_var.ty()),
             })
         }
     }

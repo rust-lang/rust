@@ -275,7 +275,7 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
     }
 }
 
-impl<'tcx> Key for (&'tcx ty::Const<'tcx>, mir::Field) {
+impl<'tcx> Key for (ty::Const<'tcx>, mir::Field) {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -345,7 +345,7 @@ impl<'tcx> Key for mir::ConstantKind<'tcx> {
     }
 }
 
-impl<'tcx> Key for &'tcx ty::Const<'tcx> {
+impl<'tcx> Key for ty::Const<'tcx> {
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true

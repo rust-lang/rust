@@ -88,21 +88,21 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
         if a == b {
             return Ok(a);
         }
 
-        match (a.val, b.val) {
+        match (a.val(), b.val()) {
             (_, ty::ConstKind::Infer(InferConst::Fresh(_))) => {
                 return Ok(a);
             }
 
             (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
-                return Err(TypeError::ConstMismatch(relate::expected_found(self, &a, &b)));
+                return Err(TypeError::ConstMismatch(relate::expected_found(self, a, b)));
             }
 
             _ => {}

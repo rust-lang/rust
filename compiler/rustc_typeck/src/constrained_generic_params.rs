@@ -79,11 +79,11 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
         ControlFlow::CONTINUE
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match c.val() {
             ty::ConstKind::Unevaluated(..) if !self.include_nonconstraining => {
                 // Constant expressions are not injective
-                return c.ty.visit_with(self);
+                return c.ty().visit_with(self);
             }
             ty::ConstKind::Param(data) => {
                 self.parameters.push(Parameter::from(data));

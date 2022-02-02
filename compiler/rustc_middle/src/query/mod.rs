@@ -113,7 +113,7 @@ rustc_queries! {
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
-    query const_param_default(param: DefId) -> &'tcx ty::Const<'tcx> {
+    query const_param_default(param: DefId) -> ty::Const<'tcx> {
         desc { |tcx| "compute const default for a given parameter `{}`", tcx.def_path_str(param)  }
         separate_provide_extern
     }
@@ -926,7 +926,7 @@ rustc_queries! {
     /// Destructure a constant ADT or array into its variant index and its
     /// field values.
     query destructure_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
     ) -> mir::DestructuredConst<'tcx> {
         desc { "destructure constant" }
         remap_env_constness
@@ -935,8 +935,8 @@ rustc_queries! {
     /// Dereference a constant reference or raw pointer and turn the result into a constant
     /// again.
     query deref_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
-    ) -> &'tcx ty::Const<'tcx> {
+        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
+    ) -> ty::Const<'tcx> {
         desc { "deref constant" }
         remap_env_constness
     }
@@ -947,7 +947,7 @@ rustc_queries! {
 
     query lit_to_const(
         key: LitToConstInput<'tcx>
-    ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+    ) -> Result<ty::Const<'tcx>, LitToConstError> {
         desc { "converting literal to const" }
     }
 

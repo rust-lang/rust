@@ -144,6 +144,12 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.0.0.encode(e)
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AllocId {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         e.encode_alloc_id(self)
@@ -335,8 +341,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::Const<'tcx> {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Const<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
         decoder.tcx().mk_const(Decodable::decode(decoder))
     }
 }

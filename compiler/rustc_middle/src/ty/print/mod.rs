@@ -66,7 +66,7 @@ pub trait Printer<'tcx>: Sized {
         predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
-    fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
+    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
 
     fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error>;
 
@@ -352,10 +352,10 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::Const<'tcx> {
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     type Output = P::Const;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
-        cx.print_const(self)
+        cx.print_const(*self)
     }
 }

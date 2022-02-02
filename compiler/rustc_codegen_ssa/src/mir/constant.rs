@@ -29,7 +29,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::ConstantKind::Ty(ct) => ct,
             mir::ConstantKind::Val(val, _) => return Ok(val),
         };
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
@@ -61,11 +61,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let c = ty::Const::from_value(bx.tcx(), val, ty);
                 let values: Vec<_> = bx
                     .tcx()
-                    .destructure_const(ty::ParamEnv::reveal_all().and(&c))
+                    .destructure_const(ty::ParamEnv::reveal_all().and(c))
                     .fields
                     .iter()
                     .map(|field| {
-                        if let Some(prim) = field.val.try_to_scalar() {
+                        if let Some(prim) = field.val().try_to_scalar() {
                             let layout = bx.layout_of(field_ty);
                             let scalar = match layout.abi {
                                 Abi::Scalar(x) => x,
@@ -78,7 +78,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     })
                     .collect();
                 let llval = bx.const_struct(&values, false);
-                (llval, c.ty)
+                (llval, c.ty())
             })
             .unwrap_or_else(|_| {
                 bx.tcx().sess.span_err(span, "could not evaluate shuffle_indices at compile time");

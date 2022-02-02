@@ -39,7 +39,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx Const<'tcx>) -> &'tcx Const<'tcx> {
+    fn fold_const(&mut self, ct: Const<'tcx>) -> Const<'tcx> {
         if !ct.has_infer_types_or_consts() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
@@ -98,7 +98,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticRegionResolver<'a, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         if !ct.has_infer_regions() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
@@ -218,15 +218,12 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         }
     }
 
-    fn try_fold_const(
-        &mut self,
-        c: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         if !c.needs_infer() {
             Ok(c) // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             let c = self.infcx.shallow_resolve(c);
-            match c.val {
+            match c.val() {
                 ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     return Err(FixupError::UnresolvedConst(vid));
                 }

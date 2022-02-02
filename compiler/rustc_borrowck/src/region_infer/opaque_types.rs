@@ -198,7 +198,7 @@ fn check_opaque_type_parameter_valid(
             GenericArgKind::Lifetime(lt) => {
                 matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
-            GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+            GenericArgKind::Const(ct) => matches!(ct.val(), ty::ConstKind::Param(_)),
         };
 
         if arg_is_param {

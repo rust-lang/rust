@@ -18,10 +18,10 @@ use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, Substs
 use crate::ty::TyKind::*;
 use crate::ty::{
     self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
-    ClosureSizeProfileData, Const, ConstVid, DefIdTree, ExistentialPredicate, FloatTy, FloatVar,
-    FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List, ParamConst,
-    ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region, RegionKind,
-    ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
+    FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
+    ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
+    RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -111,7 +111,7 @@ pub struct CtxtInterners<'tcx> {
     predicates: InternedSet<'tcx, List<Predicate<'tcx>>>,
     projs: InternedSet<'tcx, List<ProjectionKind>>,
     place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
-    const_: InternedSet<'tcx, Const<'tcx>>,
+    const_: InternedSet<'tcx, ConstS<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, Layout>,
@@ -229,7 +229,7 @@ pub struct CommonLifetimes<'tcx> {
 }
 
 pub struct CommonConsts<'tcx> {
-    pub unit: &'tcx Const<'tcx>,
+    pub unit: Const<'tcx>,
 }
 
 pub struct LocalTableInContext<'a, V> {
@@ -869,7 +869,7 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Const(ct) => match ct.val {
+                        GenericArgKind::Const(ct) => match ct.val() {
                             ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
@@ -946,11 +946,14 @@ impl<'tcx> CommonLifetimes<'tcx> {
 
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const =
-            |c| interners.const_.intern(c, |c| InternedInSet(interners.arena.alloc(c))).0;
+        let mk_const = |c| {
+            Const(Interned::new_unchecked(
+                interners.const_.intern(c, |c| InternedInSet(interners.arena.alloc(c))).0,
+            ))
+        };
 
         CommonConsts {
-            unit: mk_const(ty::Const {
+            unit: mk_const(ty::ConstS {
                 val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST)),
                 ty: types.unit,
             }),
@@ -1222,7 +1225,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Like [TyCtxt::ty_error] but for constants.
     #[track_caller]
-    pub fn const_error(self, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
+    pub fn const_error(self, ty: Ty<'tcx>) -> Const<'tcx> {
         self.const_error_with_message(
             ty,
             DUMMY_SP,
@@ -1237,9 +1240,9 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
         span: S,
         msg: &str,
-    ) -> &'tcx Const<'tcx> {
+    ) -> Const<'tcx> {
         self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::Const { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
+        self.mk_const(ty::ConstS { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -1685,7 +1688,7 @@ macro_rules! nop_list_lift {
 
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
-nop_lift_old! {const_; &'a Const<'a> => &'tcx Const<'tcx>}
+nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
@@ -2127,6 +2130,7 @@ macro_rules! direct_interners {
 
 direct_interners! {
     region: mk_region(RegionKind): Region -> Region<'tcx>,
+    const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
 }
 
 macro_rules! direct_interners_old {
@@ -2167,7 +2171,6 @@ macro_rules! direct_interners_old {
 
 // FIXME: eventually these should all be converted to `direct_interners`.
 direct_interners_old! {
-    const_: mk_const(Const<'tcx>),
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
     adt_def: intern_adt_def(AdtDef),
@@ -2491,8 +2494,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
+    pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.mk_const(ty::ConstS { val: ty::ConstKind::Infer(InferConst::Var(v)), ty })
     }
 
     #[inline]
@@ -2511,8 +2514,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> &'tcx ty::Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Infer(ic), ty })
+    pub fn mk_const_infer(self, ic: InferConst<'tcx>, ty: Ty<'tcx>) -> ty::Const<'tcx> {
+        self.mk_const(ty::ConstS { val: ty::ConstKind::Infer(ic), ty })
     }
 
     #[inline]
@@ -2521,8 +2524,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
-        self.mk_const(ty::Const { val: ty::ConstKind::Param(ParamConst { index, name }), ty })
+    pub fn mk_const_param(self, index: u32, name: Symbol, ty: Ty<'tcx>) -> Const<'tcx> {
+        self.mk_const(ty::ConstS { val: ty::ConstKind::Param(ParamConst { index, name }), ty })
     }
 
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {

@@ -200,7 +200,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_const(&mut self,
-                           constant: & $($mutability)? &'tcx ty::Const<'tcx>,
+                           constant: $(& $mutability)? ty::Const<'tcx>,
                            _: Location) {
                 self.super_const(constant);
             }
@@ -864,7 +864,7 @@ macro_rules! make_mir_visitor {
                 self.visit_span(span);
                 drop(user_ty); // no visit method for this
                 match literal {
-                    ConstantKind::Ty(ct) => self.visit_const(ct, location),
+                    ConstantKind::Ty(ct) => self.visit_const($(& $mutability)? *ct, location),
                     ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
             }
@@ -903,7 +903,7 @@ macro_rules! make_mir_visitor {
             fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::Const<'tcx>) {
+            fn super_const(&mut self, _const: $(& $mutability)? ty::Const<'tcx>) {
             }
 
             fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {

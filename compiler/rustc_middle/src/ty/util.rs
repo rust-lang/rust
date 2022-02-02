@@ -6,7 +6,8 @@ use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
-    self, DebruijnIndex, DefIdTree, List, ReEarlyBound, Region, Ty, TyCtxt, TyKind::*, TypeFoldable,
+    self, Const, DebruijnIndex, DefIdTree, List, ReEarlyBound, Region, Ty, TyCtxt, TyKind::*,
+    TypeFoldable,
 };
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
@@ -398,9 +399,10 @@ impl<'tcx> TyCtxt<'tcx> {
                         ty::TyS { kind: ty::Param(ref pt), .. },
                         _,
                     ))) => !impl_generics.type_param(pt, self).pure_wrt_drop,
-                    GenericArgKind::Const(&ty::Const {
-                        val: ty::ConstKind::Param(ref pc), ..
-                    }) => !impl_generics.const_param(pc, self).pure_wrt_drop,
+                    GenericArgKind::Const(Const(Interned(
+                        ty::ConstS { val: ty::ConstKind::Param(ref pc), .. },
+                        _,
+                    ))) => !impl_generics.const_param(pc, self).pure_wrt_drop,
                     GenericArgKind::Lifetime(_)
                     | GenericArgKind::Type(_)
                     | GenericArgKind::Const(_) => {
@@ -622,7 +624,7 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
 impl<'tcx> Ty<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
@@ -637,12 +639,12 @@ impl<'tcx> Ty<'tcx> {
             }),
             _ => None,
         };
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        val.map(|v| Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ty::Const<'tcx>> {
+    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<Const<'tcx>> {
         let val = match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
@@ -656,7 +658,7 @@ impl<'tcx> Ty<'tcx> {
             }),
             _ => None,
         };
-        val.map(|v| ty::Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        val.map(|v| Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
     }
 
     /// Checks whether values of this type `T` are *moved* or *copied*
@@ -996,7 +998,7 @@ pub fn needs_drop_components<'tcx>(
         ty::Array(elem_ty, size) => {
             match needs_drop_components(*elem_ty, target_layout) {
                 Ok(v) if v.is_empty() => Ok(v),
-                res => match size.val.try_to_bits(target_layout.pointer_size) {
+                res => match size.val().try_to_bits(target_layout.pointer_size) {
                     // Arrays of size zero don't need drop, even if their element
                     // type does.
                     Some(0) => Ok(SmallVec::new()),

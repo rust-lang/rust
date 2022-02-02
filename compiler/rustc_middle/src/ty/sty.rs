@@ -116,7 +116,7 @@ pub enum TyKind<'tcx> {
     Str,
 
     /// An array with the given length. Written as `[T; N]`.
-    Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
+    Array(Ty<'tcx>, ty::Const<'tcx>),
 
     /// The pointee of an array slice. Written as `[T]`.
     Slice(Ty<'tcx>),

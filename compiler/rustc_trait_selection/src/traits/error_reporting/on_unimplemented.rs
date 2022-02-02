@@ -211,7 +211,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let type_string = self.tcx.type_of(def.did).to_string();
                     flags.push((sym::_Self, Some(format!("[{}]", type_string))));
 
-                    let len = len.val.try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
+                    let len =
+                        len.val().try_to_value().and_then(|v| v.try_to_machine_usize(self.tcx));
                     let string = match len {
                         Some(n) => format!("[{}; {}]", type_string, n),
                         None => format!("[{}; _]", type_string),

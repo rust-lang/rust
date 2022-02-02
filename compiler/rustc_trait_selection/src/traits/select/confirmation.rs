@@ -983,7 +983,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // Lifetimes aren't allowed to change during unsizing.
                     GenericArgKind::Lifetime(_) => None,
 
-                    GenericArgKind::Const(ct) => match ct.val {
+                    GenericArgKind::Const(ct) => match ct.val() {
                         ty::ConstKind::Param(p) => Some(p.index),
                         _ => None,
                     },

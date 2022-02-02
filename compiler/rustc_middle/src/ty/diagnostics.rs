@@ -71,7 +71,7 @@ impl<'tcx> Ty<'tcx> {
         fn generic_arg_is_suggestible(arg: GenericArg<'_>) -> bool {
             match arg.unpack() {
                 GenericArgKind::Type(ty) => ty.is_suggestable(),
-                GenericArgKind::Const(c) => const_is_suggestable(c.val),
+                GenericArgKind::Const(c) => const_is_suggestable(c.val()),
                 _ => true,
             }
         }
@@ -110,7 +110,7 @@ impl<'tcx> Ty<'tcx> {
                 }) => {
                     let term_is_suggestable = match term {
                         Term::Ty(ty) => ty.is_suggestable(),
-                        Term::Const(c) => const_is_suggestable(c.val),
+                        Term::Const(c) => const_is_suggestable(c.val()),
                     };
                     term_is_suggestable && substs.iter().all(generic_arg_is_suggestible)
                 }
@@ -120,7 +120,7 @@ impl<'tcx> Ty<'tcx> {
                 args.iter().all(generic_arg_is_suggestible)
             }
             Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(),
-            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val),
+            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val()),
             _ => true,
         }
     }

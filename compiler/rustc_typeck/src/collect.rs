@@ -389,12 +389,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx().ty_error_with_message(span, "bad placeholder type")
     }
 
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        _: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> &'tcx Const<'tcx> {
+    fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
         let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match *r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
@@ -2394,7 +2389,7 @@ fn const_evaluatable_predicates_of<'tcx>(
         fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
             let def_id = self.tcx.hir().local_def_id(c.hir_id);
             let ct = ty::Const::from_anon_const(self.tcx, def_id);
-            if let ty::ConstKind::Unevaluated(uv) = ct.val {
+            if let ty::ConstKind::Unevaluated(uv) = ct.val() {
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((

@@ -8,6 +8,7 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
+use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
@@ -201,9 +202,9 @@ impl<'tcx> AbstractConst<'tcx> {
 
     pub fn from_const(
         tcx: TyCtxt<'tcx>,
-        ct: &ty::Const<'tcx>,
+        ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorReported> {
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
             ty::ConstKind::Error(_) => Err(ErrorReported),
             _ => Ok(None),
@@ -293,7 +294,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 }
             }
 
-            fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) {
+            fn visit_const(&mut self, ct: ty::Const<'tcx>) {
                 self.is_poly |= ct.has_param_types_or_consts();
             }
         }
@@ -334,7 +335,11 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const { val: ty::ConstKind::Unevaluated(ct), ty: _ }) = n {
+            if let Node::Leaf(ty::Const(Interned(
+                ty::ConstS { val: ty::ConstKind::Unevaluated(ct), ty: _ },
+                _,
+            ))) = n
+            {
                 // `AbstractConst`s should not contain any promoteds as they require references which
                 // are not allowed.
                 assert_eq!(ct.promoted, None);
@@ -602,11 +607,11 @@ pub(super) fn try_unify<'tcx>(
 
     match (a.root(tcx), b.root(tcx)) {
         (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
-            if a_ct.ty != b_ct.ty {
+            if a_ct.ty() != b_ct.ty() {
                 return false;
             }
 
-            match (a_ct.val, b_ct.val) {
+            match (a_ct.val(), b_ct.val()) {
                 // We can just unify errors with everything to reduce the amount of
                 // emitted errors here.
                 (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,

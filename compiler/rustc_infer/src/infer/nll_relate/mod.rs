@@ -87,7 +87,7 @@ pub trait TypeRelatingDelegate<'tcx> {
         info: ty::VarianceDiagInfo<'tcx>,
     );
 
-    fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
+    fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -609,16 +609,16 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        mut b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        mut b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let a = self.infcx.shallow_resolve(a);
 
         if !D::forbid_inference_vars() {
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val {
+        match b.val() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
@@ -745,7 +745,7 @@ impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
         self.delegate.const_equate(a, b);
     }
 }
@@ -992,10 +992,10 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        _: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        match a.val {
+        a: ty::Const<'tcx>,
+        _: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        match a.val() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
@@ -1010,7 +1010,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
+                        Ok(self.tcx().mk_const_var(new_var_id, a.ty()))
                     }
                 }
             }

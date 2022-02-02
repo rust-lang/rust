@@ -383,7 +383,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         } else {
             let tcx = self.tcx();
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.val {
+                ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Unevaluated(uv) => Some(uv),
                     _ => None,
                 },
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.val {
+                ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Unevaluated(uv) => Some(uv),
                     _ => None,
                 },

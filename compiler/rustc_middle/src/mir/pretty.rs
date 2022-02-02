@@ -462,10 +462,11 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
         }
     }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
+    fn visit_const(&mut self, constant: ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
-        let ty::Const { ty, val, .. } = constant;
-        if use_verbose(*ty, false) {
+        let ty = constant.ty();
+        let val = constant.val();
+        if use_verbose(ty, false) {
             self.push("ty::Const");
             self.push(&format!("+ ty: {:?}", ty));
             let val = match val {
@@ -683,8 +684,8 @@ pub fn write_allocations<'tcx>(
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
     impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ConstKind::Value(val) = c.val {
+        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
             c.super_visit_with(self)

@@ -1646,7 +1646,7 @@ impl<'tcx> Clean<Constant> for ty::Const<'tcx> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Constant {
         // FIXME: instead of storing the stringified expression, store `self` directly instead.
         Constant {
-            type_: self.ty.clean(cx),
+            type_: self.ty().clean(cx),
             kind: ConstantKind::TyConst { expr: self.to_string() },
         }
     }

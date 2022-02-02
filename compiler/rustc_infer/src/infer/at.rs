@@ -299,7 +299,7 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
+impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,

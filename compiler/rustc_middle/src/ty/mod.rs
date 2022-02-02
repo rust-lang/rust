@@ -59,7 +59,9 @@ pub use self::closure::{
     RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
     CAPTURE_STRUCT_LOCAL,
 };
-pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt, Unevaluated, ValTree};
+pub use self::consts::{
+    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, Unevaluated, ValTree,
+};
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorInteriorTypeCause, GlobalCtxt,
@@ -592,7 +594,7 @@ pub enum PredicateKind<'tcx> {
     ConstEvaluatable(ty::Unevaluated<'tcx, ()>),
 
     /// Constants must be equal. The first component is the const that is expected.
-    ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+    ConstEquate(Const<'tcx>, Const<'tcx>),
 
     /// Represents a type found in the environment that we can use for implied bounds.
     ///
@@ -818,7 +820,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 #[derive(HashStable, TypeFoldable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
-    Const(&'tcx Const<'tcx>),
+    Const(Const<'tcx>),
 }
 
 impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
@@ -827,8 +829,8 @@ impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx Const<'tcx>> for Term<'tcx> {
-    fn from(c: &'tcx Const<'tcx>) -> Self {
+impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
+    fn from(c: Const<'tcx>) -> Self {
         Term::Const(c)
     }
 }
@@ -837,8 +839,8 @@ impl<'tcx> Term<'tcx> {
     pub fn ty(&self) -> Option<Ty<'tcx>> {
         if let Term::Ty(ty) = self { Some(*ty) } else { None }
     }
-    pub fn ct(&self) -> Option<&'tcx Const<'tcx>> {
-        if let Term::Const(c) = self { Some(c) } else { None }
+    pub fn ct(&self) -> Option<Const<'tcx>> {
+        if let Term::Const(c) = self { Some(*c) } else { None }
     }
 }
 

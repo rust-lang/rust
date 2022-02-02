@@ -239,7 +239,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    ) -> &'tcx Const<'tcx> {
+    ) -> Const<'tcx> {
         if let Some(param) = param {
             if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
                 return ct;
