@@ -1,0 +1,16 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/bad-lhs-should-deref.rs:6:15
+   |
+LL |     mut_ref() = 1;
+   |     --------- ^
+   |     |
+   |     cannot assign to this expression
+   |
+help: consider dereferencing here to assign a value to the left-hand side
+   |
+LL |     **mut_ref() = 1;
+   |     ++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0070`.

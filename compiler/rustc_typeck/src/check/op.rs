@@ -42,7 +42,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", op.span);
+        if let Err(mut err) = self.check_lhs_assignable(lhs, "E0067", op.span) {
+            err.emit();
+        }
 
         ty
     }

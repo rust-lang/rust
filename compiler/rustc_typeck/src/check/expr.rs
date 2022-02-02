@@ -831,9 +831,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
         op_span: Span,
-    ) {
+    ) -> Result<(), DiagnosticBuilder<'tcx>> {
         if lhs.is_syntactic_place_expr() {
-            return;
+            return Ok(());
         }
 
         // FIXME: Make this use SessionDiagnostic once error codes can be dynamically set.
@@ -885,7 +885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        err.emit();
+        Err(err)
     }
 
     // A generic function for checking the 'then' and 'else' clauses in an 'if'
@@ -1025,14 +1025,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", *span);
+        let assignable = self.check_lhs_assignable(lhs, "E0070", *span);
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
-        let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
+        let rhs_ty = self.check_expr_with_hint(&rhs, lhs_ty);
+        let (mut coerce_ty, mut coerce_err) =
+            self.demand_coerce_diag(&rhs, rhs_ty, lhs_ty, Some(&lhs), AllowTwoPhase::No);
+
+        // Dereference the lhs_ty if it's not assignable, but is a mut-ref.
+        if let Err(mut err) = assignable {
+            if let Some(coerce_err) = &mut coerce_err {
+                for (deref_ty, steps) in self.autoderef(lhs.span, lhs_ty) {
+                    if self.can_coerce(deref_ty, rhs_ty) {
+                        coerce_err.cancel();
+                        err.span_suggestion_verbose(
+                            lhs.span.shrink_to_lo(),
+                            "consider dereferencing here to assign a value to the left-hand side",
+                            "*".repeat(steps),
+                            Applicability::MaybeIncorrect,
+                        );
+                        coerce_ty = lhs_ty;
+                        break;
+                    }
+                }
+            }
+            err.emit();
+        }
+
+        if let Some(mut coerce_err) = coerce_err {
+            if !coerce_err.cancelled() {
+                coerce_err.emit();
+            }
+        }
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
 
-        if lhs_ty.references_error() || rhs_ty.references_error() {
+        if lhs_ty.references_error() || coerce_ty.references_error() {
             self.tcx.ty_error()
         } else {
             self.tcx.mk_unit()
