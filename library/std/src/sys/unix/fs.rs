@@ -1761,7 +1761,6 @@ mod remove_dir_impl {
                             readdir_cache.push_front(parent_readdir);
 
                             // refill cache and verify ancestors
-                            let mut count = 0;
                             for ancester_component in parent_dir_components
                                 .iter()
                                 .rev()
@@ -1770,9 +1769,7 @@ mod remove_dir_impl {
                                 let parent_readdir = readdir_cache.front().unwrap().get_parent()?;
                                 ancester_component.verify_dev_ino(parent_readdir.as_fd())?;
                                 readdir_cache.push_front(parent_readdir);
-                                count += 1;
                             }
-                            eprintln!("Refilled cache with {} entries", count);
                             readdir_cache.pop_back().unwrap()
                         }
                     };
