@@ -3476,11 +3476,11 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
         sucBB->removePredecessor(newBB);
       }
 
-      std::vector<Instruction *> toerase;
+      SmallVector<Instruction *, 2> toerase;
       for (auto &I : oBB) {
         toerase.push_back(&I);
       }
-      for (auto I : toerase) {
+      for (auto I : llvm::reverse(toerase)) {
         maker.eraseIfUnused(*I, /*erase*/ true,
                             /*check*/ key.mode ==
                                 DerivativeMode::ReverseModeCombined);

@@ -390,7 +390,7 @@ InsertNewCanonicalIV(llvm::Loop *L, llvm::Type *Ty, std::string name = "iv");
 // induction variable
 void RemoveRedundantIVs(
     llvm::BasicBlock *Header, llvm::PHINode *CanonicalIV,
-    MustExitScalarEvolution &SE,
+    llvm::Instruction *Increment, MustExitScalarEvolution &SE,
     std::function<void(llvm::Instruction *, llvm::Value *)> replacer,
     std::function<void(llvm::Instruction *)> eraser);
 #endif

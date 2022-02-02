@@ -192,7 +192,7 @@ std::pair<PHINode *, Instruction *> FindCanonicalIV(Loop *L, Type *Ty) {
 // Attempt to rewrite all phinode's in the loop in terms of the
 // induction variable
 void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
-                        MustExitScalarEvolution &SE,
+                        Instruction *Increment, MustExitScalarEvolution &SE,
                         std::function<void(Instruction *, Value *)> replacer,
                         std::function<void(Instruction *)> eraser) {
   assert(Header);
@@ -246,6 +246,37 @@ void RemoveRedundantIVs(BasicBlock *Header, PHINode *CanonicalIV,
     replacer(Tmp, NewIV);
     eraser(Tmp);
   }
+
+  // Replace existing increments with canonical Increment
+  Increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
+  SmallVector<Instruction *, 1> toErase;
+  for (auto use : CanonicalIV->users()) {
+    auto BO = dyn_cast<BinaryOperator>(use);
+    if (BO == nullptr)
+      continue;
+    if (BO->getOpcode() != BinaryOperator::Add)
+      continue;
+    if (use == Increment)
+      continue;
+
+    Value *toadd = nullptr;
+    if (BO->getOperand(0) == CanonicalIV) {
+      toadd = BO->getOperand(1);
+    } else {
+      assert(BO->getOperand(1) == CanonicalIV);
+      toadd = BO->getOperand(0);
+    }
+    if (auto CI = dyn_cast<ConstantInt>(toadd)) {
+      if (!CI->isOne())
+        continue;
+      BO->replaceAllUsesWith(Increment);
+      toErase.push_back(BO);
+    } else {
+      continue;
+    }
+  }
+  for (auto BO : toErase)
+    eraser(BO);
 }
 
 void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
@@ -332,37 +363,6 @@ void CanonicalizeLatches(const Loop *L, BasicBlock *Header,
   // Replace previous increment usage with new increment value
   if (Increment) {
     Increment->moveAfter(CanonicalIV->getParent()->getFirstNonPHI());
-    std::vector<Instruction *> toerase;
-    // Replace existing increments with canonical Increment
-    for (auto use : CanonicalIV->users()) {
-      auto BO = dyn_cast<BinaryOperator>(use);
-      if (BO == nullptr)
-        continue;
-      if (BO->getOpcode() != BinaryOperator::Add)
-        continue;
-      if (use == Increment)
-        continue;
-
-      Value *toadd = nullptr;
-      if (BO->getOperand(0) == CanonicalIV) {
-        toadd = BO->getOperand(1);
-      } else {
-        assert(BO->getOperand(1) == CanonicalIV);
-        toadd = BO->getOperand(0);
-      }
-      if (auto CI = dyn_cast<ConstantInt>(toadd)) {
-        if (!CI->isOne())
-          continue;
-        BO->replaceAllUsesWith(Increment);
-        toerase.push_back(BO);
-      } else {
-        continue;
-      }
-    }
-    for (auto inst : toerase) {
-      gutils.erase(inst);
-    }
-    toerase.clear();
 
     if (latches.size() == 1 && isa<BranchInst>(latches[0]->getTerminator()) &&
         cast<BranchInst>(latches[0]->getTerminator())->isConditional())

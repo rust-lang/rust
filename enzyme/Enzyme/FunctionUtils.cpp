@@ -808,7 +808,7 @@ void CanonicalizeLoops(Function *F, FunctionAnalysisManager &FAM) {
     PHINode *CanonicalIV = pair.first;
     assert(CanonicalIV);
     RemoveRedundantIVs(
-        L->getHeader(), CanonicalIV, SE,
+        L->getHeader(), CanonicalIV, pair.second, SE,
         [&](Instruction *I, Value *V) { I->replaceAllUsesWith(V); },
         [&](Instruction *I) { I->eraseFromParent(); });
   }
