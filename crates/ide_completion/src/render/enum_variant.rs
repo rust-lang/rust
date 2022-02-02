@@ -23,7 +23,7 @@ pub(crate) fn render_variant(
 }
 
 fn render(
-    ctx @ RenderContext { completion }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     local_name: Option<hir::Name>,
     variant: hir::Variant,
     path: Option<hir::ModPath>,
@@ -58,18 +58,18 @@ fn render(
     if variant_kind == hir::StructKind::Tuple {
         cov_mark::hit!(inserts_parens_for_tuple_enums);
         let params = Params::Anonymous(variant.fields(db).len());
-        item.add_call_parens(ctx.completion, short_qualified_name, params);
+        item.add_call_parens(completion, short_qualified_name, params);
     } else if qualified {
         item.lookup_by(short_qualified_name);
     }
 
-    let ty = variant.parent_enum(ctx.completion.db).ty(ctx.completion.db);
+    let ty = variant.parent_enum(completion.db).ty(completion.db);
     item.set_relevance(CompletionRelevance {
-        type_match: compute_type_match(ctx.completion, &ty),
-        ..CompletionRelevance::default()
+        type_match: compute_type_match(completion, &ty),
+        ..ctx.completion_relevance()
     });
 
-    if let Some(ref_match) = compute_ref_match(ctx.completion, &ty) {
+    if let Some(ref_match) = compute_ref_match(completion, &ty) {
         item.ref_match(ref_match);
     }
 

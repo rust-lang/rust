@@ -22,6 +22,7 @@ use hir::known;
 use ide_db::SymbolKind;
 
 use crate::{
+    context::Visible,
     item::Builder,
     render::{
         const_::render_const,
@@ -91,7 +92,7 @@ impl Completions {
             cov_mark::hit!(qualified_path_doc_hidden);
             return;
         }
-        self.add(render_resolution(RenderContext::new(ctx), local_name, resolution));
+        self.add(render_resolution(RenderContext::new(ctx, false), local_name, resolution));
     }
 
     pub(crate) fn add_macro(
@@ -104,7 +105,7 @@ impl Completions {
             Some(it) => it,
             None => return,
         };
-        self.add(render_macro(RenderContext::new(ctx), None, name, macro_));
+        self.add(render_macro(RenderContext::new(ctx, false), None, name, macro_));
     }
 
     pub(crate) fn add_function(
@@ -113,10 +114,12 @@ impl Completions {
         func: hir::Function,
         local_name: Option<hir::Name>,
     ) {
-        if !ctx.is_visible(&func) {
-            return;
-        }
-        self.add(render_fn(RenderContext::new(ctx), None, local_name, func));
+        let is_private_editable = match ctx.is_visible(&func) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add(render_fn(RenderContext::new(ctx, is_private_editable), None, local_name, func));
     }
 
     pub(crate) fn add_method(
@@ -126,24 +129,36 @@ impl Completions {
         receiver: Option<hir::Name>,
         local_name: Option<hir::Name>,
     ) {
-        if !ctx.is_visible(&func) {
-            return;
-        }
-        self.add(render_method(RenderContext::new(ctx), None, receiver, local_name, func));
+        let is_private_editable = match ctx.is_visible(&func) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add(render_method(
+            RenderContext::new(ctx, is_private_editable),
+            None,
+            receiver,
+            local_name,
+            func,
+        ));
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, konst: hir::Const) {
-        if !ctx.is_visible(&konst) {
-            return;
-        }
-        self.add_opt(render_const(RenderContext::new(ctx), konst));
+        let is_private_editable = match ctx.is_visible(&konst) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add_opt(render_const(RenderContext::new(ctx, is_private_editable), konst));
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        if !ctx.is_visible(&type_alias) {
-            return;
-        }
-        self.add_opt(render_type_alias(RenderContext::new(ctx), type_alias));
+        let is_private_editable = match ctx.is_visible(&type_alias) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        self.add_opt(render_type_alias(RenderContext::new(ctx, is_private_editable), type_alias));
     }
 
     pub(crate) fn add_type_alias_with_eq(
@@ -151,7 +166,7 @@ impl Completions {
         ctx: &CompletionContext,
         type_alias: hir::TypeAlias,
     ) {
-        self.add_opt(render_type_alias_with_eq(RenderContext::new(ctx), type_alias));
+        self.add_opt(render_type_alias_with_eq(RenderContext::new(ctx, false), type_alias));
     }
 
     pub(crate) fn add_qualified_enum_variant(
@@ -160,7 +175,7 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
-        let item = render_variant(RenderContext::new(ctx), None, None, variant, Some(path));
+        let item = render_variant(RenderContext::new(ctx, false), None, None, variant, Some(path));
         self.add(item);
     }
 
@@ -170,7 +185,7 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
-        let item = render_variant(RenderContext::new(ctx), None, local_name, variant, None);
+        let item = render_variant(RenderContext::new(ctx, false), None, local_name, variant, None);
         self.add(item);
     }
 
@@ -181,10 +196,12 @@ impl Completions {
         field: hir::Field,
         ty: &hir::Type,
     ) {
-        if !ctx.is_visible(&field) {
-            return;
-        }
-        let item = render_field(RenderContext::new(ctx), receiver, field, ty);
+        let is_private_editable = match ctx.is_visible(&field) {
+            Visible::Yes => false,
+            Visible::Editable => true,
+            Visible::No => return,
+        };
+        let item = render_field(RenderContext::new(ctx, is_private_editable), receiver, field, ty);
         self.add(item);
     }
 
@@ -195,7 +212,7 @@ impl Completions {
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
-        let item = render_struct_literal(RenderContext::new(ctx), strukt, path, local_name);
+        let item = render_struct_literal(RenderContext::new(ctx, false), strukt, path, local_name);
         self.add_opt(item);
     }
 
@@ -206,7 +223,7 @@ impl Completions {
         field: usize,
         ty: &hir::Type,
     ) {
-        let item = render_tuple_field(RenderContext::new(ctx), receiver, field, ty);
+        let item = render_tuple_field(RenderContext::new(ctx, false), receiver, field, ty);
         self.add(item);
     }
 
@@ -221,7 +238,7 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, local_name, None));
+        self.add_opt(render_variant_pat(RenderContext::new(ctx, false), variant, local_name, None));
     }
 
     pub(crate) fn add_qualified_variant_pat(
@@ -230,7 +247,7 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, Some(path)));
+        self.add_opt(render_variant_pat(RenderContext::new(ctx, false), variant, None, Some(path)));
     }
 
     pub(crate) fn add_struct_pat(
@@ -239,7 +256,7 @@ impl Completions {
         strukt: hir::Struct,
         local_name: Option<hir::Name>,
     ) {
-        self.add_opt(render_struct_pat(RenderContext::new(ctx), strukt, local_name));
+        self.add_opt(render_struct_pat(RenderContext::new(ctx, false), strukt, local_name));
     }
 }
 

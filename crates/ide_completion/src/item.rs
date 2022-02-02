@@ -141,6 +141,8 @@ pub struct CompletionRelevance {
     pub is_local: bool,
     /// Set for method completions of the `core::ops` and `core::cmp` family.
     pub is_op_method: bool,
+    /// Set for item completions that are private but in the workspace.
+    pub is_private_editable: bool,
     /// This is set in cases like these:
     ///
     /// ```
@@ -177,7 +179,7 @@ pub enum CompletionRelevanceTypeMatch {
 }
 
 impl CompletionRelevance {
-    const BASE_LINE: u32 = 1;
+    const BASE_LINE: u32 = 2;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -190,6 +192,15 @@ impl CompletionRelevance {
     pub fn score(&self) -> u32 {
         let mut score = Self::BASE_LINE;
 
+        // score decreases
+        if self.is_op_method {
+            score -= 1;
+        }
+        if self.is_private_editable {
+            score -= 1;
+        }
+
+        // score increases
         if self.exact_name_match {
             score += 1;
         }
@@ -201,9 +212,6 @@ impl CompletionRelevance {
         if self.is_local {
             score += 1;
         }
-        if self.is_op_method {
-            score -= 1;
-        }
         if self.exact_postfix_snippet_match {
             score += 100;
         }
@@ -214,7 +222,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > (Self::BASE_LINE + 1)
+        self.score() > Self::BASE_LINE
     }
 }
 
@@ -564,7 +572,15 @@ mod tests {
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
-            vec![CompletionRelevance { is_op_method: true, ..CompletionRelevance::default() }],
+            vec![CompletionRelevance {
+                is_op_method: true,
+                is_private_editable: true,
+                ..CompletionRelevance::default()
+            }],
+            vec![
+                CompletionRelevance { is_private_editable: true, ..CompletionRelevance::default() },
+                CompletionRelevance { is_op_method: true, ..CompletionRelevance::default() },
+            ],
             vec![CompletionRelevance::default()],
             vec![
                 CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },

@@ -25,7 +25,7 @@ pub(crate) fn render_macro(
 }
 
 fn render(
-    ctx @ RenderContext { completion }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     name: hir::Name,
     macro_: hir::MacroDef,
     import_to_add: Option<ImportEdit>,
@@ -53,7 +53,8 @@ fn render(
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
         .set_detail(detail(&completion.sema, macro_))
-        .set_documentation(docs);
+        .set_documentation(docs)
+        .set_relevance(ctx.completion_relevance());
 
     if let Some(import_to_add) = import_to_add {
         item.add_import(import_to_add);

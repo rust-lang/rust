@@ -39,7 +39,8 @@ fn render(
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), name.clone());
     item.set_documentation(ctx.docs(type_alias))
         .set_deprecated(ctx.is_deprecated(type_alias) || ctx.is_deprecated_assoc_item(type_alias))
-        .detail(detail);
+        .detail(detail)
+        .set_relevance(ctx.completion_relevance());
 
     if let Some(actm) = type_alias.as_assoc_item(db) {
         if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
