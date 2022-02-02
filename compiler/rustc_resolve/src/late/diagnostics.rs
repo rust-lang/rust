@@ -26,6 +26,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
 
 use std::iter;
+use std::ops::Deref;
 
 use tracing::debug;
 
@@ -264,6 +265,8 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
             }
         }
+
+        self.detect_assoct_type_constraint_meant_as_path(base_span, &mut err);
 
         // Emit special messages for unresolved `Self` and `self`.
         if is_self_type(path, ns) {
@@ -601,6 +604,40 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         (err, candidates)
+    }
+
+    fn detect_assoct_type_constraint_meant_as_path(
+        &self,
+        base_span: Span,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
+        let Some(ty) = self.diagnostic_metadata.current_type_path else { return; };
+        let TyKind::Path(_, path) = &ty.kind else { return; };
+        for segment in &path.segments {
+            let Some(params) = &segment.args else { continue; };
+            let ast::GenericArgs::AngleBracketed(ref params) = params.deref() else { continue; };
+            for param in &params.args {
+                let ast::AngleBracketedArg::Constraint(constraint) = param else { continue; };
+                let ast::AssocConstraintKind::Bound { bounds } = &constraint.kind else {
+                    continue;
+                };
+                for bound in bounds {
+                    let ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)
+                        = bound else
+                    {
+                        continue;
+                    };
+                    if base_span == trait_ref.span {
+                        err.span_suggestion_verbose(
+                            constraint.ident.span.between(trait_ref.span),
+                            "you might have meant to write a path instead of an associated type bound",
+                            "::".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     fn get_single_associated_item(

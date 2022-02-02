@@ -1,0 +1,46 @@
+error[E0405]: cannot find trait `B` in this scope
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:18
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |                  ^ not found in this scope
+   |
+help: you might have meant to write a path instead of an associated type bound
+   |
+LL |     let _: Vec<A::B> = A::B;
+   |                 ~~
+
+error[E0658]: associated type bounds are unstable
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:16
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |                ^^^
+   |
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+
+error[E0107]: this struct takes at least 1 generic argument but 0 generic arguments were supplied
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:12
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |            ^^^ expected at least 1 generic argument
+   |
+note: struct defined here, with at least 1 generic parameter: `T`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL | pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+   |            ^^^ -
+help: add missing generic argument
+   |
+LL |     let _: Vec<T, A:B> = A::B;
+   |                ++
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/type-ascription-instead-of-path-in-type.rs:6:16
+   |
+LL |     let _: Vec<A:B> = A::B;
+   |                ^^^ associated type not allowed here
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0229, E0405, E0658.
+For more information about an error, try `rustc --explain E0107`.
