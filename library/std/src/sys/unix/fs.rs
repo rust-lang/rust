@@ -1482,7 +1482,7 @@ mod remove_dir_impl {
     use crate::io;
     use crate::mem;
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
-    use crate::os::unix::prelude::{BorrowedFd, OwnedFd, RawFd};
+    use crate::os::unix::prelude::{AsFd, BorrowedFd, OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
     use crate::sync::Arc;
     use crate::sys::{cvt, cvt_r};
@@ -1552,34 +1552,6 @@ mod remove_dir_impl {
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 
-    fn fdreaddir(dir_fd: OwnedFd) -> io::Result<CachedReadDir> {
-        let ptr = unsafe { fdopendir(dir_fd.as_raw_fd()) };
-        if ptr.is_null() {
-            return Err(io::Error::last_os_error());
-        }
-        let dirp = Dir(ptr);
-        // file descriptor is automatically closed by libc::closedir() now, so give up ownership
-        let new_parent_fd = dir_fd.into_raw_fd();
-        // a valid root is not needed because we do not call any functions involving the full path
-        // of the DirEntrys.
-        let dummy_root = PathBuf::new();
-        Ok(CachedReadDir {
-            readdir: ReadDir {
-                inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
-                #[cfg(not(any(
-                    target_os = "android",
-                    target_os = "linux",
-                    target_os = "solaris",
-                    target_os = "illumos",
-                    target_os = "fuchsia",
-                    target_os = "redox",
-                )))]
-                end_of_stream: false,
-            },
-            raw_fd: new_parent_fd,
-        })
-    }
-
     #[cfg(any(
         target_os = "solaris",
         target_os = "illumos",
@@ -1628,14 +1600,87 @@ mod remove_dir_impl {
         }
     }
 
-    struct CachedReadDir {
-        readdir: ReadDir,
-        raw_fd: RawFd,
+    enum LazyReadDir {
+        Fd(Option<OwnedFd>), // never None except when fdreaddir() fails
+        OpenReadDir(ReadDir, RawFd),
     }
 
-    impl CachedReadDir {
+    impl LazyReadDir {
+        fn from_path(path: &CStr) -> io::Result<Self> {
+            let fd = openat_nofollow_dironly(None, path)?;
+            Ok(LazyReadDir::Fd(Some(fd)))
+        }
+
+        fn get_child(&self, child: &DirEntry) -> io::Result<LazyReadDir> {
+            let fd = openat_nofollow_dironly(Some(self.as_fd()), child.name_cstr())?;
+            Ok(LazyReadDir::Fd(Some(fd)))
+        }
+
+        fn get_parent(self: &LazyReadDir) -> io::Result<LazyReadDir> {
+            let fd = openat_nofollow_dironly(Some(self.as_fd()), unsafe {
+                CStr::from_bytes_with_nul_unchecked(b"..\0")
+            })?;
+            Ok(LazyReadDir::Fd(Some(fd)))
+        }
+
+        fn ensure_open(&mut self) -> io::Result<()> {
+            if let LazyReadDir::Fd(fd_opt) = self {
+                let fd = fd_opt.take().unwrap();
+                let ptr = unsafe { fdopendir(fd.as_raw_fd()) };
+                if ptr.is_null() {
+                    return Err(io::Error::last_os_error());
+                }
+                let dirp = Dir(ptr);
+                // file descriptor is automatically closed by libc::closedir() now, so give up ownership
+                let new_parent_fd = fd.into_raw_fd();
+                // a valid root is not needed because we do not call any functions involving the full path
+                // of the DirEntrys.
+                let dummy_root = PathBuf::new();
+                *self = LazyReadDir::OpenReadDir(
+                    ReadDir {
+                        inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
+                        #[cfg(not(any(
+                            target_os = "android",
+                            target_os = "linux",
+                            target_os = "solaris",
+                            target_os = "illumos",
+                            target_os = "fuchsia",
+                            target_os = "redox",
+                        )))]
+                        end_of_stream: false,
+                    },
+                    new_parent_fd,
+                );
+            }
+            Ok(())
+        }
+    }
+
+    impl AsFd for LazyReadDir {
         fn as_fd(&self) -> BorrowedFd<'_> {
-            unsafe { BorrowedFd::borrow_raw_fd(self.raw_fd) }
+            match self {
+                LazyReadDir::Fd(Some(fd)) => fd.as_fd(),
+                LazyReadDir::Fd(None) => {
+                    panic!("LazyReadDir::as_fd() called, but no fd present")
+                }
+                LazyReadDir::OpenReadDir(_, fd) => unsafe { BorrowedFd::borrow_raw_fd(*fd) },
+            }
+        }
+    }
+
+    impl Iterator for LazyReadDir {
+        type Item = io::Result<DirEntry>;
+
+        fn next(&mut self) -> Option<io::Result<DirEntry>> {
+            if let Err(err) = self.ensure_open() {
+                return Some(Err(err));
+            }
+            match self {
+                LazyReadDir::OpenReadDir(rd, _) => rd.next(),
+                _ => {
+                    unreachable!();
+                }
+            }
         }
     }
 
@@ -1645,51 +1690,26 @@ mod remove_dir_impl {
         ino: u64,
     }
 
-    fn readdir_open_path(path: &CStr) -> io::Result<(DirComponent, CachedReadDir)> {
-        let dir_fd = openat_nofollow_dironly(None, path)?;
-
-        // use fstat() to get dev, inode of the directory
-        let mut stat = unsafe { mem::zeroed() };
-        cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
-        let cached_readdir = fdreaddir(dir_fd)?;
-        Ok((
-            DirComponent { name: CString::new("")?, dev: stat.st_dev, ino: stat.st_ino },
-            cached_readdir,
-        ))
-    }
-
-    fn readdir_open_child(
-        readdir: &CachedReadDir,
-        child: &DirEntry,
-    ) -> io::Result<(DirComponent, CachedReadDir)> {
-        let dir_fd = openat_nofollow_dironly(Some(readdir.as_fd()), child.name_cstr())?;
-        let mut stat = unsafe { mem::zeroed() };
-        cvt(unsafe { fstat64(dir_fd.as_raw_fd(), &mut stat) })?;
-        let cached_readdir = fdreaddir(dir_fd)?;
-        Ok((
-            DirComponent { name: child.name_cstr().into(), dev: stat.st_dev, ino: stat.st_ino },
-            cached_readdir,
-        ))
-    }
-
-    fn reopen_parent(
-        dir: &CachedReadDir,
-        expected_parent_dir: &DirComponent,
-    ) -> io::Result<OwnedFd> {
-        let parent_dir_fd = openat_nofollow_dironly(Some(dir.as_fd()), unsafe {
-            CStr::from_bytes_with_nul_unchecked(b"..\0")
-        })?;
-        let mut stat = unsafe { mem::zeroed() };
-        cvt(unsafe { fstat64(parent_dir_fd.as_raw_fd(), &mut stat) })?;
-        // Make sure that the reopened parent directory has the same inode as when we visited it descending
-        // the directory tree. More detailed risk analysis TBD.
-        if expected_parent_dir.dev != stat.st_dev || expected_parent_dir.ino != stat.st_ino {
-            return Err(io::Error::new(
-                io::ErrorKind::Uncategorized,
-                "parent directory inode does not match",
-            ));
+    impl DirComponent {
+        fn new(name: &CStr, fd: BorrowedFd<'_>) -> io::Result<DirComponent> {
+            let mut stat = unsafe { mem::zeroed() };
+            cvt(unsafe { fstat64(fd.as_raw_fd(), &mut stat) })?;
+            Ok(DirComponent { name: name.to_owned(), dev: stat.st_dev, ino: stat.st_ino })
         }
-        Ok(parent_dir_fd)
+
+        fn verify_dev_ino(&self, fd: BorrowedFd<'_>) -> io::Result<()> {
+            let mut stat = unsafe { mem::zeroed() };
+            cvt(unsafe { fstat64(fd.as_raw_fd(), &mut stat) })?;
+            // Make sure that the reopened parent directory has the same inode as when we visited it descending
+            // the directory tree. More detailed risk analysis TBD.
+            if self.dev != stat.st_dev || self.ino != stat.st_ino {
+                return Err(io::Error::new(
+                    io::ErrorKind::Uncategorized,
+                    "parent directory inode does not match",
+                ));
+            }
+            Ok(())
+        }
     }
 
     fn remove_dir_all_loop(root: &Path) -> io::Result<()> {
@@ -1699,15 +1719,20 @@ mod remove_dir_impl {
         // cache of up to MAX_OPEN_FDS ancestor ReadDirs and associated file descriptors
         let mut readdir_cache = VecDeque::with_capacity(MAX_OPEN_FDS);
         // the directory name, inode pair and ReadDir currently being processed
-        let (mut current_dir_component, mut current_readdir) = readdir_open_path(&cstr(root)?)?;
+        let mut current_readdir = LazyReadDir::from_path(&cstr(root)?)?;
+        let mut current_dir_component = DirComponent::new(
+            unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") },
+            current_readdir.as_fd(),
+        )?;
         loop {
-            while let Some(child) = current_readdir.readdir.next() {
+            while let Some(child) = current_readdir.next() {
                 let child = child?;
                 if !unlink_direntry(&child, current_readdir.as_fd())? {
                     // Descend into this child directory
 
-                    let (child_dir_compoment, child_readdir) =
-                        readdir_open_child(&current_readdir, &child)?;
+                    let child_readdir = current_readdir.get_child(&child)?;
+                    let child_dir_compoment =
+                        DirComponent::new(&child.name_cstr(), child_readdir.as_fd())?;
                     parent_dir_components.push(current_dir_component);
 
                     // avoid growing the cache over capacity
@@ -1725,29 +1750,21 @@ mod remove_dir_impl {
                 Some(parent) => {
                     // Going back up...
                     let parent_readdir = match readdir_cache.pop_back() {
-                        Some(readdir) => {
-                            cvt(unsafe {
-                                unlinkat(
-                                    readdir.as_fd().as_raw_fd(),
-                                    current_dir_component.name.as_ptr(),
-                                    libc::AT_REMOVEDIR,
-                                )
-                            })?;
-                            readdir
-                        }
+                        Some(readdir) => readdir,
                         None => {
                             // not cached -> reopen
-                            let parent_dir = reopen_parent(&current_readdir, &parent)?;
-                            cvt(unsafe {
-                                unlinkat(
-                                    parent_dir.as_raw_fd(),
-                                    current_dir_component.name.as_ptr(),
-                                    libc::AT_REMOVEDIR,
-                                )
-                            })?;
-                            fdreaddir(parent_dir)?
+                            let parent_readdir = current_readdir.get_parent()?;
+                            parent.verify_dev_ino(parent_readdir.as_fd())?;
+                            parent_readdir
                         }
                     };
+                    cvt(unsafe {
+                        unlinkat(
+                            parent_readdir.as_fd().as_raw_fd(),
+                            current_dir_component.name.as_ptr(),
+                            libc::AT_REMOVEDIR,
+                        )
+                    })?;
 
                     current_dir_component = parent;
                     current_readdir = parent_readdir;
