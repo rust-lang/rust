@@ -3,6 +3,9 @@ use rustc_serialize::{Decodable, Encodable};
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Fingerprint(u64, u64);
@@ -54,7 +57,7 @@ impl Fingerprint {
 
         let c = a.wrapping_add(b);
 
-        Fingerprint((c >> 64) as u64, c as u64)
+        Fingerprint(c as u64, (c >> 64) as u64)
     }
 
     pub fn to_hex(&self) -> String {
