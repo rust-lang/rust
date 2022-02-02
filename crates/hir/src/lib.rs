@@ -452,6 +452,11 @@ impl Module {
         Module { id: def_map.module_id(def_map.root()) }
     }
 
+    pub fn is_crate_root(self, db: &dyn HirDatabase) -> bool {
+        let def_map = db.crate_def_map(self.id.krate());
+        def_map.root() == self.id.local_id
+    }
+
     /// Iterates over all child modules.
     pub fn children(self, db: &dyn HirDatabase) -> impl Iterator<Item = Module> {
         let def_map = self.id.def_map(db.upcast());

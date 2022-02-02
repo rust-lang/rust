@@ -135,6 +135,25 @@ struct Bar;
 }
 
 #[test]
+fn enum_plain_qualified_use_tree() {
+    cov_mark::check!(enum_plain_qualified_use_tree);
+    check(
+        r#"
+use Foo::$0
+
+enum Foo { Variant }
+impl Foo {
+    const CONST: () = ()
+    fn func() {}
+}
+"#,
+        expect![[r#"
+            ev Variant ()
+        "#]],
+    );
+}
+
+#[test]
 fn self_qualified_use_tree() {
     check(
         r#"

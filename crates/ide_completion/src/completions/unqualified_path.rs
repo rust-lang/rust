@@ -20,25 +20,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         _ => return,
     };
 
-    if let Some(PathKind::Use) = kind {
-        // only show modules in a fresh UseTree
-        cov_mark::hit!(unqualified_path_only_modules_in_import);
-        ctx.process_all_names(&mut |name, res| {
-            if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                acc.add_resolution(ctx, name, res);
-            }
-        });
-
-        ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
-        return;
-    }
-    ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
-
     match kind {
-        Some(PathKind::Vis { .. }) => return,
-        Some(PathKind::Attr { .. }) => return,
+        Some(PathKind::Vis { .. } | PathKind::Attr { .. } | PathKind::Use { .. }) => return,
         _ => (),
     }
+    ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
 
     match &ctx.completion_location {
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {

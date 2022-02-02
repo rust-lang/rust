@@ -1,9 +1,10 @@
-//! Completion for attributes
+//! Completion for (built-in) attributes, derives and lints.
 //!
-//! This module uses a bit of static metadata to provide completions
-//! for built-in attributes.
-//! Non-built-in attribute (excluding derives attributes) completions are done in [`super::unqualified_path`].
+//! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
+use std::iter;
+
+use hir::ScopeDef;
 use ide_db::{
     helpers::{
         generated_lints::{
@@ -85,24 +86,45 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
         _ => return,
     };
 
-    if !is_trivial_path {
-        return;
-    }
-
-    if let Some((_, Some(hir::PathResolution::Def(hir::ModuleDef::Module(module))))) = qualifier {
-        for (name, def) in module.scope(ctx.db, ctx.module) {
-            if let Some(def) = module_or_attr(def) {
-                acc.add_resolution(ctx, name, def);
+    match qualifier {
+        Some((path, qualifier)) => {
+            let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
+                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
+            if is_super_chain {
+                acc.add_keyword(ctx, "super::");
             }
-        }
-        return;
-    }
 
-    ctx.process_all_names(&mut |name, def| {
-        if let Some(def) = module_or_attr(def) {
-            acc.add_resolution(ctx, name, def);
+            let module = match qualifier {
+                Some(hir::PathResolution::Def(hir::ModuleDef::Module(it))) => it,
+                _ => return,
+            };
+
+            for (name, def) in module.scope(ctx.db, ctx.module) {
+                if let Some(def) = module_or_attr(def) {
+                    acc.add_resolution(ctx, name, def);
+                }
+            }
+            return;
         }
-    });
+        // fresh use tree with leading colon2, only show crate roots
+        None if !is_trivial_path => {
+            ctx.process_all_names(&mut |name, res| match res {
+                ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
+                    acc.add_resolution(ctx, name, res);
+                }
+                _ => (),
+            });
+        }
+        // only show modules in a fresh UseTree
+        None => {
+            ctx.process_all_names(&mut |name, def| {
+                if let Some(def) = module_or_attr(def) {
+                    acc.add_resolution(ctx, name, def);
+                }
+            });
+            ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+        }
+    }
 
     let attributes = annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {

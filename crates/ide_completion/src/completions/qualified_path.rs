@@ -1,10 +1,8 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
-use std::iter;
-
 use hir::{ScopeDef, Trait};
 use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode};
+use syntax::ast;
 
 use crate::{
     completions::module_or_fn_macro,
@@ -17,14 +15,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
-    let ((path, resolution), use_tree_parent, kind) = match ctx.path_context {
+    let ((path, resolution), kind) = match ctx.path_context {
         // let ... else, syntax would come in really handy here right now
-        Some(PathCompletionContext {
-            qualifier: Some(ref qualifier),
-            use_tree_parent,
-            kind,
-            ..
-        }) => (qualifier, use_tree_parent, kind),
+        Some(PathCompletionContext { qualifier: Some(ref qualifier), kind, .. }) => {
+            (qualifier, kind)
+        }
         _ => return,
     };
 
@@ -86,52 +81,23 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
             return;
         }
-        Some(PathKind::Attr { .. }) => {
+        Some(PathKind::Attr { .. } | PathKind::Use) => {
             return;
         }
-        Some(PathKind::Use) => {
-            if iter::successors(Some(path.clone()), |p| p.qualifier())
-                .all(|p| p.segment().and_then(|s| s.super_token()).is_some())
-            {
-                acc.add_keyword(ctx, "super::");
-            }
-            // only show `self` in a new use-tree when the qualifier doesn't end in self
-            if use_tree_parent
-                && !matches!(
-                    path.segment().and_then(|it| it.kind()),
-                    Some(ast::PathSegmentKind::SelfKw)
-                )
-            {
-                acc.add_keyword(ctx, "self");
-            }
+        Some(PathKind::Pat) => (),
+        _ => {
+            // Add associated types on type parameters and `Self`.
+            ctx.scope.assoc_type_shorthand_candidates(&resolution, |_, alias| {
+                acc.add_type_alias(ctx, alias);
+                None::<()>
+            });
         }
-        _ => (),
-    }
-
-    if !matches!(kind, Some(PathKind::Pat)) {
-        // Add associated types on type parameters and `Self`.
-        ctx.scope.assoc_type_shorthand_candidates(&resolution, |_, alias| {
-            acc.add_type_alias(ctx, alias);
-            None::<()>
-        });
     }
 
     match resolution {
         hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
             let module_scope = module.scope(ctx.db, ctx.module);
             for (name, def) in module_scope {
-                if let Some(PathKind::Use) = kind {
-                    if let ScopeDef::Unknown = def {
-                        if let Some(ast::NameLike::NameRef(name_ref)) = ctx.name_syntax.as_ref() {
-                            if name_ref.syntax().text() == name.to_smol_str().as_str() {
-                                // for `use self::foo$0`, don't suggest `foo` as a completion
-                                cov_mark::hit!(dont_complete_current_use);
-                                continue;
-                            }
-                        }
-                    }
-                }
-
                 let add_resolution = match def {
                     // Don't suggest attribute macros and derives.
                     ScopeDef::MacroDef(mac) => mac.is_fn_like(),
