@@ -496,3 +496,11 @@ fn test_collect() {
     let b: Vec<isize> = a.iter().cloned().collect();
     assert!(a == b);
 }
+
+// just tests by whether or not this compiles
+fn _empty_impl_all_auto_traits<T>() {
+    use std::panic::{RefUnwindSafe, UnwindSafe};
+    fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
+
+    all_auto_traits::<std::iter::Empty<T>>();
+}
