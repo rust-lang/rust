@@ -335,7 +335,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
         let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
         match &arg_ty.kind() {
             ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, inner_ty).is_some() => {
-                let meth_name = match mutbl {
+                let method_name = match mutbl {
                     Mutability::Mut => "iter_mut",
                     Mutability::Not => "iter",
                 };
@@ -346,7 +346,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                 format!(
                     "{}.{}()",
                     sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
-                    meth_name,
+                    method_name,
                 )
             },
             _ => format!(
