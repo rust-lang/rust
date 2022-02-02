@@ -154,6 +154,9 @@ pub unsafe fn create_module<'ll>(
                 "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
                     .to_string();
         }
+        if sess.target.arch == "wasm32" {
+            target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
+        }
     }
 
     // Ensure the data-layout values hardcoded remain the defaults.
