@@ -236,6 +236,7 @@ macro_rules! impl_stable_hash_via_hash {
 macro_rules! impl_hash_stable_eq_via_eq {
     ($t:ty) => {
         impl ::rustc_data_structures::stable_hasher::HashStableEq for $t {
+            #[inline]
             fn hash_stable_eq(&self, other: &Self) -> bool {
                 self == other
             }
