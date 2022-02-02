@@ -45,6 +45,7 @@ mod weak_lang_items;
 pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
     check_const::provide(providers);
+    dead::provide(providers);
     diagnostic_items::provide(providers);
     entry::provide(providers);
     lang_items::provide(providers);

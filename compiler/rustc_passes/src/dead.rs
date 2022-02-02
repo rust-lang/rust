@@ -13,6 +13,7 @@ use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy;
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{sym, Symbol};
@@ -52,7 +53,7 @@ struct MarkSymbolVisitor<'tcx> {
     // maps from ADTs to ignored derived traits (e.g. Debug and Clone)
     // and the span of their respective impl (i.e., part of the derive
     // macro)
-    ignored_derived_traits: FxHashMap<DefId, Vec<(Span, DefId)>>,
+    ignored_derived_traits: FxHashMap<LocalDefId, Vec<(DefId, DefId)>>,
 }
 
 impl<'tcx> MarkSymbolVisitor<'tcx> {
@@ -258,12 +259,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads) {
                     let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
                     if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
-                        let impl_span = self.tcx.def_span(impl_of);
-                        if let Some(v) = self.ignored_derived_traits.get_mut(&adt_def.did) {
-                            v.push((impl_span, trait_of));
-                        } else {
+                        if let Some(adt_def_id) = adt_def.did.as_local() {
                             self.ignored_derived_traits
-                                .insert(adt_def.did, vec![(impl_span, trait_of)]);
+                                .entry(adt_def_id)
+                                .or_default()
+                                .push((trait_of, impl_of));
                         }
                     }
                     return true;
@@ -563,8 +563,8 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'tcx> {
 
 fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx>,
-    access_levels: &privacy::AccessLevels,
 ) -> (Vec<LocalDefId>, FxHashMap<LocalDefId, LocalDefId>) {
+    let access_levels = &tcx.privacy_access_levels(());
     let worklist = access_levels
         .map
         .iter()
@@ -584,11 +584,11 @@ fn create_and_seed_worklist<'tcx>(
     (life_seeder.worklist, life_seeder.struct_constructors)
 }
 
-fn find_live<'tcx>(
+fn live_symbols_and_ignored_derived_traits<'tcx>(
     tcx: TyCtxt<'tcx>,
-    access_levels: &privacy::AccessLevels,
-) -> (FxHashSet<LocalDefId>, FxHashMap<DefId, Vec<(Span, DefId)>>) {
-    let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels);
+    (): (),
+) -> (FxHashSet<LocalDefId>, FxHashMap<LocalDefId, Vec<(DefId, DefId)>>) {
+    let (worklist, struct_constructors) = create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -608,8 +608,8 @@ fn find_live<'tcx>(
 
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    live_symbols: FxHashSet<LocalDefId>,
-    ignored_derived_traits: FxHashMap<DefId, Vec<(Span, DefId)>>,
+    live_symbols: &'tcx FxHashSet<LocalDefId>,
+    ignored_derived_traits: &'tcx FxHashMap<LocalDefId, Vec<(DefId, DefId)>>,
 }
 
 impl<'tcx> DeadVisitor<'tcx> {
@@ -682,12 +682,10 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let hir = self.tcx.hir();
                 if let Some(encl_scope) = hir.get_enclosing_scope(id) {
                     if let Some(encl_def_id) = hir.opt_local_def_id(encl_scope) {
-                        if let Some(ign_traits) =
-                            self.ignored_derived_traits.get(&encl_def_id.to_def_id())
-                        {
+                        if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
                             let traits_str = ign_traits
                                 .iter()
-                                .map(|(_, t)| format!("`{}`", self.tcx.item_name(*t)))
+                                .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
                                 .collect::<Vec<_>>()
                                 .join(" and ");
                             let plural_s = pluralize!(ign_traits.len());
@@ -703,7 +701,10 @@ impl<'tcx> DeadVisitor<'tcx> {
                                 traits_str,
                                 is_are
                             );
-                            let multispan = ign_traits.iter().map(|(s, _)| *s).collect::<Vec<_>>();
+                            let multispan = ign_traits
+                                .iter()
+                                .map(|(_, impl_id)| self.tcx.def_span(*impl_id))
+                                .collect::<Vec<_>>();
                             err.span_note(multispan, &msg);
                         }
                     }
@@ -760,6 +761,9 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
             intravisit::walk_item(self, item);
         }
     }
+
+    // This visitor should only visit a single module at a time.
+    fn visit_mod(&mut self, _: &'tcx hir::Mod<'tcx>, _: Span, _: hir::HirId) {}
 
     fn visit_variant(
         &mut self,
@@ -836,9 +840,16 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) {
-    let access_levels = &tcx.privacy_access_levels(());
-    let (live_symbols, ignored_derived_traits) = find_live(tcx, access_levels);
+fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalDefId) {
+    let (live_symbols, ignored_derived_traits) = tcx.live_symbols_and_ignored_derived_traits(());
     let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
-    tcx.hir().walk_toplevel_module(&mut visitor);
+    let (module, _, module_id) = tcx.hir().get_module(module);
+    // Do not use an ItemLikeVisitor since we may want to skip visiting some items
+    // when a surrounding one is warned against or `_`.
+    intravisit::walk_mod(&mut visitor, module, module_id);
+}
+
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers =
+        Providers { live_symbols_and_ignored_derived_traits, check_mod_deathness, ..*providers };
 }
