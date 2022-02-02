@@ -1427,15 +1427,25 @@ fn normalize<'tcx>(cx: &mut DocContext<'tcx>, ty: Ty<'_>) -> Option<Ty<'tcx>> {
         return None;
     }
 
+    use crate::rustc_trait_selection::infer::TyCtxtInferExt;
+    use crate::rustc_trait_selection::traits::query::normalize::AtExt;
+    use rustc_middle::traits::ObligationCause;
+
     // Try to normalize `<X as Y>::T` to a type
     let lifted = ty.lift_to_tcx(cx.tcx).unwrap();
-    match cx.tcx.try_normalize_erasing_regions(cx.param_env, lifted) {
+    let normalized = cx.tcx.infer_ctxt().enter(|infcx| {
+        infcx
+            .at(&ObligationCause::dummy(), cx.param_env)
+            .normalize(lifted)
+            .map(|resolved| infcx.resolve_vars_if_possible(resolved.value))
+    });
+    match normalized {
         Ok(normalized_value) => {
-            trace!("normalized {:?} to {:?}", ty, normalized_value);
+            debug!("normalized {:?} to {:?}", ty, normalized_value);
             Some(normalized_value)
         }
         Err(err) => {
-            info!("failed to normalize {:?}: {:?}", ty, err);
+            debug!("failed to normalize {:?}: {:?}", ty, err);
             None
         }
     }
