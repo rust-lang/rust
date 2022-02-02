@@ -602,33 +602,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for binding in &candidate_ref.bindings {
                     let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                    if let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                    let Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
                         VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                    )))) = self.local_decls[local].local_info
-                    {
-                        // `try_upvars_resolved` may fail if it is unable to resolve the given
-                        // `PlaceBuilder` inside a closure. In this case, we don't want to include
-                        // a scrutinee place. `scrutinee_place_builder` will fail for destructured
-                        // assignments. This is because a closure only captures the precise places
-                        // that it will read and as a result a closure may not capture the entire
-                        // tuple/struct and rather have individual places that will be read in the
-                        // final MIR.
-                        // Example:
-                        // ```
-                        // let foo = (0, 1);
-                        // let c = || {
-                        //    let (v1, v2) = foo;
-                        // };
-                        // ```
-                        if let Ok(match_pair_resolved) =
-                            initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                        {
-                            let place =
-                                match_pair_resolved.into_place(self.tcx, self.typeck_results);
-                            *match_place = Some(place);
-                        }
-                    } else {
+                    )))) = self.local_decls[local].local_info else {
                         bug!("Let binding to non-user variable.")
+                    };
+                    // `try_upvars_resolved` may fail if it is unable to resolve the given
+                    // `PlaceBuilder` inside a closure. In this case, we don't want to include
+                    // a scrutinee place. `scrutinee_place_builder` will fail for destructured
+                    // assignments. This is because a closure only captures the precise places
+                    // that it will read and as a result a closure may not capture the entire
+                    // tuple/struct and rather have individual places that will be read in the
+                    // final MIR.
+                    // Example:
+                    // ```
+                    // let foo = (0, 1);
+                    // let c = || {
+                    //    let (v1, v2) = foo;
+                    // };
+                    // ```
+                    if let Ok(match_pair_resolved) =
+                        initializer.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+                    {
+                        let place = match_pair_resolved.into_place(self.tcx, self.typeck_results);
+                        *match_place = Some(place);
                     }
                 }
                 // All of the subcandidates should bind the same locals, so we

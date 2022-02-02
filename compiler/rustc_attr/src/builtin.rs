@@ -217,85 +217,81 @@ where
                     let mut issue_num = None;
                     let mut is_soft = false;
                     for meta in metas {
-                        if let Some(mi) = meta.meta_item() {
-                            match mi.name_or_empty() {
-                                sym::feature => {
-                                    if !get(mi, &mut feature) {
-                                        continue 'outer;
-                                    }
-                                }
-                                sym::reason => {
-                                    if !get(mi, &mut reason) {
-                                        continue 'outer;
-                                    }
-                                }
-                                sym::issue => {
-                                    if !get(mi, &mut issue) {
-                                        continue 'outer;
-                                    }
-
-                                    // These unwraps are safe because `get` ensures the meta item
-                                    // is a name/value pair string literal.
-                                    issue_num = match issue.unwrap().as_str() {
-                                        "none" => None,
-                                        issue => {
-                                            let emit_diag = |msg: &str| {
-                                                struct_span_err!(
-                                                    diagnostic,
-                                                    mi.span,
-                                                    E0545,
-                                                    "`issue` must be a non-zero numeric string \
-                                                    or \"none\"",
-                                                )
-                                                .span_label(
-                                                    mi.name_value_literal_span().unwrap(),
-                                                    msg,
-                                                )
-                                                .emit();
-                                            };
-                                            match issue.parse() {
-                                                Ok(0) => {
-                                                    emit_diag(
-                                                        "`issue` must not be \"0\", \
-                                                        use \"none\" instead",
-                                                    );
-                                                    continue 'outer;
-                                                }
-                                                Ok(num) => NonZeroU32::new(num),
-                                                Err(err) => {
-                                                    emit_diag(&err.to_string());
-                                                    continue 'outer;
-                                                }
-                                            }
-                                        }
-                                    };
-                                }
-                                sym::soft => {
-                                    if !mi.is_word() {
-                                        let msg = "`soft` should not have any arguments";
-                                        sess.parse_sess.span_diagnostic.span_err(mi.span, msg);
-                                    }
-                                    is_soft = true;
-                                }
-                                _ => {
-                                    handle_errors(
-                                        &sess.parse_sess,
-                                        meta.span(),
-                                        AttrError::UnknownMetaItem(
-                                            pprust::path_to_string(&mi.path),
-                                            &["feature", "reason", "issue", "soft"],
-                                        ),
-                                    );
-                                    continue 'outer;
-                                }
-                            }
-                        } else {
+                        let Some(mi) = meta.meta_item() else {
                             handle_errors(
                                 &sess.parse_sess,
                                 meta.span(),
                                 AttrError::UnsupportedLiteral("unsupported literal", false),
                             );
                             continue 'outer;
+                        };
+                        match mi.name_or_empty() {
+                            sym::feature => {
+                                if !get(mi, &mut feature) {
+                                    continue 'outer;
+                                }
+                            }
+                            sym::reason => {
+                                if !get(mi, &mut reason) {
+                                    continue 'outer;
+                                }
+                            }
+                            sym::issue => {
+                                if !get(mi, &mut issue) {
+                                    continue 'outer;
+                                }
+
+                                // These unwraps are safe because `get` ensures the meta item
+                                // is a name/value pair string literal.
+                                issue_num = match issue.unwrap().as_str() {
+                                    "none" => None,
+                                    issue => {
+                                        let emit_diag = |msg: &str| {
+                                            struct_span_err!(
+                                                diagnostic,
+                                                mi.span,
+                                                E0545,
+                                                "`issue` must be a non-zero numeric string \
+                                                or \"none\"",
+                                            )
+                                            .span_label(mi.name_value_literal_span().unwrap(), msg)
+                                            .emit();
+                                        };
+                                        match issue.parse() {
+                                            Ok(0) => {
+                                                emit_diag(
+                                                    "`issue` must not be \"0\", \
+                                                    use \"none\" instead",
+                                                );
+                                                continue 'outer;
+                                            }
+                                            Ok(num) => NonZeroU32::new(num),
+                                            Err(err) => {
+                                                emit_diag(&err.to_string());
+                                                continue 'outer;
+                                            }
+                                        }
+                                    }
+                                };
+                            }
+                            sym::soft => {
+                                if !mi.is_word() {
+                                    let msg = "`soft` should not have any arguments";
+                                    sess.parse_sess.span_diagnostic.span_err(mi.span, msg);
+                                }
+                                is_soft = true;
+                            }
+                            _ => {
+                                handle_errors(
+                                    &sess.parse_sess,
+                                    meta.span(),
+                                    AttrError::UnknownMetaItem(
+                                        pprust::path_to_string(&mi.path),
+                                        &["feature", "reason", "issue", "soft"],
+                                    ),
+                                );
+                                continue 'outer;
+                            }
                         }
                     }
 
