@@ -7,6 +7,7 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
+    completions::{module_or_attr, module_or_fn_macro},
     context::{PathCompletionContext, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
@@ -57,12 +58,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 for (name, def) in module.scope(ctx.db, context_module) {
-                    if let ScopeDef::MacroDef(macro_def) = def {
-                        if macro_def.is_fn_like() {
-                            acc.add_macro(ctx, Some(name.clone()), macro_def);
-                        }
-                    }
-                    if let ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = def {
+                    if let Some(def) = module_or_fn_macro(def) {
                         acc.add_resolution(ctx, name, def);
                     }
                 }
@@ -73,16 +69,18 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 
     match kind {
+        // Complete next child module that comes after the qualified module which is still our parent
         Some(PathKind::Vis { .. }) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 if let Some(current_module) = ctx.module {
-                    if let Some(next) = current_module
+                    let next_towards_current = current_module
                         .path_to_root(ctx.db)
                         .into_iter()
                         .take_while(|&it| it != module)
-                        .next()
-                    {
+                        .next();
+                    if let Some(next) = next_towards_current {
                         if let Some(name) = next.name(ctx.db) {
+                            cov_mark::hit!(visibility_qualified);
                             acc.add_resolution(ctx, name, ScopeDef::ModuleDef(next.into()));
                         }
                     }
@@ -93,12 +91,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(PathKind::Attr) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 for (name, def) in module.scope(ctx.db, context_module) {
-                    let add_resolution = match def {
-                        ScopeDef::MacroDef(mac) => mac.is_attr(),
-                        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
-                        _ => false,
-                    };
-                    if add_resolution {
+                    if let Some(def) = module_or_attr(def) {
                         acc.add_resolution(ctx, name, def);
                     }
                 }
@@ -263,7 +256,6 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 );
             }
         }
-        hir::PathResolution::Macro(mac) => acc.add_macro(ctx, None, mac),
         _ => {}
     }
 }

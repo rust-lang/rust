@@ -18,7 +18,7 @@ pub(crate) mod format_string;
 
 use std::iter;
 
-use hir::known;
+use hir::{known, ScopeDef};
 use ide_db::SymbolKind;
 
 use crate::{
@@ -28,7 +28,6 @@ use crate::{
         const_::render_const,
         enum_variant::render_variant,
         function::{render_fn, render_method},
-        macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_resolution, render_tuple_field,
         struct_literal::render_struct_literal,
@@ -37,6 +36,22 @@ use crate::{
     },
     CompletionContext, CompletionItem, CompletionItemKind,
 };
+
+fn module_or_attr(def: ScopeDef) -> Option<ScopeDef> {
+    match def {
+        ScopeDef::MacroDef(mac) if mac.is_attr() => Some(def),
+        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
+        _ => None,
+    }
+}
+
+fn module_or_fn_macro(def: ScopeDef) -> Option<ScopeDef> {
+    match def {
+        ScopeDef::MacroDef(mac) if mac.is_fn_like() => Some(def),
+        ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
+        _ => None,
+    }
+}
 
 /// Represents an in-progress set of completions being built.
 #[derive(Debug, Default)]
@@ -93,19 +108,6 @@ impl Completions {
             return;
         }
         self.add(render_resolution(RenderContext::new(ctx, false), local_name, resolution));
-    }
-
-    pub(crate) fn add_macro(
-        &mut self,
-        ctx: &CompletionContext,
-        name: Option<hir::Name>,
-        macro_: hir::MacroDef,
-    ) {
-        let name = match name {
-            Some(it) => it,
-            None => return,
-        };
-        self.add(render_macro(RenderContext::new(ctx, false), None, name, macro_));
     }
 
     pub(crate) fn add_function(
@@ -227,9 +229,13 @@ impl Completions {
         self.add(item);
     }
 
-    pub(crate) fn add_static_lifetime(&mut self, ctx: &CompletionContext) {
-        let item = CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), "'static");
-        self.add(item.build());
+    pub(crate) fn add_lifetime(&mut self, ctx: &CompletionContext, name: hir::Name) {
+        CompletionItem::new(SymbolKind::LifetimeParam, ctx.source_range(), name.to_smol_str())
+            .add_to(self)
+    }
+
+    pub(crate) fn add_label(&mut self, ctx: &CompletionContext, name: hir::Name) {
+        CompletionItem::new(SymbolKind::Label, ctx.source_range(), name.to_smol_str()).add_to(self)
     }
 
     pub(crate) fn add_variant_pat(

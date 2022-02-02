@@ -40,6 +40,7 @@ pub(in $0)
 
 #[test]
 fn qualified() {
+    cov_mark::check!(visibility_qualified);
     check(
         r#"
 mod foo {

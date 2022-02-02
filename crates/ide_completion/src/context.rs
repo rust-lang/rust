@@ -34,7 +34,7 @@ pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
 }
-pub enum Visible {
+pub(crate) enum Visible {
     Yes,
     Editable,
     No,
@@ -108,7 +108,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) token: SyntaxToken,
     /// The crate of the current file.
     pub(super) krate: Option<hir::Crate>,
-    /// The crate of the `scope`.
+    /// The module of the `scope`.
     pub(super) module: Option<hir::Module>,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
