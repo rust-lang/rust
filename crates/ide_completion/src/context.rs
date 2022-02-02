@@ -34,6 +34,11 @@ pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
 }
+pub(crate) enum Visible {
+    Yes,
+    Editable,
+    No,
+}
 
 #[derive(Copy, Clone, Debug)]
 pub(super) enum PathKind {
@@ -103,7 +108,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) token: SyntaxToken,
     /// The crate of the current file.
     pub(super) krate: Option<hir::Crate>,
-    /// The crate of the `scope`.
+    /// The module of the `scope`.
     pub(super) module: Option<hir::Module>,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
@@ -285,7 +290,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
-    pub(crate) fn is_visible<I>(&self, item: &I) -> bool
+    pub(crate) fn is_visible<I>(&self, item: &I) -> Visible
     where
         I: hir::HasVisibility + hir::HasAttrs + hir::HasCrate + Copy,
     {
@@ -339,20 +344,24 @@ impl<'a> CompletionContext<'a> {
         vis: &hir::Visibility,
         attrs: &hir::Attrs,
         defining_crate: hir::Crate,
-    ) -> bool {
+    ) -> Visible {
         let module = match self.module {
             Some(it) => it,
-            None => return false,
+            None => return Visible::No,
         };
         if !vis.is_visible_from(self.db, module.into()) {
             // If the definition location is editable, also show private items
             let root_file = defining_crate.root_file(self.db);
             let source_root_id = self.db.file_source_root(root_file);
             let is_editable = !self.db.source_root(source_root_id).is_library;
-            return is_editable;
+            return if is_editable { Visible::Editable } else { Visible::No };
         }
 
-        !self.is_doc_hidden(attrs, defining_crate)
+        if self.is_doc_hidden(attrs, defining_crate) {
+            Visible::No
+        } else {
+            Visible::Yes
+        }
     }
 
     fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {

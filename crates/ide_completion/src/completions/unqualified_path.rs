@@ -4,6 +4,7 @@ use hir::ScopeDef;
 use syntax::{ast, AstNode};
 
 use crate::{
+    completions::{module_or_attr, module_or_fn_macro},
     context::{PathCompletionContext, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
@@ -36,14 +37,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     match kind {
         Some(PathKind::Vis { .. }) => return,
         Some(PathKind::Attr) => {
-            ctx.process_all_names(&mut |name, res| {
-                let add_resolution = match res {
-                    ScopeDef::MacroDef(mac) => mac.is_attr(),
-                    ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => true,
-                    _ => false,
-                };
-                if add_resolution {
-                    acc.add_resolution(ctx, name, res);
+            ctx.process_all_names(&mut |name, def| {
+                if let Some(def) = module_or_attr(def) {
+                    acc.add_resolution(ctx, name, def);
                 }
             });
             return;
@@ -54,14 +50,9 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     match &ctx.completion_location {
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             // only show macros in {Assoc}ItemList
-            ctx.process_all_names(&mut |name, res| {
-                if let hir::ScopeDef::MacroDef(mac) = res {
-                    if mac.is_fn_like() {
-                        acc.add_macro(ctx, Some(name.clone()), mac);
-                    }
-                }
-                if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) = res {
-                    acc.add_resolution(ctx, name, res);
+            ctx.process_all_names(&mut |name, def| {
+                if let Some(def) = module_or_fn_macro(def) {
+                    acc.add_resolution(ctx, name, def);
                 }
             });
             return;

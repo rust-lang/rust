@@ -41,7 +41,7 @@ pub(crate) fn render_method(
 }
 
 fn render(
-    ctx @ RenderContext { completion }: RenderContext<'_>,
+    ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_type: FuncType,
@@ -75,7 +75,7 @@ fn render(
         type_match: compute_type_match(completion, &ret_type),
         exact_name_match: compute_exact_name_match(completion, &call),
         is_op_method,
-        ..CompletionRelevance::default()
+        ..ctx.completion_relevance()
     });
 
     if let Some(ref_match) = compute_ref_match(completion, &ret_type) {

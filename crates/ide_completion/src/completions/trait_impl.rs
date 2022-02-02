@@ -42,7 +42,7 @@ use text_edit::TextEdit;
 
 use crate::{CompletionContext, CompletionItem, CompletionItemKind, Completions};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ImplCompletionKind {
     All,
     Fn,
@@ -53,23 +53,22 @@ enum ImplCompletionKind {
 pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext) {
     if let Some((kind, trigger, impl_def)) = completion_match(ctx.token.clone()) {
         if let Some(hir_impl) = ctx.sema.to_def(&impl_def) {
-            get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| match item {
-                hir::AssocItem::Function(fn_item)
-                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Fn =>
-                {
-                    add_function_impl(&trigger, acc, ctx, fn_item, hir_impl)
+            get_missing_assoc_items(&ctx.sema, &impl_def).into_iter().for_each(|item| {
+                match (item, kind) {
+                    (
+                        hir::AssocItem::Function(fn_item),
+                        ImplCompletionKind::All | ImplCompletionKind::Fn,
+                    ) => add_function_impl(&trigger, acc, ctx, fn_item, hir_impl),
+                    (
+                        hir::AssocItem::TypeAlias(type_item),
+                        ImplCompletionKind::All | ImplCompletionKind::TypeAlias,
+                    ) => add_type_alias_impl(&trigger, acc, ctx, type_item),
+                    (
+                        hir::AssocItem::Const(const_item),
+                        ImplCompletionKind::All | ImplCompletionKind::Const,
+                    ) => add_const_impl(&trigger, acc, ctx, const_item, hir_impl),
+                    _ => {}
                 }
-                hir::AssocItem::TypeAlias(type_item)
-                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::TypeAlias =>
-                {
-                    add_type_alias_impl(&trigger, acc, ctx, type_item)
-                }
-                hir::AssocItem::Const(const_item)
-                    if kind == ImplCompletionKind::All || kind == ImplCompletionKind::Const =>
-                {
-                    add_const_impl(&trigger, acc, ctx, const_item, hir_impl)
-                }
-                _ => {}
             });
         }
     }
@@ -194,7 +193,7 @@ fn get_transformed_assoc_item(
 
     transform.apply(assoc_item.syntax());
     if let ast::AssocItem::Fn(func) = &assoc_item {
-        func.remove_attrs_and_docs()
+        func.remove_attrs_and_docs();
     }
     Some(assoc_item)
 }

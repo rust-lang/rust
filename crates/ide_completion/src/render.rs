@@ -28,11 +28,15 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
+    is_private_editable: bool,
 }
 
 impl<'a> RenderContext<'a> {
-    pub(crate) fn new(completion: &'a CompletionContext<'a>) -> RenderContext<'a> {
-        RenderContext { completion }
+    pub(crate) fn new(
+        completion: &'a CompletionContext<'a>,
+        is_private_editable: bool,
+    ) -> RenderContext<'a> {
+        RenderContext { completion, is_private_editable }
     }
 
     fn snippet_cap(&self) -> Option<SnippetCap> {
@@ -45,6 +49,10 @@ impl<'a> RenderContext<'a> {
 
     fn source_range(&self) -> TextRange {
         self.completion.source_range()
+    }
+
+    fn completion_relevance(&self) -> CompletionRelevance {
+        CompletionRelevance { is_private_editable: self.is_private_editable, ..Default::default() }
     }
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
@@ -582,6 +590,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_op_method: false,
+                            is_private_editable: false,
                             exact_postfix_snippet_match: false,
                         },
                         trigger_call_info: true,
@@ -603,6 +612,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_op_method: false,
+                            is_private_editable: false,
                             exact_postfix_snippet_match: false,
                         },
                     },
@@ -689,6 +699,7 @@ fn foo() { A { the$0 } }
                             ),
                             is_local: false,
                             is_op_method: false,
+                            is_private_editable: false,
                             exact_postfix_snippet_match: false,
                         },
                     },

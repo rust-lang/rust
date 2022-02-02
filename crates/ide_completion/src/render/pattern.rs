@@ -59,7 +59,10 @@ fn build_completion(
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), name);
-    item.set_documentation(ctx.docs(def)).set_deprecated(ctx.is_deprecated(def)).detail(&pat);
+    item.set_documentation(ctx.docs(def))
+        .set_deprecated(ctx.is_deprecated(def))
+        .detail(&pat)
+        .set_relevance(ctx.completion_relevance());
     match ctx.snippet_cap() {
         Some(snippet_cap) => item.insert_snippet(snippet_cap, pat),
         None => item.insert_text(pat),

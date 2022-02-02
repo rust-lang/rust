@@ -3,7 +3,8 @@ use ide_db::SymbolKind;
 use syntax::{ast::Expr, T};
 
 use crate::{
-    patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind, Completions,
+    patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -25,7 +26,10 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                     CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
                 let completion_text =
                     completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
-                item.insert_text(completion_text);
+                item.insert_text(completion_text).set_relevance(CompletionRelevance {
+                    exact_postfix_snippet_match: true,
+                    ..Default::default()
+                });
                 item.add_to(acc);
             }
             if ctx.previous_token_is(T![.]) {
