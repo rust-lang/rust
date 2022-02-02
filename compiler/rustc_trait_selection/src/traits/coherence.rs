@@ -279,9 +279,7 @@ fn implicit_negative<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| {
-            loose_check(selcx, o) || tcx.features().negative_impls && negative_impl_exists(selcx, o)
-        });
+        .find(|o| loose_check(selcx, o));
     // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
     // to the canonical trait query form, `infcx.predicate_may_hold`, once
     // the new system supports intercrate mode (which coherence needs).
