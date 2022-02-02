@@ -1427,9 +1427,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             bug!("temporary should be initialized exactly once")
                         };
 
-                        let loc = match init.location {
-                            InitLocation::Statement(stmt) => stmt,
-                            _ => bug!("temporary initialized in arguments"),
+                        let InitLocation::Statement(loc) = init.location else {
+                            bug!("temporary initialized in arguments")
                         };
 
                         let body = self.body;

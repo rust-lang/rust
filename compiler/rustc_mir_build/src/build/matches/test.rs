@@ -227,16 +227,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target_blocks = make_target_blocks(self);
                 let terminator = if *switch_ty.kind() == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
-                    if let [first_bb, second_bb] = *target_blocks {
-                        let (true_bb, false_bb) = match options[0] {
-                            1 => (first_bb, second_bb),
-                            0 => (second_bb, first_bb),
-                            v => span_bug!(test.span, "expected boolean value but got {:?}", v),
-                        };
-                        TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
-                    } else {
+                    let [first_bb, second_bb] = *target_blocks else {
                         bug!("`TestKind::SwitchInt` on `bool` should have two targets")
-                    }
+                    };
+                    let (true_bb, false_bb) = match options[0] {
+                        1 => (first_bb, second_bb),
+                        0 => (second_bb, first_bb),
+                        v => span_bug!(test.span, "expected boolean value but got {:?}", v),
+                    };
+                    TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
                 } else {
                     // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
@@ -285,24 +284,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let hi = self.literal_operand(test.span, hi);
                 let val = Operand::Copy(place);
 
-                if let [success, fail] = *target_blocks {
-                    self.compare(
-                        block,
-                        lower_bound_success,
-                        fail,
-                        source_info,
-                        BinOp::Le,
-                        lo,
-                        val.clone(),
-                    );
-                    let op = match *end {
-                        RangeEnd::Included => BinOp::Le,
-                        RangeEnd::Excluded => BinOp::Lt,
-                    };
-                    self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
-                } else {
+                let [success, fail] = *target_blocks else {
                     bug!("`TestKind::Range` should have two target blocks");
-                }
+                };
+                self.compare(
+                    block,
+                    lower_bound_success,
+                    fail,
+                    source_info,
+                    BinOp::Le,
+                    lo,
+                    val.clone(),
+                );
+                let op = match *end {
+                    RangeEnd::Included => BinOp::Le,
+                    RangeEnd::Excluded => BinOp::Lt,
+                };
+                self.compare(lower_bound_success, success, fail, source_info, op, val, hi);
             }
 
             TestKind::Len { len, op } => {
@@ -317,21 +315,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // expected = <N>
                 let expected = self.push_usize(block, source_info, len);
 
-                if let [true_bb, false_bb] = *target_blocks {
-                    // result = actual == expected OR result = actual < expected
-                    // branch based on result
-                    self.compare(
-                        block,
-                        true_bb,
-                        false_bb,
-                        source_info,
-                        op,
-                        Operand::Move(actual),
-                        Operand::Move(expected),
-                    );
-                } else {
+                let [true_bb, false_bb] = *target_blocks else {
                     bug!("`TestKind::Len` should have two target blocks");
-                }
+                };
+                // result = actual == expected OR result = actual < expected
+                // branch based on result
+                self.compare(
+                    block,
+                    true_bb,
+                    false_bb,
+                    source_info,
+                    op,
+                    Operand::Move(actual),
+                    Operand::Move(expected),
+                );
             }
         }
     }
@@ -459,16 +456,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         self.diverge_from(block);
 
-        if let [success_block, fail_block] = *make_target_blocks(self) {
-            // check the result
-            self.cfg.terminate(
-                eq_block,
-                source_info,
-                TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
-            );
-        } else {
+        let [success_block, fail_block] = *make_target_blocks(self) else {
             bug!("`TestKind::Eq` should have two target blocks")
-        }
+        };
+        // check the result
+        self.cfg.terminate(
+            eq_block,
+            source_info,
+            TerminatorKind::if_(self.tcx, Operand::Move(eq_result), success_block, fail_block),
+        );
     }
 
     /// Given that we are performing `test` against `test_place`, this job

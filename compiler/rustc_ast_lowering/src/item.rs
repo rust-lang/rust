@@ -471,9 +471,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // two imports.
                 for new_node_id in [id1, id2] {
                     let new_id = self.resolver.local_def_id(new_node_id);
-                    let res = if let Some(res) = resolutions.next() {
-                        res
-                    } else {
+                    let Some(res) = resolutions.next() else {
                         // Associate an HirId to both ids even if there is no resolution.
                         let _old = self
                             .node_id_to_hir_id

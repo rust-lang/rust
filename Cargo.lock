@@ -3403,7 +3403,6 @@ dependencies = [
 name = "rustc_arena"
 version = "0.0.0"
 dependencies = [
- "rustc_data_structures",
  "smallvec",
 ]
 

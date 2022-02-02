@@ -865,14 +865,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     ..
                 }) => {
-                    // We have a situation like `while Some(0) = value.get(0) {`, where `while let`
-                    // was more likely intended.
-                    err.span_suggestion_verbose(
-                        expr.span.shrink_to_lo(),
-                        "you might have meant to use pattern destructuring",
-                        "let ".to_string(),
-                        Applicability::MachineApplicable,
-                    );
+                    // Check if our lhs is a child of the condition of a while loop
+                    let expr_is_ancestor = std::iter::successors(Some(lhs.hir_id), |id| {
+                        self.tcx.hir().find_parent_node(*id)
+                    })
+                    .take_while(|id| *id != parent)
+                    .any(|id| id == expr.hir_id);
+                    // if it is, then we have a situation like `while Some(0) = value.get(0) {`,
+                    // where `while let` was more likely intended.
+                    if expr_is_ancestor {
+                        err.span_suggestion_verbose(
+                            expr.span.shrink_to_lo(),
+                            "you might have meant to use pattern destructuring",
+                            "let ".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
                     break;
                 }
                 hir::Node::Item(_)

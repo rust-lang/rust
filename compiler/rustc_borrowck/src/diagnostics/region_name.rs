@@ -311,43 +311,39 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
-                    if let DefiningTy::Closure(_, substs) = def_ty {
-                        let args_span = if let hir::ExprKind::Closure(_, _, _, span, _) =
-                            tcx.hir().expect_expr(self.mir_hir_id()).kind
-                        {
-                            span
-                        } else {
-                            bug!("Closure is not defined by a closure expr");
-                        };
-                        let region_name = self.synthesize_region_name();
-
-                        let closure_kind_ty = substs.as_closure().kind_ty();
-                        let note = match closure_kind_ty.to_opt_closure_kind() {
-                            Some(ty::ClosureKind::Fn) => {
-                                "closure implements `Fn`, so references to captured variables \
-                                 can't escape the closure"
-                            }
-                            Some(ty::ClosureKind::FnMut) => {
-                                "closure implements `FnMut`, so references to captured variables \
-                                 can't escape the closure"
-                            }
-                            Some(ty::ClosureKind::FnOnce) => {
-                                bug!("BrEnv in a `FnOnce` closure");
-                            }
-                            None => bug!("Closure kind not inferred in borrow check"),
-                        };
-
-                        Some(RegionName {
-                            name: region_name,
-                            source: RegionNameSource::SynthesizedFreeEnvRegion(
-                                args_span,
-                                note.to_string(),
-                            ),
-                        })
-                    } else {
+                    let DefiningTy::Closure(_, substs) = def_ty else {
                         // Can't have BrEnv in functions, constants or generators.
                         bug!("BrEnv outside of closure.");
-                    }
+                    };
+                    let hir::ExprKind::Closure(_, _, _, args_span, _) =
+                        tcx.hir().expect_expr(self.mir_hir_id()).kind else {
+                        bug!("Closure is not defined by a closure expr");
+                    };
+                    let region_name = self.synthesize_region_name();
+
+                    let closure_kind_ty = substs.as_closure().kind_ty();
+                    let note = match closure_kind_ty.to_opt_closure_kind() {
+                        Some(ty::ClosureKind::Fn) => {
+                            "closure implements `Fn`, so references to captured variables \
+                                can't escape the closure"
+                        }
+                        Some(ty::ClosureKind::FnMut) => {
+                            "closure implements `FnMut`, so references to captured variables \
+                                can't escape the closure"
+                        }
+                        Some(ty::ClosureKind::FnOnce) => {
+                            bug!("BrEnv in a `FnOnce` closure");
+                        }
+                        None => bug!("Closure kind not inferred in borrow check"),
+                    };
+
+                    Some(RegionName {
+                        name: region_name,
+                        source: RegionNameSource::SynthesizedFreeEnvRegion(
+                            args_span,
+                            note.to_string(),
+                        ),
+                    })
                 }
 
                 ty::BoundRegionKind::BrAnon(_) => None,
@@ -765,47 +761,44 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
         let hir = self.infcx.tcx.hir();
 
-        if let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind {
-            let opaque_ty = hir.item(id);
-            if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                bounds:
-                    [
-                        hir::GenericBound::LangItemTrait(
-                            hir::LangItem::Future,
-                            _,
-                            _,
-                            hir::GenericArgs {
-                                bindings:
-                                    [
-                                        hir::TypeBinding {
-                                            ident: Ident { name: sym::Output, .. },
-                                            kind:
-                                                hir::TypeBindingKind::Equality {
-                                                    term: hir::Term::Ty(ty),
-                                                },
-                                            ..
-                                        },
-                                    ],
-                                ..
-                            },
-                        ),
-                    ],
-                ..
-            }) = opaque_ty.kind
-            {
-                ty
-            } else {
-                span_bug!(
-                    hir_ty.span,
-                    "bounds from lowered return type of async fn did not match expected format: {:?}",
-                    opaque_ty
-                );
-            }
-        } else {
+        let hir::TyKind::OpaqueDef(id, _) = hir_ty.kind else {
             span_bug!(
                 hir_ty.span,
                 "lowered return type of async fn is not OpaqueDef: {:?}",
                 hir_ty
+            );
+        };
+        let opaque_ty = hir.item(id);
+        if let hir::ItemKind::OpaqueTy(hir::OpaqueTy {
+            bounds:
+                [
+                    hir::GenericBound::LangItemTrait(
+                        hir::LangItem::Future,
+                        _,
+                        _,
+                        hir::GenericArgs {
+                            bindings:
+                                [
+                                    hir::TypeBinding {
+                                        ident: Ident { name: sym::Output, .. },
+                                        kind:
+                                            hir::TypeBindingKind::Equality { term: hir::Term::Ty(ty) },
+                                        ..
+                                    },
+                                ],
+                            ..
+                        },
+                    ),
+                ],
+            ..
+        }) = opaque_ty.kind
+        {
+            ty
+        } else {
+            span_bug!(
+                hir_ty.span,
+                "bounds from lowered return type of async fn did not match expected format: {:?}",
+                opaque_ty
             );
         }
     }

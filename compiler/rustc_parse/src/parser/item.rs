@@ -1221,7 +1221,7 @@ impl<'a> Parser<'a> {
 
                 let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct")?;
+                    let (fields, recovered) = this.parse_record_struct_body("struct", false)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(token::Paren)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1275,7 +1275,8 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) = self.parse_record_struct_body("struct")?;
+                let (fields, recovered) =
+                    self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1283,7 +1284,8 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("struct")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -1313,10 +1315,12 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1332,6 +1336,7 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
+        parsed_where: bool,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
@@ -1353,9 +1358,19 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!("expected `where`, or `{{` after struct name, found {}", token_str);
+            let msg = &format!(
+                "expected {}`{{` after struct name, found {}",
+                if parsed_where { "" } else { "`where`, or " },
+                token_str
+            );
             let mut err = self.struct_span_err(self.token.span, msg);
-            err.span_label(self.token.span, "expected `where`, or `{` after struct name");
+            err.span_label(
+                self.token.span,
+                format!(
+                    "expected {}`{{` after struct name",
+                    if parsed_where { "" } else { "`where`, or " }
+                ),
+            );
             return Err(err);
         }
 

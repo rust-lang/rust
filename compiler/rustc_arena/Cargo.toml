@@ -4,5 +4,4 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-rustc_data_structures = { path = "../rustc_data_structures" }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
