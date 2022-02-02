@@ -1669,7 +1669,7 @@ fn main() {
     foo(a.0);
 }
 
-fn foo(arg0: ()) ${0:-> _} {
+fn foo(a: ()) ${0:-> _} {
     todo!()
 }
 ",
