@@ -1100,7 +1100,7 @@ rustc_queries! {
     }
 
     /// Return all `impl` blocks in the current crate.
-    query all_local_trait_impls(_: ()) -> &'tcx BTreeMap<DefId, Vec<LocalDefId>> {
+    query all_local_trait_impls(_: ()) -> &'tcx rustc_data_structures::fx::FxIndexMap<DefId, Vec<LocalDefId>> {
         desc { "local trait impls" }
     }
 
