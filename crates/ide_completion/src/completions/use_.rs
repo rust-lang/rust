@@ -79,12 +79,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
         // fresh use tree with leading colon2, only show crate roots
         None if is_absolute_path => {
             cov_mark::hit!(use_tree_crate_roots_only);
-            ctx.process_all_names(&mut |name, res| match res {
-                ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                    acc.add_resolution(ctx, name, res);
-                }
-                _ => (),
-            });
+            acc.add_crate_roots(ctx);
         }
         // only show modules in a fresh UseTree
         None => {
@@ -94,7 +89,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                     acc.add_resolution(ctx, name, res);
                 }
             });
-            ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+            acc.add_nameref_keywords(ctx);
         }
     }
 }

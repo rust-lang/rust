@@ -72,12 +72,12 @@ pub(crate) struct PathCompletionCtx {
 
 #[derive(Debug)]
 pub(crate) struct PathQualifierCtx {
-    pub path: ast::Path,
-    pub resolution: Option<PathResolution>,
+    pub(crate) path: ast::Path,
+    pub(crate) resolution: Option<PathResolution>,
     /// Whether this path consists solely of `super` segments
-    pub is_super_chain: bool,
+    pub(crate) is_super_chain: bool,
     /// Whether the qualifier comes from a use tree parent or not
-    pub use_tree_parent: bool,
+    pub(crate) use_tree_parent: bool,
 }
 
 #[derive(Debug)]

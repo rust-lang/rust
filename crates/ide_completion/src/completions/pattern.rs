@@ -141,7 +141,6 @@ fn pattern_path_completion(
                             _ => return,
                         };
 
-                        // Note associated consts cannot be referenced in patterns
                         if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                             e.variants(ctx.db)
                                 .into_iter()
@@ -157,9 +156,9 @@ fn pattern_path_completion(
                             ctx.module,
                             None,
                             |_ty, item| {
-                                // We might iterate candidates of a trait multiple times here, so deduplicate
-                                // them.
+                                // Note associated consts cannot be referenced in patterns
                                 if let AssocItem::TypeAlias(ta) = item {
+                                    // We might iterate candidates of a trait multiple times here, so deduplicate them.
                                     if seen.insert(item) {
                                         acc.add_type_alias(ctx, ta);
                                     }
@@ -173,18 +172,7 @@ fn pattern_path_completion(
             }
         }
         // qualifier can only be none here if we are in a TuplePat or RecordPat in which case special characters have to follow the path
-        // so executing the rest of this completion doesn't make sense
-        // fresh use tree with leading colon2, only show crate roots
-        None if *is_absolute_path => {
-            cov_mark::hit!(use_tree_crate_roots_only);
-            ctx.process_all_names(&mut |name, res| match res {
-                ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                    acc.add_resolution(ctx, name, res);
-                }
-                _ => (),
-            });
-        }
-        // only show modules in a fresh UseTree
+        None if *is_absolute_path => acc.add_crate_roots(ctx),
         None => {
             cov_mark::hit!(unqualified_path_only_modules_in_import);
             ctx.process_all_names(&mut |name, res| {
@@ -192,7 +180,7 @@ fn pattern_path_completion(
                     acc.add_resolution(ctx, name, res);
                 }
             });
-            ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+            acc.add_nameref_keywords(ctx);
         }
     }
 }

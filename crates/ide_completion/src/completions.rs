@@ -99,6 +99,19 @@ impl Completions {
         item.add_to(self);
     }
 
+    pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext) {
+        ["self::", "super::", "crate::"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
+    }
+
+    pub(crate) fn add_crate_roots(&mut self, ctx: &CompletionContext) {
+        ctx.process_all_names(&mut |name, res| match res {
+            ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
+                self.add_resolution(ctx, name, res);
+            }
+            _ => (),
+        });
+    }
+
     pub(crate) fn add_resolution(
         &mut self,
         ctx: &CompletionContext,

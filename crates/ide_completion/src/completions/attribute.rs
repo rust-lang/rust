@@ -2,7 +2,6 @@
 //!
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
-use hir::ScopeDef;
 use ide_db::{
     helpers::{
         generated_lints::{
@@ -103,14 +102,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             return;
         }
         // fresh use tree with leading colon2, only show crate roots
-        None if is_absolute_path => {
-            ctx.process_all_names(&mut |name, res| match res {
-                ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
-                    acc.add_resolution(ctx, name, res);
-                }
-                _ => (),
-            });
-        }
+        None if is_absolute_path => acc.add_crate_roots(ctx),
         // only show modules in a fresh UseTree
         None => {
             ctx.process_all_names(&mut |name, def| {
@@ -118,7 +110,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
                     acc.add_resolution(ctx, name, def);
                 }
             });
-            ["self::", "super::", "crate::"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
+            acc.add_nameref_keywords(ctx);
         }
     }
 
