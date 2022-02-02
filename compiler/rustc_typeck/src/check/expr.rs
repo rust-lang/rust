@@ -1025,36 +1025,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        let assignable = self.check_lhs_assignable(lhs, "E0070", *span);
+        let mut assignable_err = self.check_lhs_assignable(lhs, "E0070", *span);
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_with_hint(&rhs, lhs_ty);
+
         let (mut coerce_ty, mut coerce_err) =
             self.demand_coerce_diag(&rhs, rhs_ty, lhs_ty, Some(&lhs), AllowTwoPhase::No);
 
-        // Dereference the lhs_ty if it's not assignable, but is a mut-ref.
-        if let Err(mut err) = assignable {
-            if let Some(coerce_err) = &mut coerce_err {
-                for (deref_ty, steps) in self.autoderef(lhs.span, lhs_ty) {
-                    if self.can_coerce(deref_ty, rhs_ty) {
-                        coerce_err.cancel();
-                        err.span_suggestion_verbose(
-                            lhs.span.shrink_to_lo(),
-                            "consider dereferencing here to assign a value to the left-hand side",
-                            "*".repeat(steps),
-                            Applicability::MaybeIncorrect,
-                        );
-                        coerce_ty = lhs_ty;
-                        break;
+        // If we either have a bad LHS type, or can't coerce the RHS into the LHS, it may be due
+        // to a missing deref on the LHS.
+        if assignable_err.is_err() || coerce_err.is_some() {
+            for (deref_ty, steps) in self.autoderef(lhs.span, lhs_ty) {
+                // Check if we can deref the LHS into something that the RHS can coerce into
+                if self.can_coerce(rhs_ty, deref_ty) {
+                    coerce_ty = lhs_ty;
+                    let span = lhs.span.shrink_to_lo();
+                    let msg = "consider dereferencing here to assign a value to the left-hand side";
+                    let suggest = "*".repeat(steps);
+                    // We don't need to emit both an LHS error and a coercion error,
+                    // so prefer emitting the LHS error over the coercion error
+                    match (&mut assignable_err, &mut coerce_err) {
+                        (Err(err), Some(coerce_err)) => {
+                            // Cancel the coercion error if we have both
+                            coerce_err.cancel();
+                            err.span_suggestion_verbose(
+                                span,
+                                msg,
+                                suggest,
+                                Applicability::MaybeIncorrect,
+                            );
+                            err.emit();
+                        }
+                        (Err(err), None) | (Ok(()), Some(err)) => {
+                            err.span_suggestion_verbose(
+                                span,
+                                msg,
+                                suggest,
+                                Applicability::MaybeIncorrect,
+                            );
+                            err.emit();
+                        }
+                        (Ok(()), None) => unreachable!(),
                     }
+                    break;
                 }
             }
-            err.emit();
         }
 
-        if let Some(mut coerce_err) = coerce_err {
-            if !coerce_err.cancelled() {
-                coerce_err.emit();
+        // Emit any leftover errors if we still have them after checking for deref
+        if let Some(mut err) = coerce_err {
+            if !err.cancelled() {
+                err.emit();
+            }
+        }
+        if let Err(mut err) = assignable_err {
+            if !err.cancelled() {
+                err.emit();
             }
         }
 
