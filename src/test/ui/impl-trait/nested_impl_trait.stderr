@@ -40,12 +40,6 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
 LL | fn bad_in_fn_syntax(x: fn() -> impl Into<impl Debug>) {}
    |                                ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in `Fn` trait return
-  --> $DIR/nested_impl_trait.rs:27:42
-   |
-LL | fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
-   |                                          ^^^^^^^^^^^^^^
-
 error[E0277]: the trait bound `impl Debug: From<impl Into<u32>>` is not satisfied
   --> $DIR/nested_impl_trait.rs:5:46
    |
@@ -64,7 +58,7 @@ LL |     fn bad(x: impl Into<u32>) -> impl Into<impl Debug> { x }
    = help: the trait `Into<U>` is implemented for `T`
    = note: required for `impl Into<u32>` to implement `Into<impl Debug>`
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0277, E0562, E0666.
 For more information about an error, try `rustc --explain E0277`.

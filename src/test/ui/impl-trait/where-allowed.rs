@@ -39,9 +39,8 @@ fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
 fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` only allowed in function and inherent method return types
 
-// Disallowed
+// Allowed
 fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
 
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
@@ -57,9 +56,8 @@ fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` only allowed in function and inherent method return types
 //~| ERROR nested `impl Trait` is not allowed
 
-// Disallowed
+// Allowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }
-//~^ ERROR `impl Trait` only allowed in function and inherent method return types
 
 // Disallowed
 fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }

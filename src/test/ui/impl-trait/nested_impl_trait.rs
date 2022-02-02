@@ -25,8 +25,7 @@ fn allowed_in_assoc_type() -> impl Iterator<Item=impl Fn()> {
 }
 
 fn allowed_in_ret_type() -> impl Fn() -> impl Into<u32> {
-//~^ `impl Trait` only allowed in function and inherent method return types
-    || 5
+    || 5u8
 }
 
 fn main() {}
