@@ -220,7 +220,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     // and we don't try to detect stuff `<like this>` because that's not valid Rust.
                     if let Some(Some(generics_start)) = (is_open_tag
                         && dox[..range.end].ends_with(">"))
-                        .then(|| extract_path_backwards(&dox, range.start))
+                    .then(|| extract_path_backwards(&dox, range.start))
                     {
                         let generics_sp = match super::source_span_for_markdown_range(
                             tcx,
@@ -231,22 +231,15 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                             Some(sp) => sp,
                             None => item.attr_span(tcx),
                         };
-                        if let Ok(generics_snippet) =
-                            tcx.sess.source_map().span_to_snippet(generics_sp)
-                        {
-                            // short form is chosen here because ``Vec<i32>`` would be confusing.
-                            diag.span_suggestion_short(
-                                generics_sp,
-                                "try marking as source code with `backticks`",
-                                format!("`{}`", generics_snippet),
-                                Applicability::MaybeIncorrect,
-                            );
-                        } else {
-                            diag.span_help(
-                                generics_sp,
-                                "try marking as source code with `backticks`",
-                            );
-                        }
+                        // multipart form is chosen here because ``Vec<i32>`` would be confusing.
+                        diag.multipart_suggestion(
+                            "try marking as source code",
+                            vec![
+                                (generics_sp.shrink_to_lo(), String::from("`")),
+                                (generics_sp.shrink_to_hi(), String::from("`")),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                     diag.emit()
                 });
