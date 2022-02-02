@@ -203,6 +203,8 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354), None),
+    /// Allows using `#[naked]` on functions.
+    (accepted, naked_functions, "1.60.0", Some(90957), None),
     /// Allows using `#![no_std]`.
     (accepted, no_std, "1.6.0", None, None),
     /// Allows defining identifiers beyond ASCII.

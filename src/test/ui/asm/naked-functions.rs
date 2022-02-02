@@ -3,7 +3,6 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(naked_functions)]
 #![feature(or_patterns)]
 #![feature(asm_const, asm_sym, asm_unwind)]
 #![crate_type = "lib"]
@@ -127,7 +126,7 @@ pub unsafe fn default_abi() {
 }
 
 #[naked]
-pub unsafe fn rust_abi() {
+pub unsafe extern "Rust" fn rust_abi() {
     //~^ WARN Rust ABI is unsupported in naked functions
     asm!("", options(noreturn));
 }

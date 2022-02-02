@@ -2,8 +2,8 @@
 // compile-flags: -O -Zmir-opt-level=3
 // needs-asm-support
 // ignore-wasm32
+
 #![crate_type = "lib"]
-#![feature(naked_functions)]
 
 use std::arch::asm;
 

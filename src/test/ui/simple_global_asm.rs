@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(naked_functions)]
 #![allow(dead_code)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]

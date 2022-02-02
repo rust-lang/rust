@@ -11,7 +11,7 @@
 // which causes less readable LLVM errors and in the worst cases causes ICEs
 // or segfaults based on system dependent behavior and codegen flags.
 
-#![feature(naked_functions, asm_const)]
+#![feature(asm_const)]
 
 use std::arch::{asm, global_asm};
 

@@ -435,8 +435,6 @@ declare_features! (
     (active, more_qualified_paths, "1.54.0", Some(86935), None),
     /// Allows the `#[must_not_suspend]` attribute.
     (active, must_not_suspend, "1.57.0", Some(83310), None),
-    /// Allows using `#[naked]` on functions.
-    (active, naked_functions, "1.9.0", Some(32408), None),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (active, native_link_modifiers, "1.53.0", Some(81490), None),
     /// Allows specifying the as-needed link modifier

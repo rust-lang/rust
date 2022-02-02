@@ -1,8 +1,8 @@
 // revisions: x86_64 aarch64
 //[x86_64] only-x86_64
 //[aarch64] only-aarch64
+
 #![deny(unused)]
-#![feature(naked_functions)]
 #![crate_type = "lib"]
 
 pub trait Trait {

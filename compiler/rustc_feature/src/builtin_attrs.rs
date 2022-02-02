@@ -360,6 +360,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Code generation:
     ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing),
     ungated!(cold, Normal, template!(Word), WarnFollowing),
+    ungated!(naked, Normal, template!(Word), WarnFollowing),
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
     ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),
     ungated!(track_caller, Normal, template!(Word), WarnFollowing),
@@ -379,7 +380,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
 
     // Linking:
-    gated!(naked, Normal, template!(Word), WarnFollowing, naked_functions, experimental!(naked)),
     gated!(
         link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding, raw_dylib,
         experimental!(link_ordinal)

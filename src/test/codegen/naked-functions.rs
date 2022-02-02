@@ -3,7 +3,7 @@
 // only-x86_64
 
 #![crate_type = "lib"]
-#![feature(naked_functions)]
+
 use std::arch::asm;
 
 // CHECK: Function Attrs: naked
