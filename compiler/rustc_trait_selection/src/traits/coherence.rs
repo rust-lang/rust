@@ -4,8 +4,8 @@
 //! [trait-resolution]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
-use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::infer::outlives::env::OutlivesEnvironment;
+use crate::infer::{CombinedSnapshot, InferOk, RegionckMode};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_trait_ref_and_oblig;
 use crate::traits::SkipLeakCheck;
@@ -13,7 +13,11 @@ use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
     PredicateObligations, SelectionContext,
 };
+//use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::CRATE_HIR_ID;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -270,7 +274,6 @@ fn implicit_negative<'cx, 'tcx>(
         impl1_header, impl2_header, obligations
     );
     let infcx = selcx.infcx();
-    let tcx = infcx.tcx;
     let opt_failing_obligation = impl1_header
         .predicates
         .iter()
@@ -349,7 +352,7 @@ fn negative_impl<'cx, 'tcx>(
         let opt_failing_obligation = obligations
             .into_iter()
             .chain(more_obligations)
-            .find(|o| negative_impl_exists(selcx, o));
+            .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
 
         if let Some(failing_obligation) = opt_failing_obligation {
             debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -372,15 +375,38 @@ fn loose_check<'cx, 'tcx>(
 
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    region_context: DefId,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
-    let infcx = selcx.infcx();
+    let infcx = selcx.infcx().clone();
     let tcx = infcx.tcx;
     o.flip_polarity(tcx)
-        .as_ref()
         .map(|o| {
-            // FIXME This isn't quite correct, regions should be included
-            selcx.infcx().predicate_must_hold_modulo_regions(o)
+            let mut fulfillment_cx = FulfillmentContext::new();
+            fulfillment_cx.register_predicate_obligation(infcx, o);
+
+            let errors = fulfillment_cx.select_all_or_error(infcx);
+            if !errors.is_empty() {
+                return false;
+            }
+
+            let mut outlives_env = OutlivesEnvironment::new(param_env);
+            outlives_env.save_implied_bounds(CRATE_HIR_ID);
+
+            infcx.process_registered_region_obligations(
+                outlives_env.region_bound_pairs_map(),
+                Some(tcx.lifetimes.re_root_empty),
+                param_env,
+            );
+
+            let errors =
+                infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+            if !errors.is_empty() {
+                return false;
+            }
+
+            true
         })
         .unwrap_or(false)
 }
