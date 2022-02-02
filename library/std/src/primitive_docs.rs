@@ -275,19 +275,68 @@ mod prim_bool {}
 mod prim_never {}
 
 #[doc(primitive = "char")]
+#[allow(rustdoc::invalid_rust_codeblocks)]
 /// A character type.
 ///
 /// The `char` type represents a single character. More specifically, since
 /// 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
-/// scalar value]', which is similar to, but not the same as, a '[Unicode code
-/// point]'.
-///
-/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
-/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// scalar value]'.
 ///
 /// This documentation describes a number of methods and trait implementations on the
 /// `char` type. For technical reasons, there is additional, separate
 /// documentation in [the `std::char` module](char/index.html) as well.
+///
+/// # Validity
+///
+/// A `char` is a '[Unicode scalar value]', which is any '[Unicode code point]'
+/// other than a [surrogate code point]. This has a fixed numerical definition:
+/// code points are in the range 0 to 0x10FFFF, inclusive.
+/// Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF.
+///
+/// No `char` may be constructed, whether as a literal or at runtime, that is not a
+/// Unicode scalar value:
+///
+/// ```compile_fail
+/// // Each of these is a compiler error
+/// ['\u{D800}', '\u{DFFF}', '\u{110000}'];
+/// ```
+///
+/// ```should_panic
+/// // Panics; from_u32 returns None.
+/// char::from_u32(0xDE01).unwrap();
+/// ```
+///
+/// ```no_run
+/// // Undefined behaviour
+/// unsafe { char::from_u32_unchecked(0x110000) };
+/// ```
+///
+/// USVs are also the exact set of values that may be encoded in UTF-8. Because
+/// `char` values are USVs and `str` values are valid UTF-8, it is safe to store
+/// any `char` in a `str` or read any character from a `str` as a `char`.
+///
+/// The gap in valid `char` values is understood by the compiler, so in the
+/// below example the two ranges are understood to cover the whole range of
+/// possible `char` values and there is no error for a [non-exhaustive match].
+///
+/// ```
+/// let c: char = 'a';
+/// match c {
+///     '\0' ..= '\u{D7FF}' => false,
+///     '\u{E000}' ..= '\u{10FFFF}' => true,
+/// };
+/// ```
+///
+/// All USVs are valid `char` values, but not all of them represent a real
+/// character. Many USVs are not currently assigned to a character, but may be
+/// in the future ("reserved"); some will never be a character
+/// ("noncharacters"); and some may be given different meanings by different
+/// users ("private use").
+///
+/// [Unicode code point]: https://www.unicode.org/glossary/#code_point
+/// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
+/// [non-exhaustive match]: ../book/ch06-02-match.html#matches-are-exhaustive
+/// [surrogate code point]: https://www.unicode.org/glossary/#surrogate_code_point
 ///
 /// # Representation
 ///
