@@ -1577,7 +1577,7 @@ mod remove_dir_impl {
     }
 
     fn unlink_direntry(ent: &DirEntry, parent_fd: BorrowedFd<'_>) -> io::Result<bool> {
-        match is_dir(&ent) {
+        match is_dir(ent) {
             Some(true) => Ok(false),
             Some(false) => {
                 cvt(unsafe { unlinkat(parent_fd.as_raw_fd(), ent.name_cstr().as_ptr(), 0) })?;
@@ -1611,12 +1611,12 @@ mod remove_dir_impl {
             Ok(LazyReadDir::Fd(Some(fd)))
         }
 
-        fn get_child(&self, child: &DirEntry) -> io::Result<LazyReadDir> {
-            let fd = openat_nofollow_dironly(Some(self.as_fd()), child.name_cstr())?;
+        fn get_child(&self, child_name: &CStr) -> io::Result<Self> {
+            let fd = openat_nofollow_dironly(Some(self.as_fd()), child_name)?;
             Ok(LazyReadDir::Fd(Some(fd)))
         }
 
-        fn get_parent(self: &LazyReadDir) -> io::Result<LazyReadDir> {
+        fn get_parent(&self) -> io::Result<Self> {
             let fd = openat_nofollow_dironly(Some(self.as_fd()), unsafe {
                 CStr::from_bytes_with_nul_unchecked(b"..\0")
             })?;
@@ -1691,7 +1691,7 @@ mod remove_dir_impl {
     }
 
     impl DirComponent {
-        fn new(name: &CStr, fd: BorrowedFd<'_>) -> io::Result<DirComponent> {
+        fn new(name: &CStr, fd: BorrowedFd<'_>) -> io::Result<Self> {
             let mut stat = unsafe { mem::zeroed() };
             cvt(unsafe { fstat64(fd.as_raw_fd(), &mut stat) })?;
             Ok(DirComponent { name: name.to_owned(), dev: stat.st_dev, ino: stat.st_ino })
@@ -1730,9 +1730,9 @@ mod remove_dir_impl {
                 if !unlink_direntry(&child, current_readdir.as_fd())? {
                     // Descend into this child directory
 
-                    let child_readdir = current_readdir.get_child(&child)?;
+                    let child_readdir = current_readdir.get_child(child.name_cstr())?;
                     let child_dir_compoment =
-                        DirComponent::new(&child.name_cstr(), child_readdir.as_fd())?;
+                        DirComponent::new(child.name_cstr(), child_readdir.as_fd())?;
                     parent_dir_components.push(current_dir_component);
 
                     // avoid growing the cache over capacity
