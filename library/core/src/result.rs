@@ -2016,7 +2016,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        iter::process_results(iter.into_iter(), |i| i.collect())
+        iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
 
