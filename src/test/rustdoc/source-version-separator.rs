@@ -6,7 +6,7 @@
 // @has - '//div[@class="main-heading"]/*[@class="out-of-band"]' '1.0 · source · '
 #[stable(feature = "bar", since = "1.0")]
 pub trait Bar {
-    // @has - '//div[@id="tymethod.foo"]/*[@class="rightside"]' '3.0 · source'
+    // @has - '//*[@id="tymethod.foo"]/*[@class="rightside"]' '3.0 · source'
     #[stable(feature = "foobar", since = "3.0")]
     fn foo();
 }
@@ -19,7 +19,7 @@ pub trait Bar {
 pub struct Foo;
 
 impl Foo {
-    // @has - '//div[@id="method.foofoo"]/*[@class="rightside"]' '3.0 · source'
+    // @has - '//*[@id="method.foofoo"]/*[@class="rightside"]' '3.0 · source'
     #[stable(feature = "foobar", since = "3.0")]
     pub fn foofoo() {}
 }
