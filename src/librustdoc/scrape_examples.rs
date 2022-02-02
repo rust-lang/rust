@@ -196,7 +196,8 @@ where
                 return;
             }
 
-            let file = tcx.sess.source_map().lookup_char_pos(span.lo()).file;
+            let source_map = tcx.sess.source_map();
+            let file = source_map.lookup_char_pos(span.lo()).file;
             let file_path = match file.name.clone() {
                 FileName::Real(real_filename) => real_filename.into_local_path(),
                 _ => None,
@@ -217,6 +218,8 @@ where
                 let fn_entries = self.calls.entry(fn_key).or_default();
 
                 trace!("Including expr: {:?}", span);
+                let enclosing_item_span =
+                    source_map.span_extend_to_prev_char(enclosing_item_span, '\n', false);
                 let location = CallLocation::new(span, enclosing_item_span, &file);
                 fn_entries.entry(abs_path).or_insert_with(mk_call_data).locations.push(location);
             }
