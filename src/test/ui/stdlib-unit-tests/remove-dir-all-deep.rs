@@ -12,7 +12,7 @@ pub fn main() {
     set_current_dir("tmpdir").unwrap();
     let depth = if cfg!(target_os = "linux") {
         // Should work on all Linux filesystems.
-        65536
+        4096
     } else if cfg!(target_os = "macos") {
         // On Macos increasing depth leads to a superlinear slowdown.
         1024
