@@ -5,7 +5,7 @@
 use syntax::{SyntaxKind, T};
 
 use crate::{
-    context::{PathCompletionContext, PathKind},
+    context::{PathCompletionCtx, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
@@ -122,9 +122,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     }
 
     let (can_be_stmt, in_loop_body) = match ctx.path_context {
-        Some(PathCompletionContext {
-            is_trivial_path: true, can_be_stmt, in_loop_body, ..
-        }) => (can_be_stmt, in_loop_body),
+        Some(PathCompletionCtx { is_absolute_path: false, can_be_stmt, in_loop_body, .. }) => {
+            (can_be_stmt, in_loop_body)
+        }
         _ => return,
     };
 

@@ -2,8 +2,6 @@
 //!
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
-use std::iter;
-
 use hir::ScopeDef;
 use ide_db::{
     helpers::{
@@ -24,7 +22,7 @@ use syntax::{
 
 use crate::{
     completions::module_or_attr,
-    context::{CompletionContext, PathCompletionContext, PathKind},
+    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     item::CompletionItem,
     Completions,
 };
@@ -76,25 +74,23 @@ pub(crate) fn complete_known_attribute_input(
 }
 
 pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
-    let (is_trivial_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context {
-        Some(PathCompletionContext {
+    let (is_absolute_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context {
+        Some(PathCompletionCtx {
             kind: Some(PathKind::Attr { kind, annotated_item_kind }),
-            is_trivial_path,
+            is_absolute_path,
             ref qualifier,
             ..
-        }) => (is_trivial_path, qualifier, kind == AttrKind::Inner, annotated_item_kind),
+        }) => (is_absolute_path, qualifier, kind == AttrKind::Inner, annotated_item_kind),
         _ => return,
     };
 
     match qualifier {
-        Some((path, qualifier)) => {
-            let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
-                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-            if is_super_chain {
+        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+            if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
 
-            let module = match qualifier {
+            let module = match resolution {
                 Some(hir::PathResolution::Def(hir::ModuleDef::Module(it))) => it,
                 _ => return,
             };
@@ -107,7 +103,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
             return;
         }
         // fresh use tree with leading colon2, only show crate roots
-        None if !is_trivial_path => {
+        None if is_absolute_path => {
             ctx.process_all_names(&mut |name, res| match res {
                 ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
                     acc.add_resolution(ctx, name, res);

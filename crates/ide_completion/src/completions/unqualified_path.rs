@@ -5,7 +5,7 @@ use syntax::{ast, AstNode};
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{PathCompletionContext, PathKind},
+    context::{PathCompletionCtx, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
 };
@@ -16,11 +16,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         return;
     }
     match ctx.path_context {
-        Some(PathCompletionContext {
+        Some(PathCompletionCtx {
             kind: Some(PathKind::Vis { .. } | PathKind::Attr { .. } | PathKind::Use { .. }),
             ..
         }) => return,
-        Some(PathCompletionContext { is_trivial_path: true, .. }) => (),
+        Some(PathCompletionCtx { is_absolute_path: false, qualifier: None, .. }) => (),
         _ => return,
     }
 

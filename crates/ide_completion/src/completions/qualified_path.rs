@@ -6,7 +6,7 @@ use syntax::ast;
 
 use crate::{
     completions::module_or_fn_macro,
-    context::{PathCompletionContext, PathKind},
+    context::{PathCompletionCtx, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
 };
@@ -15,18 +15,16 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
-    let ((path, resolution), kind) = match ctx.path_context {
+    let (qualifier, kind) = match ctx.path_context {
         // let ... else, syntax would come in really handy here right now
-        Some(PathCompletionContext { qualifier: Some(ref qualifier), kind, .. }) => {
-            (qualifier, kind)
-        }
+        Some(PathCompletionCtx { qualifier: Some(ref qualifier), kind, .. }) => (qualifier, kind),
         _ => return,
     };
 
     // special case `<_>::$0` as this doesn't resolve to anything.
-    if path.qualifier().is_none() {
+    if qualifier.path.qualifier().is_none() {
         if matches!(
-            path.segment().and_then(|it| it.kind()),
+            qualifier.path.segment().and_then(|it| it.kind()),
             Some(ast::PathSegmentKind::Type {
                 type_ref: Some(ast::Type::InferType(_)),
                 trait_ref: None,
@@ -42,7 +40,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         }
     }
 
-    let resolution = match resolution {
+    let resolution = match &qualifier.resolution {
         Some(res) => res,
         None => return,
     };

@@ -1,36 +1,31 @@
 //! Completion for use trees
 
-use std::iter;
-
 use hir::ScopeDef;
 use syntax::{ast, AstNode};
 
 use crate::{
-    context::{CompletionContext, PathCompletionContext, PathKind},
+    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
     Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
-    let (is_trivial_path, qualifier, use_tree_parent) = match ctx.path_context {
-        Some(PathCompletionContext {
+    let (is_absolute_path, qualifier) = match ctx.path_context {
+        Some(PathCompletionCtx {
             kind: Some(PathKind::Use),
-            is_trivial_path,
-            use_tree_parent,
+            is_absolute_path,
             ref qualifier,
             ..
-        }) => (is_trivial_path, qualifier, use_tree_parent),
+        }) => (is_absolute_path, qualifier),
         _ => return,
     };
 
     match qualifier {
-        Some((path, qualifier)) => {
-            let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
-                .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
-            if is_super_chain {
+        Some(PathQualifierCtx { path, resolution, is_super_chain, use_tree_parent }) => {
+            if *is_super_chain {
                 acc.add_keyword(ctx, "super::");
             }
             // only show `self` in a new use-tree when the qualifier doesn't end in self
-            let not_preceded_by_self = use_tree_parent
+            let not_preceded_by_self = *use_tree_parent
                 && !matches!(
                     path.segment().and_then(|it| it.kind()),
                     Some(ast::PathSegmentKind::SelfKw)
@@ -39,12 +34,12 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                 acc.add_keyword(ctx, "self");
             }
 
-            let qualifier = match qualifier {
+            let resolution = match resolution {
                 Some(it) => it,
                 None => return,
             };
 
-            match qualifier {
+            match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
                     let module_scope = module.scope(ctx.db, ctx.module);
                     let unknown_is_current = |name: &hir::Name| {
@@ -82,7 +77,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
             }
         }
         // fresh use tree with leading colon2, only show crate roots
-        None if !is_trivial_path => {
+        None if is_absolute_path => {
             cov_mark::hit!(use_tree_crate_roots_only);
             ctx.process_all_names(&mut |name, res| match res {
                 ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {

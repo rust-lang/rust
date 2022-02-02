@@ -36,6 +36,7 @@ pub(crate) enum PatternRefutability {
     Refutable,
     Irrefutable,
 }
+
 pub(crate) enum Visible {
     Yes,
     Editable,
@@ -54,24 +55,29 @@ pub(super) enum PathKind {
 }
 
 #[derive(Debug)]
-pub(crate) struct PathCompletionContext {
+pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there
     has_call_parens: bool,
-    /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
-    pub(super) is_trivial_path: bool,
-    /// If not a trivial path, the prefix (qualifier).
-    pub(super) qualifier: Option<(ast::Path, Option<PathResolution>)>,
-    #[allow(dead_code)]
-    /// If not a trivial path, the suffix (parent).
-    pub(super) parent: Option<ast::Path>,
-    /// Whether the qualifier comes from a use tree parent or not
-    pub(super) use_tree_parent: bool,
+    /// Whether this path stars with a `::`.
+    pub(super) is_absolute_path: bool,
+    /// The qualifier of the current path if it exists.
+    pub(super) qualifier: Option<PathQualifierCtx>,
     pub(super) kind: Option<PathKind>,
     /// Whether the path segment has type args or not.
     pub(super) has_type_args: bool,
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
     pub(super) in_loop_body: bool,
+}
+
+#[derive(Debug)]
+pub(crate) struct PathQualifierCtx {
+    pub path: ast::Path,
+    pub resolution: Option<PathResolution>,
+    /// Whether this path consists solely of `super` segments
+    pub is_super_chain: bool,
+    /// Whether the qualifier comes from a use tree parent or not
+    pub use_tree_parent: bool,
 }
 
 #[derive(Debug)]
@@ -131,7 +137,7 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
-    pub(super) path_context: Option<PathCompletionContext>,
+    pub(super) path_context: Option<PathCompletionCtx>,
 
     pub(super) locals: Vec<(Name, Local)>,
 
@@ -264,27 +270,29 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn expects_expression(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionContext { kind: Some(PathKind::Expr), .. }))
+        matches!(self.path_context, Some(PathCompletionCtx { kind: Some(PathKind::Expr), .. }))
     }
 
     pub(crate) fn expects_type(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionContext { kind: Some(PathKind::Type), .. }))
+        matches!(self.path_context, Some(PathCompletionCtx { kind: Some(PathKind::Type), .. }))
     }
 
     pub(crate) fn path_is_call(&self) -> bool {
         self.path_context.as_ref().map_or(false, |it| it.has_call_parens)
     }
 
-    pub(crate) fn is_trivial_path(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionContext { is_trivial_path: true, .. }))
-    }
-
     pub(crate) fn is_non_trivial_path(&self) -> bool {
-        matches!(self.path_context, Some(PathCompletionContext { is_trivial_path: false, .. }))
+        matches!(
+            self.path_context,
+            Some(
+                PathCompletionCtx { is_absolute_path: true, .. }
+                    | PathCompletionCtx { qualifier: Some(_), .. }
+            )
+        )
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref().map(|(it, _)| it))
+        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref().map(|it| &it.path))
     }
 
     pub(crate) fn path_kind(&self) -> Option<PathKind> {
@@ -791,20 +799,18 @@ impl<'a> CompletionContext<'a> {
         sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
-    ) -> Option<(PathCompletionContext, Option<PatternContext>)> {
+    ) -> Option<(PathCompletionCtx, Option<PatternContext>)> {
         let parent = name_ref.syntax().parent()?;
         let segment = ast::PathSegment::cast(parent)?;
         let path = segment.parent_path();
 
-        let mut path_ctx = PathCompletionContext {
+        let mut path_ctx = PathCompletionCtx {
             has_call_parens: false,
-            is_trivial_path: false,
+            is_absolute_path: false,
             qualifier: None,
-            parent: None,
             has_type_args: false,
             can_be_stmt: false,
             in_loop_body: false,
-            use_tree_parent: false,
             kind: None,
         };
         let mut pat_ctx = None;
@@ -859,25 +865,30 @@ impl<'a> CompletionContext<'a> {
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
-            path_ctx.use_tree_parent = use_tree_parent;
+            if !use_tree_parent {
+                path_ctx.is_absolute_path =
+                    path.top_path().segment().map_or(false, |it| it.coloncolon_token().is_some());
+            }
+
             let path = path
                 .segment()
                 .and_then(|it| find_node_in_file(original_file, &it))
                 .map(|it| it.parent_path());
             path_ctx.qualifier = path.map(|path| {
                 let res = sema.resolve_path(&path);
-                (path, res)
+                let is_super_chain = iter::successors(Some(path.clone()), |p| p.qualifier())
+                    .all(|p| p.segment().and_then(|s| s.super_token()).is_some());
+                PathQualifierCtx { path, resolution: res, is_super_chain, use_tree_parent }
             });
             return Some((path_ctx, pat_ctx));
         }
 
         if let Some(segment) = path.segment() {
             if segment.coloncolon_token().is_some() {
+                path_ctx.is_absolute_path = true;
                 return Some((path_ctx, pat_ctx));
             }
         }
-
-        path_ctx.is_trivial_path = true;
 
         // Find either enclosing expr statement (thing with `;`) or a
         // block. If block, check that we are the last expr.
@@ -969,7 +980,7 @@ fn path_or_use_tree_qualifier(path: &ast::Path) -> Option<(ast::Path, bool)> {
     }
     let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
     let use_tree = use_tree_list.syntax().parent().and_then(ast::UseTree::cast)?;
-    use_tree.path().zip(Some(true))
+    Some((use_tree.path()?, true))
 }
 
 fn has_ref(token: &SyntaxToken) -> bool {
