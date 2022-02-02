@@ -34,11 +34,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     let has_block_expr_parent = ctx.has_block_expr_parent();
     let expects_item = ctx.expects_item();
 
-    if let Some(PathKind::Vis { has_in_token }) = ctx.path_kind() {
-        if !has_in_token {
-            cov_mark::hit!(kw_completion_in);
-            add_keyword("in", "in");
-        }
+    if let Some(PathKind::Vis { .. }) = ctx.path_kind() {
         return;
     }
     if ctx.has_impl_or_trait_prev_sibling() {

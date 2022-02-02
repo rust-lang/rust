@@ -17,6 +17,9 @@ pub($0)
 "#,
         expect![[r#"
             kw in
+            kw self
+            kw super
+            kw crate
         "#]],
     );
 }
@@ -27,7 +30,11 @@ fn after_in_kw() {
         r#"
 pub(in $0)
 "#,
-        expect![[r#""#]],
+        expect![[r#"
+            kw self
+            kw super
+            kw crate
+        "#]],
     );
 }
 

@@ -62,26 +62,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 
     match kind {
-        // Complete next child module that comes after the qualified module which is still our parent
-        Some(PathKind::Vis { .. }) => {
-            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-                if let Some(current_module) = ctx.module {
-                    let next_towards_current = current_module
-                        .path_to_root(ctx.db)
-                        .into_iter()
-                        .take_while(|it| it != module)
-                        .next();
-                    if let Some(next) = next_towards_current {
-                        if let Some(name) = next.name(ctx.db) {
-                            cov_mark::hit!(visibility_qualified);
-                            acc.add_resolution(ctx, name, ScopeDef::ModuleDef(next.into()));
-                        }
-                    }
-                }
-            }
-            return;
-        }
-        Some(PathKind::Attr { .. } | PathKind::Use) => {
+        Some(PathKind::Attr { .. } | PathKind::Vis { .. } | PathKind::Use) => {
             return;
         }
         Some(PathKind::Pat) => (),

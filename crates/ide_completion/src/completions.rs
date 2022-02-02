@@ -8,7 +8,6 @@ pub(crate) mod format_string;
 pub(crate) mod keyword;
 pub(crate) mod lifetime;
 pub(crate) mod mod_;
-pub(crate) mod use_;
 pub(crate) mod pattern;
 pub(crate) mod postfix;
 pub(crate) mod qualified_path;
@@ -16,6 +15,8 @@ pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod trait_impl;
 pub(crate) mod unqualified_path;
+pub(crate) mod use_;
+pub(crate) mod vis;
 
 use std::iter;
 

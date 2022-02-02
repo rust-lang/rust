@@ -1,8 +1,4 @@
 //! Completion for use trees
-//!
-//! This module uses a bit of static metadata to provide completions
-//! for built-in attributes.
-//! Non-built-in attribute (excluding derives attributes) completions are done in [`super::unqualified_path`].
 
 use std::iter;
 

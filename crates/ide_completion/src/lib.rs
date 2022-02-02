@@ -154,6 +154,7 @@ pub fn completions(
     completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::attribute::complete_attribute(&mut acc, &ctx);
     completions::use_::complete_use_tree(&mut acc, &ctx);
+    completions::vis::complete_vis(&mut acc, &ctx);
     completions::fn_param::complete_fn_param(&mut acc, &ctx);
     completions::keyword::complete_expr_keyword(&mut acc, &ctx);
     completions::snippet::complete_expr_snippet(&mut acc, &ctx);

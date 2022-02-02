@@ -15,15 +15,15 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
-    let kind = match ctx.path_context {
-        Some(PathCompletionContext { is_trivial_path: true, kind, .. }) => kind,
+    match ctx.path_context {
+        Some(PathCompletionContext {
+            kind: Some(PathKind::Vis { .. } | PathKind::Attr { .. } | PathKind::Use { .. }),
+            ..
+        }) => return,
+        Some(PathCompletionContext { is_trivial_path: true, .. }) => (),
         _ => return,
-    };
-
-    match kind {
-        Some(PathKind::Vis { .. } | PathKind::Attr { .. } | PathKind::Use { .. }) => return,
-        _ => (),
     }
+
     ["self", "super", "crate"].into_iter().for_each(|kw| acc.add_keyword(ctx, kw));
 
     match &ctx.completion_location {
