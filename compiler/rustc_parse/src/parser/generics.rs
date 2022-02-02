@@ -4,7 +4,7 @@ use rustc_ast::token;
 use rustc_ast::{
     self as ast, Attribute, GenericBounds, GenericParam, GenericParamKind, WhereClause,
 };
-use rustc_errors::PResult;
+use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::kw;
 
 impl<'a> Parser<'a> {
@@ -256,7 +256,21 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            if !self.eat(&token::Comma) {
+            let prev_token = self.prev_token.span;
+            let ate_comma = self.eat(&token::Comma);
+
+            if self.eat_keyword_noexpect(kw::Where) {
+                let msg = &format!("cannot define duplicate `where` clauses on an item");
+                let mut err = self.struct_span_err(self.token.span, msg);
+                err.span_label(lo, "previous `where` clause starts here");
+                err.span_suggestion_verbose(
+                    prev_token.shrink_to_hi().to(self.prev_token.span),
+                    "consider joining the two `where` clauses into one",
+                    ",".to_owned(),
+                    Applicability::MaybeIncorrect,
+                );
+                err.emit();
+            } else if !ate_comma {
                 break;
             }
         }
