@@ -27,6 +27,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_non_trivial_path);
         return;
     }
+    if ctx.pattern_ctx.is_some() {
+        return;
+    }
 
     let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
 
@@ -117,7 +120,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("else if", "else if $1 {\n    $0\n}");
     }
 
-    if ctx.expects_ident_pat_or_ref_expr() {
+    if ctx.expects_ident_ref_expr() {
         add_keyword("mut", "mut ");
     }
 

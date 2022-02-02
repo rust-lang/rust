@@ -85,6 +85,9 @@ pub(super) struct PatternContext {
     pub(super) refutability: PatternRefutability,
     pub(super) param_ctx: Option<(ast::ParamList, ast::Param, ParamKind)>,
     pub(super) has_type_ascription: bool,
+    pub(super) parent_pat: Option<ast::Pat>,
+    pub(super) ref_token: Option<SyntaxToken>,
+    pub(super) mut_token: Option<SyntaxToken>,
 }
 
 #[derive(Debug)]
@@ -219,11 +222,8 @@ impl<'a> CompletionContext<'a> {
         matches!(self.completion_location, Some(ImmediateLocation::StmtList))
     }
 
-    pub(crate) fn expects_ident_pat_or_ref_expr(&self) -> bool {
-        matches!(
-            self.completion_location,
-            Some(ImmediateLocation::IdentPat | ImmediateLocation::RefExpr)
-        )
+    pub(crate) fn expects_ident_ref_expr(&self) -> bool {
+        matches!(self.completion_location, Some(ImmediateLocation::RefExpr))
     }
 
     pub(crate) fn expect_field(&self) -> bool {
@@ -789,9 +789,6 @@ impl<'a> CompletionContext<'a> {
         if is_name_in_field_pat {
             return None;
         }
-        if !bind_pat.is_simple_ident() {
-            return None;
-        }
         Some(pattern_context_for(original_file, bind_pat.into()))
     }
 
@@ -949,7 +946,18 @@ fn pattern_context_for(original_file: &SyntaxNode, pat: ast::Pat) -> PatternCont
             };
             (refutability, false)
         });
-    PatternContext { refutability, param_ctx: is_param, has_type_ascription }
+    let (ref_token, mut_token) = match &pat {
+        ast::Pat::IdentPat(it) => (it.ref_token(), it.mut_token()),
+        _ => (None, None),
+    };
+    PatternContext {
+        refutability,
+        param_ctx: is_param,
+        has_type_ascription,
+        parent_pat: pat.syntax().parent().and_then(ast::Pat::cast),
+        mut_token,
+        ref_token,
+    }
 }
 
 fn find_node_in_file<N: AstNode>(syntax: &SyntaxNode, node: &N) -> Option<N> {

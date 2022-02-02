@@ -15,6 +15,9 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
+    if ctx.pattern_ctx.is_some() {
+        return;
+    }
     let (qualifier, kind) = match ctx.path_context {
         // let ... else, syntax would come in really handy here right now
         Some(PathCompletionCtx { qualifier: Some(ref qualifier), kind, .. }) => (qualifier, kind),
@@ -60,10 +63,9 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 
     match kind {
-        Some(PathKind::Attr { .. } | PathKind::Vis { .. } | PathKind::Use) => {
+        Some(PathKind::Pat | PathKind::Attr { .. } | PathKind::Vis { .. } | PathKind::Use) => {
             return;
         }
-        Some(PathKind::Pat) => (),
         _ => {
             // Add associated types on type parameters and `Self`.
             ctx.scope.assoc_type_shorthand_candidates(&resolution, |_, alias| {

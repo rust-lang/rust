@@ -17,7 +17,13 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
     }
     match ctx.path_context {
         Some(PathCompletionCtx {
-            kind: Some(PathKind::Vis { .. } | PathKind::Attr { .. } | PathKind::Use { .. }),
+            kind:
+                Some(
+                    PathKind::Vis { .. }
+                    | PathKind::Attr { .. }
+                    | PathKind::Use { .. }
+                    | PathKind::Pat,
+                ),
             ..
         }) => return,
         Some(PathCompletionCtx { is_absolute_path: false, qualifier: None, .. }) => (),
