@@ -74,7 +74,7 @@ fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
     use rustc_lexer::{is_id_continue, is_id_start};
     let mut current_pos = end_pos;
     loop {
-        if current_pos >= 2 && &text[current_pos - 2..current_pos] == "::" {
+        if current_pos >= 2 && text[..current_pos].ends_with("::") {
             current_pos -= 2;
         }
         let new_pos = text[..current_pos]
@@ -217,9 +217,9 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                     let mut diag = lint.build(msg);
                     // If a tag looks like `<this>`, it might actually be a generic.
                     // We don't try to detect stuff `<like, this>` because that's not valid HTML,
-                    // and we don' try to detect stuff `<like this>` because that's not valid Rust.
+                    // and we don't try to detect stuff `<like this>` because that's not valid Rust.
                     if let Some(Some(generics_start)) = (is_open_tag
-                        && &dox[range.end - 1..range.end] == ">")
+                        && dox[..range.end].ends_with(">"))
                         .then(|| extract_path_backwards(&dox, range.start))
                     {
                         let generics_sp = match super::source_span_for_markdown_range(
