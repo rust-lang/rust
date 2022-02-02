@@ -47,7 +47,6 @@ fn declare_raw_fn<'ll>(
 
     attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
     attributes::non_lazy_bind(cx.sess(), llfn);
-
     llfn
 }
 
