@@ -5,7 +5,7 @@ use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use crate::visit::DocVisitor;
 
-use pulldown_cmark::{Event, Parser, Tag};
+use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag};
 
 use std::iter::Peekable;
 use std::ops::Range;
@@ -249,7 +249,31 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
             let mut is_in_comment = None;
             let mut in_code_block = false;
 
-            let p = Parser::new_ext(&dox, main_body_opts()).into_offset_iter();
+            let link_names = item.link_names(&self.cx.cache);
+
+            let mut replacer = |broken_link: BrokenLink<'_>| {
+                if let Some(link) =
+                    link_names.iter().find(|link| *link.original_text == *broken_link.reference)
+                {
+                    Some((link.href.as_str().into(), link.new_text.as_str().into()))
+                } else if matches!(
+                    &broken_link.link_type,
+                    LinkType::Reference | LinkType::ReferenceUnknown
+                ) {
+                    // If the link is shaped [like][this], suppress any broken HTML in the [this] part.
+                    // The `broken_intra_doc_links` will report typos in there anyway.
+                    Some((
+                        broken_link.reference.to_string().into(),
+                        broken_link.reference.to_string().into(),
+                    ))
+                } else {
+                    None
+                }
+            };
+
+            let p =
+                Parser::new_with_broken_link_callback(&dox, main_body_opts(), Some(&mut replacer))
+                    .into_offset_iter();
 
             for (event, range) in p {
                 match event {
