@@ -64,6 +64,23 @@ crate struct Buffer {
     buffer: String,
 }
 
+impl core::fmt::Write for Buffer {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.buffer.write_str(s)
+    }
+
+    #[inline]
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        self.buffer.write_char(c)
+    }
+
+    #[inline]
+    fn write_fmt(self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
+        self.buffer.write_fmt(args)
+    }
+}
+
 impl Buffer {
     crate fn empty_from(v: &Buffer) -> Buffer {
         Buffer { for_html: v.for_html, buffer: String::new() }
