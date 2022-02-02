@@ -253,6 +253,7 @@ pub enum PointerCast {
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
+    #[allow(dead_code)]
     /// Go from `*const [T; N]` to `*const T`
     ArrayToPointer,
 

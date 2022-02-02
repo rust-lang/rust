@@ -92,7 +92,9 @@ impl Path {
         path: ModPath,
         generic_args: impl Into<Box<[Option<Interned<GenericArgs>>]>>,
     ) -> Path {
-        Path { type_anchor: None, mod_path: Interned::new(path), generic_args: generic_args.into() }
+        let generic_args = generic_args.into();
+        assert_eq!(path.len(), generic_args.len());
+        Path { type_anchor: None, mod_path: Interned::new(path), generic_args }
     }
 
     pub fn kind(&self) -> &PathKind {

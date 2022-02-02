@@ -949,12 +949,15 @@ impl<'db> SemanticsImpl<'db> {
         })?;
 
         match res {
-            Either::Left(path) => resolve_hir_path(
-                self.db,
-                &self.scope(derive.syntax()).resolver,
-                &Path::from_known_path(path, []),
-            )
-            .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_)))),
+            Either::Left(path) => {
+                let len = path.len();
+                resolve_hir_path(
+                    self.db,
+                    &self.scope(derive.syntax()).resolver,
+                    &Path::from_known_path(path, vec![None; len]),
+                )
+                .filter(|res| matches!(res, PathResolution::Def(ModuleDef::Module(_))))
+            }
             Either::Right(derive) => derive
                 .map(|call| MacroDef { id: self.db.lookup_intern_macro_call(call).def })
                 .map(PathResolution::Macro),

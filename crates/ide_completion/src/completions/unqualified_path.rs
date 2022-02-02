@@ -4,7 +4,7 @@ use hir::ScopeDef;
 use syntax::{ast, AstNode};
 
 use crate::{
-    completions::{module_or_attr, module_or_fn_macro},
+    completions::module_or_fn_macro,
     context::{PathCompletionContext, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
@@ -36,14 +36,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
 
     match kind {
         Some(PathKind::Vis { .. }) => return,
-        Some(PathKind::Attr) => {
-            ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_attr(def) {
-                    acc.add_resolution(ctx, name, def);
-                }
-            });
-            return;
-        }
+        Some(PathKind::Attr { .. }) => return,
         _ => (),
     }
 

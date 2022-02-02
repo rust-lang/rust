@@ -17,6 +17,7 @@ fn proc_macros() {
 struct Foo;
 "#,
         expect![[r#"
+            md proc_macros
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
@@ -35,7 +36,6 @@ struct Foo;
             kw self
             kw super
             kw crate
-            md proc_macros
         "#]],
     )
 }
@@ -61,10 +61,7 @@ fn proc_macros_qualified() {
 #[proc_macros::$0]
 struct Foo;
 "#,
-        expect![[r#"
-            at input_replace pub macro input_replace
-            at identity      pub macro identity
-        "#]],
+        expect![[r#""#]],
     )
 }
 
@@ -302,6 +299,8 @@ fn attr_on_struct() {
 struct Foo;
 "#,
         expect![[r#"
+            md core
+            at derive           pub macro derive
             at allow(…)
             at cfg(…)
             at cfg_attr(…)
@@ -320,8 +319,6 @@ struct Foo;
             kw self
             kw super
             kw crate
-            md core
-            at derive           pub macro derive
         "#]],
     );
 }

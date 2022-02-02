@@ -7,7 +7,7 @@ use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
-    completions::{module_or_attr, module_or_fn_macro},
+    completions::module_or_fn_macro,
     context::{PathCompletionContext, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, Completions,
@@ -17,7 +17,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     if ctx.is_path_disallowed() || ctx.has_impl_or_trait_prev_sibling() {
         return;
     }
-    let (path, use_tree_parent, kind) = match ctx.path_context {
+    let ((path, resolution), use_tree_parent, kind) = match ctx.path_context {
         // let ... else, syntax would come in really handy here right now
         Some(PathCompletionContext {
             qualifier: Some(ref qualifier),
@@ -47,17 +47,15 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         }
     }
 
-    let resolution = match ctx.sema.resolve_path(path) {
+    let resolution = match resolution {
         Some(res) => res,
         None => return,
     };
 
-    let context_module = ctx.module;
-
     match ctx.completion_location {
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-                for (name, def) in module.scope(ctx.db, context_module) {
+                for (name, def) in module.scope(ctx.db, ctx.module) {
                     if let Some(def) = module_or_fn_macro(def) {
                         acc.add_resolution(ctx, name, def);
                     }
@@ -76,7 +74,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     let next_towards_current = current_module
                         .path_to_root(ctx.db)
                         .into_iter()
-                        .take_while(|&it| it != module)
+                        .take_while(|it| it != module)
                         .next();
                     if let Some(next) = next_towards_current {
                         if let Some(name) = next.name(ctx.db) {
@@ -88,14 +86,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
             return;
         }
-        Some(PathKind::Attr) => {
-            if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
-                for (name, def) in module.scope(ctx.db, context_module) {
-                    if let Some(def) = module_or_attr(def) {
-                        acc.add_resolution(ctx, name, def);
-                    }
-                }
-            }
+        Some(PathKind::Attr { .. }) => {
             return;
         }
         Some(PathKind::Use) => {
@@ -127,7 +118,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
     match resolution {
         hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-            let module_scope = module.scope(ctx.db, context_module);
+            let module_scope = module.scope(ctx.db, ctx.module);
             for (name, def) in module_scope {
                 if let Some(PathKind::Use) = kind {
                     if let ScopeDef::Unknown = def {
@@ -168,7 +159,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             | hir::ModuleDef::TypeAlias(_)
             | hir::ModuleDef::BuiltinType(_)),
         ) => {
-            if let hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
+            if let &hir::ModuleDef::Adt(hir::Adt::Enum(e)) = def {
                 add_enum_variants(acc, ctx, e);
             }
             let ty = match def {
@@ -619,18 +610,6 @@ fn foo() {
             expect![[r#"
                 fn new() fn() -> HashMap<K, V, RandomState>
             "#]],
-        );
-    }
-
-    #[test]
-    fn dont_complete_attr() {
-        check(
-            r#"
-mod foo { pub struct Foo; }
-#[foo::$0]
-fn f() {}
-"#,
-            expect![[""]],
         );
     }
 

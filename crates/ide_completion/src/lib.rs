@@ -151,6 +151,7 @@ pub fn completions(
     }
 
     let mut acc = Completions::default();
+    completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::attribute::complete_attribute(&mut acc, &ctx);
     completions::fn_param::complete_fn_param(&mut acc, &ctx);
     completions::keyword::complete_expr_keyword(&mut acc, &ctx);

@@ -3,7 +3,9 @@
 use std::iter;
 
 use base_db::SourceDatabaseExt;
-use hir::{HasAttrs, Local, Name, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo};
+use hir::{
+    HasAttrs, Local, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type, TypeInfo,
+};
 use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
@@ -11,8 +13,8 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    algo::find_node_at_offset,
-    ast::{self, HasName, NameOrNameRef},
+    algo::{find_node_at_offset, non_trivia_sibling},
+    ast::{self, AttrKind, HasName, NameOrNameRef},
     match_ast, AstNode, NodeOrToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, TextRange, TextSize, T,
@@ -44,7 +46,7 @@ pub(crate) enum Visible {
 pub(super) enum PathKind {
     Expr,
     Type,
-    Attr,
+    Attr { kind: AttrKind, annotated_item_kind: Option<SyntaxKind> },
     Mac,
     Pat,
     Vis { has_in_token: bool },
@@ -58,7 +60,7 @@ pub(crate) struct PathCompletionContext {
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
-    pub(super) qualifier: Option<ast::Path>,
+    pub(super) qualifier: Option<(ast::Path, Option<PathResolution>)>,
     #[allow(dead_code)]
     /// If not a trivial path, the suffix (parent).
     pub(super) parent: Option<ast::Path>,
@@ -282,7 +284,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     pub(crate) fn path_qual(&self) -> Option<&ast::Path> {
-        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref())
+        self.path_context.as_ref().and_then(|it| it.qualifier.as_ref().map(|(it, _)| it))
     }
 
     pub(crate) fn path_kind(&self) -> Option<PathKind> {
@@ -786,7 +788,7 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_name_ref(
-        _sema: &Semantics<RootDatabase>,
+        sema: &Semantics<RootDatabase>,
         original_file: &SyntaxNode,
         name_ref: ast::NameRef,
     ) -> Option<(PathCompletionContext, Option<PatternContext>)> {
@@ -808,8 +810,9 @@ impl<'a> CompletionContext<'a> {
         let mut pat_ctx = None;
         path_ctx.in_loop_body = is_in_loop_body(name_ref.syntax());
 
-        path_ctx.kind  = path.syntax().ancestors().find_map(|it| {
-            match_ast! {
+        path_ctx.kind = path.syntax().ancestors().find_map(|it| {
+            // using Option<Option<PathKind>> as extra controlflow
+            let kind = match_ast! {
                 match it {
                     ast::PathType(_) => Some(PathKind::Type),
                     ast::PathExpr(it) => {
@@ -830,21 +833,41 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::MacroCall(it) => it.excl_token().and(Some(PathKind::Mac)),
-                    ast::Meta(_) => Some(PathKind::Attr),
+                    ast::Meta(meta) => (|| {
+                        let attr = meta.parent_attr()?;
+                        let kind = attr.kind();
+                        let attached = attr.syntax().parent()?;
+                        let is_trailing_outer_attr = kind != AttrKind::Inner
+                            && non_trivia_sibling(attr.syntax().clone().into(), syntax::Direction::Next).is_none();
+                        let annotated_item_kind = if is_trailing_outer_attr {
+                            None
+                        } else {
+                            Some(attached.kind())
+                        };
+                        Some(PathKind::Attr {
+                            kind,
+                            annotated_item_kind,
+                        })
+                    })(),
                     ast::Visibility(it) => Some(PathKind::Vis { has_in_token: it.in_token().is_some() }),
                     ast::UseTree(_) => Some(PathKind::Use),
-                    _ => None,
+                    _ => return None,
                 }
-            }
-        });
+            };
+            Some(kind)
+        }).flatten();
         path_ctx.has_type_args = segment.generic_arg_list().is_some();
 
         if let Some((path, use_tree_parent)) = path_or_use_tree_qualifier(&path) {
             path_ctx.use_tree_parent = use_tree_parent;
-            path_ctx.qualifier = path
+            let path = path
                 .segment()
                 .and_then(|it| find_node_in_file(original_file, &it))
                 .map(|it| it.parent_path());
+            path_ctx.qualifier = path.map(|path| {
+                let res = sema.resolve_path(&path);
+                (path, res)
+            });
             return Some((path_ctx, pat_ctx));
         }
 

@@ -119,7 +119,7 @@ impl From<ast::AssocItem> for ast::Item {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum AttrKind {
     Inner,
     Outer,
