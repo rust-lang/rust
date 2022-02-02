@@ -21,7 +21,7 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 // FIXME: No way to reliably check the filename.
 
 // CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{generator#0}", scope: [[GEN_FN]]
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{generator_env#0}", scope: [[GEN_FN]]
 // CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN_FN]],
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: discriminator: [[DISC:![0-9]*]]
