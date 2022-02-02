@@ -5,6 +5,7 @@ mod tests;
 
 use crate::cmp;
 use crate::collections::BTreeMap;
+use crate::convert::Infallible;
 use crate::env;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
@@ -12,6 +13,7 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
+use crate::ops::ControlFlow;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
 use crate::path::{Path, PathBuf};
@@ -674,6 +676,21 @@ impl ExitStatus {
     }
     pub fn code(&self) -> Option<i32> {
         Some(self.0 as i32)
+    }
+
+    pub fn try_branch(
+        self,
+    ) -> ControlFlow<Result<Infallible, crate::process::ExitStatusError>, ()> {
+        match NonZeroDWORD::try_from(self.0) {
+            Ok(failure) => ControlFlow::Break(Err(crate::process::ExitStatusError::new(
+                ExitStatusError(failure),
+            ))),
+            Err(_) => ControlFlow::Continue(()),
+        }
+    }
+
+    pub fn zero_status() -> ExitStatus {
+        ExitStatus(0)
     }
 }
 
