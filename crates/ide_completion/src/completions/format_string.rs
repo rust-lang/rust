@@ -8,15 +8,14 @@ use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Comp
 
 /// Complete identifiers in format strings.
 pub(crate) fn format_string(acc: &mut Completions, ctx: &CompletionContext) {
-    if true {
-        return;
-    }
-    let string = match ast::String::cast(ctx.token.clone()) {
-        Some(it) if is_format_string(&it) => it,
+    let string = match ast::String::cast(ctx.token.clone())
+        .zip(ast::String::cast(ctx.original_token.clone()))
+    {
+        Some((expanded, original)) if is_format_string(&expanded) => original,
         _ => return,
     };
     let cursor = ctx.position.offset;
-    let lit_start = ctx.token.text_range().start();
+    let lit_start = ctx.original_token.text_range().start();
     let cursor_in_lit = cursor - lit_start;
 
     let prefix = &string.text()[..cursor_in_lit.into()];
@@ -39,7 +38,7 @@ pub(crate) fn format_string(acc: &mut Completions, ctx: &CompletionContext) {
 mod tests {
     use expect_test::{expect, Expect};
 
-    use crate::tests::completion_list_no_kw;
+    use crate::tests::{check_edit, completion_list_no_kw};
 
     fn check(ra_fixture: &str, expect: Expect) {
         let actual = completion_list_no_kw(ra_fixture);
@@ -47,64 +46,83 @@ mod tests {
     }
 
     #[test]
-    fn no_completion_without_brace() {
+    fn works_when_wrapped() {
         check(
             r#"
 macro_rules! format_args {
-($lit:literal $(tt:tt)*) => { 0 },
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+macro_rules! print {
+    ($($arg:tt)*) => (std::io::_print(format_args!($($arg)*)));
 }
 fn main() {
-let foobar = 1;
-format_args!("f$0");
+    let foobar = 1;
+    print!("f$0");
 }
 "#,
             expect![[]],
         );
     }
 
-    //     #[test]
-    //     fn completes_locals() {
-    //         check_edit(
-    //             "foobar",
-    //             r#"
-    // macro_rules! format_args {
-    //     ($lit:literal $(tt:tt)*) => { 0 },
-    // }
-    // fn main() {
-    //     let foobar = 1;
-    //     format_args!("{f$0");
-    // }
-    // "#,
-    //             r#"
-    // macro_rules! format_args {
-    //     ($lit:literal $(tt:tt)*) => { 0 },
-    // }
-    // fn main() {
-    //     let foobar = 1;
-    //     format_args!("{foobar");
-    // }
-    // "#,
-    //         );
-    //         check_edit(
-    //             "foobar",
-    //             r#"
-    // macro_rules! format_args {
-    //     ($lit:literal $(tt:tt)*) => { 0 },
-    // }
-    // fn main() {
-    //     let foobar = 1;
-    //     format_args!("{$0");
-    // }
-    // "#,
-    //             r#"
-    // macro_rules! format_args {
-    //     ($lit:literal $(tt:tt)*) => { 0 },
-    // }
-    // fn main() {
-    //     let foobar = 1;
-    //     format_args!("{foobar");
-    // }
-    // "#,
-    //         );
-    //     }
+    #[test]
+    fn no_completion_without_brace() {
+        check(
+            r#"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+fn main() {
+    let foobar = 1;
+    format_args!("f$0");
+}
+"#,
+            expect![[]],
+        );
+    }
+
+    #[test]
+    fn completes_locals() {
+        check_edit(
+            "foobar",
+            r#"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+fn main() {
+    let foobar = 1;
+    format_args!("{f$0");
+}
+"#,
+            r#"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+fn main() {
+    let foobar = 1;
+    format_args!("{foobar");
+}
+"#,
+        );
+        check_edit(
+            "foobar",
+            r#"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+fn main() {
+    let foobar = 1;
+    format_args!("{$0");
+}
+"#,
+            r#"
+macro_rules! format_args {
+    ($lit:literal $(tt:tt)*) => { 0 },
+}
+fn main() {
+    let foobar = 1;
+    format_args!("{foobar");
+}
+"#,
+        );
+    }
 }

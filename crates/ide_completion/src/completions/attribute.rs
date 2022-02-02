@@ -62,6 +62,7 @@ pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext)
     Some(())
 }
 
+// FIXME?: Move this functionality to (un)qualified_path, make this module work solely for builtin/known attributes for their inputs?
 fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
     let is_inner = attribute.kind() == ast::AttrKind::Inner;
     let attribute_annotated_item_kind =
