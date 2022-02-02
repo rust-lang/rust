@@ -2125,22 +2125,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
             else { return };
 
+        let msg = "use a trailing comma to create a tuple with one element";
         if code.starts_with('(') && code.ends_with(')') {
             let before_close = span.hi() - BytePos::from_u32(1);
-
             err.span_suggestion(
                 span.with_hi(before_close).shrink_to_hi(),
-                "use a trailing comma to create a tuple with one element",
+                msg,
                 ",".into(),
                 Applicability::MachineApplicable,
             );
         } else {
             err.multipart_suggestion(
-                "use a trailing comma to create a tuple with one element",
-                vec![
-                    (span.shrink_to_lo(), "(".into()),
-                    (span.shrink_to_hi(), ",)".into()),
-                ],
+                msg,
+                vec![(span.shrink_to_lo(), "(".into()), (span.shrink_to_hi(), ",)".into())],
                 Applicability::MachineApplicable,
             );
         }
