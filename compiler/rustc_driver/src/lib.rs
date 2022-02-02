@@ -1240,6 +1240,15 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
 pub fn install_ice_hook() {
+    // If the user has not explicitly overriden "RUST_BACKTRACE", then produce
+    // full backtraces. When a compiler ICE happens, we want to gather
+    // as much information as possible to present in the issue opened
+    // by the user. Compiler developers and other rustc users can
+    // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
+    // (e.g. `RUST_BACKTRACE=1`)
+    if std::env::var("RUST_BACKTRACE").is_err() {
+        std::env::set_var("RUST_BACKTRACE", "full");
+    }
     SyncLazy::force(&DEFAULT_HOOK);
 }
 
