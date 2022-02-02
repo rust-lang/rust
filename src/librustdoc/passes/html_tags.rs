@@ -239,7 +239,7 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                                 generics_sp,
                                 "try marking as source code with `backticks`",
                                 format!("`{}`", generics_snippet),
-                                Applicability::MachineApplicable,
+                                Applicability::MaybeIncorrect,
                             );
                         } else {
                             diag.span_help(
