@@ -923,7 +923,6 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(self.attrs(ii.hir_id()));
-        self.print_defaultness(ii.defaultness);
 
         match ii.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
