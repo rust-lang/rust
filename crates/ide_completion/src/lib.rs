@@ -154,6 +154,7 @@ pub fn completions(
     completions::attribute::complete_attribute(&mut acc, &ctx);
     completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::dot::complete_dot(&mut acc, &ctx);
+    completions::extern_abi::complete_extern_abi(&mut acc, &ctx);
     completions::flyimport::import_on_the_fly(&mut acc, &ctx);
     completions::fn_param::complete_fn_param(&mut acc, &ctx);
     completions::format_string::format_string(&mut acc, &ctx);
