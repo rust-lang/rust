@@ -1362,8 +1362,7 @@ impl<'a> Resolver<'a> {
                     .filter(|(_, module)| {
                         current_module.is_ancestor_of(module) && !ptr::eq(current_module, *module)
                     })
-                    .map(|(_, module)| module.kind.name())
-                    .flatten(),
+                    .flat_map(|(_, module)| module.kind.name()),
             )
             .filter(|c| !c.to_string().is_empty())
             .collect::<Vec<_>>();
@@ -1859,7 +1858,7 @@ crate fn show_candidates(
         let instead = if instead { " instead" } else { "" };
         let mut msg = format!("consider importing {} {}{}", determiner, kind, instead);
 
-        for note in accessible_path_strings.iter().map(|cand| cand.3.as_ref()).flatten() {
+        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
             err.note(note);
         }
 
@@ -1942,7 +1941,7 @@ crate fn show_candidates(
                 multi_span.push_span_label(span, format!("`{}`: not accessible", name));
             }
 
-            for note in inaccessible_path_strings.iter().map(|cand| cand.3.as_ref()).flatten() {
+            for note in inaccessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
                 err.note(note);
             }
 

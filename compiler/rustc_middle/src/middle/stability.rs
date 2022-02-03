@@ -198,7 +198,7 @@ fn deprecation_message(
     } else {
         let since = since.as_ref().map(Symbol::as_str);
 
-        if since.as_deref() == Some("TBD") {
+        if since == Some("TBD") {
             format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
         } else {
             format!(

@@ -855,7 +855,7 @@ impl<'tcx> Relate<'tcx> for ty::ProjectionPredicate<'tcx> {
     ) -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>> {
         Ok(ty::ProjectionPredicate {
             projection_ty: relation.relate(a.projection_ty, b.projection_ty)?,
-            term: relation.relate(a.term, b.term)?.into(),
+            term: relation.relate(a.term, b.term)?,
         })
     }
 }

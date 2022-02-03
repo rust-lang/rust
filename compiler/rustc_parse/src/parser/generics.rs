@@ -260,7 +260,7 @@ impl<'a> Parser<'a> {
             let ate_comma = self.eat(&token::Comma);
 
             if self.eat_keyword_noexpect(kw::Where) {
-                let msg = &format!("cannot define duplicate `where` clauses on an item");
+                let msg = "cannot define duplicate `where` clauses on an item";
                 let mut err = self.struct_span_err(self.token.span, msg);
                 err.span_label(lo, "previous `where` clause starts here");
                 err.span_suggestion_verbose(

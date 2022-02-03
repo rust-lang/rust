@@ -444,7 +444,7 @@ impl DropRangesBuilder {
 
     fn drop_at(&mut self, value: TrackedValue, location: PostOrderId) {
         let value = self.tracked_value_index(value);
-        self.node_mut(location.into()).drops.push(value);
+        self.node_mut(location).drops.push(value);
     }
 
     fn reinit_at(&mut self, value: TrackedValue, location: PostOrderId) {
@@ -454,7 +454,7 @@ impl DropRangesBuilder {
             // ignore this.
             None => return,
         };
-        self.node_mut(location.into()).reinits.push(value);
+        self.node_mut(location).reinits.push(value);
     }
 
     /// Looks up PostOrderId for any control edges added by HirId and adds a proper edge for them.

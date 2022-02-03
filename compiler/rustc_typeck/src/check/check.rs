@@ -387,7 +387,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                 .multipart_suggestion_verbose(
                     "wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped",
                     vec![
-                        (ty_span.shrink_to_lo(), format!("std::mem::ManuallyDrop<")),
+                        (ty_span.shrink_to_lo(), "std::mem::ManuallyDrop<".into()),
                         (ty_span.shrink_to_hi(), ">".into()),
                     ],
                     Applicability::MaybeIncorrect,
