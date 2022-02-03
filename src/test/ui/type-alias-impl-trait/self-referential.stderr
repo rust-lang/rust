@@ -1,0 +1,11 @@
+error[E0277]: can't compare `&i32` with `impl PartialEq<Opaque(DefId(0:6 ~ self_referential[5b7d]::Bar::{opaque#0}), [ReFree(DefId(0:7 ~ self_referential[5b7d]::bar), BrNamed(DefId(0:8 ~ self_referential[5b7d]::bar::'a), 'a)), ReEarlyBound(0, 'b)])> + Debug`
+  --> $DIR/self-referential.rs:6:5
+   |
+LL |     i
+   |     ^ no implementation for `&i32 == impl PartialEq<Opaque(DefId(0:6 ~ self_referential[5b7d]::Bar::{opaque#0}), [ReFree(DefId(0:7 ~ self_referential[5b7d]::bar), BrNamed(DefId(0:8 ~ self_referential[5b7d]::bar::'a), 'a)), ReEarlyBound(0, 'b)])> + Debug`
+   |
+   = help: the trait `PartialEq<impl PartialEq<Opaque(DefId(0:6 ~ self_referential[5b7d]::Bar::{opaque#0}), [ReFree(DefId(0:7 ~ self_referential[5b7d]::bar), BrNamed(DefId(0:8 ~ self_referential[5b7d]::bar::'a), 'a)), ReEarlyBound(0, 'b)])> + Debug>` is not implemented for `&i32`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

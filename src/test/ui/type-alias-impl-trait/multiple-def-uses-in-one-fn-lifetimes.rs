@@ -1,4 +1,3 @@
-
 #![feature(type_alias_impl_trait)]
 
 type Foo<'a, 'b> = impl std::fmt::Debug;
