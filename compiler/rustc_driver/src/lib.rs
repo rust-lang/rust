@@ -66,7 +66,7 @@ pub const EXIT_FAILURE: i32 = 1;
 const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md";
 
-const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["Z", "C", "crate-type"];
+const ICE_REPORT_COMPILER_FLAGS: &[&str] = &["-Z", "-C", "--crate-type"];
 
 const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename"];
 
@@ -1100,31 +1100,31 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 /// debugging, since some ICEs only happens with non-default compiler flags
 /// (and the users don't always report them).
 fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
-    let args = env::args_os().map(|arg| arg.to_string_lossy().to_string()).collect::<Vec<_>>();
+    let mut args = env::args_os().map(|arg| arg.to_string_lossy().to_string()).peekable();
 
-    // Avoid printing help because of empty args. This can suggest the compiler
-    // itself is not the program root (consider RLS).
-    if args.len() < 2 {
-        return None;
-    }
-
-    let matches = handle_options(&args)?;
     let mut result = Vec::new();
     let mut excluded_cargo_defaults = false;
-    for flag in ICE_REPORT_COMPILER_FLAGS {
-        let prefix = if flag.len() == 1 { "-" } else { "--" };
-
-        for content in &matches.opt_strs(flag) {
-            // Split always returns the first element
-            let name = if let Some(first) = content.split('=').next() { first } else { &content };
-
-            let content =
-                if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&name) { name } else { content };
-
-            if !ICE_REPORT_COMPILER_FLAGS_EXCLUDE.contains(&name) {
-                result.push(format!("{}{} {}", prefix, flag, content));
+    while let Some(arg) = args.next() {
+        if let Some(a) = ICE_REPORT_COMPILER_FLAGS.iter().find(|a| arg.starts_with(*a)) {
+            let content = if arg.len() == a.len() {
+                match args.next() {
+                    Some(arg) => arg.to_string(),
+                    None => continue,
+                }
+            } else if arg.get(a.len()..a.len() + 1) == Some("=") {
+                arg[a.len() + 1..].to_string()
             } else {
+                arg[a.len()..].to_string()
+            };
+            if ICE_REPORT_COMPILER_FLAGS_EXCLUDE.iter().any(|exc| content.starts_with(exc)) {
                 excluded_cargo_defaults = true;
+            } else {
+                result.push(a.to_string());
+                match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| content.starts_with(*s))
+                {
+                    Some(s) => result.push(s.to_string()),
+                    None => result.push(content),
+                }
             }
         }
     }
@@ -1240,6 +1240,15 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
 pub fn install_ice_hook() {
+    // If the user has not explicitly overriden "RUST_BACKTRACE", then produce
+    // full backtraces. When a compiler ICE happens, we want to gather
+    // as much information as possible to present in the issue opened
+    // by the user. Compiler developers and other rustc users can
+    // opt in to less-verbose backtraces by manually setting "RUST_BACKTRACE"
+    // (e.g. `RUST_BACKTRACE=1`)
+    if std::env::var("RUST_BACKTRACE").is_err() {
+        std::env::set_var("RUST_BACKTRACE", "full");
+    }
     SyncLazy::force(&DEFAULT_HOOK);
 }
 

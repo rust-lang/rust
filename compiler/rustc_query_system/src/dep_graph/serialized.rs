@@ -182,7 +182,7 @@ impl<K: DepKind> EncoderState<K> {
             total_edge_count: 0,
             total_node_count: 0,
             result: Ok(()),
-            stats: if record_stats { Some(FxHashMap::default()) } else { None },
+            stats: record_stats.then(FxHashMap::default),
         }
     }
 
