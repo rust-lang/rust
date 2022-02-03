@@ -2776,17 +2776,20 @@ pub fn fn_can_unwind<'tcx>(
     // [rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2945-c-unwind-abi.md
     use SpecAbi::*;
     match abi {
-        C { unwind } | Stdcall { unwind } | System { unwind } | Thiscall { unwind } => {
+        C { unwind }
+        | System { unwind }
+        | Cdecl { unwind }
+        | Stdcall { unwind }
+        | Fastcall { unwind }
+        | Vectorcall { unwind }
+        | Thiscall { unwind }
+        | Aapcs { unwind }
+        | Win64 { unwind }
+        | SysV64 { unwind } => {
             unwind
                 || (!tcx.features().c_unwind && tcx.sess.panic_strategy() == PanicStrategy::Unwind)
         }
-        Cdecl
-        | Fastcall
-        | Vectorcall
-        | Aapcs
-        | Win64
-        | SysV64
-        | PtxKernel
+        PtxKernel
         | Msp430Interrupt
         | X86Interrupt
         | AmdGpuKernel
@@ -2813,14 +2816,14 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         EfiApi => bug!("eficall abi should be selected elsewhere"),
 
         Stdcall { .. } => Conv::X86Stdcall,
-        Fastcall => Conv::X86Fastcall,
-        Vectorcall => Conv::X86VectorCall,
+        Fastcall { .. } => Conv::X86Fastcall,
+        Vectorcall { .. } => Conv::X86VectorCall,
         Thiscall { .. } => Conv::X86ThisCall,
         C { .. } => Conv::C,
         Unadjusted => Conv::C,
-        Win64 => Conv::X86_64Win64,
-        SysV64 => Conv::X86_64SysV,
-        Aapcs => Conv::ArmAapcs,
+        Win64 { .. } => Conv::X86_64Win64,
+        SysV64 { .. } => Conv::X86_64SysV,
+        Aapcs { .. } => Conv::ArmAapcs,
         CCmseNonSecureCall => Conv::CCmseNonSecureCall,
         PtxKernel => Conv::PtxKernel,
         Msp430Interrupt => Conv::Msp430Intr,
@@ -2831,7 +2834,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         Wasm => Conv::C,
 
         // These API constants ought to be more specific...
-        Cdecl => Conv::C,
+        Cdecl { .. } => Conv::C,
     }
 }
 
