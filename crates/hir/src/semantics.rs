@@ -12,7 +12,7 @@ use hir_def::{
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
 use hir_expand::{name::AsName, ExpansionInfo, MacroCallId};
-use hir_ty::{associated_type_shorthand_candidates, Interner};
+use hir_ty::Interner;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
@@ -50,7 +50,7 @@ pub enum PathResolution {
 }
 
 impl PathResolution {
-    fn in_type_ns(&self) -> Option<TypeNs> {
+    pub(crate) fn in_type_ns(&self) -> Option<TypeNs> {
         match self {
             PathResolution::Def(ModuleDef::Adt(adt)) => Some(TypeNs::AdtId((*adt).into())),
             PathResolution::Def(ModuleDef::BuiltinType(builtin)) => {
@@ -79,18 +79,6 @@ impl PathResolution {
                 Some(TypeNs::TypeAliasId((*alias).into()))
             }
         }
-    }
-
-    /// Returns an iterator over associated types that may be specified after this path (using
-    /// `Ty::Assoc` syntax).
-    pub fn assoc_type_shorthand_candidates<R>(
-        &self,
-        db: &dyn HirDatabase,
-        mut cb: impl FnMut(&Name, TypeAlias) -> Option<R>,
-    ) -> Option<R> {
-        associated_type_shorthand_candidates(db, self.in_type_ns()?, |name, _, id| {
-            cb(name, id.into())
-        })
     }
 }
 
@@ -1313,5 +1301,21 @@ impl<'a> SemanticsScope<'a> {
         let ctx = body::LowerCtx::new(self.db.upcast(), self.file_id);
         let path = Path::from_src(path.clone(), &ctx)?;
         resolve_hir_path(self.db, &self.resolver, &path)
+    }
+
+    /// Iterates over associated types that may be specified after the given path (using
+    /// `Ty::Assoc` syntax).
+    pub fn assoc_type_shorthand_candidates<R>(
+        &self,
+        resolution: &PathResolution,
+        mut cb: impl FnMut(&Name, TypeAlias) -> Option<R>,
+    ) -> Option<R> {
+        let def = self.resolver.generic_def()?;
+        hir_ty::associated_type_shorthand_candidates(
+            self.db,
+            def,
+            resolution.in_type_ns()?,
+            |name, _, id| cb(name, id.into()),
+        )
     }
 }

@@ -119,7 +119,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
     if !matches!(kind, Some(PathKind::Pat)) {
         // Add associated types on type parameters and `Self`.
-        resolution.assoc_type_shorthand_candidates(ctx.db, |_, alias| {
+        ctx.scope.assoc_type_shorthand_candidates(&resolution, |_, alias| {
             acc.add_type_alias(ctx, alias);
             None::<()>
         });

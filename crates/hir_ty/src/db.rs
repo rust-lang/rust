@@ -60,6 +60,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
     fn generic_predicates_for_param(
         &self,
+        def: GenericDefId,
         param_id: TypeParamId,
         assoc_name: Option<Name>,
     ) -> Arc<[Binders<QuantifiedWhereClause>]>;

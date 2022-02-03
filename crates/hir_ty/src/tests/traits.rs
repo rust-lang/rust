@@ -393,6 +393,25 @@ fn test() {
 }
 
 #[test]
+fn associated_type_shorthand_from_method_bound() {
+    check_types(
+        r#"
+trait Iterable {
+    type Item;
+}
+struct S<T>;
+impl<T> S<T> {
+    fn foo(self) -> T::Item where T: Iterable { loop {} }
+}
+fn test<T: Iterable>() {
+    let s: S<T>;
+    s.foo();
+ // ^^^^^^^ Iterable::Item<T>
+}"#,
+    );
+}
+
+#[test]
 fn infer_associated_type_bound() {
     check_types(
         r#"

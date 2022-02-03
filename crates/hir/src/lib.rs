@@ -2235,8 +2235,11 @@ impl TypeParam {
         Type::new_with_resolver_inner(db, krate, &resolver, ty)
     }
 
+    /// FIXME: this only lists trait bounds from the item defining the type
+    /// parameter, not additional bounds that might be added e.g. by a method if
+    /// the parameter comes from an impl!
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
-        db.generic_predicates_for_param(self.id, None)
+        db.generic_predicates_for_param(self.id.parent, self.id, None)
             .iter()
             .filter_map(|pred| match &pred.skip_binders().skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {
