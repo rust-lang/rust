@@ -1508,7 +1508,7 @@ impl<T: Clone> Arc<T> {
     /// assert!(ptr::eq(ptr, inner.as_ptr()));
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unwrap_or_clone", issue = "none")]
+    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
     pub fn unwrap_or_clone(this: Self) -> T {
         Arc::try_unwrap(this).unwrap_or_else(|arc| (*arc).clone())
     }
