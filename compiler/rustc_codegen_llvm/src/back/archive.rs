@@ -219,7 +219,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
             match result {
                 Err(e) => {
-                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e.to_string()));
+                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e));
                 }
                 Ok(output) if !output.status.success() => self.config.sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
