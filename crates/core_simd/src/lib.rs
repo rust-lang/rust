@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![feature(
     const_fn_trait_bound,
+    convert_float_to_int,
     decl_macro,
     platform_intrinsics,
     repr_simd,
