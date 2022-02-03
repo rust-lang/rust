@@ -156,9 +156,37 @@ impl<'tcx> ConstEvalErr<'tcx> {
             }
             // Add spans for the stacktrace. Don't print a single-line backtrace though.
             if self.stacktrace.len() > 1 {
+                // Helper closure to print duplicated lines.
+                let mut flush_last_line = |last_frame, times| {
+                    if let Some((line, span)) = last_frame {
+                        err.span_label(span, &line);
+                        // Don't print [... additional calls ...] if the number of lines is small
+                        if times < 3 {
+                            for _ in 0..times {
+                                err.span_label(span, &line);
+                            }
+                        } else {
+                            err.span_label(
+                                span,
+                                format!("[... {} additional calls {} ...]", times, &line),
+                            );
+                        }
+                    }
+                };
+
+                let mut last_frame = None;
+                let mut times = 0;
                 for frame_info in &self.stacktrace {
-                    err.span_label(frame_info.span, frame_info.to_string());
+                    let frame = (frame_info.to_string(), frame_info.span);
+                    if last_frame.as_ref() == Some(&frame) {
+                        times += 1;
+                    } else {
+                        flush_last_line(last_frame, times);
+                        last_frame = Some(frame);
+                        times = 0;
+                    }
                 }
+                flush_last_line(last_frame, times);
             }
             // Let the caller finish the job.
             emit(err)
