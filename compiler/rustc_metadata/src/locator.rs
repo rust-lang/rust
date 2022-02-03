@@ -385,7 +385,6 @@ impl<'a> CrateLocator<'a> {
 
         let mut candidates: FxHashMap<_, (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>)> =
             Default::default();
-        let mut staticlibs = vec![];
 
         // First, find all possible candidate rlibs and dylibs purely based on
         // the name of the files themselves. We're trying to match against an
@@ -414,7 +413,7 @@ impl<'a> CrateLocator<'a> {
                     (&f[dylib_prefix.len()..(f.len() - dylib_suffix.len())], CrateFlavor::Dylib)
                 } else {
                     if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix) {
-                        staticlibs.push(CrateMismatch {
+                        self.crate_rejections.via_kind.push(CrateMismatch {
                             path: spf.path.clone(),
                             got: "static".to_string(),
                         });
@@ -437,8 +436,6 @@ impl<'a> CrateLocator<'a> {
                 };
             }
         }
-
-        self.crate_rejections.via_kind.extend(staticlibs);
 
         // We have now collected all known libraries into a set of candidates
         // keyed of the filename hash listed. For each filename, we also have a
