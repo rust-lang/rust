@@ -304,6 +304,8 @@ pub mod ops;
 pub mod any;
 pub mod array;
 pub mod ascii;
+#[unstable(feature = "async_iterator", issue = "79024")]
+pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;
@@ -315,8 +317,6 @@ pub mod panic;
 pub mod panicking;
 pub mod pin;
 pub mod result;
-#[unstable(feature = "async_stream", issue = "79024")]
-pub mod stream;
 pub mod sync;
 
 pub mod fmt;
