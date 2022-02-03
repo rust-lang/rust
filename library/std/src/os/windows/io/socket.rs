@@ -168,13 +168,6 @@ impl IntoRawSocket for OwnedSocket {
 }
 
 impl FromRawSocket for OwnedSocket {
-    /// Constructs a new instance of `Self` from the given raw socket.
-    ///
-    /// # Safety
-    ///
-    /// The resource pointed to by `socket` must be open and suitable for
-    /// assuming ownership. The resource must not require cleanup other than
-    /// `closesocket`.
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
