@@ -5,7 +5,7 @@
 use syntax::{SyntaxKind, T};
 
 use crate::{
-    context::{PathCompletionContext, PathKind},
+    context::{PathCompletionCtx, PathKind},
     patterns::ImmediateLocation,
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
 };
@@ -27,6 +27,9 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         cov_mark::hit!(no_keyword_completion_in_non_trivial_path);
         return;
     }
+    if ctx.pattern_ctx.is_some() {
+        return;
+    }
 
     let mut add_keyword = |kw, snippet| add_keyword(acc, ctx, kw, snippet);
 
@@ -34,11 +37,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     let has_block_expr_parent = ctx.has_block_expr_parent();
     let expects_item = ctx.expects_item();
 
-    if let Some(PathKind::Vis { has_in_token }) = ctx.path_kind() {
-        if !has_in_token {
-            cov_mark::hit!(kw_completion_in);
-            add_keyword("in", "in");
-        }
+    if let Some(PathKind::Vis { .. }) = ctx.path_kind() {
         return;
     }
     if ctx.has_impl_or_trait_prev_sibling() {
@@ -121,14 +120,14 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("else if", "else if $1 {\n    $0\n}");
     }
 
-    if ctx.expects_ident_pat_or_ref_expr() {
+    if ctx.expects_ident_ref_expr() {
         add_keyword("mut", "mut ");
     }
 
     let (can_be_stmt, in_loop_body) = match ctx.path_context {
-        Some(PathCompletionContext {
-            is_trivial_path: true, can_be_stmt, in_loop_body, ..
-        }) => (can_be_stmt, in_loop_body),
+        Some(PathCompletionCtx { is_absolute_path: false, can_be_stmt, in_loop_body, .. }) => {
+            (can_be_stmt, in_loop_body)
+        }
         _ => return,
     };
 

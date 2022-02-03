@@ -1,8 +1,6 @@
-//! Completion for attributes
+//! Completion for (built-in) attributes, derives and lints.
 //!
-//! This module uses a bit of static metadata to provide completions
-//! for built-in attributes.
-//! Non-built-in attribute (excluding derives attributes) completions are done in [`super::unqualified_path`].
+//! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
 use ide_db::{
     helpers::{
@@ -16,62 +14,107 @@ use ide_db::{
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use rustc_hash::FxHashMap;
-use syntax::{algo::non_trivia_sibling, ast, AstNode, Direction, SyntaxKind, T};
+use syntax::{
+    ast::{self, AttrKind},
+    AstNode, SyntaxKind, T,
+};
 
-use crate::{context::CompletionContext, item::CompletionItem, Completions};
+use crate::{
+    completions::module_or_attr,
+    context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
+    item::CompletionItem,
+    Completions,
+};
 
 mod cfg;
 mod derive;
 mod lint;
 mod repr;
 
-pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+/// Complete inputs to known builtin attributes as well as derive attributes
+pub(crate) fn complete_known_attribute_input(
+    acc: &mut Completions,
+    ctx: &CompletionContext,
+) -> Option<()> {
     let attribute = ctx.fake_attribute_under_caret.as_ref()?;
     let name_ref = match attribute.path() {
         Some(p) => Some(p.as_single_name_ref()?),
         None => None,
     };
-    match (name_ref, attribute.token_tree()) {
-        (Some(path), Some(tt)) if tt.l_paren_token().is_some() => match path.text().as_str() {
-            "repr" => repr::complete_repr(acc, ctx, tt),
-            "derive" => derive::complete_derive(acc, ctx, ctx.attr.as_ref()?),
-            "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
-            "allow" | "warn" | "deny" | "forbid" => {
-                let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
+    let (path, tt) = name_ref.zip(attribute.token_tree())?;
+    if tt.l_paren_token().is_none() {
+        return None;
+    }
 
-                let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
-                    .iter()
-                    .map(|g| &g.lint)
-                    .chain(DEFAULT_LINTS.iter())
-                    .chain(CLIPPY_LINTS.iter())
-                    .chain(RUSTDOC_LINTS)
-                    .cloned()
-                    .collect();
+    match path.text().as_str() {
+        "repr" => repr::complete_repr(acc, ctx, tt),
+        "derive" => derive::complete_derive(acc, ctx, ctx.attr.as_ref()?),
+        "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
+        "allow" | "warn" | "deny" | "forbid" => {
+            let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
 
-                lint::complete_lint(acc, ctx, &existing_lints, &lints);
-            }
-            "cfg" => {
-                cfg::complete_cfg(acc, ctx);
-            }
-            _ => (),
-        },
-        (_, Some(_)) => (),
-        (_, None) if attribute.expr().is_some() => (),
-        (_, None) => complete_new_attribute(acc, ctx, attribute),
+            let lints: Vec<Lint> = CLIPPY_LINT_GROUPS
+                .iter()
+                .map(|g| &g.lint)
+                .chain(DEFAULT_LINTS)
+                .chain(CLIPPY_LINTS)
+                .chain(RUSTDOC_LINTS)
+                .cloned()
+                .collect();
+
+            lint::complete_lint(acc, ctx, &existing_lints, &lints);
+        }
+        "cfg" => {
+            cfg::complete_cfg(acc, ctx);
+        }
+        _ => (),
     }
     Some(())
 }
 
-// FIXME?: Move this functionality to (un)qualified_path, make this module work solely for builtin/known attributes for their inputs?
-fn complete_new_attribute(acc: &mut Completions, ctx: &CompletionContext, attribute: &ast::Attr) {
-    let is_inner = attribute.kind() == ast::AttrKind::Inner;
-    let attribute_annotated_item_kind =
-        attribute.syntax().parent().map(|it| it.kind()).filter(|_| {
-            is_inner
-            // If we got nothing coming after the attribute it could be anything so filter it the kind out
-                || non_trivia_sibling(attribute.syntax().clone().into(), Direction::Next).is_some()
-        });
-    let attributes = attribute_annotated_item_kind.and_then(|kind| {
+pub(crate) fn complete_attribute(acc: &mut Completions, ctx: &CompletionContext) {
+    let (is_absolute_path, qualifier, is_inner, annotated_item_kind) = match ctx.path_context {
+        Some(PathCompletionCtx {
+            kind: Some(PathKind::Attr { kind, annotated_item_kind }),
+            is_absolute_path,
+            ref qualifier,
+            ..
+        }) => (is_absolute_path, qualifier, kind == AttrKind::Inner, annotated_item_kind),
+        _ => return,
+    };
+
+    match qualifier {
+        Some(PathQualifierCtx { resolution, is_super_chain, .. }) => {
+            if *is_super_chain {
+                acc.add_keyword(ctx, "super::");
+            }
+
+            let module = match resolution {
+                Some(hir::PathResolution::Def(hir::ModuleDef::Module(it))) => it,
+                _ => return,
+            };
+
+            for (name, def) in module.scope(ctx.db, ctx.module) {
+                if let Some(def) = module_or_attr(def) {
+                    acc.add_resolution(ctx, name, def);
+                }
+            }
+            return;
+        }
+        // fresh use tree with leading colon2, only show crate roots
+        None if is_absolute_path => acc.add_crate_roots(ctx),
+        // only show modules in a fresh UseTree
+        None => {
+            ctx.process_all_names(&mut |name, def| {
+                if let Some(def) = module_or_attr(def) {
+                    acc.add_resolution(ctx, name, def);
+                }
+            });
+            acc.add_nameref_keywords(ctx);
+        }
+    }
+
+    let attributes = annotated_item_kind.and_then(|kind| {
         if ast::Expr::can_cast(kind) {
             Some(EXPR_ATTRIBUTES)
         } else {

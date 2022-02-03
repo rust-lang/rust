@@ -19,7 +19,7 @@ use ide_db::{
 use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
-    context::{PathCompletionContext, PathKind},
+    context::{PathCompletionCtx, PathKind},
     item::{CompletionRelevanceTypeMatch, ImportEdit},
     render::{enum_variant::render_variant, function::render_fn, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
@@ -234,7 +234,7 @@ fn render_resolution_(
     // Add `<>` for generic types
     let type_path_no_ty_args = matches!(
         ctx.completion.path_context,
-        Some(PathCompletionContext { kind: Some(PathKind::Type), has_type_args: false, .. })
+        Some(PathCompletionCtx { kind: Some(PathKind::Type), has_type_args: false, .. })
     ) && ctx.completion.config.add_call_parenthesis;
     if type_path_no_ty_args {
         if let Some(cap) = ctx.snippet_cap() {

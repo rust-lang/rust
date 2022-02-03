@@ -32,7 +32,7 @@ fn complete_undotted_self(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.config.enable_self_on_the_fly {
         return;
     }
-    if !ctx.is_trivial_path() || ctx.is_path_disallowed() || !ctx.expects_expression() {
+    if ctx.is_non_trivial_path() || ctx.is_path_disallowed() || !ctx.expects_expression() {
         return;
     }
     if let Some(func) = ctx.function_def.as_ref().and_then(|fn_| ctx.sema.to_def(fn_)) {

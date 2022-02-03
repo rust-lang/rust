@@ -17,6 +17,7 @@ fn baz(file$0) {}
 "#,
         expect![[r#"
             bn file_id: usize
+            kw ref
             kw mut
         "#]],
     );
@@ -32,6 +33,7 @@ fn baz(foo: (), file$0) {}
 "#,
         expect![[r#"
             bn file_id: usize
+            kw ref
             kw mut
         "#]],
     );
@@ -47,6 +49,7 @@ fn baz(file$0 id: u32) {}
 "#,
         expect![[r#"
             bn file_id: usize,
+            kw ref
             kw mut
         "#]],
     );
@@ -60,6 +63,7 @@ fn foo(file_id: usize) {}
 fn bar(file_id: u32, $0) {}
 "#,
         expect![[r#"
+            kw ref
             kw mut
         "#]],
     );
@@ -76,6 +80,7 @@ pub(crate) trait SourceRoot {
 "#,
         expect![[r#"
             bn file_id: usize
+            kw ref
             kw mut
         "#]],
     );
@@ -91,6 +96,7 @@ fn outer(text: &str) {
 "#,
         expect![[r#"
             bn text: &str
+            kw ref
             kw mut
         "#]],
     )
@@ -106,6 +112,7 @@ fn foo2($0) {}
 "#,
         expect![[r#"
             bn Bar { bar }: Bar
+            kw ref
             kw mut
             bn Bar              Bar { bar$1 }: Bar$0
             st Bar
@@ -130,6 +137,7 @@ impl A {
             bn mut self
             bn &mut self
             bn file_id: usize
+            kw ref
             kw mut
             sp Self
             st A
@@ -150,6 +158,7 @@ impl A {
 "#,
         expect![[r#"
             bn file_id: usize
+            kw ref
             kw mut
             sp Self
             st A
@@ -178,6 +187,7 @@ fn outer() {
             bn foo: i32
             bn baz: i32
             bn bar: i32
+            kw ref
             kw mut
         "#]],
     )
@@ -202,6 +212,22 @@ fn outer() {
             bn baz: i32
             bn bar: i32
             bn foo: i32
+            kw ref
+            kw mut
+        "#]],
+    )
+}
+
+#[test]
+fn completes_fully_equal() {
+    check(
+        r#"
+fn foo(bar: u32) {}
+fn bar(bar$0) {}
+"#,
+        expect![[r#"
+            bn bar: u32
+            kw ref
             kw mut
         "#]],
     )

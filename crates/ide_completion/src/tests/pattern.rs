@@ -22,6 +22,7 @@ fn quux() {
 }
 "#,
         expect![[r#"
+            kw ref
             kw mut
         "#]],
     );
@@ -53,16 +54,13 @@ fn quux() {
 
 #[test]
 fn ident_ref_mut_pat() {
-    // FIXME mut is already here, don't complete it again
     check_empty(
         r#"
 fn quux() {
     let ref mut en$0
 }
 "#,
-        expect![[r#"
-            kw mut
-        "#]],
+        expect![[r#""#]],
     );
     check_empty(
         r#"
@@ -70,9 +68,7 @@ fn quux() {
     let ref mut en$0 @ x
 }
 "#,
-        expect![[r#"
-            kw mut
-        "#]],
+        expect![[r#""#]],
     );
 }
 
@@ -88,16 +84,13 @@ fn quux() {
             kw mut
         "#]],
     );
-    // FIXME mut is already here, don't complete it again
     check_empty(
         r#"
 fn quux() {
     let &mut en$0
 }
 "#,
-        expect![[r#"
-            kw mut
-        "#]],
+        expect![[r#""#]],
     );
 }
 
@@ -110,6 +103,7 @@ fn foo() {
 }
 "#,
         expect![[r##"
+            kw ref
             kw mut
             en Enum
             bn Record    Record { field$1 }$0
@@ -139,6 +133,7 @@ fn foo() {
 }
 "#,
         expect![[r##"
+            kw ref
             kw mut
             bn Record            Record { field$1 }$0
             st Record
@@ -160,6 +155,7 @@ fn foo(a$0) {
 }
 "#,
         expect![[r##"
+            kw ref
             kw mut
             bn Record    Record { field$1 }: Record$0
             st Record
@@ -175,6 +171,7 @@ fn foo(a$0: Tuple) {
 }
 "#,
         expect![[r##"
+            kw ref
             kw mut
             bn Record    Record { field$1 }$0
             st Record
@@ -200,6 +197,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            kw ref
             kw mut
             ma m!(…) macro_rules! m
         "#]],
@@ -218,6 +216,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            kw ref
             kw mut
             ev E::X  ()
             en E
@@ -242,6 +241,7 @@ fn outer() {
 }
 "#,
         expect![[r#"
+            kw ref
             kw mut
             bn Record    Record { field$1, .. }$0
             st Record
@@ -267,6 +267,7 @@ impl Foo {
 }
     "#,
         expect![[r#"
+            kw ref
             kw mut
             bn Self Self($1)$0
             sp Self
@@ -278,7 +279,6 @@ impl Foo {
 
 #[test]
 fn enum_qualified() {
-    // FIXME: Don't show functions, they aren't patterns
     check(
         r#"
 impl Enum {
@@ -291,12 +291,9 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ev TupleV(…)   (u32)
-            ev RecordV     {field: u32}
-            ev UnitV       ()
-            ct ASSOC_CONST const ASSOC_CONST: ()
-            fn assoc_fn()  fn()
-            ta AssocType   type AssocType = ()
+            ev TupleV(…) (u32)
+            ev RecordV   {field: u32}
+            ev UnitV     ()
         "#]],
     );
 }
@@ -310,6 +307,7 @@ struct Bar(u32);
 fn outer(Foo { bar: $0 }: Foo) {}
 "#,
         expect![[r#"
+            kw ref
             kw mut
             bn Foo Foo { bar$1 }$0
             st Foo
@@ -340,6 +338,7 @@ struct Bar(u32);
 fn foo($0) {}
 "#,
         expect![[r#"
+            kw ref
             kw mut
             bn Foo Foo { bar$1 }: Foo$0
             st Foo
@@ -360,25 +359,12 @@ fn foo() {
 }
 "#,
         expect![[r#"
+            kw ref
             kw mut
             bn Foo Foo { bar$1 }$0
             st Foo
             bn Bar Bar($1)$0
             st Bar
-        "#]],
-    )
-}
-
-#[test]
-fn completes_fully_equal() {
-    check_empty(
-        r#"
-fn foo(bar: u32) {}
-fn bar(bar$0) {}
-"#,
-        expect![[r#"
-            bn bar: u32
-            kw mut
         "#]],
     )
 }

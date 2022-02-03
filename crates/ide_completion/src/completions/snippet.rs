@@ -5,7 +5,7 @@ use ide_db::helpers::{insert_use::ImportScope, SnippetCap};
 use syntax::T;
 
 use crate::{
-    context::PathCompletionContext, item::Builder, CompletionContext, CompletionItem,
+    context::PathCompletionCtx, item::Builder, CompletionContext, CompletionItem,
     CompletionItemKind, Completions, SnippetScope,
 };
 
@@ -21,7 +21,9 @@ pub(crate) fn complete_expr_snippet(acc: &mut Completions, ctx: &CompletionConte
     }
 
     let can_be_stmt = match ctx.path_context {
-        Some(PathCompletionContext { is_trivial_path: true, can_be_stmt, .. }) => can_be_stmt,
+        Some(PathCompletionCtx {
+            is_absolute_path: false, qualifier: None, can_be_stmt, ..
+        }) => can_be_stmt,
         _ => return,
     };
 

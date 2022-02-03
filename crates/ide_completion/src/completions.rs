@@ -4,6 +4,7 @@ pub(crate) mod attribute;
 pub(crate) mod dot;
 pub(crate) mod flyimport;
 pub(crate) mod fn_param;
+pub(crate) mod format_string;
 pub(crate) mod keyword;
 pub(crate) mod lifetime;
 pub(crate) mod mod_;
@@ -14,7 +15,8 @@ pub(crate) mod record;
 pub(crate) mod snippet;
 pub(crate) mod trait_impl;
 pub(crate) mod unqualified_path;
-pub(crate) mod format_string;
+pub(crate) mod use_;
+pub(crate) mod vis;
 
 use std::iter;
 
@@ -95,6 +97,19 @@ impl Completions {
     pub(crate) fn add_keyword(&mut self, ctx: &CompletionContext, keyword: &'static str) {
         let item = CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), keyword);
         item.add_to(self);
+    }
+
+    pub(crate) fn add_nameref_keywords(&mut self, ctx: &CompletionContext) {
+        ["self::", "super::", "crate::"].into_iter().for_each(|kw| self.add_keyword(ctx, kw));
+    }
+
+    pub(crate) fn add_crate_roots(&mut self, ctx: &CompletionContext) {
+        ctx.process_all_names(&mut |name, res| match res {
+            ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) if m.is_crate_root(ctx.db) => {
+                self.add_resolution(ctx, name, res);
+            }
+            _ => (),
+        });
     }
 
     pub(crate) fn add_resolution(

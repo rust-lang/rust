@@ -171,8 +171,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Type, ItemInNs::Types(_)) => true,
             (PathKind::Type, ItemInNs::Values(_)) => false,
 
-            (PathKind::Attr, ItemInNs::Macros(mac)) => mac.is_attr(),
-            (PathKind::Attr, _) => false,
+            (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(),
+            (PathKind::Attr { .. }, _) => false,
         }
     };
 

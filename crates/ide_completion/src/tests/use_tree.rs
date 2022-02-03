@@ -32,6 +32,25 @@ mod foo {}
 }
 
 #[test]
+fn use_tree_start_abs() {
+    cov_mark::check!(use_tree_crate_roots_only);
+    check(
+        r#"
+//- /lib.rs crate:main deps:other_crate
+use ::f$0
+
+struct Foo;
+mod foo {}
+//- /other_crate/lib.rs crate:other_crate
+// nothing here
+"#,
+        expect![[r#"
+            md other_crate
+        "#]],
+    );
+}
+
+#[test]
 fn dont_complete_current_use() {
     cov_mark::check!(dont_complete_current_use);
     check(r#"use self::foo$0;"#, expect![[r#""#]]);
@@ -130,6 +149,25 @@ struct Bar;
         expect![[r#"
             st Foo
             ma foo macro_rules! foo_
+        "#]],
+    );
+}
+
+#[test]
+fn enum_plain_qualified_use_tree() {
+    cov_mark::check!(enum_plain_qualified_use_tree);
+    check(
+        r#"
+use Foo::$0
+
+enum Foo { Variant }
+impl Foo {
+    const CONST: () = ()
+    fn func() {}
+}
+"#,
+        expect![[r#"
+            ev Variant ()
         "#]],
     );
 }
