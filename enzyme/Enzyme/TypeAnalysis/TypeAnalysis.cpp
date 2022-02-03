@@ -2981,6 +2981,7 @@ void TypeAnalyzer::visitIntrinsicInst(llvm::IntrinsicInst &I) {
         &I);
     return;
 
+  case Intrinsic::fmuladd:
   case Intrinsic::fma:
     // No direction check as always valid
     updateAnalysis(

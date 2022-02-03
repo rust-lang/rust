@@ -104,7 +104,8 @@ static inline bool is_use_directly_needed_in_reverse(
         II->getIntrinsicID() == Intrinsic::stackrestore) {
       return false;
     }
-    if (II->getIntrinsicID() == Intrinsic::fma) {
+    if (II->getIntrinsicID() == Intrinsic::fma ||
+        II->getIntrinsicID() == Intrinsic::fmuladd) {
       bool needed = false;
       if (II->getArgOperand(0) == val &&
           !gutils->isConstantValue(II->getArgOperand(1)))

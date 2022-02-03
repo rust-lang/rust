@@ -2920,6 +2920,7 @@ public:
       case Intrinsic::round:
       case Intrinsic::sqrt:
       case Intrinsic::nvvm_sqrt_rn_d:
+      case Intrinsic::fmuladd:
       case Intrinsic::fma:
         return;
       default:
@@ -3129,6 +3130,7 @@ public:
         return;
       }
 
+      case Intrinsic::fmuladd:
       case Intrinsic::fma: {
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
           Value *dif0 = Builder2.CreateFMul(
@@ -3378,7 +3380,8 @@ public:
         if (Intrinsic::isOverloaded(ID))
 #if LLVM_VERSION_MAJOR >= 13
           llvm::errs() << "cannot handle (reverse) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>(), nullptr,
+                       << Intrinsic::getName(ID, ArrayRef<Type *>(),
+                                             gutils->oldFunc->getParent(),
                                              nullptr)
                        << "\n"
                        << I;
@@ -3562,6 +3565,7 @@ public:
         return;
       }
 
+      case Intrinsic::fmuladd:
       case Intrinsic::fma: {
         if (gutils->isConstantInstruction(&I))
           return;
@@ -3838,7 +3842,8 @@ public:
         if (Intrinsic::isOverloaded(ID))
 #if LLVM_VERSION_MAJOR >= 13
           llvm::errs() << "cannot handle (forward) unknown intrinsic\n"
-                       << Intrinsic::getName(ID, ArrayRef<Type *>(), nullptr,
+                       << Intrinsic::getName(ID, ArrayRef<Type *>(),
+                                             gutils->oldFunc->getParent(),
                                              nullptr)
                        << "\n"
                        << I;
