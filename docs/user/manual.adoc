@@ -67,16 +67,16 @@ To disable this notification put the following to `settings.json`
 ----
 ====
 
-The server binary is stored in:
+The server binary is stored in the extension install directory, which starts with `matklad.rust-analyzer-` and is located under:
 
-* Linux: `~/.config/Code/User/globalStorage/matklad.rust-analyzer`
-* Linux (Remote, such as WSL): `~/.vscode-server/data/User/globalStorage/matklad.rust-analyzer`
-* macOS: `~/Library/Application\ Support/Code/User/globalStorage/matklad.rust-analyzer`
-* Windows: `%APPDATA%\Code\User\globalStorage\matklad.rust-analyzer`
+* Linux: `~/.vscode/extensions`
+* Linux (Remote, such as WSL): `~/.vscode-server/extensions`
+* macOS: `~/.vscode/extensions`
+* Windows: `%USERPROFILE%\.vscode\extensions`
 
-However, if you are using a version of the extension with a bundled server binary and you are not running NixOS, the server binary might be instead running from: `~/.vscode/extensions/matklad.rust-analyzer-VERSION`.
+As an exception, on NixOS, the extension makes a copy of the server and stores it under `~/.config/Code/User/globalStorage/matklad.rust-analyzer`.
 
-Note that we only support two most recent versions of VS Code.
+Note that we only support the two most recent versions of VS Code.
 
 ==== Updates
 
@@ -86,27 +86,12 @@ It will ask your permission to download the matching language server version bin
 ===== Nightly
 
 We ship nightly releases for VS Code.
+You can opt in to these by switching to the pre-release version in the Code extension page or settings.
 To help us out with testing the newest code and follow the bleeding edge of our `master`, please use the following config:
-
-[source,json]
-----
-{ "rust-analyzer.updates.channel": "nightly" }
-----
-
-You will be prompted to install the `nightly` extension version.
-Just click `Download now` and from that moment you will get automatic updates every 24 hours.
-
-If you don't want to be asked for `Download now` every day when the new nightly version is released add the following to your `settings.json`:
-[source,json]
-----
-{ "rust-analyzer.updates.askBeforeDownload": false }
-----
-
-NOTE: Nightly extension should **only** be installed via the `Download now` action from VS Code.
 
 ==== Manual installation
 
-Alternatively, procure both `rust-analyzer.vsix` and your platform's matching `rust-analyzer-{platform}`, for example from the
+Alternatively, download a VSIX corresponding to your platform from the
 https://github.com/rust-analyzer/rust-analyzer/releases[releases] page.
 
 Install the extension with the `Extensions: Install from VSIX` command within VS Code, or from the command line via:
@@ -115,7 +100,8 @@ Install the extension with the `Extensions: Install from VSIX` command within VS
 $ code --install-extension /path/to/rust-analyzer.vsix
 ----
 
-Copy the `rust-analyzer-{platform}` binary anywhere, then add the path to your settings.json, for example:
+If you are running an unsupported platform, you can install `rust-analyzer-no-server.vsix` and compile or obtain a server binary.
+Copy the server anywhere, then add the path to your settings.json, for example:
 [source,json]
 ----
 { "rust-analyzer.server.path": "~/.local/bin/rust-analyzer-linux" }
@@ -123,7 +109,7 @@ Copy the `rust-analyzer-{platform}` binary anywhere, then add the path to your s
 
 ==== Building From Source
 
-Alternatively, both the server and the Code plugin can be installed from source:
+Both the server and the Code plugin can be installed from source:
 
 [source]
 ----
@@ -131,7 +117,7 @@ $ git clone https://github.com/rust-analyzer/rust-analyzer.git && cd rust-analyz
 $ cargo xtask install
 ----
 
-You'll need Cargo, nodejs and npm for this.
+You'll need Cargo, nodejs (matching a supported version of VS Code) and npm for this.
 
 Note that installing via `xtask install` does not work for VS Code Remote, instead you'll need to install the `.vsix` manually.
 
