@@ -149,6 +149,11 @@ pub trait CommandExt: Sealed {
     fn arg0<S>(&mut self, arg: S) -> &mut process::Command
     where
         S: AsRef<OsStr>;
+
+    /// Sets the process group ID of the child process. Translates to a `setpgid` call in the child
+    /// process.
+    #[unstable(feature = "process_set_process_group", issue = "93857")]
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -199,6 +204,11 @@ impl CommandExt for process::Command {
         S: AsRef<OsStr>,
     {
         self.as_inner_mut().set_arg_0(arg.as_ref());
+        self
+    }
+
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
+        self.as_inner_mut().pgroup(pgroup);
         self
     }
 }
