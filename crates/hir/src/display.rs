@@ -239,7 +239,7 @@ impl HirDisplay for TypeParam {
             return Ok(());
         }
 
-        let bounds = f.db.generic_predicates_for_param(self.id, None);
+        let bounds = f.db.generic_predicates_for_param(self.id.parent, self.id, None);
         let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
         let predicates: Vec<_> =
             bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();

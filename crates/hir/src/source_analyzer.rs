@@ -619,9 +619,15 @@ fn resolve_hir_path_(
             TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
         };
         match unresolved {
-            Some(unresolved) => res
-                .assoc_type_shorthand_candidates(db, |name, alias| {
-                    (name == unresolved.name).then(|| alias)
+            Some(unresolved) => resolver
+                .generic_def()
+                .and_then(|def| {
+                    hir_ty::associated_type_shorthand_candidates(
+                        db,
+                        def,
+                        res.in_type_ns()?,
+                        |name, _, id| (name == unresolved.name).then(|| id),
+                    )
                 })
                 .map(TypeAlias::from)
                 .map(Into::into)

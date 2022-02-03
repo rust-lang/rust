@@ -83,7 +83,7 @@ fn direct_super_trait_refs(db: &dyn HirDatabase, trait_ref: &TraitRef) -> Vec<Tr
         Some(p) => TypeParamId { parent: trait_ref.hir_trait_id().into(), local_id: p },
         None => return Vec::new(),
     };
-    db.generic_predicates_for_param(trait_self, None)
+    db.generic_predicates_for_param(trait_self.parent, trait_self, None)
         .iter()
         .filter_map(|pred| {
             pred.as_ref().filter_map(|pred| match pred.skip_binders() {

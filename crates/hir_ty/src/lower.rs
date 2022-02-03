@@ -530,49 +530,50 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     fn select_associated_type(&self, res: Option<TypeNs>, segment: PathSegment<'_>) -> Ty {
-        if let Some(res) = res {
-            let ty = named_associated_type_shorthand_candidates(
-                self.db,
-                res,
-                Some(segment.name.clone()),
-                move |name, t, associated_ty| {
-                    if name == segment.name {
-                        let substs = match self.type_param_mode {
-                            TypeParamLoweringMode::Placeholder => {
-                                // if we're lowering to placeholders, we have to put
-                                // them in now
-                                let generics = generics(
-                                    self.db.upcast(),
-                                    self.resolver.generic_def().expect(
-                                        "there should be generics if there's a generic param",
-                                    ),
-                                );
-                                let s = generics.type_params_subst(self.db);
-                                s.apply(t.substitution.clone(), Interner)
-                            }
-                            TypeParamLoweringMode::Variable => t.substitution.clone(),
-                        };
-                        // We need to shift in the bound vars, since
-                        // associated_type_shorthand_candidates does not do that
-                        let substs = substs.shifted_in_from(Interner, self.in_binders);
-                        // FIXME handle type parameters on the segment
-                        Some(
-                            TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                                associated_ty_id: to_assoc_type_id(associated_ty),
-                                substitution: substs,
-                            }))
-                            .intern(Interner),
-                        )
-                    } else {
-                        None
-                    }
-                },
-            );
+        let (def, res) = match (self.resolver.generic_def(), res) {
+            (Some(def), Some(res)) => (def, res),
+            _ => return TyKind::Error.intern(Interner),
+        };
+        let ty = named_associated_type_shorthand_candidates(
+            self.db,
+            def,
+            res,
+            Some(segment.name.clone()),
+            move |name, t, associated_ty| {
+                if name == segment.name {
+                    let substs = match self.type_param_mode {
+                        TypeParamLoweringMode::Placeholder => {
+                            // if we're lowering to placeholders, we have to put
+                            // them in now
+                            let generics = generics(
+                                self.db.upcast(),
+                                self.resolver
+                                    .generic_def()
+                                    .expect("there should be generics if there's a generic param"),
+                            );
+                            let s = generics.type_params_subst(self.db);
+                            s.apply(t.substitution.clone(), Interner)
+                        }
+                        TypeParamLoweringMode::Variable => t.substitution.clone(),
+                    };
+                    // We need to shift in the bound vars, since
+                    // associated_type_shorthand_candidates does not do that
+                    let substs = substs.shifted_in_from(Interner, self.in_binders);
+                    // FIXME handle type parameters on the segment
+                    Some(
+                        TyKind::Alias(AliasTy::Projection(ProjectionTy {
+                            associated_ty_id: to_assoc_type_id(associated_ty),
+                            substitution: substs,
+                        }))
+                        .intern(Interner),
+                    )
+                } else {
+                    None
+                }
+            },
+        );
 
-            ty.unwrap_or_else(|| TyKind::Error.intern(Interner))
-        } else {
-            TyKind::Error.intern(Interner)
-        }
+        ty.unwrap_or_else(|| TyKind::Error.intern(Interner))
     }
 
     fn lower_path_inner(
@@ -934,14 +935,18 @@ pub fn callable_item_sig(db: &dyn HirDatabase, def: CallableDefId) -> PolyFnSig 
 
 pub fn associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
+    def: GenericDefId,
     res: TypeNs,
     cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
 ) -> Option<R> {
-    named_associated_type_shorthand_candidates(db, res, None, cb)
+    named_associated_type_shorthand_candidates(db, def, res, None, cb)
 }
 
 fn named_associated_type_shorthand_candidates<R>(
     db: &dyn HirDatabase,
+    // If the type parameter is defined in an impl and we're in a method, there
+    // might be additional where clauses to consider
+    def: GenericDefId,
     res: TypeNs,
     assoc_name: Option<Name>,
     mut cb: impl FnMut(&Name, &TraitRef, TypeAliasId) -> Option<R>,
@@ -968,7 +973,7 @@ fn named_associated_type_shorthand_candidates<R>(
             db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
         ),
         TypeNs::GenericParam(param_id) => {
-            let predicates = db.generic_predicates_for_param(param_id, assoc_name);
+            let predicates = db.generic_predicates_for_param(def, param_id, assoc_name);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
                 // FIXME: how to correctly handle higher-ranked bounds here?
                 WhereClause::Implemented(tr) => search(
@@ -1030,13 +1035,14 @@ pub(crate) fn field_types_query(
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 pub(crate) fn generic_predicates_for_param_query(
     db: &dyn HirDatabase,
+    def: GenericDefId,
     param_id: TypeParamId,
     assoc_name: Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
-    let resolver = param_id.parent.resolver(db.upcast());
+    let resolver = def.resolver(db.upcast());
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(TypeParamLoweringMode::Variable);
-    let generics = generics(db.upcast(), param_id.parent);
+    let generics = generics(db.upcast(), def);
     let mut predicates: Vec<_> = resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -1098,6 +1104,7 @@ pub(crate) fn generic_predicates_for_param_query(
 pub(crate) fn generic_predicates_for_param_recover(
     _db: &dyn HirDatabase,
     _cycle: &[String],
+    _def: &GenericDefId,
     _param_id: &TypeParamId,
     _assoc_name: &Option<Name>,
 ) -> Arc<[Binders<QuantifiedWhereClause>]> {
