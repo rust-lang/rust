@@ -53,14 +53,6 @@ macro_rules! float_rounding_test {
             }
 
             test_helpers::test_lanes! {
-                fn from_int<const LANES: usize>() {
-                    test_helpers::test_unary_elementwise(
-                        &Vector::<LANES>::round_from_int,
-                        &|x| x as Scalar,
-                        &|_| true,
-                    )
-                }
-
                 fn to_int_unchecked<const LANES: usize>() {
                     // The maximum integer that can be represented by the equivalently sized float has
                     // all of the mantissa digits set to 1, pushed up to the MSB.

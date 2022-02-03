@@ -22,13 +22,6 @@ macro_rules! implement {
             pub unsafe fn to_int_unchecked(self) -> Simd<$int_type, LANES> {
                 unsafe { intrinsics::simd_cast(self) }
             }
-
-            /// Creates a floating-point vector from an integer vector.  Rounds values that are
-            /// not exactly representable.
-            #[inline]
-            pub fn round_from_int(value: Simd<$int_type, LANES>) -> Self {
-                unsafe { intrinsics::simd_cast(value) }
-            }
         }
     }
 }
