@@ -97,21 +97,32 @@ static inline bool is_use_directly_needed_in_reverse(
     return false;
   }
 
+  Intrinsic::ID ID = Intrinsic::not_intrinsic;
   if (auto II = dyn_cast<IntrinsicInst>(user)) {
-    if (II->getIntrinsicID() == Intrinsic::lifetime_start ||
-        II->getIntrinsicID() == Intrinsic::lifetime_end ||
-        II->getIntrinsicID() == Intrinsic::stacksave ||
-        II->getIntrinsicID() == Intrinsic::stackrestore) {
+    ID = II->getIntrinsicID();
+  } else if (auto CI = dyn_cast<CallInst>(user)) {
+    if (auto called = getFunctionFromCall(const_cast<CallInst *>(CI))) {
+      StringRef funcName;
+      if (called->hasFnAttribute("enzyme_math"))
+        funcName = called->getFnAttribute("enzyme_math").getValueAsString();
+      else
+        funcName = called->getName();
+      isMemFreeLibMFunction(funcName, &ID);
+    }
+  }
+
+  if (ID != Intrinsic::not_intrinsic) {
+    if (ID == Intrinsic::lifetime_start || ID == Intrinsic::lifetime_end ||
+        ID == Intrinsic::stacksave || ID == Intrinsic::stackrestore) {
       return false;
     }
-    if (II->getIntrinsicID() == Intrinsic::fma ||
-        II->getIntrinsicID() == Intrinsic::fmuladd) {
+    if (ID == Intrinsic::fma || ID == Intrinsic::fmuladd) {
       bool needed = false;
-      if (II->getArgOperand(0) == val &&
-          !gutils->isConstantValue(II->getArgOperand(1)))
+      if (user->getOperand(0) == val &&
+          !gutils->isConstantValue(user->getOperand(1)))
         needed = true;
-      if (II->getArgOperand(1) == val &&
-          !gutils->isConstantValue(II->getArgOperand(0)))
+      if (user->getOperand(1) == val &&
+          !gutils->isConstantValue(user->getOperand(0)))
         needed = true;
       return needed;
     }

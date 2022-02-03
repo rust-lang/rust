@@ -2805,6 +2805,18 @@ public:
       orig_ops[i] = II.getOperand(i);
     }
     handleAdjointForIntrinsic(II.getIntrinsicID(), II, orig_ops);
+    if (gutils->knownRecomputeHeuristic.find(&II) !=
+        gutils->knownRecomputeHeuristic.end()) {
+      if (!gutils->knownRecomputeHeuristic[&II]) {
+        CallInst *const newCall =
+            cast<CallInst>(gutils->getNewFromOriginal(&II));
+        IRBuilder<> BuilderZ(newCall);
+        BuilderZ.setFastMathFlags(getFast());
+
+        gutils->cacheForReverse(BuilderZ, newCall,
+                                getIndex(&II, CacheType::Self));
+      }
+    }
     eraseIfUnused(II);
   }
 
@@ -7859,6 +7871,14 @@ public:
         if (isMemFreeLibMFunction(funcName, &ID)) {
           if (Mode == DerivativeMode::ReverseModePrimal ||
               gutils->isConstantInstruction(orig)) {
+
+            if (gutils->knownRecomputeHeuristic.find(orig) !=
+                gutils->knownRecomputeHeuristic.end()) {
+              if (!gutils->knownRecomputeHeuristic[orig]) {
+                gutils->cacheForReverse(BuilderZ, newCall,
+                                        getIndex(orig, CacheType::Self));
+              }
+            }
             eraseIfUnused(*orig);
             return;
           }
@@ -7869,6 +7889,13 @@ public:
               orig_ops[i] = orig->getOperand(i);
             }
             handleAdjointForIntrinsic(ID, *orig, orig_ops);
+            if (gutils->knownRecomputeHeuristic.find(orig) !=
+                gutils->knownRecomputeHeuristic.end()) {
+              if (!gutils->knownRecomputeHeuristic[orig]) {
+                gutils->cacheForReverse(BuilderZ, newCall,
+                                        getIndex(orig, CacheType::Self));
+              }
+            }
             eraseIfUnused(*orig);
             return;
           }
