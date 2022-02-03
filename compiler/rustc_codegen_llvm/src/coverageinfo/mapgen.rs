@@ -39,7 +39,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-Z instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -274,7 +274,7 @@ fn save_function_record(
 /// (functions referenced by other "used" or public items). Any other functions considered unused,
 /// or "Unreachable", were still parsed and processed through the MIR stage, but were not
 /// codegenned. (Note that `-Clink-dead-code` can force some unused code to be codegenned, but
-/// that flag is known to cause other errors, when combined with `-Z instrument-coverage`; and
+/// that flag is known to cause other errors, when combined with `-C instrument-coverage`; and
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR

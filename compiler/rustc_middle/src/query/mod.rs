@@ -384,7 +384,7 @@ rustc_queries! {
     }
 
     /// Returns coverage summary info for a function, after executing the `InstrumentCoverage`
-    /// MIR pass (assuming the -Zinstrument-coverage option is enabled).
+    /// MIR pass (assuming the -Cinstrument-coverage option is enabled).
     query coverageinfo(key: ty::InstanceDef<'tcx>) -> mir::CoverageInfo {
         desc { |tcx| "retrieving coverage info from MIR for `{}`", tcx.def_path_str(key.def_id()) }
         storage(ArenaCacheSelector<'tcx>)

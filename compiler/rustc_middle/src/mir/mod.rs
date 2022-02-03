@@ -1577,7 +1577,7 @@ pub enum StatementKind<'tcx> {
     /// - `Bivariant` -- no effect
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
-    /// Marks the start of a "coverage region", injected with '-Zinstrument-coverage'. A
+    /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
     /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
     /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
     /// executable code, to increment a counter variable at runtime, each time the code region is
