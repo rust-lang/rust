@@ -126,6 +126,7 @@ impl Unit {
 "#,
         // `self` is in here twice, once as the module, once as the local
         expect![[r##"
+            me self.foo()   fn(self)
             kw unsafe
             kw fn
             kw const
@@ -172,7 +173,6 @@ impl Unit {
             un Union
             ev TupleV(…)    (u32)
             ct CONST
-            me self.foo()   fn(self)
         "##]],
     );
     check(

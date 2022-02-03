@@ -166,6 +166,10 @@ fn main() {
             kw true
             kw false
             kw return
+            sn Foo {…}              Foo { foo1: ${1:()}, foo2: ${2:()} }$0
+            fd ..Default::default()
+            fd foo1                 u32
+            fd foo2                 u32
             kw self
             kw super
             kw crate
@@ -177,10 +181,6 @@ fn main() {
             bt u32
             tt Sized
             tt Default
-            fd ..Default::default()
-            fd foo1                 u32
-            fd foo2                 u32
-            sn Foo {…}              Foo { foo1: ${1:()}, foo2: ${2:()} }$0
         "#]],
     );
     check(
