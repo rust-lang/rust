@@ -351,6 +351,10 @@ impl Step for Llvm {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 
+        if let Some(ref libtool) = builder.config.llvm_libtool {
+            cfg.define("CMAKE_LIBTOOL", libtool);
+        }
+
         configure_cmake(builder, target, &mut cfg, true);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM

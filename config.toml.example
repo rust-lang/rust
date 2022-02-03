@@ -157,6 +157,9 @@ changelog-seen = 2
 # Whether to build the clang compiler.
 #clang = false
 
+# The value specified here will be passed as `-DCMAKE_LIBTOOL` to CMake.
+#libtool = "/path/to/libtool"
+
 # =============================================================================
 # General build configuration options
 # =============================================================================

@@ -68,6 +68,8 @@ v("llvm-ldflags", "llvm.ldflags", "build LLVM with these extra linker flags")
 
 v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 
+v("llvm-libtool", "llvm.libtool", "build LLVM with specified libtool")
+
 # Optimization and debugging options. These may be overridden by the release
 # channel, etc.
 o("optimize", "rust.optimize", "build optimized rust code")

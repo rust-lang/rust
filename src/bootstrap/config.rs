@@ -104,6 +104,7 @@ pub struct Config {
     pub llvm_link_jobs: Option<u32>,
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
+    pub llvm_libtool: Option<String>,
     pub llvm_allow_old_toolchain: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
@@ -473,6 +474,7 @@ derive_merge! {
         ldflags: Option<String>,
         use_libcxx: Option<bool>,
         use_linker: Option<String>,
+        libtool: Option<String>,
         allow_old_toolchain: Option<bool>,
         polly: Option<bool>,
         clang: Option<bool>,
@@ -804,6 +806,7 @@ impl Config {
             config.llvm_ldflags = llvm.ldflags.clone();
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
+            config.llvm_libtool = llvm.libtool.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
             config.llvm_clang = llvm.clang.unwrap_or(false);
@@ -873,6 +876,7 @@ impl Config {
                 check_ci_llvm!(llvm.ldflags);
                 check_ci_llvm!(llvm.use_libcxx);
                 check_ci_llvm!(llvm.use_linker);
+                check_ci_llvm!(llvm.libtool);
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
                 check_ci_llvm!(llvm.clang);
