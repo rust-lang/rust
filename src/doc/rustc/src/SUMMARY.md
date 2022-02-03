@@ -26,6 +26,7 @@
     - [Custom Targets](targets/custom.md)
     - [Known Issues](targets/known-issues.md)
 - [Profile-guided Optimization](profile-guided-optimization.md)
+- [Instrumentation-based Code Coverage](instrument-coverage.md)
 - [Linker-plugin based LTO](linker-plugin-lto.md)
 - [Exploit Mitigations](exploit-mitigations.md)
 - [Contributing to `rustc`](contributing.md)
