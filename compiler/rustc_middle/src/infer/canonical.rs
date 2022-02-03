@@ -23,7 +23,7 @@
 
 use crate::infer::MemberConstraint;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, List, OpaqueTypeKey, Region, Ty, TyCtxt};
+use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
@@ -178,9 +178,12 @@ pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
-    /// List of opaque types for which we figured out a hidden type
-    /// during the evaluation of the query.
-    pub opaque_types: Vec<(OpaqueTypeKey<'tcx>, Ty<'tcx>)>,
+    /// List of opaque types which we tried to compare to another type.
+    /// Inside the query we don't know yet whether the opaque type actually
+    /// should get its hidden type inferred. So we bubble the opaque type
+    /// and the type it was compared against upwards and let the query caller
+    /// handle it.
+    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 

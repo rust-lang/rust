@@ -25,7 +25,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Const, OpaqueTypeKey, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
@@ -146,13 +146,13 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         })
     }
 
-    fn take_opaque_types_for_query_response(&self) -> Vec<(OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+    fn take_opaque_types_for_query_response(&self) -> Vec<(Ty<'tcx>, Ty<'tcx>)> {
         self.inner
             .borrow_mut()
             .opaque_type_storage
             .take_opaque_types()
             .into_iter()
-            .map(|(k, v)| (k, v.hidden_type.ty))
+            .map(|(k, v)| (self.tcx.mk_opaque(k.def_id, k.substs), v.hidden_type.ty))
             .collect()
     }
 
@@ -497,11 +497,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         let mut obligations = vec![];
 
         // Carry all newly resolved opaque types to the caller's scope
-        for &(key, ty) in &query_response.value.opaque_types {
-            let substs = substitute_value(self.tcx, &result_subst, key.substs);
-            let opaque = self.tcx.mk_opaque(key.def_id, substs);
-            let ty = substitute_value(self.tcx, &result_subst, ty);
-            obligations.extend(self.handle_opaque_type(opaque, ty, cause, param_env)?.obligations);
+        for &(a, b) in &query_response.value.opaque_types {
+            let a = substitute_value(self.tcx, &result_subst, a);
+            let b = substitute_value(self.tcx, &result_subst, b);
+            obligations.extend(self.handle_opaque_type(a, b, cause, param_env)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
