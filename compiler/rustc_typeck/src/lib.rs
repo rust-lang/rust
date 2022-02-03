@@ -122,7 +122,7 @@ use bounds::Bounds;
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     match (decl.c_variadic, abi) {
         // The function has the correct calling convention, or isn't a "C-variadic" function.
-        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl) => {}
+        (false, _) | (true, Abi::C { .. }) | (true, Abi::Cdecl { .. }) => {}
         // The function is a "C-variadic" function with an incorrect calling convention.
         (true, _) => {
             let mut err = struct_span_err!(
