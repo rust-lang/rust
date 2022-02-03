@@ -37,6 +37,7 @@ pub(super) fn generate<'mir, 'tcx>(
     flow_inits: &mut ResultsCursor<'mir, 'tcx, MaybeInitializedPlaces<'mir, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_table: &LocationTable,
+    use_polonius: bool,
 ) {
     debug!("liveness::generate");
 
@@ -46,7 +47,7 @@ pub(super) fn generate<'mir, 'tcx>(
         &typeck.borrowck_context.constraints.outlives_constraints,
     );
     let live_locals = compute_live_locals(typeck.tcx(), &free_regions, &body);
-    let facts_enabled = AllFacts::enabled(typeck.tcx());
+    let facts_enabled = use_polonius || AllFacts::enabled(typeck.tcx());
 
     let polonius_drop_used = if facts_enabled {
         let mut drop_used = Vec::new();
