@@ -3432,11 +3432,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           replacedReturns[orig] = si;
         }
 
-        if (dretAlloca && !gutils->isConstantValue(orig->getReturnValue())) {
-          rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
-                         dretAlloca);
-        }
-        if (key.retType == DIFFE_TYPE::OUT_DIFF) {
+        if (key.retType == DIFFE_TYPE::DUP_ARG ||
+            key.retType == DIFFE_TYPE::DUP_NONEED) {
+          if (dretAlloca) {
+            rb.CreateStore(gutils->invertPointerM(orig->getReturnValue(), rb),
+                           dretAlloca);
+          }
+        } else if (key.retType == DIFFE_TYPE::OUT_DIFF) {
           assert(orig->getReturnValue());
           assert(differetval);
           if (!gutils->isConstantValue(orig->getReturnValue())) {
@@ -3444,7 +3446,7 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
             gutils->setDiffe(orig->getReturnValue(), differetval, reverseB);
           }
         } else {
-          assert(retAlloca == nullptr);
+          assert(dretAlloca == nullptr);
         }
 
         rb.CreateBr(gutils->reverseBlocks[BB].front());
