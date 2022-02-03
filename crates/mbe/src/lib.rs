@@ -37,10 +37,20 @@ pub use crate::{
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ParseError {
-    UnexpectedToken(String),
-    Expected(String),
+    UnexpectedToken(Box<str>),
+    Expected(Box<str>),
     InvalidRepeat,
     RepetitionEmptyTokenTree,
+}
+
+impl ParseError {
+    fn expected(e: &str) -> ParseError {
+        ParseError::Expected(e.into())
+    }
+
+    fn unexpected(e: &str) -> ParseError {
+        ParseError::UnexpectedToken(e.into())
+    }
 }
 
 impl fmt::Display for ParseError {
@@ -58,11 +68,17 @@ impl fmt::Display for ParseError {
 pub enum ExpandError {
     NoMatchingRule,
     UnexpectedToken,
-    BindingError(String),
+    BindingError(Box<str>),
     ConversionError,
     // FIXME: no way mbe should know about proc macros.
     UnresolvedProcMacro,
-    Other(String),
+    Other(Box<str>),
+}
+
+impl ExpandError {
+    fn binding_error(e: &str) -> ExpandError {
+        ExpandError::BindingError(e.into())
+    }
 }
 
 impl fmt::Display for ExpandError {
@@ -107,28 +123,25 @@ impl Shift {
 
         // Find the max token id inside a subtree
         fn max_id(subtree: &tt::Subtree) -> Option<u32> {
-            subtree
-                .token_trees
-                .iter()
-                .filter_map(|tt| match tt {
-                    tt::TokenTree::Subtree(subtree) => {
-                        let tree_id = max_id(subtree);
-                        match subtree.delimiter {
-                            Some(it) if it.id != tt::TokenId::unspecified() => {
-                                Some(tree_id.map_or(it.id.0, |t| t.max(it.id.0)))
-                            }
-                            _ => tree_id,
+            let filter = |tt: &_| match tt {
+                tt::TokenTree::Subtree(subtree) => {
+                    let tree_id = max_id(subtree);
+                    match subtree.delimiter {
+                        Some(it) if it.id != tt::TokenId::unspecified() => {
+                            Some(tree_id.map_or(it.id.0, |t| t.max(it.id.0)))
                         }
+                        _ => tree_id,
                     }
-                    tt::TokenTree::Leaf(leaf) => {
-                        let &(tt::Leaf::Ident(tt::Ident { id, .. })
-                        | tt::Leaf::Punct(tt::Punct { id, .. })
-                        | tt::Leaf::Literal(tt::Literal { id, .. })) = leaf;
+                }
+                tt::TokenTree::Leaf(leaf) => {
+                    let &(tt::Leaf::Ident(tt::Ident { id, .. })
+                    | tt::Leaf::Punct(tt::Punct { id, .. })
+                    | tt::Leaf::Literal(tt::Literal { id, .. })) = leaf;
 
-                        (id != tt::TokenId::unspecified()).then(|| id.0)
-                    }
-                })
-                .max()
+                    (id != tt::TokenId::unspecified()).then(|| id.0)
+                }
+            };
+            subtree.token_trees.iter().filter_map(filter).max()
         }
     }
 
@@ -183,7 +196,7 @@ impl DeclarativeMacro {
             rules.push(rule);
             if let Err(()) = src.expect_char(';') {
                 if src.len() > 0 {
-                    return Err(ParseError::Expected("expected `;`".to_string()));
+                    return Err(ParseError::expected("expected `;`"));
                 }
                 break;
             }
@@ -208,9 +221,7 @@ impl DeclarativeMacro {
                 rules.push(rule);
                 if let Err(()) = src.expect_any_char(&[';', ',']) {
                     if src.len() > 0 {
-                        return Err(ParseError::Expected(
-                            "expected `;` or `,` to delimit rules".to_string(),
-                        ));
+                        return Err(ParseError::expected("expected `;` or `,` to delimit rules"));
                     }
                     break;
                 }
@@ -219,7 +230,7 @@ impl DeclarativeMacro {
             cov_mark::hit!(parse_macro_def_simple);
             let rule = Rule::parse(&mut src, false)?;
             if src.len() != 0 {
-                return Err(ParseError::Expected("remaining tokens in macro def".to_string()));
+                return Err(ParseError::expected("remaining tokens in macro def"));
             }
             rules.push(rule);
         }
@@ -256,16 +267,12 @@ impl DeclarativeMacro {
 
 impl Rule {
     fn parse(src: &mut TtIter, expect_arrow: bool) -> Result<Self, ParseError> {
-        let lhs = src
-            .expect_subtree()
-            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
+        let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         if expect_arrow {
-            src.expect_char('=').map_err(|()| ParseError::Expected("expected `=`".to_string()))?;
-            src.expect_char('>').map_err(|()| ParseError::Expected("expected `>`".to_string()))?;
+            src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
+            src.expect_char('>').map_err(|()| ParseError::expected("expected `>`"))?;
         }
-        let rhs = src
-            .expect_subtree()
-            .map_err(|()| ParseError::Expected("expected subtree".to_string()))?;
+        let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(lhs)?;
         let rhs = MetaTemplate::parse_template(rhs)?;
@@ -325,7 +332,7 @@ impl<T> ExpandResult<T> {
     where
         T: Default,
     {
-        Self::only_err(ExpandError::Other(err))
+        Self::only_err(ExpandError::Other(err.into()))
     }
 
     pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ExpandResult<U> {

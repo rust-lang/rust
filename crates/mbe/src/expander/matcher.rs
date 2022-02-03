@@ -88,15 +88,6 @@ impl Bindings {
     }
 }
 
-macro_rules! err {
-    () => {
-        ExpandError::BindingError(format!(""))
-    };
-    ($($tt:tt)*) => {
-        ExpandError::BindingError(format!($($tt)*))
-    };
-}
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct Match {
     pub(super) bindings: Bindings,
@@ -607,7 +598,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
                 src = it;
                 res.unmatched_tts += src.len();
             }
-            res.add_err(err!("leftover tokens"));
+            res.add_err(ExpandError::binding_error("leftover tokens"));
 
             if let Some(error_reover_item) = error_recover_item {
                 res.bindings = bindings_builder.build(&error_reover_item);
@@ -664,10 +655,9 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
 }
 
 fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
-    let rhs = match src.expect_leaf() {
-        Ok(l) => l,
-        Err(()) => return Err(err!("expected leaf: `{}`", lhs)),
-    };
+    let rhs = src
+        .expect_leaf()
+        .map_err(|()| ExpandError::BindingError(format!("expected leaf: `{lhs}`").into()))?;
     match (lhs, rhs) {
         (
             tt::Leaf::Punct(tt::Punct { char: lhs, .. }),
@@ -708,9 +698,13 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                 "ident" => input
                     .expect_ident()
                     .map(|ident| tt::Leaf::from(ident.clone()).into())
-                    .map_err(|()| err!("expected ident")),
-                "tt" => input.expect_tt().map_err(|()| err!()),
-                "lifetime" => input.expect_lifetime().map_err(|()| err!("expected lifetime")),
+                    .map_err(|()| ExpandError::binding_error("expected ident")),
+                "tt" => input
+                    .expect_tt()
+                    .map_err(|()| ExpandError::binding_error("expected token tree")),
+                "lifetime" => input
+                    .expect_lifetime()
+                    .map_err(|()| ExpandError::binding_error("expected lifetime")),
                 "literal" => {
                     let neg = input.eat_char('-');
                     input
@@ -725,7 +719,7 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
                                 }),
                             }
                         })
-                        .map_err(|()| err!())
+                        .map_err(|()| ExpandError::binding_error("expected literal"))
                 }
                 _ => Err(ExpandError::UnexpectedToken),
             };

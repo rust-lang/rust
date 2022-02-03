@@ -390,7 +390,7 @@ fn macro_def(db: &dyn AstDatabase, id: MacroDefId) -> Result<Arc<TokenExpander>,
         MacroDefKind::BuiltInEager(..) => {
             // FIXME: Return a random error here just to make the types align.
             // This obviously should do something real instead.
-            Err(mbe::ParseError::UnexpectedToken("unexpected eager macro".to_string()))
+            Err(mbe::ParseError::UnexpectedToken("unexpected eager macro".into()))
         }
         MacroDefKind::ProcMacro(expander, ..) => Ok(Arc::new(TokenExpander::ProcMacro(expander))),
     }

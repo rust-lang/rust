@@ -6,15 +6,6 @@ use tt::buffer::TokenBuffer;
 
 use crate::{to_parser_input::to_parser_input, ExpandError, ExpandResult};
 
-macro_rules! err {
-    () => {
-        ExpandError::BindingError(format!(""))
-    };
-    ($($tt:tt)*) => {
-        ExpandError::BindingError(format!($($tt)*))
-    };
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct TtIter<'a> {
     pub(crate) inner: std::slice::Iter<'a, tt::TokenTree>,
@@ -115,7 +106,7 @@ impl<'a> TtIter<'a> {
         }
 
         let err = if error || !cursor.is_root() {
-            Some(err!("expected {:?}", entry_point))
+            Some(ExpandError::BindingError(format!("expected {entry_point:?}").into()))
         } else {
             None
         };
