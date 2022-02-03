@@ -4,8 +4,9 @@ use super::*;
 
 /// Preorder traversal of a graph.
 ///
-/// Preorder traversal is when each node is visited before any of its
-/// successors
+/// Preorder traversal is when each node is visited after at least one of its predecessors. If you
+/// are familar with some basic graph theory, then this performs a depth first search and returns
+/// nodes in order of discovery time.
 ///
 /// ```text
 ///
@@ -82,8 +83,9 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
 /// Postorder traversal of a graph.
 ///
-/// Postorder traversal is when each node is visited after all of its
-/// successors, except when the successor is only reachable by a back-edge
+/// Postorder traversal is when each node is visited after all of its successors, except when the
+/// successor is only reachable by a back-edge. If you are familiar with some basic graph theory,
+/// then this performs a depth first search and returns nodes in order of completion time.
 ///
 ///
 /// ```text
