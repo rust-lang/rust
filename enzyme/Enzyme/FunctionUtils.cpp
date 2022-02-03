@@ -920,6 +920,7 @@ PreProcessCache::PreProcessCache() {
   FAM.registerPass([] { return OptimizationRemarkEmitterAnalysis(); });
   FAM.registerPass([] { return LazyValueAnalysis(); });
 #if LLVM_VERSION_MAJOR >= 8
+  MAM.registerPass([] { return PassInstrumentationAnalysis(); });
   FAM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
 

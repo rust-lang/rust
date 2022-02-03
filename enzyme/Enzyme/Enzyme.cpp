@@ -64,6 +64,7 @@
 
 #if LLVM_VERSION_MAJOR >= 13
 #include "llvm/Transforms/IPO/Attributor.h"
+#include "llvm/Transforms/IPO/OpenMPOpt.h"
 #endif
 
 #include "CApi.h"
@@ -80,6 +81,10 @@ llvm::cl::opt<bool>
 llvm::cl::opt<bool> EnzymeAttributor("enzyme-attributor", cl::init(false),
                                      cl::Hidden,
                                      cl::desc("Run attributor post Enzyme"));
+
+llvm::cl::opt<bool> EnzymeOMPOpt("enzyme-omp-opt", cl::init(true), cl::Hidden,
+                                 cl::desc("Whether to enable openmp opt"));
+
 #if LLVM_VERSION_MAJOR >= 14
 #define addAttribute addAttributeAtIndex
 #endif
@@ -1736,6 +1741,14 @@ public:
         I->eraseFromParent();
       }
     }
+
+#if LLVM_VERSION_MAJOR >= 13
+    if (PostOpt && EnzymeOMPOpt) {
+      OpenMPOptPass().run(M, Logic.PPC.MAM);
+      changed = true;
+    }
+#endif
+
     std::set<Function *> done;
     for (Function &F : M) {
       if (F.empty())
@@ -1793,6 +1806,13 @@ public:
       I->eraseFromParent();
       changed = true;
     }
+
+#if LLVM_VERSION_MAJOR >= 13
+    if (PostOpt && EnzymeOMPOpt) {
+      OpenMPOptPass().run(M, Logic.PPC.MAM);
+      changed = true;
+    }
+#endif
 
     Logic.clear();
     return changed;

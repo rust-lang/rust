@@ -843,6 +843,22 @@ void TypeAnalyzer::considerTBAA() {
           updateAnalysis(call->getOperand(1), update, call);
           continue;
         } else if (call->getCalledFunction() &&
+                   (call->getCalledFunction()->getIntrinsicID() ==
+                    Intrinsic::memset)) {
+          int64_t copySize = 1;
+          for (auto val : fntypeinfo.knownIntegralValues(call->getOperand(2),
+                                                         DT, intseen, SE)) {
+            copySize = max(copySize, val);
+          }
+          TypeTree update =
+              vdptr
+                  .ShiftIndices(DL, /*init offset*/ 0,
+                                /*max size*/ copySize, /*new offset*/ 0)
+                  .Only(-1);
+
+          updateAnalysis(call->getOperand(0), update, call);
+          continue;
+        } else if (call->getCalledFunction() &&
                    call->getCalledFunction()->getIntrinsicID() ==
                        Intrinsic::masked_gather) {
           auto VT = cast<VectorType>(call->getType());
