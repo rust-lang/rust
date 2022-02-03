@@ -67,7 +67,9 @@ message("found llvm definitions " ${LLVM_DEFINITIONS})
 message("found llvm version " ${LLVM_VERSION_MAJOR})
 
 option(ENZYME_FLANG "Build for non-version compliant FLANG" OFF)
-add_definitions(-DFLANG=1)
+if (ENZYME_FLANG)
+  add_definitions(-DFLANG=1)
+endif()
 
 # Offer the user the choice of overriding the installation directories
 set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")

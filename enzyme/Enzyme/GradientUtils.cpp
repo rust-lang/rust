@@ -3174,8 +3174,14 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     if (width > 1) {
       Value *agg = UndefValue::get(getShadowType(arg->getType()));
       for (unsigned i = 0; i < width; ++i) {
+#if LLVM_VERSION_MAJOR >= 8
+        Value *elem = BuilderM.CreateGEP(
+            cast<PointerType>(cs->getType())->getElementType(), cs,
+            {BuilderM.getInt32(0), BuilderM.getInt32(i)});
+#else
         Value *elem = BuilderM.CreateGEP(
             cs, {BuilderM.getInt32(0), BuilderM.getInt32(i)});
+#endif
         agg = BuilderM.CreateInsertValue(agg, elem, {i});
       }
       invertedPointers.insert(
