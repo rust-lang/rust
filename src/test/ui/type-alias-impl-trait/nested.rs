@@ -13,5 +13,5 @@ fn bar() -> Bar {
 
 fn main() {
     println!("{:?}", bar());
-    //~^ ERROR `impl Trait<Opaque(DefId(0:4 ~ nested[14f6]::Foo::{opaque#0}), [])>` doesn't implement `Debug`
+    //~^ ERROR `impl Trait<impl Debug>` doesn't implement `Debug`
 }

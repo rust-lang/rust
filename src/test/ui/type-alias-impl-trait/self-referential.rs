@@ -3,7 +3,7 @@
 type Bar<'a, 'b> = impl PartialEq<Bar<'b, 'a>> + std::fmt::Debug;
 
 fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
-    i //~ ERROR can't compare `&i32` with `impl PartialEq<Opaque
+    i //~ ERROR can't compare `&i32` with `impl PartialEq<Bar<'a, 'b>
 }
 
 fn main() {
