@@ -368,7 +368,7 @@ fn compile_error_expand(
             let text = it.text.as_str();
             if text.starts_with('"') && text.ends_with('"') {
                 // FIXME: does not handle raw strings
-                mbe::ExpandError::Other(text[1..text.len() - 1].to_string())
+                mbe::ExpandError::Other(text[1..text.len() - 1].into())
             } else {
                 mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into())
             }
@@ -451,12 +451,12 @@ fn relative_file(
 ) -> Result<FileId, mbe::ExpandError> {
     let call_site = call_id.as_file().original_file(db);
     let path = AnchoredPath { anchor: call_site, path: path_str };
-    let res = db
-        .resolve_path(path)
-        .ok_or_else(|| mbe::ExpandError::Other(format!("failed to load file `{}`", path_str)))?;
+    let res = db.resolve_path(path).ok_or_else(|| {
+        mbe::ExpandError::Other(format!("failed to load file `{path_str}`").into())
+    })?;
     // Prevent include itself
     if res == call_site && !allow_recursion {
-        Err(mbe::ExpandError::Other(format!("recursive inclusion of `{}`", path_str)))
+        Err(mbe::ExpandError::Other(format!("recursive inclusion of `{path_str}`").into()))
     } else {
         Ok(res)
     }

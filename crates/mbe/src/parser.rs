@@ -104,12 +104,6 @@ enum Mode {
     Template,
 }
 
-macro_rules! err {
-    ($($tt:tt)*) => {
-        ParseError::UnexpectedToken(($($tt)*).to_string())
-    };
-}
-
 fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Result<Op, ParseError> {
     let res = match first {
         tt::TokenTree::Leaf(leaf @ tt::Leaf::Punct(tt::Punct { char: '$', .. })) => {
@@ -142,7 +136,7 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
                         Op::Var { name, kind, id }
                     }
                     tt::Leaf::Punct(_) | tt::Leaf::Literal(_) => {
-                        return Err(ParseError::Expected("ident".to_string()))
+                        return Err(ParseError::expected("expected ident"))
                     }
                 },
             }
@@ -158,8 +152,10 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
 
 fn eat_fragment_kind(src: &mut TtIter<'_>, mode: Mode) -> Result<Option<SmolStr>, ParseError> {
     if let Mode::Pattern = mode {
-        src.expect_char(':').map_err(|()| err!("missing fragment specifier"))?;
-        let ident = src.expect_ident().map_err(|()| err!("missing fragment specifier"))?;
+        src.expect_char(':').map_err(|()| ParseError::unexpected("missing fragment specifier"))?;
+        let ident = src
+            .expect_ident()
+            .map_err(|()| ParseError::unexpected("missing fragment specifier"))?;
         return Ok(Some(ident.text.clone()));
     };
     Ok(None)

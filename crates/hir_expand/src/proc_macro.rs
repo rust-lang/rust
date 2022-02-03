@@ -51,12 +51,12 @@ impl ProcMacroExpander {
                         {
                             ExpandResult {
                                 value: tt.clone(),
-                                err: Some(mbe::ExpandError::Other(text)),
+                                err: Some(mbe::ExpandError::Other(text.into())),
                             }
                         }
                         ProcMacroExpansionError::System(text)
                         | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::only_err(mbe::ExpandError::Other(text))
+                            ExpandResult::only_err(mbe::ExpandError::Other(text.into()))
                         }
                     },
                 }
