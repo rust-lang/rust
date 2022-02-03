@@ -151,27 +151,27 @@ pub fn completions(
     }
 
     let mut acc = Completions::default();
-    completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::attribute::complete_attribute(&mut acc, &ctx);
-    completions::use_::complete_use_tree(&mut acc, &ctx);
-    completions::vis::complete_vis(&mut acc, &ctx);
-    completions::fn_param::complete_fn_param(&mut acc, &ctx);
-    completions::keyword::complete_expr_keyword(&mut acc, &ctx);
-    completions::snippet::complete_expr_snippet(&mut acc, &ctx);
-    completions::snippet::complete_item_snippet(&mut acc, &ctx);
-    completions::qualified_path::complete_qualified_path(&mut acc, &ctx);
-    completions::unqualified_path::complete_unqualified_path(&mut acc, &ctx);
+    completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::dot::complete_dot(&mut acc, &ctx);
-    completions::record::complete_record(&mut acc, &ctx);
-    completions::record::complete_record_literal(&mut acc, &ctx);
+    completions::flyimport::import_on_the_fly(&mut acc, &ctx);
+    completions::fn_param::complete_fn_param(&mut acc, &ctx);
+    completions::format_string::format_string(&mut acc, &ctx);
+    completions::keyword::complete_expr_keyword(&mut acc, &ctx);
+    completions::lifetime::complete_label(&mut acc, &ctx);
+    completions::lifetime::complete_lifetime(&mut acc, &ctx);
+    completions::mod_::complete_mod(&mut acc, &ctx);
     completions::pattern::complete_pattern(&mut acc, &ctx);
     completions::postfix::complete_postfix(&mut acc, &ctx);
+    completions::qualified_path::complete_qualified_path(&mut acc, &ctx);
+    completions::record::complete_record_literal(&mut acc, &ctx);
+    completions::record::complete_record(&mut acc, &ctx);
+    completions::snippet::complete_expr_snippet(&mut acc, &ctx);
+    completions::snippet::complete_item_snippet(&mut acc, &ctx);
     completions::trait_impl::complete_trait_impl(&mut acc, &ctx);
-    completions::mod_::complete_mod(&mut acc, &ctx);
-    completions::flyimport::import_on_the_fly(&mut acc, &ctx);
-    completions::lifetime::complete_lifetime(&mut acc, &ctx);
-    completions::lifetime::complete_label(&mut acc, &ctx);
-    completions::format_string::format_string(&mut acc, &ctx);
+    completions::unqualified_path::complete_unqualified_path(&mut acc, &ctx);
+    completions::use_::complete_use_tree(&mut acc, &ctx);
+    completions::vis::complete_vis(&mut acc, &ctx);
 
     Some(acc)
 }

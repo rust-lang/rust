@@ -684,12 +684,12 @@ struct Foo { field: i32 }
 
 impl Foo { fn foo(&self) { $0 } }"#,
             expect![[r#"
+                fd self.field i32
+                me self.foo() fn(&self)
                 lc self       &Foo
                 sp Self
                 st Foo
                 bt u32
-                fd self.field i32
-                me self.foo() fn(&self)
             "#]],
         );
         check(
@@ -698,12 +698,12 @@ struct Foo(i32);
 
 impl Foo { fn foo(&mut self) { $0 } }"#,
             expect![[r#"
+                fd self.0     i32
+                me self.foo() fn(&mut self)
                 lc self       &mut Foo
                 sp Self
                 st Foo
                 bt u32
-                fd self.0     i32
-                me self.foo() fn(&mut self)
             "#]],
         );
     }
