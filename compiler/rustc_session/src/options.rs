@@ -109,17 +109,16 @@ impl Options {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
-            != InstrumentCoverage::Off
+        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off) != InstrumentCoverage::Off
     }
 
     pub fn instrument_coverage_except_unused_generics(&self) -> bool {
-        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
             == InstrumentCoverage::ExceptUnusedGenerics
     }
 
     pub fn instrument_coverage_except_unused_functions(&self) -> bool {
-        self.debugging_opts.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
+        self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
             == InstrumentCoverage::ExceptUnusedFunctions
     }
 }
@@ -1031,6 +1030,14 @@ options! {
         "enable incremental compilation"),
     inline_threshold: Option<u32> = (None, parse_opt_number, [TRACKED],
         "set the threshold for inlining a function"),
+    instrument_coverage: Option<InstrumentCoverage> = (None, parse_instrument_coverage, [TRACKED],
+        "instrument the generated code to support LLVM source-based code coverage \
+        reports (note, the compiler build config must include `profiler = true`); \
+        implies `-C symbol-mangling-version=v0`. Optional values are:
+        `=all` (implicit value)
+        `=except-unused-generics`
+        `=except-unused-functions`
+        `=off` (default)"),
     link_arg: (/* redirected to link_args */) = ((), parse_string_push, [UNTRACKED],
         "a single extra argument to append to the linker invocation (can be used several times)"),
     link_args: Vec<String> = (Vec::new(), parse_list, [UNTRACKED],

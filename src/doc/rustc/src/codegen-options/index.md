@@ -177,6 +177,15 @@ The default depends on the [opt-level](#opt-level):
 | s         | 75 |
 | z         | 25 |
 
+## instrument-coverage
+
+This option enables instrumentation-based code coverage support. See the
+chapter on [instrumentation-based code coverage] for more information.
+
+Note that while the `-C instrument-coverage` option is stable, the profile data
+format produced by the resulting instrumentation may change, and may not work
+with coverage tools other than those built and shipped with the compiler.
+
 ## link-arg
 
 This flag lets you append a single extra argument to the linker invocation.
@@ -597,5 +606,6 @@ effective only for x86 targets.
 
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize
+[instrumentation-based code coverage]: ../instrument-coverage.md
 [profile-guided optimization]: ../profile-guided-optimization.md
 [option-g-debug]: ../command-line-arguments.md#option-g-debug

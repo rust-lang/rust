@@ -127,16 +127,16 @@ pub enum MirSpanview {
     Block,
 }
 
-/// The different settings that the `-Z instrument-coverage` flag can have.
+/// The different settings that the `-C instrument-coverage` flag can have.
 ///
-/// Coverage instrumentation now supports combining `-Z instrument-coverage`
+/// Coverage instrumentation now supports combining `-C instrument-coverage`
 /// with compiler and linker optimization (enabled with `-O` or `-C opt-level=1`
 /// and higher). Nevertheless, there are many variables, depending on options
 /// selected, code structure, and enabled attributes. If errors are encountered,
 /// either while compiling or when generating `llvm-cov show` reports, consider
 /// lowering the optimization level, including or excluding `-C link-dead-code`,
-/// or using `-Z instrument-coverage=except-unused-functions` or `-Z
-/// instrument-coverage=except-unused-generics`.
+/// or using `-Zunstable-options -C instrument-coverage=except-unused-functions`
+/// or `-Zunstable-options -C instrument-coverage=except-unused-generics`.
 ///
 /// Note that `ExceptUnusedFunctions` means: When `mapgen.rs` generates the
 /// coverage map, it will not attempt to generate synthetic functions for unused
@@ -148,13 +148,13 @@ pub enum MirSpanview {
 /// unless the function has type parameters.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum InstrumentCoverage {
-    /// Default `-Z instrument-coverage` or `-Z instrument-coverage=statement`
+    /// Default `-C instrument-coverage` or `-C instrument-coverage=statement`
     All,
-    /// `-Z instrument-coverage=except-unused-generics`
+    /// `-Zunstable-options -C instrument-coverage=except-unused-generics`
     ExceptUnusedGenerics,
-    /// `-Z instrument-coverage=except-unused-functions`
+    /// `-Zunstable-options -C instrument-coverage=except-unused-functions`
     ExceptUnusedFunctions,
-    /// `-Z instrument-coverage=off` (or `no`, etc.)
+    /// `-C instrument-coverage=off` (or `no`, etc.)
     Off,
 }
 
@@ -2195,18 +2195,44 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         _ => {}
     }
 
-    if debugging_opts.instrument_coverage.is_some()
-        && debugging_opts.instrument_coverage != Some(InstrumentCoverage::Off)
-    {
+    // Handle both `-Z instrument-coverage` and `-C instrument-coverage`; the latter takes
+    // precedence.
+    match (cg.instrument_coverage, debugging_opts.instrument_coverage) {
+        (Some(ic_c), Some(ic_z)) if ic_c != ic_z => {
+            early_error(
+                error_format,
+                "incompatible values passed for `-C instrument-coverage` \
+                and `-Z instrument-coverage`",
+            );
+        }
+        (Some(InstrumentCoverage::Off | InstrumentCoverage::All), _) => {}
+        (Some(_), _) if !debugging_opts.unstable_options => {
+            early_error(
+                error_format,
+                "`-C instrument-coverage=except-*` requires `-Z unstable-options`",
+            );
+        }
+        (None, None) => {}
+        (None, ic) => {
+            early_warn(
+                error_format,
+                "`-Z instrument-coverage` is deprecated; use `-C instrument-coverage`",
+            );
+            cg.instrument_coverage = ic;
+        }
+        _ => {}
+    }
+
+    if cg.instrument_coverage.is_some() && cg.instrument_coverage != Some(InstrumentCoverage::Off) {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             early_error(
                 error_format,
-                "option `-Z instrument-coverage` is not compatible with either `-C profile-use` \
+                "option `-C instrument-coverage` is not compatible with either `-C profile-use` \
                 or `-C profile-generate`",
             );
         }
 
-        // `-Z instrument-coverage` implies `-C symbol-mangling-version=v0` - to ensure consistent
+        // `-C instrument-coverage` implies `-C symbol-mangling-version=v0` - to ensure consistent
         // and reversible name mangling. Note, LLVM coverage tools can analyze coverage over
         // multiple runs, including some changes to source code; so mangled names must be consistent
         // across compilations.
@@ -2215,7 +2241,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(SymbolManglingVersion::Legacy) => {
                 early_warn(
                     error_format,
-                    "-Z instrument-coverage requires symbol mangling version `v0`, \
+                    "-C instrument-coverage requires symbol mangling version `v0`, \
                     but `-C symbol-mangling-version=legacy` was specified",
                 );
             }
