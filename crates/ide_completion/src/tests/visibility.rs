@@ -57,6 +57,21 @@ mod bar {}
         r#"
 mod qux {
     mod foo {
+        pub(in crate::$0)
+    }
+    mod baz {}
+}
+
+mod bar {}
+"#,
+        expect![[r#"
+            md qux
+        "#]],
+    );
+    check(
+        r#"
+mod qux {
+    mod foo {
         pub(in crate::qux::$0)
     }
     mod baz {}
