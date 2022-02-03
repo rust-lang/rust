@@ -787,14 +787,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
             types.back()) /
             8);
-    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-    if ((bsize & (bsize - 1)) == 0) {
+    unsigned align =
+        getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
-      alloc->setAlignment(Align(bsize));
+    alloc->setAlignment(Align(align));
 #else
-      alloc->setAlignment(bsize);
+    alloc->setAlignment(align);
 #endif
-    }
   }
   if (EnzymeZeroCache && sublimits.size() == 0)
     scopeInstructions[alloc].push_back(
@@ -816,6 +815,9 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         Type::getInt64Ty(T->getContext()),
         newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType) /
             8);
+
+    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+    unsigned alignSize = getCacheAlignment(bsize);
 
     // Allocate and store the required memory
     if (allocateInternal) {
@@ -991,14 +993,11 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
       // Regardless of how allocated (dynamic vs static), mark it
       // as having the requisite alignment
-      unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-      if ((bsize & (bsize - 1)) == 0) {
 #if LLVM_VERSION_MAJOR >= 10
-        storealloc->setAlignment(Align(bsize));
+      storealloc->setAlignment(Align(alignSize));
 #else
-        storealloc->setAlignment(bsize);
+      storealloc->setAlignment(alignSize);
 #endif
-      }
       scopeInstructions[alloc].push_back(storealloc);
     }
 
@@ -1026,11 +1025,17 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 #if LLVM_VERSION_MAJOR > 7
       storeInto = v.CreateLoad(
           cast<PointerType>(storeInto->getType())->getElementType(), storeInto);
+#if LLVM_VERSION_MAJOR >= 10
+      cast<LoadInst>(storeInto)->setAlignment(Align(alignSize));
+#else
+      cast<LoadInst>(storeInto)->setAlignment(alignSize);
+#endif
       storeInto =
           v.CreateGEP(cast<PointerType>(storeInto->getType())->getElementType(),
                       storeInto, idx);
 #else
       storeInto = v.CreateLoad(storeInto);
+      cast<LoadInst>(storeInto)->setAlignment(alignSize);
       storeInto = v.CreateGEP(storeInto, idx);
 #endif
       cast<GetElementPtrInst>(storeInto)->setIsInBounds(true);
@@ -1449,14 +1454,12 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
                                ->getDataLayout()
                                .getTypeAllocSizeInBits(val->getType()) /
                            8);
-  unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-  if ((bsize & (bsize - 1)) == 0) {
+  unsigned align = getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
-    storeinst->setAlignment(Align(bsize));
+  storeinst->setAlignment(Align(align));
 #else
-    storeinst->setAlignment(bsize);
+  storeinst->setAlignment(align);
 #endif
-  }
   scopeInstructions[cache].push_back(storeinst);
 }
 
@@ -1544,14 +1547,13 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         MDNode::get(
             cache->getContext(),
             ArrayRef<Metadata *>(ConstantAsMetadata::get(byteSizeOfType))));
-    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-    if ((bsize & (bsize - 1)) == 0) {
+    unsigned align =
+        getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
-      cast<LoadInst>(next)->setAlignment(Align(bsize));
+    cast<LoadInst>(next)->setAlignment(Align(align));
 #else
-      cast<LoadInst>(next)->setAlignment(bsize);
+    cast<LoadInst>(next)->setAlignment(align);
 #endif
-    }
 
     const auto &containedloops = sublimits[i].second;
 
@@ -1607,14 +1609,12 @@ llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
       newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(
           result->getType()) /
           8);
-  unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-  if ((bsize & (bsize - 1)) == 0) {
+  unsigned align = getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
-    result->setAlignment(Align(bsize));
+  result->setAlignment(Align(align));
 #else
-    result->setAlignment(bsize);
+  result->setAlignment(align);
 #endif
-  }
 
   return result;
 }

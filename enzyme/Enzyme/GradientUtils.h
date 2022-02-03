@@ -1990,14 +1990,13 @@ public:
             forfree->getContext(),
             ArrayRef<Metadata *>(ConstantAsMetadata::get(byteSizeOfType))));
     forfree->setName("forfree");
-    unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-    if ((bsize & (bsize - 1)) == 0) {
+    unsigned align =
+        getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
 #if LLVM_VERSION_MAJOR >= 10
-      forfree->setAlignment(Align(bsize));
+    forfree->setAlignment(Align(align));
 #else
-      forfree->setAlignment(bsize);
+    forfree->setAlignment(align);
 #endif
-    }
     CallInst *ci = cast<CallInst>(CallInst::CreateFree(
         tbuild.CreatePointerCast(forfree,
                                  Type::getInt8PtrTy(newFunc->getContext())),

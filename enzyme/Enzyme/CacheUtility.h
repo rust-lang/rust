@@ -195,6 +195,16 @@ public:
     llvm::errs() << "end scope\n";
   }
 
+  unsigned getCacheAlignment(unsigned bsize) const {
+    if ((bsize & (bsize - 1)) == 0) {
+      if (bsize > 16)
+        return 16;
+      else
+        return bsize;
+    } else
+      return 1;
+  }
+
   /// Erase this instruction both from LLVM modules and any local
   /// data-structures
   virtual void erase(llvm::Instruction *I);
