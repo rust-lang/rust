@@ -127,7 +127,8 @@ public:
     }
     type_args.Return = dt.Only(-1);
 
-    TypeAnalysis TA(TLI);
+    PreProcessCache PPC;
+    TypeAnalysis TA(PPC.FAM);
     TypeResults TR = TA.analyzeFunction(type_args);
 
     llvm::SmallPtrSet<llvm::Value *, 4> ConstantValues;
@@ -142,7 +143,6 @@ public:
       }
     }
 
-    PreProcessCache PPC;
     DIFFE_TYPE ActiveReturns = F.getReturnType()->isFPOrFPVectorTy()
                                    ? DIFFE_TYPE::OUT_DIFF
                                    : DIFFE_TYPE::CONSTANT;

@@ -487,7 +487,8 @@ public:
   }
 
   void computeGuaranteedFrees(
-      const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+      const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
+      TypeResults &TR) {
     for (auto &BB : *oldFunc) {
       if (oldUnreachable.count(&BB))
         continue;

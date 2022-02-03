@@ -248,9 +248,8 @@ public:
   ///  optimization of the function after synthesis
   const AugmentedReturn &CreateAugmentedPrimal(
       llvm::Function *todiff, DIFFE_TYPE retType,
-      const std::vector<DIFFE_TYPE> &constant_args,
-      llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA, bool returnUsed,
-      const FnTypeInfo &typeInfo,
+      const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
+      bool returnUsed, const FnTypeInfo &typeInfo,
       const std::map<llvm::Argument *, bool> _uncacheable_args,
       bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
 
@@ -279,7 +278,6 @@ public:
   ///  updates to memory in an atomic way \p PostOpt is whether to perform basic
   ///  optimization of the function after synthesis
   llvm::Function *CreatePrimalAndGradient(const ReverseCacheKey &&key,
-                                          llvm::TargetLibraryInfo &TLI,
                                           TypeAnalysis &TA,
                                           const AugmentedReturn *augmented,
                                           bool PostOpt = false,
@@ -288,9 +286,9 @@ public:
   llvm::Function *
   CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,
                     const std::vector<DIFFE_TYPE> &constant_args,
-                    llvm::TargetLibraryInfo &TLI, TypeAnalysis &TA,
-                    bool returnValue, DerivativeMode mode, unsigned width,
-                    llvm::Type *additionalArg, const FnTypeInfo &typeInfo,
+                    TypeAnalysis &TA, bool returnValue, DerivativeMode mode,
+                    unsigned width, llvm::Type *additionalArg,
+                    const FnTypeInfo &typeInfo,
                     const std::map<llvm::Argument *, bool> _uncacheable_args,
                     bool PostOpt = false, bool omp = false);
 

@@ -2777,7 +2777,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
   switch (mode) {
   case DerivativeMode::ForwardMode: {
     Constant *newf =
-        Logic.CreateForwardDiff(fn, retType, types, TLI, TA, false, mode, width,
+        Logic.CreateForwardDiff(fn, retType, types, TA, false, mode, width,
                                 nullptr, type_args, uncacheable_args);
 
     if (!newf)
@@ -2806,7 +2806,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
     // TODO re atomic add consider forcing it to be atomic always as fallback if
     // used in a parallel context
     auto &augdata = Logic.CreateAugmentedPrimal(
-        fn, retType, /*constant_args*/ types, TLI, TA,
+        fn, retType, /*constant_args*/ types, TA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
         type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
@@ -2825,7 +2825,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
                           .additionalType =
                               Type::getInt8PtrTy(fn->getContext()),
                           .typeInfo = type_args},
-        TLI, TA,
+        TA,
         /*map*/ &augdata);
     if (!newf)
       newf = UndefValue::get(fn->getType());

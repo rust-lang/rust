@@ -800,7 +800,7 @@ public:
           std::pair<Argument *, std::set<int64_t>>(&a, {}));
     }
 
-    TypeAnalysis TA(TLI);
+    TypeAnalysis TA(Logic.PPC.FAM);
     type_args = TA.analyzeFunction(type_args).getAnalyzedTypeInfo();
 
     // differentiate fn
@@ -811,7 +811,7 @@ public:
     case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode:
       newFunc = Logic.CreateForwardDiff(
-          cast<Function>(fn), retType, constants, TLI, TA,
+          cast<Function>(fn), retType, constants, TA,
           /*should return*/ false, mode, width,
           /*addedType*/ nullptr, type_args, volatile_args, PostOpt);
       break;
@@ -830,7 +830,7 @@ public:
                             .AtomicAdd = AtomicAdd,
                             .additionalType = nullptr,
                             .typeInfo = type_args},
-          TLI, TA, /*augmented*/ nullptr, PostOpt);
+          TA, /*augmented*/ nullptr, PostOpt);
       break;
     case DerivativeMode::ReverseModePrimal:
     case DerivativeMode::ReverseModeGradient: {
@@ -838,7 +838,7 @@ public:
       bool returnUsed = !cast<Function>(fn)->getReturnType()->isVoidTy() &&
                         !cast<Function>(fn)->getReturnType()->isEmptyTy();
       aug = &Logic.CreateAugmentedPrimal(
-          cast<Function>(fn), retType, constants, TLI, TA,
+          cast<Function>(fn), retType, constants, TA,
           /*returnUsed*/ returnUsed, type_args, volatile_args,
           forceAnonymousTape, /*atomicAdd*/ AtomicAdd, /*PostOpt*/ PostOpt);
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
@@ -889,7 +889,7 @@ public:
                               .AtomicAdd = AtomicAdd,
                               .additionalType = tapeType,
                               .typeInfo = type_args},
-            TLI, TA, aug, PostOpt);
+            TA, aug, PostOpt);
     }
     }
 
@@ -1596,7 +1596,7 @@ public:
                     *CI->getArgOperand(0));
         return false;
       }
-      TypeAnalysis TA(TLI);
+      TypeAnalysis TA(Logic.PPC.FAM);
 
       auto Arch =
           llvm::Triple(

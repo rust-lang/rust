@@ -176,12 +176,11 @@ void ClearEnzymeLogic(EnzymeLogicRef Ref) { eunwrap(Ref).clear(); }
 
 void FreeEnzymeLogic(EnzymeLogicRef Ref) { delete (EnzymeLogic *)Ref; }
 
-EnzymeTypeAnalysisRef CreateTypeAnalysis(char *TripleStr,
+EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
                                          char **customRuleNames,
                                          CustomRuleType *customRules,
                                          size_t numRules) {
-  TypeAnalysis *TA = new TypeAnalysis(*(
-      new TargetLibraryInfo(*(new TargetLibraryInfoImpl(Triple(TripleStr))))));
+  TypeAnalysis *TA = new TypeAnalysis(((EnzymeLogic *)Log)->PPC.FAM);
   for (size_t i = 0; i < numRules; i++) {
     CustomRuleType rule = customRules[i];
     TA->CustomRules[customRuleNames[i]] =
@@ -219,8 +218,6 @@ void ClearTypeAnalysis(EnzymeTypeAnalysisRef TAR) { eunwrap(TAR).clear(); }
 
 void FreeTypeAnalysis(EnzymeTypeAnalysisRef TAR) {
   TypeAnalysis *TA = (TypeAnalysis *)TAR;
-  delete &TA->TLI.Impl;
-  delete &TA->TLI;
   delete TA;
 }
 
@@ -396,7 +393,7 @@ LLVMValueRef EnzymeCreateForwardDiff(
   }
   return wrap(eunwrap(Logic).CreateForwardDiff(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
-      eunwrap(TA).TLI, eunwrap(TA), returnValue, (DerivativeMode)mode, width,
+      eunwrap(TA), returnValue, (DerivativeMode)mode, width,
       unwrap(additionalArg), eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
       uncacheable_args, PostOpt));
 }
@@ -433,7 +430,7 @@ LLVMValueRef EnzymeCreatePrimalAndGradient(
           .additionalType = unwrap(additionalArg),
           .typeInfo = eunwrap(typeInfo, cast<Function>(unwrap(todiff))),
       },
-      eunwrap(TA).TLI, eunwrap(TA), eunwrap(augmented), PostOpt));
+      eunwrap(TA), eunwrap(augmented), PostOpt));
 }
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef Logic, LLVMValueRef todiff, CDIFFE_TYPE retType,
@@ -454,7 +451,7 @@ EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
   }
   return ewrap(eunwrap(Logic).CreateAugmentedPrimal(
       cast<Function>(unwrap(todiff)), (DIFFE_TYPE)retType, nconstant_args,
-      eunwrap(TA).TLI, eunwrap(TA), returnUsed,
+      eunwrap(TA), returnUsed,
       eunwrap(typeInfo, cast<Function>(unwrap(todiff))), uncacheable_args,
       forceAnonymousTape, AtomicAdd, PostOpt));
 }

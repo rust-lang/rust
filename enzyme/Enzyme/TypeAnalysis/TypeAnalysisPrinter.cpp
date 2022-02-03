@@ -25,6 +25,9 @@
 //===----------------------------------------------------------------------===//
 #include <llvm/Config/llvm-config.h>
 
+#include "SCEV/ScalarEvolution.h"
+#include "SCEV/ScalarEvolutionExpander.h"
+
 #include "llvm/ADT/SmallVector.h"
 
 #include "llvm/IR/BasicBlock.h"
@@ -46,6 +49,7 @@
 
 #include "llvm/Support/CommandLine.h"
 
+#include "../FunctionUtils.h"
 #include "../Utils.h"
 #include "TypeAnalysis.h"
 
@@ -74,12 +78,6 @@ public:
   bool runOnFunction(Function &F) override {
     if (F.getName() != FunctionToAnalyze)
       return /*changed*/ false;
-
-#if LLVM_VERSION_MAJOR >= 10
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
-#else
-    auto &TLI = getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
-#endif
 
     FnTypeInfo type_args(&F);
     for (auto &a : type_args.Function->args()) {
@@ -119,8 +117,8 @@ public:
       dt = ConcreteType(BaseType::Integer);
     }
     type_args.Return = dt.Only(-1);
-
-    TypeAnalysis TA(TLI);
+    PreProcessCache PPC;
+    TypeAnalysis TA(PPC.FAM);
     TA.analyzeFunction(type_args);
     for (Function &f : *F.getParent()) {
 

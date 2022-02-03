@@ -1212,7 +1212,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
         continue;
       auto IVal = dyn_cast<Instruction>(Val);
       if (IVal && IVal->getParent() != &BB &&
-          TR.analyzer.DT->dominates(&BB, IVal->getParent())) {
+          TR.analyzer.DT.dominates(&BB, IVal->getParent())) {
         continue;
       }
       for (Instruction &I : BB) {

@@ -159,9 +159,12 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                            uint8_t direction)
     : notForAnalysis(getGuaranteedUnreachable(fn.Function)), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(false), DT(std::make_shared<DominatorTree>(*fn.Function)),
-      PDT(std::make_shared<PostDominatorTree>(*fn.Function)),
-      LI(std::make_shared<LoopInfo>(*DT)) {
+      PHIRecur(false),
+      TLI(TA.FAM.getResult<TargetLibraryAnalysis>(*fn.Function)),
+      DT(TA.FAM.getResult<DominatorTreeAnalysis>(*fn.Function)),
+      PDT(TA.FAM.getResult<PostDominatorTreeAnalysis>(*fn.Function)),
+      LI(TA.FAM.getResult<LoopAnalysis>(*fn.Function)),
+      SE(TA.FAM.getResult<ScalarEvolutionAnalysis>(*fn.Function)) {
 
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
@@ -188,12 +191,11 @@ TypeAnalyzer::TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
 TypeAnalyzer::TypeAnalyzer(
     const FnTypeInfo &fn, TypeAnalysis &TA,
     const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-    std::shared_ptr<llvm::DominatorTree> DT,
-    std::shared_ptr<llvm::PostDominatorTree> PDT,
-    std::shared_ptr<llvm::LoopInfo> LI, uint8_t direction, bool PHIRecur)
+    const TypeAnalyzer &Prev, uint8_t direction, bool PHIRecur)
     : notForAnalysis(notForAnalysis.begin(), notForAnalysis.end()), intseen(),
       fntypeinfo(fn), interprocedural(TA), direction(direction), Invalid(false),
-      PHIRecur(PHIRecur), DT(DT), PDT(PDT), LI(LI) {
+      PHIRecur(PHIRecur), TLI(Prev.TLI), DT(Prev.DT), PDT(Prev.PDT),
+      LI(Prev.LI), SE(Prev.SE) {
   assert(fntypeinfo.KnownValues.size() ==
          fntypeinfo.Function->getFunctionType()->getNumParams());
 }
@@ -427,7 +429,7 @@ void getConstantAnalysis(Constant *Val, TypeAnalyzer &TA,
     // Just analyze this new "instruction" and none of the others
     {
       TypeAnalyzer tmpAnalysis(TA.fntypeinfo, TA.interprocedural,
-                               TA.notForAnalysis, TA.DT, TA.PDT, TA.LI);
+                               TA.notForAnalysis, TA);
       tmpAnalysis.visit(*I);
       analysis[Val] = tmpAnalysis.getAnalysis(I);
     }
@@ -579,7 +581,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
     if (!EnzymeStrictAliasing) {
       if (auto OI = dyn_cast<Instruction>(Origin)) {
         if (OI->getParent() != I->getParent() &&
-            !PDT->dominates(OI->getParent(), I->getParent())) {
+            !PDT.dominates(OI->getParent(), I->getParent())) {
           if (EnzymePrintType)
             llvm::errs() << " skipping update into " << *I << " of "
                          << Data.str() << " from " << *OI << "\n";
@@ -593,7 +595,7 @@ void TypeAnalyzer::updateAnalysis(Value *Val, TypeTree Data, Value *Origin) {
       if (auto OI = dyn_cast<Instruction>(Origin)) {
         auto I = &*fntypeinfo.Function->getEntryBlock().begin();
         if (OI->getParent() != I->getParent() &&
-            !PDT->dominates(OI->getParent(), I->getParent())) {
+            !PDT.dominates(OI->getParent(), I->getParent())) {
           if (EnzymePrintType)
             llvm::errs() << " skipping update into " << *Arg << " of "
                          << Data.str() << " from " << *OI << "\n";
@@ -828,7 +830,7 @@ void TypeAnalyzer::considerTBAA() {
                  Intrinsic::memmove)) {
           int64_t copySize = 1;
           for (auto val : fntypeinfo.knownIntegralValues(call->getOperand(2),
-                                                         *DT, intseen)) {
+                                                         DT, intseen, SE)) {
             copySize = max(copySize, val);
           }
           TypeTree update =
@@ -923,7 +925,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // the incoming operands are integral
 
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, PDT, LI, DOWN,
+                                     notForAnalysis, *this, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
@@ -955,7 +957,7 @@ void TypeAnalyzer::runPHIHypotheses() {
             // Assume that this is an integer, does that mean we can prove that
             // the incoming operands are integral
             TypeAnalyzer tmpAnalysis(fntypeinfo, interprocedural,
-                                     notForAnalysis, DT, PDT, LI, DOWN,
+                                     notForAnalysis, *this, DOWN,
                                      /*PHIRecur*/ true);
             tmpAnalysis.intseen = intseen;
             tmpAnalysis.analysis = analysis;
@@ -1377,7 +1379,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
   std::vector<std::set<Value *>> idnext;
 
   for (auto &a : gep.indices()) {
-    auto iset = fntypeinfo.knownIntegralValues(a, *DT, intseen);
+    auto iset = fntypeinfo.knownIntegralValues(a, DT, intseen, SE);
     std::set<Value *> vset;
     for (auto i : iset) {
       // Don't consider negative indices of gep
@@ -1461,7 +1463,7 @@ void TypeAnalyzer::visitPHINode(PHINode &phi) {
     if (phi.getNumIncomingValues() >= 2) {
       upVal = upVal.PurgeAnything();
     }
-    auto L = LI->getLoopFor(phi.getParent());
+    auto L = LI.getLoopFor(phi.getParent());
     bool isHeader = L && L->getHeader() == phi.getParent();
     for (size_t i = 0, end = phi.getNumIncomingValues(); i < end; ++i) {
       if (!isHeader || !L->contains(phi.getIncomingBlock(i))) {
@@ -2350,7 +2352,7 @@ void TypeAnalyzer::visitBinaryOperation(const DataLayout &dl, llvm::Type *T,
         for (int i = 0; i < 2; ++i) {
           if (Args[i])
             for (auto andval :
-                 fntypeinfo.knownIntegralValues(Args[i], *DT, intseen)) {
+                 fntypeinfo.knownIntegralValues(Args[i], DT, intseen, SE)) {
               if (andval <= 16 && andval >= 0) {
                 Result = TypeTree(BaseType::Integer);
               } else if (andval < 0 && andval >= -64) {
@@ -2548,7 +2550,7 @@ void TypeAnalyzer::visitMemTransferCommon(llvm::CallInst &MTI) {
   // to dst up to the length and vice versa
   size_t sz = 1;
   for (auto val :
-       fntypeinfo.knownIntegralValues(MTI.getArgOperand(2), *DT, intseen)) {
+       fntypeinfo.knownIntegralValues(MTI.getArgOperand(2), DT, intseen, SE)) {
     if (val >= 0) {
       sz = max(sz, (size_t)val);
     }
@@ -3421,7 +3423,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       {
         args.push_back(getAnalysis(arg));
         knownValues.push_back(
-            fntypeinfo.knownIntegralValues((Value *)arg, *DT, intseen));
+            fntypeinfo.knownIntegralValues((Value *)arg, DT, intseen, SE));
       }
       bool err = customrule->second(direction, returnAnalysis, args,
                                     knownValues, &call);
@@ -3445,7 +3447,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     // All these are always valid => no direction check
     // CONSIDER(malloc)
     // TODO consider handling other allocation functions integer inputs
-    if (isAllocationFunction(*ci, interprocedural.TLI)) {
+    if (isAllocationFunction(*ci, TLI)) {
       size_t Idx = 0;
       for (auto &Arg : ci->args()) {
         if (Arg.getType()->isIntegerTy()) {
@@ -3518,7 +3520,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                   &arg, getAnalysis(call.getArgOperand(argnum - 2 + 3))));
               std::set<int64_t> bounded;
               for (auto v : fntypeinfo.knownIntegralValues(
-                       call.getArgOperand(argnum - 2 + 3), *DT, intseen)) {
+                       call.getArgOperand(argnum - 2 + 3), DT, intseen, SE)) {
                 if (abs(v) > MaxIntOffset)
                   continue;
                 bounded.insert(v);
@@ -3859,8 +3861,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
     if (funcName == "realloc") {
       size_t sz = 1;
-      for (auto val : fntypeinfo.knownIntegralValues(call.getArgOperand(1), *DT,
-                                                     intseen)) {
+      for (auto val : fntypeinfo.knownIntegralValues(call.getArgOperand(1), DT,
+                                                     intseen, SE)) {
         if (val >= 0) {
           sz = max(sz, (size_t)val);
         }
@@ -3931,7 +3933,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      &call);
       return;
     }
-    if (isDeallocationFunction(*ci, interprocedural.TLI)) {
+    if (isDeallocationFunction(*ci, TLI)) {
       size_t Idx = 0;
       for (auto &Arg : ci->args()) {
         if (Arg.getType()->isIntegerTy()) {
@@ -4229,9 +4231,10 @@ TypeTree TypeAnalyzer::getReturnAnalysis() {
   return vd;
 }
 
-std::set<int64_t> FnTypeInfo::knownIntegralValues(
-    llvm::Value *val, const DominatorTree &DT,
-    std::map<Value *, std::set<int64_t>> &intseen) const {
+std::set<int64_t>
+FnTypeInfo::knownIntegralValues(llvm::Value *val, const DominatorTree &DT,
+                                std::map<Value *, std::set<int64_t>> &intseen,
+                                ScalarEvolution &SE) const {
   if (auto constant = dyn_cast<ConstantInt>(val)) {
     return {constant->getSExtValue()};
   }
@@ -4261,7 +4264,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
   intseen[val] = {};
 
   if (auto ci = dyn_cast<CastInst>(val)) {
-    intseen[val] = knownIntegralValues(ci->getOperand(0), DT, intseen);
+    intseen[val] = knownIntegralValues(ci->getOperand(0), DT, intseen, SE);
   }
 
   auto insert = [&](int64_t v) {
@@ -4342,13 +4345,47 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
       }
       if (SI && !failed && DT.dominates(SI, LI)) {
         for (auto val :
-             knownIntegralValues(SI->getValueOperand(), DT, intseen)) {
+             knownIntegralValues(SI->getValueOperand(), DT, intseen, SE)) {
           insert(val);
         }
       }
     }
   }
   if (auto pn = dyn_cast<PHINode>(val)) {
+    if (SE.isSCEVable(pn->getType()))
+      if (auto S = dyn_cast<SCEVAddRecExpr>(SE.getSCEV(pn))) {
+        if (isa<SCEVConstant>(S->getStart())) {
+          auto L = S->getLoop();
+          auto BE = SE.getBackedgeTakenCount(L);
+          if (BE != SE.getCouldNotCompute()) {
+            if (auto Iters = dyn_cast<SCEVConstant>(BE)) {
+              uint64_t ival = Iters->getAPInt().getZExtValue();
+              // If strict aliasing and the loop header does not dominate all
+              // blocks at low optimization levels the last "iteration" will
+              // actually exit leading to one extra backedge that would be wise
+              // to ignore.
+              if (EnzymeStrictAliasing) {
+                bool rotated = false;
+                BasicBlock *Latch = L->getLoopLatch();
+                rotated = Latch && L->isLoopExiting(Latch);
+                if (!rotated) {
+                  if (ival > 0)
+                    ival--;
+                }
+              }
+              for (uint64_t i = 0; i <= ival; i++) {
+                if (auto Val = dyn_cast<SCEVConstant>(S->evaluateAtIteration(
+                        SE.getConstant(Iters->getType(), i, /*signed*/ false),
+                        SE))) {
+                  insert(Val->getAPInt().getSExtValue());
+                }
+              }
+              return intseen[val];
+            }
+          }
+        }
+      }
+
     for (unsigned i = 0; i < pn->getNumIncomingValues(); ++i) {
       auto a = pn->getIncomingValue(i);
       auto b = pn->getIncomingBlock(i);
@@ -4358,7 +4395,7 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
         continue;
       }
 
-      auto inset = knownIntegralValues(a, DT, intseen);
+      auto inset = knownIntegralValues(a, DT, intseen, SE);
 
       // TODO this here is not fully justified yet
       for (auto pval : inset) {
@@ -4383,8 +4420,8 @@ std::set<int64_t> FnTypeInfo::knownIntegralValues(
   }
 
   if (auto bo = dyn_cast<BinaryOperator>(val)) {
-    auto inset0 = knownIntegralValues(bo->getOperand(0), DT, intseen);
-    auto inset1 = knownIntegralValues(bo->getOperand(1), DT, intseen);
+    auto inset0 = knownIntegralValues(bo->getOperand(0), DT, intseen, SE);
+    auto inset1 = knownIntegralValues(bo->getOperand(1), DT, intseen, SE);
     if (bo->getOpcode() == BinaryOperator::Mul) {
 
       if (inset0.size() == 1 || inset1.size() == 1) {
@@ -4552,8 +4589,8 @@ FnTypeInfo TypeAnalyzer::getCallInfo(CallInst &call, Function &fn) {
     }
     typeInfo.Arguments.insert(std::pair<Argument *, TypeTree>(&arg, dt));
     std::set<int64_t> bounded;
-    for (auto v : fntypeinfo.knownIntegralValues(call.getArgOperand(argnum),
-                                                 *DT, intseen)) {
+    for (auto v : fntypeinfo.knownIntegralValues(call.getArgOperand(argnum), DT,
+                                                 intseen, SE)) {
       if (abs(v) > MaxIntOffset)
         continue;
       bounded.insert(v);
@@ -4903,7 +4940,7 @@ std::set<int64_t> TypeResults::knownIntegralValues(Value *val) const {
 }
 
 std::set<int64_t> TypeAnalyzer::knownIntegralValues(Value *val) {
-  return fntypeinfo.knownIntegralValues(val, *DT, intseen);
+  return fntypeinfo.knownIntegralValues(val, DT, intseen, SE);
 }
 
 void TypeAnalysis::clear() { analyzedFunctions.clear(); }

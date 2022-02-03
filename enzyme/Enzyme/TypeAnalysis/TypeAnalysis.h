@@ -34,6 +34,9 @@
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 
+#include "SCEV/ScalarEvolution.h"
+#include "SCEV/ScalarEvolutionExpander.h"
+
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/IR/Type.h"
@@ -93,9 +96,10 @@ struct FnTypeInfo {
   std::map<llvm::Argument *, std::set<int64_t>> KnownValues;
 
   /// The set of known values val will take
-  std::set<int64_t> knownIntegralValues(
-      llvm::Value *val, const llvm::DominatorTree &DT,
-      std::map<llvm::Value *, std::set<int64_t>> &intseen) const;
+  std::set<int64_t>
+  knownIntegralValues(llvm::Value *val, const llvm::DominatorTree &DT,
+                      std::map<llvm::Value *, std::set<int64_t>> &intseen,
+                      llvm::ScalarEvolution &SE) const;
 };
 
 static inline bool operator<(const FnTypeInfo &lhs, const FnTypeInfo &rhs) {
@@ -223,10 +227,12 @@ public:
   /// Intermediate conservative, but correct Type analysis results
   std::map<llvm::Value *, TypeTree> analysis;
 
-  std::shared_ptr<llvm::DominatorTree> DT;
-  std::shared_ptr<llvm::PostDominatorTree> PDT;
+  llvm::TargetLibraryInfo &TLI;
+  llvm::DominatorTree &DT;
+  llvm::PostDominatorTree &PDT;
 
-  std::shared_ptr<llvm::LoopInfo> LI;
+  llvm::LoopInfo &LI;
+  llvm::ScalarEvolution &SE;
 
   FnTypeInfo getCallInfo(llvm::CallInst &CI, llvm::Function &fn);
 
@@ -235,9 +241,7 @@ public:
 
   TypeAnalyzer(const FnTypeInfo &fn, TypeAnalysis &TA,
                const llvm::SmallPtrSetImpl<llvm::BasicBlock *> &notForAnalysis,
-               std::shared_ptr<llvm::DominatorTree> DT,
-               std::shared_ptr<llvm::PostDominatorTree> PDT,
-               std::shared_ptr<llvm::LoopInfo> LI, uint8_t direction = BOTH,
+               const TypeAnalyzer &Prev, uint8_t direction = BOTH,
                bool PHIRecur = false);
 
   /// Get the current results for a given value
@@ -353,8 +357,8 @@ public:
 /// Full interprocedural TypeAnalysis
 class TypeAnalysis {
 public:
-  llvm::TargetLibraryInfo &TLI;
-  TypeAnalysis(llvm::TargetLibraryInfo &TLI) : TLI(TLI) {}
+  llvm::FunctionAnalysisManager &FAM;
+  TypeAnalysis(llvm::FunctionAnalysisManager &FAM) : FAM(FAM) {}
   /// Map of custom function call handlers
   std::map<std::string,
            std::function<bool(int /*direction*/, TypeTree & /*returnTree*/,

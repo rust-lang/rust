@@ -4065,7 +4065,7 @@ public:
         Mode == DerivativeMode::ReverseModeCombined) {
       if (called) {
         subdata = &gutils->Logic.CreateAugmentedPrimal(
-            cast<Function>(called), subretType, argsInverted, gutils->TLI,
+            cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*return is used*/ false, nextTypeInfo,
             uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
             /*OpenMP*/ true);
@@ -4286,7 +4286,7 @@ public:
                                   tape ? PointerType::getUnqual(tape->getType())
                                        : nullptr,
                               .typeInfo = nextTypeInfo},
-            gutils->TLI, TR.analyzer.interprocedural, subdata,
+            TR.analyzer.interprocedural, subdata,
             /*postopt*/ false, /*omp*/ true);
 
         if (subdata->returns.find(AugmentedStruct::Tape) !=
@@ -8576,7 +8576,7 @@ public:
 
       if (called) {
         newcalled = gutils->Logic.CreateForwardDiff(
-            cast<Function>(called), subretType, argsInverted, gutils->TLI,
+            cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*returnValue*/ subretused, Mode,
             gutils->getWidth(), nullptr, nextTypeInfo, {});
       } else {
@@ -8849,7 +8849,7 @@ public:
         if (Mode == DerivativeMode::ReverseModePrimal ||
             Mode == DerivativeMode::ReverseModeCombined) {
           subdata = &gutils->Logic.CreateAugmentedPrimal(
-              cast<Function>(called), subretType, argsInverted, gutils->TLI,
+              cast<Function>(called), subretType, argsInverted,
               TR.analyzer.interprocedural, /*return is used*/ subretused,
               nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
               /*PostOpt*/ false);
@@ -9186,7 +9186,7 @@ public:
                             .AtomicAdd = gutils->AtomicAdd,
                             .additionalType = tape ? tape->getType() : nullptr,
                             .typeInfo = nextTypeInfo},
-          gutils->TLI, TR.analyzer.interprocedural, subdata);
+          TR.analyzer.interprocedural, subdata);
       if (!newcalled)
         return;
     } else {
