@@ -1533,9 +1533,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 for pb in obj.projection_bounds() {
                     bindings.push(TypeBinding {
                         name: cx.tcx.associated_item(pb.item_def_id()).name,
-                        kind: TypeBindingKind::Equality {
-                            term: pb.skip_binder().term.clean(cx).into(),
-                        },
+                        kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
                     });
                 }
 

@@ -1036,8 +1036,7 @@ impl Attributes {
         // Additional documentation should be shown before the original documentation
         let other_attrs = additional_attrs
             .into_iter()
-            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
-            .flatten()
+            .flat_map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
             .chain(attrs.iter().map(|attr| (attr, None)))
             .filter_map(clean_attr)
             .collect();

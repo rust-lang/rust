@@ -439,13 +439,12 @@ impl Options {
             matches
                 .opt_str("default-theme")
                 .iter()
-                .map(|theme| {
+                .flat_map(|theme| {
                     vec![
                         ("use-system-theme".to_string(), "false".to_string()),
                         ("theme".to_string(), theme.to_string()),
                     ]
                 })
-                .flatten()
                 .collect(),
             matches
                 .opt_strs("default-setting")

@@ -76,7 +76,7 @@ impl core::fmt::Write for Buffer {
     }
 
     #[inline]
-    fn write_fmt(self: &mut Self, args: fmt::Arguments<'_>) -> fmt::Result {
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
         self.buffer.write_fmt(args)
     }
 }
