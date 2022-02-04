@@ -399,6 +399,13 @@ impl<'a> CrateLocator<'a> {
         // of the crate id (path/name/id).
         //
         // The goal of this step is to look at as little metadata as possible.
+        // Unfortunately, the prefix-based matching sometimes is over-eager.
+        // E.g. if `rlib_suffix` is `libstd` it'll match the file
+        // `libstd_detect-8d6701fb958915ad.rlib` (incorrect) as well as
+        // `libstd-f3ab5b1dea981f17.rlib` (correct). But this is hard to avoid
+        // given that `extra_filename` comes from the `-C extra-filename`
+        // option and thus can be anything, and the incorrect match will be
+        // handled safely in `extract_one`.
         for search_path in self.filesearch.search_paths() {
             debug!("searching {}", search_path.dir.display());
             for spf in search_path.files.iter() {
