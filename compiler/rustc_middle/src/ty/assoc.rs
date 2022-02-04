@@ -160,12 +160,11 @@ impl<'tcx> AssocItems<'tcx> {
         &self,
         tcx: TyCtxt<'_>,
         ident: Ident,
+        // Sorted in order of what kinds to look at
         kinds: &[AssocKind],
         parent_def_id: DefId,
     ) -> Option<&ty::AssocItem> {
-        self.filter_by_name_unhygienic(ident.name)
-            .filter(|item| kinds.contains(&item.kind))
-            .find(|item| tcx.hygienic_eq(ident, item.ident(tcx), parent_def_id))
+        kinds.iter().find_map(|kind| self.find_by_name_and_kind(tcx, ident, *kind, parent_def_id))
     }
 
     /// Returns the associated item with the given name in the given `Namespace`, if one exists.

@@ -887,15 +887,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Type, trait_def_id)
             .is_some()
     }
-    fn trait_defines_associated_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
+    fn trait_defines_associated_const_named(&self, trait_def_id: DefId, assoc_name: Ident) -> bool {
         self.tcx()
             .associated_items(trait_def_id)
-            .find_by_name_and_kinds(
-                self.tcx(),
-                assoc_name,
-                &[ty::AssocKind::Type, ty::AssocKind::Const],
-                trait_def_id,
-            )
+            .find_by_name_and_kind(self.tcx(), assoc_name, ty::AssocKind::Const, trait_def_id)
             .is_some()
     }
 
@@ -1145,13 +1140,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
-        let assoc_item = tcx
-            .associated_items(candidate.def_id())
-            .filter_by_name_unhygienic(assoc_ident.name)
-            .find(|i| {
-                (i.kind == ty::AssocKind::Type || i.kind == ty::AssocKind::Const)
-                    && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-            })
+        let find_item_of_kind = |kind| {
+            tcx.associated_items(candidate.def_id())
+                .filter_by_name_unhygienic(assoc_ident.name)
+                .find(|i| i.kind == kind && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident)
+        };
+        let assoc_item = find_item_of_kind(ty::AssocKind::Type)
+            .or_else(|| find_item_of_kind(ty::AssocKind::Const))
             .expect("missing associated type");
 
         if !assoc_item.vis.is_accessible_from(def_scope, tcx) {
@@ -1657,11 +1652,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         let mut matching_candidates = all_candidates()
-            .filter(|r| self.trait_defines_associated_named(r.def_id(), assoc_name));
+            .filter(|r| self.trait_defines_associated_type_named(r.def_id(), assoc_name));
+        let mut const_candidates = all_candidates()
+            .filter(|r| self.trait_defines_associated_const_named(r.def_id(), assoc_name));
 
-        let bound = match matching_candidates.next() {
-            Some(bound) => bound,
-            None => {
+        let (bound, next_cand) = match (matching_candidates.next(), const_candidates.next()) {
+            (Some(bound), _) => (bound, matching_candidates.next()),
+            (None, Some(bound)) => (bound, const_candidates.next()),
+            (None, None) => {
                 self.complain_about_assoc_type_not_found(
                     all_candidates,
                     &ty_param_name(),
@@ -1671,10 +1669,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 return Err(ErrorReported);
             }
         };
-
         debug!("one_bound_for_assoc_type: bound = {:?}", bound);
 
-        if let Some(bound2) = matching_candidates.next() {
+        if let Some(bound2) = next_cand {
             debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
 
             let is_equality = is_equality();
@@ -1759,6 +1756,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 return Err(ErrorReported);
             }
         }
+
         Ok(bound)
     }
 
@@ -1893,14 +1891,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
         // of calling `filter_by_name_and_kind`.
-        let item = tcx
-            .associated_items(trait_did)
-            .in_definition_order()
-            .find(|i| {
-                i.kind.namespace() == Namespace::TypeNS
-                    && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-            })
-            .expect("missing associated type");
+        let item = tcx.associated_items(trait_did).in_definition_order().find(|i| {
+            i.kind.namespace() == Namespace::TypeNS
+                && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
+        });
+        // Assume that if it's not matched, there must be a const defined with the same name
+        // but it was used in a type position.
+        let Some(item) = item else {
+            let msg = format!("found associated const `{assoc_ident}` when type was expected");
+            tcx.sess.struct_span_err(span, &msg).emit();
+            return Err(ErrorReported);
+        };
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
         let ty = self.normalize_ty(span, ty);
