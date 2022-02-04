@@ -351,6 +351,10 @@ impl Step for Llvm {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 
+        if builder.config.llvm_enable_rtti {
+            cfg.define("LLVM_ENABLE_RTTI", "YES");
+        }
+
         configure_cmake(builder, target, &mut cfg, true);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM

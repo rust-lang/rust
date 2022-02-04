@@ -105,6 +105,7 @@ pub struct Config {
     pub llvm_version_suffix: Option<String>,
     pub llvm_use_linker: Option<String>,
     pub llvm_allow_old_toolchain: bool,
+    pub llvm_enable_rtti: bool,
     pub llvm_polly: bool,
     pub llvm_clang: bool,
     pub llvm_from_ci: bool,
@@ -474,6 +475,7 @@ derive_merge! {
         use_libcxx: Option<bool>,
         use_linker: Option<String>,
         allow_old_toolchain: Option<bool>,
+        enable_rtti: Option<bool>,
         polly: Option<bool>,
         clang: Option<bool>,
         download_ci_llvm: Option<StringOrBool>,
@@ -805,6 +807,7 @@ impl Config {
             set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
             config.llvm_use_linker = llvm.use_linker.clone();
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
+            config.llvm_enable_rtti = llvm.enable_rtti.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
             config.llvm_clang = llvm.clang.unwrap_or(false);
             config.llvm_from_ci = match llvm.download_ci_llvm {
@@ -874,6 +877,7 @@ impl Config {
                 check_ci_llvm!(llvm.use_libcxx);
                 check_ci_llvm!(llvm.use_linker);
                 check_ci_llvm!(llvm.allow_old_toolchain);
+                check_ci_llvm!(llvm.enable_rtti);
                 check_ci_llvm!(llvm.polly);
                 check_ci_llvm!(llvm.clang);
                 check_ci_llvm!(llvm.plugins);
