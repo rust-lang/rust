@@ -230,7 +230,8 @@ static void handleKnownFunctions(llvm::Function &F) {
     }
     F.addParamAttr(6, Attribute::WriteOnly);
   }
-  if (F.getName() == "MPI_Comm_rank") {
+  if (F.getName() == "MPI_Comm_rank" || F.getName() == "PMPI_Comm_rank" ||
+      F.getName() == "MPI_Comm_size" || F.getName() == "PMPI_Comm_size") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
@@ -243,8 +244,10 @@ static void handleKnownFunctions(llvm::Function &F) {
       F.addParamAttr(0, Attribute::NoCapture);
       F.addParamAttr(0, Attribute::ReadOnly);
     }
-    F.addParamAttr(1, Attribute::WriteOnly);
-    F.addParamAttr(1, Attribute::NoCapture);
+    if (F.getFunctionType()->getParamType(1)->isPointerTy()) {
+      F.addParamAttr(1, Attribute::WriteOnly);
+      F.addParamAttr(1, Attribute::NoCapture);
+    }
   }
   if (F.getName() == "MPI_Wait") {
     F.addFnAttr(Attribute::NoUnwind);
