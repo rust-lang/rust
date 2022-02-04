@@ -81,7 +81,7 @@ crate fn build_index<'tcx>(krate: &clean::Crate, cache: &mut Cache, tcx: TyCtxt<
                     lastpathid += 1;
 
                     if let Some(&(ref fqp, short)) = paths.get(&defid) {
-                        crate_paths.push((short, fqp.last().unwrap().clone()));
+                        crate_paths.push((short, *fqp.last().unwrap()));
                         Some(pathid)
                     } else {
                         None
