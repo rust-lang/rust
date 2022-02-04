@@ -1702,11 +1702,11 @@ impl<'a> Parser<'a> {
 
         // Try to lowercase the prefix if it's a valid base prefix.
         fn fix_base_capitalisation(s: &str) -> Option<String> {
-            if let Some(stripped) = s.strip_prefix("B") {
+            if let Some(stripped) = s.strip_prefix('B') {
                 Some(format!("0b{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix("O") {
+            } else if let Some(stripped) = s.strip_prefix('O') {
                 Some(format!("0o{stripped}"))
-            } else if let Some(stripped) = s.strip_prefix("X") {
+            } else if let Some(stripped) = s.strip_prefix('X') {
                 Some(format!("0x{stripped}"))
             } else {
                 None
