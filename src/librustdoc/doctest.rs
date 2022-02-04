@@ -659,7 +659,7 @@ crate fn make_test(
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
         // Give each doctest main function a unique name.
-        // This is for example needed for the tooling around `-Z instrument-coverage`.
+        // This is for example needed for the tooling around `-C instrument-coverage`.
         let inner_fn_name = if let Some(test_id) = test_id {
             format!("_doctest_main_{}", test_id)
         } else {
@@ -684,7 +684,7 @@ crate fn make_test(
         };
         // Note on newlines: We insert a line/newline *before*, and *after*
         // the doctest and adjust the `line_offset` accordingly.
-        // In the case of `-Z instrument-coverage`, this means that the generated
+        // In the case of `-C instrument-coverage`, this means that the generated
         // inner `main` function spans from the doctest opening codeblock to the
         // closing one. For example
         // /// ``` <- start of the inner main
