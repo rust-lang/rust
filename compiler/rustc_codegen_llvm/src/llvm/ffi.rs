@@ -987,6 +987,7 @@ pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
+    pub fn LLVMRustDisableSystemDialogsOnCrash();
 
     // Create and destroy contexts.
     pub fn LLVMRustContextCreate(shouldDiscardNames: bool) -> &'static mut Context;

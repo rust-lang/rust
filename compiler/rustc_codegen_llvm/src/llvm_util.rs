@@ -46,6 +46,12 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_args = Vec::with_capacity(n_args + 1);
 
     llvm::LLVMRustInstallFatalErrorHandler();
+    // On Windows, an LLVM assertion will open an Abort/Retry/Ignore dialog
+    // box for the purpose of launching a debugger. However, on CI this will
+    // cause it to hang until it times out, which can take several hours.
+    if std::env::var_os("CI").is_some() {
+        llvm::LLVMRustDisableSystemDialogsOnCrash();
+    }
 
     fn llvm_arg_to_arg_name(full_arg: &str) -> &str {
         full_arg.trim().split(|c: char| c == '=' || c.is_whitespace()).next().unwrap_or("")
