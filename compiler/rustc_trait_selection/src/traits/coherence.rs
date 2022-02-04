@@ -150,7 +150,10 @@ fn overlap<'cx, 'tcx>(
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!("overlap(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
+    debug!(
+        "overlap(impl1_def_id={:?}, impl2_def_id={:?}, overlap_mode={:?})",
+        impl1_def_id, impl2_def_id, overlap_mode
+    );
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
         overlap_within_probe(
@@ -191,9 +194,6 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    debug!("overlap: impl1_header={:?}", impl1_header);
-    debug!("overlap: impl2_header={:?}", impl2_header);
-
     let obligations = equate_impl_headers(selcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
@@ -226,6 +226,7 @@ fn equate_impl_headers<'cx, 'tcx>(
     impl2_header: &ty::ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
     // Do `a` and `b` unify? If not, no overlap.
+    debug!("equate_impl_headers(impl1_header={:?}, impl2_header={:?}", impl1_header, impl2_header);
     selcx
         .infcx()
         .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
@@ -264,6 +265,10 @@ fn implicit_negative<'cx, 'tcx>(
     // If the obligation `&'?a str: Error` holds, it means that there's overlap. If that doesn't
     // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
     // at some point an impl for `&'?a str: Error` could be added.
+    debug!(
+        "implicit_negative(impl1_header={:?}, impl2_header={:?}, obligations={:?})",
+        impl1_header, impl2_header, obligations
+    );
     let infcx = selcx.infcx();
     let tcx = infcx.tcx;
     let opt_failing_obligation = impl1_header
@@ -296,6 +301,7 @@ fn negative_impl<'cx, 'tcx>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
 ) -> bool {
+    debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
     let tcx = selcx.infcx().tcx;
 
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
