@@ -2424,7 +2424,10 @@ impl<'test> TestCx<'test> {
         );
 
         if !res.status.success() {
-            self.fatal_proc_rec("jsondocck failed!", &res)
+            self.fatal_proc_rec_with_ctx("jsondocck failed!", &res, |_| {
+                println!("Rustdoc Output:");
+                proc_res.print_info();
+            })
         }
 
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
@@ -3738,10 +3741,7 @@ pub struct ProcRes {
 }
 
 impl ProcRes {
-    pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
-        if let Some(e) = err {
-            println!("\nerror: {}", e);
-        }
+    pub fn print_info(&self) {
         print!(
             "\
              status: {}\n\
@@ -3760,6 +3760,13 @@ impl ProcRes {
             json::extract_rendered(&self.stdout),
             json::extract_rendered(&self.stderr),
         );
+    }
+
+    pub fn fatal(&self, err: Option<&str>, on_failure: impl FnOnce()) -> ! {
+        if let Some(e) = err {
+            println!("\nerror: {}", e);
+        }
+        self.print_info();
         on_failure();
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.
