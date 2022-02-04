@@ -16,15 +16,12 @@ pub mod quote;
 pub mod eager;
 pub mod mod_path;
 
-use base_db::ProcMacroKind;
-use either::Either;
-
 pub use mbe::{ExpandError, ExpandResult, Origin};
-use mod_path::ModPath;
 
 use std::{hash::Hash, iter, sync::Arc};
 
-use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange};
+use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange, ProcMacroKind};
+use either::Either;
 use syntax::{
     algo::{self, skip_trivia_token},
     ast::{self, AstNode, HasDocComments},
@@ -37,6 +34,7 @@ use crate::{
     builtin_derive_macro::BuiltinDeriveExpander,
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::TokenExpander,
+    mod_path::ModPath,
     proc_macro::ProcMacroExpander,
 };
 
@@ -61,11 +59,13 @@ enum HirFileIdRepr {
     FileId(FileId),
     MacroFile(MacroFile),
 }
+
 impl From<FileId> for HirFileId {
     fn from(id: FileId) -> Self {
         HirFileId(HirFileIdRepr::FileId(id))
     }
 }
+
 impl From<MacroFile> for HirFileId {
     fn from(id: MacroFile) -> Self {
         HirFileId(HirFileIdRepr::MacroFile(id))
@@ -151,8 +151,8 @@ impl HirFileId {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                let file_id = match &loc.eager {
-                    Some(EagerCallInfo { included_file: Some(file), .. }) => (*file).into(),
+                let file_id = match loc.eager {
+                    Some(EagerCallInfo { included_file: Some(file), .. }) => file.into(),
                     _ => loc.kind.file_id(),
                 };
                 file_id.original_file(db)
@@ -249,10 +249,7 @@ impl HirFileId {
             HirFileIdRepr::FileId(_) => false,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                match loc.def.kind {
-                    MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _) => true,
-                    _ => false,
-                }
+                matches!(loc.def.kind, MacroDefKind::ProcMacro(_, ProcMacroKind::CustomDerive, _))
             }
         }
     }
@@ -302,15 +299,15 @@ impl MacroDefId {
     }
 
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {
-        let id = match &self.kind {
-            MacroDefKind::ProcMacro(.., id) => return Either::Right(*id),
+        let id = match self.kind {
+            MacroDefKind::ProcMacro(.., id) => return Either::Right(id),
             MacroDefKind::Declarative(id)
             | MacroDefKind::BuiltIn(_, id)
             | MacroDefKind::BuiltInAttr(_, id)
             | MacroDefKind::BuiltInDerive(_, id)
             | MacroDefKind::BuiltInEager(_, id) => id,
         };
-        Either::Left(*id)
+        Either::Left(id)
     }
 
     pub fn is_proc_macro(&self) -> bool {
@@ -359,20 +356,15 @@ impl MacroCallKind {
     /// get only the specific derive that is being referred to.
     pub fn original_call_range(self, db: &dyn db::AstDatabase) -> FileRange {
         let mut kind = self;
-        loop {
+        let file_id = loop {
             match kind.file_id().0 {
                 HirFileIdRepr::MacroFile(file) => {
                     kind = db.lookup_intern_macro_call(file.macro_call_id).kind;
                 }
-                _ => break,
+                HirFileIdRepr::FileId(file_id) => break file_id,
             }
-        }
-
-        // `call_id` is now the outermost macro call, so its location is in a real file.
-        let file_id = match kind.file_id().0 {
-            HirFileIdRepr::FileId(it) => it,
-            HirFileIdRepr::MacroFile(_) => unreachable!("encountered unexpected macro file"),
         };
+
         let range = match kind {
             MacroCallKind::FnLike { ast_id, .. } => ast_id.to_node(db).syntax().text_range(),
             MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
@@ -574,7 +566,6 @@ impl ExpansionInfo {
 /// `AstId` points to an AST node in any file.
 ///
 /// It is stable across reparses, and can be used as salsa key/value.
-// FIXME: isn't this just a `Source<FileAstId<N>>` ?
 pub type AstId<N> = InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
@@ -602,7 +593,6 @@ impl<T> InFile<T> {
         InFile { file_id, value }
     }
 
-    // Similarly, naming here is stupid...
     pub fn with_value<U>(&self, value: U) -> InFile<U> {
         InFile::new(self.file_id, value)
     }
