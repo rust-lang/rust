@@ -578,6 +578,62 @@ impl<T, A: Allocator> Box<T, A> {
     {
         *boxed
     }
+
+    /// Safely reads the value on heap without deallocating.
+    ///
+    /// This method is mostly useful for avoiding reallocations.
+    /// The method consumes the box to prevent double-free.
+    /// The value on heap should be considered truly uninitialized and MUST NOT be read.
+    /// Specifically, this code is definitely UB:
+    ///
+    /// ```no_run
+    /// #![feature(new_uninit)]
+    ///
+    /// let value = Box::new("hello".to_owned());
+    /// // Double free here!
+    /// unsafe { Box::take(value).1.assume_init(); }
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(new_uninit)]
+    ///
+    /// let boxed_value = Box::new("hello".to_owned());
+    /// let (mut value, allocation) = Box::take(boxed_value);
+    /// assert_eq!(value, "hello");
+    /// // More realistic code would consume the value and produce other value.
+    /// // For simple demonstration we just modify it here.
+    /// value.push_str(" world");
+    /// let boxed_value = Box::write(allocation, value);
+    /// assert_eq!(*boxed_value, "hello world");
+    /// ```
+    #[unstable(feature = "new_uninit", issue = "63291")]
+    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
+    #[inline]
+    pub const fn take(this: Self) -> (T, Box<mem::MaybeUninit<T>, A>) {
+        let (raw, alloc) = Box::into_raw_with_allocator(this);
+        unsafe {
+            // SAFETY:
+            // * The pointer given to from_raw_in was obtained from box above using the same
+            //   allocator
+            // * Casting `*mut T` to `*mut MaybeUninit<T>` is sound because they have same layout
+            // * Safely obtaining `&mut T` pointing into the allocation will become impossible after
+            //   this call because we consume `this` (no variance issues)
+            // * `MaybeUninit` disables destructor of `T` so it can't double free
+            // * Leak shouldn't happen because `assume_init_read` below doesn't panic and the value
+            //   can be dropped afterwards
+            let new_box = Box::from_raw_in(raw.cast::<mem::MaybeUninit<T>>(), alloc);
+            // SAFETY:
+            // * The value being read was proven to be initialized when this function was called
+            // * We didn't touch the value inside this function, just cast the pointer, so it's
+            //   still valid.
+            // * We don't read the value on heap again and prevent safe code from reading it by
+            //   marking the box with `MaybeUninit`.
+            let value = new_box.assume_init_read();
+            (value, new_box)
+        }
+    }
 }
 
 impl<T> Box<[T]> {

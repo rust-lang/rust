@@ -17,16 +17,8 @@ impl<T> IdFunctor for Box<T> {
     where
         F: FnMut(Self::Inner) -> Result<Self::Inner, E>,
     {
-        let raw = Box::into_raw(self);
-        Ok(unsafe {
-            // SAFETY: The raw pointer points to a valid value of type `T`.
-            let value = raw.read();
-            // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
-            // inverse of `Box::assume_init()` and should be safe.
-            let raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
-            // SAFETY: Write the mapped value back into the `Box`.
-            Box::write(raw, f(value)?)
-        })
+        let (value, allocation) = Box::take(self);
+        Ok(Box::write(allocation, f(value)?))
     }
 }
 
