@@ -1126,3 +1126,28 @@ fn test_const_copy() {
         assert!(*ptr2 == 1);
     };
 }
+
+#[test]
+fn test_from_option_ref() {
+    let none_ref: Option<&i32> = None;
+    let some_ref: Option<&i32> = Some(&10);
+
+    let non_const_ptr: *const i32 = none_ref.into();
+    let some_const_ptr: *const i32 = some_ref.into();
+
+    assert!(non_const_ptr.is_null());
+    assert!(!some_const_ptr.is_null());
+    assert_eq!(unsafe { some_const_ptr.read() }, 10);
+
+    let mut val: i32 = 20;
+    let none_mut: Option<&mut i32> = None;
+    let some_mut: Option<&mut i32> = Some(&mut val);
+
+    let none_mut_ptr: *mut i32 = none_mut.into();
+    let some_mut_ptr: *mut i32 = some_mut.into();
+
+    assert!(none_mut_ptr.is_null());
+    assert!(!some_mut_ptr.is_null());
+    assert_eq!(unsafe { some_mut_ptr.replace(30) }, 20);
+    assert_eq!(unsafe { some_mut_ptr.read() }, 30);
+}

@@ -2203,3 +2203,20 @@ impl<T: ?Sized> PartialOrd for *mut T {
         *self >= *other
     }
 }
+
+#[stable(feature = "pointer_from_option_ref", since = "CURRENT_RUSTC_VERSION")]
+impl<T> From<Option<&mut T>> for *mut T {
+    /// Converts from an optional mutable reference to a raw pointer, providing [`ptr::null_mut`] if it is `None`.
+    ///
+    /// Because of the [null pointer optimization][npo], this is a zero-cost transformation.
+    ///
+    /// [npo]: https://doc.rust-lang.org/std/option/index.html#representation
+    /// [`ptr::null_mut`]: crate::ptr::null_mut()
+    #[inline]
+    fn from(x: Option<&mut T>) -> *mut T {
+        match x {
+            Some(x) => x,
+            None => null_mut(),
+        }
+    }
+}
