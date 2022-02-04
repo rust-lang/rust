@@ -357,6 +357,8 @@ function runChecks(testFile, loaded, index) {
     var testFileContent = readFile(testFile) + 'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;';
     if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
         testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
+    } else {
+        testFileContent += "exports.FILTER_CRATE = null;";
     }
     var loadedFile = loadContent(testFileContent);
 

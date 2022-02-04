@@ -4,7 +4,7 @@
 
 (function () {
     function changeSetting(settingName, value) {
-        updateLocalStorage("rustdoc-" + settingName, value);
+        updateLocalStorage(settingName, value);
 
         switch (settingName) {
             case "theme":

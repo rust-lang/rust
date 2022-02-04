@@ -54,7 +54,6 @@ function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
 
-
 (function () {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
@@ -232,7 +231,7 @@ function hideThemeButtonState() {
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
             if (searchState.browserSupportsHistoryApi()) {
-                history.replaceState("", window.currentCrate + " - Rust",
+                history.replaceState(null, window.currentCrate + " - Rust",
                     getNakedUrl() + window.location.hash);
             }
         },
@@ -245,18 +244,6 @@ function hideThemeButtonState() {
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
             return params;
-        },
-        putBackSearch: function(search_input) {
-            var search = searchState.outputElement();
-            if (search_input.value !== "" && hasClass(search, "hidden")) {
-                searchState.showResults(search);
-                if (searchState.browserSupportsHistoryApi()) {
-                    var extra = "?search=" + encodeURIComponent(search_input.value);
-                    history.replaceState(search_input.value, "",
-                        getNakedUrl() + extra + window.location.hash);
-                }
-                document.title = searchState.title;
-            }
         },
         browserSupportsHistoryApi: function() {
             return window.history && typeof window.history.pushState === "function";
@@ -282,13 +269,9 @@ function hideThemeButtonState() {
             }
 
             search_input.addEventListener("focus", function() {
-                searchState.putBackSearch(this);
-                search_input.origPlaceholder = searchState.input.placeholder;
+                search_input.origPlaceholder = search_input.placeholder;
                 search_input.placeholder = "Type your search here.";
                 loadSearch();
-            });
-            search_input.addEventListener("blur", function() {
-                search_input.placeholder = searchState.input.origPlaceholder;
             });
 
             if (search_input.value != '') {
@@ -330,7 +313,7 @@ function hideThemeButtonState() {
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (searchState.browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
-                history.replaceState(hash, "",
+                history.replaceState(null, "",
                     getNakedUrl() + window.location.search + "#" + hash);
             }
             elem = document.getElementById(hash);
