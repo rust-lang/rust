@@ -563,7 +563,7 @@ dependencies = [
  "chalk-derive",
  "chalk-ir",
  "chalk-solve",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "tracing",
 ]
 
@@ -590,7 +590,7 @@ dependencies = [
  "indexmap",
  "itertools 0.10.1",
  "petgraph",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
@@ -2250,7 +2250,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "perf-event-open-sys",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "smallvec",
 ]
 
@@ -2264,7 +2264,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "perf-event-open-sys",
- "rustc-hash",
+ "rustc-hash 1.1.0",
  "smallvec",
 ]
 
@@ -2775,7 +2775,7 @@ checksum = "c4e8e505342045d397d0b6674dcb82d6faf5cf40484d30eeb88fc82ef14e903f"
 dependencies = [
  "datafrog",
  "log",
- "rustc-hash",
+ "rustc-hash 1.1.0",
 ]
 
 [[package]]
@@ -3308,6 +3308,11 @@ dependencies = [
 
 [[package]]
 name = "rustc-hash"
+version = "1.0.1"
+source = "git+https://github.com/Zoxc/rustc-hash/?branch=new-hash#a5a1e17e92967bb98ff8513d25a9bc07bf12caca"
+
+[[package]]
+name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
@@ -3637,7 +3642,7 @@ dependencies = [
  "measureme 10.0.0",
  "memmap2",
  "parking_lot",
- "rustc-hash",
+ "rustc-hash 1.0.1",
  "rustc-rayon",
  "rustc-rayon-core",
  "rustc_graphviz",
