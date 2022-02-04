@@ -2,9 +2,9 @@
 #[test]
 fn test_raw_fd() {
     #[cfg(unix)]
-    use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd, BorrowedFd};
+    use crate::os::unix::io::{AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
     #[cfg(target_os = "wasi")]
-    use crate::os::wasi::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd, BorrowedFd};
+    use crate::os::wasi::io::{AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 
     let raw_fd: RawFd = crate::io::stdin().as_raw_fd();
 
@@ -18,9 +18,9 @@ fn test_raw_fd() {
 #[test]
 fn test_fd() {
     #[cfg(unix)]
-    use crate::os::unix::io::{AsFd, BorrowedFd, OwnedFd, FromRawFd, IntoRawFd, RawFd, AsRawFd};
+    use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
     #[cfg(target_os = "wasi")]
-    use crate::os::wasi::io::{AsFd, BorrowedFd, OwnedFd, FromRawFd, IntoRawFd, RawFd, AsRawFd};
+    use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 
     let stdin = crate::io::stdin();
     let fd: BorrowedFd<'_> = stdin.as_fd();
