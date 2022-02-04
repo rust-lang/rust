@@ -8,7 +8,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
-use std::fmt;
+use std::{fmt, iter};
 
 /// The value of an inserted drop flag.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -329,8 +329,7 @@ where
         mut succ: BasicBlock,
         fields: &[(Place<'tcx>, Option<D::Path>)],
     ) -> Vec<BasicBlock> {
-        Some(succ)
-            .into_iter()
+        iter::once(succ)
             .chain(fields.iter().rev().zip(unwind_ladder).map(|(&(place, path), &unwind_succ)| {
                 succ = self.drop_subpath(place, path, succ, unwind_succ);
                 succ
