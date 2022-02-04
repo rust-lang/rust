@@ -15,39 +15,24 @@ fn test_iterator_array_chunks_infer() {
 fn test_iterator_array_chunks_clone_and_drop() {
     let count = Cell::new(0);
     let mut it = (0..5).map(|_| CountDrop::new(&count)).array_chunks::<3>();
-
     assert_eq!(it.by_ref().count(), 1);
     assert_eq!(count.get(), 3);
-    assert_eq!(it.remainder().len(), 2);
-
     let mut it2 = it.clone();
     assert_eq!(count.get(), 3);
-    assert_eq!(it2.remainder().len(), 2);
-
-    drop(it);
+    assert_eq!(it.into_remainder().unwrap().len(), 2);
     assert_eq!(count.get(), 5);
-    assert_eq!(it2.remainder().len(), 2);
     assert!(it2.next().is_none());
-
-    drop(it2);
+    assert_eq!(it2.into_remainder().unwrap().len(), 2);
     assert_eq!(count.get(), 7);
 }
 
 #[test]
 fn test_iterator_array_chunks_remainder() {
     let mut it = (0..11).array_chunks::<4>();
-    assert_eq!(it.remainder(), &[]);
-    assert_eq!(it.remainder_mut(), &[]);
     assert_eq!(it.next(), Some([0, 1, 2, 3]));
-    assert_eq!(it.remainder(), &[]);
-    assert_eq!(it.remainder_mut(), &[]);
     assert_eq!(it.next(), Some([4, 5, 6, 7]));
-    assert_eq!(it.remainder(), &[]);
-    assert_eq!(it.remainder_mut(), &[]);
     assert_eq!(it.next(), None);
-    assert_eq!(it.next(), None);
-    assert_eq!(it.remainder(), &[8, 9, 10]);
-    assert_eq!(it.remainder_mut(), &[8, 9, 10]);
+    assert_eq!(it.into_remainder().unwrap().as_slice(), &[8, 9, 10]);
 }
 
 #[test]
@@ -105,8 +90,7 @@ fn test_iterator_array_chunks_next_and_next_back() {
     assert_eq!(it.next(), None);
     assert_eq!(it.next_back(), None);
     assert_eq!(it.next(), None);
-    assert_eq!(it.remainder(), &[9, 10]);
-    assert_eq!(it.remainder_mut(), &[9, 10]);
+    assert_eq!(it.into_remainder().unwrap().as_slice(), &[9, 10]);
 }
 
 #[test]
@@ -119,7 +103,7 @@ fn test_iterator_array_chunks_rev_remainder() {
         assert_eq!(it.next(), None);
         assert_eq!(it.next(), None);
     }
-    assert_eq!(it.remainder(), &[8, 9, 10]);
+    assert_eq!(it.into_remainder().unwrap().as_slice(), &[8, 9, 10]);
 }
 
 #[test]
@@ -128,7 +112,6 @@ fn test_iterator_array_chunks_try_fold() {
     let mut it = (0..10).map(|_| CountDrop::new(&count)).array_chunks::<3>();
     let result: Result<_, ()> = it.by_ref().try_fold(0, |acc, _item| Ok(acc + 1));
     assert_eq!(result, Ok(3));
-    assert_eq!(it.remainder().len(), 1);
     assert_eq!(count.get(), 9);
     drop(it);
     assert_eq!(count.get(), 10);
@@ -137,7 +120,6 @@ fn test_iterator_array_chunks_try_fold() {
     let mut it = (0..10).map(|_| CountDrop::new(&count)).array_chunks::<3>();
     let result = it.by_ref().try_fold(0, |acc, _item| if acc < 2 { Ok(acc + 1) } else { Err(acc) });
     assert_eq!(result, Err(2));
-    assert_eq!(it.remainder().len(), 0);
     assert_eq!(count.get(), 9);
     drop(it);
     assert_eq!(count.get(), 9);
@@ -166,7 +148,6 @@ fn test_iterator_array_chunks_try_rfold() {
     let mut it = (0..10).map(|_| CountDrop::new(&count)).array_chunks::<3>();
     let result: Result<_, ()> = it.try_rfold(0, |acc, _item| Ok(acc + 1));
     assert_eq!(result, Ok(3));
-    assert_eq!(it.remainder().len(), 1);
     assert_eq!(count.get(), 9);
     drop(it);
     assert_eq!(count.get(), 10);

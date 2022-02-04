@@ -1,67 +1,9 @@
+use crate::array;
 use crate::iter::{Fuse, FusedIterator, Iterator, TrustedLen};
 use crate::mem;
 use crate::mem::MaybeUninit;
 use crate::ops::{ControlFlow, Try};
 use crate::ptr;
-
-#[derive(Debug)]
-struct Remainder<T, const N: usize> {
-    array: [MaybeUninit<T>; N],
-    init: usize,
-}
-
-impl<T, const N: usize> Remainder<T, N> {
-    fn new() -> Self {
-        Self { array: MaybeUninit::uninit_array(), init: 0 }
-    }
-
-    unsafe fn with_init(array: [MaybeUninit<T>; N], init: usize) -> Self {
-        Self { array, init }
-    }
-
-    fn as_slice(&self) -> &[T] {
-        debug_assert!(self.init <= N);
-        // SAFETY: This raw slice will only contain the initialized objects
-        // within the buffer.
-        unsafe {
-            let slice = self.array.get_unchecked(..self.init);
-            MaybeUninit::slice_assume_init_ref(slice)
-        }
-    }
-
-    fn as_mut_slice(&mut self) -> &mut [T] {
-        debug_assert!(self.init <= N);
-        // SAFETY: This raw slice will only contain the initialized objects
-        // within the buffer.
-        unsafe {
-            let slice = self.array.get_unchecked_mut(..self.init);
-            MaybeUninit::slice_assume_init_mut(slice)
-        }
-    }
-}
-
-impl<T, const N: usize> Clone for Remainder<T, N>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        let mut new = Self::new();
-        // SAFETY: The new array is the same size and `init` is always less than
-        // or equal to `N`.
-        let this = unsafe { new.array.get_unchecked_mut(..self.init) };
-        MaybeUninit::write_slice_cloned(this, self.as_slice());
-        new.init = self.init;
-        new
-    }
-}
-
-impl<T, const N: usize> Drop for Remainder<T, N> {
-    fn drop(&mut self) {
-        // SAFETY: This raw slice will only contain the initialized objects
-        // within the buffer.
-        unsafe { ptr::drop_in_place(self.as_mut_slice()) }
-    }
-}
 
 /// An iterator over `N` elements of the iterator at a time.
 ///
@@ -75,7 +17,7 @@ impl<T, const N: usize> Drop for Remainder<T, N> {
 #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
 pub struct ArrayChunks<I: Iterator, const N: usize> {
     iter: Fuse<I>,
-    remainder: Remainder<I::Item, N>,
+    remainder: Option<array::IntoIter<I::Item, N>>,
 }
 
 impl<I, const N: usize> ArrayChunks<I, N>
@@ -84,25 +26,16 @@ where
 {
     pub(in crate::iter) fn new(iter: I) -> Self {
         assert!(N != 0, "chunk size must be non-zero");
-        Self { iter: iter.fuse(), remainder: Remainder::new() }
+        Self { iter: iter.fuse(), remainder: None }
     }
 
-    /// Returns a reference to the remaining elements of the original iterator
-    /// that are not going to be returned by this iterator. The returned slice
-    /// has at most `N-1` elements.
+    /// Returns an iterator over the remaining elements of the original iterator
+    /// that are not going to be returned by this iterator. The returned
+    /// iterator will yield at most `N-1` elements.
     #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
     #[inline]
-    pub fn remainder(&self) -> &[I::Item] {
-        self.remainder.as_slice()
-    }
-
-    /// Returns a mutable reference to the remaining elements of the original
-    /// iterator that are not going to be returned by this iterator. The
-    /// returned slice has at most `N-1` elements.
-    #[unstable(feature = "iter_array_chunks", reason = "recently added", issue = "none")]
-    #[inline]
-    pub fn remainder_mut(&mut self) -> &mut [I::Item] {
-        self.remainder.as_mut_slice()
+    pub fn into_remainder(self) -> Option<array::IntoIter<I::Item, N>> {
+        self.remainder
     }
 }
 
@@ -129,8 +62,10 @@ where
                     if guard.init > 0 {
                         let init = guard.init;
                         mem::forget(guard);
-                        // SAFETY: `array` was initialized with `init` elements.
-                        self.remainder = unsafe { Remainder::with_init(array, init) };
+                        self.remainder = {
+                            // SAFETY: `array` was initialized with `init` elements.
+                            Some(unsafe { array::IntoIter::with_partial(array, 0..init) })
+                        };
                     }
                     return None;
                 }
@@ -189,7 +124,7 @@ where
                     let init = guard.init;
                     mem::forget(guard);
                     // SAFETY: `array` was initialized with `init` elements.
-                    self.remainder = unsafe { Remainder::with_init(array, init) };
+                    self.remainder = Some(unsafe { array::IntoIter::with_partial(array, 0..init) });
                 }
                 R::from_output(o)
             }
@@ -370,7 +305,7 @@ where
         // SAFETY: `array` was initialized with exactly `init` elements.
         self.remainder = unsafe {
             array.get_unchecked_mut(..init).reverse();
-            Remainder::with_init(array, init)
+            Some(array::IntoIter::with_partial(array, 0..init))
         };
         Some(())
     }
