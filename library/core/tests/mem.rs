@@ -1,5 +1,6 @@
 use core::mem::*;
 
+#[cfg(panic = "unwind")]
 use std::rc::Rc;
 
 #[test]
@@ -189,6 +190,7 @@ fn uninit_write_slice_cloned_panic_gt() {
 }
 
 #[test]
+#[cfg(panic = "unwind")]
 fn uninit_write_slice_cloned_mid_panic() {
     use std::panic;
 
