@@ -559,7 +559,15 @@ function hideThemeButtonState() {
             others.appendChild(div);
         }
 
-        function block(shortty, longty) {
+        /**
+         * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
+         *
+         * @param {string} shortty - A short type name, like "primitive", "mod", or "macro"
+         * @param {string} id - The HTML id of the corresponding section on the module page.
+         * @param {string} longty - A long, capitalized, plural name, like "Primitive Types",
+         *                          "Modules", or "Macros".
+         */
+        function block(shortty, id, longty) {
             var filtered = items[shortty];
             if (!filtered) {
                 return;
@@ -568,7 +576,7 @@ function hideThemeButtonState() {
             var div = document.createElement("div");
             div.className = "block " + shortty;
             var h3 = document.createElement("h3");
-            h3.textContent = longty;
+            h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
             div.appendChild(h3);
             var ul = document.createElement("ul");
 
@@ -607,20 +615,20 @@ function hideThemeButtonState() {
 
             var isModule = hasClass(document.body, "mod");
             if (!isModule) {
-                block("primitive", "Primitive Types");
-                block("mod", "Modules");
-                block("macro", "Macros");
-                block("struct", "Structs");
-                block("enum", "Enums");
-                block("union", "Unions");
-                block("constant", "Constants");
-                block("static", "Statics");
-                block("trait", "Traits");
-                block("fn", "Functions");
-                block("type", "Type Definitions");
-                block("foreigntype", "Foreign Types");
-                block("keyword", "Keywords");
-                block("traitalias", "Trait Aliases");
+                block("primitive", "primitives", "Primitive Types");
+                block("mod", "modules", "Modules");
+                block("macro", "macros", "Macros");
+                block("struct", "structs", "Structs");
+                block("enum", "enums", "Enums");
+                block("union", "unions", "Unions");
+                block("constant", "constants", "Constants");
+                block("static", "static", "Statics");
+                block("trait", "traits", "Traits");
+                block("fn", "functions", "Functions");
+                block("type", "types", "Type Definitions");
+                block("foreigntype", "foreign-types", "Foreign Types");
+                block("keyword", "keywords", "Keywords");
+                block("traitalias", "trait-aliases", "Trait Aliases");
             }
 
             // `crates{version}.js` should always be loaded before this script, so we can use
