@@ -1336,6 +1336,7 @@ h3.variant {
 	margin-bottom: 13px;
 	font-size: 1.1875rem;
 	font-weight: 600;
+	display: block;
 }
 
 .notable-traits .docblock code.content{
