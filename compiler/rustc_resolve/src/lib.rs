@@ -38,7 +38,7 @@ use rustc_ast::{ItemKind, ModKind, Path};
 use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
@@ -964,7 +964,7 @@ pub struct Resolver<'a> {
     /// language items.
     empty_module: Module<'a>,
     module_map: FxHashMap<DefId, Module<'a>>,
-    binding_parent_modules: FxHashMap<PtrKey<'a, NameBinding<'a>>, Module<'a>>,
+    binding_parent_modules: FxHashMap<Interned<'a, NameBinding<'a>>, Module<'a>>,
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
@@ -1115,7 +1115,7 @@ impl<'a> ResolverArenas<'a> {
         self.name_resolutions.alloc(Default::default())
     }
     fn alloc_macro_rules_scope(&'a self, scope: MacroRulesScope<'a>) -> MacroRulesScopeRef<'a> {
-        PtrKey(self.dropless.alloc(Cell::new(scope)))
+        Interned::new_unchecked(self.dropless.alloc(Cell::new(scope)))
     }
     fn alloc_macro_rules_binding(
         &'a self,
@@ -2938,7 +2938,9 @@ impl<'a> Resolver<'a> {
     }
 
     fn set_binding_parent_module(&mut self, binding: &'a NameBinding<'a>, module: Module<'a>) {
-        if let Some(old_module) = self.binding_parent_modules.insert(PtrKey(binding), module) {
+        if let Some(old_module) =
+            self.binding_parent_modules.insert(Interned::new_unchecked(binding), module)
+        {
             if !ptr::eq(module, old_module) {
                 span_bug!(binding.span, "parent module is reset for binding");
             }
@@ -2954,8 +2956,8 @@ impl<'a> Resolver<'a> {
         // is disambiguated to mitigate regressions from macro modularization.
         // Scoping for `macro_rules` behaves like scoping for `let` at module level, in general.
         match (
-            self.binding_parent_modules.get(&PtrKey(macro_rules)),
-            self.binding_parent_modules.get(&PtrKey(modularized)),
+            self.binding_parent_modules.get(&Interned::new_unchecked(macro_rules)),
+            self.binding_parent_modules.get(&Interned::new_unchecked(modularized)),
         ) {
             (Some(macro_rules), Some(modularized)) => {
                 macro_rules.nearest_parent_mod() == modularized.nearest_parent_mod()

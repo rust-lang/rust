@@ -11,7 +11,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
@@ -71,7 +71,7 @@ pub enum MacroRulesScope<'a> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow lineraly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'a> = PtrKey<'a, Cell<MacroRulesScope<'a>>>;
+pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>;
 
 // Macro namespace is separated into two sub-namespaces, one for bang macros and
 // one for attribute-like macros (attributes, derives).

@@ -11,7 +11,7 @@ use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBindin
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
@@ -134,7 +134,7 @@ impl<'a> Import<'a> {
 pub struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    single_imports: FxHashSet<PtrKey<'a, Import<'a>>>,
+    single_imports: FxHashSet<Interned<'a, Import<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     shadowed_glob: Option<&'a NameBinding<'a>>,
@@ -153,7 +153,7 @@ impl<'a> NameResolution<'a> {
     }
 
     crate fn add_single_import(&mut self, import: &'a Import<'a>) {
-        self.single_imports.insert(PtrKey(import));
+        self.single_imports.insert(Interned::new_unchecked(import));
     }
 }
 
@@ -850,7 +850,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     Err(Determined) => {
                         let key = this.new_key(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
-                            resolution.single_imports.remove(&PtrKey(import));
+                            resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });
                     }
                     Ok(binding) if !binding.is_importable() => {
