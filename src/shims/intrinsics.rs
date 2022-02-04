@@ -314,7 +314,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_div"
             | "simd_rem"
             | "simd_shl"
-            | "simd_shr" => {
+            | "simd_shr"
+            | "simd_and"
+            | "simd_or" => {
                 let &[ref left, ref right] = check_arg_count(args)?;
                 let (left, left_len) = this.operand_to_simd(left)?;
                 let (right, right_len) = this.operand_to_simd(right)?;
@@ -331,6 +333,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_rem" => mir::BinOp::Rem,
                     "simd_shl" => mir::BinOp::Shl,
                     "simd_shr" => mir::BinOp::Shr,
+                    "simd_and" => mir::BinOp::BitAnd,
+                    "simd_or" => mir::BinOp::BitOr,
                     _ => unreachable!(),
                 };
 
