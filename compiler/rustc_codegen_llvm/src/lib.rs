@@ -9,9 +9,13 @@
 #![feature(crate_visibility_modifier)]
 #![feature(let_else)]
 #![feature(extern_types)]
+#![feature(once_cell)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+
+#[macro_use]
+extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 

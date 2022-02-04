@@ -3524,6 +3524,7 @@ dependencies = [
  "rustc_hir",
  "rustc_index",
  "rustc_llvm",
+ "rustc_macros",
  "rustc_metadata",
  "rustc_middle",
  "rustc_query_system",

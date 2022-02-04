@@ -38,6 +38,7 @@ use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::iter;
+use std::lazy::OnceCell;
 use tracing::debug;
 
 mod create_scope_map;
@@ -63,8 +64,10 @@ pub struct CrateDebugContext<'a, 'tcx> {
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
 
-    type_map: RefCell<TypeMap<'a, 'tcx>>,
+    type_map: TypeMap<'a, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,
+
+    recursion_marker_type: OnceCell<&'a DIType>,
 
     // This collection is used to assert that composite types (structs, enums,
     // ...) have their members only set once:
@@ -93,6 +96,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             created_enum_disr_types: Default::default(),
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
+            recursion_marker_type: OnceCell::new(),
             composite_types_completed: Default::default(),
         }
     }
