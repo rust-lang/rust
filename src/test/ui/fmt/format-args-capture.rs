@@ -1,5 +1,4 @@
 // run-pass
-#![feature(cfg_panic)]
 
 fn main() {
     named_argument_takes_precedence_to_captured();
