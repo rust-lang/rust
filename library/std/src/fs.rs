@@ -2288,7 +2288,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// This function will traverse symbolic links to query information about the
 /// destination file. In case of broken symbolic links this will return `Ok(false)`.
 ///
-/// As opposed to the `exists()` method, this one doesn't silently ignore errors
+/// As opposed to the [`Path::exists`] method, this one doesn't silently ignore errors
 /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
 /// denied on some of the parent directories.)
 ///
@@ -2301,6 +2301,8 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
 /// assert!(fs::try_exists("/root/secret_file.txt").is_err());
 /// ```
+///
+/// [`Path::exists`]: crate::path::Path::exists
 // FIXME: stabilization should modify documentation of `exists()` to recommend this method
 // instead.
 #[unstable(feature = "path_try_exists", issue = "83186")]
