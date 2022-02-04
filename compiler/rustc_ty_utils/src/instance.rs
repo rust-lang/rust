@@ -332,12 +332,12 @@ fn resolve_associated_item<'tcx>(
         }),
         traits::ImplSource::Closure(closure_data) => {
             let trait_closure_kind = tcx.fn_trait_kind_from_lang_item(trait_id).unwrap();
-            Some(Instance::resolve_closure(
+            Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
                 closure_data.substs,
                 trait_closure_kind,
-            ))
+            )
         }
         traits::ImplSource::FnPointer(ref data) => match data.fn_ty.kind() {
             ty::FnDef(..) | ty::FnPtr(..) => Some(Instance {
