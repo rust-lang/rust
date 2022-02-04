@@ -91,7 +91,7 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub struct DelaySpanBugEmitted(());
 
-type InternedSet<'tcx, T> = ShardedHashMap<Interned<'tcx, T>, ()>;
+type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc. are allocated from.
@@ -161,7 +161,7 @@ impl<'tcx> CtxtInterners<'tcx> {
                     outer_exclusive_binder: flags.outer_exclusive_binder,
                 };
 
-                Interned(self.arena.alloc(ty_struct))
+                InternedInSet(self.arena.alloc(ty_struct))
             })
             .0
     }
@@ -181,7 +181,7 @@ impl<'tcx> CtxtInterners<'tcx> {
                     outer_exclusive_binder: flags.outer_exclusive_binder,
                 };
 
-                Interned(self.arena.alloc(predicate_struct))
+                InternedInSet(self.arena.alloc(predicate_struct))
             })
             .0
     }
@@ -928,7 +928,7 @@ impl<'tcx> CommonTypes<'tcx> {
 
 impl<'tcx> CommonLifetimes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonLifetimes<'tcx> {
-        let mk = |r| interners.region.intern(r, |r| Interned(interners.arena.alloc(r))).0;
+        let mk = |r| interners.region.intern(r, |r| InternedInSet(interners.arena.alloc(r))).0;
 
         CommonLifetimes {
             re_root_empty: mk(RegionKind::ReEmpty(ty::UniverseIndex::ROOT)),
@@ -940,7 +940,8 @@ impl<'tcx> CommonLifetimes<'tcx> {
 
 impl<'tcx> CommonConsts<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>, types: &CommonTypes<'tcx>) -> CommonConsts<'tcx> {
-        let mk_const = |c| interners.const_.intern(c, |c| Interned(interners.arena.alloc(c))).0;
+        let mk_const =
+            |c| interners.const_.intern(c, |c| InternedInSet(interners.arena.alloc(c))).0;
 
         CommonConsts {
             unit: mk_const(ty::Const {
@@ -1632,7 +1633,7 @@ macro_rules! nop_lift {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.$set.contains_pointer_to(&Interned(self)) {
+                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self)) {
                     Some(unsafe { mem::transmute(self) })
                 } else {
                     None
@@ -1650,7 +1651,7 @@ macro_rules! nop_list_lift {
                 if self.is_empty() {
                     return Some(List::empty());
                 }
-                if tcx.interners.$set.contains_pointer_to(&Interned(self)) {
+                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self)) {
                     Some(unsafe { mem::transmute(self) })
                 } else {
                     None
@@ -1857,7 +1858,7 @@ macro_rules! sty_debug_print {
         #[allow(non_snake_case)]
         mod inner {
             use crate::ty::{self, TyCtxt};
-            use crate::ty::context::Interned;
+            use crate::ty::context::InternedInSet;
 
             #[derive(Copy, Clone)]
             struct DebugStat {
@@ -1880,7 +1881,7 @@ macro_rules! sty_debug_print {
 
                 let shards = tcx.interners.type_.lock_shards();
                 let types = shards.iter().flat_map(|shard| shard.keys());
-                for &Interned(t) in types {
+                for &InternedInSet(t) in types {
                     let variant = match t.kind() {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
@@ -1980,86 +1981,86 @@ impl<'tcx> TyCtxt<'tcx> {
 // this type just holds a pointer to it, but it still effectively owns it. It
 // impls `Borrow` so that it can be looked up using the original
 // (non-arena-memory-owning) types.
-struct Interned<'tcx, T: ?Sized>(&'tcx T);
+struct InternedInSet<'tcx, T: ?Sized>(&'tcx T);
 
-impl<'tcx, T: 'tcx + ?Sized> Clone for Interned<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized> Clone for InternedInSet<'tcx, T> {
     fn clone(&self) -> Self {
-        Interned(self.0)
+        InternedInSet(self.0)
     }
 }
 
-impl<'tcx, T: 'tcx + ?Sized> Copy for Interned<'tcx, T> {}
+impl<'tcx, T: 'tcx + ?Sized> Copy for InternedInSet<'tcx, T> {}
 
-impl<'tcx, T: 'tcx + ?Sized> IntoPointer for Interned<'tcx, T> {
+impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
     fn into_pointer(&self) -> *const () {
         self.0 as *const _ as *const ()
     }
 }
 
 #[allow(rustc::usage_of_ty_tykind)]
-impl<'tcx> Borrow<TyKind<'tcx>> for Interned<'tcx, TyS<'tcx>> {
+impl<'tcx> Borrow<TyKind<'tcx>> for InternedInSet<'tcx, TyS<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a TyKind<'tcx> {
         &self.0.kind()
     }
 }
 
-impl<'tcx> PartialEq for Interned<'tcx, TyS<'tcx>> {
-    fn eq(&self, other: &Interned<'tcx, TyS<'tcx>>) -> bool {
+impl<'tcx> PartialEq for InternedInSet<'tcx, TyS<'tcx>> {
+    fn eq(&self, other: &InternedInSet<'tcx, TyS<'tcx>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
         self.0.kind() == other.0.kind()
     }
 }
 
-impl<'tcx> Eq for Interned<'tcx, TyS<'tcx>> {}
+impl<'tcx> Eq for InternedInSet<'tcx, TyS<'tcx>> {}
 
-impl<'tcx> Hash for Interned<'tcx, TyS<'tcx>> {
+impl<'tcx> Hash for InternedInSet<'tcx, TyS<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
         self.0.kind().hash(s)
     }
 }
 
-impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for Interned<'tcx, PredicateInner<'tcx>> {
+impl<'tcx> Borrow<Binder<'tcx, PredicateKind<'tcx>>> for InternedInSet<'tcx, PredicateInner<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a Binder<'tcx, PredicateKind<'tcx>> {
         &self.0.kind
     }
 }
 
-impl<'tcx> PartialEq for Interned<'tcx, PredicateInner<'tcx>> {
-    fn eq(&self, other: &Interned<'tcx, PredicateInner<'tcx>>) -> bool {
+impl<'tcx> PartialEq for InternedInSet<'tcx, PredicateInner<'tcx>> {
+    fn eq(&self, other: &InternedInSet<'tcx, PredicateInner<'tcx>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
         self.0.kind == other.0.kind
     }
 }
 
-impl<'tcx> Eq for Interned<'tcx, PredicateInner<'tcx>> {}
+impl<'tcx> Eq for InternedInSet<'tcx, PredicateInner<'tcx>> {}
 
-impl<'tcx> Hash for Interned<'tcx, PredicateInner<'tcx>> {
+impl<'tcx> Hash for InternedInSet<'tcx, PredicateInner<'tcx>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
         self.0.kind.hash(s)
     }
 }
 
-impl<'tcx, T> Borrow<[T]> for Interned<'tcx, List<T>> {
+impl<'tcx, T> Borrow<[T]> for InternedInSet<'tcx, List<T>> {
     fn borrow<'a>(&'a self) -> &'a [T] {
         &self.0[..]
     }
 }
 
-impl<'tcx, T: PartialEq> PartialEq for Interned<'tcx, List<T>> {
-    fn eq(&self, other: &Interned<'tcx, List<T>>) -> bool {
+impl<'tcx, T: PartialEq> PartialEq for InternedInSet<'tcx, List<T>> {
+    fn eq(&self, other: &InternedInSet<'tcx, List<T>>) -> bool {
         // The `Borrow` trait requires that `x.borrow() == y.borrow()` equals
         // `x == y`.
         self.0[..] == other.0[..]
     }
 }
 
-impl<'tcx, T: Eq> Eq for Interned<'tcx, List<T>> {}
+impl<'tcx, T: Eq> Eq for InternedInSet<'tcx, List<T>> {}
 
-impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
+impl<'tcx, T: Hash> Hash for InternedInSet<'tcx, List<T>> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // The `Borrow` trait requires that `x.borrow().hash(s) == x.hash(s)`.
         self.0[..].hash(s)
@@ -2068,13 +2069,13 @@ impl<'tcx, T: Hash> Hash for Interned<'tcx, List<T>> {
 
 macro_rules! direct_interners {
     ($($name:ident: $method:ident($ty:ty),)+) => {
-        $(impl<'tcx> Borrow<$ty> for Interned<'tcx, $ty> {
+        $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
             fn borrow<'a>(&'a self) -> &'a $ty {
                 &self.0
             }
         }
 
-        impl<'tcx> PartialEq for Interned<'tcx, $ty> {
+        impl<'tcx> PartialEq for InternedInSet<'tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 // The `Borrow` trait requires that `x.borrow() == y.borrow()`
                 // equals `x == y`.
@@ -2082,9 +2083,9 @@ macro_rules! direct_interners {
             }
         }
 
-        impl<'tcx> Eq for Interned<'tcx, $ty> {}
+        impl<'tcx> Eq for InternedInSet<'tcx, $ty> {}
 
-        impl<'tcx> Hash for Interned<'tcx, $ty> {
+        impl<'tcx> Hash for InternedInSet<'tcx, $ty> {
             fn hash<H: Hasher>(&self, s: &mut H) {
                 // The `Borrow` trait requires that `x.borrow().hash(s) ==
                 // x.hash(s)`.
@@ -2095,7 +2096,7 @@ macro_rules! direct_interners {
         impl<'tcx> TyCtxt<'tcx> {
             pub fn $method(self, v: $ty) -> &'tcx $ty {
                 self.interners.$name.intern(v, |v| {
-                    Interned(self.interners.arena.alloc(v))
+                    InternedInSet(self.interners.arena.alloc(v))
                 }).0
             }
         })+
@@ -2117,7 +2118,7 @@ macro_rules! slice_interners {
         impl<'tcx> TyCtxt<'tcx> {
             $(pub fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
                 self.interners.$field.intern_ref(v, || {
-                    Interned(List::from_arena(&*self.arena, v))
+                    InternedInSet(List::from_arena(&*self.arena, v))
                 }).0
             })+
         }
