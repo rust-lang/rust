@@ -587,11 +587,8 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         function typePassesFilter(filter, type) {
-            // No filter
-            if (filter <= NO_TYPE_FILTER) return true;
-
-            // Exact match
-            if (filter === type) return true;
+            // No filter or Exact mach
+            if (filter <= NO_TYPE_FILTER || filter === type) return true;
 
             // Match related items
             var name = itemTypes[type];
