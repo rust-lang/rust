@@ -3319,7 +3319,9 @@ pub trait Iterator {
     /// Returns an iterator over `N` elements of the iterator at a time.
     ///
     /// The chunks do not overlap. If `N` does not divide the length of the
-    /// iterator, then the last up to `N-1` elements will be omitted.
+    /// iterator, then the last up to `N-1` elements will be omitted and can be
+    /// retrieved from the [`.into_remainder()`][ArrayChunks::into_remainder]
+    /// function of the iterator.
     ///
     /// # Panics
     ///
@@ -3336,7 +3338,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), Some(['l', 'o']));
     /// assert_eq!(iter.next(), Some(['r', 'e']));
     /// assert_eq!(iter.next(), None);
-    /// assert_eq!(iter.remainder(), &['m']);
+    /// assert_eq!(iter.into_remainder().unwrap().as_slice(), &['m']);
     /// ```
     ///
     /// ```

@@ -84,6 +84,16 @@ impl<T, const N: usize> IntoIter<T, N> {
         IntoIterator::into_iter(array)
     }
 
+    /// Creates a new iterator from a partially initalized array.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that all and only the `alive` elements of
+    /// `data` are initialized.
+    pub(crate) unsafe fn with_partial(data: [MaybeUninit<T>; N], alive: Range<usize>) -> Self {
+        Self { data, alive }
+    }
+
     /// Creates an iterator over the elements in a partially-initialized buffer.
     ///
     /// If you have a fully-initialized array, then use [`IntoIterator`].
