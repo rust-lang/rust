@@ -126,7 +126,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 
                 // If the user tried to use a key="value" flag, but is missing the quotes, provide
                 // a hint about how to resolve this.
-                if s.contains("=") && !s.contains("=\"") && !s.ends_with("\"") {
+                if s.contains('=') && !s.contains("=\"") && !s.ends_with('"') {
                     error!(concat!(
                         r#"expected `key` or `key="value"`, ensure escaping is appropriate"#,
                         r#" for your shell, try 'key="value"' or key=\"value\""#

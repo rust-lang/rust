@@ -11,8 +11,38 @@ wait-for: "#crate-search"
 click: "#crate-search"
 // We select "lib2" option then press enter to change the filter.
 press-key: "ArrowDown"
+press-key: "ArrowDown"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#titles"
 // We check that there is no more "test_docs" appearing.
+assert-false: "#results .externcrate"
+// We also check that "lib2" is the filter crate.
+assert-property: ("#crate-search", {"value": "lib2"})
+
+// Now we check that leaving the search results and putting them back keeps the
+// crate filtering.
+press-key: "Escape"
+wait-for: 100
+assert-css: ("#main-content", {"display": "block"})
+focus: ".search-input"
+wait-for: 100
+assert-css: ("#main-content", {"display": "none"})
+// We check that there is no more "test_docs" appearing.
+assert-false: "#results .externcrate"
+assert-property: ("#crate-search", {"value": "lib2"})
+
+// Selecting back "All crates"
+click: "#crate-search"
+press-key: "ArrowUp"
+press-key: "ArrowUp"
+press-key: "Enter"
+// Waiting for the search results to appear...
+wait-for: "#titles"
+assert-property: ("#crate-search", {"value": "All crates"})
+
+// Checking that the URL parameter is taken into account for crate filtering.
+goto: file://|DOC_PATH|/test_docs/index.html?search=test&filter-crate=lib2
+wait-for: "#crate-search"
+assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"

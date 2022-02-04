@@ -1587,10 +1587,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let len = remaining_fields.len();
 
-        let mut displayable_field_names =
-            remaining_fields.keys().map(|ident| ident.as_str()).collect::<Vec<_>>();
-
-        displayable_field_names.sort();
+        let mut displayable_field_names: Vec<&str> =
+            remaining_fields.keys().map(|ident| ident.as_str()).collect();
+        // sorting &str primitives here, sort_unstable is ok
+        displayable_field_names.sort_unstable();
 
         let mut truncated_fields_error = String::new();
         let remaining_fields_names = match &displayable_field_names[..] {

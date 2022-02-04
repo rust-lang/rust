@@ -953,7 +953,7 @@ crate fn collapse_doc_fragments(doc_strings: &[DocFragment]) -> String {
 /// A link that has not yet been rendered.
 ///
 /// This link will be turned into a rendered link by [`Item::links`].
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 crate struct ItemLink {
     /// The original link written in the markdown
     crate link: String,
@@ -1036,8 +1036,7 @@ impl Attributes {
         // Additional documentation should be shown before the original documentation
         let other_attrs = additional_attrs
             .into_iter()
-            .map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
-            .flatten()
+            .flat_map(|(attrs, id)| attrs.iter().map(move |attr| (attr, Some(id))))
             .chain(attrs.iter().map(|attr| (attr, None)))
             .filter_map(clean_attr)
             .collect();

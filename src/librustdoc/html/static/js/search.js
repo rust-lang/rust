@@ -1,5 +1,5 @@
 /* global addClass, getNakedUrl, getSettingValue, hasOwnPropertyRustdoc, initSearch, onEach */
-/* global onEachLazy, removeClass, searchState, updateLocalStorage */
+/* global onEachLazy, removeClass, searchState, hasClass */
 
 (function() {
 // This mapping table should match the discriminants of
@@ -131,6 +131,39 @@ window.initSearch = function(rawSearchIndex) {
     // suddenly your search is gone!
     if (searchState.input.value === "") {
         searchState.input.value = params.search || "";
+    }
+
+    /**
+     * Build an URL with search parameters.
+     *
+     * @param {string} search            - The current search being performed.
+     * @param {string|null} filterCrates - The current filtering crate (if any).
+     * @return {string}
+     */
+    function buildUrl(search, filterCrates) {
+        var extra = "?search=" + encodeURIComponent(search);
+
+        if (filterCrates !== null) {
+            extra += "&filter-crate=" + encodeURIComponent(filterCrates);
+        }
+        return getNakedUrl() + extra + window.location.hash;
+    }
+
+    /**
+     * Return the filtering crate or `null` if there is none.
+     *
+     * @return {string|null}
+     */
+    function getFilterCrates() {
+        var elem = document.getElementById("crate-search");
+
+        if (elem &&
+            elem.value !== "All crates" &&
+            hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
+        {
+            return elem.value;
+        }
+        return null;
     }
 
     /**
@@ -595,7 +628,7 @@ window.initSearch = function(rawSearchIndex) {
             // aliases to be before the others in the displayed results.
             var aliases = [];
             var crateAliases = [];
-            if (filterCrates !== undefined) {
+            if (filterCrates !== null) {
                 if (ALIASES[filterCrates] && ALIASES[filterCrates][query.search]) {
                     var query_aliases = ALIASES[filterCrates][query.search];
                     var len = query_aliases.length;
@@ -694,7 +727,7 @@ window.initSearch = function(rawSearchIndex) {
         {
             val = extractGenerics(val.substr(1, val.length - 2));
             for (i = 0; i < nSearchWords; ++i) {
-                if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
+                if (filterCrates !== null && searchIndex[i].crate !== filterCrates) {
                     continue;
                 }
                 in_args = findArg(searchIndex[i], val, true, typeFilter);
@@ -725,7 +758,7 @@ window.initSearch = function(rawSearchIndex) {
             var output = extractGenerics(parts[1]);
 
             for (i = 0; i < nSearchWords; ++i) {
-                if (filterCrates !== undefined && searchIndex[i].crate !== filterCrates) {
+                if (filterCrates !== null && searchIndex[i].crate !== filterCrates) {
                     continue;
                 }
                 var type = searchIndex[i].type;
@@ -781,7 +814,7 @@ window.initSearch = function(rawSearchIndex) {
             var lev, j;
             for (j = 0; j < nSearchWords; ++j) {
                 ty = searchIndex[j];
-                if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
+                if (!ty || (filterCrates !== null && ty.crate !== filterCrates)) {
                     continue;
                 }
                 var lev_add = 0;
@@ -1279,17 +1312,6 @@ window.initSearch = function(rawSearchIndex) {
         };
     }
 
-    function getFilterCrates() {
-        var elem = document.getElementById("crate-search");
-
-        if (elem && elem.value !== "All crates" &&
-            hasOwnPropertyRustdoc(rawSearchIndex, elem.value))
-        {
-            return elem.value;
-        }
-        return undefined;
-    }
-
     /**
      * Perform a search based on the current state of the search input element
      * and display the results.
@@ -1309,9 +1331,17 @@ window.initSearch = function(rawSearchIndex) {
         }
         if (!forced && query.id === currentResults) {
             if (query.query.length > 0) {
-                searchState.putBackSearch(searchState.input);
+                putBackSearch();
             }
             return;
+        }
+
+        var filterCrates = getFilterCrates();
+
+        // In case we have no information about the saved crate and there is a URL query parameter,
+        // we override it with the URL query parameter.
+        if (filterCrates === null && params["filter-crate"] !== undefined) {
+            filterCrates = params["filter-crate"];
         }
 
         // Update document title to maintain a meaningful browser history
@@ -1320,16 +1350,15 @@ window.initSearch = function(rawSearchIndex) {
         // Because searching is incremental by character, only the most
         // recent search query is added to the browser history.
         if (searchState.browserSupportsHistoryApi()) {
-            var newURL = getNakedUrl() + "?search=" + encodeURIComponent(query.raw) +
-                window.location.hash;
+            var newURL = buildUrl(query.raw, filterCrates);
+
             if (!history.state && !params.search) {
-                history.pushState(query, "", newURL);
+                history.pushState(null, "", newURL);
             } else {
-                history.replaceState(query, "", newURL);
+                history.replaceState(null, "", newURL);
             }
         }
 
-        var filterCrates = getFilterCrates();
         showResults(execSearch(query, searchWords, filterCrates),
             params["go_to_first"], filterCrates);
     }
@@ -1495,12 +1524,28 @@ window.initSearch = function(rawSearchIndex) {
         search();
     }
 
+    function putBackSearch() {
+        var search_input = searchState.input;
+        if (!searchState.input) {
+            return;
+        }
+        var search = searchState.outputElement();
+        if (search_input.value !== "" && hasClass(search, "hidden")) {
+            searchState.showResults(search);
+            if (searchState.browserSupportsHistoryApi()) {
+                history.replaceState(null, "",
+                    buildUrl(search_input.value, getFilterCrates()));
+            }
+            document.title = searchState.title;
+        }
+    }
+
     function registerSearchEvents() {
         var searchAfter500ms = function() {
             searchState.clearInputTimeout();
             if (searchState.input.value.length === 0) {
                 if (searchState.browserSupportsHistoryApi()) {
-                    history.replaceState("", window.currentCrate + " - Rust",
+                    history.replaceState(null, window.currentCrate + " - Rust",
                         getNakedUrl() + window.location.hash);
                 }
                 searchState.hideResults();
@@ -1567,6 +1612,14 @@ window.initSearch = function(rawSearchIndex) {
             }
         });
 
+        searchState.input.addEventListener("focus", function() {
+            putBackSearch();
+        });
+
+        searchState.input.addEventListener("blur", function() {
+            searchState.input.placeholder = searchState.input.origPlaceholder;
+        });
+
         // Push and pop states are used to add search results to the browser
         // history.
         if (searchState.browserSupportsHistoryApi()) {
@@ -1619,7 +1672,16 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function updateCrate(ev) {
-        updateLocalStorage("rustdoc-saved-filter-crate", ev.target.value);
+        if (ev.target.value === "All crates") {
+            // If we don't remove it from the URL, it'll be picked up again by the search.
+            var params = searchState.getQueryStringParams();
+            var query = searchState.input.value.trim();
+            if (!history.state && !params.search) {
+                history.pushState(null, "", buildUrl(query, null));
+            } else {
+                history.replaceState(null, "", buildUrl(query, null));
+            }
+        }
         // In case you "cut" the entry from the search input, then change the crate filter
         // before paste back the previous search, you get the old search results without
         // the filter. To prevent this, we need to remove the previous results.
@@ -1629,10 +1691,15 @@ window.initSearch = function(rawSearchIndex) {
 
     searchWords = buildIndex(rawSearchIndex);
     registerSearchEvents();
-    // If there's a search term in the URL, execute the search now.
-    if (searchState.getQueryStringParams().search) {
-        search();
+
+    function runSearchIfNeeded() {
+        // If there's a search term in the URL, execute the search now.
+        if (searchState.getQueryStringParams().search) {
+            search();
+        }
     }
+
+    runSearchIfNeeded();
 };
 
 if (window.searchIndex !== undefined) {

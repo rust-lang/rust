@@ -247,8 +247,7 @@ crate fn run(
         let target_crates = options
             .target_crates
             .into_iter()
-            .map(|target| all_crates.iter().filter(move |(_, name)| name.as_str() == target))
-            .flatten()
+            .flat_map(|target| all_crates.iter().filter(move |(_, name)| name.as_str() == target))
             .map(|(crate_num, _)| **crate_num)
             .collect::<Vec<_>>();
 

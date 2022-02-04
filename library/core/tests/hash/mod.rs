@@ -146,3 +146,11 @@ fn test_build_hasher_object_safe() {
 
     let _: &dyn BuildHasher<Hasher = DefaultHasher> = &RandomState::new();
 }
+
+// just tests by whether or not this compiles
+fn _build_hasher_default_impl_all_auto_traits<T>() {
+    use std::panic::{RefUnwindSafe, UnwindSafe};
+    fn all_auto_traits<T: Send + Sync + Unpin + UnwindSafe + RefUnwindSafe>() {}
+
+    all_auto_traits::<std::hash::BuildHasherDefault<T>>();
+}

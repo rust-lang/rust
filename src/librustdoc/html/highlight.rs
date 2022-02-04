@@ -274,8 +274,7 @@ impl Decorations {
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
             .into_iter()
-            .map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
-            .flatten()
+            .flat_map(|(kind, ranges)| ranges.into_iter().map(move |(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.
