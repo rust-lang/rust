@@ -202,28 +202,26 @@ impl SipHasher128 {
         hasher
     }
 
-    // A specialized write function for values with size <= 8.
     #[inline]
-    fn short_write<T>(&mut self, x: T) {
-        let size = mem::size_of::<T>();
+    pub fn short_write<const LEN: usize>(&mut self, bytes: [u8; LEN]) {
         let nbuf = self.nbuf;
-        debug_assert!(size <= 8);
+        debug_assert!(LEN <= 8);
         debug_assert!(nbuf < BUFFER_SIZE);
-        debug_assert!(nbuf + size < BUFFER_WITH_SPILL_SIZE);
+        debug_assert!(nbuf + LEN < BUFFER_WITH_SPILL_SIZE);
 
-        if nbuf + size < BUFFER_SIZE {
+        if nbuf + LEN < BUFFER_SIZE {
             unsafe {
                 // The memcpy call is optimized away because the size is known.
                 let dst = (self.buf.as_mut_ptr() as *mut u8).add(nbuf);
-                ptr::copy_nonoverlapping(&x as *const _ as *const u8, dst, size);
+                ptr::copy_nonoverlapping(bytes.as_ptr(), dst, LEN);
             }
 
-            self.nbuf = nbuf + size;
+            self.nbuf = nbuf + LEN;
 
             return;
         }
 
-        unsafe { self.short_write_process_buffer(x) }
+        unsafe { self.short_write_process_buffer(bytes) }
     }
 
     // A specialized write function for values with size <= 8 that should only
@@ -233,18 +231,17 @@ impl SipHasher128 {
     // `self.nbuf` must cause `self.buf` to become fully initialized (and not
     // overflow) if it wasn't already.
     #[inline(never)]
-    unsafe fn short_write_process_buffer<T>(&mut self, x: T) {
-        let size = mem::size_of::<T>();
+    unsafe fn short_write_process_buffer<const LEN: usize>(&mut self, bytes: [u8; LEN]) {
         let nbuf = self.nbuf;
-        debug_assert!(size <= 8);
+        debug_assert!(LEN <= 8);
         debug_assert!(nbuf < BUFFER_SIZE);
-        debug_assert!(nbuf + size >= BUFFER_SIZE);
-        debug_assert!(nbuf + size < BUFFER_WITH_SPILL_SIZE);
+        debug_assert!(nbuf + LEN >= BUFFER_SIZE);
+        debug_assert!(nbuf + LEN < BUFFER_WITH_SPILL_SIZE);
 
         // Copy first part of input into end of buffer, possibly into spill
         // element. The memcpy call is optimized away because the size is known.
         let dst = (self.buf.as_mut_ptr() as *mut u8).add(nbuf);
-        ptr::copy_nonoverlapping(&x as *const _ as *const u8, dst, size);
+        ptr::copy_nonoverlapping(bytes.as_ptr(), dst, LEN);
 
         // Process buffer.
         for i in 0..BUFFER_CAPACITY {
@@ -254,17 +251,17 @@ impl SipHasher128 {
             self.state.v0 ^= elem;
         }
 
-        // Copy remaining input into start of buffer by copying size - 1
-        // elements from spill (at most size - 1 bytes could have overflowed
+        // Copy remaining input into start of buffer by copying LEN - 1
+        // elements from spill (at most LEN - 1 bytes could have overflowed
         // into the spill). The memcpy call is optimized away because the size
-        // is known. And the whole copy is optimized away for size == 1.
+        // is known. And the whole copy is optimized away for LEN == 1.
         let src = self.buf.get_unchecked(BUFFER_SPILL_INDEX) as *const _ as *const u8;
-        ptr::copy_nonoverlapping(src, self.buf.as_mut_ptr() as *mut u8, size - 1);
+        ptr::copy_nonoverlapping(src, self.buf.as_mut_ptr() as *mut u8, LEN - 1);
 
         // This function should only be called when the write fills the buffer.
-        // Therefore, when size == 1, the new `self.nbuf` must be zero. The size
-        // is statically known, so the branch is optimized away.
-        self.nbuf = if size == 1 { 0 } else { nbuf + size - BUFFER_SIZE };
+        // Therefore, when LEN == 1, the new `self.nbuf` must be zero.
+        // LEN is statically known, so the branch is optimized away.
+        self.nbuf = if LEN == 1 { 0 } else { nbuf + LEN - BUFFER_SIZE };
         self.processed += BUFFER_SIZE;
     }
 
@@ -412,52 +409,52 @@ impl SipHasher128 {
 impl Hasher for SipHasher128 {
     #[inline]
     fn write_u8(&mut self, i: u8) {
-        self.short_write(i);
+        self.short_write(i.to_ne_bytes());
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.short_write(i);
+        self.short_write(i.to_ne_bytes());
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.short_write(i);
+        self.short_write(i.to_ne_bytes());
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.short_write(i);
+        self.short_write(i.to_ne_bytes());
     }
 
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        self.short_write(i);
+        self.short_write(i.to_ne_bytes());
     }
 
     #[inline]
     fn write_i8(&mut self, i: i8) {
-        self.short_write(i as u8);
+        self.short_write((i as u8).to_ne_bytes());
     }
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.short_write(i as u16);
+        self.short_write((i as u16).to_ne_bytes());
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.short_write(i as u32);
+        self.short_write((i as u32).to_ne_bytes());
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.short_write(i as u64);
+        self.short_write((i as u64).to_ne_bytes());
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        self.short_write(i as usize);
+        self.short_write((i as usize).to_ne_bytes());
     }
 
     #[inline]
