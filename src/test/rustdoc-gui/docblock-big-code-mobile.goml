@@ -6,4 +6,4 @@ goto: file://|DOC_PATH|/test_docs/long_code_block/index.html
 show-text: true // We need to enable text draw to be able to have the "real" size
 // Little explanations for this test: if the text wasn't displayed on two lines, it would take
 // around 20px (which is the font size).
-assert-property: (".docblock p > code", {"offsetHeight": "42"})
+assert-property: (".docblock p > code", {"offsetHeight": "44"})
