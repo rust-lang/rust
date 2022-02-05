@@ -1,0 +1,11 @@
+error[E0771]: use of non-static lifetime `'a` in const generic
+  --> $DIR/outer-lifetime-in-const-generic-default.rs:4:17
+   |
+LL |         let x: &'a ();
+   |                 ^^
+   |
+   = note: for more information, see issue #74052 <https://github.com/rust-lang/rust/issues/74052>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0771`.
