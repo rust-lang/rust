@@ -537,14 +537,15 @@ struct CacheAnalysis {
       return {};
     }
 
-    if (Fn->getName().startswith("MPI_") ||
-        Fn->getName().startswith("enzyme_wrapmpi$$"))
+    StringRef funcName = Fn->getName();
+
+    if (funcName.startswith("MPI_") || funcName.startswith("enzyme_wrapmpi$$"))
       return {};
 
-    if (Fn->getName() == "__kmpc_for_static_init_4" ||
-        Fn->getName() == "__kmpc_for_static_init_4u" ||
-        Fn->getName() == "__kmpc_for_static_init_8" ||
-        Fn->getName() == "__kmpc_for_static_init_8u") {
+    if (funcName == "__kmpc_for_static_init_4" ||
+        funcName == "__kmpc_for_static_init_4u" ||
+        funcName == "__kmpc_for_static_init_8" ||
+        funcName == "__kmpc_for_static_init_8u") {
       return {};
     }
 
@@ -644,12 +645,48 @@ struct CacheAnalysis {
 
     std::map<Argument *, bool> uncacheable_args;
 
-    auto arg = Fn->arg_begin();
-    for (unsigned i = 0; i < args.size(); ++i) {
-      uncacheable_args[arg] = !args_safe[i];
+    if (funcName == "__kmpc_fork_call") {
+      Value *op = callsite_op->getArgOperand(2);
+      Function *task = nullptr;
+      while (!(task = dyn_cast<Function>(op))) {
+        if (auto castinst = dyn_cast<ConstantExpr>(op))
+          if (castinst->isCast()) {
+            op = castinst->getOperand(0);
+            continue;
+          }
+        if (auto CI = dyn_cast<CastInst>(op)) {
+          op = CI->getOperand(0);
+          continue;
+        }
+        llvm::errs() << "op: " << *op << "\n";
+        assert(0 && "unknown fork call arg");
+      }
+
+      auto arg = task->arg_begin();
+
+      // Global.tid is cacheable
+      uncacheable_args[arg] = false;
       ++arg;
-      if (arg == Fn->arg_end()) {
-        break;
+      // Bound.tid is cacheable
+      uncacheable_args[arg] = false;
+      ++arg;
+
+      // Ignore first three arguments of fork call
+      for (unsigned i = 3; i < args.size(); ++i) {
+        uncacheable_args[arg] = !args_safe[i];
+        ++arg;
+        if (arg == Fn->arg_end()) {
+          break;
+        }
+      }
+    } else {
+      auto arg = Fn->arg_begin();
+      for (unsigned i = 0; i < args.size(); ++i) {
+        uncacheable_args[arg] = !args_safe[i];
+        ++arg;
+        if (arg == Fn->arg_end()) {
+          break;
+        }
       }
     }
 

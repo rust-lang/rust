@@ -3878,7 +3878,7 @@ public:
     }
 
     assert(uncacheable_args_map.find(&call) != uncacheable_args_map.end());
-    const std::map<Argument *, bool> &uncacheable_argsAbove =
+    const std::map<Argument *, bool> &uncacheable_args =
         uncacheable_args_map.find(&call)->second;
 
     IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
@@ -3900,38 +3900,6 @@ public:
           << "\n";
       llvm_unreachable(
           "could not derive underlying task contents from omp call");
-    }
-
-    std::map<Argument *, bool> uncacheable_args;
-    {
-      auto in_arg = call.getCalledFunction()->arg_begin();
-      auto pp_arg = task->arg_begin();
-
-      // Global.tid is cacheable
-      uncacheable_args[pp_arg] = false;
-      ++pp_arg;
-      // Bound.tid is cacheable
-      uncacheable_args[pp_arg] = false;
-      ++pp_arg;
-
-      // Ignore the first three args of init call
-      ++in_arg;
-      ++in_arg;
-      ++in_arg;
-
-      for (; pp_arg != task->arg_end();) {
-        // If var-args then we may still have args even though outermost
-        // has no more
-        if (in_arg == call.getCalledFunction()->arg_end()) {
-          uncacheable_args[pp_arg] = true;
-        } else {
-          assert(uncacheable_argsAbove.find(in_arg) !=
-                 uncacheable_argsAbove.end());
-          uncacheable_args[pp_arg] = uncacheable_argsAbove.find(in_arg)->second;
-          ++in_arg;
-        }
-        ++pp_arg;
-      }
     }
 
     auto called = task;
