@@ -3,20 +3,17 @@ use std::borrow::Cow;
 
 impl Printer {
     /// "raw box"
-    pub fn rbox(&mut self, indent: usize, breaks: Breaks) {
-        self.scan_begin(BeginToken {
-            indent: IndentStyle::Block { offset: indent as isize },
-            breaks,
-        })
+    pub fn rbox(&mut self, indent: isize, breaks: Breaks) {
+        self.scan_begin(BeginToken { indent: IndentStyle::Block { offset: indent }, breaks })
     }
 
     /// Inconsistent breaking box
-    pub fn ibox(&mut self, indent: usize) {
+    pub fn ibox(&mut self, indent: isize) {
         self.rbox(indent, Breaks::Inconsistent)
     }
 
     /// Consistent breaking box
-    pub fn cbox(&mut self, indent: usize) {
+    pub fn cbox(&mut self, indent: isize) {
         self.rbox(indent, Breaks::Consistent)
     }
 
@@ -25,7 +22,11 @@ impl Printer {
     }
 
     pub fn break_offset(&mut self, n: usize, off: isize) {
-        self.scan_break(BreakToken { offset: off, blank_space: n as isize })
+        self.scan_break(BreakToken {
+            offset: off,
+            blank_space: n as isize,
+            ..BreakToken::default()
+        });
     }
 
     pub fn end(&mut self) {
@@ -66,12 +67,24 @@ impl Printer {
     }
 
     pub fn hardbreak_tok_offset(off: isize) -> Token {
-        Token::Break(BreakToken { offset: off, blank_space: SIZE_INFINITY })
+        Token::Break(BreakToken {
+            offset: off,
+            blank_space: SIZE_INFINITY,
+            ..BreakToken::default()
+        })
+    }
+
+    pub fn trailing_comma(&mut self) {
+        self.scan_break(BreakToken {
+            blank_space: 1,
+            pre_break: Some(','),
+            ..BreakToken::default()
+        });
     }
 }
 
 impl Token {
     pub fn is_hardbreak_tok(&self) -> bool {
-        matches!(self, Token::Break(BreakToken { offset: 0, blank_space: SIZE_INFINITY }))
+        *self == Printer::hardbreak_tok_offset(0)
     }
 }

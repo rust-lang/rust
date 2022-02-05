@@ -148,7 +148,7 @@ pub enum Breaks {
     Inconsistent,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum IndentStyle {
     /// Vertically aligned under whatever column this block begins at.
     ///
@@ -164,19 +164,20 @@ enum IndentStyle {
     Block { offset: isize },
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default, PartialEq)]
 pub struct BreakToken {
     offset: isize,
     blank_space: isize,
+    pre_break: Option<char>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct BeginToken {
     indent: IndentStyle,
     breaks: Breaks,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Token {
     // In practice a string token contains either a `&'static str` or a
     // `String`. `Cow` is overkill for this because we never modify the data,
@@ -313,6 +314,12 @@ impl Printer {
         }
     }
 
+    pub fn offset(&mut self, offset: isize) {
+        if let Some(BufEntry { token: Token::Break(token), .. }) = &mut self.buf.last_mut() {
+            token.offset += offset;
+        }
+    }
+
     fn check_stream(&mut self) {
         while self.right_total - self.left_total > self.space {
             if *self.scan_stack.front().unwrap() == self.buf.index_of_first() {
@@ -391,7 +398,9 @@ impl Printer {
         if size > self.space {
             self.print_stack.push(PrintFrame::Broken { indent: self.indent, breaks: token.breaks });
             self.indent = match token.indent {
-                IndentStyle::Block { offset } => (self.indent as isize + offset) as usize,
+                IndentStyle::Block { offset } => {
+                    usize::try_from(self.indent as isize + offset).unwrap()
+                }
                 IndentStyle::Visual => (MARGIN - self.space) as usize,
             };
         } else {
@@ -415,6 +424,9 @@ impl Printer {
             self.pending_indentation += token.blank_space;
             self.space -= token.blank_space;
         } else {
+            if let Some(pre_break) = token.pre_break {
+                self.out.push(pre_break);
+            }
             self.out.push('\n');
             let indent = self.indent as isize + token.offset;
             self.pending_indentation = indent;
