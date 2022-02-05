@@ -40,7 +40,7 @@ fn do_count_chars(s: &str) -> usize {
     //
     // - Less than or equal to 255, otherwise we'll overflow bytes in `counts`.
     // - A multiple of `UNROLL_INNER`, otherwise our `break` inside the
-    //   `body.chunks(CHUNK_SIZE)` loop.
+    //   `body.chunks(CHUNK_SIZE)` loop is incorrect.
     //
     // For performance, `CHUNK_SIZE` should be:
     // - Relatively cheap to `/` against (so some simple sum of powers of two).
