@@ -1265,7 +1265,7 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                         if out.is_empty() {
                             write!(
                                 &mut out,
-                                "<div class=\"notable\">Notable traits for {}</div>\
+                                "<span class=\"notable\">Notable traits for {}</span>\
                              <code class=\"content\">",
                                 impl_.for_.print(cx)
                             );
@@ -1297,9 +1297,9 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
         out.insert_str(
             0,
             "<span class=\"notable-traits\"><span class=\"notable-traits-tooltip\">ⓘ\
-            <div class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
+            <span class=\"notable-traits-tooltiptext\"><span class=\"docblock\">",
         );
-        out.push_str("</code></span></div></span></span>");
+        out.push_str("</code></span></span></span></span>");
     }
 
     out.into_inner()
@@ -1431,7 +1431,7 @@ fn render_impl(
                         .map(|item| format!("{}.{}", item.type_(), name));
                     write!(
                         w,
-                        "<div id=\"{}\" class=\"{}{} has-srclink\">",
+                        "<section id=\"{}\" class=\"{}{} has-srclink\">",
                         id, item_type, in_trait_class,
                     );
                     render_rightside(w, cx, item, containing_item, render_mode);
@@ -1446,7 +1446,7 @@ fn render_impl(
                         render_mode,
                     );
                     w.write_str("</h4>");
-                    w.write_str("</div>");
+                    w.write_str("</section>");
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
@@ -1454,7 +1454,7 @@ fn render_impl(
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
+                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
@@ -1469,14 +1469,14 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</h4>");
-                w.write_str("</div>");
+                w.write_str("</section>");
             }
             clean::AssocConstItem(ref ty, _) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(
                     w,
-                    "<div id=\"{}\" class=\"{}{} has-srclink\">",
+                    "<section id=\"{}\" class=\"{}{} has-srclink\">",
                     id, item_type, in_trait_class
                 );
                 render_rightside(w, cx, item, containing_item, render_mode);
@@ -1491,12 +1491,12 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</h4>");
-                w.write_str("</div>");
+                w.write_str("</section>");
             }
             clean::AssocTypeItem(ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
-                write!(w, "<div id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
+                write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
                 write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
                 w.write_str("<h4 class=\"code-header\">");
                 assoc_type(
@@ -1509,7 +1509,7 @@ fn render_impl(
                     cx,
                 );
                 w.write_str("</h4>");
-                w.write_str("</div>");
+                w.write_str("</section>");
             }
             clean::StrippedItem(..) => return,
             _ => panic!("can't make docs for trait item with name {:?}", item.name),
@@ -1668,21 +1668,23 @@ fn render_rightside(
         RenderMode::ForDeref { .. } => (None, None),
     };
 
-    write!(w, "<div class=\"rightside\">");
+    let mut rightside = Buffer::new();
     let has_stability = render_stability_since_raw(
-        w,
+        &mut rightside,
         item.stable_since(tcx),
         const_stability,
         containing_item.stable_since(tcx),
         const_stable_since,
     );
-    let mut tmp_buf = Buffer::empty_from(w);
-    write_srclink(cx, item, &mut tmp_buf);
-    if has_stability && !tmp_buf.is_empty() {
-        w.write_str(" · ");
+    let mut srclink = Buffer::empty_from(w);
+    write_srclink(cx, item, &mut srclink);
+    if has_stability && !srclink.is_empty() {
+        rightside.write_str(" · ");
     }
-    w.push_buffer(tmp_buf);
-    w.write_str("</div>");
+    rightside.push_buffer(srclink);
+    if !rightside.is_empty() {
+        write!(w, "<span class=\"rightside\">{}</span>", rightside.into_inner());
+    }
 }
 
 pub(crate) fn render_impl_summary(
@@ -1713,7 +1715,7 @@ pub(crate) fn render_impl_summary(
     } else {
         format!(" data-aliases=\"{}\"", aliases.join(","))
     };
-    write!(w, "<div id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
+    write!(w, "<section id=\"{}\" class=\"impl has-srclink\"{}>", id, aliases);
     render_rightside(w, cx, &i.impl_item, containing_item, RenderMode::Normal);
     write!(w, "<a href=\"#{}\" class=\"anchor\"></a>", id);
     write!(w, "<h3 class=\"code-header in-band\">");
@@ -1737,11 +1739,11 @@ pub(crate) fn render_impl_summary(
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {
         if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-            write!(w, "<div class=\"item-info\">{}</div>", portability);
+            write!(w, "<span class=\"item-info\">{}</span>", portability);
         }
     }
 
-    w.write_str("</div>");
+    w.write_str("</section>");
 }
 
 fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
@@ -1802,19 +1804,9 @@ fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
     // to navigate the documentation (though slightly inefficiently).
 
     if !it.is_mod() {
-        buffer.write_str("<h2 class=\"location\">In ");
-        for (i, name) in cx.current.iter().take(parentlen).enumerate() {
-            if i > 0 {
-                buffer.write_str("::<wbr>");
-            }
-            write!(
-                buffer,
-                "<a href=\"{}index.html\">{}</a>",
-                &cx.root_path()[..(cx.current.len() - i - 1) * 3],
-                *name
-            );
-        }
-        buffer.write_str("</h2>");
+        let path: String = cx.current.iter().map(|s| s.as_str()).intersperse("::").collect();
+
+        write!(buffer, "<h2 class=\"location\"><a href=\"index.html\">In {}</a></h2>", path);
     }
 
     // Sidebar refers to the enclosing module, not this module.

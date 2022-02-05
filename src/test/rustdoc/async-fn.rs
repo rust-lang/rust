@@ -77,12 +77,12 @@ struct AsyncFdReadyGuard<'a, T> { x: &'a T }
 
 impl Foo {
     // @has async_fn/struct.Foo.html
-    // @has - '//div[@class="method has-srclink"]' 'pub async fn complicated_lifetimes( &self, context: &impl Bar) -> impl Iterator<Item = &usize>'
+    // @has - '//*[@class="method has-srclink"]' 'pub async fn complicated_lifetimes( &self, context: &impl Bar) -> impl Iterator<Item = &usize>'
     pub async fn complicated_lifetimes(&self, context: &impl Bar) -> impl Iterator<Item = &usize> {}
     // taken from `tokio` as an example of a method that was particularly bad before
-    // @has - '//div[@class="method has-srclink"]' "pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()>"
+    // @has - '//*[@class="method has-srclink"]' "pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()>"
     pub async fn readable<T>(&self) -> Result<AsyncFdReadyGuard<'_, T>, ()> {}
-    // @has - '//div[@class="method has-srclink"]' "pub async fn mut_self(&mut self)"
+    // @has - '//*[@class="method has-srclink"]' "pub async fn mut_self(&mut self)"
     pub async fn mut_self(&mut self) {}
 }
 

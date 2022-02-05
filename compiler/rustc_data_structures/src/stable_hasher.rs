@@ -133,18 +133,18 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        // Always treat isize as i64 so we get the same results on 32 and 64 bit
+        // Always treat isize as a 64-bit number so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
         // for example. Sign extending here is preferable as it means that the
         // same negative number hashes the same on both 32 and 64 bit platforms.
-        let value = (i as i64).to_le() as u64;
+        let value = i as u64;
 
         // Cold path
         #[cold]
         #[inline(never)]
         fn hash_value(state: &mut SipHasher128, value: u64) {
             state.write_u8(0xFF);
-            state.write_u64(value);
+            state.write_u64(value.to_le());
         }
 
         // `isize` values often seem to have a small (positive) numeric value in practice.
@@ -161,6 +161,10 @@ impl Hasher for StableHasher {
         // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
         // `isize`s that fit within a different amount of bytes, they should always produce a different
         // byte stream for the hasher.
+        //
+        // To ensure that this optimization hashes the exact same bytes on both little-endian and
+        // big-endian architectures, we compare the value with 0xFF before we convert the number
+        // into a unified representation (little-endian).
         if value < 0xFF {
             self.state.write_u8(value as u8);
         } else {

@@ -125,7 +125,7 @@
    78|       |// generic functions with:
    79|       |//
    80|       |// ```shell
-   81|       |// $ `rustc -Z instrument-coverage=except-unused-generics ...`
+   81|       |// $ `rustc -Zunstable-options -C instrument-coverage=except-unused-generics ...`
    82|       |// ```
    83|       |//
    84|       |// Even though this function is used by `uses_crate.rs` (and

@@ -159,4 +159,5 @@ fn test_isize_compression() {
     check_hash(0xAAAA, 0xAAAAAA);
     check_hash(0xAAAAAA, 0xAAAAAAAA);
     check_hash(0xFF, 0xFFFFFFFFFFFFFFFF);
+    check_hash(u64::MAX /* -1 */, 1);
 }
