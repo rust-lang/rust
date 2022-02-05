@@ -9,7 +9,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
-use rustc_span::hygiene::{MacroKind, SyntaxContext};
+use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, ExpnData, ExpnId, ExpnKind, Span, Symbol};
 use std::ops::ControlFlow;
 
@@ -306,6 +306,7 @@ fn is_assert_arg(cx: &LateContext<'_>, expr: &Expr<'_>, assert_expn: ExpnId) -> 
 }
 
 /// A parsed `format_args!` expansion
+#[derive(Debug)]
 pub struct FormatArgsExpn<'tcx> {
     /// Span of the first argument, the format string
     pub format_string_span: Span,
@@ -465,11 +466,13 @@ impl<'tcx> FormatArgsExpn<'tcx> {
             .collect()
     }
 
-    /// Span of all inputs
+    /// Source callsite span of all inputs
     pub fn inputs_span(&self) -> Span {
         match *self.value_args {
             [] => self.format_string_span,
-            [.., last] => self.format_string_span.to(last.span),
+            [.., last] => self
+                .format_string_span
+                .to(hygiene::walk_chain(last.span, self.format_string_span.ctxt())),
         }
     }
 }
