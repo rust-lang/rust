@@ -328,16 +328,28 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::CastToChar => {
-                type_error_struct!(
+                let mut err = type_error_struct!(
                     fcx.tcx.sess,
                     self.span,
                     self.expr_ty,
                     E0604,
                     "only `u8` can be cast as `char`, not `{}`",
                     self.expr_ty
-                )
-                .span_label(self.span, "invalid cast")
-                .emit();
+                );
+                err.span_label(self.span, "invalid cast");
+                if self.expr_ty.is_numeric() {
+                    err.span_help(
+                        self.span,
+                        if self.expr_ty == fcx.tcx.types.i8 {
+                            "try casting from `u8` instead"
+                        } else if self.expr_ty == fcx.tcx.types.u32 {
+                            "try `char::from_u32` instead"
+                        } else {
+                            "try `char::from_u32` instead (via a `u32`)"
+                        },
+                    );
+                }
+                err.emit();
             }
             CastError::NonScalar => {
                 let mut err = type_error_struct!(

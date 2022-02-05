@@ -3,6 +3,12 @@ error[E0604]: only `u8` can be cast as `char`, not `u32`
    |
 LL |     1u32 as char;
    |     ^^^^^^^^^^^^ invalid cast
+   |
+help: try `char::from_u32` instead
+  --> $DIR/E0604.rs:2:5
+   |
+LL |     1u32 as char;
+   |     ^^^^^^^^^^^^
 
 error: aborting due to previous error
 
