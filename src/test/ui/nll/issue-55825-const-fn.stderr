@@ -4,7 +4,7 @@ error[E0658]: trait objects in const fn are unstable
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error: aborting due to previous error

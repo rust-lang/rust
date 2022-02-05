@@ -136,7 +136,7 @@ error[E0658]: trait bounds other than `Sized` on const fn parameters are unstabl
 LL | const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
    |                ^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
@@ -145,7 +145,7 @@ error[E0658]: trait bounds other than `Sized` on const fn parameters are unstabl
 LL | const fn foo11_2<T: Send>(t: T) -> T { t }
    |                  ^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0013]: constant functions cannot refer to statics
@@ -218,7 +218,7 @@ LL |
 LL |     const fn foo(&self) {}
    |     ------------------- function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
@@ -230,7 +230,7 @@ LL |
 LL |     const fn foo2(&self) {}
    |     -------------------- function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
@@ -242,7 +242,7 @@ LL |
 LL |     const fn foo3(&self) {}
    |     -------------------- function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait bounds other than `Sized` on const fn parameters are unstable
@@ -251,7 +251,7 @@ error[E0658]: trait bounds other than `Sized` on const fn parameters are unstabl
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
@@ -268,7 +268,7 @@ error[E0658]: trait bounds other than `Sized` on const fn parameters are unstabl
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
@@ -285,7 +285,7 @@ error[E0658]: trait objects in const fn are unstable
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait objects in const fn are unstable
@@ -294,7 +294,7 @@ error[E0658]: trait objects in const fn are unstable
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait objects in const fn are unstable
@@ -305,7 +305,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    | |
    | function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait objects in const fn are unstable
@@ -316,7 +316,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    | |
    | function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: trait objects in const fn are unstable
@@ -327,7 +327,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &dyn std::fmt::Debug, ()).1
    | |
    | function declared as const here
    |
-   = note: see issue #57563 <https://github.com/rust-lang/rust/issues/57563> for more information
+   = note: see issue #93706 <https://github.com/rust-lang/rust/issues/93706> for more information
    = help: add `#![feature(const_fn_trait_bound)]` to the crate attributes to enable
 
 error[E0658]: function pointers cannot appear in constant functions
