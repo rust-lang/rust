@@ -6,9 +6,9 @@
 //! a more clever manner than `rustc`'s default layout algorithm would).
 //!
 //! Conceptually, it stores the same data as the "unpacked" equivalent we use on
-//! other targets. Specifically, you can imagine it as an optimized following
-//! data (which is equivalent to what's stored by `repr_unpacked::Repr`, e.g.
-//! `super::ErrorData<Box<Custom>>`):
+//! other targets. Specifically, you can imagine it as an optimized version of
+//! the following enum (which is roughly equivalent to what's stored by
+//! `repr_unpacked::Repr`, e.g. `super::ErrorData<Box<Custom>>`):
 //!
 //! ```ignore (exposition-only)
 //! enum ErrorData {
@@ -135,7 +135,16 @@ impl Repr {
         // (rather than `ptr::wrapping_add`), but it's unclear this would give
         // any benefit, so we just use `wrapping_add` instead.
         let tagged = p.wrapping_add(TAG_CUSTOM).cast::<()>();
-        // Safety: the above safety comment also means the result can't be null.
+        // Safety: `TAG_CUSTOM + p` is the same as `TAG_CUSTOM | p`,
+        // because `p`'s alignment means it isn't allowed to have any of the
+        // `TAG_BITS` set (you can verify that addition and bitwise-or are the
+        // same when the operands have no bits in common using a truth table).
+        //
+        // Then, `TAG_CUSTOM | p` is not zero, as that would require
+        // `TAG_CUSTOM` and `p` both be zero, and neither is (as `p` came from a
+        // box, and `TAG_CUSTOM` just... isn't zero -- it's `0b01`). Therefore,
+        // `TAG_CUSTOM + p` isn't zero and so `tagged` can't be, and the
+        // `new_unchecked` is safe.
         let res = Self(unsafe { NonNull::new_unchecked(tagged) });
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
@@ -342,12 +351,25 @@ static_assert!(@usize_eq: size_of::<NonNull<()>>(), size_of::<usize>());
 static_assert!(@usize_eq: size_of::<&'static SimpleMessage>(), 8);
 static_assert!(@usize_eq: size_of::<Box<Custom>>(), 8);
 
-// And they must have >= 4 byte alignment.
-static_assert!(align_of::<SimpleMessage>() >= 4);
-static_assert!(align_of::<Custom>() >= 4);
+static_assert!((TAG_MASK + 1).is_power_of_two());
+// And they must have sufficient alignment.
+static_assert!(align_of::<SimpleMessage>() >= TAG_MASK + 1);
+static_assert!(align_of::<Custom>() >= TAG_MASK + 1);
 
-// This is obviously true (`TAG_CUSTOM` is `0b01`), but our implementation of
-// `Repr::new_custom` and such would be wrong if it were not, so we check.
+static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE_MESSAGE), TAG_SIMPLE_MESSAGE);
+static_assert!(@usize_eq: (TAG_MASK & TAG_CUSTOM), TAG_CUSTOM);
+static_assert!(@usize_eq: (TAG_MASK & TAG_OS), TAG_OS);
+static_assert!(@usize_eq: (TAG_MASK & TAG_SIMPLE), TAG_SIMPLE);
+
+// This is obviously true (`TAG_CUSTOM` is `0b01`), but in `Repr::new_custom` we
+// offset a pointer by this value, and expect it to both be within the same
+// object, and to not wrap around the address space. See the comment in that
+// function for further details.
+//
+// Actually, at the moment we use `ptr::wrapping_add`, not `ptr::add`, so this
+// check isn't needed for that one, although the assertion that we don't
+// actually wrap around in that wrapping_add does simplify the safety reasoning
+// elsewhere considerably.
 static_assert!(size_of::<Custom>() >= TAG_CUSTOM);
 
 // These two store a payload which is allowed to be zero, so they must be

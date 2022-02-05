@@ -76,6 +76,9 @@ impl fmt::Debug for Error {
     }
 }
 
+// Only derive debug in tests, to make sure it
+// doesn't accidentally get printed.
+#[cfg_attr(test, derive(Debug))]
 enum ErrorData<C> {
     Os(i32),
     Simple(ErrorKind),
@@ -98,6 +101,7 @@ enum ErrorData<C> {
 // if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
 #[repr(align(4))]
+#[derive(Debug)]
 pub(crate) struct SimpleMessage {
     kind: ErrorKind,
     message: &'static str,
