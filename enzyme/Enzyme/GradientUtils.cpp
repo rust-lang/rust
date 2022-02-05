@@ -2579,8 +2579,7 @@ DiffeGradientUtils *DiffeGradientUtils::CreateFromClone(
 
 Constant *GradientUtils::GetOrCreateShadowConstant(
     EnzymeLogic &Logic, TargetLibraryInfo &TLI, TypeAnalysis &TA,
-    Constant *oval, DerivativeMode mode, unsigned width, bool AtomicAdd,
-    bool PostOpt) {
+    Constant *oval, DerivativeMode mode, unsigned width, bool AtomicAdd) {
   if (isa<ConstantPointerNull>(oval)) {
     return oval;
   } else if (isa<UndefValue>(oval)) {
@@ -2590,38 +2589,36 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
   } else if (auto CD = dyn_cast<ConstantDataArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumElements(); i < len; i++) {
-      Vals.push_back(
-          GetOrCreateShadowConstant(Logic, TLI, TA, CD->getElementAsConstant(i),
-                                    mode, width, AtomicAdd, PostOpt));
+      Vals.push_back(GetOrCreateShadowConstant(
+          Logic, TLI, TA, CD->getElementAsConstant(i), mode, width, AtomicAdd));
     }
     return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantArray>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd));
     }
     return ConstantArray::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantStruct>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd));
     }
     return ConstantStruct::get(CD->getType(), Vals);
   } else if (auto CD = dyn_cast<ConstantVector>(oval)) {
     SmallVector<Constant *, 1> Vals;
     for (size_t i = 0, len = CD->getNumOperands(); i < len; i++) {
       Vals.push_back(GetOrCreateShadowConstant(
-          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd, PostOpt));
+          Logic, TLI, TA, CD->getOperand(i), mode, width, AtomicAdd));
     }
     return ConstantVector::get(Vals);
   } else if (auto F = dyn_cast<Function>(oval)) {
-    return GetOrCreateShadowFunction(Logic, TLI, TA, F, mode, width, AtomicAdd,
-                                     PostOpt);
+    return GetOrCreateShadowFunction(Logic, TLI, TA, F, mode, width, AtomicAdd);
   } else if (auto arg = dyn_cast<ConstantExpr>(oval)) {
     auto C = GetOrCreateShadowConstant(Logic, TLI, TA, arg->getOperand(0), mode,
-                                       width, AtomicAdd, PostOpt);
+                                       width, AtomicAdd);
     if (arg->isCast() || arg->getOpcode() == Instruction::GetElementPtr) {
       SmallVector<Constant *, 8> NewOps;
       for (unsigned i = 0, e = arg->getNumOperands(); i != e; ++i)
@@ -2671,7 +2668,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
           arg->getInitializer()
               ? GetOrCreateShadowConstant(Logic, TLI, TA,
                                           cast<Constant>(arg->getOperand(0)),
-                                          mode, width, AtomicAdd, PostOpt)
+                                          mode, width, AtomicAdd)
               : Constant::getNullValue(type),
           arg->getName() + "_shadow", arg, arg->getThreadLocalMode(),
           arg->getType()->getAddressSpace(), arg->isExternallyInitialized());
@@ -2693,7 +2690,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
 
 Constant *GradientUtils::GetOrCreateShadowFunction(
     EnzymeLogic &Logic, TargetLibraryInfo &TLI, TypeAnalysis &TA, Function *fn,
-    DerivativeMode mode, unsigned width, bool AtomicAdd, bool PostOpt) {
+    DerivativeMode mode, unsigned width, bool AtomicAdd) {
   //! Todo allow tape propagation
   //  Note that specifically this should _not_ be called with topLevel=true
   //  (since it may not be valid to always assume we can recompute the
@@ -2809,8 +2806,7 @@ Constant *GradientUtils::GetOrCreateShadowFunction(
         fn, retType, /*constant_args*/ types, TA,
         /*returnUsed*/ !fn->getReturnType()->isEmptyTy() &&
             !fn->getReturnType()->isVoidTy(),
-        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd,
-        PostOpt);
+        type_args, uncacheable_args, /*forceAnonymousTape*/ true, AtomicAdd);
     Constant *newf = Logic.CreatePrimalAndGradient(
         (ReverseCacheKey){.todiff = fn,
                           .retType = retType,

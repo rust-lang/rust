@@ -4044,7 +4044,7 @@ public:
         subdata = &gutils->Logic.CreateAugmentedPrimal(
             cast<Function>(called), subretType, argsInverted,
             TR.analyzer.interprocedural, /*return is used*/ false, nextTypeInfo,
-            uncacheable_args, false, /*AtomicAdd*/ true, /*PostOpt*/ false,
+            uncacheable_args, false, /*AtomicAdd*/ true,
             /*OpenMP*/ true);
         if (Mode == DerivativeMode::ReverseModePrimal) {
           assert(augmentedReturn);
@@ -4264,7 +4264,7 @@ public:
                                        : nullptr,
                               .typeInfo = nextTypeInfo},
             TR.analyzer.interprocedural, subdata,
-            /*postopt*/ false, /*omp*/ true);
+            /*omp*/ true);
 
         if (subdata->returns.find(AugmentedStruct::Tape) !=
             subdata->returns.end()) {
@@ -8855,8 +8855,7 @@ public:
           subdata = &gutils->Logic.CreateAugmentedPrimal(
               cast<Function>(called), subretType, argsInverted,
               TR.analyzer.interprocedural, /*return is used*/ subretused,
-              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd,
-              /*PostOpt*/ false);
+              nextTypeInfo, uncacheable_args, false, gutils->AtomicAdd);
           if (Mode == DerivativeMode::ReverseModePrimal) {
             assert(augmentedReturn);
             auto subaugmentations =

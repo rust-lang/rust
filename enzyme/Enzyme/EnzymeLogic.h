@@ -226,11 +226,18 @@ struct ReverseCacheKey {
 class EnzymeLogic {
 public:
   PreProcessCache PPC;
+
+  /// \p PostOpt is whether to perform basic
+  ///  optimization of the function after synthesis
+  bool PostOpt;
+
+  EnzymeLogic(bool PostOpt) : PostOpt(PostOpt) {}
+
   using AugmentedCacheKey =
       std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool, bool>;
+                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool>;
   std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
   std::map<AugmentedCacheKey, bool> AugmentedCachedFinished;
 
@@ -244,14 +251,13 @@ public:
   ///  loads in the generated function (and thus cannot be cached). \p
   ///  forceAnonymousTape forces the tape to be an i8* rather than the true tape
   ///  structure \p AtomicAdd is whether to perform all adjoint updates to
-  ///  memory in an atomic way \p PostOpt is whether to perform basic
-  ///  optimization of the function after synthesis
+  ///  memory in an atomic way
   const AugmentedReturn &CreateAugmentedPrimal(
       llvm::Function *todiff, DIFFE_TYPE retType,
       const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
       bool returnUsed, const FnTypeInfo &typeInfo,
       const std::map<llvm::Argument *, bool> _uncacheable_args,
-      bool forceAnonymousTape, bool AtomicAdd, bool PostOpt, bool omp = false);
+      bool forceAnonymousTape, bool AtomicAdd, bool omp = false);
 
   std::map<ReverseCacheKey, llvm::Function *> ReverseCachedFunctions;
 
@@ -275,12 +281,10 @@ public:
   ///  may be rewritten before loads in the generated function (and thus cannot
   ///  be cached). \p augmented is the data structure created by prior call to
   ///  an augmented forward pass \p AtomicAdd is whether to perform all adjoint
-  ///  updates to memory in an atomic way \p PostOpt is whether to perform basic
-  ///  optimization of the function after synthesis
+  ///  updates to memory in an atomic way
   llvm::Function *CreatePrimalAndGradient(const ReverseCacheKey &&key,
                                           TypeAnalysis &TA,
                                           const AugmentedReturn *augmented,
-                                          bool PostOpt = false,
                                           bool omp = false);
 
   llvm::Function *
@@ -290,7 +294,7 @@ public:
                     unsigned width, llvm::Type *additionalArg,
                     const FnTypeInfo &typeInfo,
                     const std::map<llvm::Argument *, bool> _uncacheable_args,
-                    bool PostOpt = false, bool omp = false);
+                    bool omp = false);
 
   void clear();
 };

@@ -1449,17 +1449,17 @@ public:
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM,
                         bool nullShadow = false);
 
-  static Constant *
-  GetOrCreateShadowConstant(EnzymeLogic &Logic, TargetLibraryInfo &TLI,
-                            TypeAnalysis &TA, Constant *F, DerivativeMode mode,
-                            unsigned width, bool AtomicAdd = true,
-                            bool PostOpt = false);
+  static Constant *GetOrCreateShadowConstant(EnzymeLogic &Logic,
+                                             TargetLibraryInfo &TLI,
+                                             TypeAnalysis &TA, Constant *F,
+                                             DerivativeMode mode,
+                                             unsigned width, bool AtomicAdd);
 
-  static Constant *
-  GetOrCreateShadowFunction(EnzymeLogic &Logic, TargetLibraryInfo &TLI,
-                            TypeAnalysis &TA, Function *F, DerivativeMode mode,
-                            unsigned width, bool AtomicAdd = true,
-                            bool PostOpt = false);
+  static Constant *GetOrCreateShadowFunction(EnzymeLogic &Logic,
+                                             TargetLibraryInfo &TLI,
+                                             TypeAnalysis &TA, Function *F,
+                                             DerivativeMode mode,
+                                             unsigned width, bool AtomicAdd);
 
   void branchToCorrespondingTarget(
       BasicBlock *ctx, IRBuilder<> &BuilderM,

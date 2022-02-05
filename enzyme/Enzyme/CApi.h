@@ -122,7 +122,7 @@ LLVMValueRef EnzymeCreateForwardDiff(
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnValue, CDerivativeMode mode,
     unsigned width, LLVMTypeRef additionalArg, struct CFnTypeInfo typeInfo,
-    uint8_t *_uncacheable_args, size_t uncacheable_args_size, uint8_t PostOpt);
+    uint8_t *_uncacheable_args, size_t uncacheable_args_size);
 
 LLVMValueRef EnzymeCreatePrimalAndGradient(
     EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,
@@ -131,14 +131,14 @@ LLVMValueRef EnzymeCreatePrimalAndGradient(
     CDerivativeMode mode, unsigned width, LLVMTypeRef additionalArg,
     struct CFnTypeInfo typeInfo, uint8_t *_uncacheable_args,
     size_t uncacheable_args_size, EnzymeAugmentedReturnPtr augmented,
-    uint8_t AtomicAdd, uint8_t PostOpt);
+    uint8_t AtomicAdd);
 
 EnzymeAugmentedReturnPtr EnzymeCreateAugmentedPrimal(
     EnzymeLogicRef, LLVMValueRef todiff, CDIFFE_TYPE retType,
     CDIFFE_TYPE *constant_args, size_t constant_args_size,
     EnzymeTypeAnalysisRef TA, uint8_t returnUsed, struct CFnTypeInfo typeInfo,
     uint8_t *_uncacheable_args, size_t uncacheable_args_size,
-    uint8_t forceAnonymousTape, uint8_t AtomicAdd, uint8_t PostOpt);
+    uint8_t forceAnonymousTape, uint8_t AtomicAdd);
 
 typedef uint8_t (*CustomRuleType)(int /*direction*/, CTypeTreeRef /*return*/,
                                   CTypeTreeRef * /*args*/,
@@ -151,7 +151,7 @@ EnzymeTypeAnalysisRef CreateTypeAnalysis(EnzymeLogicRef Log,
 void ClearTypeAnalysis(EnzymeTypeAnalysisRef);
 void FreeTypeAnalysis(EnzymeTypeAnalysisRef);
 
-EnzymeLogicRef CreateEnzymeLogic();
+EnzymeLogicRef CreateEnzymeLogic(uint8_t PostOpt);
 void ClearEnzymeLogic(EnzymeLogicRef);
 void FreeEnzymeLogic(EnzymeLogicRef);
 

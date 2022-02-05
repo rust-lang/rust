@@ -386,10 +386,9 @@ static Optional<StringRef> getMetadataName(llvm::Value *res) {
 class Enzyme : public ModulePass {
 public:
   EnzymeLogic Logic;
-  bool PostOpt;
   static char ID;
-  Enzyme(bool PostOpt = false) : ModulePass(ID), PostOpt(PostOpt) {
-    PostOpt |= EnzymePostOpt;
+  Enzyme(bool PostOpt = false)
+      : ModulePass(ID), Logic(PostOpt | EnzymePostOpt) {
     // initializeLowerAutodiffIntrinsicPass(*PassRegistry::getPassRegistry());
   }
 
@@ -405,8 +404,8 @@ public:
   }
 
   /// Return whether successful
-  bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, bool PostOpt,
-                      DerivativeMode mode, bool sizeOnly) {
+  bool HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, DerivativeMode mode,
+                      bool sizeOnly) {
 
     Value *fn = CI->getArgOperand(0);
 
@@ -821,7 +820,7 @@ public:
       newFunc = Logic.CreateForwardDiff(
           cast<Function>(fn), retType, constants, TA,
           /*should return*/ false, mode, width,
-          /*addedType*/ nullptr, type_args, volatile_args, PostOpt);
+          /*addedType*/ nullptr, type_args, volatile_args);
       break;
     case DerivativeMode::ReverseModeCombined:
       assert(freeMemory);
@@ -838,7 +837,7 @@ public:
                             .AtomicAdd = AtomicAdd,
                             .additionalType = nullptr,
                             .typeInfo = type_args},
-          TA, /*augmented*/ nullptr, PostOpt);
+          TA, /*augmented*/ nullptr);
       break;
     case DerivativeMode::ReverseModePrimal:
     case DerivativeMode::ReverseModeGradient: {
@@ -848,7 +847,7 @@ public:
       aug = &Logic.CreateAugmentedPrimal(
           cast<Function>(fn), retType, constants, TA,
           /*returnUsed*/ returnUsed, type_args, volatile_args,
-          forceAnonymousTape, /*atomicAdd*/ AtomicAdd, /*PostOpt*/ PostOpt);
+          forceAnonymousTape, /*atomicAdd*/ AtomicAdd);
       auto &DL = cast<Function>(fn)->getParent()->getDataLayout();
       if (!forceAnonymousTape) {
         assert(!aug->tapeType);
@@ -897,7 +896,7 @@ public:
                               .AtomicAdd = AtomicAdd,
                               .additionalType = tapeType,
                               .typeInfo = type_args},
-            TA, aug, PostOpt);
+            TA, aug);
     }
     }
 
@@ -1125,7 +1124,7 @@ public:
     }
     CI->eraseFromParent();
 
-    if (PostOpt) {
+    if (Logic.PostOpt) {
 #if LLVM_VERSION_MAJOR >= 11
       auto Params = llvm::getInlineParams();
 
@@ -1186,7 +1185,7 @@ public:
     return true;
   }
 
-  bool lowerEnzymeCalls(Function &F, bool PostOpt, bool &successful,
+  bool lowerEnzymeCalls(Function &F, bool &successful,
                         std::set<Function *> &done) {
     if (done.count(&F))
       return false;
@@ -1546,8 +1545,12 @@ public:
             toLower[CI] = mode;
 
           if (auto dc = dyn_cast<Function>(fn)) {
-            Changed |=
-                lowerEnzymeCalls(*dc, /*PostOpt*/ true, successful, done);
+            // Force postopt on any inner functions in the nested
+            // AD case.
+            bool tmp = Logic.PostOpt;
+            Logic.PostOpt = true;
+            Changed |= lowerEnzymeCalls(*dc, successful, done);
+            Logic.PostOpt = tmp;
           }
         }
       }
@@ -1581,14 +1584,14 @@ public:
 
     // Perform all the size replacements first to create constants
     for (auto pair : toSize) {
-      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second,
+      successful &= HandleAutoDiff(pair.first, TLI, pair.second,
                                    /*sizeOnly*/ true);
       Changed = true;
       if (!successful)
         break;
     }
     for (auto pair : toLower) {
-      successful &= HandleAutoDiff(pair.first, TLI, PostOpt, pair.second,
+      successful &= HandleAutoDiff(pair.first, TLI, pair.second,
                                    /*sizeOnly*/ false);
       Changed = true;
       if (!successful)
@@ -1615,7 +1618,7 @@ public:
                        Arch == Triple::amdgcn;
 
       auto val = GradientUtils::GetOrCreateShadowConstant(
-          Logic, TLI, TA, fn, pair.second, /*width*/ 1, AtomicAdd, PostOpt);
+          Logic, TLI, TA, fn, pair.second, /*width*/ 1, AtomicAdd);
       CI->replaceAllUsesWith(ConstantExpr::getPointerCast(val, CI->getType()));
       CI->eraseFromParent();
       Changed = true;
@@ -1746,7 +1749,7 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR >= 13
-    if (PostOpt && EnzymeOMPOpt) {
+    if (Logic.PostOpt && EnzymeOMPOpt) {
       OpenMPOptPass().run(M, Logic.PPC.MAM);
       changed = true;
     }
@@ -1758,7 +1761,7 @@ public:
         continue;
 
       bool successful = true;
-      changed |= lowerEnzymeCalls(F, PostOpt, successful, done);
+      changed |= lowerEnzymeCalls(F, successful, done);
 
       if (!successful) {
         M.getContext().diagnose(
@@ -1811,7 +1814,7 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR >= 13
-    if (PostOpt && EnzymeOMPOpt) {
+    if (Logic.PostOpt && EnzymeOMPOpt) {
       OpenMPOptPass().run(M, Logic.PPC.MAM);
       changed = true;
     }
