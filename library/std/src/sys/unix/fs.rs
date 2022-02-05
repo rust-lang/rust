@@ -1732,6 +1732,10 @@ mod remove_dir_impl {
             unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") },
             current_readdir.as_fd(),
         )?;
+        let root_parent_component = DirComponent::new(
+            unsafe { CStr::from_bytes_with_nul_unchecked(b"\0") },
+            current_readdir.get_parent()?.as_fd(),
+        )?;
         loop {
             while let Some(child) = current_readdir.next() {
                 let child = child?;
@@ -1790,6 +1794,10 @@ mod remove_dir_impl {
                             let parent_readdir = current_readdir.get_parent()?;
                             parent.verify_dev_ino(parent_readdir.as_fd())?;
                             readdir_cache.push_back(parent_readdir);
+                        } else {
+                            // verify parent of the root directory
+                            let parent_readdir = current_readdir.get_parent()?;
+                            root_parent_component.verify_dev_ino(parent_readdir.as_fd())?;
                         }
                     }
                 }
