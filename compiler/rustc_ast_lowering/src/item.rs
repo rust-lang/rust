@@ -410,7 +410,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ImplPolarity::Positive => ImplPolarity::Positive,
                     ImplPolarity::Negative(s) => ImplPolarity::Negative(self.lower_span(s)),
                 };
-                hir::ItemKind::Impl(hir::Impl {
+                hir::ItemKind::Impl(self.arena.alloc(hir::Impl {
                     unsafety: self.lower_unsafety(unsafety),
                     polarity,
                     defaultness,
@@ -420,7 +420,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     of_trait: trait_ref,
                     self_ty: lowered_ty,
                     items: new_impl_items,
-                })
+                }))
             }
             ItemKind::Trait(box Trait {
                 is_auto,
@@ -1226,7 +1226,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: FnDeclKind,
         is_async: Option<NodeId>,
-    ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
+    ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_implicit_generics(generics, id, |this, idty| {
             this.lower_fn_decl(&sig.decl, Some((id, idty)), kind, is_async)
@@ -1349,7 +1349,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
-    ) -> hir::Generics<'hir> {
+    ) -> &'hir hir::Generics<'hir> {
         let generics_ctor = self.lower_generics_mut(generics, itctx);
         generics_ctor.into_generics(self.arena)
     }
@@ -1419,11 +1419,11 @@ pub(super) struct GenericsCtor<'hir> {
 }
 
 impl<'hir> GenericsCtor<'hir> {
-    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> hir::Generics<'hir> {
-        hir::Generics {
+    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> &'hir hir::Generics<'hir> {
+        arena.alloc(hir::Generics {
             params: arena.alloc_from_iter(self.params),
             where_clause: self.where_clause,
             span: self.span,
-        }
+        })
     }
 }

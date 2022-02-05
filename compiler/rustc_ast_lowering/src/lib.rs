@@ -719,7 +719,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         generics: &Generics,
         parent_node_id: NodeId,
         f: impl FnOnce(&mut Self, &mut Vec<hir::GenericParam<'hir>>) -> T,
-    ) -> (hir::Generics<'hir>, T) {
+    ) -> (&'hir hir::Generics<'hir>, T) {
         let mut impl_trait_defs = Vec::new();
         let mut lowered_generics = self.lower_generics_mut(
             generics,
@@ -1383,11 +1383,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs);
 
             let opaque_ty_item = hir::OpaqueTy {
-                generics: hir::Generics {
+                generics: self.arena.alloc(hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause { predicates: &[], span: lctx.lower_span(span) },
                     span: lctx.lower_span(span),
-                },
+                }),
                 bounds: hir_bounds,
                 origin,
             };
@@ -1715,11 +1715,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_async_fn_ret_ty: generic_params={:#?}", generic_params);
 
             let opaque_ty_item = hir::OpaqueTy {
-                generics: hir::Generics {
+                generics: this.arena.alloc(hir::Generics {
                     params: generic_params,
                     where_clause: hir::WhereClause { predicates: &[], span: this.lower_span(span) },
                     span: this.lower_span(span),
-                },
+                }),
                 bounds: arena_vec![this; future_bound],
                 origin: hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
             };

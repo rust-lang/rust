@@ -572,12 +572,13 @@ pub struct Generics<'hir> {
 }
 
 impl<'hir> Generics<'hir> {
-    pub const fn empty() -> Generics<'hir> {
-        Generics {
+    pub const fn empty() -> &'hir Generics<'hir> {
+        const NOPE: Generics<'_> = Generics {
             params: &[],
             where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
             span: DUMMY_SP,
-        }
+        };
+        &NOPE
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
@@ -2075,7 +2076,7 @@ impl TraitItemId {
 pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub kind: TraitItemKind<'hir>,
     pub span: Span,
 }
@@ -2135,7 +2136,7 @@ impl ImplItemId {
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
     pub vis_span: Span,
@@ -2340,7 +2341,7 @@ pub struct BareFnTy<'hir> {
 
 #[derive(Debug, HashStable_Generic)]
 pub struct OpaqueTy<'hir> {
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
 }
@@ -2814,7 +2815,7 @@ pub enum ItemKind<'hir> {
     /// A `const` item.
     Const(&'hir Ty<'hir>, BodyId),
     /// A function declaration.
-    Fn(FnSig<'hir>, Generics<'hir>, BodyId),
+    Fn(FnSig<'hir>, &'hir Generics<'hir>, BodyId),
     /// A MBE macro definition (`macro_rules!` or `macro`).
     Macro(ast::MacroDef, MacroKind),
     /// A module.
@@ -2824,22 +2825,22 @@ pub enum ItemKind<'hir> {
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir InlineAsm<'hir>),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
-    TyAlias(&'hir Ty<'hir>, Generics<'hir>),
+    TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
-    Enum(EnumDef<'hir>, Generics<'hir>),
+    Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(VariantData<'hir>, Generics<'hir>),
+    Struct(VariantData<'hir>, &'hir Generics<'hir>),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(VariantData<'hir>, Generics<'hir>),
+    Union(VariantData<'hir>, &'hir Generics<'hir>),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
+    Trait(IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]),
     /// A trait alias.
-    TraitAlias(Generics<'hir>, GenericBounds<'hir>),
+    TraitAlias(&'hir Generics<'hir>, GenericBounds<'hir>),
 
     /// An implementation, e.g., `impl<A> Trait for Foo { .. }`.
-    Impl(Impl<'hir>),
+    Impl(&'hir Impl<'hir>),
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -2851,7 +2852,7 @@ pub struct Impl<'hir> {
     // decoding as `Span`s cannot be decoded when a `Session` is not available.
     pub defaultness_span: Option<Span>,
     pub constness: Constness,
-    pub generics: Generics<'hir>,
+    pub generics: &'hir Generics<'hir>,
 
     /// The trait being implemented, if any.
     pub of_trait: Option<TraitRef<'hir>>,
@@ -2993,7 +2994,7 @@ impl ForeignItem<'_> {
 #[derive(Debug, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(&'hir FnDecl<'hir>, &'hir [Ident], Generics<'hir>),
+    Fn(&'hir FnDecl<'hir>, &'hir [Ident], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability),
     /// A foreign type.
@@ -3326,9 +3327,11 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
     rustc_data_structures::static_assert_size!(super::GenericBound<'_>, 48);
+    rustc_data_structures::static_assert_size!(super::Generics<'static>, 48);
+    rustc_data_structures::static_assert_size!(super::Impl<'static>, 80);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 160);
-    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 120);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 88);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 72);
 }

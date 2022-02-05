@@ -626,8 +626,8 @@ impl<'a> State<'a> {
                 items,
             }) => {
                 self.head("");
-                self.print_defaultness(defaultness);
-                self.print_unsafety(unsafety);
+                self.print_defaultness(*defaultness);
+                self.print_unsafety(*unsafety);
                 self.word_nbsp("impl");
 
                 if !generics.params.is_empty() {
@@ -635,7 +635,7 @@ impl<'a> State<'a> {
                     self.space();
                 }
 
-                if constness == hir::Constness::Const {
+                if *constness == hir::Constness::Const {
                     self.word_nbsp("const");
                 }
 
@@ -655,7 +655,7 @@ impl<'a> State<'a> {
                 self.space();
                 self.bopen();
                 self.print_inner_attributes(attrs);
-                for impl_item in items {
+                for impl_item in *items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
                 self.bclose(item.span);

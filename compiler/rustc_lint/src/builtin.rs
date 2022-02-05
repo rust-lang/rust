@@ -1199,8 +1199,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                     });
                 }
             }
-            hir::ItemKind::Impl(hir::Impl { ref generics, items, .. }) => {
-                for it in items {
+            hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
+                for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         if let Some(no_mangle_attr) = cx
                             .sess()

@@ -2200,16 +2200,16 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
+    const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
 
     // We use an `IndexSet` to preserves order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
     let ast_generics = match node {
-        Node::TraitItem(item) => &item.generics,
+        Node::TraitItem(item) => item.generics,
 
-        Node::ImplItem(item) => &item.generics,
+        Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => {
             match item.kind {
@@ -2223,15 +2223,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 | ItemKind::TyAlias(_, ref generics)
                 | ItemKind::Enum(_, ref generics)
                 | ItemKind::Struct(_, ref generics)
-                | ItemKind::Union(_, ref generics) => generics,
+                | ItemKind::Union(_, ref generics) => *generics,
 
                 ItemKind::Trait(_, _, ref generics, ..) => {
                     is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                    generics
+                    *generics
                 }
                 ItemKind::TraitAlias(ref generics, _) => {
                     is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                    generics
+                    *generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
@@ -2268,7 +2268,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
         Node::ForeignItem(item) => match item.kind {
             ForeignItemKind::Static(..) => NO_GENERICS,
-            ForeignItemKind::Fn(_, _, ref generics) => generics,
+            ForeignItemKind::Fn(_, _, ref generics) => *generics,
             ForeignItemKind::Type => NO_GENERICS,
         },
 

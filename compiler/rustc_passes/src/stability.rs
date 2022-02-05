@@ -737,7 +737,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     }
                 }
 
-                for impl_item_ref in items {
+                for impl_item_ref in *items {
                     let impl_item = self.tcx.associated_item(impl_item_ref.id.def_id);
 
                     if let Some(def_id) = impl_item.trait_item_def_id {

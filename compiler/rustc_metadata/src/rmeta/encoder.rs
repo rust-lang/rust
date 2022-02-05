@@ -1462,8 +1462,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }))
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
-                self.tables.impl_defaultness.set(def_id.index, defaultness);
-                self.tables.impl_constness.set(def_id.index, constness);
+                self.tables.impl_defaultness.set(def_id.index, *defaultness);
+                self.tables.impl_constness.set(def_id.index, *constness);
 
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {

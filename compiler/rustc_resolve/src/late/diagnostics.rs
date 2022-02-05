@@ -86,7 +86,7 @@ impl ForLifetimeSpanType {
     }
 }
 
-impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &'tcx hir::Generics<'tcx> {
+impl<'tcx> Into<MissingLifetimeSpot<'tcx>> for &&'tcx hir::Generics<'tcx> {
     fn into(self) -> MissingLifetimeSpot<'tcx> {
         MissingLifetimeSpot::Generics(self)
     }
