@@ -1655,6 +1655,13 @@ mod remove_dir_impl {
             }
             Ok(())
         }
+
+        fn is_open(&self) -> bool {
+            match self {
+                LazyReadDir::OpenReadDir(_, _) => true,
+                _ => false,
+            }
+        }
     }
 
     impl AsFd for LazyReadDir {
@@ -1750,29 +1757,19 @@ mod remove_dir_impl {
             match parent_dir_components.pop() {
                 Some(parent) => {
                     // Going back up...
+
+                    // Get parent directory readdir
                     let parent_readdir = match readdir_cache.pop_back() {
                         Some(readdir) => readdir,
                         None => {
-                            // cache is empty
-
-                            // reopen direct parent
+                            // cache is empty - reopen parent
                             let parent_readdir = current_readdir.get_parent()?;
                             parent.verify_dev_ino(parent_readdir.as_fd())?;
-                            readdir_cache.push_front(parent_readdir);
-
-                            // refill cache and verify ancestors
-                            for ancester_component in parent_dir_components
-                                .iter()
-                                .rev()
-                                .take(readdir_cache.capacity() - 1)
-                            {
-                                let parent_readdir = readdir_cache.front().unwrap().get_parent()?;
-                                ancester_component.verify_dev_ino(parent_readdir.as_fd())?;
-                                readdir_cache.push_front(parent_readdir);
-                            }
-                            readdir_cache.pop_back().unwrap()
+                            parent_readdir
                         }
                     };
+
+                    // Remove now empty directory
                     cvt(unsafe {
                         unlinkat(
                             parent_readdir.as_fd().as_raw_fd(),
@@ -1783,6 +1780,18 @@ mod remove_dir_impl {
 
                     current_dir_component = parent;
                     current_readdir = parent_readdir;
+
+                    // If we don't have readdir open for the current directory that means we got the file descriptor
+                    // via openat(dirfd, ".."). To make sure the that the previous child directory was not moved
+                    // somewhere else and its parent just happens to have the same reused (dev, inode)
+                    // pair, that we found decending, we check the parent directory (dev, inode) as well.
+                    if !current_readdir.is_open() && readdir_cache.is_empty() {
+                        if let Some(parent) = parent_dir_components.last() {
+                            let parent_readdir = current_readdir.get_parent()?;
+                            parent.verify_dev_ino(parent_readdir.as_fd())?;
+                            readdir_cache.push_back(parent_readdir);
+                        }
+                    }
                 }
                 None => break,
             }
