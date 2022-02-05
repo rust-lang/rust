@@ -145,10 +145,10 @@ fn add_function_impl(
     } else {
         CompletionItemKind::SymbolKind(SymbolKind::Function)
     };
-    let mut item = CompletionItem::new(completion_kind, ctx.source_range(), label);
-    item.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
 
     let range = replacement_range(ctx, fn_def_node);
+    let mut item = CompletionItem::new(completion_kind, range, label);
+    item.lookup_by(fn_name).set_documentation(func.docs(ctx.db));
 
     if let Some(source) = ctx.sema.source(func) {
         let assoc_item = ast::AssocItem::Fn(source.value);
@@ -209,7 +209,7 @@ fn add_type_alias_impl(
     let snippet = format!("type {} = ", alias_name);
 
     let range = replacement_range(ctx, type_def_node);
-    let mut item = CompletionItem::new(SymbolKind::TypeAlias, ctx.source_range(), &snippet);
+    let mut item = CompletionItem::new(SymbolKind::TypeAlias, range, &snippet);
     item.text_edit(TextEdit::replace(range, snippet))
         .lookup_by(alias_name)
         .set_documentation(type_alias.docs(ctx.db));
@@ -237,7 +237,7 @@ fn add_const_impl(
                 let snippet = make_const_compl_syntax(&transformed_const);
 
                 let range = replacement_range(ctx, const_def_node);
-                let mut item = CompletionItem::new(SymbolKind::Const, ctx.source_range(), &snippet);
+                let mut item = CompletionItem::new(SymbolKind::Const, range, &snippet);
                 item.text_edit(TextEdit::replace(range, snippet))
                     .lookup_by(const_name)
                     .set_documentation(const_.docs(ctx.db));
