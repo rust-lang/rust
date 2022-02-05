@@ -31,6 +31,7 @@ assert-property: (".item-decl pre", {"scrollWidth": "950"})
 // On mobile:
 size: (600, 600)
 goto: file://|DOC_PATH|/lib2/too_long/struct.SuperIncrediblyLongLongLongLongLongLongLongGigaGigaGigaMegaLongLongLongStructName.html
+// It shouldn't have an overflow in the topbar either.
 assert-property: (".mobile-topbar .location", {"scrollWidth": "986"})
 assert-property: (".mobile-topbar .location", {"clientWidth": "504"})
 assert-css: (".mobile-topbar .location", {"overflow-x": "hidden"})
