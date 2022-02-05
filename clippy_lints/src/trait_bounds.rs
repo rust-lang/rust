@@ -90,10 +90,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
-        let Generics { where_clause, .. } = &item.generics;
         let mut self_bounds_map = FxHashMap::default();
 
-        for predicate in where_clause.predicates {
+        for predicate in item.generics.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
                 if !bound_predicate.span.from_expansion();
@@ -166,7 +165,7 @@ impl TraitBounds {
         }
         let mut map: UnhashMap<SpanlessTy<'_, '_>, Vec<&GenericBound<'_>>> = UnhashMap::default();
         let mut applicability = Applicability::MaybeIncorrect;
-        for bound in gen.where_clause.predicates {
+        for bound in gen.predicates {
             if_chain! {
                 if let WherePredicate::BoundPredicate(ref p) = bound;
                 if p.bounds.len() as u64 <= self.max_trait_bounds;
@@ -216,7 +215,7 @@ impl TraitBounds {
 }
 
 fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
-    if gen.span.from_expansion() || gen.params.is_empty() || gen.where_clause.predicates.is_empty() {
+    if gen.span.from_expansion() || gen.params.is_empty() || gen.predicates.is_empty() {
         return;
     }
 
@@ -232,7 +231,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         }
     }
 
-    for predicate in gen.where_clause.predicates {
+    for predicate in gen.predicates {
         if_chain! {
             if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate;
             if !bound_predicate.span.from_expansion();

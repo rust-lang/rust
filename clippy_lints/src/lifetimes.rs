@@ -8,7 +8,7 @@ use rustc_hir::FnRetTy::Return;
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, GenericArg, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem,
     ImplItemKind, Item, ItemKind, LangItem, Lifetime, LifetimeName, ParamName, PolyTraitRef, TraitBoundModifier,
-    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereClause, WherePredicate,
+    TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -130,7 +130,7 @@ fn check_fn_inner<'tcx>(
     span: Span,
     report_extra_lifetimes: bool,
 ) {
-    if span.from_expansion() || has_where_lifetimes(cx, &generics.where_clause) {
+    if span.from_expansion() || has_where_lifetimes(cx, generics) {
         return;
     }
 
@@ -445,8 +445,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
 /// Are any lifetimes mentioned in the `where` clause? If so, we don't try to
 /// reason about elision.
-fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, where_clause: &'tcx WhereClause<'_>) -> bool {
-    for predicate in where_clause.predicates {
+fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) -> bool {
+    for predicate in generics.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
             WherePredicate::BoundPredicate(ref pred) => {
