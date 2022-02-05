@@ -1,7 +1,7 @@
 // run-pass
 
 use std::env::{current_dir, set_current_dir};
-use std::fs::{create_dir, remove_dir_all};
+use std::fs::{create_dir, remove_dir_all, File};
 use std::path::Path;
 
 pub fn main() {
@@ -25,6 +25,8 @@ pub fn main() {
     };
     for _ in 0..depth {
         if !Path::exists(Path::new("a")) {
+            create_dir("empty_dir").unwrap();
+            File::create("empty_file").unwrap();
             create_dir("a").unwrap();
         }
         set_current_dir("a").unwrap();
