@@ -72,16 +72,22 @@ use rustc_data_structures::fx::FxIndexSet;
 // #[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub struct Span {
     base_or_index: u32,
-    len_or_tag: u16,
+    len_or_tag: LenOrTag,
     ctxt_or_zero: u16,
 }
 
-const LEN_TAG: u16 = 0b1000_0000_0000_0000;
+// LEN_TAG allows for some extra values at the top.  Declare them to rustc to use as niches.
+#[rustc_layout_scalar_valid_range_end(0b1000_0000_0000_0000)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+struct LenOrTag(u16);
+
+const LEN_TAG: LenOrTag = unsafe { LenOrTag(0b1000_0000_0000_0000) };
 const MAX_LEN: u32 = 0b0111_1111_1111_1111;
 const MAX_CTXT: u32 = 0b1111_1111_1111_1111;
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
-pub const DUMMY_SP: Span = Span { base_or_index: 0, len_or_tag: 0, ctxt_or_zero: 0 };
+pub const DUMMY_SP: Span =
+    Span { base_or_index: 0, len_or_tag: unsafe { LenOrTag(0) }, ctxt_or_zero: 0 };
 
 impl Span {
     #[inline]
@@ -99,7 +105,11 @@ impl Span {
 
         if len <= MAX_LEN && ctxt2 <= MAX_CTXT && parent.is_none() {
             // Inline format.
-            Span { base_or_index: base, len_or_tag: len as u16, ctxt_or_zero: ctxt2 as u16 }
+            Span {
+                base_or_index: base,
+                len_or_tag: unsafe { LenOrTag(len as u16) },
+                ctxt_or_zero: ctxt2 as u16,
+            }
         } else {
             // Interned format.
             let index =
@@ -123,10 +133,10 @@ impl Span {
     pub fn data_untracked(self) -> SpanData {
         if self.len_or_tag != LEN_TAG {
             // Inline format.
-            debug_assert!(self.len_or_tag as u32 <= MAX_LEN);
+            debug_assert!(self.len_or_tag.0 as u32 <= MAX_LEN);
             SpanData {
                 lo: BytePos(self.base_or_index),
-                hi: BytePos(self.base_or_index + self.len_or_tag as u32),
+                hi: BytePos(self.base_or_index + self.len_or_tag.0 as u32),
                 ctxt: SyntaxContext::from_u32(self.ctxt_or_zero as u32),
                 parent: None,
             }

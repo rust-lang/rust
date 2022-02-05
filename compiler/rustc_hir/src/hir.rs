@@ -3308,7 +3308,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 80);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 176);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 152);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
