@@ -1339,11 +1339,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             this.visit_ty(&ty);
                         }
                     }
-                    GenericParamKind::Const { ref ty, .. } => {
+                    GenericParamKind::Const { ref ty, default } => {
                         let was_in_const_generic = this.is_in_const_generic;
                         this.is_in_const_generic = true;
                         walk_list!(this, visit_param_bound, param.bounds);
                         this.visit_ty(&ty);
+                        if let Some(default) = default {
+                            this.visit_body(this.tcx.hir().body(default.body));
+                        }
                         this.is_in_const_generic = was_in_const_generic;
                     }
                 }
