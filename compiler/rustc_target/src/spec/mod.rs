@@ -2145,8 +2145,8 @@ impl Target {
         use std::fs;
 
         fn load_file(path: &Path) -> Result<(Target, TargetWarnings), String> {
-            let contents = fs::read(path).map_err(|e| e.to_string())?;
-            let obj = json::from_reader(&mut &contents[..]).map_err(|e| e.to_string())?;
+            let contents = fs::read_to_string(path).map_err(|e| e.to_string())?;
+            let obj = json::from_str(&contents).map_err(|e| e.to_string())?;
             Target::from_json(obj)
         }
 
