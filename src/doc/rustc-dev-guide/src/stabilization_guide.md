@@ -132,7 +132,8 @@ writing, the next stable release (i.e. what is currently beta) was
 
 Next search for the feature string (in this case, `pub_restricted`)
 in the codebase to find where it appears. Change uses of
-`#![feature(XXX)]` from the `std` and any rustc crates to be
+`#![feature(XXX)]` from the `std` and any rustc crates (this includes test folders
+under `library/` and `compiler/` but not the toplevel `test/` one) to be
 `#![cfg_attr(bootstrap, feature(XXX))]`. This includes the feature-gate
 only for stage0, which is built using the current beta (this is
 needed because the feature is still unstable in the current beta).
