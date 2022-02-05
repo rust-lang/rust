@@ -203,9 +203,9 @@ static inline bool hasMetadata(const llvm::GlobalObject *O,
 }
 
 /// Check if an instruction has metadata
-static inline bool hasMetadata(const llvm::Instruction *O,
-                               llvm::StringRef kind) {
-  return O->getMetadata(kind) != nullptr;
+static inline llvm::MDNode *hasMetadata(const llvm::Instruction *O,
+                                        llvm::StringRef kind) {
+  return O->getMetadata(kind);
 }
 
 /// Potential return type of generated functions

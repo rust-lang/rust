@@ -312,7 +312,11 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
     CallInst *CI = dyn_cast<CallInst>(rep);
     if (auto C = dyn_cast<CastInst>(rep))
       CI = cast<CallInst>(C->getOperand(0));
-    CI->setMetadata("enzyme_fromstack", MDNode::get(CI->getContext(), {}));
+    CI->setMetadata("enzyme_fromstack",
+                    MDNode::get(CI->getContext(),
+                                {ConstantAsMetadata::get(ConstantInt::get(
+                                    IntegerType::get(AI->getContext(), 64),
+                                    AI->getAlignment()))}));
 #if LLVM_VERSION_MAJOR >= 14
     CI->addRetAttr(Attribute::NoAlias);
 #else
