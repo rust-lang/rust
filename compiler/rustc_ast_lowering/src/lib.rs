@@ -1385,7 +1385,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: self.arena.alloc(hir::Generics {
                     params: lifetime_defs,
-                    where_clause: hir::WhereClause { predicates: &[], span: lctx.lower_span(span) },
+                    predicates: &[],
+                    where_clause_span: lctx.lower_span(span),
                     span: lctx.lower_span(span),
                 }),
                 bounds: hir_bounds,
@@ -1717,7 +1718,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: this.arena.alloc(hir::Generics {
                     params: generic_params,
-                    where_clause: hir::WhereClause { predicates: &[], span: this.lower_span(span) },
+                    predicates: &[],
+                    where_clause_span: this.lower_span(span),
                     span: this.lower_span(span),
                 }),
                 bounds: arena_vec![this; future_bound],

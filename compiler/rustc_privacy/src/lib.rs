@@ -1590,7 +1590,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 self.check_generic_bound(bound);
             }
         }
-        for predicate in generics.where_clause.predicates {
+        for predicate in generics.predicates {
             match predicate {
                 hir::WherePredicate::BoundPredicate(bound_pred) => {
                     for bound in bound_pred.bounds.iter() {

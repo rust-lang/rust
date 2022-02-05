@@ -545,7 +545,7 @@ impl Clean<Generics> for hir::Generics<'_> {
 
         let mut generics = Generics {
             params,
-            where_predicates: self.where_clause.predicates.iter().map(|x| x.clean(cx)).collect(),
+            where_predicates: self.predicates.iter().map(|x| x.clean(cx)).collect(),
         };
 
         // Some duplicates are generated for ?Sized bounds between type params and where

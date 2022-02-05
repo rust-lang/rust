@@ -1342,7 +1342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     }
                 }
             }
-            for predicate in generics.where_clause.predicates {
+            for predicate in generics.predicates {
                 match predicate {
                     &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                         ref bounded_ty,
@@ -1717,7 +1717,7 @@ fn object_lifetime_defaults_for_item<'tcx>(
             add_bounds(&mut set, &param.bounds);
 
             let param_def_id = tcx.hir().local_def_id(param.hir_id);
-            for predicate in generics.where_clause.predicates {
+            for predicate in generics.predicates {
                 // Look for `type: ...` where clauses.
                 let hir::WherePredicate::BoundPredicate(ref data) = *predicate else { continue };
 

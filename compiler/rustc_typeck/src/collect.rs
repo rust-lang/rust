@@ -700,7 +700,6 @@ impl<'tcx> ItemCtxt<'tcx> {
 
         let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
         let from_where_clauses = ast_generics
-            .where_clause
             .predicates
             .iter()
             .filter_map(|wp| match *wp {
@@ -2343,7 +2342,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     &icx,
                     &mut bounds,
                     param.bounds,
-                    Some((param.hir_id, ast_generics.where_clause.predicates)),
+                    Some((param.hir_id, ast_generics.predicates)),
                     param.span,
                 );
                 predicates.extend(bounds.predicates(tcx, param_ty));
@@ -2357,8 +2356,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     }
 
     // Add in the bounds that appear in the where-clause.
-    let where_clause = &ast_generics.where_clause;
-    for predicate in where_clause.predicates {
+    for predicate in ast_generics.predicates {
         match predicate {
             hir::WherePredicate::BoundPredicate(bound_pred) => {
                 let ty = icx.to_ty(bound_pred.bounded_ty);

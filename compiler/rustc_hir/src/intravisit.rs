@@ -908,7 +908,7 @@ pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v Ano
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {
     walk_list!(visitor, visit_generic_param, generics.params);
-    walk_list!(visitor, visit_where_predicate, generics.where_clause.predicates);
+    walk_list!(visitor, visit_where_predicate, generics.predicates);
 }
 
 pub fn walk_where_predicate<'v, V: Visitor<'v>>(

@@ -599,7 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             kind:
                 hir::ItemKind::Fn(
                     hir::FnSig { decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. }, .. },
-                    hir::Generics { params, where_clause, .. },
+                    hir::Generics { params, predicates, .. },
                     _body_id,
                 ),
             ..
@@ -608,8 +608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(expected_generic_param) = params.get(expected_ty_as_param.index as usize) else { return };
 
         // get all where BoundPredicates here, because they are used in to cases below
-        let where_predicates = where_clause
-            .predicates
+        let where_predicates = predicates
             .iter()
             .filter_map(|p| match p {
                 WherePredicate::BoundPredicate(hir::WhereBoundPredicate {

@@ -420,15 +420,11 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
 
             let suggestion = format!(
                 "{} {}",
-                if !gat_item_hir.generics.where_clause.predicates.is_empty() {
-                    ","
-                } else {
-                    " where"
-                },
+                if !gat_item_hir.generics.predicates.is_empty() { "," } else { " where" },
                 unsatisfied_bounds.join(", "),
             );
             err.span_suggestion(
-                gat_item_hir.generics.where_clause.tail_span_for_suggestion(),
+                gat_item_hir.generics.tail_span_for_predicate_suggestion(),
                 &format!("add the required where clause{plural}"),
                 suggestion,
                 Applicability::MachineApplicable,
@@ -1733,7 +1729,6 @@ fn check_variances_for_type_defn<'tcx>(
     let explicitly_bounded_params = Lazy::new(|| {
         let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
         hir_generics
-            .where_clause
             .predicates
             .iter()
             .filter_map(|predicate| match predicate {
@@ -1819,13 +1814,12 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
 
             // only use the span of the predicate clause (#90869)
 
-            if let Some(hir::Generics { where_clause, .. }) =
+            if let Some(hir::Generics { predicates, .. }) =
                 hir_node.and_then(|node| node.generics())
             {
                 let obligation_span = obligation.cause.span(fcx.tcx);
 
-                span = where_clause
-                    .predicates
+                span = predicates
                     .iter()
                     // There seems to be no better way to find out which predicate we are in
                     .find(|pred| pred.span().contains(obligation_span))

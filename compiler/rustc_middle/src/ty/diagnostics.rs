@@ -156,13 +156,13 @@ pub fn suggest_arbitrary_trait_bound(
         _ => {}
     }
     // Suggest a where clause bound for a non-type parameter.
-    let (action, prefix) = if generics.where_clause.predicates.is_empty() {
+    let (action, prefix) = if generics.predicates.is_empty() {
         ("introducing a", " where ")
     } else {
         ("extending the", ", ")
     };
     err.span_suggestion_verbose(
-        generics.where_clause.tail_span_for_suggestion(),
+        generics.tail_span_for_predicate_suggestion(),
         &format!(
             "consider {} `where` bound, but there might be an alternative better way to express \
              this requirement",
@@ -192,7 +192,7 @@ fn suggest_removing_unsized_bound(
     // See if there's a `?Sized` bound that can be removed to suggest that.
     // First look at the `where` clause because we can have `where T: ?Sized`,
     // then look at params.
-    for (where_pos, predicate) in generics.where_clause.predicates.iter().enumerate() {
+    for (where_pos, predicate) in generics.predicates.iter().enumerate() {
         match predicate {
             WherePredicate::BoundPredicate(WhereBoundPredicate {
                 bounded_ty:
@@ -218,27 +218,18 @@ fn suggest_removing_unsized_bound(
                             if poly.trait_ref.trait_def_id() == def_id => {}
                         _ => continue,
                     }
-                    let sp = match (
-                        bounds.len(),
-                        pos,
-                        generics.where_clause.predicates.len(),
-                        where_pos,
-                    ) {
+                    let sp = match (bounds.len(), pos, generics.predicates.len(), where_pos) {
                         // where T: ?Sized
                         // ^^^^^^^^^^^^^^^
-                        (1, _, 1, _) => generics.where_clause.span,
+                        (1, _, 1, _) => generics.where_clause_span,
                         // where Foo: Bar, T: ?Sized,
                         //               ^^^^^^^^^^^
-                        (1, _, len, pos) if pos == len - 1 => generics.where_clause.predicates
-                            [pos - 1]
-                            .span()
-                            .shrink_to_hi()
-                            .to(*span),
+                        (1, _, len, pos) if pos == len - 1 => {
+                            generics.predicates[pos - 1].span().shrink_to_hi().to(*span)
+                        }
                         // where T: ?Sized, Foo: Bar,
                         //       ^^^^^^^^^^^
-                        (1, _, _, pos) => {
-                            span.until(generics.where_clause.predicates[pos + 1].span())
-                        }
+                        (1, _, _, pos) => span.until(generics.predicates[pos + 1].span()),
                         // where T: ?Sized + Bar, Foo: Bar,
                         //          ^^^^^^^^^
                         (_, 0, _, _) => bound.span().to(bounds[1].span().shrink_to_lo()),
@@ -381,7 +372,7 @@ pub fn suggest_constraining_type_params<'a>(
             continue;
         }
 
-        if generics.where_clause.predicates.is_empty()
+        if generics.predicates.is_empty()
         // Given `trait Base<T = String>: Super<T>` where `T: Copy`, suggest restricting in the
         // `where` clause instead of `trait Base<T: Copy = String>: Super<T>`.
         && !matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
@@ -475,12 +466,12 @@ pub fn suggest_constraining_type_params<'a>(
             //                     - insert: `where T: Zar`
 
             if matches!(param.kind, hir::GenericParamKind::Type { default: Some(_), .. })
-                && generics.where_clause.predicates.len() == 0
+                && generics.predicates.len() == 0
             {
                 // Suggest a bound, but there is no existing `where` clause *and* the type param has a
                 // default (`<T=Foo>`), so we suggest adding `where T: Bar`.
                 suggestions.push((
-                    generics.where_clause.tail_span_for_suggestion(),
+                    generics.tail_span_for_predicate_suggestion(),
                     format!(" where {}: {}", param_name, constraint),
                     SuggestChangingConstraintsMessage::RestrictTypeFurther { ty: param_name },
                 ));
@@ -488,7 +479,7 @@ pub fn suggest_constraining_type_params<'a>(
                 let mut param_spans = Vec::new();
                 let mut non_empty = false;
 
-                for predicate in generics.where_clause.predicates {
+                for predicate in generics.predicates {
                     if let WherePredicate::BoundPredicate(WhereBoundPredicate {
                         span,
                         bounded_ty,
@@ -512,7 +503,7 @@ pub fn suggest_constraining_type_params<'a>(
                     [&param_span] => suggest_restrict(param_span.shrink_to_hi(), non_empty),
                     _ => {
                         suggestions.push((
-                            generics.where_clause.tail_span_for_suggestion(),
+                            generics.tail_span_for_predicate_suggestion(),
                             constraints
                                 .iter()
                                 .map(|&(constraint, _)| format!(", {}: {}", param_name, constraint))

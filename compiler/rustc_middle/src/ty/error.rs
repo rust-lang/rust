@@ -605,7 +605,7 @@ impl<T> Trait<T> for X {
 
                 // First look in the `where` clause, as this might be
                 // `fn foo<T>(x: T) where T: Trait`.
-                for predicate in hir_generics.where_clause.predicates {
+                for predicate in hir_generics.predicates {
                     if let hir::WherePredicate::BoundPredicate(pred) = predicate {
                         if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) =
                             pred.bounded_ty.kind

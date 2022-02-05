@@ -533,12 +533,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                                 if let Some(hir::Node::Item(hir::Item { kind, .. })) = node {
                                     if let Some(g) = kind.generics() {
-                                        let key = match g.where_clause.predicates {
+                                        let key = match g.predicates {
                                             [.., pred] => (pred.span().shrink_to_hi(), false),
-                                            [] => (
-                                                g.where_clause.span_for_predicates_or_empty_place(),
-                                                true,
-                                            ),
+                                            [] => (g.span_for_predicates_or_empty_place(), true),
                                         };
                                         type_params
                                             .entry(key)

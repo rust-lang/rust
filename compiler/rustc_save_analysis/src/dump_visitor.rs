@@ -1281,7 +1281,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 }
             }
         }
-        for pred in generics.where_clause.predicates {
+        for pred in generics.predicates {
             if let hir::WherePredicate::BoundPredicate(ref wbp) = *pred {
                 self.process_bounds(wbp.bounds);
                 self.visit_ty(wbp.bounded_ty);

@@ -567,17 +567,15 @@ pub struct GenericParamCount {
 #[derive(Debug, HashStable_Generic)]
 pub struct Generics<'hir> {
     pub params: &'hir [GenericParam<'hir>],
-    pub where_clause: WhereClause<'hir>,
+    pub predicates: &'hir [WherePredicate<'hir>],
+    pub where_clause_span: Span,
     pub span: Span,
 }
 
 impl<'hir> Generics<'hir> {
     pub const fn empty() -> &'hir Generics<'hir> {
-        const NOPE: Generics<'_> = Generics {
-            params: &[],
-            where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
-            span: DUMMY_SP,
-        };
+        const NOPE: Generics<'_> =
+            Generics { params: &[], predicates: &[], where_clause_span: DUMMY_SP, span: DUMMY_SP };
         &NOPE
     }
 
@@ -597,30 +595,20 @@ impl<'hir> Generics<'hir> {
             self.params.iter().map(|p| p.span).collect::<Vec<Span>>().into()
         }
     }
-}
 
-/// A where-clause in a definition.
-#[derive(Debug, HashStable_Generic)]
-pub struct WhereClause<'hir> {
-    pub predicates: &'hir [WherePredicate<'hir>],
-    // Only valid if predicates aren't empty.
-    pub span: Span,
-}
-
-impl WhereClause<'_> {
-    pub fn span(&self) -> Option<Span> {
-        if self.predicates.is_empty() { None } else { Some(self.span) }
+    pub fn where_clause_span(&self) -> Option<Span> {
+        if self.predicates.is_empty() { None } else { Some(self.where_clause_span) }
     }
 
-    /// The `WhereClause` under normal circumstances points at either the predicates or the empty
+    /// The `where_span` under normal circumstances points at either the predicates or the empty
     /// space where the `where` clause should be. Only of use for diagnostic suggestions.
     pub fn span_for_predicates_or_empty_place(&self) -> Span {
-        self.span
+        self.where_clause_span
     }
 
     /// `Span` where further predicates would be suggested, accounting for trailing commas, like
     ///  in `fn foo<T>(t: T) where T: Foo,` so we don't suggest two trailing commas.
-    pub fn tail_span_for_suggestion(&self) -> Span {
+    pub fn tail_span_for_predicate_suggestion(&self) -> Span {
         let end = self.span_for_predicates_or_empty_place().shrink_to_hi();
         self.predicates.last().map_or(end, |p| p.span()).shrink_to_hi().to(end)
     }

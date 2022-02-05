@@ -1338,9 +1338,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
+        let predicates = self.arena.alloc_from_iter(
+            generics
+                .where_clause
+                .predicates
+                .iter()
+                .map(|predicate| self.lower_where_predicate(predicate)),
+        );
+
         GenericsCtor {
             params: self.lower_generic_params_mut(&generics.params, itctx).collect(),
-            where_clause: self.lower_where_clause(&generics.where_clause),
+            predicates,
+            where_clause_span: self.lower_span(generics.where_clause.span),
             span: self.lower_span(generics.span),
         }
     }
@@ -1352,15 +1361,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir hir::Generics<'hir> {
         let generics_ctor = self.lower_generics_mut(generics, itctx);
         generics_ctor.into_generics(self.arena)
-    }
-
-    fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause<'hir> {
-        hir::WhereClause {
-            predicates: self.arena.alloc_from_iter(
-                wc.predicates.iter().map(|predicate| self.lower_where_predicate(predicate)),
-            ),
-            span: self.lower_span(wc.span),
-        }
     }
 
     fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
@@ -1414,7 +1414,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 /// Helper struct for delayed construction of Generics.
 pub(super) struct GenericsCtor<'hir> {
     pub(super) params: SmallVec<[hir::GenericParam<'hir>; 4]>,
-    where_clause: hir::WhereClause<'hir>,
+    predicates: &'hir [hir::WherePredicate<'hir>],
+    where_clause_span: Span,
     span: Span,
 }
 
@@ -1422,7 +1423,8 @@ impl<'hir> GenericsCtor<'hir> {
     pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> &'hir hir::Generics<'hir> {
         arena.alloc(hir::Generics {
             params: arena.alloc_from_iter(self.params),
-            where_clause: self.where_clause,
+            predicates: self.predicates,
+            where_clause_span: self.where_clause_span,
             span: self.span,
         })
     }

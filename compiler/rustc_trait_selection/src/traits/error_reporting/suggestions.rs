@@ -319,12 +319,8 @@ pub trait InferCtxtExt<'tcx> {
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
-        generics.where_clause.tail_span_for_suggestion(),
-        format!(
-            "{} {}",
-            if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
-            pred,
-        ),
+        generics.tail_span_for_predicate_suggestion(),
+        format!("{} {}", if !generics.predicates.is_empty() { "," } else { " where" }, pred,),
     )
 }
 
@@ -346,7 +342,7 @@ fn suggest_restriction<'tcx>(
     //              -  ^^^^^^^^^ GenericBounds
     //              |
     //              &Ident
-    let span = generics.where_clause.span_for_predicates_or_empty_place();
+    let span = generics.span_for_predicates_or_empty_place();
     if span.from_expansion() || span.desugaring_kind().is_some() {
         return;
     }

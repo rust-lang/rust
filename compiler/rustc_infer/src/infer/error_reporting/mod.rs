@@ -2543,11 +2543,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let pred = format!("{}: {}", bound_kind, sub);
                 let suggestion = format!(
                     "{} {}",
-                    if !generics.where_clause.predicates.is_empty() { "," } else { " where" },
+                    if !generics.predicates.is_empty() { "," } else { " where" },
                     pred,
                 );
                 err.span_suggestion(
-                    generics.where_clause.tail_span_for_suggestion(),
+                    generics.tail_span_for_predicate_suggestion(),
                     "consider adding a where clause",
                     suggestion,
                     Applicability::MaybeIncorrect,

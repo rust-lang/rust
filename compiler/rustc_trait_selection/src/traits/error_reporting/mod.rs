@@ -2419,7 +2419,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         };
         let sized_trait = self.tcx.lang_items().sized_trait();
         debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
-        debug!("maybe_suggest_unsized_generics: generics.where_clause={:?}", generics.where_clause);
+        debug!("maybe_suggest_unsized_generics: generics.predicates={:?}", generics.predicates);
         let param = generics.params.iter().filter(|param| param.span == span).find(|param| {
             // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
             // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
@@ -2432,7 +2432,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             return;
         };
         let param_def_id = self.tcx.hir().local_def_id(param.hir_id).to_def_id();
-        let preds = generics.where_clause.predicates.iter();
+        let preds = generics.predicates.iter();
         let explicitly_sized = preds
             .filter_map(|pred| match pred {
                 hir::WherePredicate::BoundPredicate(bp) => Some(bp),

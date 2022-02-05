@@ -1519,20 +1519,19 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         }
         let mut suggested_changing_assoc_types = false;
         // There must not be a where clause
-        if !type_alias_generics.where_clause.predicates.is_empty() {
+        if !type_alias_generics.predicates.is_empty() {
             cx.lint(
                 TYPE_ALIAS_BOUNDS,
                 |lint| {
                     let mut err = lint.build("where clauses are not enforced in type aliases");
                     let spans: Vec<_> = type_alias_generics
-                        .where_clause
                         .predicates
                         .iter()
                         .map(|pred| pred.span())
                         .collect();
                     err.set_span(spans);
                     err.span_suggestion(
-                        type_alias_generics.where_clause.span_for_predicates_or_empty_place(),
+                        type_alias_generics.span_for_predicates_or_empty_place(),
                         "the clause will not be checked when the type alias is used, and should be removed",
                         String::new(),
                         Applicability::MachineApplicable,
@@ -2245,8 +2244,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             let mut where_lint_spans = Vec::new();
             let mut dropped_predicate_count = 0;
-            let num_predicates = hir_generics.where_clause.predicates.len();
-            for (i, where_predicate) in hir_generics.where_clause.predicates.iter().enumerate() {
+            let num_predicates = hir_generics.predicates.len();
+            for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
                 let (relevant_lifetimes, bounds, span) = match where_predicate {
                     hir::WherePredicate::RegionPredicate(predicate) => {
                         if let Some(Region::EarlyBound(index, ..)) =
@@ -2303,7 +2302,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 // If all the bounds on a predicate were inferable and there are
                 // further predicates, we want to eat the trailing comma.
                 if drop_predicate && i + 1 < num_predicates {
-                    let next_predicate_span = hir_generics.where_clause.predicates[i + 1].span();
+                    let next_predicate_span = hir_generics.predicates[i + 1].span();
                     where_lint_spans.push(span.to(next_predicate_span.shrink_to_lo()));
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
@@ -2318,8 +2317,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             // (including the `where`)
             if num_predicates > 0 && dropped_predicate_count == num_predicates {
                 let where_span = hir_generics
-                    .where_clause
-                    .span()
+                    .where_clause_span()
                     .expect("span of (nonempty) where clause should exist");
                 // Extend the where clause back to the closing `>` of the
                 // generics, except for tuple struct, which have the `where`

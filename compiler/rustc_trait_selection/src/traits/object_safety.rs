@@ -221,7 +221,6 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
                 ..
             }) => Some(
                 generics
-                    .where_clause
                     .predicates
                     .iter()
                     .filter_map(|pred| {
@@ -399,8 +398,8 @@ fn virtual_call_violation_for_method<'tcx>(
         // We'll attempt to provide a structured suggestion for `Self: Sized`.
         let sugg =
             tcx.hir().get_if_local(method.def_id).as_ref().and_then(|node| node.generics()).map(
-                |generics| match generics.where_clause.predicates {
-                    [] => (" where Self: Sized", generics.where_clause.span),
+                |generics| match generics.predicates {
+                    [] => (" where Self: Sized", generics.where_clause_span),
                     [.., pred] => (", Self: Sized", pred.span().shrink_to_hi()),
                 },
             );
