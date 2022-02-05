@@ -86,7 +86,7 @@ pub fn rustc_allow_const_fn_unstable(tcx: TyCtxt<'_>, def_id: DefId, feature_gat
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    use attr::{ConstStability, Stability, StabilityLevel};
+    use attr::{ConstStability, StabilityLevel};
 
     // A default body marked const is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
@@ -98,22 +98,9 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Const-stability is only relevant for `const fn`.
     assert!(tcx.is_const_fn_raw(def_id));
 
-    // Functions with `#[rustc_const_unstable]` are const-unstable.
-    match tcx.lookup_const_stability(def_id) {
-        Some(ConstStability { level: StabilityLevel::Unstable { .. }, .. }) => return false,
-        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. }) => return true,
-        None => {}
-    }
-
-    // Functions with `#[unstable]` are const-unstable.
-    //
-    // FIXME(ecstaticmorse): We should keep const-stability attributes wholly separate from normal stability
-    // attributes. `#[unstable]` should be irrelevant.
-    if let Some(Stability { level: StabilityLevel::Unstable { .. }, .. }) =
-        tcx.lookup_stability(def_id)
-    {
-        return false;
-    }
-
-    true
+    // A function is only const-stable if it has `#[rustc_const_stable]`.
+    matches!(
+        tcx.lookup_const_stability(def_id),
+        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. })
+    )
 }
