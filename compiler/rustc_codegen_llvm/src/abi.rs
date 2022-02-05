@@ -37,7 +37,7 @@ impl ArgAttributeExt for ArgAttribute {
     where
         F: FnMut(llvm::Attribute),
     {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg)
+        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg, NoUndef)
     }
 }
 
@@ -69,7 +69,9 @@ impl ArgAttributesExt for ArgAttributes {
                 } else {
                     llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
                 }
+                // dereferenceable implies nonnull noundef; dereferenceable_or_null implies noundef
                 regular -= ArgAttribute::NonNull;
+                regular -= ArgAttribute::NoUndef;
             }
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
@@ -109,7 +111,9 @@ impl ArgAttributesExt for ArgAttributes {
                         deref,
                     );
                 }
+                // dereferenceable implies nonnull noundef; dereferenceable_or_null implies noundef
                 regular -= ArgAttribute::NonNull;
+                regular -= ArgAttribute::NoUndef;
             }
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentCallSiteAttr(
