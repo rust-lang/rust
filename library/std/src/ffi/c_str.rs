@@ -1252,15 +1252,16 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&CStr, FromBytesWithNulError> {
+    pub fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
-        if let Some(nul_pos) = nul_pos {
-            if nul_pos + 1 != bytes.len() {
-                return Err(FromBytesWithNulError::interior_nul(nul_pos));
+        match nul_pos {
+            Some(nul_pos) if nul_pos + 1 == bytes.len() => {
+                // SAFETY: We know there is only one nul byte, at the end
+                // of the byte slice.
+                Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
             }
-            Ok(unsafe { CStr::from_bytes_with_nul_unchecked(bytes) })
-        } else {
-            Err(FromBytesWithNulError::not_nul_terminated())
+            Some(nul_pos) => Err(FromBytesWithNulError::interior_nul(nul_pos)),
+            None => Err(FromBytesWithNulError::not_nul_terminated()),
         }
     }
 
