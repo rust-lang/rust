@@ -80,6 +80,84 @@ impl [u8] {
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
     }
+
+    /// Returns a byte slice with leading ASCII whitespace bytes removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b" \t hello world\n".trim_ascii_start(), b"hello world\n");
+    /// assert_eq!(b"  ".trim_ascii_start(), b"");
+    /// assert_eq!(b"".trim_ascii_start(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii_start(&self) -> &[u8] {
+        let mut bytes = self;
+        // Note: A pattern matching based approach (instead of indexing) allows
+        // making the function const.
+        while let [first, rest @ ..] = bytes {
+            if first.is_ascii_whitespace() {
+                bytes = rest;
+            } else {
+                break;
+            }
+        }
+        bytes
+    }
+
+    /// Returns a byte slice with trailing ASCII whitespace bytes removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b"\r hello world\n ".trim_ascii_end(), b"\r hello world");
+    /// assert_eq!(b"  ".trim_ascii_end(), b"");
+    /// assert_eq!(b"".trim_ascii_end(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii_end(&self) -> &[u8] {
+        let mut bytes = self;
+        // Note: A pattern matching based approach (instead of indexing) allows
+        // making the function const.
+        while let [rest @ .., last] = bytes {
+            if last.is_ascii_whitespace() {
+                bytes = rest;
+            } else {
+                break;
+            }
+        }
+        bytes
+    }
+
+    /// Returns a byte slice with leading and trailing ASCII whitespace bytes
+    /// removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b"\r hello world\n ".trim_ascii(), b"hello world");
+    /// assert_eq!(b"  ".trim_ascii(), b"");
+    /// assert_eq!(b"".trim_ascii(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii(&self) -> &[u8] {
+        self.trim_ascii_start().trim_ascii_end()
+    }
 }
 
 impl_fn_for_zst! {
