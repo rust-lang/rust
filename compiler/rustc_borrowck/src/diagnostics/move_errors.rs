@@ -264,7 +264,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         self.add_move_hints(error, &mut err, err_span);
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn report_cannot_move_from_static(

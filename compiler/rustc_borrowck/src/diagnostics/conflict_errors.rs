@@ -77,6 +77,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if move_out_indices.is_empty() {
             let root_place = PlaceRef { projection: &[], ..used_place };
 
+            self.set_tainted_by_errors();
             if !self.uninitialized_error_reported.insert(root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
@@ -104,7 +105,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
             );
 
-            err.buffer(&mut self.errors_buffer);
+            self.buffer_error(err);
         } else {
             if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
                 if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
@@ -216,6 +217,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     place_name, partially_str, loop_message
                                 ),
                             );
+                            self.set_tainted_by_errors();
                             if self.fn_self_span_reported.insert(fn_span) {
                                 err.span_note(
                                     // Check whether the source is accessible
@@ -297,6 +299,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             // Avoid pointing to the same function in multiple different
                             // error messages.
+                            self.set_tainted_by_errors();
                             if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span)
                             {
                                 err.span_note(
@@ -449,6 +452,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
+            self.set_tainted_by_errors();
             if let Some((_, mut old_err)) =
                 self.move_error_reported.insert(move_out_indices, (used_place, err))
             {
@@ -503,7 +507,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(borrow_span),
                 None,
             );
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     pub(crate) fn report_use_while_mutably_borrowed(
@@ -1012,6 +1016,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         }
 
+        self.set_tainted_by_errors();
         self.access_place_error_reported.insert((
             Place { local: root_place.local, projection: root_place_projection },
             borrow_span,
@@ -1021,7 +1026,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if self.body.local_decls[borrowed_local].is_ref_to_thread_local() {
             let err =
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
-            err.buffer(&mut self.errors_buffer);
+            self.buffer_error(err);
             return;
         }
 
@@ -1113,7 +1118,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ),
         };
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn report_local_value_does_not_live_long_enough(
@@ -1295,7 +1300,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
         );
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn report_thread_local_value_does_not_live_long_enough(
@@ -1810,7 +1815,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     loan.kind.describe_mutability(),
                 );
 
-                err.buffer(&mut self.errors_buffer);
+                self.buffer_error(err);
 
                 return;
             }
@@ -1836,7 +1841,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         self.explain_deref_coercion(loan, &mut err);
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
@@ -1938,7 +1943,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         err.span_label(span, msg);
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {

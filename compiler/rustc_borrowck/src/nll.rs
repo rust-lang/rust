@@ -418,6 +418,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
+    // FIXME(compiler-errors): Maybe we need to set tainted here
     err.buffer(errors_buffer);
 }
 

@@ -313,6 +313,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 move_error_reported: BTreeMap::new(),
                 uninitialized_error_reported: Default::default(),
                 errors_buffer,
+                tainted_by_errors: false,
                 regioncx: regioncx.clone(),
                 used_mut: Default::default(),
                 used_mut_upvars: SmallVec::new(),
@@ -346,6 +347,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
+        tainted_by_errors: false,
         regioncx: Rc::clone(&regioncx),
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
@@ -398,7 +400,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 diag.message = initial_diag.styled_message().clone();
                 diag.span = initial_diag.span.clone();
 
-                diag.buffer(&mut mbcx.errors_buffer);
+                mbcx.buffer_error(diag);
             },
         );
         initial_diag.cancel();
@@ -423,7 +425,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     mbcx.gather_used_muts(temporary_used_locals, unused_mut_locals);
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
-    let used_mut = mbcx.used_mut;
+    let used_mut = std::mem::take(&mut mbcx.used_mut);
     for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
         let local_decl = &mbcx.body.local_decls[local];
         let lint_root = match &mbcx.body.source_scopes[local_decl.source_info.scope].local_data {
@@ -461,8 +463,8 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     // Buffer any move errors that we collected and de-duplicated.
-    for (_, (_, diag)) in mbcx.move_error_reported {
-        diag.buffer(&mut mbcx.errors_buffer);
+    for (_, (_, diag)) in std::mem::take(&mut mbcx.move_error_reported) {
+        mbcx.buffer_error(diag);
     }
 
     if !mbcx.errors_buffer.is_empty() {
@@ -477,6 +479,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         concrete_opaque_types: opaque_type_values,
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
+        tainted_by_errors: mbcx.tainted_by_errors,
     };
 
     let body_with_facts = if return_body_with_facts {
@@ -573,6 +576,8 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     uninitialized_error_reported: FxHashSet<PlaceRef<'tcx>>,
     /// Errors to be reported buffer
     errors_buffer: Vec<Diagnostic>,
+    /// Set to true if we emit an error during borrowck
+    tainted_by_errors: bool,
     /// This field keeps track of all the local variables that are declared mut and are mutated.
     /// Used for the warning issued by an unused mutable local variable.
     used_mut: FxHashSet<Local>,
@@ -1028,6 +1033,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if conflict_error || mutability_error {
             debug!("access_place: logging error place_span=`{:?}` kind=`{:?}`", place_span, kind);
 
+            self.set_tainted_by_errors();
             self.access_place_error_reported.insert((place_span.0, place_span.1));
         }
     }
@@ -1107,12 +1113,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     error_reported = true;
                     match kind {
                         ReadKind::Copy => {
-                            this.report_use_while_mutably_borrowed(location, place_span, borrow)
-                                .buffer(&mut this.errors_buffer);
+                            let err = this
+                                .report_use_while_mutably_borrowed(location, place_span, borrow);
+                            this.buffer_error(err);
                         }
                         ReadKind::Borrow(bk) => {
-                            this.report_conflicting_borrow(location, place_span, bk, borrow)
-                                .buffer(&mut this.errors_buffer);
+                            let err =
+                                this.report_conflicting_borrow(location, place_span, bk, borrow);
+                            this.buffer_error(err);
                         }
                     }
                     Control::Break
@@ -1162,8 +1170,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            this.report_conflicting_borrow(location, place_span, bk, borrow)
-                                .buffer(&mut this.errors_buffer);
+                            let err =
+                                this.report_conflicting_borrow(location, place_span, bk, borrow);
+                            this.buffer_error(err);
                         }
                         WriteKind::StorageDeadOrDrop => this
                             .report_borrowed_value_does_not_live_long_enough(
@@ -1570,7 +1579,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 yield_span,
             );
 
-            err.buffer(&mut self.errors_buffer);
+            self.buffer_error(err);
         }
     }
 
@@ -2298,6 +2307,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// of a closure type.
     fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<Field> {
         path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
+    }
+
+    pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
+        self.tainted_by_errors = true;
+        t.buffer(&mut self.errors_buffer);
+    }
+
+    pub fn set_tainted_by_errors(&mut self) {
+        self.tainted_by_errors = true;
     }
 }
 
