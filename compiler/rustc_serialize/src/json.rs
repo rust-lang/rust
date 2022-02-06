@@ -185,8 +185,6 @@ use self::ParserState::*;
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
-use std::io;
-use std::io::prelude::*;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
@@ -250,7 +248,6 @@ pub enum ErrorCode {
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, usize, usize),
-    IoError(io::ErrorKind, String),
 }
 
 // Builder and Parser have the same errors.
@@ -327,10 +324,6 @@ impl fmt::Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         error_str(*self).fmt(f)
     }
-}
-
-fn io_error_to_error(io: io::Error) -> ParserError {
-    IoError(io.kind(), io.to_string())
 }
 
 impl fmt::Display for ParserError {
@@ -2161,21 +2154,6 @@ impl<T: Iterator<Item = char>> Builder<T> {
         }
         self.parser.error(EOFWhileParsingObject)
     }
-}
-
-/// Decodes a json value from an `&mut io::Read`
-pub fn from_reader(rdr: &mut dyn Read) -> Result<Json, BuilderError> {
-    let mut contents = Vec::new();
-    match rdr.read_to_end(&mut contents) {
-        Ok(c) => c,
-        Err(e) => return Err(io_error_to_error(e)),
-    };
-    let s = match str::from_utf8(&contents).ok() {
-        Some(s) => s,
-        _ => return Err(SyntaxError(NotUtf8, 0, 0)),
-    };
-    let mut builder = Builder::new(s.chars());
-    builder.build()
 }
 
 /// Decodes a json value from a string
