@@ -76,7 +76,7 @@ macro_rules! intrinsics {
     (
         #[maybe_use_optimized_c_shim]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
@@ -84,9 +84,9 @@ macro_rules! intrinsics {
     ) => (
 
         #[cfg($name = "optimized-c")]
-        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             extern $abi {
-                fn $name($($argname: $ty),*) -> $ret;
+                fn $name($($argname: $ty),*) $(-> $ret)?;
             }
             unsafe {
                 $name($($argname),*)
@@ -96,7 +96,7 @@ macro_rules! intrinsics {
         #[cfg(not($name = "optimized-c"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -110,7 +110,7 @@ macro_rules! intrinsics {
     (
         #[aapcs_on_arm]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
@@ -119,7 +119,7 @@ macro_rules! intrinsics {
         #[cfg(target_arch = "arm")]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern "aapcs" fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern "aapcs" fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -127,7 +127,7 @@ macro_rules! intrinsics {
         #[cfg(not(target_arch = "arm"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -140,7 +140,7 @@ macro_rules! intrinsics {
     (
         #[unadjusted_on_win64]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
@@ -149,7 +149,7 @@ macro_rules! intrinsics {
         #[cfg(all(windows, target_pointer_width = "64"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern "unadjusted" fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern "unadjusted" fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -157,7 +157,7 @@ macro_rules! intrinsics {
         #[cfg(not(all(windows, target_pointer_width = "64")))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -175,7 +175,7 @@ macro_rules! intrinsics {
     (
         #[win64_128bit_abi_hack]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
@@ -183,7 +183,7 @@ macro_rules! intrinsics {
     ) => (
         #[cfg(all(windows, target_arch = "x86_64"))]
         $(#[$($attr)*])*
-        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
 
@@ -193,7 +193,7 @@ macro_rules! intrinsics {
             pub extern $abi fn $name( $($argname: $ty),* )
                 -> ::macros::win64_128bit_abi_hack::U64x2
             {
-                let e: $ret = super::$name($($argname),*);
+                let e: $($ret)? = super::$name($($argname),*);
                 ::macros::win64_128bit_abi_hack::U64x2::from(e)
             }
         }
@@ -201,7 +201,7 @@ macro_rules! intrinsics {
         #[cfg(not(all(windows, target_arch = "x86_64")))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -216,21 +216,21 @@ macro_rules! intrinsics {
     (
         #[arm_aeabi_alias = $alias:ident]
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
         $($rest:tt)*
     ) => (
         #[cfg(target_arch = "arm")]
-        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
 
         #[cfg(target_arch = "arm")]
         pub mod $name {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
@@ -238,7 +238,7 @@ macro_rules! intrinsics {
         #[cfg(target_arch = "arm")]
         pub mod $alias {
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-            pub extern "aapcs" fn $alias( $($argname: $ty),* ) -> $ret {
+            pub extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
@@ -246,7 +246,57 @@ macro_rules! intrinsics {
         #[cfg(not(target_arch = "arm"))]
         intrinsics! {
             $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                $($body)*
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // C mem* functions are only generated when the "mem" feature is enabled.
+    (
+        #[mem_builtin]
+        $(#[$($attr:tt)*])*
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        $(#[$($attr)*])*
+        pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            $($body)*
+        }
+
+        #[cfg(feature = "mem")]
+        pub mod $name {
+            $(#[$($attr)*])*
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                super::$name($($argname),*)
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // Naked functions are special: we can't generate wrappers for them since
+    // they use a custom calling convention.
+    (
+        #[naked]
+        $(#[$($attr:tt)*])*
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        pub mod $name {
+            #[naked]
+            $(#[$($attr)*])*
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
         }
@@ -268,21 +318,46 @@ macro_rules! intrinsics {
     // input we were given.
     (
         $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
+        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
             $($body:tt)*
         }
 
         $($rest:tt)*
     ) => (
         $(#[$($attr)*])*
-        pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
             $($body)*
         }
 
         pub mod $name {
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-            pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
+            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+                super::$name($($argname),*)
+            }
+        }
+
+        intrinsics!($($rest)*);
+    );
+
+    // Same as the above for unsafe functions.
+    (
+        $(#[$($attr:tt)*])*
+        pub unsafe extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
+            $($body:tt)*
+        }
+
+        $($rest:tt)*
+    ) => (
+        $(#[$($attr)*])*
+        pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
+            $($body)*
+        }
+
+        pub mod $name {
+            $(#[$($attr)*])*
+            #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+            pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
         }
