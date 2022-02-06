@@ -220,9 +220,10 @@ impl GlobalState {
 }
 
 /// Error reporting
-fn err_sb_ub(msg: String) -> InterpError<'static> {
+fn err_sb_ub(msg: String, help: Option<String>) -> InterpError<'static> {
     err_machine_stop!(TerminationInfo::ExperimentalUb {
         msg,
+        help,
         url: format!(
             "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"
         ),
@@ -320,12 +321,18 @@ impl<'tcx> Stack {
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some((tag, _)) = provoking_access {
-                    Err(err_sb_ub(format!(
-                        "not granting access to tag {:?} because incompatible item is protected: {:?}",
-                        tag, item
-                    )))?
+                    Err(err_sb_ub(
+                        format!(
+                            "not granting access to tag {:?} because incompatible item is protected: {:?}",
+                            tag, item
+                        ),
+                        None,
+                    ))?
                 } else {
-                    Err(err_sb_ub(format!("deallocating while item is protected: {:?}", item)))?
+                    Err(err_sb_ub(
+                        format!("deallocating while item is protected: {:?}", item),
+                        None,
+                    ))?
                 }
             }
         }
@@ -334,22 +341,21 @@ impl<'tcx> Stack {
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
     /// If yes, return the index of the item that granted it.
+    /// `range` refers the entire operation, and `offset` refers to the specific offset into the
+    /// allocation that we are currently checking.
     fn access(
         &mut self,
         access: AccessKind,
         tag: SbTag,
-        dbg_ptr: Pointer<AllocId>, // just for debug printing amd error messages
+        (alloc_id, range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
-            err_sb_ub(format!(
-                "no item granting {} to tag {:?} at {:?} found in borrow stack.",
-                access, tag, dbg_ptr,
-            ))
-        })?;
+        let granting_idx = self
+            .find_granting(access, tag)
+            .ok_or_else(|| self.access_error(access, tag, alloc_id, range, offset))?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -389,7 +395,7 @@ impl<'tcx> Stack {
     fn dealloc(
         &mut self,
         tag: SbTag,
-        dbg_ptr: Pointer<AllocId>, // just for debug printing amd error messages
+        dbg_ptr: Pointer<AllocId>, // just for debug printing and error messages
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
@@ -397,7 +403,7 @@ impl<'tcx> Stack {
             err_sb_ub(format!(
                 "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
                 tag, dbg_ptr,
-            ))
+            ), None)
         })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
@@ -412,11 +418,13 @@ impl<'tcx> Stack {
     /// `weak` controls whether this operation is weak or strong: weak granting does not act as
     /// an access, and they add the new item directly on top of the one it is derived
     /// from instead of all the way at the top of the stack.
+    /// `range` refers the entire operation, and `offset` refers to the specific location in
+    /// `range` that we are currently checking.
     fn grant(
         &mut self,
         derived_from: SbTag,
         new: Item,
-        dbg_ptr: Pointer<AllocId>,
+        (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
         global: &GlobalState,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
@@ -424,11 +432,9 @@ impl<'tcx> Stack {
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let granting_idx = self.find_granting(access, derived_from)
-            .ok_or_else(|| err_sb_ub(format!(
-                "trying to reborrow for {:?} at {:?}, but parent tag {:?} does not have an appropriate item in the borrow stack",
-                new.perm, dbg_ptr, derived_from,
-            )))?;
+        let granting_idx = self
+            .find_granting(access, derived_from)
+            .ok_or_else(|| self.grant_error(derived_from, new, alloc_id, alloc_range, offset))?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
@@ -447,7 +453,7 @@ impl<'tcx> Stack {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access.
             // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
-            self.access(access, derived_from, dbg_ptr, global)?;
+            self.access(access, derived_from, (alloc_id, alloc_range, offset), global)?;
 
             // We insert "as far up as possible": We know only compatible items are remaining
             // on top of `derived_from`, and we want the new item at the top so that we
@@ -466,6 +472,72 @@ impl<'tcx> Stack {
         }
 
         Ok(())
+    }
+
+    /// Report a descriptive error when `new` could not be granted from `derived_from`.
+    fn grant_error(
+        &self,
+        derived_from: SbTag,
+        new: Item,
+        alloc_id: AllocId,
+        alloc_range: AllocRange,
+        error_offset: Size,
+    ) -> InterpError<'static> {
+        let action = format!(
+            "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
+            derived_from,
+            new.perm,
+            alloc_id,
+            error_offset.bytes(),
+        );
+        err_sb_ub(
+            format!("{}{}", action, self.error_cause(derived_from)),
+            Some(Self::operation_summary("a reborrow", alloc_id, alloc_range)),
+        )
+    }
+
+    /// Report a descriptive error when `access` is not permitted based on `tag`.
+    fn access_error(
+        &self,
+        access: AccessKind,
+        tag: SbTag,
+        alloc_id: AllocId,
+        alloc_range: AllocRange,
+        error_offset: Size,
+    ) -> InterpError<'static> {
+        let action = format!(
+            "attempting a {} using {:?} at {}[{:#x}]",
+            access,
+            tag,
+            alloc_id,
+            error_offset.bytes(),
+        );
+        err_sb_ub(
+            format!("{}{}", action, self.error_cause(tag)),
+            Some(Self::operation_summary("an access", alloc_id, alloc_range)),
+        )
+    }
+
+    fn operation_summary(
+        operation: &'static str,
+        alloc_id: AllocId,
+        alloc_range: AllocRange,
+    ) -> String {
+        format!(
+            "this error occurs as part of {} at {:?}[{:#x}..{:#x}]",
+            operation,
+            alloc_id,
+            alloc_range.start.bytes(),
+            alloc_range.end().bytes()
+        )
+    }
+
+    fn error_cause(&self, tag: SbTag) -> &'static str {
+        if self.borrows.iter().any(|item| item.tag == tag && item.perm != Permission::Disabled) {
+            ", but that tag only grants SharedReadOnly permission for this location"
+        } else {
+            ", but that tag does not exist in the borrow stack for this location"
+        }
     }
 }
 // # Stacked Borrows Core End
@@ -566,7 +638,7 @@ impl Stacks {
         );
         let global = &*extra.borrow();
         self.for_each(range, move |offset, stack| {
-            stack.access(AccessKind::Read, tag, Pointer::new(alloc_id, offset), global)
+            stack.access(AccessKind::Read, tag, (alloc_id, range, offset), global)
         })
     }
 
@@ -586,7 +658,7 @@ impl Stacks {
         );
         let global = extra.get_mut();
         self.for_each_mut(range, move |offset, stack| {
-            stack.access(AccessKind::Write, tag, Pointer::new(alloc_id, offset), global)
+            stack.access(AccessKind::Write, tag, (alloc_id, range, offset), global)
         })
     }
 
@@ -693,7 +765,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     let item = Item { perm, tag: new_tag, protector };
                     stacked_borrows.for_each(range, |offset, stack| {
-                        stack.grant(orig_tag, item, Pointer::new(alloc_id, offset), &*global)
+                        stack.grant(orig_tag, item, (alloc_id, range, offset), &*global)
                     })
                 })?;
                 return Ok(());
@@ -707,8 +779,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
         let global = memory_extra.stacked_borrows.as_mut().unwrap().get_mut();
         let item = Item { perm, tag: new_tag, protector };
+        let range = alloc_range(base_offset, size);
         stacked_borrows.for_each_mut(alloc_range(base_offset, size), |offset, stack| {
-            stack.grant(orig_tag, item, Pointer::new(alloc_id, offset), global)
+            stack.grant(orig_tag, item, (alloc_id, range, offset), global)
         })?;
         Ok(())
     }

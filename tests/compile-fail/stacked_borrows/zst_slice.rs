@@ -1,5 +1,5 @@
 // compile-flags: -Zmiri-tag-raw-pointers
-// error-pattern: does not have an appropriate item in the borrow stack
+// error-pattern: does not exist in the borrow stack
 
 fn main() {
     unsafe {
