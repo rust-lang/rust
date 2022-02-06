@@ -1,3 +1,4 @@
+mod delimited;
 mod expr;
 mod item;
 
@@ -22,6 +23,8 @@ use rustc_span::symbol::{kw, sym, Ident, IdentPrinter, Symbol};
 use rustc_span::{BytePos, FileName, Span};
 
 use std::borrow::Cow;
+
+pub use self::delimited::IterDelimited;
 
 pub enum MacHeader<'a> {
     Path(&'a ast::Path),
@@ -92,7 +95,7 @@ pub struct State<'a> {
     ann: &'a (dyn PpAnn + 'a),
 }
 
-crate const INDENT_UNIT: usize = 4;
+crate const INDENT_UNIT: isize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
