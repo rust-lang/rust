@@ -153,7 +153,7 @@ pub unsafe fn sfence_inval_ir() {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLV.B`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlv_b(src: *const i8) -> i8 {
     let value: i8;
@@ -168,7 +168,7 @@ pub unsafe fn hlv_b(src: *const i8) -> i8 {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLV.BU`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlv_bu(src: *const u8) -> u8 {
     let value: u8;
@@ -183,7 +183,7 @@ pub unsafe fn hlv_bu(src: *const u8) -> u8 {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLV.H`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlv_h(src: *const i16) -> i16 {
     let value: i16;
@@ -198,7 +198,7 @@ pub unsafe fn hlv_h(src: *const i16) -> i16 {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLV.HU`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlv_hu(src: *const u16) -> u16 {
     let value: u16;
@@ -213,7 +213,7 @@ pub unsafe fn hlv_hu(src: *const u16) -> u16 {
 /// but read permission is not required.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLVX.HU`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlvx_hu(src: *const u16) -> u16 {
     let insn: u16;
@@ -228,7 +228,7 @@ pub unsafe fn hlvx_hu(src: *const u16) -> u16 {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLV.W`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlv_w(src: *const i32) -> i32 {
     let value: i32;
@@ -243,7 +243,7 @@ pub unsafe fn hlv_w(src: *const i32) -> i32 {
 /// but read permission is not required.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HLVX.WU`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hlvx_wu(src: *const u32) -> u32 {
     let insn: u32;
@@ -258,7 +258,7 @@ pub unsafe fn hlvx_wu(src: *const u32) -> u32 {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HSV.B`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hsv_b(dst: *mut i8, src: i8) {
     asm!(".insn r 0x73, 0x4, 0x31, x0, {}, {}", in(reg) dst, in(reg) src, options(nostack));
@@ -271,7 +271,7 @@ pub unsafe fn hsv_b(dst: *mut i8, src: i8) {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HSV.H`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hsv_h(dst: *mut i16, src: i16) {
     asm!(".insn r 0x73, 0x4, 0x33, x0, {}, {}", in(reg) dst, in(reg) src, options(nostack));
@@ -284,7 +284,7 @@ pub unsafe fn hsv_h(dst: *mut i16, src: i16) {
 /// accesses in either VS-mode or VU-mode.
 ///
 /// This function is unsafe for it accesses the virtual supervisor or user via a `HSV.W`
-/// instruction which is effectively an unreference to any memory address.
+/// instruction which is effectively a dereference to any memory address.
 #[inline]
 pub unsafe fn hsv_w(dst: *mut i32, src: i32) {
     asm!(".insn r 0x73, 0x4, 0x35, x0, {}, {}", in(reg) dst, in(reg) src, options(nostack));
@@ -469,6 +469,111 @@ pub unsafe fn hinval_gvma_vmid(vmid: usize) {
     asm!(".insn r 0x73, 0, 0x33, x0, x0, {}", in(reg) vmid, options(nostack))
 }
 
+/// Reads the floating-point control and status register `fcsr`
+///
+/// Register `fcsr` is a 32-bit read/write register that selects the dynamic rounding mode
+/// for floating-point arithmetic operations and holds the accrued exception flag.
+///
+/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// register `fcsr` is defined as:
+///
+/// | Bit index | Meaning |
+/// |:----------|:--------|
+/// | 0..=4 | Accrued Exceptions (`fflags`) |
+/// | 5..=7 | Rounding Mode (`frm`) |
+/// | 8..=31 | _Reserved_ |
+///
+/// For definition of each field, visit [`frrm`] and [`frflags`].
+///
+/// [`frrm`]: fn.frrm.html
+/// [`frflags`]: fn.frflags.html
+#[inline]
+pub fn frcsr() -> u32 {
+    let value: u32;
+    unsafe { asm!("frcsr {}", out(reg) value, options(nomem, nostack)) };
+    value
+}
+
+/// Swaps the floating-point control and status register `fcsr`
+///
+/// This function swaps the value in `fcsr` by copying the original value to be returned,
+/// and then writing a new value obtained from input variable `value` into `fcsr`.
+#[inline]
+pub fn fscsr(value: u32) -> u32 {
+    let original: u32;
+    unsafe { asm!("fscsr {}, {}", out(reg) original, in(reg) value, options(nomem, nostack)) }
+    original
+}
+
+/// Reads the floating-point rounding mode register `frm`
+///
+/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// the rounding mode field is defined as listed in the table below:
+///
+/// | Rounding Mode | Mnemonic | Meaning |
+/// |:-------------|:----------|:---------|
+/// | 000 | RNE | Round to Nearest, ties to Even |
+/// | 001 | RTZ | Round towards Zero |
+/// | 010 | RDN | Round Down (towards −∞) |
+/// | 011 | RUP | Round Up (towards +∞) |
+/// | 100 | RMM | Round to Nearest, ties to Max Magnitude |
+/// | 101 |     | _Reserved for future use._ |
+/// | 110 |     | _Reserved for future use._ |
+/// | 111 | DYN | In Rounding Mode register, _reserved_. |
+#[inline]
+pub fn frrm() -> u32 {
+    let value: u32;
+    unsafe { asm!("frrm {}", out(reg) value, options(nomem, nostack)) };
+    value
+}
+
+/// Swaps the floating-point rounding mode register `frm`
+///
+/// This function swaps the value in `frm` by copying the original value to be returned,
+/// and then writing a new value obtained from the three least-significant bits of
+/// input variable `value` into `frm`.
+#[inline]
+pub fn fsrm(value: u32) -> u32 {
+    let original: u32;
+    unsafe { asm!("fsrm {}, {}", out(reg) original, in(reg) value, options(nomem, nostack)) }
+    original
+}
+
+/// Reads the floating-point accrued exception flags register `fflags`
+///
+/// The accrued exception flags indicate the exception conditions that have arisen
+/// on any floating-point arithmetic instruction since the field was last reset by software.
+///
+/// Accoding to "F" Standard Extension for Single-Precision Floating-Point, Version 2.2,
+/// the accured exception flags is defined as a bit vector of 5 bits.
+/// The meaning of each binary bit is listed in the table below.
+///
+/// | Bit index | Mnemonic | Meaning |
+/// |:--|:---|:-----------------|
+/// | 4 | NV | Invalid Operation |
+/// | 3 | DZ | Divide by Zero |
+/// | 2 | OF | Overflow |
+/// | 1 | UF | Underflow |
+/// | 0 | NX | Inexact |
+#[inline]
+pub fn frflags() -> u32 {
+    let value: u32;
+    unsafe { asm!("frflags {}", out(reg) value, options(nomem, nostack)) };
+    value
+}
+
+/// Swaps the floating-point accrued exception flags register `fflags`
+///
+/// This function swaps the value in `fflags` by copying the original value to be returned,
+/// and then writing a new value obtained from the five least-significant bits of
+/// input variable `value` into `fflags`.
+#[inline]
+pub fn fsflags(value: u32) -> u32 {
+    let original: u32;
+    unsafe { asm!("fsflags {}, {}", out(reg) original, in(reg) value, options(nomem, nostack)) }
+    original
+}
+
 /// Invalidate hypervisor translation cache for all virtual machines and guest physical addresses
 ///
 /// This instruction invalidates any address-translation cache entries that an
@@ -478,4 +583,189 @@ pub unsafe fn hinval_gvma_vmid(vmid: usize) {
 #[inline]
 pub unsafe fn hinval_gvma_all() {
     asm!(".insn r 0x73, 0, 0x33, x0, x0, x0", options(nostack))
+}
+
+/// `P0` transformation function as is used in the SM3 hash algorithm
+///
+/// This function is included in `Zksh` extension. It's defined as:
+///
+/// ```text
+/// P0(X) = X ⊕ (X ≪ 9) ⊕ (X ≪ 17)
+/// ```
+///
+/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
+///
+/// In the SM3 algorithm, the `P0` transformation is used as `E ← P0(TT2)` when the
+/// compression function `CF` uses the intermediate value `TT2` to calculate
+/// the variable `E` in one iteration for subsequent processes.
+///
+/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
+/// this instruction must always be independent from the data it operates on.
+#[inline]
+pub fn sm3p0(x: u32) -> u32 {
+    let ans: u32;
+    unsafe {
+        // asm!("sm3p0 {}, {}", out(reg) ans, in(reg) x, options(nomem, nostack))
+        asm!(".insn i 0x13, 0x1, {}, {}, 0x108", out(reg) ans, in(reg) x, options(nomem, nostack))
+    };
+    ans
+}
+
+/// `P1` transformation function as is used in the SM3 hash algorithm
+///
+/// This function is included in `Zksh` extension. It's defined as:
+///
+/// ```text
+/// P1(X) = X ⊕ (X ≪ 15) ⊕ (X ≪ 23)
+/// ```
+///
+/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
+///
+/// In the SM3 algorithm, the `P1` transformation is used to expand message,
+/// where expanded word `Wj` can be generated from the previous words.
+/// The whole process can be described as the following pseudocode:
+///
+/// ```text
+/// FOR j=16 TO 67
+///     Wj ← P1(Wj−16 ⊕ Wj−9 ⊕ (Wj−3 ≪ 15)) ⊕ (Wj−13 ≪ 7) ⊕ Wj−6
+/// ENDFOR
+/// ```
+///
+/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
+/// this instruction must always be independent from the data it operates on.
+#[inline]
+pub fn sm3p1(x: u32) -> u32 {
+    let ans: u32;
+    unsafe {
+        // asm!("sm3p1 {}, {}", out(reg) ans, in(reg) x, options(nomem, nostack))
+        asm!(".insn i 0x13, 0x1, {}, {}, 0x109", out(reg) ans, in(reg) x, options(nomem, nostack))
+    };
+    ans
+}
+
+/// Accelerates the round function `F` in the SM4 block cipher algorithm
+///
+/// This instruction is included in extension `Zksed`. It's defined as:
+///
+/// ```text
+/// SM4ED(x, a, BS) = x ⊕ T(ai)
+/// ... where
+/// ai = a.bytes[BS]
+/// T(ai) = L(τ(ai))
+/// bi = τ(ai) = SM4-S-Box(ai)
+/// ci = L(bi) = bi ⊕ (bi ≪ 2) ⊕ (bi ≪ 10) ⊕ (bi ≪ 18) ⊕ (bi ≪ 24)
+/// SM4ED = (ci ≪ (BS * 8)) ⊕ x
+/// ```
+///
+/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
+/// As is defined above, `T` is a combined transformation of non linear S-Box transform `τ`
+/// and linear layer transform `L`.
+///
+/// In the SM4 algorithm, the round function `F` is defined as:
+///
+/// ```text
+/// F(x0, x1, x2, x3, rk) = x0 ⊕ T(x1 ⊕ x2 ⊕ x3 ⊕ rk)
+/// ... where
+/// T(A) = L(τ(A))
+/// B = τ(A) = (SM4-S-Box(a0), SM4-S-Box(a1), SM4-S-Box(a2), SM4-S-Box(a3))
+/// C = L(B) = B ⊕ (B ≪ 2) ⊕ (B ≪ 10) ⊕ (B ≪ 18) ⊕ (B ≪ 24)
+/// ```
+///
+/// It can be implemented by `sm4ed` instruction like:
+///
+/// ```no_run
+/// let a = x1 ^ x2 ^ x3 ^ rk;
+/// let c0 = sm4ed::<0>(x0, a);
+/// let c1 = sm4ed::<1>(c0, a); // c1 represents c[0..=1], etc.
+/// let c2 = sm4ed::<2>(c1, a);
+/// let c3 = sm4ed::<3>(c2, a);
+/// return c3; // c3 represents c[0..=3]
+/// ```
+///
+/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
+/// this instruction must always be independent from the data it operates on.
+pub fn sm4ed<const BS: u8>(x: u32, a: u32) -> u32 {
+    static_assert!(BS: u8 where BS <= 3);
+    let ans: u32;
+    match BS {
+        0 => unsafe {
+            asm!(".insn r 0x33, 0, 0x18, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
+        },
+        1 => unsafe {
+            asm!(".insn r 0x33, 0, 0x38, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
+        },
+        2 => unsafe {
+            asm!(".insn r 0x33, 0, 0x58, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
+        },
+        3 => unsafe {
+            asm!(".insn r 0x33, 0, 0x78, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) a, options(nomem, nostack))
+        },
+        _ => unreachable!(),
+    };
+    ans
+}
+
+/// Accelerates the key schedule operation in the SM4 block cipher algorithm
+///
+/// This instruction is included in extension `Zksed`. It's defined as:
+///
+/// ```text
+/// SM4KS(x, k, BS) = x ⊕ T'(ki)
+/// ... where
+/// ki = k.bytes[BS]
+/// T'(ki) = L'(τ(ki))
+/// bi = τ(ki) = SM4-S-Box(ki)
+/// ci = L'(bi) = bi ⊕ (bi ≪ 13) ⊕ (bi ≪ 23)
+/// SM4KS = (ci ≪ (BS * 8)) ⊕ x
+/// ```
+///
+/// where `⊕` represents 32-bit xor, and `≪ k` represents rotate left by `k` bits.
+/// As is defined above, `T'` is a combined transformation of non linear S-Box transform `τ`
+/// and the replaced linear layer transform `L'`.
+///
+/// In the SM4 algorithm, the key schedule is defined as:
+///
+/// ```text
+/// rk[i] = K[i+4] = K[i] ⊕ T'(K[i+1] ⊕ K[i+2] ⊕ K[i+3] ⊕ CK[i])
+/// ... where
+/// K[0..=3] = MK[0..=3] ⊕ FK[0..=3]
+/// T'(K) = L'(τ(K))
+/// B = τ(K) = (SM4-S-Box(k0), SM4-S-Box(k1), SM4-S-Box(k2), SM4-S-Box(k3))
+/// C = L'(B) = B ⊕ (B ≪ 13) ⊕ (B ≪ 23)
+/// ```
+///
+/// where `MK` represents the input 128-bit encryption key,
+/// constants `FK` and `CK` are fixed system configuration constant values defined by the SM4 algorithm.
+/// Hence, the key schedule operation can be implemented by `sm4ks` instruction like:
+///
+/// ```no_run
+/// let k = k1 ^ k2 ^ k3 ^ ck_i;
+/// let c0 = sm4ks::<0>(k0, k);
+/// let c1 = sm4ks::<1>(c0, k); // c1 represents c[0..=1], etc.
+/// let c2 = sm4ks::<2>(c1, k);
+/// let c3 = sm4ks::<3>(c2, k);
+/// return c3; // c3 represents c[0..=3]
+/// ```
+///
+/// According to RISC-V Cryptography Extensions, Volume I, the execution latency of
+/// this instruction must always be independent from the data it operates on.
+pub fn sm4ks<const BS: u8>(x: u32, k: u32) -> u32 {
+    static_assert!(BS: u8 where BS <= 3);
+    let ans: u32;
+    match BS {
+        0 => unsafe {
+            asm!(".insn r 0x33, 0, 0x1A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
+        },
+        1 => unsafe {
+            asm!(".insn r 0x33, 0, 0x3A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
+        },
+        2 => unsafe {
+            asm!(".insn r 0x33, 0, 0x5A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
+        },
+        3 => unsafe {
+            asm!(".insn r 0x33, 0, 0x7A, {}, {}, {}", out(reg) ans, in(reg) x, in(reg) k, options(nomem, nostack))
+        },
+        _ => unreachable!(),
+    };
+    ans
 }
