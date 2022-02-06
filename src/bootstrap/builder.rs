@@ -1757,6 +1757,9 @@ impl<'a> Builder<'a> {
             stack.push(Box::new(step.clone()));
         }
 
+        #[cfg(feature = "build-metrics")]
+        self.metrics.enter_step(&step);
+
         let (out, dur) = {
             let start = Instant::now();
             let zero = Duration::new(0, 0);
@@ -1779,6 +1782,9 @@ impl<'a> Builder<'a> {
                 dur.subsec_millis()
             );
         }
+
+        #[cfg(feature = "build-metrics")]
+        self.metrics.exit_step();
 
         {
             let mut stack = self.stack.borrow_mut();
