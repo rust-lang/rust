@@ -473,6 +473,7 @@ store.register_lints(&[
     transmute::TRANSMUTE_NUM_TO_BYTES,
     transmute::TRANSMUTE_PTR_TO_PTR,
     transmute::TRANSMUTE_PTR_TO_REF,
+    transmute::TRANSMUTE_UNDEFINED_REPR,
     transmute::UNSOUND_COLLECTION_TRANSMUTE,
     transmute::USELESS_TRANSMUTE,
     transmute::WRONG_TRANSMUTE,
