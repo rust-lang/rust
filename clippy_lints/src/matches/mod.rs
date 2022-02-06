@@ -2,21 +2,18 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_help, span_lint_an
 use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_parent_expr, is_lang_ctor, is_refutable, is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks,
-    strip_pat_refs,
+    get_parent_expr, is_refutable, is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks, strip_pat_refs,
 };
 use core::iter::once;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{
-    Arm, BindingAnnotation, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat, PatKind, QPath,
-};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Node, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
+mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
 mod match_same_arms;
@@ -627,7 +624,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             overlapping_arms::check(cx, ex, arms);
             match_wild_err_arm::check(cx, ex, arms);
             match_wild_enum::check(cx, ex, arms);
-            check_match_as_ref(cx, ex, arms, expr);
+            match_as_ref::check(cx, ex, arms, expr);
             check_wild_in_or_pats(cx, arms);
 
             if self.infallible_destructuring_match_linted {
@@ -736,58 +733,6 @@ where
             multispan_sugg(diag, msg, first_sugg.chain(remaining_suggs));
         }
     });
-}
-
-fn check_match_as_ref(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if arms.len() == 2 && arms[0].guard.is_none() && arms[1].guard.is_none() {
-        let arm_ref: Option<BindingAnnotation> = if is_none_arm(cx, &arms[0]) {
-            is_ref_some_arm(cx, &arms[1])
-        } else if is_none_arm(cx, &arms[1]) {
-            is_ref_some_arm(cx, &arms[0])
-        } else {
-            None
-        };
-        if let Some(rb) = arm_ref {
-            let suggestion = if rb == BindingAnnotation::Ref {
-                "as_ref"
-            } else {
-                "as_mut"
-            };
-
-            let output_ty = cx.typeck_results().expr_ty(expr);
-            let input_ty = cx.typeck_results().expr_ty(ex);
-
-            let cast = if_chain! {
-                if let ty::Adt(_, substs) = input_ty.kind();
-                let input_ty = substs.type_at(0);
-                if let ty::Adt(_, substs) = output_ty.kind();
-                let output_ty = substs.type_at(0);
-                if let ty::Ref(_, output_ty, _) = *output_ty.kind();
-                if input_ty != output_ty;
-                then {
-                    ".map(|x| x as _)"
-                } else {
-                    ""
-                }
-            };
-
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_sugg(
-                cx,
-                MATCH_AS_REF,
-                expr.span,
-                &format!("use `{}()` instead", suggestion),
-                "try this",
-                format!(
-                    "{}.{}(){}",
-                    snippet_with_applicability(cx, ex.span, "_", &mut applicability),
-                    suggestion,
-                    cast,
-                ),
-                applicability,
-            );
-        }
-    }
 }
 
 fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
@@ -960,30 +905,6 @@ fn opt_parent_let<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<&'a Local<'
         if let Some(Node::Local(parent_let_expr)) = map.find(map.get_parent_node(parent_arm_expr.hir_id));
         then {
             return Some(parent_let_expr);
-        }
-    }
-    None
-}
-
-// Checks if arm has the form `None => None`
-fn is_none_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-    matches!(arm.pat.kind, PatKind::Path(ref qpath) if is_lang_ctor(cx, qpath, OptionNone))
-}
-
-// Checks if arm has the form `Some(ref v) => Some(v)` (checks for `ref` and `ref mut`)
-fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<BindingAnnotation> {
-    if_chain! {
-        if let PatKind::TupleStruct(ref qpath, [first_pat, ..], _) = arm.pat.kind;
-        if is_lang_ctor(cx, qpath, OptionSome);
-        if let PatKind::Binding(rb, .., ident, _) = first_pat.kind;
-        if rb == BindingAnnotation::Ref || rb == BindingAnnotation::RefMut;
-        if let ExprKind::Call(e, args) = peel_blocks(arm.body).kind;
-        if let ExprKind::Path(ref some_path) = e.kind;
-        if is_lang_ctor(cx, some_path, OptionSome) && args.len() == 1;
-        if let ExprKind::Path(QPath::Resolved(_, path2)) = args[0].kind;
-        if path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name;
-        then {
-            return Some(rb)
         }
     }
     None
