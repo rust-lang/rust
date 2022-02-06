@@ -231,6 +231,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     }
                     else {
                         assert!(!((actual_ty.is_vector() && !expected_ty.is_vector()) || (!actual_ty.is_vector() && expected_ty.is_vector())), "{:?} ({}) -> {:?} ({}), index: {:?}[{}]", actual_ty, actual_ty.is_vector(), expected_ty, expected_ty.is_vector(), func_ptr, index);
+                        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                         self.bitcast(actual_val, expected_ty)
                     }
                 }
@@ -1320,11 +1321,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             if vec_num_units < mask_num_units {
                 // NOTE: the mask needs to be the same length as the input vectors, so join the 2
                 // vectors and create a dummy second vector.
+                // TODO(antoyo): switch to using new_vector_access.
                 let array = self.context.new_bitcast(None, v1, array_type);
                 let mut elements = vec![];
                 for i in 0..vec_num_units {
                     elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
                 }
+                // TODO(antoyo): switch to using new_vector_access.
                 let array = self.context.new_bitcast(None, v2, array_type);
                 for i in 0..vec_num_units {
                     elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
@@ -1347,6 +1350,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // NOTE: if padding was added, only select the number of elements of the masks to
             // remove that padding in the result.
             let mut elements = vec![];
+            // TODO(antoyo): switch to using new_vector_access.
             let array = self.context.new_bitcast(None, result, array_type);
             for i in 0..mask_num_units {
                 elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
