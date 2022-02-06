@@ -15,6 +15,7 @@ mod intersperse;
 mod map;
 mod map_while;
 mod peekable;
+mod reject;
 mod rev;
 mod scan;
 mod skip;
@@ -57,6 +58,9 @@ pub use self::zip::TrustedRandomAccessNoCoerce;
 
 #[stable(feature = "iter_zip", since = "1.59.0")]
 pub use self::zip::zip;
+
+#[unstable(feature = "option_iter_reject", issue = "none")]
+pub use self::reject::Reject;
 
 /// This trait provides transitive access to source-stage in an iterator-adapter pipeline
 /// under the conditions that

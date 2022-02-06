@@ -553,3 +553,19 @@ fn zip_unzip_roundtrip() {
     let a = z.unzip();
     assert_eq!(a, (x, y));
 }
+
+#[test]
+fn reject_options() {
+    let x = Some(10);
+    let y = Some("foo");
+    let z: Option<usize> = None;
+
+    assert_eq!(x.reject(|n| *n == 10), None);
+    assert_eq!(x.reject(|n| *n == 0), x);
+
+    assert_eq!(y.reject(|s| *s == "foo"), None);
+    assert_eq!(y.reject(|s| *s == "something else"), y);
+
+    assert_eq!(z.reject(|n| *n == 10), None);
+    assert_eq!(z.reject(|n| *n == 0), None);
+}

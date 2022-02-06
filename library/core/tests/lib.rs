@@ -77,6 +77,7 @@
 #![feature(ptr_metadata)]
 #![feature(once_cell)]
 #![feature(option_result_contains)]
+#![feature(option_iter_reject)]
 #![feature(unsized_tuple_coercion)]
 #![feature(const_option)]
 #![feature(const_option_ext)]

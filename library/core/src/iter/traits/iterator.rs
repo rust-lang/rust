@@ -2,7 +2,7 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::TrustedRandomAccessNoCoerce;
-use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse, Reject};
 use super::super::{FlatMap, Flatten};
 use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
@@ -840,6 +840,17 @@ pub trait Iterator {
         P: FnMut(&Self::Item) -> bool,
     {
         Filter::new(self, predicate)
+    }
+
+    /// FIXME: add docs
+    #[inline]
+    #[unstable(feature = "option_iter_reject", issue = "none")]
+    fn reject<P>(self, predicate: P) -> Reject<Self, P>
+    where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool,
+    {
+        Reject::new(self, predicate)
     }
 
     /// Creates an iterator that both filters and maps.

@@ -1270,6 +1270,24 @@ impl<T> Option<T> {
         None
     }
 
+    /// FIXME: add docs
+    #[inline]
+    #[unstable(feature = "option_iter_reject", issue = "none")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn reject<P>(self, predicate: P) -> Self
+    where
+        T: ~const Drop,
+        P: ~const FnOnce(&T) -> bool,
+        P: ~const Drop,
+    {
+        if let Some(x) = &self {
+            if predicate(x) {
+                return None;
+            }
+        }
+        self
+    }
+
     /// Returns the option if it contains a value, otherwise returns `optb`.
     ///
     /// Arguments passed to `or` are eagerly evaluated; if you are passing the

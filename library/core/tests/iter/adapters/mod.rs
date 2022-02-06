@@ -12,6 +12,7 @@ mod inspect;
 mod intersperse;
 mod map;
 mod peekable;
+mod reject;
 mod scan;
 mod skip;
 mod skip_while;
