@@ -42,7 +42,7 @@ spack install enzyme
 
 To get involved or if you have questions, please join our [mailing list](https://groups.google.com/d/forum/enzyme-dev).
 
-If using this code in an academic setting, please cite the following:
+If using this code in an academic setting, please cite the following two papers (first for Enzyme as a whole, then for GPU+optimizations):
 ```
 @inproceedings{NEURIPS2020_9332c513,
  author = {Moses, William and Churavy, Valentin},
@@ -54,6 +54,22 @@ If using this code in an academic setting, please cite the following:
  url = {https://proceedings.neurips.cc/paper/2020/file/9332c513ef44b682e9347822c2e457ac-Paper.pdf},
  volume = {33},
  year = {2020}
+}
+@inproceedings{10.1145/3458817.3476165,
+author = {Moses, William S. and Churavy, Valentin and Paehler, Ludger and H\"{u}ckelheim, Jan and Narayanan, Sri Hari Krishna and Schanen, Michel and Doerfert, Johannes},
+title = {Reverse-Mode Automatic Differentiation and Optimization of GPU Kernels via Enzyme},
+year = {2021},
+isbn = {9781450384421},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3458817.3476165},
+doi = {10.1145/3458817.3476165},
+booktitle = {Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+articleno = {61},
+numpages = {16},
+keywords = {CUDA, LLVM, ROCm, HPC, AD, GPU, automatic differentiation},
+location = {St. Louis, Missouri},
+series = {SC '21}
 }
 ```
 
