@@ -8,7 +8,7 @@ source ./scripts/setup_rust_fork.sh
 echo "[TEST] Test suite of rustc"
 pushd rust
 
-cargo install ripgrep
+command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r src/test/ui/{extern/,panics/,unsized-locals/,lto/,simd*,linkage*,unwind-*.rs} || true
 for test in $(rg --files-with-matches "asm!|catch_unwind|should_panic|lto|// needs-asm-support" src/test/ui); do
