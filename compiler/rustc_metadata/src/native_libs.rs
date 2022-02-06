@@ -404,11 +404,13 @@ impl Collector<'_> {
     fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef) -> DllImport {
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
-                Abi::C { .. } | Abi::Cdecl => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
                 Abi::Stdcall { .. } | Abi::System { .. } => {
                     DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
                 }
-                Abi::Fastcall => DllCallingConvention::Fastcall(self.i686_arg_list_size(item)),
+                Abi::Fastcall { .. } => {
+                    DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
+                }
                 // Vectorcall is intentionally not supported at this time.
                 _ => {
                     self.tcx.sess.span_fatal(
@@ -419,7 +421,7 @@ impl Collector<'_> {
             }
         } else {
             match abi {
-                Abi::C { .. } | Abi::Win64 | Abi::System { .. } => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
                 _ => {
                     self.tcx.sess.span_fatal(
                         item.span,

@@ -658,22 +658,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         match &cx.target_spec().arch[..] {
             "x86" => {
-                let flavor = if abi == spec::abi::Abi::Fastcall {
+                let flavor = if let spec::abi::Abi::Fastcall { .. } = abi {
                     x86::Flavor::Fastcall
                 } else {
                     x86::Flavor::General
                 };
                 x86::compute_abi_info(cx, self, flavor);
             }
-            "x86_64" => {
-                if abi == spec::abi::Abi::SysV64 {
-                    x86_64::compute_abi_info(cx, self);
-                } else if abi == spec::abi::Abi::Win64 || cx.target_spec().is_like_windows {
-                    x86_win64::compute_abi_info(self);
-                } else {
-                    x86_64::compute_abi_info(cx, self);
+            "x86_64" => match abi {
+                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(self),
+                _ => {
+                    if cx.target_spec().is_like_windows {
+                        x86_win64::compute_abi_info(self)
+                    } else {
+                        x86_64::compute_abi_info(cx, self)
+                    }
                 }
-            }
+            },
             "aarch64" => aarch64::compute_abi_info(cx, self),
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
