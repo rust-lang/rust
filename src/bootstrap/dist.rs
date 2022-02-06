@@ -24,7 +24,6 @@ use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
-use time::{self, Timespec};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     format!("{}-{}", component, builder.rust_package_vers())
@@ -422,33 +421,15 @@ impl Step for Rustc {
             let man_src = builder.src.join("src/doc/man");
             let man_dst = image.join("share/man/man1");
 
-            // Reproducible builds: If SOURCE_DATE_EPOCH is set, use that as the time.
-            let time = env::var("SOURCE_DATE_EPOCH")
-                .map(|timestamp| {
-                    let epoch = timestamp
-                        .parse()
-                        .map_err(|err| format!("could not parse SOURCE_DATE_EPOCH: {}", err))
-                        .unwrap();
-
-                    time::at(Timespec::new(epoch, 0))
-                })
-                .unwrap_or_else(|_| time::now());
-
-            let month_year = t!(time::strftime("%B %Y", &time));
             // don't use our `bootstrap::util::{copy, cp_r}`, because those try
             // to hardlink, and we don't want to edit the source templates
             for file_entry in builder.read_dir(&man_src) {
                 let page_src = file_entry.path();
                 let page_dst = man_dst.join(file_entry.file_name());
+                let src_text = t!(std::fs::read_to_string(&page_src));
+                let new_text = src_text.replace("<INSERT VERSION HERE>", &builder.version);
+                t!(std::fs::write(&page_dst, &new_text));
                 t!(fs::copy(&page_src, &page_dst));
-                // template in month/year and version number
-                builder.replace_in_file(
-                    &page_dst,
-                    &[
-                        ("<INSERT DATE HERE>", &month_year),
-                        ("<INSERT VERSION HERE>", &builder.version),
-                    ],
-                );
             }
 
             // Debugger scripts
