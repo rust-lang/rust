@@ -163,6 +163,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
+#![feature(c_unwind)]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
