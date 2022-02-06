@@ -1,8 +1,14 @@
-error: `#[stable]` const functions must also be either `#[rustc_const_stable]` or `#[rustc_const_unstable]`
+error: function has missing const stability attribute
   --> $DIR/missing-const-stability.rs:6:1
    |
 LL | pub const fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: associated function has missing const stability attribute
+  --> $DIR/missing-const-stability.rs:15:5
+   |
+LL |     pub const fn foo() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
