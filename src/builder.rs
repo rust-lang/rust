@@ -3,7 +3,6 @@ use std::cell::Cell;
 use std::convert::TryFrom;
 use std::ops::Deref;
 
-use gccjit::FunctionType;
 use gccjit::{
     BinaryOp,
     Block,
@@ -224,10 +223,14 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             .map(|(index, (expected_ty, &actual_val))| {
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    if on_stack_param_indices.contains(&index) {
+                    if !actual_ty.is_vector() && !expected_ty.is_vector() && actual_ty.is_integral() && expected_ty.is_integral() && actual_ty.get_size() != expected_ty.get_size() {
+                        self.context.new_cast(None, actual_val, expected_ty)
+                    }
+                    else if on_stack_param_indices.contains(&index) {
                         actual_val.dereference(None).to_rvalue()
                     }
                     else {
+                        assert!(!((actual_ty.is_vector() && !expected_ty.is_vector()) || (!actual_ty.is_vector() && expected_ty.is_vector())), "{:?} ({}) -> {:?} ({}), index: {:?}[{}]", actual_ty, actual_ty.is_vector(), expected_ty, expected_ty.is_vector(), func_ptr, index);
                         self.bitcast(actual_val, expected_ty)
                     }
                 }
@@ -286,14 +289,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
-        let mut return_type = gcc_func.get_return_type();
+        let return_type = gcc_func.get_return_type();
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
-
-        // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-        if gcc_func.get_param_count() == 0 && format!("{:?}", func_ptr) == "__builtin_ia32_pmovmskb128" {
-            return_type = self.int_type;
-        }
 
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
@@ -302,13 +300,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             result.to_rvalue()
         }
         else {
-            if gcc_func.get_param_count() == 0 {
-                // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
-            }
-            else {
-                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
-            }
+            self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             // Return dummy value when not having return value.
             let result = current_func.new_local(None, self.isize_type, "dummyValueThatShouldNeverBeUsed");
             self.block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
@@ -529,12 +521,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn frem(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        if a.get_type() == self.cx.float_type {
+        if a.get_type().is_compatible_with(self.cx.float_type) {
             let fmodf = self.context.get_builtin_function("fmodf");
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(None, fmodf, &[a, b]);
         }
-        assert_eq!(a.get_type(), self.cx.double_type);
+        assert_eq!(a.get_type().unqualified(), self.cx.double_type);
 
         let fmod = self.context.get_builtin_function("fmod");
         return self.context.new_call(None, fmod, &[a, b]);
@@ -657,7 +649,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // NOTE: instead of returning the dereference here, we have to assign it to a variable in
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
-        // TODO(antoyo): handle align.
+        // TODO(antoyo): handle align of the load instruction.
         let deref = ptr.dereference(None).to_rvalue();
         let value_type = deref.get_type();
         unsafe { RETURN_VALUE_COUNT += 1 };
@@ -797,9 +789,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.store_with_flags(val, ptr, align, MemFlags::empty())
     }
 
-    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, _align: Align, _flags: MemFlags) -> RValue<'gcc> {
+    fn store_with_flags(&mut self, val: RValue<'gcc>, ptr: RValue<'gcc>, align: Align, _flags: MemFlags) -> RValue<'gcc> {
         let ptr = self.check_store(val, ptr);
-        self.llbb().add_assignment(None, ptr.dereference(None), val);
+        let destination = ptr.dereference(None);
+        // NOTE: libgccjit does not support specifying the alignment on the assignment, so we cast
+        // to type so it gets the proper alignment.
+        let destination_type = destination.to_rvalue().get_type().unqualified();
+        let aligned_type = destination_type.get_aligned(align.bytes()).make_pointer();
+        let aligned_destination = self.cx.context.new_bitcast(None, ptr, aligned_type);
+        let aligned_destination = aligned_destination.dereference(None);
+        self.llbb().add_assignment(None, aligned_destination, val);
         // TODO(antoyo): handle align and flags.
         // NOTE: dummy value here since it's never used. FIXME(antoyo): API should not return a value here?
         self.cx.context.new_rvalue_zero(self.type_i32())
@@ -1288,14 +1287,75 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
-        let return_type = v1.get_type();
-        let params = [
-            self.context.new_parameter(None, return_type, "v1"),
-            self.context.new_parameter(None, return_type, "v2"),
-            self.context.new_parameter(None, mask.get_type(), "mask"),
-        ];
-        let shuffle = self.context.new_function(None, FunctionType::Extern, return_type, &params, "_mm_shuffle_epi8", false);
-        self.context.new_call(None, shuffle, &[v1, v2, mask])
+        let struct_type = mask.get_type().is_struct().expect("mask of struct type");
+
+        // TODO(antoyo): use a recursive unqualified() here.
+        let vector_type = v1.get_type().unqualified().dyncast_vector().expect("vector type");
+        let element_type = vector_type.get_element_type();
+        let vec_num_units = vector_type.get_num_units();
+
+        let mask_num_units = struct_type.get_field_count();
+        let mut vector_elements = vec![];
+        let mask_element_type =
+            if element_type.is_integral() {
+                element_type
+            }
+            else {
+                self.int_type
+            };
+        for i in 0..mask_num_units {
+            let field = struct_type.get_field(i as i32);
+            vector_elements.push(self.context.new_cast(None, mask.access_field(None, field).to_rvalue(), mask_element_type));
+        }
+
+        // NOTE: the mask needs to be the same length as the input vectors, so add the missing
+        // elements in the mask if needed.
+        for _ in mask_num_units..vec_num_units {
+            vector_elements.push(self.context.new_rvalue_zero(mask_element_type));
+        }
+
+        let array_type = self.context.new_array_type(None, element_type, vec_num_units as i32);
+        let result_type = self.context.new_vector_type(element_type, mask_num_units as u64);
+        let (v1, v2) =
+            if vec_num_units < mask_num_units {
+                // NOTE: the mask needs to be the same length as the input vectors, so join the 2
+                // vectors and create a dummy second vector.
+                let array = self.context.new_bitcast(None, v1, array_type);
+                let mut elements = vec![];
+                for i in 0..vec_num_units {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                let array = self.context.new_bitcast(None, v2, array_type);
+                for i in 0..vec_num_units {
+                    elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+                }
+                let v1 = self.context.new_rvalue_from_vector(None, result_type, &elements);
+                let zero = self.context.new_rvalue_zero(element_type);
+                let v2 = self.context.new_rvalue_from_vector(None, result_type, &vec![zero; mask_num_units]);
+                (v1, v2)
+            }
+            else {
+                (v1, v2)
+            };
+
+        let new_mask_num_units = std::cmp::max(mask_num_units, vec_num_units);
+        let mask_type = self.context.new_vector_type(mask_element_type, new_mask_num_units as u64);
+        let mask = self.context.new_rvalue_from_vector(None, mask_type, &vector_elements);
+        let result = self.context.new_rvalue_vector_perm(None, v1, v2, mask);
+
+        if vec_num_units != mask_num_units {
+            // NOTE: if padding was added, only select the number of elements of the masks to
+            // remove that padding in the result.
+            let mut elements = vec![];
+            let array = self.context.new_bitcast(None, result, array_type);
+            for i in 0..mask_num_units {
+                elements.push(self.context.new_array_access(None, array, self.context.new_rvalue_from_int(self.int_type, i as i32)).to_rvalue());
+            }
+            self.context.new_rvalue_from_vector(None, result_type, &elements)
+        }
+        else {
+            result
+        }
     }
 }
 

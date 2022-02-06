@@ -3,10 +3,11 @@ use std::convert::TryInto;
 use gccjit::{RValue, Struct, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods};
 use rustc_codegen_ssa::common::TypeKind;
-use rustc_middle::bug;
+use rustc_middle::{bug, ty};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
+use crate::common::TypeReflection;
 use crate::context::CodegenCx;
 use crate::type_of::LayoutGccExt;
 
@@ -59,6 +60,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         // FIXME(eddyb) We could find a better approximation if ity.align < align.
         let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
+    }
+
+    pub fn type_vector(&self, ty: Type<'gcc>, len: u64) -> Type<'gcc> {
+        self.context.new_vector_type(ty, len)
+    }
+
+    pub fn type_float_from_ty(&self, t: ty::FloatTy) -> Type<'gcc> {
+        match t {
+            ty::FloatTy::F32 => self.type_f32(),
+            ty::FloatTy::F64 => self.type_f64(),
+        }
     }
 }
 
@@ -127,7 +139,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         else if typ.is_compatible_with(self.double_type) {
             TypeKind::Double
         }
-        else if typ.dyncast_vector().is_some() {
+        else if typ.is_vector() {
             TypeKind::Vector
         }
         else {
@@ -141,7 +153,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
-        // TODO(antoyo): use address_space
+        // TODO(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
         ty.make_pointer()
     }
 
@@ -167,10 +179,10 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn float_width(&self, typ: Type<'gcc>) -> usize {
         let f32 = self.context.new_type::<f32>();
         let f64 = self.context.new_type::<f64>();
-        if typ == f32 {
+        if typ.is_compatible_with(f32) {
             32
         }
-        else if typ == f64 {
+        else if typ.is_compatible_with(f64) {
             64
         }
         else {

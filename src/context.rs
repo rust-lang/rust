@@ -269,11 +269,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn is_native_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn is_int_type_or_bool(&self, typ: Type<'gcc>) -> bool {
-        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ == self.bool_type
+        self.is_native_int_type(typ) || self.is_non_native_int_type(typ) || typ.is_compatible_with(self.bool_type)
     }
 
     pub fn sess(&self) -> &Session {

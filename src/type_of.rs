@@ -24,6 +24,28 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             I128 => self.type_u128(),
         }
     }
+
+    pub fn type_int_from_ty(&self, t: ty::IntTy) -> Type<'gcc> {
+        match t {
+            ty::IntTy::Isize => self.type_isize(),
+            ty::IntTy::I8 => self.type_i8(),
+            ty::IntTy::I16 => self.type_i16(),
+            ty::IntTy::I32 => self.type_i32(),
+            ty::IntTy::I64 => self.type_i64(),
+            ty::IntTy::I128 => self.type_i128(),
+        }
+    }
+
+    pub fn type_uint_from_ty(&self, t: ty::UintTy) -> Type<'gcc> {
+        match t {
+            ty::UintTy::Usize => self.type_isize(),
+            ty::UintTy::U8 => self.type_i8(),
+            ty::UintTy::U16 => self.type_i16(),
+            ty::UintTy::U32 => self.type_i32(),
+            ty::UintTy::U64 => self.type_i64(),
+            ty::UintTy::U128 => self.type_i128(),
+        }
+    }
 }
 
 pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout<'tcx>, defer: &mut Option<(Struct<'gcc>, TyAndLayout<'tcx>)>) -> Type<'gcc> {
