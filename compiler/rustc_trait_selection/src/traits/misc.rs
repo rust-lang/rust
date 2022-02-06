@@ -20,6 +20,7 @@ pub fn can_type_implement_copy<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     self_type: Ty<'tcx>,
+    cause: ObligationCause<'tcx>,
 ) -> Result<(), CopyImplementationError<'tcx>> {
     // FIXME: (@jroesch) float this code up
     tcx.infer_ctxt().enter(|infcx| {
@@ -49,9 +50,8 @@ pub fn can_type_implement_copy<'tcx>(
                     continue;
                 }
                 let span = tcx.def_span(field.did);
-                let cause = ObligationCause::dummy_with_span(span);
                 let ctx = traits::FulfillmentContext::new();
-                match traits::fully_normalize(&infcx, ctx, cause, param_env, ty) {
+                match traits::fully_normalize(&infcx, ctx, cause.clone(), param_env, ty) {
                     Ok(ty) => {
                         if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
                             infringing.push(field);
