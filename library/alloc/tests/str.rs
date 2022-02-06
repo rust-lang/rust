@@ -2230,3 +2230,45 @@ fn utf8_chars() {
     assert!((!from_utf8(&[0xf0, 0xff, 0x10]).is_ok()));
     assert!((!from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok()));
 }
+
+#[test]
+fn utf8_char_counts() {
+    let strs = [("e", 1), ("é", 1), ("€", 1), ("\u{10000}", 1), ("eé€\u{10000}", 4)];
+    let mut reps =
+        [8, 64, 256, 512, 1024].iter().copied().flat_map(|n| n - 8..=n + 8).collect::<Vec<usize>>();
+    if cfg!(not(miri)) {
+        let big = 1 << 16;
+        reps.extend(big - 8..=big + 8);
+    }
+    let counts = if cfg!(miri) { 0..1 } else { 0..8 };
+    let padding = counts.map(|len| " ".repeat(len)).collect::<Vec<String>>();
+
+    for repeat in reps {
+        for (tmpl_str, tmpl_char_count) in strs {
+            for pad_start in &padding {
+                for pad_end in &padding {
+                    // Create a string with padding...
+                    let with_padding =
+                        format!("{}{}{}", pad_start, tmpl_str.repeat(repeat), pad_end);
+                    // ...and then skip past that padding. This should ensure
+                    // that we test several different alignments for both head
+                    // and tail.
+                    let si = pad_start.len();
+                    let ei = with_padding.len() - pad_end.len();
+                    let target = &with_padding[si..ei];
+
+                    assert!(!target.starts_with(" ") && !target.ends_with(" "));
+                    let expected_count = tmpl_char_count * repeat;
+                    assert_eq!(
+                        expected_count,
+                        target.chars().count(),
+                        "wrong count for `{:?}.repeat({})` (padding: `{:?}`)",
+                        tmpl_str,
+                        repeat,
+                        (pad_start.len(), pad_end.len()),
+                    );
+                }
+            }
+        }
+    }
+}
