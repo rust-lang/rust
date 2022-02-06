@@ -54,4 +54,4 @@ version = "0.3"
 features = ["fileapi", "ioapiset", "jobapi2", "handleapi", "winioctl", "psapi", "impl-default"]
 
 [dev-dependencies]
-pretty_assertions = "0.6"
+pretty_assertions = "0.7"
