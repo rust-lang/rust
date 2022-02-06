@@ -65,6 +65,7 @@
 #if LLVM_VERSION_MAJOR >= 13
 #include "llvm/Transforms/IPO/Attributor.h"
 #include "llvm/Transforms/IPO/OpenMPOpt.h"
+#include "llvm/Transforms/Utils/Mem2Reg.h"
 #endif
 
 #include "CApi.h"
@@ -82,7 +83,7 @@ llvm::cl::opt<bool> EnzymeAttributor("enzyme-attributor", cl::init(false),
                                      cl::Hidden,
                                      cl::desc("Run attributor post Enzyme"));
 
-llvm::cl::opt<bool> EnzymeOMPOpt("enzyme-omp-opt", cl::init(true), cl::Hidden,
+llvm::cl::opt<bool> EnzymeOMPOpt("enzyme-omp-opt", cl::init(false), cl::Hidden,
                                  cl::desc("Whether to enable openmp opt"));
 
 #if LLVM_VERSION_MAJOR >= 14
@@ -1751,6 +1752,11 @@ public:
 #if LLVM_VERSION_MAJOR >= 13
     if (Logic.PostOpt && EnzymeOMPOpt) {
       OpenMPOptPass().run(M, Logic.PPC.MAM);
+      /// Attributor is run second time for promoted args to get attributes.
+      AttributorPass().run(M, Logic.PPC.MAM);
+      for (auto &F : M)
+        if (!F.empty())
+          PromotePass().run(F, Logic.PPC.FAM);
       changed = true;
     }
 #endif
@@ -1814,9 +1820,18 @@ public:
     }
 
 #if LLVM_VERSION_MAJOR >= 13
-    if (Logic.PostOpt && EnzymeOMPOpt) {
-      OpenMPOptPass().run(M, Logic.PPC.MAM);
-      changed = true;
+    if (Logic.PostOpt) {
+      if (EnzymeOMPOpt) {
+        auto &MAM = Logic.PPC.MAM;
+        auto &FAM = Logic.PPC.FAM;
+        OpenMPOptPass().run(M, MAM);
+        /// Attributor is run second time for promoted args to get attributes.
+        AttributorPass().run(M, MAM);
+        for (auto &F : M)
+          if (!F.empty())
+            PromotePass().run(F, FAM);
+        changed = true;
+      }
     }
 #endif
 
