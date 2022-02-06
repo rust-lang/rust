@@ -728,6 +728,20 @@ mod impl_keyword {}
 /// [`IntoIterator`]: ../book/ch13-04-performance.html
 /// [range patterns]: ../reference/patterns.html?highlight=range#range-patterns
 /// [`for`]: keyword.for.html
+///
+/// The other use of `in` is with the keyword `pub`. It allows users to declare an item as visible
+/// only within a given scope.
+///
+/// ## Literal Example:
+///
+///    * `pub(in crate::outer_mod) fn outer_mod_visible_fn() {}` - fn is visible in `outer_mod`
+///
+/// Starting with the 2018 edition, paths for `pub(in path)` must start with `crate`, `self` or
+/// `super`. The 2015 edition may also use paths starting with `::` or modules from the crate root.
+///
+/// For more information, see the [Reference].
+///
+/// [Reference]: ../reference/visibility-and-privacy.html#pubin-path-pubcrate-pubsuper-and-pubself
 mod in_keyword {}
 
 #[doc(keyword = "let")]
