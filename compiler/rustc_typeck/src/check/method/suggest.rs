@@ -1196,7 +1196,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(adt) if adt.did.is_local() => adt,
                 _ => continue,
             };
-            let can_derive = match self.tcx.get_diagnostic_name(trait_pred.def_id()) {
+            let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id());
+            let can_derive = match diagnostic_name {
                 Some(sym::Default) => !adt.is_enum(),
                 Some(
                     sym::Eq
@@ -1211,10 +1212,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => false,
             };
             if can_derive {
+                let self_name = trait_pred.self_ty().to_string();
+                let self_span = self.tcx.def_span(adt.did);
+                if let Some(sym::Ord) = diagnostic_name {
+                    derives.push((self_name.clone(), self_span.clone(), "PartialOrd".to_string()));
+                }
+                if let Some(sym::Eq) = diagnostic_name {
+                    derives.push((self_name.clone(), self_span.clone(), "PartialEq".to_string()));
+                }
                 derives.push((
-                    format!("{}", trait_pred.self_ty()),
-                    self.tcx.def_span(adt.did),
-                    format!("{}", trait_pred.trait_ref.print_only_trait_name()),
+                    self_name,
+                    self_span,
+                    trait_pred.trait_ref.print_only_trait_name().to_string(),
                 ));
             } else {
                 traits.push(self.tcx.def_span(trait_pred.def_id()));
