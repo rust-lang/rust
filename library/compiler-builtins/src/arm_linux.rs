@@ -90,17 +90,19 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
 
 macro_rules! atomic_rmw {
     ($name:ident, $ty:ty, $op:expr) => {
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-        pub unsafe extern "C" fn $name(ptr: *mut $ty, val: $ty) -> $ty {
-            atomic_rmw(ptr, |x| $op(x as $ty, val) as u32) as $ty
+        intrinsics! {
+            pub unsafe extern "C" fn $name(ptr: *mut $ty, val: $ty) -> $ty {
+                atomic_rmw(ptr, |x| $op(x as $ty, val) as u32) as $ty
+            }
         }
     };
 }
 macro_rules! atomic_cmpxchg {
     ($name:ident, $ty:ty) => {
-        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-        pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
-            atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty
+        intrinsics! {
+            pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
+                atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty
+            }
         }
     };
 }
@@ -205,7 +207,8 @@ atomic_cmpxchg!(__sync_val_compare_and_swap_1, u8);
 atomic_cmpxchg!(__sync_val_compare_and_swap_2, u16);
 atomic_cmpxchg!(__sync_val_compare_and_swap_4, u32);
 
-#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-pub unsafe extern "C" fn __sync_synchronize() {
-    __kuser_memory_barrier();
+intrinsics! {
+    pub unsafe extern "C" fn __sync_synchronize() {
+        __kuser_memory_barrier();
+    }
 }

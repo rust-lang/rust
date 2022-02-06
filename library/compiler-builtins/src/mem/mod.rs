@@ -19,53 +19,55 @@ use core::ops::{BitOr, Shl};
 )]
 mod impls;
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    impls::copy_forward(dest, src, n);
-    dest
-}
-
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
-pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    let delta = (dest as usize).wrapping_sub(src as usize);
-    if delta >= n {
-        // We can copy forwards because either dest is far enough ahead of src,
-        // or src is ahead of dest (and delta overflowed).
+intrinsics! {
+    #[mem_builtin]
+    #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
+    pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
         impls::copy_forward(dest, src, n);
-    } else {
-        impls::copy_backward(dest, src, n);
+        dest
     }
-    dest
-}
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
-pub unsafe extern "C" fn memset(s: *mut u8, c: c_int, n: usize) -> *mut u8 {
-    impls::set_bytes(s, c as u8, n);
-    s
-}
-
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
-pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    let mut i = 0;
-    while i < n {
-        let a = *s1.add(i);
-        let b = *s2.add(i);
-        if a != b {
-            return a as i32 - b as i32;
+    #[mem_builtin]
+    #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
+    pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
+        let delta = (dest as usize).wrapping_sub(src as usize);
+        if delta >= n {
+            // We can copy forwards because either dest is far enough ahead of src,
+            // or src is ahead of dest (and delta overflowed).
+            impls::copy_forward(dest, src, n);
+        } else {
+            impls::copy_backward(dest, src, n);
         }
-        i += 1;
+        dest
     }
-    0
-}
 
-#[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-#[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
-pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
-    memcmp(s1, s2, n)
+    #[mem_builtin]
+    #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
+    pub unsafe extern "C" fn memset(s: *mut u8, c: crate::mem::c_int, n: usize) -> *mut u8 {
+        impls::set_bytes(s, c as u8, n);
+        s
+    }
+
+    #[mem_builtin]
+    #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
+    pub unsafe extern "C" fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
+        let mut i = 0;
+        while i < n {
+            let a = *s1.add(i);
+            let b = *s2.add(i);
+            if a != b {
+                return a as i32 - b as i32;
+            }
+            i += 1;
+        }
+        0
+    }
+
+    #[mem_builtin]
+    #[cfg_attr(not(all(target_os = "windows", target_env = "gnu")), linkage = "weak")]
+    pub unsafe extern "C" fn bcmp(s1: *const u8, s2: *const u8, n: usize) -> i32 {
+        memcmp(s1, s2, n)
+    }
 }
 
 // `bytes` must be a multiple of `mem::size_of::<T>()`
@@ -133,65 +135,65 @@ where
 
 intrinsics! {
     #[cfg(target_has_atomic_load_store = "8")]
-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memcpy_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "16")]
-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memcpy_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "32")]
-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memcpy_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "64")]
-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memcpy_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "128")]
-    pub extern "C" fn __llvm_memcpy_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memcpy_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
         memcpy_element_unordered_atomic(dest, src, bytes);
     }
 
     #[cfg(target_has_atomic_load_store = "8")]
-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memmove_element_unordered_atomic_1(dest: *mut u8, src: *const u8, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "16")]
-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memmove_element_unordered_atomic_2(dest: *mut u16, src: *const u16, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "32")]
-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memmove_element_unordered_atomic_4(dest: *mut u32, src: *const u32, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "64")]
-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memmove_element_unordered_atomic_8(dest: *mut u64, src: *const u64, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
     #[cfg(target_has_atomic_load_store = "128")]
-    pub extern "C" fn __llvm_memmove_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memmove_element_unordered_atomic_16(dest: *mut u128, src: *const u128, bytes: usize) -> () {
         memmove_element_unordered_atomic(dest, src, bytes);
     }
 
     #[cfg(target_has_atomic_load_store = "8")]
-    pub extern "C" fn __llvm_memset_element_unordered_atomic_1(s: *mut u8, c: u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memset_element_unordered_atomic_1(s: *mut u8, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
     #[cfg(target_has_atomic_load_store = "16")]
-    pub extern "C" fn __llvm_memset_element_unordered_atomic_2(s: *mut u16, c: u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memset_element_unordered_atomic_2(s: *mut u16, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
     #[cfg(target_has_atomic_load_store = "32")]
-    pub extern "C" fn __llvm_memset_element_unordered_atomic_4(s: *mut u32, c: u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memset_element_unordered_atomic_4(s: *mut u32, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
     #[cfg(target_has_atomic_load_store = "64")]
-    pub extern "C" fn __llvm_memset_element_unordered_atomic_8(s: *mut u64, c: u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memset_element_unordered_atomic_8(s: *mut u64, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
     #[cfg(target_has_atomic_load_store = "128")]
-    pub extern "C" fn __llvm_memset_element_unordered_atomic_16(s: *mut u128, c: u8, bytes: usize) -> () {
+    pub unsafe extern "C" fn __llvm_memset_element_unordered_atomic_16(s: *mut u128, c: u8, bytes: usize) -> () {
         memset_element_unordered_atomic(s, c, bytes);
     }
 }
