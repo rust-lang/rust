@@ -1,11 +1,9 @@
-use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks, strip_pat_refs};
-use core::iter::once;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Local, MatchSource, Mutability, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
@@ -14,6 +12,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
+mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
 mod match_wild_enum;
@@ -633,7 +632,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             }
         }
         if let ExprKind::Match(ex, arms, _) = expr.kind {
-            check_match_ref_pats(cx, ex, arms.iter().map(|el| el.pat), expr);
+            match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
         }
     }
 
@@ -698,42 +697,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     extract_msrv_attr!(LateContext);
 }
 
-fn check_match_ref_pats<'a, 'b, I>(cx: &LateContext<'_>, ex: &Expr<'_>, pats: I, expr: &Expr<'_>)
-where
-    'b: 'a,
-    I: Clone + Iterator<Item = &'a Pat<'b>>,
-{
-    if !has_multiple_ref_pats(pats.clone()) {
-        return;
-    }
-
-    let (first_sugg, msg, title);
-    let span = ex.span.source_callsite();
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = ex.kind {
-        first_sugg = once((span, Sugg::hir_with_macro_callsite(cx, inner, "..").to_string()));
-        msg = "try";
-        title = "you don't need to add `&` to both the expression and the patterns";
-    } else {
-        first_sugg = once((span, Sugg::hir_with_macro_callsite(cx, ex, "..").deref().to_string()));
-        msg = "instead of prefixing all patterns with `&`, you can dereference the expression";
-        title = "you don't need to add `&` to all patterns";
-    }
-
-    let remaining_suggs = pats.filter_map(|pat| {
-        if let PatKind::Ref(refp, _) = pat.kind {
-            Some((pat.span, snippet(cx, refp.span, "..").to_string()))
-        } else {
-            None
-        }
-    });
-
-    span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |diag| {
-        if !expr.span.from_expansion() {
-            multispan_sugg(diag, msg, first_sugg.chain(remaining_suggs));
-        }
-    });
-}
-
 fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
     for arm in arms {
         if let PatKind::Or(fields) = arm.pat.kind {
@@ -750,26 +713,4 @@ fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
             }
         }
     }
-}
-
-fn has_multiple_ref_pats<'a, 'b, I>(pats: I) -> bool
-where
-    'b: 'a,
-    I: Iterator<Item = &'a Pat<'b>>,
-{
-    let mut ref_count = 0;
-    for opt in pats.map(|pat| match pat.kind {
-        PatKind::Ref(..) => Some(true), // &-patterns
-        PatKind::Wild => Some(false),   // an "anything" wildcard is also fine
-        _ => None,                      // any other pattern is not fine
-    }) {
-        if let Some(inner) = opt {
-            if inner {
-                ref_count += 1;
-            }
-        } else {
-            return false;
-        }
-    }
-    ref_count > 1
 }
