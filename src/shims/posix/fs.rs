@@ -474,23 +474,18 @@ fn maybe_sync_file(
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn open(
-        &mut self,
-        path_op: &OpTy<'tcx, Tag>,
-        flag_op: &OpTy<'tcx, Tag>,
-        mode_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
+    fn open(&mut self, args: &[OpTy<'tcx, Tag>]) -> InterpResult<'tcx, i32> {
+        if args.len() < 2 || args.len() > 3 {
+            throw_ub_format!(
+                "incorrect number of arguments for `open`: got {}, expected 2 or 3",
+                args.len()
+            );
+        }
+
         let this = self.eval_context_mut();
 
-        let flag = this.read_scalar(flag_op)?.to_i32()?;
-
-        // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
-        // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
-        // (see https://github.com/rust-lang/rust/issues/71915).
-        let mode = this.read_scalar(mode_op)?.to_u32()?;
-        if mode != 0o666 {
-            throw_unsup_format!("non-default mode 0o{:o} is not supported", mode);
-        }
+        let path_op = &args[0];
+        let flag = this.read_scalar(&args[1])?.to_i32()?;
 
         let mut options = OpenOptions::new();
 
@@ -535,6 +530,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
         let o_creat = this.eval_libc_i32("O_CREAT")?;
         if flag & o_creat != 0 {
+            // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
+            // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
+            // (see https://github.com/rust-lang/rust/issues/71915).
+            let mode = if let Some(arg) = args.get(2) {
+                this.read_scalar(arg)?.to_u32()?
+            } else {
+                throw_ub_format!(
+                    "incorrect number of arguments for `open` with `O_CREAT`: got {}, expected 3",
+                    args.len()
+                );
+            };
+
+            if mode != 0o666 {
+                throw_unsup_format!("non-default mode 0o{:o} is not supported", mode);
+            }
+
             mirror |= o_creat;
 
             let o_excl = this.eval_libc_i32("O_EXCL")?;

@@ -5,13 +5,10 @@
 
 extern crate libc;
 
-use std::fs::{
-    File, create_dir, OpenOptions, remove_dir, remove_dir_all, remove_file, rename,
-};
 use std::ffi::CString;
-use std::io::{Read, Write, Error, ErrorKind, Result, Seek, SeekFrom};
-use std::path::{PathBuf, Path};
-
+use std::fs::{create_dir, remove_dir, remove_dir_all, remove_file, rename, File, OpenOptions};
+use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
 
 fn main() {
     test_file();
@@ -26,6 +23,11 @@ fn main() {
     test_rename();
     test_directory();
     test_dup_stdout_stderr();
+
+    // These all require unix, if the test is changed to no longer `ignore-windows`, move these to a unix test
+    test_file_open_unix_allow_two_args();
+    test_file_open_unix_needs_three_args();
+    test_file_open_unix_extra_third_arg();
 }
 
 fn tmp() -> PathBuf {
@@ -41,7 +43,8 @@ fn tmp() -> PathBuf {
 
             #[cfg(not(windows))]
             return PathBuf::from(tmp.replace("\\", "/"));
-        }).unwrap_or_else(|_| std::env::temp_dir())
+        })
+        .unwrap_or_else(|_| std::env::temp_dir())
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -93,6 +96,39 @@ fn test_file() {
     remove_file(&path).unwrap();
 }
 
+fn test_file_open_unix_allow_two_args() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = prepare_with_content("test_file_open_unix_allow_two_args.txt", &[]);
+
+    let mut name = path.into_os_string();
+    name.push("\0");
+    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
+    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY) };
+}
+
+fn test_file_open_unix_needs_three_args() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = prepare_with_content("test_file_open_unix_needs_three_args.txt", &[]);
+
+    let mut name = path.into_os_string();
+    name.push("\0");
+    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
+    let _fd = unsafe { libc::open(name_ptr, libc::O_CREAT, 0o666) };
+}
+
+fn test_file_open_unix_extra_third_arg() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let path = prepare_with_content("test_file_open_unix_extra_third_arg.txt", &[]);
+
+    let mut name = path.into_os_string();
+    name.push("\0");
+    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
+    let _fd = unsafe { libc::open(name_ptr, libc::O_RDONLY, 42) };
+}
+
 fn test_file_clone() {
     let bytes = b"Hello, World!\n";
     let path = prepare_with_content("miri_test_fs_file_clone.txt", bytes);
@@ -115,7 +151,10 @@ fn test_file_create_new() {
     // Creating a new file that doesn't yet exist should succeed.
     OpenOptions::new().write(true).create_new(true).open(&path).unwrap();
     // Creating a new file that already exists should fail.
-    assert_eq!(ErrorKind::AlreadyExists, OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind());
+    assert_eq!(
+        ErrorKind::AlreadyExists,
+        OpenOptions::new().write(true).create_new(true).open(&path).unwrap_err().kind()
+    );
     // Optionally creating a new file that already exists should succeed.
     OpenOptions::new().write(true).create(true).open(&path).unwrap();
 
@@ -235,7 +274,6 @@ fn test_symlink() {
     symlink_file.read_to_end(&mut contents).unwrap();
     assert_eq!(bytes, contents.as_slice());
 
-
     #[cfg(unix)]
     {
         use std::os::unix::ffi::OsStrExt;
@@ -250,7 +288,9 @@ fn test_symlink() {
         // Make the buf one byte larger than it needs to be,
         // and check that the last byte is not overwritten.
         let mut large_buf = vec![0xFF; expected_path.len() + 1];
-        let res = unsafe { libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len()) };
+        let res = unsafe {
+            libc::readlink(symlink_c_ptr, large_buf.as_mut_ptr().cast(), large_buf.len())
+        };
         // Check that the resovled path was properly written into the buf.
         assert_eq!(&large_buf[..(large_buf.len() - 1)], expected_path);
         assert_eq!(large_buf.last(), Some(&0xFF));
@@ -259,17 +299,20 @@ fn test_symlink() {
         // Test that the resolved path is truncated if the provided buffer
         // is too small.
         let mut small_buf = [0u8; 2];
-        let res = unsafe { libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        let res = unsafe {
+            libc::readlink(symlink_c_ptr, small_buf.as_mut_ptr().cast(), small_buf.len())
+        };
         assert_eq!(small_buf, &expected_path[..small_buf.len()]);
         assert_eq!(res, small_buf.len() as isize);
 
         // Test that we report a proper error for a missing path.
         let bad_path = CString::new("MIRI_MISSING_FILE_NAME").unwrap();
-        let res = unsafe { libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len()) };
+        let res = unsafe {
+            libc::readlink(bad_path.as_ptr(), small_buf.as_mut_ptr().cast(), small_buf.len())
+        };
         assert_eq!(res, -1);
         assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
     }
-
 
     // Test that metadata of a symbolic link is correct.
     check_metadata(bytes, &symlink_path).unwrap();
