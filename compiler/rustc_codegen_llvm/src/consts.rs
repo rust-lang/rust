@@ -535,11 +535,41 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
 
                 // The semantics of #[used] in Rust only require the symbol to make it into the
                 // object file. It is explicitly allowed for the linker to strip the symbol if it
-                // is dead. As such, use llvm.compiler.used instead of llvm.used.
+                // is dead, which means we are allowed use `llvm.compiler.used` instead of
+                // `llvm.used` here.
+                //
                 // Additionally, https://reviews.llvm.org/D97448 in LLVM 13 started emitting unique
                 // sections with SHF_GNU_RETAIN flag for llvm.used symbols, which may trigger bugs
-                // in some versions of the gold linker.
-                self.add_compiler_used_global(g);
+                // in the handling of `.init_array` (the static constructor list) in versions of
+                // the gold linker (prior to the one released with binutils 2.36).
+                //
+                // However, unconditional use of `llvm.compiler.used` caused a nontrivial amount of
+                // ecosystem breakage, especially on Mach-O targets. To resolve this, we compile it
+                // as llvm.used on ELF targets and llvm.compiler.used elsewhere, which and should be
+                // equivalent to how we compiled `#[used]` before LLVM 13, as `llvm.used` and
+                // `llvm.compiler.used` were treated the same on ELF targets prior in earlier LLVM
+                // versions (additionally, it seems to be how Clang handles `__attribute__((used))`,
+                // perhaps for similar compatibility-motivated reasons).
+                //
+                // See https://github.com/rust-lang/rust/issues/47384#issuecomment-1019080146 and
+                // following comments for some discussion of this.
+                //
+                // The final wrinkle is it's not really clear how to tell if we're going to output
+                // ELF, so it's been approximated as "not like wasm, osx, or windows", which is
+                // not exactly correct, but is pretty close and hopefully handles all the platforms
+                // platforms where old versions of `ld.gold` are likely to show up.
+                //
+                // All this is subject to change in the future. Which is a good thing, because this
+                // probably should be firmed up somehow!
+                let seems_like_elf = !(self.tcx.sess.target.is_like_osx
+                    || self.tcx.sess.target.is_like_windows
+                    || self.tcx.sess.target.is_like_wasm);
+
+                if seems_like_elf {
+                    self.add_compiler_used_global(g);
+                } else {
+                    self.add_used_global(g);
+                }
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
                 // `USED` and `USED_LINKER` can't be used together.
