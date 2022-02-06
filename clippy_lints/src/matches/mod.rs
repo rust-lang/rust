@@ -1,12 +1,7 @@
-use clippy_utils::diagnostics::{
-    multispan_sugg, span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then,
-};
-use clippy_utils::macros::{is_panic, root_macro_call};
-use clippy_utils::peel_blocks_with_stmt;
+use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     get_parent_expr, is_lang_ctor, is_refutable, is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks,
     peel_hir_pat_refs, recurse_or_patterns, strip_pat_refs,
@@ -24,11 +19,12 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, VariantDef};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, symbol::kw};
+use rustc_span::sym;
 
 mod match_bool;
 mod match_like_matches;
 mod match_same_arms;
+mod match_wild_err_arm;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod single_match;
@@ -632,7 +628,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             single_match::check(cx, ex, arms, expr);
             match_bool::check(cx, ex, arms, expr);
             overlapping_arms::check(cx, ex, arms);
-            check_wild_err_arm(cx, ex, arms);
+            match_wild_err_arm::check(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
             check_match_as_ref(cx, ex, arms, expr);
             check_wild_in_or_pats(cx, arms);
@@ -707,47 +703,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn check_wild_err_arm<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'tcx>]) {
-    let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
-    if is_type_diagnostic_item(cx, ex_ty, sym::Result) {
-        for arm in arms {
-            if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {
-                let path_str = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_qpath(path, false));
-                if path_str == "Err" {
-                    let mut matching_wild = inner.iter().any(is_wild);
-                    let mut ident_bind_name = kw::Underscore;
-                    if !matching_wild {
-                        // Looking for unused bindings (i.e.: `_e`)
-                        for pat in inner.iter() {
-                            if let PatKind::Binding(_, id, ident, None) = pat.kind {
-                                if ident.as_str().starts_with('_') && !is_local_used(cx, arm.body, id) {
-                                    ident_bind_name = ident.name;
-                                    matching_wild = true;
-                                }
-                            }
-                        }
-                    }
-                    if_chain! {
-                        if matching_wild;
-                        if let Some(macro_call) = root_macro_call(peel_blocks_with_stmt(arm.body).span);
-                        if is_panic(cx, macro_call.def_id);
-                        then {
-                            // `Err(_)` or `Err(_e)` arm with `panic!` found
-                            span_lint_and_note(cx,
-                                MATCH_WILD_ERR_ARM,
-                                arm.pat.span,
-                                &format!("`Err({})` matches all errors", ident_bind_name),
-                                None,
-                                "match each error separately or use the error output, or use `.except(msg)` if the error case is unreachable",
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 enum CommonPrefixSearcher<'a> {
