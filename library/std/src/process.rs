@@ -1691,6 +1691,14 @@ impl ExitCode {
     }
 }
 
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+impl From<u8> for ExitCode {
+    /// Construct an exit code from an arbitrary u8 value.
+    fn from(code: u8) -> Self {
+        ExitCode(imp::ExitCode::from(code))
+    }
+}
+
 impl Child {
     /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
     /// error is returned.
