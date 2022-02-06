@@ -116,12 +116,13 @@ where
     }
 
     #[inline]
-    pub unsafe fn to_bitmask_intrinsic<U>(self) -> U {
+    pub unsafe fn to_bitmask_integer<U>(self) -> U {
         unsafe { core::mem::transmute_copy(&self.0) }
     }
 
+    // Safety: U must be the integer with the exact number of bits required to hold the bitmask for
     #[inline]
-    pub unsafe fn from_bitmask_intrinsic<U>(bitmask: U) -> Self {
+    pub unsafe fn from_bitmask_integer<U>(bitmask: U) -> Self {
         unsafe { Self(core::mem::transmute_copy(&bitmask), PhantomData) }
     }
 

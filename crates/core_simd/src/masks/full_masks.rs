@@ -110,13 +110,15 @@ where
     }
 
     #[inline]
-    pub unsafe fn to_bitmask_intrinsic<U>(self) -> U {
+    pub unsafe fn to_bitmask_integer<U>(self) -> U {
         // Safety: caller must only return bitmask types
         unsafe { intrinsics::simd_bitmask(self.0) }
     }
 
+    // Safety: U must be the integer with the exact number of bits required to hold the bitmask for
+    // this mask
     #[inline]
-    pub unsafe fn from_bitmask_intrinsic<U>(bitmask: U) -> Self {
+    pub unsafe fn from_bitmask_integer<U>(bitmask: U) -> Self {
         // Safety: caller must only pass bitmask types
         unsafe {
             Self::from_int_unchecked(intrinsics::simd_select_bitmask(

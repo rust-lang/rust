@@ -1,26 +1,45 @@
 use super::{mask_impl, Mask, MaskElement};
 
-/// Converts masks to and from bitmasks.
+/// Converts masks to and from integer bitmasks.
 ///
-/// In a bitmask, each bit represents if the corresponding lane in the mask is set.
-pub trait ToBitMask<BitMask> {
+/// Each bit of the bitmask corresponds to a mask lane, starting with the LSB.
+pub trait ToBitMask {
+    /// The integer bitmask type.
+    type BitMask;
+
     /// Converts a mask to a bitmask.
-    fn to_bitmask(self) -> BitMask;
+    fn to_bitmask(self) -> Self::BitMask;
 
     /// Converts a bitmask to a mask.
-    fn from_bitmask(bitmask: BitMask) -> Self;
+    fn from_bitmask(bitmask: Self::BitMask) -> Self;
+}
+
+/// Converts masks to and from byte array bitmasks.
+///
+/// Each bit of the bitmask corresponds to a mask lane, starting with the LSB of the first byte.
+pub trait ToBitMaskArray {
+    /// The length of the bitmask array.
+    const BYTES: usize;
+
+    /// Converts a mask to a bitmask.
+    fn to_bitmask_array(self) -> [u8; Self::BYTES];
+
+    /// Converts a bitmask to a mask.
+    fn from_bitmask_array(bitmask: [u8; Self::BYTES]) -> Self;
 }
 
 macro_rules! impl_integer_intrinsic {
-    { $(unsafe impl ToBitMask<$int:ty> for Mask<_, $lanes:literal>)* } => {
+    { $(unsafe impl ToBitMask<BitMask=$int:ty> for Mask<_, $lanes:literal>)* } => {
         $(
-        impl<T: MaskElement> ToBitMask<$int> for Mask<T, $lanes> {
+        impl<T: MaskElement> ToBitMask for Mask<T, $lanes> {
+            type BitMask = $int;
+
             fn to_bitmask(self) -> $int {
-                unsafe { self.0.to_bitmask_intrinsic() }
+                unsafe { self.0.to_bitmask_integer() }
             }
 
             fn from_bitmask(bitmask: $int) -> Self {
-                unsafe { Self(mask_impl::Mask::from_bitmask_intrinsic(bitmask)) }
+                unsafe { Self(mask_impl::Mask::from_bitmask_integer(bitmask)) }
             }
         }
         )*
@@ -28,51 +47,8 @@ macro_rules! impl_integer_intrinsic {
 }
 
 impl_integer_intrinsic! {
-    unsafe impl ToBitMask<u8> for Mask<_, 8>
-    unsafe impl ToBitMask<u16> for Mask<_, 16>
-    unsafe impl ToBitMask<u32> for Mask<_, 32>
-    unsafe impl ToBitMask<u64> for Mask<_, 64>
-}
-
-macro_rules! impl_integer_via {
-    { $(impl ToBitMask<$int:ty, via $via:ty> for Mask<_, $lanes:literal>)* } => {
-        $(
-        impl<T: MaskElement> ToBitMask<$int> for Mask<T, $lanes> {
-            fn to_bitmask(self) -> $int {
-                let bitmask: $via = self.to_bitmask();
-                bitmask as _
-            }
-
-            fn from_bitmask(bitmask: $int) -> Self {
-                Self::from_bitmask(bitmask as $via)
-            }
-        }
-        )*
-    }
-}
-
-impl_integer_via! {
-    impl ToBitMask<u16, via u8> for Mask<_, 8>
-    impl ToBitMask<u32, via u8> for Mask<_, 8>
-    impl ToBitMask<u64, via u8> for Mask<_, 8>
-
-    impl ToBitMask<u32, via u16> for Mask<_, 16>
-    impl ToBitMask<u64, via u16> for Mask<_, 16>
-
-    impl ToBitMask<u64, via u32> for Mask<_, 32>
-}
-
-#[cfg(target_pointer_width = "32")]
-impl_integer_via! {
-    impl ToBitMask<usize, via u8> for Mask<_, 8>
-    impl ToBitMask<usize, via u16> for Mask<_, 16>
-    impl ToBitMask<usize, via u32> for Mask<_, 32>
-}
-
-#[cfg(target_pointer_width = "64")]
-impl_integer_via! {
-    impl ToBitMask<usize, via u8> for Mask<_, 8>
-    impl ToBitMask<usize, via u16> for Mask<_, 16>
-    impl ToBitMask<usize, via u32> for Mask<_, 32>
-    impl ToBitMask<usize, via u64> for Mask<_, 64>
+    unsafe impl ToBitMask<BitMask=u8> for Mask<_, 8>
+    unsafe impl ToBitMask<BitMask=u16> for Mask<_, 16>
+    unsafe impl ToBitMask<BitMask=u32> for Mask<_, 32>
+    unsafe impl ToBitMask<BitMask=u64> for Mask<_, 64>
 }
