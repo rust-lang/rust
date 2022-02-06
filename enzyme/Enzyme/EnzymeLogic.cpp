@@ -2315,71 +2315,71 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   }
 
   for (BasicBlock &BB : *nf) {
-    if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
-      ReturnInst *rim = cast<ReturnInst>(VMap[ri]);
-      IRBuilder<> ib(rim);
-      if (returnUsed) {
-        Value *rv = rim->getReturnValue();
-        assert(rv);
-        Value *actualrv = nullptr;
-        if (auto iv = dyn_cast<InsertValueInst>(rv)) {
-          if (iv->getNumIndices() == 1 &&
-              (int)iv->getIndices()[0] == oldretIdx) {
-            actualrv = iv->getInsertedValueOperand();
-          }
+    auto ri = dyn_cast<ReturnInst>(BB.getTerminator());
+    if (ri == nullptr)
+      continue;
+    ReturnInst *rim = cast<ReturnInst>(VMap[ri]);
+    IRBuilder<> ib(rim);
+    if (returnUsed) {
+      Value *rv = rim->getReturnValue();
+      assert(rv);
+      Value *actualrv = nullptr;
+      if (auto iv = dyn_cast<InsertValueInst>(rv)) {
+        if (iv->getNumIndices() == 1 && (int)iv->getIndices()[0] == oldretIdx) {
+          actualrv = iv->getInsertedValueOperand();
         }
-        if (actualrv == nullptr) {
-          if (oldretIdx < 0)
-            actualrv = rv;
-          else
-            actualrv = ib.CreateExtractValue(rv, {(unsigned)oldretIdx});
-        }
+      }
+      if (actualrv == nullptr) {
+        if (oldretIdx < 0)
+          actualrv = rv;
+        else
+          actualrv = ib.CreateExtractValue(rv, {(unsigned)oldretIdx});
+      }
+      Value *gep =
+          removeStruct
+              ? ret
+              : ib.CreateConstGEP2_32(
+                    RetType, ret, 0,
+                    returnMapping.find(AugmentedStruct::Return)->second, "");
+      if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
+        ggep->setIsInBounds(true);
+      }
+      ib.CreateStore(actualrv, gep);
+    }
+
+    if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
+      assert(invertedRetPs[ri]);
+      if (!isa<UndefValue>(invertedRetPs[ri])) {
         Value *gep =
             removeStruct
                 ? ret
                 : ib.CreateConstGEP2_32(
                       RetType, ret, 0,
-                      returnMapping.find(AugmentedStruct::Return)->second, "");
+                      returnMapping.find(AugmentedStruct::DifferentialReturn)
+                          ->second,
+                      "");
         if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
           ggep->setIsInBounds(true);
         }
-        ib.CreateStore(actualrv, gep);
-      }
-
-      if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
-        assert(invertedRetPs[ri]);
-        if (!isa<UndefValue>(invertedRetPs[ri])) {
-          Value *gep =
-              removeStruct
-                  ? ret
-                  : ib.CreateConstGEP2_32(
-                        RetType, ret, 0,
-                        returnMapping.find(AugmentedStruct::DifferentialReturn)
-                            ->second,
-                        "");
-          if (auto ggep = dyn_cast<GetElementPtrInst>(gep)) {
-            ggep->setIsInBounds(true);
-          }
-          if (isa<ConstantData>(invertedRetPs[ri]))
-            ib.CreateStore(invertedRetPs[ri], gep);
-          else {
-            assert(VMap[invertedRetPs[ri]]);
-            ib.CreateStore(VMap[invertedRetPs[ri]], gep);
-          }
+        if (isa<ConstantData>(invertedRetPs[ri]))
+          ib.CreateStore(invertedRetPs[ri], gep);
+        else {
+          assert(VMap[invertedRetPs[ri]]);
+          ib.CreateStore(VMap[invertedRetPs[ri]], gep);
         }
       }
-      if (noReturn)
-        ib.CreateRetVoid();
-      else {
-#if LLVM_VERSION_MAJOR > 7
-        ib.CreateRet(ib.CreateLoad(
-            cast<PointerType>(ret->getType())->getElementType(), ret));
-#else
-        ib.CreateRet(ib.CreateLoad(ret));
-#endif
-      }
-      cast<Instruction>(VMap[ri])->eraseFromParent();
     }
+    if (noReturn)
+      ib.CreateRetVoid();
+    else {
+#if LLVM_VERSION_MAJOR > 7
+      ib.CreateRet(ib.CreateLoad(
+          cast<PointerType>(ret->getType())->getElementType(), ret));
+#else
+      ib.CreateRet(ib.CreateLoad(ret));
+#endif
+    }
+    cast<Instruction>(VMap[ri])->eraseFromParent();
   }
 
   clearFunctionAttributes(NewF);
@@ -2461,68 +2461,70 @@ void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   IRBuilder<> nBuilder(nBB);
   nBuilder.setFastMathFlags(getFast());
 
-  if (ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator())) {
-    SmallVector<Value *, 2> retargs;
+  ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator());
+  // In forward mode we only need to update the return value
+  if (inst == nullptr)
+    return;
+  SmallVector<Value *, 2> retargs;
 
-    Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
+  Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
 
-    switch (retVal) {
-    case ReturnType::Return: {
-      auto ret = inst->getOperand(0);
+  switch (retVal) {
+  case ReturnType::Return: {
+    auto ret = inst->getOperand(0);
 
-      if (retType == DIFFE_TYPE::CONSTANT) {
-        toret = gutils->getNewFromOriginal(ret);
-      } else if (!ret->getType()->isFPOrFPVectorTy() &&
-                 TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
-        toret = gutils->invertPointerM(ret, nBuilder);
-      } else if (!gutils->isConstantValue(ret)) {
-        toret = gutils->diffe(ret, nBuilder);
-      } else {
-        Type *retTy = gutils->getShadowType(ret->getType());
-        toret = Constant::getNullValue(retTy);
-      }
-
-      break;
+    if (retType == DIFFE_TYPE::CONSTANT) {
+      toret = gutils->getNewFromOriginal(ret);
+    } else if (!ret->getType()->isFPOrFPVectorTy() &&
+               TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
+      toret = gutils->invertPointerM(ret, nBuilder);
+    } else if (!gutils->isConstantValue(ret)) {
+      toret = gutils->diffe(ret, nBuilder);
+    } else {
+      Type *retTy = gutils->getShadowType(ret->getType());
+      toret = Constant::getNullValue(retTy);
     }
-    case ReturnType::TwoReturns: {
-      if (retType == DIFFE_TYPE::CONSTANT)
-        assert(false && "Invalid return type");
-      auto ret = inst->getOperand(0);
 
+    break;
+  }
+  case ReturnType::TwoReturns: {
+    if (retType == DIFFE_TYPE::CONSTANT)
+      assert(false && "Invalid return type");
+    auto ret = inst->getOperand(0);
+
+    toret =
+        nBuilder.CreateInsertValue(toret, gutils->getNewFromOriginal(ret), 0);
+
+    if (!ret->getType()->isFPOrFPVectorTy() &&
+        TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
+      toret = nBuilder.CreateInsertValue(
+          toret, gutils->invertPointerM(ret, nBuilder), 1);
+    } else if (!gutils->isConstantValue(ret)) {
       toret =
-          nBuilder.CreateInsertValue(toret, gutils->getNewFromOriginal(ret), 0);
-
-      if (!ret->getType()->isFPOrFPVectorTy() &&
-          TR.getReturnAnalysis().Inner0().isPossiblePointer()) {
-        toret = nBuilder.CreateInsertValue(
-            toret, gutils->invertPointerM(ret, nBuilder), 1);
-      } else if (!gutils->isConstantValue(ret)) {
-        toret =
-            nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
-      } else {
-        toret = nBuilder.CreateInsertValue(
-            toret, Constant::getNullValue(ret->getType()), 1);
-      }
-      break;
+          nBuilder.CreateInsertValue(toret, gutils->diffe(ret, nBuilder), 1);
+    } else {
+      toret = nBuilder.CreateInsertValue(
+          toret, Constant::getNullValue(ret->getType()), 1);
     }
-    case ReturnType::Void: {
-      gutils->erase(gutils->getNewFromOriginal(inst));
-      nBuilder.CreateRetVoid();
-      return;
-    }
-    default: {
-      llvm::errs() << "Invalid return type: " << to_string(retVal)
-                   << "for function: \n"
-                   << gutils->newFunc << "\n";
-      assert(false && "Invalid return type for function");
-      return;
-    }
-    }
-
+    break;
+  }
+  case ReturnType::Void: {
     gutils->erase(gutils->getNewFromOriginal(inst));
-    nBuilder.CreateRet(toret);
+    nBuilder.CreateRetVoid();
     return;
   }
+  default: {
+    llvm::errs() << "Invalid return type: " << to_string(retVal)
+                 << "for function: \n"
+                 << gutils->newFunc << "\n";
+    assert(false && "Invalid return type for function");
+    return;
+  }
+  }
+
+  gutils->erase(gutils->getNewFromOriginal(inst));
+  nBuilder.CreateRet(toret);
+  return;
 }
 
 void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
@@ -2604,125 +2606,71 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
 
   // Ensure phi values have their derivatives propagated
   for (auto I = oBB->begin(), E = oBB->end(); I != E; ++I) {
-    if (PHINode *orig = dyn_cast<PHINode>(&*I)) {
-      if (gutils->isConstantInstruction(orig))
-        continue;
+    PHINode *orig = dyn_cast<PHINode>(&*I);
+    if (orig == nullptr)
+      break;
+    if (gutils->isConstantInstruction(orig))
+      continue;
 
-      size_t size = 1;
-      if (orig->getType()->isSized())
-        size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
-                    orig->getType()) +
-                7) /
-               8;
+    size_t size = 1;
+    if (orig->getType()->isSized())
+      size = (gutils->newFunc->getParent()->getDataLayout().getTypeSizeInBits(
+                  orig->getType()) +
+              7) /
+             8;
 
-      auto PNtype = TR.intType(size, orig, /*necessary*/ false);
+    auto PNtype = TR.intType(size, orig, /*necessary*/ false);
 
-      // TODO remove explicit type check and only use PNtype
-      if (PNtype == BaseType::Anything || PNtype == BaseType::Pointer ||
-          orig->getType()->isPointerTy())
-        continue;
+    // TODO remove explicit type check and only use PNtype
+    if (PNtype == BaseType::Anything || PNtype == BaseType::Pointer ||
+        orig->getType()->isPointerTy())
+      continue;
 
-      Type *PNfloatType = PNtype.isFloat();
-      if (!PNfloatType) {
-        if (looseTypeAnalysis) {
-          if (orig->getType()->isFPOrFPVectorTy())
-            PNfloatType = orig->getType()->getScalarType();
-          if (orig->getType()->isIntOrIntVectorTy())
-            continue;
+    Type *PNfloatType = PNtype.isFloat();
+    if (!PNfloatType) {
+      if (looseTypeAnalysis) {
+        if (orig->getType()->isFPOrFPVectorTy())
+          PNfloatType = orig->getType()->getScalarType();
+        if (orig->getType()->isIntOrIntVectorTy())
+          continue;
+      }
+    }
+    if (!PNfloatType) {
+      llvm::errs() << *gutils->oldFunc->getParent() << "\n";
+      llvm::errs() << *gutils->oldFunc << "\n";
+      llvm::errs() << " for orig " << *orig << " saw "
+                   << TR.intType(size, orig, /*necessary*/ false).str() << " - "
+                   << "\n";
+      TR.intType(size, orig, /*necessary*/ true);
+    }
+
+    auto prediff = gutils->diffe(orig, Builder);
+
+    bool handled = false;
+
+    SmallVector<Instruction *, 4> activeUses;
+    for (auto u : orig->users()) {
+      if (!gutils->isConstantInstruction(cast<Instruction>(u)))
+        activeUses.push_back(cast<Instruction>(u));
+      else if (retType == DIFFE_TYPE::OUT_DIFF && isa<ReturnInst>(u))
+        activeUses.push_back(cast<Instruction>(u));
+    }
+    if (activeUses.size() == 1 && inLoop &&
+        gutils->getNewFromOriginal(orig->getParent()) == loopContext.header &&
+        loopContext.exitBlocks.size() == 1) {
+      SmallVector<BasicBlock *, 1> Latches;
+      gutils->OrigLI.getLoopFor(orig->getParent())->getLoopLatches(Latches);
+      bool allIncoming = true;
+      for (auto Latch : Latches) {
+        if (activeUses[0] != orig->getIncomingValueForBlock(Latch)) {
+          allIncoming = false;
+          break;
         }
       }
-      if (!PNfloatType) {
-        llvm::errs() << *gutils->oldFunc->getParent() << "\n";
-        llvm::errs() << *gutils->oldFunc << "\n";
-        llvm::errs() << " for orig " << *orig << " saw "
-                     << TR.intType(size, orig, /*necessary*/ false).str()
-                     << " - "
-                     << "\n";
-        TR.intType(size, orig, /*necessary*/ true);
-      }
-
-      auto prediff = gutils->diffe(orig, Builder);
-
-      bool handled = false;
-
-      SmallVector<Instruction *, 4> activeUses;
-      for (auto u : orig->users()) {
-        if (!gutils->isConstantInstruction(cast<Instruction>(u)))
-          activeUses.push_back(cast<Instruction>(u));
-        else if (retType == DIFFE_TYPE::OUT_DIFF && isa<ReturnInst>(u))
-          activeUses.push_back(cast<Instruction>(u));
-      }
-      if (activeUses.size() == 1 && inLoop &&
-          gutils->getNewFromOriginal(orig->getParent()) == loopContext.header &&
-          loopContext.exitBlocks.size() == 1) {
-        SmallVector<BasicBlock *, 1> Latches;
-        gutils->OrigLI.getLoopFor(orig->getParent())->getLoopLatches(Latches);
-        bool allIncoming = true;
-        for (auto Latch : Latches) {
-          if (activeUses[0] != orig->getIncomingValueForBlock(Latch)) {
-            allIncoming = false;
-            break;
-          }
-        }
-        if (allIncoming) {
-          if (auto SI = dyn_cast<SelectInst>(activeUses[0])) {
-            for (int i = 0; i < 2; i++) {
-              if (SI->getOperand(i + 1) == orig) {
-                auto oval = orig->getIncomingValueForBlock(
-                    gutils->getOriginalFromNew(loopContext.preheader));
-                BasicBlock *pred = loopContext.preheader;
-                if (replacePHIs.find(pred) == replacePHIs.end()) {
-                  replacePHIs[pred] = Builder.CreatePHI(
-                      Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
-                  if (!setphi) {
-                    phibuilder.SetInsertPoint(replacePHIs[pred]);
-                    setphi = true;
-                  }
-                }
-
-                auto ddiff = gutils->diffe(SI, Builder);
-                gutils->setDiffe(SI,
-                                 Builder.CreateSelect(
-                                     replacePHIs[pred],
-                                     Constant::getNullValue(prediff->getType()),
-                                     ddiff),
-                                 Builder);
-                handled = true;
-                if (!gutils->isConstantValue(oval)) {
-                  BasicBlock *REB =
-                      gutils->reverseBlocks[*loopContext.exitBlocks.begin()]
-                          .back();
-                  IRBuilder<> EB(REB);
-                  if (REB->getTerminator())
-                    EB.SetInsertPoint(REB->getTerminator());
-
-                  auto index = gutils->getOrInsertConditionalIndex(
-                      gutils->getNewFromOriginal(SI->getOperand(0)),
-                      loopContext, i == 1);
-                  Value *sdif = Builder.CreateSelect(
-                      Builder.CreateICmpEQ(
-                          gutils->lookupM(index, EB),
-                          Constant::getNullValue(index->getType())),
-                      ddiff, Constant::getNullValue(ddiff->getType()));
-
-                  SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
-                      replacePHIs[pred], sdif,
-                      Constant::getNullValue(prediff->getType())));
-                  auto addedSelects =
-                      gutils->addToDiffe(oval, dif, Builder, PNfloatType);
-
-                  for (auto select : addedSelects)
-                    selects.emplace_back(select);
-                }
-                break;
-              }
-            }
-          }
-          if (auto BO = dyn_cast<BinaryOperator>(activeUses[0])) {
-
-            if (BO->getOpcode() == Instruction::FDiv &&
-                BO->getOperand(0) == orig) {
-
+      if (allIncoming) {
+        if (auto SI = dyn_cast<SelectInst>(activeUses[0])) {
+          for (int i = 0; i < 2; i++) {
+            if (SI->getOperand(i + 1) == orig) {
               auto oval = orig->getIncomingValueForBlock(
                   gutils->getOriginalFromNew(loopContext.preheader));
               BasicBlock *pred = loopContext.preheader;
@@ -2735,17 +2683,15 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                 }
               }
 
-              auto ddiff = gutils->diffe(BO, Builder);
-              gutils->setDiffe(BO,
+              auto ddiff = gutils->diffe(SI, Builder);
+              gutils->setDiffe(SI,
                                Builder.CreateSelect(
                                    replacePHIs[pred],
                                    Constant::getNullValue(prediff->getType()),
                                    ddiff),
                                Builder);
               handled = true;
-
               if (!gutils->isConstantValue(oval)) {
-
                 BasicBlock *REB =
                     gutils->reverseBlocks[*loopContext.exitBlocks.begin()]
                         .back();
@@ -2753,12 +2699,17 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                 if (REB->getTerminator())
                   EB.SetInsertPoint(REB->getTerminator());
 
-                auto product = gutils->getOrInsertTotalMultiplicativeProduct(
-                    gutils->getNewFromOriginal(BO->getOperand(1)), loopContext);
+                auto index = gutils->getOrInsertConditionalIndex(
+                    gutils->getNewFromOriginal(SI->getOperand(0)), loopContext,
+                    i == 1);
+                Value *sdif = Builder.CreateSelect(
+                    Builder.CreateICmpEQ(
+                        gutils->lookupM(index, EB),
+                        Constant::getNullValue(index->getType())),
+                    ddiff, Constant::getNullValue(ddiff->getType()));
 
                 SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
-                    replacePHIs[pred],
-                    Builder.CreateFDiv(ddiff, gutils->lookupM(product, EB)),
+                    replacePHIs[pred], sdif,
                     Constant::getNullValue(prediff->getType())));
                 auto addedSelects =
                     gutils->addToDiffe(oval, dif, Builder, PNfloatType);
@@ -2766,26 +2717,18 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                 for (auto select : addedSelects)
                   selects.emplace_back(select);
               }
+              break;
             }
           }
         }
-      }
+        if (auto BO = dyn_cast<BinaryOperator>(activeUses[0])) {
 
-      if (!handled) {
-        gutils->setDiffe(orig, Constant::getNullValue(orig->getType()),
-                         Builder);
+          if (BO->getOpcode() == Instruction::FDiv &&
+              BO->getOperand(0) == orig) {
 
-        for (BasicBlock *opred : predecessors(oBB)) {
-          auto oval = orig->getIncomingValueForBlock(opred);
-          if (gutils->isConstantValue(oval)) {
-            continue;
-          }
-
-          if (orig->getNumIncomingValues() == 1) {
-            gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
-          } else {
-            BasicBlock *pred =
-                cast<BasicBlock>(gutils->getNewFromOriginal(opred));
+            auto oval = orig->getIncomingValueForBlock(
+                gutils->getOriginalFromNew(loopContext.preheader));
+            BasicBlock *pred = loopContext.preheader;
             if (replacePHIs.find(pred) == replacePHIs.end()) {
               replacePHIs[pred] = Builder.CreatePHI(
                   Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
@@ -2794,19 +2737,75 @@ void createInvertedTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                 setphi = true;
               }
             }
-            SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
-                replacePHIs[pred], prediff,
-                Constant::getNullValue(prediff->getType())));
-            auto addedSelects =
-                gutils->addToDiffe(oval, dif, Builder, PNfloatType);
 
-            for (auto select : addedSelects)
-              selects.emplace_back(select);
+            auto ddiff = gutils->diffe(BO, Builder);
+            gutils->setDiffe(
+                BO,
+                Builder.CreateSelect(replacePHIs[pred],
+                                     Constant::getNullValue(prediff->getType()),
+                                     ddiff),
+                Builder);
+            handled = true;
+
+            if (!gutils->isConstantValue(oval)) {
+
+              BasicBlock *REB =
+                  gutils->reverseBlocks[*loopContext.exitBlocks.begin()].back();
+              IRBuilder<> EB(REB);
+              if (REB->getTerminator())
+                EB.SetInsertPoint(REB->getTerminator());
+
+              auto product = gutils->getOrInsertTotalMultiplicativeProduct(
+                  gutils->getNewFromOriginal(BO->getOperand(1)), loopContext);
+
+              SelectInst *dif = cast<SelectInst>(Builder.CreateSelect(
+                  replacePHIs[pred],
+                  Builder.CreateFDiv(ddiff, gutils->lookupM(product, EB)),
+                  Constant::getNullValue(prediff->getType())));
+              auto addedSelects =
+                  gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+
+              for (auto select : addedSelects)
+                selects.emplace_back(select);
+            }
           }
         }
       }
-    } else
-      break;
+    }
+
+    if (!handled) {
+      gutils->setDiffe(orig, Constant::getNullValue(orig->getType()), Builder);
+
+      for (BasicBlock *opred : predecessors(oBB)) {
+        auto oval = orig->getIncomingValueForBlock(opred);
+        if (gutils->isConstantValue(oval)) {
+          continue;
+        }
+
+        if (orig->getNumIncomingValues() == 1) {
+          gutils->addToDiffe(oval, prediff, Builder, PNfloatType);
+        } else {
+          BasicBlock *pred =
+              cast<BasicBlock>(gutils->getNewFromOriginal(opred));
+          if (replacePHIs.find(pred) == replacePHIs.end()) {
+            replacePHIs[pred] = Builder.CreatePHI(
+                Type::getInt1Ty(pred->getContext()), 1, "replacePHI");
+            if (!setphi) {
+              phibuilder.SetInsertPoint(replacePHIs[pred]);
+              setphi = true;
+            }
+          }
+          SelectInst *dif = cast<SelectInst>(
+              Builder.CreateSelect(replacePHIs[pred], prediff,
+                                   Constant::getNullValue(prediff->getType())));
+          auto addedSelects =
+              gutils->addToDiffe(oval, dif, Builder, PNfloatType);
+
+          for (auto select : addedSelects)
+            selects.emplace_back(select);
+        }
+      }
+    }
   }
   if (!setphi) {
     phibuilder.SetInsertPoint(Builder.GetInsertBlock(),
