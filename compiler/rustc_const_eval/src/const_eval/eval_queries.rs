@@ -287,6 +287,9 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
                 return Err(ErrorHandled::Reported(error_reported));
             }
+            if tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors {
+                return Err(ErrorHandled::Reported(ErrorReported {}));
+            }
         }
         if !tcx.is_mir_available(def.did) {
             tcx.sess.delay_span_bug(

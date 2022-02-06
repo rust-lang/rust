@@ -514,10 +514,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let Some(def) = def.as_local() {
             if self.tcx.has_typeck_results(def.did) {
                 if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(AlreadyReported(error_reported))
+                    throw_inval!(AlreadyReported(error_reported));
+                }
+                if self.tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors {
+                    throw_inval!(AlreadyReported(rustc_errors::ErrorReported {}));
                 }
             }
         }
+
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
             return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
