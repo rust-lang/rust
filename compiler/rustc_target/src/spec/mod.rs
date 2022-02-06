@@ -1559,15 +1559,15 @@ impl Target {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
-            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64,
+            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
             Abi::EfiApi => Abi::C { unwind: false },
 
             // See commentary in `is_abi_supported`.
             Abi::Stdcall { .. } | Abi::Thiscall { .. } if self.arch == "x86" => abi,
             Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => Abi::C { unwind },
-            Abi::Fastcall if self.arch == "x86" => abi,
-            Abi::Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Abi::Fastcall | Abi::Vectorcall => Abi::C { unwind: false },
+            Abi::Fastcall { .. } if self.arch == "x86" => abi,
+            Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
+            Abi::Fastcall { unwind } | Abi::Vectorcall { unwind } => Abi::C { unwind },
 
             abi => abi,
         }
@@ -1584,12 +1584,12 @@ impl Target {
             | RustCall
             | PlatformIntrinsic
             | Unadjusted
-            | Cdecl
+            | Cdecl { .. }
             | EfiApi => true,
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
-            Aapcs => "arm" == self.arch,
+            Aapcs { .. } => "arm" == self.arch,
             CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
-            Win64 | SysV64 => self.arch == "x86_64",
+            Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
             Msp430Interrupt => self.arch == "msp430",
             AmdGpuKernel => self.arch == "amdgcn",
@@ -1626,13 +1626,13 @@ impl Target {
             // > convention is used.
             //
             // -- https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions
-            Stdcall { .. } | Fastcall | Vectorcall if self.is_like_windows => true,
+            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } if self.is_like_windows => true,
             // Outside of Windows we want to only support these calling conventions for the
             // architectures for which these calling conventions are actually well defined.
-            Stdcall { .. } | Fastcall if self.arch == "x86" => true,
-            Vectorcall if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
+            Stdcall { .. } | Fastcall { .. } if self.arch == "x86" => true,
+            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
             // Return a `None` for other cases so that we know to emit a future compat lint.
-            Stdcall { .. } | Fastcall | Vectorcall => return None,
+            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => return None,
         })
     }
 
