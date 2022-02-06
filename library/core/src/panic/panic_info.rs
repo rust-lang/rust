@@ -136,6 +136,10 @@ impl<'a> PanicInfo<'a> {
     /// This is true for most kinds of panics with the exception of panics
     /// caused by trying to unwind out of a `Drop` implementation or a function
     /// whose ABI does not support unwinding.
+    ///
+    /// It is safe for a panic handler to unwind even when this function returns
+    /// true, however this will simply cause the panic handler to be called
+    /// again.
     #[must_use]
     #[unstable(feature = "panic_can_unwind", issue = "92988")]
     pub fn can_unwind(&self) -> bool {

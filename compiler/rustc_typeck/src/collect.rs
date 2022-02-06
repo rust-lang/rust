@@ -2778,6 +2778,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         }
     }
 
+    // The panic_no_unwind function called by TerminatorKind::Abort will never
+    // unwind. If the panic handler that it invokes unwind then it will simply
+    // call the panic handler again.
+    if Some(id) == tcx.lang_items().panic_no_unwind() {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
+    }
+
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
 
     let mut inline_span = None;
