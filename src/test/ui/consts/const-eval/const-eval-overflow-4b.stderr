@@ -17,6 +17,12 @@ error[E0604]: only `u8` can be cast as `char`, not `i8`
    |
 LL |     : [u32; 5i8 as char as usize]
    |             ^^^^^^^^^^^ invalid cast
+   |
+help: try casting from `u8` instead
+  --> $DIR/const-eval-overflow-4b.rs:22:13
+   |
+LL |     : [u32; 5i8 as char as usize]
+   |             ^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
