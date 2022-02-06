@@ -220,15 +220,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.cleanup_ret(funclet, None);
         } else {
             let slot = self.get_personality_slot(&mut bx);
-            let lp0 = slot.project_field(&mut bx, 0);
-            let lp0 = bx.load_operand(lp0).immediate();
-            let lp1 = slot.project_field(&mut bx, 1);
-            let lp1 = bx.load_operand(lp1).immediate();
+            let lp = bx.load(self.landing_pad_type(), slot.llval, slot.align);
             slot.storage_dead(&mut bx);
-
-            let mut lp = bx.const_undef(self.landing_pad_type());
-            lp = bx.insert_value(lp, lp0, 0);
-            lp = bx.insert_value(lp, lp1, 1);
             bx.resume(lp);
         }
     }
@@ -1377,7 +1370,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let slot = self.get_personality_slot(&mut bx);
             slot.storage_live(&mut bx);
-            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+            Immediate(lp).store(&mut bx, slot);
 
             bx.br(llbb);
             bx.llbb()
