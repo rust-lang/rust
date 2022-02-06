@@ -28,7 +28,7 @@ LL | const STR_LENGTH_PTR: &str = unsafe { mem::transmute((&42u8, &3)) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾─allocN──╼ ╾─allocN─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -39,7 +39,7 @@ LL | const MY_STR_LENGTH_PTR: &MyStr = unsafe { mem::transmute((&42u8, &3)) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾─allocN──╼ ╾─allocN─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -50,7 +50,7 @@ LL | const MY_STR_MUCH_TOO_LONG: &MyStr = unsafe { mem::transmute((&42u8, usize:
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ff ff ff ff                         │ ╾──╼....
+               ╾─allocN──╼ ff ff ff ff                         │ ╾──╼....
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -98,7 +98,7 @@ LL | const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ e7 03 00 00                         │ ╾──╼....
+               ╾─allocN──╼ e7 03 00 00                         │ ╾──╼....
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -109,7 +109,7 @@ LL | const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾─allocN──╼ ╾─allocN─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -120,7 +120,7 @@ LL | const SLICE_TOO_LONG_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, 999us
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ e7 03 00 00                         │ ╾──╼....
+               ╾─allocN──╼ e7 03 00 00                         │ ╾──╼....
            }
 
 error[E0080]: it is undefined behavior to use this value
@@ -131,7 +131,7 @@ LL | const SLICE_LENGTH_PTR_BOX: Box<[u8]> = unsafe { mem::transmute((&42u8, &3)
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─allocN─╼ ╾─allocN─╼                         │ ╾──╼╾──╼
+               ╾─allocN──╼ ╾─allocN─╼                         │ ╾──╼╾──╼
            }
 
 error[E0080]: it is undefined behavior to use this value
