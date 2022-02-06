@@ -50,8 +50,21 @@ pub fn can_type_implement_copy<'tcx>(
                     continue;
                 }
                 let span = tcx.def_span(field.did);
+                // FIXME(compiler-errors): This gives us better spans for bad
+                // projection types like in issue-50480.
+                // If the ADT has substs, point to the cause we are given.
+                // If it does not, then this field probably doesn't normalize
+                // to begin with, and point to the bad field's span instead.
+                let cause = if field
+                    .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did))
+                    .has_param_types_or_consts()
+                {
+                    cause.clone()
+                } else {
+                    ObligationCause::dummy_with_span(span)
+                };
                 let ctx = traits::FulfillmentContext::new();
-                match traits::fully_normalize(&infcx, ctx, cause.clone(), param_env, ty) {
+                match traits::fully_normalize(&infcx, ctx, cause, param_env, ty) {
                     Ok(ty) => {
                         if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
                             infringing.push(field);
