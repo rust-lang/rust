@@ -4,17 +4,16 @@ use clippy_utils::diagnostics::{
 };
 use clippy_utils::macros::{is_panic, root_macro_call};
 use clippy_utils::peel_blocks_with_stmt;
-use clippy_utils::source::{expr_block, indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{indent_of, snippet, snippet_block, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
-    get_parent_expr, is_lang_ctor, is_refutable, is_unit_expr, is_wild, meets_msrv, msrvs, path_to_local_id,
-    peel_blocks, peel_hir_pat_refs, recurse_or_patterns, strip_pat_refs,
+    get_parent_expr, is_lang_ctor, is_refutable, is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks,
+    peel_hir_pat_refs, recurse_or_patterns, strip_pat_refs,
 };
 use core::iter::once;
 use if_chain::if_chain;
-use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
@@ -29,6 +28,7 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, symbol::kw, Span};
 use std::cmp::Ordering;
 
+mod match_bool;
 mod match_like_matches;
 mod match_same_arms;
 mod redundant_pattern_match;
@@ -631,7 +631,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
         if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
             single_match::check(cx, ex, arms, expr);
-            check_match_bool(cx, ex, arms, expr);
+            match_bool::check(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
             check_wild_err_arm(cx, ex, arms);
             check_wild_enum_match(cx, ex, arms);
@@ -708,70 +708,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn check_match_bool(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    // Type of expression is `bool`.
-    if *cx.typeck_results().expr_ty(ex).kind() == ty::Bool {
-        span_lint_and_then(
-            cx,
-            MATCH_BOOL,
-            expr.span,
-            "you seem to be trying to match on a boolean expression",
-            move |diag| {
-                if arms.len() == 2 {
-                    // no guards
-                    let exprs = if let PatKind::Lit(arm_bool) = arms[0].pat.kind {
-                        if let ExprKind::Lit(ref lit) = arm_bool.kind {
-                            match lit.node {
-                                LitKind::Bool(true) => Some((&*arms[0].body, &*arms[1].body)),
-                                LitKind::Bool(false) => Some((&*arms[1].body, &*arms[0].body)),
-                                _ => None,
-                            }
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    };
-
-                    if let Some((true_expr, false_expr)) = exprs {
-                        let sugg = match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
-                            (false, false) => Some(format!(
-                                "if {} {} else {}",
-                                snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..", Some(expr.span)),
-                                expr_block(cx, false_expr, None, "..", Some(expr.span))
-                            )),
-                            (false, true) => Some(format!(
-                                "if {} {}",
-                                snippet(cx, ex.span, "b"),
-                                expr_block(cx, true_expr, None, "..", Some(expr.span))
-                            )),
-                            (true, false) => {
-                                let test = Sugg::hir(cx, ex, "..");
-                                Some(format!(
-                                    "if {} {}",
-                                    !test,
-                                    expr_block(cx, false_expr, None, "..", Some(expr.span))
-                                ))
-                            },
-                            (true, true) => None,
-                        };
-
-                        if let Some(sugg) = sugg {
-                            diag.span_suggestion(
-                                expr.span,
-                                "consider using an `if`/`else` expression",
-                                sugg,
-                                Applicability::HasPlaceholders,
-                            );
-                        }
-                    }
-                }
-            },
-        );
-    }
 }
 
 fn check_overlapping_arms<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
