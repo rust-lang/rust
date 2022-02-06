@@ -188,6 +188,43 @@ public:
 
   const std::map<Instruction *, bool> *can_modref_map;
 
+  SmallVector<OperandBundleDef, 2> getInvertedBundles(CallInst *orig,
+                                                      ArrayRef<ValueType> types,
+                                                      IRBuilder<> &Builder2,
+                                                      bool lookup) {
+    SmallVector<OperandBundleDef, 2> OrigDefs;
+    orig->getOperandBundlesAsDefs(OrigDefs);
+    SmallVector<OperandBundleDef, 2> Defs;
+    for (auto bund : OrigDefs) {
+      // Only handle jl_roots tag (for now).
+      if (bund.getTag() != "jl_roots") {
+        llvm::errs() << "unsupported tag " << bund.getTag() << " for " << *orig
+                     << "\n";
+        llvm_unreachable("unsupported tag");
+      }
+      SmallVector<Value *, 2> bunds;
+      // In the future we can reduce the number of roots
+      // we preserve by identifying which operands they
+      // correspond to. For now, fall back and preserve all
+      // primals and shadows
+      // assert(bund.inputs().size() == types.size());
+      for (auto inp : bund.inputs()) {
+        Value *newv = getNewFromOriginal(inp);
+        if (lookup)
+          newv = lookupM(newv, Builder2);
+        bunds.push_back(newv);
+        if (!isConstantValue(inp)) {
+          Value *shadow = invertPointerM(inp, Builder2);
+          if (lookup)
+            shadow = lookupM(shadow, Builder2);
+          bunds.push_back(shadow);
+        }
+      }
+      Defs.push_back(OperandBundleDef(bund.getTag().str(), bunds));
+    }
+    return Defs;
+  }
+
   Value *getNewIfOriginal(Value *originst) const {
     assert(originst);
     auto f = originalToNewFn.find(originst);

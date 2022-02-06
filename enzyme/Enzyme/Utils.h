@@ -244,6 +244,22 @@ enum class DerivativeMode {
   ForwardModeSplit = 4,
 };
 
+/// Classification of value as an original program
+/// variable, a derivative variable, neither, or both.
+/// This type is used both in differential use analysis
+/// and to describe argument bundles.
+enum class ValueType {
+  // A value that is neither a value in the original
+  // prigram, nor the derivative.
+  None = 0,
+  // The original program value
+  Primal = 1,
+  // The derivative value
+  Shadow = 2,
+  // Both the original program value and the shadow.
+  Both = Primal | Shadow,
+};
+
 static inline std::string to_string(DerivativeMode mode) {
   switch (mode) {
   case DerivativeMode::ForwardMode:

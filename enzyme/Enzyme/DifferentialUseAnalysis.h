@@ -29,8 +29,6 @@
 
 #include "GradientUtils.h"
 
-enum class ValueType { Primal, ShadowPtr };
-
 typedef std::pair<const Value *, ValueType> UsageKey;
 
 // Determine if a value is needed directly to compute the adjoint
@@ -202,6 +200,7 @@ static inline bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
     DerivativeMode mode, std::map<UsageKey, bool> &seen,
     const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   auto idx = UsageKey(inst, VT);
   if (seen.find(idx) != seen.end())
     return seen[idx];
@@ -212,7 +211,7 @@ static inline bool is_value_needed_in_reverse(
   // Inductively claim we aren't needed (and try to find contradiction)
   seen[idx] = false;
 
-  if (VT != ValueType::ShadowPtr) {
+  if (VT != ValueType::Shadow) {
     if (auto op = dyn_cast<BinaryOperator>(inst)) {
       if (op->getOpcode() == Instruction::FDiv) {
         if (!gutils->isConstantValue(const_cast<Value *>(inst)) &&
@@ -232,7 +231,7 @@ static inline bool is_value_needed_in_reverse(
 
     // A shadow value is only needed in reverse if it or one of its descendants
     // is used in an active instruction
-    if (VT == ValueType::ShadowPtr) {
+    if (VT == ValueType::Shadow) {
       if (!user)
         return seen[idx] = true;
 
@@ -309,7 +308,7 @@ static inline bool is_value_needed_in_reverse(
                .isPossiblePointer())
         continue;
 
-      if (!OneLevel && is_value_needed_in_reverse<ValueType::ShadowPtr>(
+      if (!OneLevel && is_value_needed_in_reverse<ValueType::Shadow>(
                            TR, gutils, user, mode, seen, oldUnreachable)) {
         return seen[idx] = true;
       }
@@ -385,7 +384,7 @@ static inline bool is_value_needed_in_reverse(
           TR.query(const_cast<Instruction *>(user))
               .Inner0()
               .isPossiblePointer()) {
-        if (is_value_needed_in_reverse<ValueType::ShadowPtr>(
+        if (is_value_needed_in_reverse<ValueType::Shadow>(
                 TR, gutils, user, mode, seen, oldUnreachable)) {
           return seen[idx] = true;
         }
@@ -410,6 +409,7 @@ template <ValueType VT>
 static inline bool is_value_needed_in_reverse(
     TypeResults &TR, const GradientUtils *gutils, const Value *inst,
     DerivativeMode mode, const SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  static_assert(VT == ValueType::Primal || VT == ValueType::Shadow);
   std::map<UsageKey, bool> seen;
   return is_value_needed_in_reverse<VT>(TR, gutils, inst, mode, seen,
                                         oldUnreachable);

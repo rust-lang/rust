@@ -940,7 +940,7 @@ void calculateUnusedValuesInFunction(
       for (auto &I : BB) {
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, &I, mode, PrimalSeen, oldUnreachable);
-        bool isn = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+        bool isn = is_value_needed_in_reverse<ValueType::Shadow>(
             TR, gutils, &I, mode, PrimalSeen, oldUnreachable);
         llvm::errs() << I << " ivn=" << (int)ivn << " isn: " << (int)isn;
         auto found = gutils->knownRecomputeHeuristic.find(&I);
@@ -954,7 +954,7 @@ void calculateUnusedValuesInFunction(
     for (auto a : unnecessaryValues) {
       bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
           TR, gutils, a, mode, PrimalSeen, oldUnreachable);
-      bool isn = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+      bool isn = is_value_needed_in_reverse<ValueType::Shadow>(
           TR, gutils, a, mode, PrimalSeen, oldUnreachable);
       llvm::errs() << *a << " ivn=" << (int)ivn << " isn: " << (int)isn;
       auto found = gutils->knownRecomputeHeuristic.find(a);
@@ -1209,7 +1209,7 @@ bool legalCombinedForwardReverse(
   if (isa<PointerType>(origop->getType())) {
     bool sret = subretused;
     if (!sret && !gutils->isConstantValue(origop)) {
-      sret = is_value_needed_in_reverse<ValueType::ShadowPtr>(
+      sret = is_value_needed_in_reverse<ValueType::Shadow>(
           TR, gutils, origop, gutils->mode, oldUnreachable);
     }
 

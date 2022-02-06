@@ -822,7 +822,7 @@ public:
   /// Replace -1 with 0
   TypeTree ReplaceMinus() const {
     TypeTree dat;
-    for (const auto pair : mapping) {
+    for (const auto &pair : mapping) {
       if (pair.second == ConcreteType(BaseType::Anything))
         continue;
       std::vector<int> nex = pair.first;
