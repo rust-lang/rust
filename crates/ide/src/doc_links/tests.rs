@@ -394,7 +394,6 @@ pub struct $0Foo;
 "#,
         expect![[r#"[my Foo](https://docs.rs/foo/*/foo/struct.Foo.html)"#]],
     );
-    // FIXME #11008
     check_rewrite(
         r#"
 //- /main.rs crate:foo
@@ -403,9 +402,6 @@ pub struct $0Foo;
 /// [`foo`]: Foo
 pub struct $0Foo;
 "#,
-        expect![[r#"
-            [`foo`]
-
-            []: https://docs.rs/foo/*/foo/struct.Foo.html"#]],
+        expect![["[`foo`]"]],
     );
 }
