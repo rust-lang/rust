@@ -1,0 +1,9 @@
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-93647.rs:2:5
+   |
+LL |     (||1usize)()
+   |     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.
