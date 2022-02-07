@@ -449,9 +449,9 @@ public:
 
     // determine width
 #if LLVM_VERSION_MAJOR >= 14
-    for (auto [i, found] = std::tuple{0, false}; i < CI->arg_size(); ++i)
+    for (auto [i, found] = std::tuple{0u, false}; i < CI->arg_size(); ++i)
 #else
-    for (auto [i, found] = std::tuple{0, false}; i < CI->getNumArgOperands();
+    for (auto [i, found] = std::tuple{0u, false}; i < CI->getNumArgOperands();
          ++i)
 #endif
     {
@@ -520,6 +520,7 @@ public:
 
       Value *shadow;
       switch (mode) {
+      case DerivativeMode::ForwardModeSplit:
       case DerivativeMode::ForwardMode: {
         Value *sretPt = CI->getArgOperand(0);
         if (width > 1) {

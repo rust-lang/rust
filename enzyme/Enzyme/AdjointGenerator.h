@@ -337,6 +337,7 @@ public:
       addToDiffe(orig_op0, dif1, Builder2, TR.addingType(size, orig_op0));
       return;
     }
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> BuilderZ(&inst);
       getForwardBuilder(BuilderZ);
@@ -383,6 +384,7 @@ public:
                      dif1->getType()->getScalarType());
           break;
         }
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&inst);
           getForwardBuilder(Builder2);
@@ -482,6 +484,7 @@ public:
           }
           break;
         }
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           newip = gutils->invertPointerM(&I, BuilderZ);
           assert(newip->getType() == type);
@@ -605,6 +608,7 @@ public:
       if (isfloat) {
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&I);
           getForwardBuilder(Builder2);
@@ -889,6 +893,7 @@ public:
         }
         break;
       }
+      case DerivativeMode::ForwardModeSplit:
       case DerivativeMode::ForwardMode: {
         IRBuilder<> Builder2(&I);
         getForwardBuilder(Builder2);
@@ -1056,6 +1061,7 @@ public:
 
       break;
     }
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&I);
       getForwardBuilder(Builder2);
@@ -1096,6 +1102,7 @@ public:
       createSelectInstAdjoint(SI);
       return;
     }
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       createSelectInstDual(SI);
       return;
@@ -1247,6 +1254,7 @@ public:
       return;
 
     switch (Mode) {
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&EEI);
       getForwardBuilder(Builder2);
@@ -1304,6 +1312,7 @@ public:
       return;
 
     switch (Mode) {
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&IEI);
       getForwardBuilder(Builder2);
@@ -1387,6 +1396,7 @@ public:
       return;
 
     switch (Mode) {
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&SVI);
       getForwardBuilder(Builder2);
@@ -1475,6 +1485,7 @@ public:
       return;
 
     switch (Mode) {
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
       IRBuilder<> Builder2(&EVI);
       getForwardBuilder(Builder2);
@@ -3453,6 +3464,7 @@ public:
       }
       return;
     }
+    case DerivativeMode::ForwardModeSplit:
     case DerivativeMode::ForwardMode: {
 
       IRBuilder<> Builder2(&I);
@@ -7237,6 +7249,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7296,6 +7309,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7338,6 +7352,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7402,6 +7417,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7455,6 +7471,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7505,6 +7522,7 @@ public:
           return;
 
         switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
         case DerivativeMode::ForwardMode: {
           IRBuilder<> Builder2(&call);
           getForwardBuilder(Builder2);
@@ -7828,6 +7846,7 @@ public:
             return;
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -7884,6 +7903,7 @@ public:
             return;
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -7964,6 +7984,7 @@ public:
             return;
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -8124,6 +8145,7 @@ public:
           }
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -8199,6 +8221,7 @@ public:
           }
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -8282,6 +8305,7 @@ public:
           }
 
           switch (Mode) {
+          case DerivativeMode::ForwardModeSplit:
           case DerivativeMode::ForwardMode: {
             IRBuilder<> Builder2(&call);
             getForwardBuilder(Builder2);
@@ -8348,12 +8372,10 @@ public:
             Mode == DerivativeMode::ReverseModePrimal) {
 
           bool backwardsShadow = false;
-          bool forwardsShadow = true;
           {
             auto found = gutils->backwardsOnlyShadows.find(orig);
             if (found != gutils->backwardsOnlyShadows.end()) {
               backwardsShadow = true;
-              forwardsShadow = found->second.second;
             }
           }
 

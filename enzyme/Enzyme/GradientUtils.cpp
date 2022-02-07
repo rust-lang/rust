@@ -3073,8 +3073,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
               }
 #endif
               memset->addParamAttr(0, Attribute::NonNull);
-              assert(width > 1 && antialloca->getType() ==
-                                      ArrayType::get(arg->getType(), width) ||
+              assert((width > 1 && antialloca->getType() ==
+                                       ArrayType::get(arg->getType(), width)) ||
                      antialloca->getType() == arg->getType());
               return antialloca;
             };

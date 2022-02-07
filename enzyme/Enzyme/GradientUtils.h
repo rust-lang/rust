@@ -627,7 +627,9 @@ public:
             idx++;
             continue;
           }
+#if LLVM_VERSION_MAJOR <= 7
           auto F = CI->getCalledFunction();
+#endif
           auto TT = TR.query(prev)[{-1, -1}];
           // If it either could capture, or could have a int/pointer written to
           // it it is not promotable
