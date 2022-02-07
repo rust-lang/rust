@@ -204,7 +204,7 @@ target | std | host | notes
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
-`aarch64_unknown_hermit` | ✓ |  |ARM64 HermitCore
+`aarch64-unknown-hermit` | ✓ |  |ARM64 HermitCore
 [`aarch64-unknown-none-hermitkernel`](platform-support/aarch64-unknown-none-hermitkernel.md) | * |  | ARM64 HermitCore kernel
 `aarch64-unknown-uefi` | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
