@@ -330,7 +330,7 @@ declare_features! (
     /// Allows using and casting function pointers in a `const fn`.
     (active, const_fn_fn_ptr_basics, "1.48.0", Some(57563), None),
     /// Allows trait bounds in `const fn`.
-    (active, const_fn_trait_bound, "1.53.0", Some(57563), None),
+    (active, const_fn_trait_bound, "1.53.0", Some(93706), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
     /// Allows argument and return position `impl Trait` in a `const fn`.
