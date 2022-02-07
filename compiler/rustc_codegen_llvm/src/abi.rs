@@ -69,9 +69,7 @@ impl ArgAttributesExt for ArgAttributes {
                 } else {
                     llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
                 }
-                // dereferenceable implies nonnull noundef; dereferenceable_or_null implies noundef
                 regular -= ArgAttribute::NonNull;
-                regular -= ArgAttribute::NoUndef;
             }
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
@@ -111,9 +109,7 @@ impl ArgAttributesExt for ArgAttributes {
                         deref,
                     );
                 }
-                // dereferenceable implies nonnull noundef; dereferenceable_or_null implies noundef
                 regular -= ArgAttribute::NonNull;
-                regular -= ArgAttribute::NoUndef;
             }
             if let Some(align) = self.pointee_align {
                 llvm::LLVMRustAddAlignmentCallSiteAttr(
