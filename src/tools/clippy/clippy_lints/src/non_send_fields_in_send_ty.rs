@@ -202,8 +202,8 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
 
     // The type is known to be `!Send` and `!Copy`
     match ty.kind() {
-        ty::Tuple(_) => ty
-            .tuple_fields()
+        ty::Tuple(fields) => fields
+            .iter()
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
         ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, *ty, send_trait),
         ty::Adt(_, substs) => {
