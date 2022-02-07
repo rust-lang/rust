@@ -3,7 +3,19 @@
 type Bar<'a, 'b> = impl PartialEq<Bar<'b, 'a>> + std::fmt::Debug;
 
 fn bar<'a, 'b>(i: &'a i32) -> Bar<'a, 'b> {
-    i //~ ERROR can't compare `&i32` with `impl PartialEq<Bar<'a, 'b>
+    i //~ ERROR can't compare `&i32` with `Bar<'b, 'a>`
+}
+
+type Foo<'a, 'b> = (i32, impl PartialEq<Foo<'a, 'b>> + std::fmt::Debug);
+
+fn foo<'a, 'b>(i: &'a i32) -> Foo<'a, 'b> {
+    (42, i) //~ ERROR can't compare `&i32` with `(i32, &i32)`
+}
+
+type Moo<'a, 'b> = (i32, impl PartialEq<Moo<'b, 'a>> + std::fmt::Debug);
+
+fn moo<'a, 'b>(i: &'a i32) -> Moo<'a, 'b> {
+    (42, i) //~ ERROR can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0})`
 }
 
 fn main() {

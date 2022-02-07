@@ -25,7 +25,7 @@ LL | type Closure = impl FnOnce();
 LL |     || -> Closure { || () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
-   = note: expected opaque type `impl FnOnce()`
+   = note: expected opaque type `Closure`
                   found closure `[closure@$DIR/issue-63279.rs:8:5: 8:28]`
 
 error: aborting due to 3 previous errors

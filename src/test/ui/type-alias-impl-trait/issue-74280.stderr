@@ -7,7 +7,7 @@ LL | type Test = impl Copy;
 LL |     7
    |     ^ expected `()`, found integer
    |
-   = note: expected opaque type `impl Copy`
+   = note: expected opaque type `Test`
                      found type `{integer}`
 
 error: aborting due to previous error

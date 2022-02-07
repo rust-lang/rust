@@ -12,7 +12,7 @@ impl Foo<()> for () { }
 fn foo() -> impl Foo<FooX> {
     // FIXME(type-alias-impl-trait): We could probably make this work.
     ()
-    //~^ ERROR: the trait bound `(): Foo<impl Debug>` is not satisfied
+    //~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
 }
 
 fn main() { }

@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `(): Foo<impl Debug>` is not satisfied
+error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
   --> $DIR/nested-tait-inference.rs:14:5
    |
 LL |     ()
-   |     ^^ the trait `Foo<impl Debug>` is not implemented for `()`
+   |     ^^ the trait `Foo<FooX>` is not implemented for `()`
    |
    = help: the following implementations were found:
              <() as Foo<()>>

@@ -15,7 +15,7 @@ LL |     pub type Boo = impl ::std::fmt::Debug;
 LL |     ""
    |     ^^ expected opaque type, found `&str`
    |
-   = note: expected opaque type `impl Debug`
+   = note: expected opaque type `Boo`
                 found reference `&str`
 
 error: aborting due to 2 previous errors

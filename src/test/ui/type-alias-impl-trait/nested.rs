@@ -13,5 +13,5 @@ fn bar() -> Bar {
 
 fn main() {
     println!("{:?}", bar());
-    //~^ ERROR `impl Trait<impl Debug>` doesn't implement `Debug`
+    //~^ ERROR `Bar` doesn't implement `Debug`
 }
