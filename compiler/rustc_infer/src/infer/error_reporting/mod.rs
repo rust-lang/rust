@@ -2127,6 +2127,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Types(exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
             infer::Consts(exp_found) => self.expected_found_str(exp_found),
+            infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
                     expected: exp_found.expected.print_only_trait_path(),
@@ -2164,6 +2165,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         Some(self.cmp(exp_found.expected, exp_found.found))
+    }
+
+    fn expected_found_str_term(
+        &self,
+        exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
+    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
+        let exp_found = self.resolve_vars_if_possible(exp_found);
+        if exp_found.references_error() {
+            return None;
+        }
+
+        Some(match (exp_found.expected, exp_found.found) {
+            (ty::Term::Ty(expected), ty::Term::Ty(found)) => self.cmp(expected, found),
+            (expected, found) => (
+                DiagnosticStyledString::highlighted(expected.to_string()),
+                DiagnosticStyledString::highlighted(found.to_string()),
+            ),
+        })
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`".
