@@ -1638,6 +1638,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(110), 10", stringify!($SelfT), ");")]
         /// ```
         #[stable(feature = "int_abs_diff", since = "1.60.0")]
+        #[rustc_const_stable(feature = "int_abs_diff", since = "1.60.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
