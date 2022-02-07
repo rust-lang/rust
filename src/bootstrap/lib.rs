@@ -629,7 +629,7 @@ impl Build {
         }
 
         if let Subcommand::Setup { profile } = &self.config.cmd {
-            return setup::setup(&self.config.src, *profile);
+            return setup::setup(&self.config, *profile);
         }
 
         {

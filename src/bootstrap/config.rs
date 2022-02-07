@@ -657,7 +657,15 @@ impl Config {
             }
         };
 
-        let mut toml = flags.config.as_deref().map(get_toml).unwrap_or_else(TomlConfig::default);
+        // check --config first, then `$RUST_BOOTSTRAP_CONFIG` first, then `config.toml`
+        let toml_path = flags
+            .config
+            .clone()
+            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("config.toml"));
+        let mut toml =
+            if toml_path.exists() { get_toml(&toml_path) } else { TomlConfig::default() };
+
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
             include_path.push("src");
@@ -669,9 +677,7 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        if let Some(cfg) = flags.config {
-            config.config = cfg;
-        }
+        config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
 
