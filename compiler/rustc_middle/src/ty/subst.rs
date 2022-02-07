@@ -396,15 +396,7 @@ impl<'tcx> TypeFoldable<'tcx> for SubstsRef<'tcx> {
                 }
             }
             0 => Ok(self),
-            _ => {
-                let params: SmallVec<[_; 8]> =
-                    self.iter().map(|k| k.try_fold_with(folder)).collect::<Result<_, _>>()?;
-                if params[..] == self[..] {
-                    Ok(self)
-                } else {
-                    Ok(folder.tcx().intern_substs(&params))
-                }
-            }
+            _ => ty::util::fold_list(self, folder, |tcx, v| tcx.intern_substs(v)),
         }
     }
 
