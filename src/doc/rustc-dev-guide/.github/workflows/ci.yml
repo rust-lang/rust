@@ -16,6 +16,7 @@ jobs:
     env:
       MDBOOK_VERSION: 0.4.12
       MDBOOK_LINKCHECK_VERSION: 0.7.2
+      MDBOOK_MERMAID_VERSION: 0.10.0
       MDBOOK_TOC_VERSION: 0.6.1
       DEPLOY_DIR: book/html
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -31,7 +32,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin
-          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}
+          key: ${{ runner.os }}-${{ env.MDBOOK_VERSION }}--${{ env.MDBOOK_LINKCHECK_VERSION }}--${{ env.MDBOOK_TOC_VERSION }}--${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Cache linkcheck
         uses: actions/cache@v2
@@ -59,6 +60,7 @@ jobs:
           cargo install mdbook --version ${{ env.MDBOOK_VERSION }}
           cargo install mdbook-linkcheck --version ${{ env.MDBOOK_LINKCHECK_VERSION }}
           cargo install mdbook-toc --version ${{ env.MDBOOK_TOC_VERSION }}
+          cargo install mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
 
       - name: Check build
         run: mdbook build
