@@ -5,6 +5,7 @@ fn main() {
     named_argument_takes_precedence_to_captured();
     formatting_parameters_can_be_captured();
     capture_raw_strings_and_idents();
+    repeated_capture();
 
     #[cfg(panic = "unwind")]
     {
@@ -79,4 +80,11 @@ fn formatting_parameters_can_be_captured() {
 
     let s = format!("{x:-^width$.precision$}");
     assert_eq!(&s, "--7.000--");
+}
+
+fn repeated_capture() {
+    let a = 1;
+    let b = 2;
+    let s = format!("{a} {b} {a}");
+    assert_eq!(&s, "1 2 1");
 }

@@ -25,6 +25,7 @@ enum ArgumentType {
 
 enum Position {
     Exact(usize),
+    Capture(usize),
     Named(Symbol),
 }
 
@@ -49,6 +50,8 @@ struct Context<'a, 'b> {
     /// * `arg_unique_types` (in simplified JSON): `[["o", "x"], ["o", "x"], ["o", "x"]]`
     /// * `names` (in JSON): `{"foo": 2}`
     args: Vec<P<ast::Expr>>,
+    /// The number of arguments that were added by implicit capturing.
+    num_captured_args: usize,
     /// Placeholder slot numbers indexed by argument.
     arg_types: Vec<Vec<usize>>,
     /// Unique format specs seen for each argument.
@@ -231,6 +234,11 @@ fn parse_args<'a>(
 }
 
 impl<'a, 'b> Context<'a, 'b> {
+    /// The number of arguments that were explicitly given.
+    fn num_args(&self) -> usize {
+        self.args.len() - self.num_captured_args
+    }
+
     fn resolve_name_inplace(&self, p: &mut parse::Piece<'_>) {
         // NOTE: the `unwrap_or` branch is needed in case of invalid format
         // arguments, e.g., `format_args!("{foo}")`.
@@ -345,7 +353,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn describe_num_args(&self) -> Cow<'_, str> {
-        match self.args.len() {
+        match self.num_args() {
             0 => "no arguments were given".into(),
             1 => "there is 1 argument".into(),
             x => format!("there are {} arguments", x).into(),
@@ -371,7 +379,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         let count = self.pieces.len()
             + self.arg_with_formatting.iter().filter(|fmt| fmt.precision_span.is_some()).count();
-        if self.names.is_empty() && !numbered_position_args && count != self.args.len() {
+        if self.names.is_empty() && !numbered_position_args && count != self.num_args() {
             e = self.ecx.struct_span_err(
                 sp,
                 &format!(
@@ -419,7 +427,7 @@ impl<'a, 'b> Context<'a, 'b> {
             if let Some(span) = fmt.precision_span {
                 let span = self.fmtsp.from_inner(span);
                 match fmt.precision {
-                    parse::CountIsParam(pos) if pos > self.args.len() => {
+                    parse::CountIsParam(pos) if pos > self.num_args() => {
                         e.span_label(
                             span,
                             &format!(
@@ -462,7 +470,7 @@ impl<'a, 'b> Context<'a, 'b> {
             if let Some(span) = fmt.width_span {
                 let span = self.fmtsp.from_inner(span);
                 match fmt.width {
-                    parse::CountIsParam(pos) if pos > self.args.len() => {
+                    parse::CountIsParam(pos) if pos > self.num_args() => {
                         e.span_label(
                             span,
                             &format!(
@@ -494,12 +502,15 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Actually verifies and tracks a given format placeholder
     /// (a.k.a. argument).
     fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
+        if let Exact(arg) = arg {
+            if arg >= self.num_args() {
+                self.invalid_refs.push((arg, self.curpiece));
+                return;
+            }
+        }
+
         match arg {
-            Exact(arg) => {
-                if self.args.len() <= arg {
-                    self.invalid_refs.push((arg, self.curpiece));
-                    return;
-                }
+            Exact(arg) | Capture(arg) => {
                 match ty {
                     Placeholder(_) => {
                         // record every (position, type) combination only once
@@ -526,7 +537,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 match self.names.get(&name) {
                     Some(&idx) => {
                         // Treat as positional arg.
-                        self.verify_arg_type(Exact(idx), ty)
+                        self.verify_arg_type(Capture(idx), ty)
                     }
                     None => {
                         // For the moment capturing variables from format strings expanded from macros is
@@ -541,9 +552,10 @@ impl<'a, 'b> Context<'a, 'b> {
                             } else {
                                 self.fmtsp
                             };
+                            self.num_captured_args += 1;
                             self.args.push(self.ecx.expr_ident(span, Ident::new(name, span)));
                             self.names.insert(name, idx);
-                            self.verify_arg_type(Exact(idx), ty)
+                            self.verify_arg_type(Capture(idx), ty)
                         } else {
                             let msg = format!("there is no argument named `{}`", name);
                             let sp = if self.is_literal {
@@ -1051,6 +1063,7 @@ pub fn expand_preparsed_format_args(
     let mut cx = Context {
         ecx,
         args,
+        num_captured_args: 0,
         arg_types,
         arg_unique_types,
         names,
