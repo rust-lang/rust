@@ -1,0 +1,22 @@
+error: invalid reference to positional arguments 1 and 2 (there is 1 argument)
+  --> $DIR/format-args-capture-issue-93378.rs:5:26
+   |
+LL |     println!("{a} {b} {} {} {c} {}", c = "c");
+   |                          ^^     ^^
+   |
+   = note: positional arguments are zero-based
+
+error: invalid reference to positional argument 0 (no arguments were given)
+  --> $DIR/format-args-capture-issue-93378.rs:9:23
+   |
+LL |     println!("{a:.n$} {b:.*}");
+   |               ------- ^^^--^
+   |               |          |
+   |               |          this precision flag adds an extra required argument at position 0, which is why there are 3 arguments expected
+   |               this parameter corresponds to the precision flag
+   |
+   = note: positional arguments are zero-based
+   = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
+
+error: aborting due to 2 previous errors
+
