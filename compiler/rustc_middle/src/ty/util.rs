@@ -248,7 +248,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
 
                 ty::Tuple(tys) if let Some((&last_ty, _)) = tys.split_last() => {
-                    ty = last_ty.expect_ty();
+                    ty = last_ty;
                 }
 
                 ty::Tuple(_) => break,
@@ -319,9 +319,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
                 (&Tuple(a_tys), &Tuple(b_tys)) if a_tys.len() == b_tys.len() => {
-                    if let Some(a_last) = a_tys.last() {
-                        a = a_last.expect_ty();
-                        b = b_tys.last().unwrap().expect_ty();
+                    if let Some(&a_last) = a_tys.last() {
+                        a = a_last;
+                        b = *b_tys.last().unwrap();
                     } else {
                         break;
                     }
@@ -746,7 +746,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
-            ty::Tuple(_) => self.tuple_fields().all(|f| Self::is_trivially_freeze(f)),
+            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_freeze),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_freeze(),
             ty::Adt(..)
             | ty::Bound(..)
@@ -786,7 +786,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::FnDef(..)
             | ty::Error(_)
             | ty::FnPtr(_) => true,
-            ty::Tuple(_) => self.tuple_fields().all(|f| Self::is_trivially_unpin(f)),
+            ty::Tuple(fields) => fields.iter().all(Self::is_trivially_unpin),
             ty::Slice(elem_ty) | ty::Array(elem_ty, _) => elem_ty.is_trivially_unpin(),
             ty::Adt(..)
             | ty::Bound(..)
@@ -1042,7 +1042,7 @@ pub fn needs_drop_components<'tcx>(
             }
         }
         // If any field needs drop, then the whole tuple does.
-        ty::Tuple(..) => ty.tuple_fields().try_fold(SmallVec::new(), move |mut acc, elem| {
+        ty::Tuple(fields) => fields.iter().try_fold(SmallVec::new(), move |mut acc, elem| {
             acc.extend(needs_drop_components(elem, target_layout)?);
             Ok(acc)
         }),
@@ -1092,7 +1092,7 @@ pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
 
         ty::Array(ty, _) | ty::Slice(ty) => is_trivially_const_drop(ty),
 
-        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty.expect_ty())),
+        ty::Tuple(tys) => tys.iter().all(|ty| is_trivially_const_drop(ty)),
     }
 }
 

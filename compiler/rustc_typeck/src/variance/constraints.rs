@@ -278,7 +278,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::Tuple(subtys) => {
                 for subty in subtys {
-                    self.add_constraints_from_ty(current, subty.expect_ty(), variance);
+                    self.add_constraints_from_ty(current, subty, variance);
                 }
             }
 

@@ -834,10 +834,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
                 let expected = match expected_ty.kind() {
-                    ty::Tuple(ref tys) => tys
-                        .iter()
-                        .map(|t| ArgKind::from_expected_ty(t.expect_ty(), Some(span)))
-                        .collect(),
+                    ty::Tuple(ref tys) => {
+                        tys.iter().map(|t| ArgKind::from_expected_ty(t, Some(span))).collect()
+                    }
                     _ => vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())],
                 };
 

@@ -866,10 +866,7 @@ where
                 let tys: Vec<_> = substs.as_generator().upvar_tys().collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::Tuple(..) => {
-                let tys: Vec<_> = ty.tuple_fields().collect();
-                self.open_drop_for_tuple(&tys)
-            }
+            ty::Tuple(fields) => self.open_drop_for_tuple(fields),
             ty::Adt(def, substs) => {
                 if def.is_box() {
                     self.open_drop_for_box(def, substs)

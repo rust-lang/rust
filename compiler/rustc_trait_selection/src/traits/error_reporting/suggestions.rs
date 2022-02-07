@@ -1301,7 +1301,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     if tcx.fn_trait_kind_from_lang_item(trait_ref.def_id()).is_some() =>
                 {
                     tcx.mk_fn_sig(
-                        inputs.iter().map(|k| k.expect_ty()),
+                        inputs.iter(),
                         tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0))),
                         false,
                         hir::Unsafety::Normal,

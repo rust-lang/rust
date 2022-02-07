@@ -207,10 +207,9 @@ pub(crate) fn type_uninhabited_from<'tcx>(
 
         Never => DefIdForest::full(),
 
-        Tuple(ref tys) => DefIdForest::union(
-            tcx,
-            tys.iter().map(|ty| ty.expect_ty().uninhabited_from(tcx, param_env)),
-        ),
+        Tuple(ref tys) => {
+            DefIdForest::union(tcx, tys.iter().map(|ty| ty.uninhabited_from(tcx, param_env)))
+        }
 
         Array(ty, len) => match len.try_eval_usize(tcx, param_env) {
             Some(0) | None => DefIdForest::empty(),

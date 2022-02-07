@@ -628,7 +628,7 @@ fn polymorphize<'tcx>(
     } else {
         None
     };
-    let has_upvars = upvars_ty.map_or(false, |ty| ty.tuple_fields().count() > 0);
+    let has_upvars = upvars_ty.map_or(false, |ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
 
     struct PolymorphizationFolder<'tcx> {

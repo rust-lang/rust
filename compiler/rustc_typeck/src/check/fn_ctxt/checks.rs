@@ -147,12 +147,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     let expected_input_tys = match expected_input_tys.get(0) {
                         Some(&ty) => match ty.kind() {
-                            ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
+                            ty::Tuple(tys) => tys.iter().collect(),
                             _ => vec![],
                         },
                         None => vec![],
                     };
-                    (arg_types.iter().map(|k| k.expect_ty()).collect(), expected_input_tys)
+                    (arg_types.iter().collect(), expected_input_tys)
                 }
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
@@ -495,12 +495,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_input_tys: &[Ty<'tcx>],
         provided_args: &'tcx [hir::Expr<'tcx>],
     ) -> Option<FnArgsAsTuple<'_>> {
-        let [expected_arg_type] = &expected_input_tys[..] else { return None };
+        let [expected_arg_type] = expected_input_tys[..] else { return None };
 
-        let ty::Tuple(expected_elems) = self.resolve_vars_if_possible(*expected_arg_type).kind()
+        let &ty::Tuple(expected_types) = self.resolve_vars_if_possible(expected_arg_type).kind()
             else { return None };
 
-        let expected_types: Vec<_> = expected_elems.iter().map(|k| k.expect_ty()).collect();
         let supplied_types: Vec<_> = provided_args.iter().map(|arg| self.check_expr(arg)).collect();
 
         let all_match = iter::zip(expected_types, supplied_types)

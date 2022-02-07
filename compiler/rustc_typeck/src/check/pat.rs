@@ -9,7 +9,6 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
@@ -1072,7 +1071,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Adt(_, substs), [field], false) => {
                 let field_ty = self.field_ty(pat_span, field, substs);
                 match field_ty.kind() {
-                    ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
+                    ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
                 }
             }
@@ -1183,13 +1182,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let max_len = cmp::max(expected_len, elements.len());
 
         let element_tys_iter = (0..max_len).map(|_| {
-            GenericArg::from(self.next_ty_var(
+            self.next_ty_var(
                 // FIXME: `MiscVariable` for now -- obtaining the span and name information
                 // from all tuple elements isn't trivial.
                 TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
-            ))
+            )
         });
-        let element_tys = tcx.mk_substs(element_tys_iter);
+        let element_tys = tcx.mk_type_list(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             err.emit();
@@ -1202,7 +1201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.mk_tup(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, element_tys[i].expect_ty(), def_bm, ti);
+                self.check_pat(elem, element_tys[i], def_bm, ti);
             }
             pat_ty
         }

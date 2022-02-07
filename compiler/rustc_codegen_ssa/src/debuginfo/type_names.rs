@@ -86,7 +86,7 @@ fn push_debuginfo_type_name<'tcx>(
             }
 
             for component_type in component_types {
-                push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
+                push_debuginfo_type_name(tcx, component_type, true, output, visited);
                 push_arg_separator(cpp_like_debuginfo, output);
             }
             if !component_types.is_empty() {

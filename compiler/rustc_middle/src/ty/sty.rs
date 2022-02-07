@@ -200,8 +200,7 @@ pub enum TyKind<'tcx> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
-    /// Use `Ty::tuple_fields` to iterate over the field types.
-    Tuple(SubstsRef<'tcx>),
+    Tuple(&'tcx List<Ty<'tcx>>),
 
     /// The projection of an associated type. For example,
     /// `<T as Trait<..>>::N`.
@@ -2155,18 +2154,9 @@ impl<'tcx> Ty<'tcx> {
 
     /// Iterates over tuple fields.
     /// Panics when called on anything but a tuple.
-    pub fn tuple_fields(self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> {
+    pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
-            Tuple(substs) => substs.iter().map(|field| field.expect_ty()),
-            _ => bug!("tuple_fields called on non-tuple"),
-        }
-    }
-
-    /// Get the `i`-th element of a tuple.
-    /// Panics when called on anything but a tuple.
-    pub fn tuple_element_ty(self, i: usize) -> Option<Ty<'tcx>> {
-        match self.kind() {
-            Tuple(substs) => substs.iter().nth(i).map(|field| field.expect_ty()),
+            Tuple(substs) => substs,
             _ => bug!("tuple_fields called on non-tuple"),
         }
     }
@@ -2367,7 +2357,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => false,
 
-            ty::Tuple(tys) => tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx)),
+            ty::Tuple(tys) => tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
 
             ty::Adt(def, _substs) => def.sized_constraint(tcx).is_empty(),
 

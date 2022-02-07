@@ -641,15 +641,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();
                 assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                let ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
+                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
                     bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
                 };
 
                 ty::Binder::bind_with_vars(
                     tcx.mk_type_list(
-                        iter::once(closure_ty)
-                            .chain(inputs.iter().map(|k| k.expect_ty()))
-                            .chain(iter::once(output)),
+                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
                     ),
                     bound_vars,
                 )

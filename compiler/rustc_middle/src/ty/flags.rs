@@ -201,8 +201,8 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
 
-            &ty::Tuple(ref substs) => {
-                self.add_substs(substs);
+            &ty::Tuple(types) => {
+                self.add_tys(types);
             }
 
             &ty::FnDef(_, substs) => {

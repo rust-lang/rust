@@ -539,16 +539,16 @@ pub fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Tuple(_) => {
+        ty::Tuple(fields) => {
             let mut has_emitted = false;
             let comps = match data.expr.map(|e| &e.kind) {
                 Some(hir::ExprKind::Tup(comps)) => {
-                    debug_assert_eq!(comps.len(), ty.tuple_fields().count());
+                    debug_assert_eq!(comps.len(), fields.len());
                     Some(comps)
                 }
                 _ => None,
             };
-            for (i, ty) in ty.tuple_fields().enumerate() {
+            for (i, ty) in fields.iter().enumerate() {
                 let descr_post = &format!(" in tuple element {}", i);
                 let span = comps.and_then(|c| c.get(i)).map(|e| e.span).unwrap_or(data.source_span);
                 if check_must_not_suspend_ty(

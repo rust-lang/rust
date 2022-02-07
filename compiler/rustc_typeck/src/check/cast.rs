@@ -111,7 +111,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
             ty::Tuple(fields) => match fields.last() {
                 None => Some(PointerKind::Thin),
-                Some(f) => self.pointer_kind(f.expect_ty(), span)?,
+                Some(&f) => self.pointer_kind(f, span)?,
             },
 
             // Pointers to foreign types are thin, despite being unsized

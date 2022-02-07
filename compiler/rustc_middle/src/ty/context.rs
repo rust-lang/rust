@@ -2272,7 +2272,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> PolyFnSig<'tcx> {
         sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].kind() {
-                ty::Tuple(params) => params.into_iter().map(|k| k.expect_ty()),
+                ty::Tuple(params) => params.into_iter(),
                 _ => bug!(),
             };
             self.mk_fn_sig(params_iter, s.output(), s.c_variadic, unsafety, abi::Abi::Rust)
@@ -2434,15 +2434,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        let kinds: Vec<_> = ts.iter().map(|&t| GenericArg::from(t)).collect();
-        self.mk_ty(Tuple(self.intern_substs(&kinds)))
+        self.mk_ty(Tuple(self.intern_type_list(&ts)))
     }
 
     pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| {
-            let kinds: Vec<_> = ts.iter().map(|&t| GenericArg::from(t)).collect();
-            self.mk_ty(Tuple(self.intern_substs(&kinds)))
-        })
+        iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(&ts))))
     }
 
     #[inline]

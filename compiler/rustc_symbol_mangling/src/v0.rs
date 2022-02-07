@@ -446,7 +446,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             ty::Tuple(tys) => {
                 self.push("T");
-                for ty in tys.iter().map(|k| k.expect_ty()) {
+                for ty in tys.iter() {
                     self = ty.print(self)?;
                 }
                 self.push("E");
