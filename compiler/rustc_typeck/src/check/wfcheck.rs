@@ -285,11 +285,6 @@ fn check_gat_where_clauses(
         return;
     }
     let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
-    // If the current associated type doesn't have any (own) params, it's not a GAT
-    // FIXME(jackh726): we can also warn in the more general case
-    if generics.params.len() == 0 && !tcx.features().generic_associated_types {
-        return;
-    }
     let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
     let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
     // For every function in this trait...
@@ -466,17 +461,11 @@ fn check_gat_where_clauses(
         if !clauses.is_empty() {
             let plural = if clauses.len() > 1 { "s" } else { "" };
             let severity = if generics.params.len() == 0 { "recommended" } else { "required" };
-            let mut err = if generics.params.len() == 0 {
-                tcx.sess.struct_span_warn(
-                    trait_item.span,
-                    &format!("missing {} bound{} on `{}`", severity, plural, trait_item.ident),
-                )
-            } else {
+            let mut err = 
                 tcx.sess.struct_span_err(
                     trait_item.span,
                     &format!("missing {} bound{} on `{}`", severity, plural, trait_item.ident),
-                )
-            };
+                );
 
             let suggestion = format!(
                 "{} {}",
