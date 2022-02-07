@@ -25,6 +25,26 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
 }
 
+/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
+/// to the where clause that is prefered, if it exists. Otherwise, it sets the span to the other where
+/// clause if it exists.
+fn add_ty_alias_where_clause(
+    generics: &mut ast::Generics,
+    mut where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    prefer_first: bool,
+) {
+    if !prefer_first {
+        where_clauses = (where_clauses.1, where_clauses.0);
+    }
+    if where_clauses.0.0 || !where_clauses.1.0 {
+        generics.where_clause.has_where_token = where_clauses.0.0;
+        generics.where_clause.span = where_clauses.0.1;
+    } else {
+        generics.where_clause.has_where_token = where_clauses.1.0;
+        generics.where_clause.span = where_clauses.1.1;
+    }
+}
+
 impl ItemLowerer<'_, '_, '_> {
     fn with_trait_impl_ref<T>(
         &mut self,
@@ -298,8 +318,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 );
                 let mut generics = generics.clone();
-                generics.where_clause.has_where_token = where_clauses.0.0;
-                generics.where_clause.span = where_clauses.0.1;
+                add_ty_alias_where_clause(&mut generics, where_clauses, true);
                 let generics = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -311,8 +330,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
                 let mut generics = generics.clone();
-                generics.where_clause.has_where_token = where_clauses.0.0;
-                generics.where_clause.span = where_clauses.0.1;
+                add_ty_alias_where_clause(&mut generics, *where_clauses, true);
                 let generics = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -856,8 +874,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Type))
                 });
                 let mut generics = generics.clone();
-                generics.where_clause.has_where_token = where_clauses.1.0;
-                generics.where_clause.span = where_clauses.1.1;
+                add_ty_alias_where_clause(&mut generics, where_clauses, false);
                 let generics = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
@@ -941,8 +958,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
                 let mut generics = generics.clone();
-                generics.where_clause.has_where_token = where_clauses.1.0;
-                generics.where_clause.span = where_clauses.1.1;
+                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
                 let generics = self.lower_generics(
                     &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
