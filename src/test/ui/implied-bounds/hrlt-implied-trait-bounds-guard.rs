@@ -1,7 +1,5 @@
 // A test exploiting the bug behind #25860 except with
-// implied trait bounds which currently don't exist,
-//
-// please ping @lcnr if your changes end up causing `badboi` to compile.
+// implied trait bounds which currently don't exist without `-Zchalk`.
 use std::marker::PhantomData;
 struct Foo<'a, 'b, T>(PhantomData<(&'a (), &'b (), T)>)
 where
@@ -26,6 +24,8 @@ impl<'long: 'short, 'short, T> Convert<'long, 'short> for T {
 //     `T: Convert<'in_, 'out>` is not implemented
 //
 // help: needed by `Foo<'in_, 'out, T>`
+//
+// Please ping @lcnr if your changes end up causing `badboi` to compile.
 fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
     //~^ ERROR lifetime mismatch
     sadness.cast()
