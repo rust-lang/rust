@@ -86,6 +86,10 @@ fn foo() { bar.; blub }
         expect![[r##"
 #[proc_macros::identity_when_valid]
 fn foo() { bar.; blub }
-"##]],
+
+fn foo() {
+    bar.;
+    blub
+}"##]],
     );
 }

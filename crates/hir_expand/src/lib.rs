@@ -15,6 +15,7 @@ pub mod proc_macro;
 pub mod quote;
 pub mod eager;
 pub mod mod_path;
+mod fixup;
 
 pub use mbe::{ExpandError, ExpandResult, Origin};
 

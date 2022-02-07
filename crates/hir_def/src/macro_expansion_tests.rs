@@ -345,6 +345,7 @@ impl base_db::ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         if parse.errors().is_empty() {
             Ok(subtree.clone())
         } else {
+            eprintln!("parse errors: {:?}", parse.errors());
             use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, TokenTree};
             let mut subtree = Subtree::default();
             subtree.token_trees.push(TokenTree::Leaf(

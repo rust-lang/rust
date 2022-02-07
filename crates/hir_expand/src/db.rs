@@ -5,8 +5,8 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
-use rustc_hash::FxHashSet;
+use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult, SyntheticToken};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::diff,
     ast::{self, HasAttrs, HasDocComments},
@@ -14,7 +14,7 @@ use syntax::{
 };
 
 use crate::{
-    ast_id_map::AstIdMap, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
+    ast_id_map::AstIdMap, fixup, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
     BuiltinFnLikeExpander, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
     MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
@@ -146,8 +146,10 @@ pub fn expand_speculative(
 
     // Build the subtree and token mapping for the speculative args
     let censor = censor_for_macro_input(&loc, &speculative_args);
+    let mut fixups = fixup::fixup_syntax(&speculative_args);
+    fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
     let (mut tt, spec_args_tmap) =
-        mbe::syntax_node_to_token_tree_censored(&speculative_args, &censor);
+        mbe::syntax_node_to_token_tree_censored(&speculative_args, fixups.replace, fixups.append);
 
     let (attr_arg, token_id) = match loc.kind {
         MacroCallKind::Attr { invoc_attr_index, .. } => {
@@ -294,8 +296,17 @@ fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, 
     let loc = db.lookup_intern_macro_call(id);
 
     let node = SyntaxNode::new_root(arg);
+    eprintln!("input text:\n{node}");
+    eprintln!("input syntax:\n{node:#?}");
     let censor = censor_for_macro_input(&loc, &node);
-    let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(&node, &censor);
+    // TODO only fixup for attribute macro input
+    let mut fixups = fixup::fixup_syntax(&node);
+    fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
+    eprintln!("fixups: {fixups:?}");
+    let (mut tt, tmap) =
+        mbe::syntax_node_to_token_tree_censored(&node, fixups.replace, fixups.append);
+
+    eprintln!("fixed-up input: {}", tt);
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
