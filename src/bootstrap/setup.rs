@@ -271,9 +271,9 @@ fn install_git_hook_maybe(src_path: &Path) -> io::Result<()> {
     let mut input = String::new();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
-If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` on each commit
-to ensure your code is up to par. If you decide later that this behavior is undesirable,
-simply delete the `pre-commit` file from .git/hooks."
+If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
+pushing your code to ensure your code is up to par. If you decide later that this behavior is
+undesirable, simply delete the `pre-push` file from .git/hooks."
     );
 
     let should_install = loop {
@@ -293,21 +293,21 @@ simply delete the `pre-commit` file from .git/hooks."
     };
 
     if should_install {
-        let src = src_path.join("src").join("etc").join("pre-commit.sh");
+        let src = src_path.join("src").join("etc").join("pre-push.sh");
         let git = t!(Command::new("git").args(&["rev-parse", "--git-common-dir"]).output().map(
             |output| {
                 assert!(output.status.success(), "failed to run `git`");
                 PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
             }
         ));
-        let dst = git.join("hooks").join("pre-commit");
+        let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
             Err(e) => println!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e
             ),
-            Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-commit`"),
+            Ok(_) => println!("Linked `src/etc/pre-commit.sh` to `.git/hooks/pre-push`"),
         };
     } else {
         println!("Ok, skipping installation!");
