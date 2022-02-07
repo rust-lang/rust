@@ -1718,6 +1718,16 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                 auto replacewith =
                     (idx < 0) ? tape
                               : lb.CreateExtractValue(tape, {(unsigned)idx});
+                if (li->getType() != replacewith->getType()) {
+                  llvm::errs() << " oldFunc: " << *oldFunc << "\n";
+                  llvm::errs() << " newFunc: " << *newFunc << "\n";
+                  llvm::errs() << " malloc: " << *malloc << "\n";
+                  llvm::errs() << " li: " << *li << "\n";
+                  llvm::errs() << " u: " << *u << "\n";
+                  llvm::errs() << " replacewith: " << *replacewith
+                               << " idx=" << idx << " - tape=" << *tape << "\n";
+                }
+                assert(li->getType() == replacewith->getType());
                 li->replaceAllUsesWith(replacewith);
               } else {
                 auto phi =

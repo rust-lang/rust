@@ -2446,6 +2446,10 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   delete gutils;
   tempFunc->eraseFromParent();
 
+  // Do not run post processing optimizations if the body of an openmp
+  // parallel so the adjointgenerator can successfully extract the allocation
+  // and frees and hoist them into the parent. Optimizing before then may
+  // make the IR different to traverse, and thus impossible to find the allocs.
   if (PostOpt && !omp)
     PPC.optimizeIntermediate(NewF);
   if (EnzymePrint)
@@ -3815,6 +3819,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   if (Arch == Triple::nvptx || Arch == Triple::nvptx64)
     PPC.ReplaceReallocs(nf, /*mem2reg*/ true);
 
+  // Do not run post processing optimizations if the body of an openmp
+  // parallel so the adjointgenerator can successfully extract the allocation
+  // and frees and hoist them into the parent. Optimizing before then may
+  // make the IR different to traverse, and thus impossible to find the allocs.
   if (PostOpt && !omp)
     PPC.optimizeIntermediate(nf);
   if (EnzymePrint) {

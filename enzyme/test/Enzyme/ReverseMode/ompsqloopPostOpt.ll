@@ -114,9 +114,10 @@ attributes #1 = { argmemonly }
 !11 = !{!12}
 !12 = !{i64 2, i64 -1, i64 -1, i1 true}
 
-
-; CHECK-LABEL: define internal void @augmented_.omp_outlined..1(i32* noalias nocapture readonly %.global_tid., i32* noalias nocapture readnone %.bound_tid., i64 %length, double* nocapture nonnull align 8 dereferenceable(8) %tmp, double* nocapture %"tmp'", double** %tape)
+; CHECK-LABEL: define internal void @augmented_.omp_outlined..1(i32* noalias nocapture readonly %.global_tid., i32* noalias nocapture readnone %.bound_tid., i64 %length, double* nocapture nonnull align 8 dereferenceable(8) %tmp, double* nocapture readnone %"tmp'", double** nocapture readonly %tape)
 ; CHECK-NOT: call{{.*}}@malloc
+; CHECK: }
 
-; CHECK-LABEL: define internal void @diffe.omp_outlined.(i32* noalias nocapture readonly %.global_tid., i32* noalias nocapture readnone %.bound_tid., i64 %length, double* nocapture nonnull align 8 dereferenceable(8) %tmp, double* nocapture %"tmp'", double** %tapeArg)
+; CHECK-LABEL: define internal void @diffe.omp_outlined.(i32* noalias nocapture readonly %.global_tid., i32* noalias nocapture readnone %.bound_tid., i64 %length, double* nocapture nonnull readnone align 8 dereferenceable(8) %tmp, double* nocapture %"tmp'", double** nocapture readonly %tapeArg)
 ; CHECK-NOT: call{{.*}}@free
+; CHECK: }

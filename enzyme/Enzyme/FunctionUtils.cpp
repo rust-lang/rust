@@ -36,6 +36,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Passes/PassBuilder.h"
 
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -2101,18 +2102,12 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
     }
   }
 
-  PassManagerBuilder Builder;
-  Builder.OptLevel = 2;
-  legacy::FunctionPassManager PM(F->getParent());
-  Builder.populateFunctionPassManager(PM);
-  PM.run(*F);
-  {
-    PreservedAnalyses PA;
-    FAM.invalidate(*F, PA);
-  }
   if (EnzymeCoalese)
     CoaleseTrivialMallocs(*F, FAM.getResult<DominatorTreeAnalysis>(*F));
-  // DCEPass().run(*F, AM);
+
+  PreservedAnalyses PA;
+  FAM.invalidate(*F, PA);
+  // TODO actually run post optimizations.
 }
 
 void PreProcessCache::clear() {
