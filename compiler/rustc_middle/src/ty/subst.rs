@@ -20,6 +20,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
+use std::slice;
 
 /// An entity in the Rust type system, which can be one of
 /// several kinds (types, lifetimes, and consts).
@@ -40,11 +41,35 @@ const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
 
-#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord, HashStable)]
+#[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
+}
+
+/// This function goes from `&'a [Ty<'tcx>]` to `&'a [GenericArg<'tcx>]`
+///
+/// This is sound as, for types, `GenericArg` is just
+/// `NonZeroUsize::new_unchecked(ty as *const _ as usize)`.
+pub fn ty_slice_as_generic_args<'a, 'tcx>(ts: &'a [Ty<'tcx>]) -> &'a [GenericArg<'tcx>] {
+    assert_eq!(TYPE_TAG, 0);
+    // SAFETY: the whole slice is valid and immutable.
+    // `Ty` and `GenericArg` is explained above.
+    unsafe { slice::from_raw_parts(ts.as_ptr().cast(), ts.len()) }
+}
+
+impl<'tcx> List<Ty<'tcx>> {
+    /// Allows to freely switch betwen `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
+    ///
+    /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
+    /// be interned together, see `intern_type_list` for more details.
+    #[inline]
+    pub fn as_substs(&'tcx self) -> SubstsRef<'tcx> {
+        assert_eq!(TYPE_TAG, 0);
+        // SAFETY: `List<T>` is `#[repr(C)]`. `Ty` and `GenericArg` is explained above.
+        unsafe { &*(self as *const List<Ty<'tcx>> as *const List<GenericArg<'tcx>>) }
+    }
 }
 
 impl<'tcx> GenericArgKind<'tcx> {
@@ -208,6 +233,17 @@ pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
 impl<'a, 'tcx> InternalSubsts<'tcx> {
+    /// Checks whether all elements of this list are types, if so, transmute.
+    pub fn try_as_type_list(&'tcx self) -> Option<&'tcx List<Ty<'tcx>>> {
+        if self.iter().all(|arg| matches!(arg.unpack(), GenericArgKind::Type(_))) {
+            assert_eq!(TYPE_TAG, 0);
+            // SAFETY: All elements are types, see `List<Ty<'tcx>>::as_substs`.
+            Some(unsafe { &*(self as *const List<GenericArg<'tcx>> as *const List<Ty<'tcx>>) })
+        } else {
+            None
+        }
+    }
+
     /// Interpret these substitutions as the substitutions of a closure type.
     /// Closure substitutions have a particular structure controlled by the
     /// compiler that encodes information like the signature and closure kind;

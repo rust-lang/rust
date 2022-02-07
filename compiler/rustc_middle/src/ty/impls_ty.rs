@@ -61,6 +61,28 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArg<'t
     }
 }
 
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKind<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        match self {
+            // WARNING: We dedup cache the `HashStable` results for `List`
+            // while ignoring types and freely transmute
+            // between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
+            // See `fn intern_type_list` for more details.
+            //
+            // We therefore hash types without adding a hash for their discriminant.
+            ty::subst::GenericArgKind::Type(ty) => ty.hash_stable(hcx, hasher),
+            ty::subst::GenericArgKind::Const(ct) => {
+                mem::discriminant(self).hash_stable(hcx, hasher);
+                ct.hash_stable(hcx, hasher);
+            }
+            ty::subst::GenericArgKind::Lifetime(lt) => {
+                mem::discriminant(self).hash_stable(hcx, hasher);
+                lt.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
 impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);

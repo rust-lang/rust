@@ -101,7 +101,6 @@ pub struct CtxtInterners<'tcx> {
     // Specifically use a speedy hash algorithm for these hash sets, since
     // they're accessed quite often.
     type_: InternedSet<'tcx, TyS<'tcx>>,
-    type_list: InternedSet<'tcx, List<Ty<'tcx>>>,
     substs: InternedSet<'tcx, InternalSubsts<'tcx>>,
     canonical_var_infos: InternedSet<'tcx, List<CanonicalVarInfo<'tcx>>>,
     region: InternedSet<'tcx, RegionKind>,
@@ -129,7 +128,6 @@ impl<'tcx> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
-            type_list: Default::default(),
             substs: Default::default(),
             region: Default::default(),
             poly_existential_predicates: Default::default(),
@@ -1666,6 +1664,23 @@ macro_rules! nop_lift {
     };
 }
 
+// Can't use the macros as we have reuse the `substs` here.
+//
+// See `intern_type_list` for more info.
+impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
+    type Lifted = &'tcx List<Ty<'tcx>>;
+    fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
+        if self.is_empty() {
+            return Some(List::empty());
+        }
+        if tcx.interners.substs.contains_pointer_to(&InternedInSet(self.as_substs())) {
+            Some(unsafe { mem::transmute(self) })
+        } else {
+            None
+        }
+    }
+}
+
 macro_rules! nop_list_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for &'a List<$ty> {
@@ -1690,7 +1705,6 @@ nop_lift! {const_; Const<'a> => Const<'tcx>}
 nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
-nop_list_lift! {type_list; Ty<'a> => Ty<'tcx>}
 nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
 nop_list_lift! {predicates; Predicate<'a> => Predicate<'tcx>}
 nop_list_lift! {canonical_var_infos; CanonicalVarInfo<'a> => CanonicalVarInfo<'tcx>}
@@ -2189,7 +2203,6 @@ macro_rules! slice_interners {
 }
 
 slice_interners!(
-    type_list: _intern_type_list(Ty<'tcx>),
     substs: _intern_substs(GenericArg<'tcx>),
     canonical_var_infos: _intern_canonical_var_infos(CanonicalVarInfo<'tcx>),
     poly_existential_predicates:
@@ -2611,7 +2624,19 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_type_list(self, ts: &[Ty<'tcx>]) -> &'tcx List<Ty<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_type_list(ts) }
+        if ts.is_empty() {
+            List::empty()
+        } else {
+            // Actually intern type lists as lists of `GenericArg`s.
+            //
+            // Transmuting from `Ty<'tcx>` to `GenericArg<'tcx>` is sound
+            // as explained in ty_slice_as_generic_arg`. With this,
+            // we guarantee that even when transmuting between `List<Ty<'tcx>>`
+            // and `List<GenericArg<'tcx>>`, the uniqueness requirement for
+            // lists is upheld.
+            let substs = self._intern_substs(ty::subst::ty_slice_as_generic_args(ts));
+            substs.try_as_type_list().unwrap()
+        }
     }
 
     pub fn intern_substs(self, ts: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
