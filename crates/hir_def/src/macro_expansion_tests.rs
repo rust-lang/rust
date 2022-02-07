@@ -345,23 +345,7 @@ impl base_db::ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         if parse.errors().is_empty() {
             Ok(subtree.clone())
         } else {
-            eprintln!("parse errors: {:?}", parse.errors());
-            use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, TokenTree};
-            let mut subtree = Subtree::default();
-            subtree.token_trees.push(TokenTree::Leaf(
-                Ident { text: "compile_error!".into(), id: TokenId(0) }.into(),
-            ));
-            subtree.token_trees.push(TokenTree::Subtree(Subtree {
-                delimiter: Some(Delimiter { id: TokenId(2), kind: DelimiterKind::Parenthesis }),
-                token_trees: vec![TokenTree::Leaf(Leaf::Literal(Literal {
-                    text: r#""parse error""#.into(),
-                    id: TokenId::unspecified(),
-                }))],
-            }));
-            subtree.token_trees.push(TokenTree::Leaf(
-                Punct { char: ';', spacing: tt::Spacing::Alone, id: TokenId::unspecified() }.into(),
-            ));
-            Ok(subtree)
+            panic!("got invalid macro input: {:?}", parse.errors());
         }
     }
 }
