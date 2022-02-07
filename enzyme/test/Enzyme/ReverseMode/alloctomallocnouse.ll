@@ -48,18 +48,15 @@ attributes #0 = { norecurse nounwind readonly uwtable }
 attributes #1 = { nounwind uwtable }
 attributes #2 = { nounwind }
 
-; TODO move shadow into only reverse if possible
-; CHECK: define internal i8* @augmented_subsum(double* nocapture readonly %x, double* nocapture %"x'", i64 %n)
+; CHECK: define internal void @augmented_subsum(double* nocapture readonly %x, double* nocapture %"x'", i64 %n)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %m = call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
-; CHECK-NEXT:   %"m'mi" = call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"m'mi", i8 0, i64 8, i1 false)
+; CHECK-NEXT:   %m = call i8* @malloc(i64 8)
 ; CHECK-NEXT:   %v = bitcast i8* %m to double*
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.cond.cleanup:                                 ; preds = %for.body
 ; CHECK-NEXT:   call void @free(i8* nonnull %m)
-; CHECK-NEXT:   ret i8* %"m'mi"
+; CHECK-NEXT:   ret void
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
@@ -74,8 +71,10 @@ attributes #2 = { nounwind }
 ; CHECK-NEXT: }
 
 
-; CHECK: define internal void @diffesubsum(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn, i8* %"m'mi")
+; CHECK: define internal void @diffesubsum(double* nocapture readonly %x, double* nocapture %"x'", i64 %n, double %differeturn)
 ; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m'mi" = call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) i8* @malloc(i64 8)
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %"m'mi", i8 0, i64 8, i1 false)
 ; CHECK-NEXT:   %"v'ipc" = bitcast i8* %"m'mi" to double*
 ; CHECK-NEXT:   %0 = load double, double* %"v'ipc"
 ; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn

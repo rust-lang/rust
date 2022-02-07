@@ -35,7 +35,6 @@ declare double @__enzyme_autodiff(double (double)*, ...)
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 8)
 ; CHECK-NEXT:   %bc = bitcast i8* %malloccall to i64*
 ; CHECK-NEXT:   store i64 %y, i64* %bc, align 8
-; CHECK-NEXT:   tail call void @free(i8* %malloccall)
 ; CHECK-NEXT:   %0 = insertvalue { double } undef, double %differeturn, 0
 ; CHECK-NEXT:   ret { double } %0
 ; CHECK-NEXT: }

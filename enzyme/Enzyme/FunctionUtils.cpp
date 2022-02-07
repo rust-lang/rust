@@ -173,9 +173,6 @@ bool couldFunctionArgumentCapture(llvm::CallInst *CI, llvm::Value *val) {
   if (F->getIntrinsicID() == Intrinsic::memmove)
     return false;
 
-  if (F->empty())
-    return false;
-
   auto arg = F->arg_begin();
 #if LLVM_VERSION_MAJOR >= 14
   for (size_t i = 0, size = CI->arg_size(); i < size; i++)
@@ -318,10 +315,30 @@ static inline void UpgradeAllocasToMallocs(Function *NewF,
                                 {ConstantAsMetadata::get(ConstantInt::get(
                                     IntegerType::get(AI->getContext(), 64),
                                     AI->getAlignment()))}));
+
 #if LLVM_VERSION_MAJOR >= 14
-    CI->addRetAttr(Attribute::NoAlias);
+    if (ConstantInt *size = dyn_cast<ConstantInt>(CI->getOperand(0))) {
+      CI->addDereferenceableRetAttr(size->getLimitedValue());
+#ifndef FLANG
+      AttrBuilder B(CI->getContext());
 #else
+      AttrBuilder B;
+#endif
+      B.addDereferenceableOrNullAttr(size->getLimitedValue());
+      CI->setAttributes(
+          CI->getAttributes().addRetAttributes(CI->getContext(), B));
+    }
+    CI->addAttributeAtIndex(AttributeList::ReturnIndex, Attribute::NoAlias);
+    CI->addAttributeAtIndex(AttributeList::ReturnIndex, Attribute::NonNull);
+#else
+    if (ConstantInt *size = dyn_cast<ConstantInt>(CI->getOperand(0))) {
+      CI->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
+                                 size->getLimitedValue());
+      CI->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
+                                       size->getLimitedValue());
+    }
     CI->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+    CI->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
 #endif
     assert(rep->getType() == AI->getType());
     AI->replaceAllUsesWith(rep);

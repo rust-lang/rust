@@ -748,9 +748,25 @@ public:
 #else
     auto align = SI.getAlignment();
 #endif
+
     visitCommonStore(SI, SI.getPointerOperand(), SI.getValueOperand(), align,
                      SI.isVolatile(), SI.getOrdering(), SI.getSyncScopeID(),
                      /*mask=*/nullptr);
+
+    std::map<UsageKey, bool> Seen;
+    for (auto pair : gutils->knownRecomputeHeuristic)
+      if (!pair.second)
+        Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+
+    // Don't erase any store that needs to be preserved for a rematerialization
+    for (auto pair : gutils->rematerializableAllocations) {
+      if (is_value_needed_in_reverse<ValueType::Primal>(
+              TR, gutils, pair.first, Mode, Seen, oldUnreachable)) {
+        if (pair.second.second.count(&SI)) {
+          return;
+        }
+      }
+    }
     eraseIfUnused(SI);
   }
 
@@ -758,12 +774,12 @@ public:
   void visitCommonStore(llvm::Instruction &I, Value *orig_ptr, Value *orig_val,
                         MaybeAlign align, bool isVolatile,
                         AtomicOrdering ordering, SyncScope::ID syncScope,
-                        Value *mask = nullptr)
+                        Value *mask)
 #else
   void visitCommonStore(llvm::Instruction &I, Value *orig_ptr, Value *orig_val,
                         unsigned align, bool isVolatile,
                         AtomicOrdering ordering, SyncScope::ID syncScope,
-                        Value *mask = nullptr)
+                        Value *mask)
 #endif
   {
     Value *val = gutils->getNewFromOriginal(orig_val);
@@ -891,7 +907,18 @@ public:
       //! Storing an integer or pointer
     } else {
       //! Only need to update the forward function
-      if (Mode == DerivativeMode::ReverseModePrimal ||
+
+      bool backwardsShadow = false;
+      bool forwardsShadow = true;
+      for (auto pair : gutils->backwardsOnlyShadows) {
+        if (pair.second.first.count(&I)) {
+          backwardsShadow = true;
+          forwardsShadow = pair.second.second;
+        }
+      }
+
+      if ((Mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
+          (Mode == DerivativeMode::ReverseModeGradient && backwardsShadow) ||
           Mode == DerivativeMode::ReverseModeCombined ||
           Mode == DerivativeMode::ForwardMode) {
         IRBuilder<> storeBuilder(gutils->getNewFromOriginal(&I));
@@ -2490,8 +2517,25 @@ public:
   }
 
   void visitMemSetInst(llvm::MemSetInst &MS) {
-    // Don't duplicate set in reverse pass
-    if (Mode == DerivativeMode::ReverseModeGradient) {
+    bool rematerialized = false;
+    std::map<UsageKey, bool> Seen;
+    for (auto pair : gutils->knownRecomputeHeuristic)
+      if (!pair.second)
+        Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+
+    // Don't erase any store that needs to be preserved for a rematerialization
+    for (auto pair : gutils->rematerializableAllocations) {
+      if (is_value_needed_in_reverse<ValueType::Primal>(
+              TR, gutils, pair.first, Mode, Seen, oldUnreachable)) {
+        if (pair.second.second.count(&MS)) {
+          rematerialized = true;
+          break;
+        }
+      }
+    }
+
+    // Don't duplicate set in reverse pass unless rematerialized
+    if (Mode == DerivativeMode::ReverseModeGradient && !rematerialized) {
       erased.insert(&MS);
       gutils->erase(gutils->getNewFromOriginal(&MS));
     }
@@ -2515,7 +2559,17 @@ public:
       report_fatal_error("non constant in memset");
     }
 
-    if (Mode == DerivativeMode::ReverseModePrimal ||
+    bool backwardsShadow = false;
+    bool forwardsShadow = true;
+    for (auto pair : gutils->backwardsOnlyShadows) {
+      if (pair.second.first.count(&MS)) {
+        backwardsShadow = true;
+        forwardsShadow = pair.second.second;
+      }
+    }
+
+    if ((Mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
+        (Mode == DerivativeMode::ReverseModeGradient && backwardsShadow) ||
         Mode == DerivativeMode::ReverseModeCombined) {
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&MS));
 
@@ -2544,7 +2598,6 @@ public:
           Intrinsic::getDeclaration(MS.getParent()->getParent()->getParent(),
                                     Intrinsic::memset, tys),
           args, Defs);
-
       cal->setAttributes(MS.getAttributes());
       cal->setCallingConv(MS.getCallingConv());
       cal->setTailCallKind(MS.getTailCallKind());
@@ -7971,26 +8024,57 @@ public:
         }
 
         if (funcName == "julia.write_barrier") {
-          if (Mode == DerivativeMode::ReverseModeGradient) {
-            eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
-            return;
-          }
-          SmallVector<Value *, 1> iargs;
-          IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
-#if LLVM_VERSION_MAJOR >= 14
-          for (auto &arg : orig->args())
-#else
-          for (auto &arg : orig->arg_operands())
-#endif
-          {
-            if (!gutils->isConstantValue(arg)) {
-              Value *ptrshadow = gutils->invertPointerM(arg, BuilderZ);
-              iargs.push_back(ptrshadow);
+          std::map<UsageKey, bool> Seen;
+          for (auto pair : gutils->knownRecomputeHeuristic)
+            if (!pair.second)
+              Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+          bool rematerializedPrimal = false;
+          for (auto pair : gutils->rematerializableAllocations) {
+            if (pair.second.second.count(orig) &&
+                is_value_needed_in_reverse<ValueType::Primal>(
+                    TR, gutils, pair.first, Mode, Seen, oldUnreachable)) {
+              rematerializedPrimal = true;
             }
           }
-          if (iargs.size()) {
-            BuilderZ.CreateCall(called, iargs);
+
+          bool backwardsShadow = false;
+          bool forwardsShadow = true;
+          for (auto pair : gutils->backwardsOnlyShadows) {
+            if (pair.second.first.count(orig)) {
+              backwardsShadow = true;
+              forwardsShadow = pair.second.second;
+              break;
+            }
           }
+
+          if (Mode == DerivativeMode::ForwardMode ||
+              Mode == DerivativeMode::ReverseModeCombined ||
+              (Mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
+              (Mode == DerivativeMode::ReverseModeGradient &&
+               backwardsShadow)) {
+            SmallVector<Value *, 1> iargs;
+            IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
+#if LLVM_VERSION_MAJOR >= 14
+            for (auto &arg : orig->args())
+#else
+            for (auto &arg : orig->arg_operands())
+#endif
+            {
+              if (!gutils->isConstantValue(arg)) {
+                Value *ptrshadow = gutils->invertPointerM(arg, BuilderZ);
+                iargs.push_back(ptrshadow);
+              }
+            }
+            if (iargs.size()) {
+              BuilderZ.CreateCall(called, iargs);
+            }
+          }
+
+          if (Mode == DerivativeMode::ReverseModeGradient &&
+              !rematerializedPrimal) {
+            eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+          }
+
           return;
         }
         Intrinsic::ID ID = Intrinsic::not_intrinsic;
@@ -8262,14 +8346,28 @@ public:
         if (Mode == DerivativeMode::ReverseModeCombined ||
             Mode == DerivativeMode::ReverseModeGradient ||
             Mode == DerivativeMode::ReverseModePrimal) {
-          auto anti =
-              gutils->createAntiMalloc(orig, getIndex(orig, CacheType::Shadow));
+
+          bool backwardsShadow = false;
+          bool forwardsShadow = true;
+          {
+            auto found = gutils->backwardsOnlyShadows.find(orig);
+            if (found != gutils->backwardsOnlyShadows.end()) {
+              backwardsShadow = true;
+              forwardsShadow = found->second.second;
+            }
+          }
+
+          // Only need to cache if not creating a shadow in the backwards
+          unsigned index = backwardsShadow ? (unsigned)-1
+                                           : getIndex(orig, CacheType::Shadow);
+          auto anti = gutils->createAntiMalloc(orig, index);
           if ((Mode == DerivativeMode::ReverseModeCombined ||
                Mode == DerivativeMode::ReverseModeGradient ||
                Mode == DerivativeMode::ForwardModeSplit) &&
-              shouldFree()) {
+              shouldFree() && !isa<AllocaInst>(anti)) {
             IRBuilder<> Builder2(call.getParent());
             getReverseBuilder(Builder2);
+            assert(anti);
             Value *tofree = lookup(anti, Builder2);
             assert(tofree);
             assert(tofree->getType());
@@ -8328,6 +8426,97 @@ public:
               ? false
               : is_value_needed_in_reverse<ValueType::Primal>(
                     TR, gutils, orig, Mode, Seen, oldUnreachable);
+
+      // Don't erase any store that needs to be preserved for a
+      // rematerialization
+      {
+        auto found = gutils->rematerializableAllocations.find(orig);
+        if (found != gutils->rematerializableAllocations.end()) {
+          bool cacheWholeAllocation = false;
+          if (gutils->knownRecomputeHeuristic.count(orig)) {
+            if (!gutils->knownRecomputeHeuristic[orig])
+              cacheWholeAllocation = true;
+          }
+
+          // Otherwise take the fallback and cache the entire alloca
+          // (and free if required).
+          if (cacheWholeAllocation)
+            primalNeededInReverse = true;
+          else if (primalNeededInReverse) {
+            // if rematerialize, don't ever cache and downgrade to stack
+            // allocation where possible.
+            if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
+              IRBuilder<> B(newCall);
+              if (auto CI = dyn_cast<ConstantInt>(orig->getArgOperand(0))) {
+                B.SetInsertPoint(gutils->inversionAllocs);
+              }
+              auto replacement = B.CreateAlloca(
+                  Type::getInt8Ty(orig->getContext()),
+                  gutils->getNewFromOriginal(orig->getArgOperand(0)));
+              auto Alignment =
+                  cast<ConstantInt>(
+                      cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
+                      ->getLimitedValue();
+#if LLVM_VERSION_MAJOR >= 10
+              replacement->setAlignment(Align(Alignment));
+#else
+              replacement->setAlignment(Alignment);
+#endif
+              gutils->replaceAWithB(newCall, replacement);
+              gutils->erase(newCall);
+              return;
+            }
+
+            // No need to free GC.
+            if (funcName == "jl_alloc_array_1d" ||
+                funcName == "jl_alloc_array_2d" ||
+                funcName == "jl_alloc_array_3d" ||
+                funcName == "jl_array_copy" || funcName == "julia.gc_alloc_obj")
+              return;
+
+            // Otherwise if in reverse only, free the newly created allocation
+            if (Mode == DerivativeMode::ReverseModeGradient) {
+              IRBuilder<> Builder2(call.getParent());
+              getReverseBuilder(Builder2);
+              auto dbgLoc = gutils->getNewFromOriginal(orig->getDebugLoc());
+              freeKnownAllocation(Builder2, lookup(newCall, Builder2), *called,
+                                  dbgLoc, gutils->TLI);
+            }
+            return;
+          } else {
+            // If not caching allocation and not needed in the reverse, we can
+            // use the original freeing behavior for the function. If in the
+            // reverse pass we should not recreate this allocation.
+            if (Mode == DerivativeMode::ReverseModeGradient)
+              eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+            else if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
+              IRBuilder<> B(newCall);
+              if (auto CI = dyn_cast<ConstantInt>(orig->getArgOperand(0))) {
+                B.SetInsertPoint(gutils->inversionAllocs);
+              }
+              auto replacement = B.CreateAlloca(
+                  Type::getInt8Ty(orig->getContext()),
+                  gutils->getNewFromOriginal(orig->getArgOperand(0)));
+              auto Alignment =
+                  cast<ConstantInt>(
+                      cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
+                      ->getLimitedValue();
+              // Don't set zero alignment
+              if (Alignment) {
+#if LLVM_VERSION_MAJOR >= 10
+                replacement->setAlignment(Align(Alignment));
+#else
+                replacement->setAlignment(Alignment);
+#endif
+              }
+              gutils->replaceAWithB(newCall, replacement);
+              gutils->erase(newCall);
+            }
+            return;
+          }
+        }
+      }
+
       bool hasPDFree = gutils->allocationsWithGuaranteedFree.count(orig);
       if (!primalNeededInReverse && hasPDFree) {
         if (Mode == DerivativeMode::ReverseModeGradient) {
@@ -8594,6 +8783,38 @@ public:
           }
         }
         return;
+      }
+
+      // If a rematerializable allocation.
+      for (auto rmat : gutils->rematerializableAllocations) {
+        if (rmat.second.second.count(orig)) {
+          // Leave the original free behavior since this won't be used
+          // in the reverse pass in split mode
+          if (Mode == DerivativeMode::ReverseModePrimal) {
+            return;
+          } else if (Mode == DerivativeMode::ReverseModeGradient) {
+            eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
+            return;
+          } else {
+            assert(Mode == DerivativeMode::ReverseModeCombined);
+            // In combined mode, if we don't need this allocation
+            // in the reverse, we can use the original deallocation
+            // behavior.
+            std::map<UsageKey, bool> Seen;
+            for (auto pair : gutils->knownRecomputeHeuristic)
+              if (!pair.second)
+                Seen[UsageKey(pair.first, ValueType::Primal)] = false;
+            bool primalNeededInReverse =
+                is_value_needed_in_reverse<ValueType::Primal>(
+                    TR, gutils, orig, Mode, Seen, oldUnreachable);
+            if (gutils->knownRecomputeHeuristic.count(rmat.first)) {
+              if (!gutils->knownRecomputeHeuristic[rmat.first])
+                primalNeededInReverse = true;
+            }
+            if (!primalNeededInReverse)
+              return;
+          }
+        }
       }
 
       if (gutils->forwardDeallocations.count(orig)) {

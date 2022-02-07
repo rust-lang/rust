@@ -69,6 +69,15 @@ static inline bool is_use_directly_needed_in_reverse(
           }
         }
       }
+
+      // Preserve any non-floating point values that are stored in an active
+      // backwards creation shadow.
+      if (!TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}].isFloat())
+        for (auto pair : gutils->backwardsOnlyShadows)
+          if (pair.second.first.count(SI) &&
+              !gutils->isConstantValue(pair.first)) {
+            return true;
+          }
     }
     return false;
   }
@@ -77,6 +86,17 @@ static inline bool is_use_directly_needed_in_reverse(
   if (auto MTI = dyn_cast<MemTransferInst>(user)) {
     if (MTI->getArgOperand(2) != val)
       return false;
+  }
+
+  // Preserve the length of memsets of backward creation shadows
+  if (auto MS = dyn_cast<MemSetInst>(user)) {
+    if (MS->getArgOperand(2) == val) {
+      for (auto pair : gutils->backwardsOnlyShadows)
+        if (pair.second.first.count(MS) &&
+            !gutils->isConstantValue(pair.first)) {
+          return true;
+        }
+    }
   }
 
   if (isa<CmpInst>(user) || isa<BranchInst>(user) || isa<ReturnInst>(user) ||
@@ -239,9 +259,20 @@ static inline bool is_value_needed_in_reverse(
         // storing an active pointer into a location
         // doesn't require the shadow pointer for the
         // reverse pass
-        if (SI->getPointerOperand() != inst &&
-            mode == DerivativeMode::ReverseModeGradient)
-          continue;
+        if (SI->getValueOperand() == inst &&
+            mode == DerivativeMode::ReverseModeGradient) {
+          // Unless the store is into a backwards store, which would
+          // would then be performed in the reverse if the stored value was
+          // a possible pointer.
+          bool rematerialized = false;
+          for (auto pair : gutils->backwardsOnlyShadows)
+            if (pair.second.first.count(SI)) {
+              rematerialized = true;
+              break;
+            }
+          if (!rematerialized)
+            continue;
+        }
 
         if (!gutils->isConstantValue(
                 const_cast<Value *>(SI->getPointerOperand())))
@@ -321,6 +352,26 @@ static inline bool is_value_needed_in_reverse(
     if (!OneLevel && is_value_needed_in_reverse<VT>(TR, gutils, user, mode,
                                                     seen, oldUnreachable)) {
       return seen[idx] = true;
+    }
+
+    // Anything we may try to rematerialize requires its store opreands for
+    // the reverse pass.
+    if (!OneLevel) {
+      if (auto SI = dyn_cast<StoreInst>(user)) {
+        for (auto pair : gutils->rematerializableAllocations) {
+          // Directly consider all the load uses to avoid an illegal inductive
+          // recurrence. Specifically if we're asking if the alloca is used,
+          // we'll set it to unused, then check the gep, then here we'll
+          // directly say unused by induction instead of checking the final
+          // loads.
+          if (pair.second.second.count(SI))
+            for (LoadInst *L : pair.second.first)
+              if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
+                                                 oldUnreachable)) {
+                return seen[idx] = true;
+              }
+        }
+      }
     }
 
     // One may need to this value in the computation of loop
@@ -484,17 +535,35 @@ static inline int cmpLoopNest(Loop *prev, Loop *next) {
   return -1;
 }
 
-static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
-                          const SmallPtrSetImpl<Value *> &Recomputes,
-                          const SmallPtrSetImpl<Value *> &Intermediates,
-                          SmallPtrSetImpl<Value *> &Required,
-                          SmallPtrSetImpl<Value *> &MinReq) {
+static inline void
+minCut(const DataLayout &DL, LoopInfo &OrigLI,
+       const SmallPtrSetImpl<Value *> &Recomputes,
+       const SmallPtrSetImpl<Value *> &Intermediates,
+       SmallPtrSetImpl<Value *> &Required, SmallPtrSetImpl<Value *> &MinReq,
+       const ValueMap<Value *, std::pair<SmallPtrSet<LoadInst *, 1>,
+                                         SmallPtrSet<Instruction *, 1>>>
+           &rematerializableAllocations) {
   Graph G;
   for (auto V : Intermediates) {
     G[Node(V, false)].insert(Node(V, true));
     for (auto U : V->users()) {
+      if (auto I = dyn_cast<Instruction>(U)) {
+        for (auto pair : rematerializableAllocations) {
+          if (Intermediates.count(pair.first) && pair.second.second.count(I))
+            G[Node(V, true)].insert(Node(pair.first, false));
+        }
+      }
       if (Intermediates.count(U)) {
         G[Node(V, true)].insert(Node(U, false));
+      }
+    }
+  }
+  for (auto pair : rematerializableAllocations) {
+    if (Intermediates.count(pair.first)) {
+      for (LoadInst *L : pair.second.first) {
+        if (Intermediates.count(L)) {
+          G[Node(pair.first, true)].insert(Node(L, false));
+        }
       }
     }
   }

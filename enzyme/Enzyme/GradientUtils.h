@@ -523,9 +523,221 @@ public:
     return cast_or_null<BasicBlock>(isOriginal((const Value *)newinst));
   }
 
+  ValueMap<Value *,
+           std::pair<SmallPtrSet<LoadInst *, 1>, SmallPtrSet<Instruction *, 1>>>
+      rematerializableAllocations;
+
+  // Only loaded from and stored to (not captured), mapped to the stores (and
+  // memset). Boolean denotes whether the primal initializes the shadow as well
+  // (for use) as a structure which carries data.
+  ValueMap<Value *, std::pair<SmallPtrSet<Instruction *, 1>, bool>>
+      backwardsOnlyShadows;
+
+  void computeForwardingProperties(CallInst *V, TypeResults &TR) {
+    SmallPtrSet<LoadInst *, 1> loads;
+    SmallPtrSet<Instruction *, 1> stores;
+    bool promotable = true;
+    bool shadowpromotable = true;
+    bool primalInitializationOfShadow = false;
+    std::set<std::pair<Instruction *, Value *>> seen;
+    SmallVector<std::pair<Instruction *, Value *>, 1> todo;
+    for (auto U : V->users())
+      if (auto I = dyn_cast<Instruction>(U))
+        todo.push_back(std::make_pair(I, V));
+    while (todo.size()) {
+      auto tup = todo.back();
+      Instruction *cur = tup.first;
+      Value *prev = tup.second;
+      todo.pop_back();
+      if (seen.count(tup))
+        continue;
+      seen.insert(tup);
+      if (isa<CastInst>(cur) || isa<GetElementPtrInst>(cur)) {
+        for (auto u : cur->users()) {
+          if (auto I = dyn_cast<Instruction>(u))
+            todo.push_back(std::make_pair(I, (Value *)cur));
+        }
+      } else if (auto load = dyn_cast<LoadInst>(cur)) {
+        loads.insert(load);
+      } else if (auto store = dyn_cast<StoreInst>(cur)) {
+        if (store->getValueOperand() == prev) {
+          promotable = false;
+          shadowpromotable = false;
+          break;
+        } else
+          stores.insert(store);
+      } else if (auto II = dyn_cast<IntrinsicInst>(cur)) {
+        switch (II->getIntrinsicID()) {
+        case Intrinsic::dbg_declare:
+        case Intrinsic::dbg_value:
+#if LLVM_VERSION_MAJOR > 6
+        case Intrinsic::dbg_label:
+#endif
+        case Intrinsic::dbg_addr:
+        case Intrinsic::lifetime_start:
+        case Intrinsic::lifetime_end:
+          break;
+        case Intrinsic::memset: {
+          bool first = true;
+#if LLVM_VERSION_MAJOR >= 14
+          for (auto &arg : II->args())
+#else
+          for (auto &arg : II->arg_operands())
+#endif
+          {
+            if (first) {
+              first = false;
+              break;
+            }
+            if (arg == prev) {
+              promotable = false;
+              shadowpromotable = false;
+              break;
+            }
+            break;
+          }
+          stores.insert(II);
+          break;
+        }
+        default:
+          promotable = false;
+          shadowpromotable = false;
+          break;
+        }
+      } else if (auto CI = dyn_cast<CallInst>(cur)) {
+        Function *called = getFunctionFromCall(CI);
+        if (called && isDeallocationFunction(*called, TLI)) {
+          stores.insert(CI);
+          continue;
+        }
+        if (called && called->getName() == "julia.write_barrier") {
+          stores.insert(CI);
+          continue;
+        }
+
+        promotable = false;
+        size_t idx = 0;
+#if LLVM_VERSION_MAJOR >= 14
+        for (auto &arg : CI->args())
+#else
+        for (auto &arg : CI->arg_operands())
+#endif
+        {
+          if (arg != prev) {
+            idx++;
+            continue;
+          }
+          auto F = CI->getCalledFunction();
+          auto TT = TR.query(prev)[{-1, -1}];
+          // If it either could capture, or could have a int/pointer written to
+          // it it is not promotable
+#if LLVM_VERSION_MAJOR >= 8
+          if (CI->doesNotCapture(idx))
+#else
+          if (CI->dataOperandHasImpliedAttr(idx, Attribute::NoCapture) ||
+              (F && F->hasParamAttribute(idx, Attribute::NoCapture)))
+#endif
+          {
+            if (TT.isFloat()) {
+              // all floats ok
+            }
+#if LLVM_VERSION_MAJOR >= 8
+            else if (CI->onlyReadsMemory(idx))
+#else
+            else if (CI->dataOperandHasImpliedAttr(idx, Attribute::ReadOnly) ||
+                     CI->dataOperandHasImpliedAttr(idx, Attribute::ReadNone) ||
+                     (F && (F->hasParamAttribute(idx, Attribute::ReadOnly) ||
+                            F->hasParamAttribute(idx, Attribute::ReadNone))))
+#endif
+            {
+              // if only reading memory, ok to duplicate in forward /
+              // reverse if it is a stack or GC allocation.
+              // Said memory will still be shadow initialized.
+              Function *originCall = getFunctionFromCall(V);
+              StringRef funcName = "";
+              if (originCall)
+                funcName = called->getName();
+              if (hasMetadata(V, "enzyme_fromstack") ||
+                  funcName == "jl_alloc_array_1d" ||
+                  funcName == "jl_alloc_array_2d" ||
+                  funcName == "jl_alloc_array_3d" ||
+                  funcName == "jl_array_copy" ||
+                  funcName == "julia.gc_alloc_obj") {
+                primalInitializationOfShadow = true;
+              } else {
+                shadowpromotable = false;
+              }
+            } else {
+              shadowpromotable = false;
+            }
+            break;
+          } else {
+            shadowpromotable = false;
+          }
+          idx++;
+        }
+
+      } else {
+        promotable = false;
+        shadowpromotable = false;
+      }
+    }
+
+    if (!shadowpromotable)
+      return;
+    backwardsOnlyShadows[V] =
+        std::make_pair(stores, primalInitializationOfShadow);
+
+    if (!promotable)
+      return;
+
+    SmallPtrSet<LoadInst *, 1> rematerializable;
+
+    Loop *outer = nullptr;
+    bool set = false;
+    for (auto S : stores) {
+      Loop *L = OrigLI.getLoopFor(S->getParent());
+      if (!set) {
+        outer = L;
+      } else {
+        if (outer == nullptr || L == nullptr) {
+          outer = nullptr;
+        } else {
+          Loop *anc = nullptr;
+          for (Loop *L1 = L; L1; L1 = L1->getParentLoop())
+            for (Loop *L2 = outer; L2; L2 = L2->getParentLoop()) {
+              if (L1 == L2) {
+                anc = L1;
+                goto found;
+              }
+            }
+        found:;
+          outer = anc;
+        }
+      }
+    }
+
+    // TODO ensure a lifetime.start is between the loop header stand and all
+    // stores
+    outer = nullptr;
+
+    for (auto LI : loads) {
+      // Is there a store which could occur after the load.
+      // In other words
+      if (mayExecuteAfter(LI, stores, outer)) {
+        continue;
+      }
+      rematerializable.insert(LI);
+    }
+    if (rematerializable.size() == loads.size()) {
+      rematerializableAllocations[V] = std::make_pair(loads, stores);
+    }
+  }
+
   void computeGuaranteedFrees(
       const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable,
       TypeResults &TR) {
+    SmallPtrSet<CallInst *, 2> allocsToPromote;
     for (auto &BB : *oldFunc) {
       if (oldUnreachable.count(&BB))
         continue;
@@ -560,20 +772,30 @@ public:
           }
         }
         if (isAllocationFunction(*called, TLI)) {
+          allocsToPromote.insert(CI);
           if (hasMetadata(CI, "enzyme_fromstack")) {
             allocationsWithGuaranteedFree[CI].insert(CI);
           }
-          // TODO compute if an only load/store (non capture)
-          // allocaion by traversing its users. If so, mark
-          // all of its load/stores, as now the loads can
-          // potentially be rematerialized without a cache
-          // of the allocation, but the operands of all stores.
-          // This info needs to be provided to minCutCache
-          // the derivative of store needs to redo the store,
-          // isValueNeededInReverse needs to know to preserve the
-          // store operands in this case, etc
+          auto funcName = called->getName();
+          if (funcName == "jl_alloc_array_1d" ||
+              funcName == "jl_alloc_array_2d" ||
+              funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+              funcName == "julia.gc_alloc_obj") {
+          }
         }
       }
+    }
+    for (CallInst *V : allocsToPromote) {
+      // TODO compute if an only load/store (non capture)
+      // allocaion by traversing its users. If so, mark
+      // all of its load/stores, as now the loads can
+      // potentially be rematerialized without a cache
+      // of the allocation, but the operands of all stores.
+      // This info needs to be provided to minCutCache
+      // the derivative of store needs to redo the store,
+      // isValueNeededInReverse needs to know to preserve the
+      // store operands in this case, etc
+      computeForwardingProperties(V, TR);
     }
   }
 
@@ -713,6 +935,32 @@ public:
     auto found = invertedPointers.find(orig);
     PHINode *placeholder = cast<PHINode>(&*found->second);
 
+    // If rematerializable allocations and split mode, we can
+    // simply elect to build the entire piece in the reverse
+    // since it should be possible to perform any shadow stores
+    // of pointers (from rematerializable property) and it does
+    // not escape the function scope (lest it not be
+    // rematerializable) so all input derivatives remain zero.
+    bool backwardsShadow = false;
+    bool forwardsShadow = true;
+    {
+      auto found = backwardsOnlyShadows.find(orig);
+      if (found != backwardsOnlyShadows.end()) {
+        backwardsShadow = true;
+        forwardsShadow = found->second.second;
+      }
+    }
+
+    if (!forwardsShadow && mode == DerivativeMode::ReverseModePrimal) {
+      // Needs a stronger replacement check/assertion.
+      Value *replacement = UndefValue::get(placeholder->getType());
+      replaceAWithB(placeholder, replacement);
+      invertedPointers.erase(found);
+      invertedPointers.insert(
+          std::make_pair(orig, InvertedPointerVH(this, replacement)));
+      erase(placeholder);
+      return replacement;
+    }
     assert(placeholder->getParent()->getParent() == newFunc);
     placeholder->setName("");
     IRBuilder<> bb(placeholder);
@@ -745,7 +993,9 @@ public:
       bb.SetInsertPoint(placeholder);
       Value *anti = placeholder;
 
-      if (mode != DerivativeMode::ReverseModeGradient) {
+      if (mode == DerivativeMode::ReverseModeCombined ||
+          (mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
+          (mode == DerivativeMode::ReverseModeGradient && backwardsShadow)) {
         anti = shadowHandlers[Fn->getName().str()](bb, orig, args);
 
         invertedPointers.erase(found);
@@ -758,7 +1008,8 @@ public:
       if (auto inst = dyn_cast<Instruction>(anti))
         bb.SetInsertPoint(inst);
 
-      anti = cacheForReverse(bb, anti, idx);
+      if (!backwardsShadow)
+        anti = cacheForReverse(bb, anti, idx);
       invertedPointers.insert(
           std::make_pair(orig, InvertedPointerVH(this, anti)));
       return anti;
@@ -831,11 +1082,34 @@ public:
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
-    anti = cacheForReverse(bb, anti, idx);
+    if (!backwardsShadow)
+      anti = cacheForReverse(bb, anti, idx);
+    else {
+      if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
+        AllocaInst *replacement =
+            bb.CreateAlloca(Type::getInt8Ty(orig->getContext()),
+                            getNewFromOriginal(orig->getArgOperand(0)));
+        replacement->takeName(anti);
+        auto Alignment =
+            cast<ConstantInt>(
+                cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
+                ->getLimitedValue();
+#if LLVM_VERSION_MAJOR >= 10
+        replacement->setAlignment(Align(Alignment));
+#else
+        replacement->setAlignment(Alignment);
+#endif
+        replaceAWithB(cast<Instruction>(anti), replacement);
+        erase(cast<Instruction>(anti));
+        anti = replacement;
+      }
+    }
     invertedPointers.insert(
         std::make_pair((const Value *)orig, InvertedPointerVH(this, anti)));
 
-    if (tape == nullptr) {
+    if (mode == DerivativeMode::ReverseModeCombined ||
+        (mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
+        (mode == DerivativeMode::ReverseModeGradient && backwardsShadow)) {
       if (Fn->getName() == "julia.gc_alloc_obj") {
         Type *tys[] = {
             PointerType::get(StructType::get(orig->getContext()), 10)};
@@ -2130,6 +2404,11 @@ public:
          Arch == Triple::amdgcn)) {
       Atomic = false;
     }
+    // Moreover no need to do atomic on local shadows regardless since they are
+    // not captured/escaping and created in this function. This assumes that
+    // all additional parallelism in this function is outlined.
+    if (backwardsOnlyShadows.find(TmpOrig) != backwardsOnlyShadows.end())
+      Atomic = false;
 
     if (Atomic) {
       // For amdgcn constant AS is 4 and if the primal is in it we need to cast

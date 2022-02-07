@@ -130,6 +130,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   }
 
   if (auto inst = dyn_cast<Instruction>(val)) {
+    if (inversionAllocs && inst->getParent() == inversionAllocs) {
+      return val;
+    }
     // if (inst->getParent() == &newFunc->getEntryBlock()) {
     //  return inst;
     //}
@@ -323,8 +326,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
   })
 
   if (isa<Argument>(val) || isa<Constant>(val)) {
-    return val;
-  } else if (isa<AllocaInst>(val)) {
     return val;
 #if LLVM_VERSION_MAJOR >= 10
   } else if (auto op = dyn_cast<FreezeInst>(val)) {
@@ -4381,7 +4382,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                   LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                                     ctx, forceSingleIter);
 
-                  if (auto found = findInMap(scopeMap, (Value *)AI)) {
+                  if (auto found = findInMap(scopeMap, (Value *)liobj)) {
                     cache = found->first;
                   } else {
                     // if freeing reverseblocks must exist
@@ -5474,6 +5475,13 @@ void GradientUtils::computeMinCache(
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
+          if (auto SI = dyn_cast<StoreInst>(V2)) {
+            for (auto pair : rematerializableAllocations) {
+              if (pair.second.second.count(SI)) {
+                todo.push_back(pair.first);
+              }
+            }
+          }
           todo.push_back(V2);
         }
       }
@@ -5481,7 +5489,7 @@ void GradientUtils::computeMinCache(
 
     SmallPtrSet<Value *, 5> MinReq;
     minCut(oldFunc->getParent()->getDataLayout(), OrigLI, Recomputes,
-           Intermediates, Required, MinReq);
+           Intermediates, Required, MinReq, rematerializableAllocations);
     SmallPtrSet<Value *, 5> NeedGraph;
     for (Value *V : MinReq)
       NeedGraph.insert(V);

@@ -3464,19 +3464,6 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     // All these are always valid => no direction check
     // CONSIDER(malloc)
     // TODO consider handling other allocation functions integer inputs
-    if (isAllocationFunction(*ci, TLI)) {
-      size_t Idx = 0;
-      for (auto &Arg : ci->args()) {
-        if (Arg.getType()->isIntegerTy()) {
-          updateAnalysis(call.getOperand(Idx),
-                         TypeTree(BaseType::Integer).Only(-1), &call);
-        }
-        Idx++;
-      }
-      assert(ci->getReturnType()->isPointerTy());
-      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
-      return;
-    }
     if (funcName.startswith("_ZN3std2io5stdio6_print") ||
         funcName.startswith("_ZN4core3fmt")) {
       return;
@@ -3864,9 +3851,30 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     if (funcName == "malloc") {
-      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
+      auto ptr = TypeTree(BaseType::Pointer);
+      if (auto CI = dyn_cast<ConstantInt>(call.getOperand(0))) {
+        auto &DL = call.getParent()->getParent()->getParent()->getDataLayout();
+        auto LoadSize = CI->getZExtValue();
+        // Only propagate mappings in range that aren't "Anything" into the
+        // pointer
+        ptr |= getAnalysis(&call).Lookup(LoadSize, DL);
+      }
+      updateAnalysis(&call, ptr.Only(-1), &call);
       updateAnalysis(call.getOperand(0), TypeTree(BaseType::Integer).Only(-1),
                      &call);
+      return;
+    }
+    if (isAllocationFunction(*ci, TLI)) {
+      size_t Idx = 0;
+      for (auto &Arg : ci->args()) {
+        if (Arg.getType()->isIntegerTy()) {
+          updateAnalysis(call.getOperand(Idx),
+                         TypeTree(BaseType::Integer).Only(-1), &call);
+        }
+        Idx++;
+      }
+      assert(ci->getReturnType()->isPointerTy());
+      updateAnalysis(&call, TypeTree(BaseType::Pointer).Only(-1), &call);
       return;
     }
     if (funcName == "malloc_usable_size" || funcName == "malloc_size" ||
