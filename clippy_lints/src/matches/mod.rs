@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{is_wild, meets_msrv, msrvs};
-use if_chain::if_chain;
-use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
@@ -18,6 +16,7 @@ mod match_wild_enum;
 mod match_wild_err_arm;
 mod overlapping_arms;
 mod redundant_pattern_match;
+mod rest_pat_in_fully_bound_struct;
 mod single_match;
 
 declare_clippy_lint! {
@@ -640,26 +639,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
-        if_chain! {
-            if !pat.span.from_expansion();
-            if let PatKind::Struct(QPath::Resolved(_, path), fields, true) = pat.kind;
-            if let Some(def_id) = path.res.opt_def_id();
-            let ty = cx.tcx.type_of(def_id);
-            if let ty::Adt(def, _) = ty.kind();
-            if def.is_struct() || def.is_union();
-            if fields.len() == def.non_enum_variant().fields.len();
-
-            then {
-                span_lint_and_help(
-                    cx,
-                    REST_PAT_IN_FULLY_BOUND_STRUCTS,
-                    pat.span,
-                    "unnecessary use of `..` pattern in struct binding. All fields were already bound",
-                    None,
-                    "consider removing `..` from this binding",
-                );
-            }
-        }
+        rest_pat_in_fully_bound_struct::check(cx, pat);
     }
 
     extract_msrv_attr!(LateContext);
