@@ -575,7 +575,16 @@ impl Rewrite for ast::GenericParam {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
         match self.attrs.rewrite(context, shape) {
-            Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
+            Some(ref rw) if !rw.is_empty() => {
+                result.push_str(rw);
+                // When rewriting generic params, an extra newline should be put
+                // if the attributes end with a doc comment
+                if let Some(true) = self.attrs.last().map(|a| a.is_doc_comment()) {
+                    result.push_str(&shape.indent.to_string_with_newline(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
             _ => (),
         }
 
