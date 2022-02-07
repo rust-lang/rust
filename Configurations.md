@@ -930,6 +930,8 @@ fn add_one(x: i32) -> i32 {
 
 Format generated files. A file is considered generated
 if any of the first five lines contain a `@generated` comment marker.
+By default, generated files are reformatted, i. e. `@generated` marker is ignored.
+This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`

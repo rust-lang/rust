@@ -61,6 +61,7 @@ Note this hit the rustup distributions prior to the v1.4.38 release as part of a
 
 - New `One` variant added to `imports_granularity` configuration option which can be used to reformat all imports into a single use statement [#4669](https://github.com/rust-lang/rustfmt/issues/4669)
 - rustfmt will now skip files that are annotated with `@generated` at the top of the file [#3958](https://github.com/rust-lang/rustfmt/issues/3958)
+  if `format_generated_files` option is set to `false` (by default `@generated` files are formatted)
 - New configuration option `hex_literal_case` that allows user to control the casing utilized for hex literals [PR #4903](https://github.com/rust-lang/rustfmt/pull/4903)
 
 See the section on the configuration site for more information
