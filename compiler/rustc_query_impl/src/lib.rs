@@ -28,9 +28,6 @@ mod plumbing;
 pub use plumbing::QueryCtxt;
 use rustc_query_system::query::*;
 
-mod stats;
-pub use self::stats::print_stats;
-
 mod keys;
 use keys::Key;
 
