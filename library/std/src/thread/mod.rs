@@ -267,6 +267,12 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
+    // The spawned thread's priority value
+    #[cfg(target_os = "horizon")]
+    priority: Option<i32>,
+    // The spawned thread's CPU affinity value
+    #[cfg(target_os = "horizon")]
+    affinity: Option<i32>,
 }
 
 impl Builder {
@@ -290,7 +296,14 @@ impl Builder {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
-        Builder { name: None, stack_size: None }
+        Builder {
+            name: None,
+            stack_size: None,
+            #[cfg(target_os = "horizon")]
+            priority: None,
+            #[cfg(target_os = "horizon")]
+            affinity: None,
+        }
     }
 
     /// Names the thread-to-be. Currently the name is used for identification
@@ -343,6 +356,58 @@ impl Builder {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
+        self
+    }
+
+    /// **armv6k-nintendo-3ds specific!**
+    ///
+    /// Sets the priority level for the new thread.
+    ///
+    /// Low values gives the thread higher priority. For userland apps, this has
+    /// to be within the range of 0x18 to 0x3F inclusive. The main thread usually
+    /// has a priority of 0x30, but not always.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new().priority(0x30);
+    /// ```
+    #[cfg(target_os = "horizon")]
+    #[unstable(feature = "horizon_thread_ext", issue = "none")]
+    pub fn priority(mut self, priority: i32) -> Builder {
+        self.priority = Some(priority);
+        self
+    }
+
+    /// **armv6k-nintendo-3ds specific!**
+    ///
+    /// Sets the ID of the processor the thread should be run on.
+    ///
+    /// Processor IDs are labeled starting from 0. On Old3DS it must be <2, and
+    /// on New3DS it must be <4. Pass -1 to execute the thread on all CPUs and
+    /// -2 to execute the thread on the default CPU (set in the application's Exheader).
+    ///
+    /// *Processor #0 is the application core. It is always possible to create a thread on this
+    /// core.
+    /// *Processor #1 is the system core. If the CPU time limit is set, it is possible
+    /// to create a single thread on this core.
+    /// *Processor #2 is New3DS exclusive. Normal applications can create threads on
+    /// this core if the exheader kernel flags bitmask has 0x2000 set.
+    /// *Processor #3 is New3DS exclusive. Normal applications cannot create threads
+    /// on this core.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::thread;
+    ///
+    /// // Spawn on the application core
+    /// let builder = thread::Builder::new().affinity(0);
+    /// ```
+    #[cfg(target_os = "horizon")]
+    #[unstable(feature = "horizon_thread_ext", issue = "none")]
+    pub fn affinity(mut self, affinity: i32) -> Builder {
+        self.affinity = Some(affinity);
         self
     }
 
@@ -470,11 +535,19 @@ impl Builder {
         T: Send + 'a,
         'scope: 'a,
     {
-        let Builder { name, stack_size } = self;
+        let stack_size = self.stack_size.unwrap_or_else(thread::min_stack);
 
-        let stack_size = stack_size.unwrap_or_else(thread::min_stack);
+        // If no priority value is specified, spawn with the same
+        // priority as the parent thread
+        #[cfg(target_os = "horizon")]
+        let priority = self.priority.unwrap_or_else(imp::current_priority);
 
-        let my_thread = Thread::new(name.map(|name| {
+        // If no affinity is specified, spawn on the default core (determined by
+        // the application's Exheader)
+        #[cfg(target_os = "horizon")]
+        let affinity = self.affinity.unwrap_or(-2);
+
+        let my_thread = Thread::new(self.name.map(|name| {
             CString::new(name).expect("thread name may not contain interior null bytes")
         }));
         let their_thread = my_thread.clone();
@@ -531,6 +604,10 @@ impl Builder {
                     mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
                         Box::new(main),
                     ),
+                    #[cfg(target_os = "horizon")]
+                    priority,
+                    #[cfg(target_os = "horizon")]
+                    affinity,
                 )?
             },
             thread: my_thread,

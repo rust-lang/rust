@@ -48,7 +48,12 @@ unsafe impl Sync for Thread {}
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
+    pub unsafe fn new(
+        stack: usize,
+        p: Box<dyn FnOnce()>,
+        #[cfg(target_os = "horizon")] priority: i32,
+        #[cfg(target_os = "horizon")] affinity: i32,
+    ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
@@ -82,6 +87,13 @@ impl Thread {
                     assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
                 }
             };
+        }
+
+        #[cfg(target_os = "horizon")]
+        {
+            // Set the priority and affinity values
+            assert_eq!(libc::pthread_attr_setpriority(&mut attr, priority), 0);
+            assert_eq!(libc::pthread_attr_setaffinity(&mut attr, affinity), 0);
         }
 
         let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
@@ -200,7 +212,8 @@ impl Thread {
         target_os = "l4re",
         target_os = "emscripten",
         target_os = "redox",
-        target_os = "vxworks"
+        target_os = "vxworks",
+        target_os = "horizon"
     ))]
     pub fn set_name(_name: &CStr) {
         // Newlib, Emscripten, and VxWorks have no way to set a thread name.
@@ -269,6 +282,12 @@ impl Drop for Thread {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
     }
+}
+
+/// Returns the current thread's priority value.
+#[cfg(target_os = "horizon")]
+pub(crate) fn current_priority() -> i32 {
+    unsafe { libc::pthread_getpriority() }
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
