@@ -484,12 +484,12 @@ impl Convertor {
     fn new(
         node: &SyntaxNode,
         global_offset: TextSize,
-        replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-        append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        mut replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        mut append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     ) -> Convertor {
         let range = node.text_range();
         let mut preorder = node.preorder_with_tokens();
-        let (first, synthetic) = Self::next_token(&mut preorder, &replace, &append);
+        let (first, synthetic) = Self::next_token(&mut preorder, &mut replace, &mut append);
         Convertor {
             id_alloc: { TokenIdAlloc { map: TokenMap::default(), global_offset, next_id: 0 } },
             current: first,
@@ -504,19 +504,18 @@ impl Convertor {
 
     fn next_token(
         preorder: &mut PreorderWithTokens,
-        replace: &FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-        append: &FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        replace: &mut FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+        append: &mut FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     ) -> (Option<SyntaxToken>, Vec<SyntheticToken>) {
         while let Some(ev) = preorder.next() {
             let ele = match ev {
                 WalkEvent::Enter(ele) => ele,
                 WalkEvent::Leave(SyntaxElement::Node(node)) => {
-                    if let Some(v) = append.get(&node) {
+                    if let Some(mut v) = append.remove(&node) {
                         eprintln!("after {:?}, appending {:?}", node, v);
                         if !v.is_empty() {
-                            let mut reversed = v.clone();
-                            reversed.reverse();
-                            return (None, reversed);
+                            v.reverse();
+                            return (None, v);
                         }
                     }
                     continue;
@@ -526,13 +525,12 @@ impl Convertor {
             match ele {
                 SyntaxElement::Token(t) => return (Some(t), Vec::new()),
                 SyntaxElement::Node(node) => {
-                    if let Some(v) = replace.get(&node) {
+                    if let Some(mut v) = replace.remove(&node) {
                         preorder.skip_subtree();
                         eprintln!("replacing {:?} by {:?}", node, v);
                         if !v.is_empty() {
-                            let mut reversed = v.clone();
-                            reversed.reverse();
-                            return (None, reversed);
+                            v.reverse();
+                            return (None, v);
                         }
                     }
                 }
@@ -603,7 +601,7 @@ impl TokenConvertor for Convertor {
         if let Some(synth_token) = self.current_synthetic.pop() {
             if self.current_synthetic.is_empty() {
                 let (new_current, new_synth) =
-                    Self::next_token(&mut self.preorder, &self.replace, &self.append);
+                    Self::next_token(&mut self.preorder, &mut self.replace, &mut self.append);
                 self.current = new_current;
                 self.current_synthetic = new_synth;
             }
@@ -616,7 +614,7 @@ impl TokenConvertor for Convertor {
             return None;
         }
         let (new_current, new_synth) =
-            Self::next_token(&mut self.preorder, &self.replace, &self.append);
+            Self::next_token(&mut self.preorder, &mut self.replace, &mut self.append);
         self.current = new_current;
         self.current_synthetic = new_synth;
         let token = if curr.kind().is_punct() {
