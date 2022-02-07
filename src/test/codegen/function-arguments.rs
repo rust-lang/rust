@@ -3,6 +3,8 @@
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 
+use std::mem::MaybeUninit;
+
 pub struct S {
   _field: [i32; 8],
 }
@@ -14,6 +16,12 @@ pub struct UnsafeInner {
 // CHECK: noundef zeroext i1 @boolean(i1 noundef zeroext %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
+  x
+}
+
+// CHECK: i8 @maybeuninit_boolean(i8 %x)
+#[no_mangle]
+pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
   x
 }
 
