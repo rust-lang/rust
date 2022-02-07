@@ -10,6 +10,12 @@ fn main() {
 
     let _: Option<(i8,)> = Some();
     //~^ ERROR this enum variant takes 1 argument but 0 arguments were supplied
+
+    let _: Option<(i32,)> = Some(5_usize);
+    //~^ ERROR mismatched types
+
+    let _: Option<(i32,)> = Some((5_usize));
+    //~^ ERROR mismatched types
 }
 
 fn int_bool(_: (i32, bool)) {
