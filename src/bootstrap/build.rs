@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=RUSTC");
+    println!("cargo:rerun-if-env-changed=PATH");
     println!("cargo:rustc-env=BUILD_TRIPLE={}", env::var("HOST").unwrap());
 
     // This may not be a canonicalized path.
