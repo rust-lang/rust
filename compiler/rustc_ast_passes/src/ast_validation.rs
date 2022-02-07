@@ -15,7 +15,9 @@ use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::{MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY};
+use rustc_session::lint::builtin::{
+    DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
+};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
@@ -123,11 +125,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_gat_where(
-        &self,
+        &mut self,
+        id: NodeId,
         before_predicates: &[WherePredicate],
         where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
     ) {
-        let sess = &self.session;
         if !before_predicates.is_empty() {
             let mut state = State::new();
             if !where_clauses.1.0 {
@@ -145,14 +147,16 @@ impl<'a> AstValidator<'a> {
                 state.print_where_predicate(p);
             }
             let suggestion = state.s.eof();
-            sess.struct_span_err(where_clauses.0.1, "where clause not allowed here")
-                .span_suggestion(
+            self.lint_buffer.buffer_lint_with_diagnostic(
+                DEPRECATED_WHERE_CLAUSE_LOCATION,
+                id,
+                where_clauses.0.1,
+                "where clause not allowed here",
+                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
                     where_clauses.1.1.shrink_to_hi(),
-                    "move it here",
                     suggestion,
-                    Applicability::MachineApplicable,
-                )
-                .emit();
+                ),
+            );
         }
     }
 
@@ -1568,6 +1572,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.check_type_no_bounds(bounds, "`impl`s");
                     if ty.is_some() {
                         self.check_gat_where(
+                            item.id,
                             generics.where_clause.predicates.split_at(*where_predicates_split).0,
                             *where_clauses,
                         );

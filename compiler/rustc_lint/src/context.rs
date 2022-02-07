@@ -818,6 +818,14 @@ pub trait LintContext: Sized {
                         }
                     }
                 },
+                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {
+                    db.span_suggestion(
+                        new_span,
+                        "move it here",
+                        suggestion,
+                        Applicability::MachineApplicable,
+                    );
+                },
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
