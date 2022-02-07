@@ -26,7 +26,7 @@ jobs:
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
           sudo apt-add-repository "deb http://apt.llvm.org/`lsb_release -c | cut -f2`/ llvm-toolchain-`lsb_release -c | cut -f2`-${{ matrix.llvm }} main" || true
           sudo apt-get install -y python-pip autoconf cmake gcc g++ libtool gfortran libblas-dev llvm-${{ matrix.llvm }}-dev clang-${{ matrix.llvm }} libeigen3-dev libboost-dev
-          sudo pip install lit
+          sudo pip install lit pathlib
           sudo touch /usr/lib/llvm-${{ matrix.llvm }}/bin/yaml-bench
           if [[ '${{ matrix.llvm }}' == '13' ]]; then
             sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
