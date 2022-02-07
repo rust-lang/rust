@@ -1221,9 +1221,9 @@ def bootstrap(help_triggered):
     build.verbose = args.verbose
     build.clean = args.clean
 
-    # Read from `RUST_BOOTSTRAP_CONFIG`, then `--config`, then fallback to `config.toml` (if it
+    # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then fallback to `config.toml` (if it
     # exists).
-    toml_path = os.getenv('RUST_BOOTSTRAP_CONFIG') or args.config
+    toml_path = args.config or os.getenv('RUST_BOOTSTRAP_CONFIG')
     if not toml_path and os.path.exists('config.toml'):
         toml_path = 'config.toml'
 
