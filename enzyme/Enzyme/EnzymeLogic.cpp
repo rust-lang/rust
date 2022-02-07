@@ -3266,9 +3266,14 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                 "return or non-constant");
   }
 
-  if (key.todiff->empty() && CustomErrorHandler) {
-    std::string s = ("No derivative found for " + key.todiff->getName()).str();
-    CustomErrorHandler(s.c_str());
+  if (key.todiff->empty()) {
+    std::string str =
+        ("No derivative found for " + key.todiff->getName()).str();
+    if (CustomErrorHandler) {
+      CustomErrorHandler(str.c_str());
+    } else {
+      llvm_unreachable(str.c_str());
+    }
   }
   assert(!key.todiff->empty());
 

@@ -4652,6 +4652,11 @@ public:
 
   bool handleBLAS(llvm::CallInst &call, Function *called, StringRef funcName,
                   const std::map<Argument *, bool> &uncacheable_args) {
+    // Forward Mode not handled yet
+    assert(Mode != DerivativeMode::ForwardMode &&
+           Mode != DerivativeMode::ForwardModeSplit);
+    // Vector Mode not handled yet
+    assert(gutils->getWidth() == 1);
     CallInst *const newCall = cast<CallInst>(gutils->getNewFromOriginal(&call));
     IRBuilder<> BuilderZ(newCall);
     BuilderZ.setFastMathFlags(getFast());
@@ -4671,9 +4676,6 @@ public:
       }
       Type *castvals[2] = {call.getArgOperand(1)->getType(),
                            call.getArgOperand(3)->getType()};
-      auto *cachetype =
-          StructType::get(call.getContext(), ArrayRef<Type *>(castvals));
-      Value *undefinit = UndefValue::get(cachetype);
       Value *cacheval;
       auto in_arg = call.getCalledFunction()->arg_begin();
       in_arg++;
@@ -4694,15 +4696,16 @@ public:
         if (xcache) {
           auto dmemcpy =
               getOrInsertMemcpyStrided(*gutils->oldFunc->getParent(),
-                                       PointerType::getUnqual(innerType), 0, 0);
+                                       cast<PointerType>(castvals[0]), 0, 0);
           auto malins = CallInst::CreateMalloc(
               gutils->getNewFromOriginal(&call), size->getType(), innerType,
-              size, call.getArgOperand(0), nullptr, "");
-          arg1 =
-              BuilderZ.CreateBitCast(malins, call.getArgOperand(1)->getType());
+              size, gutils->getNewFromOriginal(call.getArgOperand(0)), nullptr,
+              "");
+          arg1 = BuilderZ.CreateBitCast(malins, castvals[0]);
           Value *args[4] = {arg1,
                             gutils->getNewFromOriginal(call.getArgOperand(1)),
-                            call.getArgOperand(0), call.getArgOperand(2)};
+                            gutils->getNewFromOriginal(call.getArgOperand(0)),
+                            gutils->getNewFromOriginal(call.getArgOperand(2))};
 
           BuilderZ.CreateCall(
               dmemcpy, args,
@@ -4715,15 +4718,16 @@ public:
         if (ycache) {
           auto dmemcpy =
               getOrInsertMemcpyStrided(*gutils->oldFunc->getParent(),
-                                       PointerType::getUnqual(innerType), 0, 0);
+                                       cast<PointerType>(castvals[1]), 0, 0);
           auto malins = CallInst::CreateMalloc(
               gutils->getNewFromOriginal(&call), size->getType(), innerType,
-              size, call.getArgOperand(0), nullptr, "");
-          arg2 =
-              BuilderZ.CreateBitCast(malins, call.getArgOperand(3)->getType());
+              size, gutils->getNewFromOriginal(call.getArgOperand(0)), nullptr,
+              "");
+          arg2 = BuilderZ.CreateBitCast(malins, castvals[1]);
           Value *args[4] = {arg2,
                             gutils->getNewFromOriginal(call.getArgOperand(3)),
-                            call.getArgOperand(0), call.getArgOperand(4)};
+                            gutils->getNewFromOriginal(call.getArgOperand(0)),
+                            gutils->getNewFromOriginal(call.getArgOperand(4))};
           BuilderZ.CreateCall(
               dmemcpy, args,
               gutils->getInvertedBundles(&call,
@@ -4733,7 +4737,10 @@ public:
                                          BuilderZ, /*lookup*/ false));
         }
         if (xcache && ycache) {
-          auto valins1 = BuilderZ.CreateInsertValue(undefinit, arg1, 0);
+          Type *cachetype =
+              StructType::get(call.getContext(), ArrayRef<Type *>(castvals));
+          auto valins1 =
+              BuilderZ.CreateInsertValue(UndefValue::get(cachetype), arg1, 0);
           cacheval = BuilderZ.CreateInsertValue(valins1, arg2, 1);
         } else if (xcache)
           cacheval = arg1;
@@ -4758,6 +4765,16 @@ public:
           if (Mode == DerivativeMode::ReverseModeGradient &&
               (!gutils->isConstantValue(call.getArgOperand(1)) ||
                !gutils->isConstantValue(call.getArgOperand(3)))) {
+            Type *cachetype = nullptr;
+            if (xcache && ycache)
+              cachetype = StructType::get(call.getContext(),
+                                          ArrayRef<Type *>(castvals));
+            else if (xcache)
+              cachetype = castvals[0];
+            else {
+              assert(ycache);
+              cachetype = castvals[1];
+            }
             cacheval = BuilderZ.CreatePHI(cachetype, 0);
           }
           cacheval =
