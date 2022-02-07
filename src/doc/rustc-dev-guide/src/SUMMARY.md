@@ -121,6 +121,7 @@
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
     - [Opaque Types](./opaque-types-type-alias-impl-trait.md)
+        - [Inference details](./opaque-types-type-alias-impl-trait-inference.md)
 - [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
 - [MIR dataflow](./mir/dataflow.md)
 - [Drop elaboration](./mir/drop-elaboration.md)
