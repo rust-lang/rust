@@ -1,6 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{is_wild, meets_msrv, msrvs};
-use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat, PatKind};
+use clippy_utils::{meets_msrv, msrvs};
+use rustc_hir::{Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -18,6 +17,7 @@ mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
 mod single_match;
+mod wild_in_or_pats;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -621,7 +621,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             match_wild_err_arm::check(cx, ex, arms);
             match_wild_enum::check(cx, ex, arms);
             match_as_ref::check(cx, ex, arms, expr);
-            check_wild_in_or_pats(cx, arms);
+            wild_in_or_pats::check(cx, arms);
 
             if self.infallible_destructuring_match_linted {
                 self.infallible_destructuring_match_linted = false;
@@ -643,22 +643,4 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     extract_msrv_attr!(LateContext);
-}
-
-fn check_wild_in_or_pats(cx: &LateContext<'_>, arms: &[Arm<'_>]) {
-    for arm in arms {
-        if let PatKind::Or(fields) = arm.pat.kind {
-            // look for multiple fields in this arm that contains at least one Wild pattern
-            if fields.len() > 1 && fields.iter().any(is_wild) {
-                span_lint_and_help(
-                    cx,
-                    WILDCARD_IN_OR_PATTERNS,
-                    arm.pat.span,
-                    "wildcard pattern covers any other pattern as it will match anyway",
-                    None,
-                    "consider handling `_` separately",
-                );
-            }
-        }
-    }
 }
