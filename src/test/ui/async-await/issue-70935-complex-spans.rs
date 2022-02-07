@@ -8,8 +8,8 @@ async fn baz<T>(_c: impl FnMut() -> T) where T: Future<Output=()> {
 }
 
 fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
-    //~^ ERROR: future cannot be sent between threads safely
     async move {
+        //~^ ERROR: future cannot be sent between threads safely
         baz(|| async{
             foo(tx.clone());
         }).await;

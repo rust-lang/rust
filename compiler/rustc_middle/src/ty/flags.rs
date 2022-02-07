@@ -265,6 +265,10 @@ impl FlagComputation {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 self.add_ty(ty);
             }
+            ty::PredicateKind::OpaqueType(opaque, ty) => {
+                self.add_ty(opaque);
+                self.add_ty(ty);
+            }
         }
     }
 

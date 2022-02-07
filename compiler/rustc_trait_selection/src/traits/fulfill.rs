@@ -397,6 +397,9 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
+                ty::PredicateKind::OpaqueType(..) => {
+                    todo!("{:#?}", obligation);
+                }
             },
             Some(pred) => match pred {
                 ty::PredicateKind::Trait(data) => {
@@ -641,6 +644,20 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 }
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
+                }
+                ty::PredicateKind::OpaqueType(a, b) => {
+                    match self.selcx.infcx().handle_opaque_type(
+                        a,
+                        b,
+                        &obligation.cause,
+                        obligation.param_env,
+                    ) {
+                        Ok(value) => ProcessResult::Changed(mk_pending(value.obligations)),
+                        Err(err) => ProcessResult::Error(FulfillmentErrorCode::CodeSubtypeError(
+                            ExpectedFound::new(true, a, b),
+                            err,
+                        )),
+                    }
                 }
             },
         }

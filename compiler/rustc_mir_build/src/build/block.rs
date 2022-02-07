@@ -1,8 +1,8 @@
 use crate::build::matches::ArmHasGuard;
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
-use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::{mir::*, ty};
 use rustc_session::lint::builtin::UNSAFE_OP_IN_UNSAFE_FN;
 use rustc_session::lint::Level;
 use rustc_span::Span;
@@ -192,7 +192,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // This return type is usually `()`, unless the block is diverging, in which case the
             // return type is `!`. For the unit type, we need to actually return the unit, but in
             // the case of `!`, no return value is required, as the block will never return.
-            if destination_ty.is_unit() {
+            // Opaque types of empty bodies also need this unit assignment, in order to infer that their
+            // type is actually unit. Otherwise there will be no defining use found in the MIR.
+            if destination_ty.is_unit() || matches!(destination_ty.kind(), ty::Opaque(..)) {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)
                 this.cfg.push_assign_unit(block, source_info, destination, this.tcx);

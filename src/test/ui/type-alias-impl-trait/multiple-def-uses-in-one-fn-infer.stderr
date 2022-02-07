@@ -1,0 +1,14 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/multiple-def-uses-in-one-fn-infer.rs:9:1
+   |
+LL | fn g<A, B>() -> (Y<A, B>, Y<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i64`, got `i32`
+   |
+note: previous use here
+  --> $DIR/multiple-def-uses-in-one-fn-infer.rs:9:1
+   |
+LL | fn g<A, B>() -> (Y<A, B>, Y<B, A>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

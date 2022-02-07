@@ -30,6 +30,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -464,9 +465,13 @@ pub struct TypeckResults<'tcx> {
     /// this field will be set to `Some(ErrorReported)`.
     pub tainted_by_errors: Option<ErrorReported>,
 
-    /// All the opaque types that are restricted to concrete types
-    /// by this function.
-    pub concrete_opaque_types: FxHashSet<DefId>,
+    /// All the opaque types that have hidden types set
+    /// by this function. For return-position-impl-trait we also store the
+    /// type here, so that mir-borrowck can figure out hidden types,
+    /// even if they are only set in dead code (which doesn't show up in MIR).
+    /// For type-alias-impl-trait, this map is only used to prevent query cycles,
+    /// so the hidden types are all `None`.
+    pub concrete_opaque_types: VecMap<DefId, Option<Ty<'tcx>>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.

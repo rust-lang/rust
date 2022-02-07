@@ -8,10 +8,10 @@ LL |        println!("{:?}", p);
    |                         - `p` is borrowed here
    |
 note: closure is returned here
-  --> $DIR/borrowck-4.rs:8:14
+  --> $DIR/borrowck-4.rs:15:5
    |
-LL | fn foo () -> impl FnMut()->() {
-   |              ^^^^^^^^^^^^^^^^
+LL |     c
+   |     ^
 help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
    |
 LL |     let mut c = move || {

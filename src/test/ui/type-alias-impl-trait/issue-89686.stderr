@@ -2,18 +2,18 @@ error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as 
   --> $DIR/issue-89686.rs:7:17
    |
 LL | type G<'a, T> = impl Future<Output = ()>;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ expected associated type, found `()`
 ...
 LL |         async move { self.f().await }
-   |                    ------------------ the found `async` block
+   |                    ------------------ the expected `async` block
    |
   ::: $SRC_DIR/core/src/future/mod.rs:LL:COL
    |
 LL | pub const fn from_generator<T>(gen: T) -> impl Future<Output = T::Return>
-   |                                           ------------------------------- the found opaque type
+   |                                           ------------------------------- the expected opaque type
    |
-   = note:    expected unit type `()`
-           found associated type `<impl Future<Output = [async output]> as Future>::Output`
+   = note: expected associated type `<impl Future<Output = [async output]> as Future>::Output`
+                    found unit type `()`
    = help: consider constraining the associated type `<impl Future<Output = [async output]> as Future>::Output` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 

@@ -728,6 +728,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         self.tcx.fold_regions(value, &mut false, |_region, _depth| self.next_nll_region_var(origin))
     }
 
+    #[instrument(level = "debug", skip(self, indices))]
     fn replace_bound_regions_with_nll_infer_vars<T>(
         &self,
         origin: NllRegionVariableOrigin,
@@ -738,22 +739,15 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        debug!(
-            "replace_bound_regions_with_nll_infer_vars(value={:?}, all_outlive_scope={:?})",
-            value, all_outlive_scope,
-        );
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
-            debug!("replace_bound_regions_with_nll_infer_vars: br={:?}", br);
+            debug!(?br);
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope.to_def_id(),
                 bound_region: br.kind,
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
-            debug!(
-                "replace_bound_regions_with_nll_infer_vars: liberated_region={:?} => {:?}",
-                liberated_region, region_vid
-            );
+            debug!(?liberated_region, ?region_vid);
             region_vid
         });
         value
@@ -768,6 +762,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     /// entries for them and store them in the indices map. This code iterates over the complete
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
     /// inputs vector.
+    #[instrument(skip(self, indices))]
     fn replace_late_bound_regions_with_nll_infer_vars(
         &self,
         mir_def_id: LocalDefId,
@@ -779,6 +774,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             debug!("replace_late_bound_regions_with_nll_infer_vars: r={:?}", r);
             if !indices.indices.contains_key(&r) {
                 let region_vid = self.next_nll_region_var(FR);
+                debug!(?region_vid);
                 indices.insert_late_bound_region(r, region_vid.to_region_vid());
             }
         });

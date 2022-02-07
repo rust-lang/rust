@@ -90,6 +90,11 @@ pub fn codegen_fulfill_obligation<'tcx>(
         });
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
+        // We may constrain the hidden types of opaque types in this query, but this is
+        // not information our callers need, as all that information is handled by borrowck
+        // and typeck.
+        drop(infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types());
+
         debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
         Ok(impl_source)
     })

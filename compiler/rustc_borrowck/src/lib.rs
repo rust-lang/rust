@@ -124,8 +124,9 @@ fn mir_borrowck<'tcx>(
 ) -> &'tcx BorrowCheckResult<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def.did.to_def_id()));
+    let hir_owner = tcx.hir().local_def_id_to_hir_id(def.did).owner;
 
-    let opt_closure_req = tcx.infer_ctxt().with_opaque_type_inference(def.did).enter(|infcx| {
+    let opt_closure_req = tcx.infer_ctxt().with_opaque_type_inference(hir_owner).enter(|infcx| {
         let input_body: &Body<'_> = &input_body.borrow();
         let promoted: &IndexVec<_, _> = &promoted.borrow();
         do_mir_borrowck(&infcx, input_body, promoted, false).0
@@ -140,7 +141,7 @@ fn mir_borrowck<'tcx>(
 /// If `return_body_with_facts` is true, then return the body with non-erased
 /// region ids on which the borrow checking was performed together with Polonius
 /// facts.
-#[instrument(skip(infcx, input_body, input_promoted), level = "debug")]
+#[instrument(skip(infcx, input_body, input_promoted), fields(id=?input_body.source.with_opt_param().as_local().unwrap()), level = "debug")]
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,

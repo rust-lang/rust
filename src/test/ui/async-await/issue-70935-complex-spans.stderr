@@ -1,8 +1,8 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-70935-complex-spans.rs:10:45
+  --> $DIR/issue-70935-complex-spans.rs:11:5
    |
-LL | fn foo(tx: std::sync::mpsc::Sender<i32>) -> impl Future + Send {
-   |                                             ^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
+LL |     async move {
+   |     ^^^^^^^^^^ future created by async block is not `Send`
    |
    = help: the trait `Sync` is not implemented for `Sender<i32>`
 note: future is not `Send` as this value is used across an await

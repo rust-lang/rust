@@ -16,7 +16,6 @@ struct Ordinary<'a>(&'a u8);
 // consider the loans for both `'a` and `'b` alive.
 
 fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
-//~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 {
     // We return a value:
     //
@@ -30,6 +29,7 @@ fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
     //
     // We are forced to pick that '0 = 'e, because only 'e is outlived by *both* 'a and 'b.
     if condition() { a } else { b }
+    //~^ ERROR hidden type for `impl Trait` captures lifetime that does not appear in bounds
 }
 
 fn condition() -> bool {

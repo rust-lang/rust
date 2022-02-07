@@ -627,6 +627,11 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// Represents a hidden type assignment for an opaque type.
+    /// Such obligations get processed by checking whether the item currently being
+    /// type-checked may acually define it.
+    OpaqueType(Ty<'tcx>, Ty<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -986,6 +991,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::OpaqueType(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -1004,6 +1010,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
+            | PredicateKind::OpaqueType(..)
             | PredicateKind::TypeWellFormedFromEnv(..) => None,
         }
     }
@@ -1044,7 +1051,18 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    HashStable,
+    TyEncodable,
+    TyDecodable,
+    TypeFoldable,
+    Lift
+)]
 pub struct OpaqueTypeKey<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,

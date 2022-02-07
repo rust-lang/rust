@@ -4,11 +4,11 @@
 #![feature(type_alias_impl_trait)]
 
 type X<'a> = impl Into<&'static str> + From<&'a str>;
-//~^ ERROR mismatched types
 
 fn f<'a: 'static>(t: &'a str) -> X<'a> {
     //~^ WARNING unnecessary lifetime parameter
     t
+    //~^ ERROR non-defining opaque type use
 }
 
 fn extend_lt<'a>(o: &'a str) -> &'static str {

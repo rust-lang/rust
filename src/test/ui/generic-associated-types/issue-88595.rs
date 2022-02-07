@@ -18,7 +18,6 @@ struct C;
 impl<'a> A<'a> for C {
     type B<'b> = impl Clone;
     //~^ ERROR: lifetime bound not satisfied
-    //~| ERROR: could not find defining uses
 
     fn a(&'a self) -> Self::B<'a> {} //~ ERROR: non-defining opaque type use in defining scope
 }

@@ -17,7 +17,7 @@ use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::MAX_SIMD_LANES;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, RegionKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, RegionKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, MultiSpan, Span};
@@ -81,8 +81,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     can_be_generator: Option<hir::Movability>,
     return_type_pre_known: bool,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
-    let mut fn_sig = fn_sig;
-
     // Create the function context. This is either derived from scratch or,
     // in the case of closures, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.hir_id);
@@ -95,21 +93,8 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    let revealed_ret_ty =
-        fcx.instantiate_opaque_types_from_value(declared_ret_ty, decl.output.span());
-    debug!("check_fn: declared_ret_ty: {}, revealed_ret_ty: {}", declared_ret_ty, revealed_ret_ty);
-    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
+    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(declared_ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
-    if let ty::Opaque(..) = declared_ret_ty.kind() {
-        fcx.ret_coercion_impl_trait = Some(declared_ret_ty);
-    }
-    fn_sig = tcx.mk_fn_sig(
-        fn_sig.inputs().iter().cloned(),
-        revealed_ret_ty,
-        fn_sig.c_variadic,
-        fn_sig.unsafety,
-        fn_sig.abi,
-    );
 
     let span = body.value.span;
 
@@ -251,7 +236,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::DynReturnFn, span });
         debug!("actual_return_ty replaced with {:?}", actual_return_ty);
     }
-    fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
+    fcx.demand_suptype(span, declared_ret_ty, actual_return_ty);
 
     // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = tcx.lang_items().panic_impl() {
@@ -629,6 +614,8 @@ fn check_opaque_meets_bounds<'tcx>(
     span: Span,
     origin: &hir::OpaqueTyOrigin,
 ) {
+    let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
+
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let defining_use_anchor = match *origin {
         hir::OpaqueTyOrigin::FnReturn(did) | hir::OpaqueTyOrigin::AsyncFn(did) => did,
@@ -643,24 +630,12 @@ fn check_opaque_meets_bounds<'tcx>(
 
         let misc_cause = traits::ObligationCause::misc(span, hir_id);
 
-        let _ = inh.register_infer_ok_obligations(
-            infcx.instantiate_opaque_types(hir_id, param_env, opaque_ty, span),
-        );
-
-        let opaque_type_map = infcx.inner.borrow().opaque_types.clone();
-        for (OpaqueTypeKey { def_id, substs }, opaque_defn) in opaque_type_map {
-            let hidden_type = tcx.type_of(def_id).subst(tcx, substs);
-            trace!(?hidden_type);
-            match infcx.at(&misc_cause, param_env).eq(opaque_defn.concrete_ty, hidden_type) {
-                Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
-                Err(ty_err) => tcx.sess.delay_span_bug(
-                    span,
-                    &format!(
-                        "could not check bounds on revealed type `{}`:\n{}",
-                        hidden_type, ty_err,
-                    ),
-                ),
-            }
+        match infcx.at(&misc_cause, param_env).eq(opaque_ty, hidden_type) {
+            Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
+            Err(ty_err) => tcx.sess.delay_span_bug(
+                span,
+                &format!("could not unify `{}` with revealed type:\n{}", hidden_type, ty_err,),
+            ),
         }
 
         // Check that all obligations are satisfied by the implementation's
@@ -672,7 +647,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
         match origin {
             // Checked when type checking the function containing them.
-            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => return,
+            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {}
             // Can have different predicates to their defining use
             hir::OpaqueTyOrigin::TyAlias => {
                 // Finally, resolve all regions. This catches wily misuses of
@@ -681,6 +656,9 @@ fn check_opaque_meets_bounds<'tcx>(
                 fcx.regionck_item(hir_id, span, FxHashSet::default());
             }
         }
+
+        // Clean up after ourselves
+        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
     });
 }
 

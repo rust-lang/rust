@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyS};
+use rustc_middle::ty::{self, ToPredicate, Ty, TyS, TypeFoldable};
 use rustc_span::{MultiSpan, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -98,8 +98,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
             all_arms_diverge &= self.diverges.get();
 
-            let opt_suggest_box_span =
-                self.opt_suggest_box_span(arm.body.span, arm_ty, orig_expected);
+            let opt_suggest_box_span = self.opt_suggest_box_span(arm_ty, orig_expected);
 
             let (arm_span, semi_span) =
                 self.get_appropriate_arm_semicolon_removal_span(&arms, i, prior_arm_ty, arm_ty);
@@ -504,20 +503,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // provide a structured suggestion in that case.
     pub(crate) fn opt_suggest_box_span(
         &self,
-        span: Span,
         outer_ty: &'tcx TyS<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
-        match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {
-            (Expectation::ExpectHasType(expected), Some((_id, ty)))
-                if self.in_tail_expr && self.can_coerce(outer_ty, expected) =>
+        match orig_expected {
+            Expectation::ExpectHasType(expected)
+                if self.in_tail_expr
+                    && self.ret_coercion.as_ref()?.borrow().merged_ty().has_opaque_types()
+                    && self.can_coerce(outer_ty, expected) =>
             {
-                let impl_trait_ret_ty =
-                    self.infcx.instantiate_opaque_types(self.body_id, self.param_env, ty, span);
-                assert!(
-                    impl_trait_ret_ty.obligations.is_empty(),
-                    "we should never get new obligations here"
-                );
                 let obligations = self.fulfillment_cx.borrow().pending_obligations();
                 let mut suggest_box = !obligations.is_empty();
                 for o in obligations {

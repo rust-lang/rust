@@ -1,20 +1,19 @@
-error[E0271]: type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
-  --> $DIR/issue-70877.rs:7:12
+error: opaque type's hidden type cannot be another opaque type from the same scope
+  --> $DIR/issue-70877.rs:31:12
+   |
+LL |     return func(&"oof");
+   |            ^^^^^^^^^^^^ one of the two opaque types used here has to be outside its defining scope
+   |
+note: opaque type whose hidden type is being assigned
+  --> $DIR/issue-70877.rs:28:13
+   |
+LL | fn oof() -> impl std::fmt::Debug {
+   |             ^^^^^^^^^^^^^^^^^^^^
+note: opaque type being used as hidden type
+  --> $DIR/issue-70877.rs:4:15
    |
 LL | type FooRet = impl std::fmt::Debug;
-   |               -------------------- the found opaque type
-...
-LL | type Foo = impl Iterator<Item = FooItem>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Bar as Iterator>::Item == Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
-   |
-note: expected this to be `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
-  --> $DIR/issue-70877.rs:13:17
-   |
-LL |     type Item = FooItem;
-   |                 ^^^^^^^
-   = note: expected struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> Option<String> + 'static)>`
-              found struct `Box<(dyn for<'r> Fn(&'r (dyn ToString + 'r)) -> impl Debug + 'static)>`
+   |               ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0271`.

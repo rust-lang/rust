@@ -1,10 +1,11 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/ordinary-bounds-unsuited.rs:18:62
+  --> $DIR/ordinary-bounds-unsuited.rs:31:33
    |
 LL | fn upper_bounds<'a, 'b>(a: Ordinary<'a>, b: Ordinary<'b>) -> impl Trait<'a, 'b>
-   |                     --                                       ^^^^^^^^^^^^^^^^^^
-   |                     |
-   |                     hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
+   |                     -- hidden type `Ordinary<'b>` captures the lifetime `'b` as defined here
+...
+LL |     if condition() { a } else { b }
+   |                                 ^
    |
 help: to declare that the `impl Trait` captures `'b`, you can add an explicit `'b` lifetime bound
    |

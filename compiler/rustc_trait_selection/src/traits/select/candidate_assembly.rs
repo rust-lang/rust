@@ -254,6 +254,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         if obligation.predicate.skip_binder().self_ty().is_ty_var() {
+            debug!(ty = ?obligation.predicate.skip_binder().self_ty(), "ambiguous inference var or opaque type");
             // Self is a type variable (e.g., `_: AsRef<str>`).
             //
             // This is somewhat problematic, as the current scheme can't really

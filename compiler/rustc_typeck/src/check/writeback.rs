@@ -18,7 +18,6 @@ use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::{self, ClosureSizeProfileData, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_trait_selection::opaque_types::InferCtxtExt;
 
 use std::mem;
 
@@ -65,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
-        wbcx.visit_opaque_types(body.value.span);
+        wbcx.visit_opaque_types();
         wbcx.visit_coercion_casts();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
@@ -496,64 +495,18 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             fcx_typeck_results.generator_interior_types.clone();
     }
 
-    #[instrument(skip(self, span), level = "debug")]
-    fn visit_opaque_types(&mut self, span: Span) {
-        let opaque_types = self.fcx.infcx.inner.borrow().opaque_types.clone();
-        for (opaque_type_key, opaque_defn) in opaque_types {
-            let hir_id =
-                self.tcx().hir().local_def_id_to_hir_id(opaque_type_key.def_id.expect_local());
-            let instantiated_ty = self.resolve(opaque_defn.concrete_ty, &hir_id);
-
-            debug_assert!(!instantiated_ty.has_escaping_bound_vars());
-
-            let opaque_type_key = self.fcx.fully_resolve(opaque_type_key).unwrap();
-
-            // Prevent:
-            // * `fn foo<T>() -> Foo<T>`
-            // * `fn foo<T: Bound + Other>() -> Foo<T>`
-            // from being defining.
-
-            // Also replace all generic params with the ones from the opaque type
-            // definition so that
-            // ```rust
-            // type Foo<T> = impl Baz + 'static;
-            // fn foo<U>() -> Foo<U> { .. }
-            // ```
-            // figures out the concrete type with `U`, but the stored type is with `T`.
-
-            // FIXME: why are we calling this here? This seems too early, and duplicated.
-            let definition_ty = self.fcx.infer_opaque_definition_from_instantiation(
-                opaque_type_key,
-                instantiated_ty,
-                span,
-            );
-
-            let mut skip_add = false;
-
-            if let ty::Opaque(definition_ty_def_id, _substs) = *definition_ty.kind() {
-                if opaque_defn.origin == hir::OpaqueTyOrigin::TyAlias {
-                    if opaque_type_key.def_id == definition_ty_def_id {
-                        debug!(
-                            "skipping adding concrete definition for opaque type {:?} {:?}",
-                            opaque_defn, opaque_type_key.def_id
-                        );
-                        skip_add = true;
-                    }
+    #[instrument(skip(self), level = "debug")]
+    fn visit_opaque_types(&mut self) {
+        let opaque_types =
+            self.fcx.infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        for (opaque_type_key, decl) in opaque_types {
+            let hidden_type = match decl.origin {
+                hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
+                    Some(self.resolve(decl.hidden_type.ty, &decl.hidden_type.span))
                 }
-            }
-
-            if opaque_type_key.substs.needs_infer() {
-                span_bug!(span, "{:#?} has inference variables", opaque_type_key.substs)
-            }
-
-            // We only want to add an entry into `concrete_opaque_types`
-            // if we actually found a defining usage of this opaque type.
-            // Otherwise, we do nothing - we'll either find a defining usage
-            // in some other location, or we'll end up emitting an error due
-            // to the lack of defining usage
-            if !skip_add {
-                self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id);
-            }
+                hir::OpaqueTyOrigin::TyAlias => None,
+            };
+            self.typeck_results.concrete_opaque_types.insert(opaque_type_key.def_id, hidden_type);
         }
     }
 

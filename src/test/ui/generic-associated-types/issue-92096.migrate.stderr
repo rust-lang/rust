@@ -1,18 +1,20 @@
 error[E0311]: the parameter type `C` may not live long enough
-  --> $DIR/issue-92096.rs:20:33
+  --> $DIR/issue-92096.rs:24:5
    |
 LL | fn call_connect<C>(c: &'_ C) -> impl '_ + Future + Send
-   |                 -               ^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
-   |                 |
-   |                 help: consider adding an explicit lifetime bound...: `C: 'a`
+   |                 - help: consider adding an explicit lifetime bound...: `C: 'a`
+...
+LL |     async move { c.connect().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
 
 error[E0311]: the parameter type `C` may not live long enough
-  --> $DIR/issue-92096.rs:20:33
+  --> $DIR/issue-92096.rs:24:5
    |
 LL | fn call_connect<C>(c: &'_ C) -> impl '_ + Future + Send
-   |                 -               ^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
-   |                 |
-   |                 help: consider adding an explicit lifetime bound...: `C: 'a`
+   |                 - help: consider adding an explicit lifetime bound...: `C: 'a`
+...
+LL |     async move { c.connect().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `C` will meet its required lifetime bounds
 
 error: aborting due to 2 previous errors
 

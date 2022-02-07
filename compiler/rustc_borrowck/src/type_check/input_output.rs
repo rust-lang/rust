@@ -147,9 +147,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
-        if let Err(terr) = self.eq_opaque_type_and_type(
-            mir_output_ty,
+        if let Err(terr) = self.eq_types(
             normalized_output_ty,
+            mir_output_ty,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -169,9 +169,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let user_provided_output_ty = user_provided_sig.output();
             let user_provided_output_ty =
                 self.normalize(user_provided_output_ty, Locations::All(output_span));
-            if let Err(err) = self.eq_opaque_type_and_type(
-                mir_output_ty,
+            if let Err(err) = self.eq_types(
                 user_provided_output_ty,
+                mir_output_ty,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {

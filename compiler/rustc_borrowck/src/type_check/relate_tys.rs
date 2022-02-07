@@ -1,13 +1,15 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
-use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::{InferOk, NllRegionVariableOrigin};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::type_check::{Locations, TypeChecker};
+use crate::type_check::{CustomTypeOp, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -63,6 +65,10 @@ impl<'me, 'bccx, 'tcx> NllTypeRelatingDelegate<'me, 'bccx, 'tcx> {
 }
 
 impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> {
+    fn span(&self) -> Span {
+        self.locations.span(self.type_checker.body)
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.type_checker.param_env
     }
@@ -117,6 +123,9 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     // We don't have to worry about the equality of consts during borrow checking
     // as consts always have a static lifetime.
+    // FIXME(oli-obk): is this really true? We can at least have HKL and with
+    // inline consts we may have further lifetimes that may be unsound to treat as
+    // 'static.
     fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
@@ -125,5 +134,34 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
 
     fn forbid_inference_vars() -> bool {
         true
+    }
+
+    fn register_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
+        let param_env = self.param_env();
+        let span = self.span();
+        let def_id = self.type_checker.body.source.def_id().expect_local();
+        let body_id = self.type_checker.tcx().hir().local_def_id_to_hir_id(def_id);
+        let cause = ObligationCause::misc(span, body_id);
+        self.type_checker
+            .fully_perform_op(
+                self.locations,
+                self.category,
+                CustomTypeOp::new(
+                    |infcx| {
+                        Ok(InferOk {
+                            value: (),
+                            obligations: vec![infcx.opaque_ty_obligation(
+                                a,
+                                b,
+                                a_is_expected,
+                                param_env,
+                                cause,
+                            )],
+                        })
+                    },
+                    || "register_opaque_type".to_string(),
+                ),
+            )
+            .unwrap();
     }
 }

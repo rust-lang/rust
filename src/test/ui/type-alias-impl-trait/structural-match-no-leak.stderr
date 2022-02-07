@@ -1,4 +1,4 @@
-error: `impl Send` cannot be used in patterns
+error: `Bar` cannot be used in patterns
   --> $DIR/structural-match-no-leak.rs:15:9
    |
 LL |         LEAK_FREE => (),

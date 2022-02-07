@@ -147,6 +147,12 @@ fn main() {
         cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
+    if let Ok(flags) = env::var("MAGIC_EXTRA_RUSTFLAGS") {
+        for flag in flags.split(' ') {
+            cmd.arg(flag);
+        }
+    }
+
     let is_test = args.iter().any(|a| a == "--test");
     if verbose > 2 {
         let rust_env_vars =

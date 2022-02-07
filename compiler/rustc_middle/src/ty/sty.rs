@@ -152,6 +152,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
+    /// For the order of the substs see the `ClosureSubsts` type's documentation.
     Closure(DefId, SubstsRef<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
@@ -1812,6 +1813,13 @@ impl<'tcx> TyS<'tcx> {
             Array(ty, _) | Slice(ty) => ty,
             Str => tcx.types.u8,
             _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
+        }
+    }
+
+    pub fn expect_opaque_type(&self) -> ty::OpaqueTypeKey<'tcx> {
+        match *self.kind() {
+            Opaque(def_id, substs) => ty::OpaqueTypeKey { def_id, substs },
+            _ => bug!("`expect_opaque_type` called on non-opaque type: {}", self),
         }
     }
 

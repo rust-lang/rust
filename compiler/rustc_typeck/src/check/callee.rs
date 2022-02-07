@@ -545,7 +545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         fn_sig: ty::FnSig<'tcx>,
     ) -> Ty<'tcx> {
-        // `fn_sig` is the *signature* of the cosure being called. We
+        // `fn_sig` is the *signature* of the closure being called. We
         // don't know the full details yet (`Fn` vs `FnMut` etc), but we
         // do know the types expected for each argument and the return
         // type.
