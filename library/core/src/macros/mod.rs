@@ -594,6 +594,22 @@ macro_rules! writeln {
 ///     unreachable!("The loop should always return");
 /// }
 /// ```
+#[cfg(not(bootstrap))]
+#[macro_export]
+#[rustc_builtin_macro(unreachable)]
+#[allow_internal_unstable(edition_panic)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
+macro_rules! unreachable {
+    // Expands to either `$crate::panic::unreachable_2015` or `$crate::panic::unreachable_2021`
+    // depending on the edition of the caller.
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
+/// unreachable!() macro
+#[cfg(bootstrap)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]

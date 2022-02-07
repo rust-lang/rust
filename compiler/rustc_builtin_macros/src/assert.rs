@@ -1,4 +1,4 @@
-use crate::panic::use_panic_2021;
+use crate::edition_panic::use_panic_2021;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};

@@ -32,12 +32,12 @@ mod concat_bytes;
 mod concat_idents;
 mod derive;
 mod deriving;
+mod edition_panic;
 mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
 mod log_syntax;
-mod panic;
 mod source_util;
 mod test;
 mod trace_macros;
@@ -83,8 +83,9 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
-        core_panic: panic::expand_panic,
-        std_panic: panic::expand_panic,
+        core_panic: edition_panic::expand_panic,
+        std_panic: edition_panic::expand_panic,
+        unreachable: edition_panic::expand_unreachable,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
     }
