@@ -1582,18 +1582,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             None => (None, Mismatch::Fixed("type"), false),
             Some(values) => {
                 let (is_simple_error, exp_found) = match values {
-                    ValuePairs::Types(exp_found) => {
-                        let is_simple_err =
-                            exp_found.expected.is_simple_text() && exp_found.found.is_simple_text();
-                        OpaqueTypesVisitor::visit_expected_found(
-                            self.tcx,
-                            exp_found.expected,
-                            exp_found.found,
-                            span,
-                        )
-                        .report(diag);
+                    ValuePairs::Terms(infer::ExpectedFound {
+                        expected: ty::Term::Ty(expected),
+                        found: ty::Term::Ty(found),
+                    }) => {
+                        let is_simple_err = expected.is_simple_text() && found.is_simple_text();
+                        OpaqueTypesVisitor::visit_expected_found(self.tcx, expected, found, span)
+                            .report(diag);
 
-                        (is_simple_err, Mismatch::Variable(exp_found))
+                        (
+                            is_simple_err,
+                            Mismatch::Variable(infer::ExpectedFound { expected, found }),
+                        )
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     _ => (false, Mismatch::Fixed("type")),
@@ -1624,7 +1624,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 };
                 if let Some((sp, msg)) = secondary_span {
                     if swap_secondary_and_primary {
-                        let terr = if let Some(infer::ValuePairs::Types(infer::ExpectedFound {
+                        let terr = if let Some(infer::ValuePairs::Terms(infer::ExpectedFound {
                             expected,
                             ..
                         })) = values
@@ -2036,9 +2036,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             FailureCode::Error0308(failure_str) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str);
-                if let ValuePairs::Types(ty::error::ExpectedFound { expected, found }) =
-                    trace.values
-                {
+                if let Some((expected, found)) = trace.values.ty() {
                     match (expected.kind(), found.kind()) {
                         (ty::Tuple(_), ty::Tuple(_)) => {}
                         // If a tuple of length one was expected and the found expression has
@@ -2124,9 +2122,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         values: ValuePairs<'tcx>,
     ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
         match values {
-            infer::Types(exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(exp_found) => self.expected_found_str(exp_found),
-            infer::Consts(exp_found) => self.expected_found_str(exp_found),
             infer::Terms(exp_found) => self.expected_found_str_term(exp_found),
             infer::TraitRefs(exp_found) => {
                 let pretty_exp_found = ty::error::ExpectedFound {
@@ -2153,18 +2149,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         }
-    }
-
-    fn expected_found_str_ty(
-        &self,
-        exp_found: ty::error::ExpectedFound<Ty<'tcx>>,
-    ) -> Option<(DiagnosticStyledString, DiagnosticStyledString)> {
-        let exp_found = self.resolve_vars_if_possible(exp_found);
-        if exp_found.references_error() {
-            return None;
-        }
-
-        Some(self.cmp(exp_found.expected, exp_found.found))
     }
 
     fn expected_found_str_term(
