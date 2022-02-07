@@ -472,6 +472,7 @@ nav.sub {
 }
 .block ul, .block li {
 	padding: 0;
+	margin: 0;
 	list-style: none;
 }
 
@@ -502,8 +503,6 @@ nav.sub {
 	font-weight: 500;
 	padding: 0;
 	margin: 0;
-	margin-top: 0.5rem;
-	margin-bottom: 0.25rem;
 }
 
 .sidebar-links,
