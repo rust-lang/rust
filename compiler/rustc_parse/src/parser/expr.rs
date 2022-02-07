@@ -17,6 +17,7 @@ use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -158,198 +159,205 @@ impl<'a> Parser<'a> {
         min_prec: usize,
         lhs: LhsExpr,
     ) -> PResult<'a, P<Expr>> {
-        let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
-            expr
-        } else {
-            let attrs = match lhs {
-                LhsExpr::AttributesParsed(attrs) => Some(attrs),
-                _ => None,
-            };
-            if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind) {
-                return self.parse_prefix_range_expr(attrs);
+        ensure_sufficient_stack(|| {
+            let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
+                expr
             } else {
-                self.parse_prefix_expr(attrs)?
-            }
-        };
-        let last_type_ascription_set = self.last_type_ascription.is_some();
-
-        if !self.should_continue_as_assoc_expr(&lhs) {
-            self.last_type_ascription = None;
-            return Ok(lhs);
-        }
-
-        self.expected_tokens.push(TokenType::Operator);
-        while let Some(op) = self.check_assoc_op() {
-            // Adjust the span for interpolated LHS to point to the `$lhs` token
-            // and not to what it refers to.
-            let lhs_span = match self.prev_token.kind {
-                TokenKind::Interpolated(..) => self.prev_token.span,
-                _ => lhs.span,
-            };
-
-            let cur_op_span = self.token.span;
-            let restrictions = if op.node.is_assign_like() {
-                self.restrictions & Restrictions::NO_STRUCT_LITERAL
-            } else {
-                self.restrictions
-            };
-            let prec = op.node.precedence();
-            if prec < min_prec {
-                break;
-            }
-            // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
-                self.err_dotdotdot_syntax(self.token.span);
-            }
-
-            if self.token == token::LArrow {
-                self.err_larrow_operator(self.token.span);
-            }
-
-            self.bump();
-            if op.node.is_comparison() {
-                if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
-                    return Ok(expr);
-                }
-            }
-
-            // Look for JS' `===` and `!==` and recover
-            if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
-                && self.token.kind == token::Eq
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                let sugg = match op.node {
-                    AssocOp::Equal => "==",
-                    AssocOp::NotEqual => "!=",
-                    _ => unreachable!(),
+                let attrs = match lhs {
+                    LhsExpr::AttributesParsed(attrs) => Some(attrs),
+                    _ => None,
                 };
-                self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
-                    .span_suggestion_short(
-                        sp,
-                        &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
-                        sugg.to_string(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                self.bump();
-            }
-
-            // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Less
-                && self.token.kind == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.struct_span_err(sp, "invalid comparison operator `<>`")
-                    .span_suggestion_short(
-                        sp,
-                        "`<>` is not a valid comparison operator, use `!=`",
-                        "!=".to_string(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                self.bump();
-            }
-
-            // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::LessEqual
-                && self.token.kind == token::Gt
-                && self.prev_token.span.hi() == self.token.span.lo()
-            {
-                let sp = op.span.to(self.token.span);
-                self.struct_span_err(sp, "invalid comparison operator `<=>`")
-                    .span_label(
-                        sp,
-                        "`<=>` is not a valid comparison operator, use `std::cmp::Ordering`",
-                    )
-                    .emit();
-                self.bump();
-            }
-
-            let op = op.node;
-            // Special cases:
-            if op == AssocOp::As {
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
-                continue;
-            } else if op == AssocOp::Colon {
-                lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
-                continue;
-            } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
-                // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
-                // generalise it to the Fixity::None code.
-                lhs = self.parse_range_expr(prec, lhs, op, cur_op_span)?;
-                break;
-            }
-
-            let fixity = op.fixity();
-            let prec_adjustment = match fixity {
-                Fixity::Right => 0,
-                Fixity::Left => 1,
-                // We currently have no non-associative operators that are not handled above by
-                // the special cases. The code is here only for future convenience.
-                Fixity::None => 1,
+                if [token::DotDot, token::DotDotDot, token::DotDotEq].contains(&self.token.kind) {
+                    return self.parse_prefix_range_expr(attrs);
+                } else {
+                    self.parse_prefix_expr(attrs)?
+                }
             };
-            let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
-                this.parse_assoc_expr_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
-            })?;
+            let last_type_ascription_set = self.last_type_ascription.is_some();
 
-            let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
-            lhs = match op {
-                AssocOp::Add
-                | AssocOp::Subtract
-                | AssocOp::Multiply
-                | AssocOp::Divide
-                | AssocOp::Modulus
-                | AssocOp::LAnd
-                | AssocOp::LOr
-                | AssocOp::BitXor
-                | AssocOp::BitAnd
-                | AssocOp::BitOr
-                | AssocOp::ShiftLeft
-                | AssocOp::ShiftRight
-                | AssocOp::Equal
-                | AssocOp::Less
-                | AssocOp::LessEqual
-                | AssocOp::NotEqual
-                | AssocOp::Greater
-                | AssocOp::GreaterEqual => {
-                    let ast_op = op.to_ast_binop().unwrap();
-                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary, AttrVec::new())
+            if !self.should_continue_as_assoc_expr(&lhs) {
+                self.last_type_ascription = None;
+                return Ok(lhs);
+            }
+
+            self.expected_tokens.push(TokenType::Operator);
+            while let Some(op) = self.check_assoc_op() {
+                // Adjust the span for interpolated LHS to point to the `$lhs` token
+                // and not to what it refers to.
+                let lhs_span = match self.prev_token.kind {
+                    TokenKind::Interpolated(..) => self.prev_token.span,
+                    _ => lhs.span,
+                };
+
+                let cur_op_span = self.token.span;
+                let restrictions = if op.node.is_assign_like() {
+                    self.restrictions & Restrictions::NO_STRUCT_LITERAL
+                } else {
+                    self.restrictions
+                };
+                let prec = op.node.precedence();
+                if prec < min_prec {
+                    break;
                 }
-                AssocOp::Assign => {
-                    self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span), AttrVec::new())
+                // Check for deprecated `...` syntax
+                if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
+                    self.err_dotdotdot_syntax(self.token.span);
                 }
-                AssocOp::AssignOp(k) => {
-                    let aop = match k {
-                        token::Plus => BinOpKind::Add,
-                        token::Minus => BinOpKind::Sub,
-                        token::Star => BinOpKind::Mul,
-                        token::Slash => BinOpKind::Div,
-                        token::Percent => BinOpKind::Rem,
-                        token::Caret => BinOpKind::BitXor,
-                        token::And => BinOpKind::BitAnd,
-                        token::Or => BinOpKind::BitOr,
-                        token::Shl => BinOpKind::Shl,
-                        token::Shr => BinOpKind::Shr,
+
+                if self.token == token::LArrow {
+                    self.err_larrow_operator(self.token.span);
+                }
+
+                self.bump();
+                if op.node.is_comparison() {
+                    if let Some(expr) = self.check_no_chained_comparison(&lhs, &op)? {
+                        return Ok(expr);
+                    }
+                }
+
+                // Look for JS' `===` and `!==` and recover
+                if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
+                    && self.token.kind == token::Eq
+                    && self.prev_token.span.hi() == self.token.span.lo()
+                {
+                    let sp = op.span.to(self.token.span);
+                    let sugg = match op.node {
+                        AssocOp::Equal => "==",
+                        AssocOp::NotEqual => "!=",
+                        _ => unreachable!(),
                     };
-                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr, AttrVec::new())
+                    self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
+                        .span_suggestion_short(
+                            sp,
+                            &format!(
+                                "`{s}=` is not a valid comparison operator, use `{s}`",
+                                s = sugg
+                            ),
+                            sugg.to_string(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                    self.bump();
                 }
-                AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
-                    self.span_bug(span, "AssocOp should have been handled by special case")
-                }
-            };
 
-            if let Fixity::None = fixity {
-                break;
+                // Look for PHP's `<>` and recover
+                if op.node == AssocOp::Less
+                    && self.token.kind == token::Gt
+                    && self.prev_token.span.hi() == self.token.span.lo()
+                {
+                    let sp = op.span.to(self.token.span);
+                    self.struct_span_err(sp, "invalid comparison operator `<>`")
+                        .span_suggestion_short(
+                            sp,
+                            "`<>` is not a valid comparison operator, use `!=`",
+                            "!=".to_string(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                    self.bump();
+                }
+
+                // Look for C++'s `<=>` and recover
+                if op.node == AssocOp::LessEqual
+                    && self.token.kind == token::Gt
+                    && self.prev_token.span.hi() == self.token.span.lo()
+                {
+                    let sp = op.span.to(self.token.span);
+                    self.struct_span_err(sp, "invalid comparison operator `<=>`")
+                        .span_label(
+                            sp,
+                            "`<=>` is not a valid comparison operator, use `std::cmp::Ordering`",
+                        )
+                        .emit();
+                    self.bump();
+                }
+
+                let op = op.node;
+                // Special cases:
+                if op == AssocOp::As {
+                    lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
+                    continue;
+                } else if op == AssocOp::Colon {
+                    lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
+                    continue;
+                } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
+                    // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
+                    // generalise it to the Fixity::None code.
+                    lhs = self.parse_range_expr(prec, lhs, op, cur_op_span)?;
+                    break;
+                }
+
+                let fixity = op.fixity();
+                let prec_adjustment = match fixity {
+                    Fixity::Right => 0,
+                    Fixity::Left => 1,
+                    // We currently have no non-associative operators that are not handled above by
+                    // the special cases. The code is here only for future convenience.
+                    Fixity::None => 1,
+                };
+                let rhs = self.with_res(restrictions - Restrictions::STMT_EXPR, |this| {
+                    this.parse_assoc_expr_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
+                })?;
+
+                let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
+                lhs = match op {
+                    AssocOp::Add
+                    | AssocOp::Subtract
+                    | AssocOp::Multiply
+                    | AssocOp::Divide
+                    | AssocOp::Modulus
+                    | AssocOp::LAnd
+                    | AssocOp::LOr
+                    | AssocOp::BitXor
+                    | AssocOp::BitAnd
+                    | AssocOp::BitOr
+                    | AssocOp::ShiftLeft
+                    | AssocOp::ShiftRight
+                    | AssocOp::Equal
+                    | AssocOp::Less
+                    | AssocOp::LessEqual
+                    | AssocOp::NotEqual
+                    | AssocOp::Greater
+                    | AssocOp::GreaterEqual => {
+                        let ast_op = op.to_ast_binop().unwrap();
+                        let binary =
+                            self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
+                        self.mk_expr(span, binary, AttrVec::new())
+                    }
+                    AssocOp::Assign => {
+                        self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span), AttrVec::new())
+                    }
+                    AssocOp::AssignOp(k) => {
+                        let aop = match k {
+                            token::Plus => BinOpKind::Add,
+                            token::Minus => BinOpKind::Sub,
+                            token::Star => BinOpKind::Mul,
+                            token::Slash => BinOpKind::Div,
+                            token::Percent => BinOpKind::Rem,
+                            token::Caret => BinOpKind::BitXor,
+                            token::And => BinOpKind::BitAnd,
+                            token::Or => BinOpKind::BitOr,
+                            token::Shl => BinOpKind::Shl,
+                            token::Shr => BinOpKind::Shr,
+                        };
+                        let aopexpr =
+                            self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
+                        self.mk_expr(span, aopexpr, AttrVec::new())
+                    }
+                    AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
+                        self.span_bug(span, "AssocOp should have been handled by special case")
+                    }
+                };
+
+                if let Fixity::None = fixity {
+                    break;
+                }
             }
-        }
-        if last_type_ascription_set {
-            self.last_type_ascription = None;
-        }
-        Ok(lhs)
+            if last_type_ascription_set {
+                self.last_type_ascription = None;
+            }
+            Ok(lhs)
+        })
     }
 
     fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
