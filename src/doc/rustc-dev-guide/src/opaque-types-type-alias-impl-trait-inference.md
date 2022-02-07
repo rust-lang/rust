@@ -55,23 +55,42 @@ Let's start by looking what happens when we type-check `main`. Initially we invo
 
 #### Type-checking the `is_send` call
 
+* Explain how it invokes `type_of`
+    * We look at the bounds, we are able to type check it as is
+
 ```mermaid
 flowchart TD
     TypeChecking["type checking `main`"]
     subgraph TypeOfSeq["type_of(Seq<T>) query"]
-        WalkModuleHir["Walk the HIR for the module `m`"]
-        VisitProduceSingleton["visit produce_singleton"]
-        VisitProduceDoubleton["visit produce_doubleton"]
+        WalkModuleHir["Walk the HIR for the module `m`\nto find the hidden types from each\nfunction within"]
+        VisitProduceSingleton["visit `produce_singleton`"]
+        InterimType["`produce_singleton` hidden type is `Vec<T>`\nkeep searching"]
+        VisitProduceDoubleton["visit `produce_doubleton`"]
+        CompareType["`produce_doubleton` hidden type is also Vec<T>\nthis matches what we saw before ✅"]
+        Done["Return `Vec<T>`"]
     end
+    
+    BorrowCheckProduceSingleton["`borrow_check(produce_singleton)`"]
+    TypeCheckProduceSingleton["`type_check(produce_singleton)`"]
+
+    BorrowCheckProduceDoubleton["`borrow_check(produce_doubleton)`"]
+    TypeCheckProduceDoubleton["`type_check(produce_doubleton)`"]
+    
+    Substitute["Substitute `T => u32`,\nyielding `Vec<i32>` as the hidden type"]
+    CheckSend["Check that `Vec<i32>: Send` ✅"]
 
     TypeChecking -- trait code for auto traits --> TypeOfSeq
     TypeOfSeq --> WalkModuleHir
     WalkModuleHir --> VisitProduceSingleton
-    VisitProduceSingleton --> VisitProduceDoubleton
+    VisitProduceSingleton --> BorrowCheckProduceSingleton
+    BorrowCheckProduceSingleton --> TypeCheckProduceSingleton
+    TypeCheckProduceSingleton --> InterimType
+    InterimType --> VisitProduceDoubleton
+    VisitProduceDoubleton --> BorrowCheckProduceDoubleton
+    BorrowCheckProduceDoubleton --> TypeCheckProduceDoubleton
+    TypeCheckProduceDoubleton --> CompareType --> Done
+    Done --> Substitute --> CheckSend    
 ```
-
-* Explain how it invokes `type_of`
-    * We look at the bounds, we are able to type check it as is
 
 ### Within the `type_of` query
 
