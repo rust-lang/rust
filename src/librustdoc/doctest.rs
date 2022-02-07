@@ -951,10 +951,11 @@ impl Tester for Collector {
                 },
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
-                allow_fail: config.allow_fail,
                 compile_fail: config.compile_fail,
                 no_run,
                 test_type: test::TestType::DocTest,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: test::DynTestFn(box move || {
                 let report_unused_externs = |uext| {

@@ -121,7 +121,7 @@ impl<T: Write> OutputFormatter for JunitFormatter<T> {
                     ))?;
                 }
 
-                TestResult::TrOk | TestResult::TrAllowedFail => {
+                TestResult::TrOk => {
                     self.write_message(&*format!(
                         "<testcase classname=\"{}\" \
                          name=\"{}\" time=\"{}\"/>",

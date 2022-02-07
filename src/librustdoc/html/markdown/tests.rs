@@ -70,7 +70,6 @@ fn test_lang_string_parse() {
         compile_fail: true,
         ..Default::default()
     });
-    t(LangString { original: "allow_fail".into(), allow_fail: true, ..Default::default() });
     t(LangString { original: "no_run,example".into(), no_run: true, ..Default::default() });
     t(LangString {
         original: "sh,should_panic".into(),

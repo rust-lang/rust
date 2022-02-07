@@ -527,7 +527,7 @@ impl Build {
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
             let mut git = Command::new("git");
-            git.args(&["submodule", "update", "--init", "--recursive"]);
+            git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }

@@ -54,10 +54,6 @@ impl<T: Write> TerseFormatter<T> {
         self.write_short_result("i", term::color::YELLOW)
     }
 
-    pub fn write_allowed_fail(&mut self) -> io::Result<()> {
-        self.write_short_result("a", term::color::YELLOW)
-    }
-
     pub fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
@@ -207,7 +203,6 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
                 self.write_failed()
             }
             TestResult::TrIgnored => self.write_ignored(),
-            TestResult::TrAllowedFail => self.write_allowed_fail(),
             TestResult::TrBench(ref bs) => {
                 if self.is_multithreaded {
                     self.write_test_name(desc)?;
@@ -244,22 +239,10 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
             self.write_pretty("FAILED", term::color::RED)?;
         }
 
-        let s = if state.allowed_fail > 0 {
-            format!(
-                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out",
-                state.passed,
-                state.failed + state.allowed_fail,
-                state.allowed_fail,
-                state.ignored,
-                state.measured,
-                state.filtered_out
-            )
-        } else {
-            format!(
-                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out",
-                state.passed, state.failed, state.ignored, state.measured, state.filtered_out
-            )
-        };
+        let s = format!(
+            ". {} passed; {} failed; {} ignored; {} measured; {} filtered out",
+            state.passed, state.failed, state.ignored, state.measured, state.filtered_out
+        );
 
         self.write_plain(&s)?;
 
