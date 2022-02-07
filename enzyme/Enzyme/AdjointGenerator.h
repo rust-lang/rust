@@ -8026,7 +8026,7 @@ public:
             return;
           }
         }
-        if (funcName == "__fd_sincos_1" || funcName == "sincos") {
+        if (funcName == "__fd_sincos_1") {
           if (gutils->knownRecomputeHeuristic.find(orig) !=
               gutils->knownRecomputeHeuristic.end()) {
             if (!gutils->knownRecomputeHeuristic[orig]) {
@@ -8057,13 +8057,13 @@ public:
                 Intrinsic::getDeclaration(gutils->oldFunc->getParent(),
                                           Intrinsic::sin, tys),
                 args));
-            Value *dif0 = Builder2.CreateFSub(
-                Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {0}),
-                                    dsin),
-                Builder2.CreateFMul(Builder2.CreateExtractValue(vdiff, {1}),
-                                    dcos));
-
-            setDiffe(orig, dif0, Builder2);
+            Value *res = UndefValue::get(orig->getType());
+            res = Builder2.CreateInsertValue(
+                res, Builder2.CreateFMul(vdiff, dsin), {0});
+            res = Builder2.CreateInsertValue(
+                res, Builder2.CreateFNeg(Builder2.CreateFMul(vdiff, dcos)),
+                {1});
+            setDiffe(orig, res, Builder2);
             return;
           }
           case DerivativeMode::ReverseModeGradient:
