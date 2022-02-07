@@ -78,3 +78,10 @@ assert-text: ("#functions + .item-table .item-left > a", "foo")
 // Links to trait implementations in the sidebar should not wrap even if they are long.
 goto: file://|DOC_PATH|/lib2/struct.HasALongTraitWithParams.html
 assert-property: (".sidebar-links a", {"offsetHeight": 29})
+
+// Test that clicking on of the "In <module>" headings in the sidebar links to the
+// appropriate anchor in index.html.
+goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+click: ".block.mod h3 a"
+// PAGE: index.html
+assert-css: ("#modules", {"background-color": "rgb(253, 255, 211)"})
