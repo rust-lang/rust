@@ -48,6 +48,8 @@ declare_features! (
     (removed, advanced_slice_patterns, "1.0.0", Some(62254), None,
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, allocator, "1.0.0", None, None, None),
+    /// Allows a test to fail without failing the whole suite.
+    (removed, allow_fail, "1.19.0", Some(46488), None, Some("removed due to no clear use cases")),
     (removed, await_macro, "1.38.0", Some(50547), None,
      Some("subsumed by `.await` syntax")),
     /// Allows comparing raw pointers during const eval.

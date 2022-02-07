@@ -124,15 +124,6 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
             }
 
-            TestResult::TrAllowedFail => self.write_event(
-                "test",
-                desc.name.as_slice(),
-                "allowed_failure",
-                exec_time,
-                stdout,
-                None,
-            ),
-
             TestResult::TrBench(ref bs) => {
                 let median = bs.ns_iter_summ.median as usize;
                 let deviation = (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize;
@@ -172,14 +163,12 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
              \"event\": \"{}\", \
              \"passed\": {}, \
              \"failed\": {}, \
-             \"allowed_fail\": {}, \
              \"ignored\": {}, \
              \"measured\": {}, \
              \"filtered_out\": {}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
-            state.failed + state.allowed_fail,
-            state.allowed_fail,
+            state.failed,
             state.ignored,
             state.measured,
             state.filtered_out,

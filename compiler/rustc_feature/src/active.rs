@@ -277,8 +277,6 @@ declare_features! (
     (incomplete, adt_const_params, "1.56.0", Some(44580), None),
     /// Allows defining an `#[alloc_error_handler]`.
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
-    /// Allows a test to fail without failing the whole suite.
-    (active, allow_fail, "1.19.0", Some(46488), None),
     /// Allows explicit discriminants on non-unit enum variants.
     (active, arbitrary_enum_discriminant, "1.37.0", Some(60553), None),
     /// Allows trait methods with arbitrary self types.

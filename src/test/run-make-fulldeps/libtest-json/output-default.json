@@ -7,4 +7,4 @@
 { "type": "test", "name": "c", "event": "ok" }
 { "type": "test", "event": "started", "name": "d" }
 { "type": "test", "name": "d", "event": "ignored" }
-{ "type": "suite", "event": "failed", "passed": 2, "failed": 1, "allowed_fail": 0, "ignored": 1, "measured": 0, "filtered_out": 0, "exec_time": $TIME }
+{ "type": "suite", "event": "failed", "passed": 2, "failed": 1, "ignored": 1, "measured": 0, "filtered_out": 0, "exec_time": $TIME }
