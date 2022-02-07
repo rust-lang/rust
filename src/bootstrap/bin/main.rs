@@ -30,6 +30,7 @@ fn main() {
         println!("{}", suggestion);
     }
 
+    let pre_commit = config.src.join(".git").join("hooks").join("pre-commit");
     Build::new(config).build();
 
     if suggest_setup {
@@ -40,6 +41,19 @@ fn main() {
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
+    }
+
+    // Give a warning if the pre-commit script is in pre-commit and not pre-push.
+    // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
+    // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
+    // Instead, look for this comment, which is almost certainly not in any custom hook.
+    if std::fs::read_to_string(pre_commit).map_or(false, |contents| {
+        contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
+    }) {
+        println!(
+            "warning: You have the pre-push script installed to .git/hooks/pre-commit. \
+                  Consider moving it to .git/hooks/pre-push instead, which runs less often."
+        );
     }
 
     if suggest_setup || changelog_suggestion.is_some() {
