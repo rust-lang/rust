@@ -43,6 +43,17 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         db
     }
 
+    fn with_files_extra_proc_macros(
+        ra_fixture: &str,
+        proc_macros: Vec<(String, ProcMacro)>,
+    ) -> Self {
+        let fixture = ChangeFixture::parse_with_proc_macros(ra_fixture, proc_macros);
+        let mut db = Self::default();
+        fixture.change.apply(&mut db);
+        assert!(fixture.file_position.is_none());
+        db
+    }
+
     fn with_position(ra_fixture: &str) -> (Self, FilePosition) {
         let (db, file_id, range_or_offset) = Self::with_range_or_offset(ra_fixture);
         let offset = range_or_offset.expect_offset();
@@ -84,7 +95,14 @@ pub struct ChangeFixture {
 
 impl ChangeFixture {
     pub fn parse(ra_fixture: &str) -> ChangeFixture {
-        let (mini_core, proc_macros, fixture) = Fixture::parse(ra_fixture);
+        Self::parse_with_proc_macros(ra_fixture, Vec::new())
+    }
+
+    pub fn parse_with_proc_macros(
+        ra_fixture: &str,
+        mut proc_macros: Vec<(String, ProcMacro)>,
+    ) -> ChangeFixture {
+        let (mini_core, proc_macro_names, fixture) = Fixture::parse(ra_fixture);
         let mut change = Change::new();
 
         let mut files = Vec::new();
@@ -222,11 +240,12 @@ impl ChangeFixture {
             }
         }
 
-        if !proc_macros.is_empty() {
+        if !proc_macro_names.is_empty() {
             let proc_lib_file = file_id;
             file_id.0 += 1;
 
-            let (proc_macro, source) = test_proc_macros(&proc_macros);
+            proc_macros.extend(default_test_proc_macros());
+            let (proc_macro, source) = filter_test_proc_macros(&proc_macro_names, proc_macros);
             let mut fs = FileSet::default();
             fs.insert(
                 proc_lib_file,
@@ -272,52 +291,84 @@ impl ChangeFixture {
     }
 }
 
-fn test_proc_macros(proc_macros: &[String]) -> (Vec<ProcMacro>, String) {
-    // The source here is only required so that paths to the macros exist and are resolvable.
-    let source = r#"
+fn default_test_proc_macros() -> [(String, ProcMacro); 4] {
+    [
+        (
+            r#"
 #[proc_macro_attribute]
 pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+"#
+            .into(),
+            ProcMacro {
+                name: "identity".into(),
+                kind: crate::ProcMacroKind::Attr,
+                expander: Arc::new(IdentityProcMacroExpander),
+            },
+        ),
+        (
+            r#"
 #[proc_macro_derive(DeriveIdentity)]
 pub fn derive_identity(item: TokenStream) -> TokenStream {
     item
 }
+"#
+            .into(),
+            ProcMacro {
+                name: "DeriveIdentity".into(),
+                kind: crate::ProcMacroKind::CustomDerive,
+                expander: Arc::new(IdentityProcMacroExpander),
+            },
+        ),
+        (
+            r#"
 #[proc_macro_attribute]
 pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
     attr
 }
+"#
+            .into(),
+            ProcMacro {
+                name: "input_replace".into(),
+                kind: crate::ProcMacroKind::Attr,
+                expander: Arc::new(AttributeInputReplaceProcMacroExpander),
+            },
+        ),
+        (
+            r#"
 #[proc_macro]
 pub fn mirror(input: TokenStream) -> TokenStream {
     input
 }
-"#;
-    let proc_macros = [
-        ProcMacro {
-            name: "identity".into(),
-            kind: crate::ProcMacroKind::Attr,
-            expander: Arc::new(IdentityProcMacroExpander),
-        },
-        ProcMacro {
-            name: "DeriveIdentity".into(),
-            kind: crate::ProcMacroKind::CustomDerive,
-            expander: Arc::new(IdentityProcMacroExpander),
-        },
-        ProcMacro {
-            name: "input_replace".into(),
-            kind: crate::ProcMacroKind::Attr,
-            expander: Arc::new(AttributeInputReplaceProcMacroExpander),
-        },
-        ProcMacro {
-            name: "mirror".into(),
-            kind: crate::ProcMacroKind::FuncLike,
-            expander: Arc::new(MirrorProcMacroExpander),
-        },
+"#
+            .into(),
+            ProcMacro {
+                name: "mirror".into(),
+                kind: crate::ProcMacroKind::FuncLike,
+                expander: Arc::new(MirrorProcMacroExpander),
+            },
+        ),
     ]
-    .into_iter()
-    .filter(|pm| proc_macros.iter().any(|name| name == &stdx::to_lower_snake_case(&pm.name)))
-    .collect();
-    (proc_macros, source.into())
+}
+
+fn filter_test_proc_macros(
+    proc_macro_names: &[String],
+    proc_macro_defs: Vec<(String, ProcMacro)>,
+) -> (Vec<ProcMacro>, String) {
+    // The source here is only required so that paths to the macros exist and are resolvable.
+    let mut source = String::new();
+    let mut proc_macros = Vec::new();
+
+    for (c, p) in proc_macro_defs {
+        if !proc_macro_names.iter().any(|name| name == &stdx::to_lower_snake_case(&p.name)) {
+            continue;
+        }
+        proc_macros.push(p);
+        source += &c;
+    }
+
+    (proc_macros, source)
 }
 
 #[derive(Debug, Clone, Copy)]
