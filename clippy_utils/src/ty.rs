@@ -169,7 +169,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             // because we don't want to lint functions returning empty arrays
             is_must_use_ty(cx, *ty)
         },
-        ty::Tuple(substs) => substs.types().any(|ty| is_must_use_ty(cx, ty)),
+        ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Opaque(ref def_id, _) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
@@ -249,11 +249,11 @@ pub fn is_non_aggregate_primitive_type(ty: Ty<'_>) -> bool {
 /// Returns `true` if the given type is a primitive (a `bool` or `char`, any integer or
 /// floating-point number type, a `str`, or an array, slice, or tuple of those types).
 pub fn is_recursively_primitive_type(ty: Ty<'_>) -> bool {
-    match ty.kind() {
+    match *ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
         ty::Ref(_, inner, _) if *inner.kind() == ty::Str => true,
-        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(*inner_type),
-        ty::Tuple(inner_types) => inner_types.types().all(is_recursively_primitive_type),
+        ty::Array(inner_type, _) | ty::Slice(inner_type) => is_recursively_primitive_type(inner_type),
+        ty::Tuple(inner_types) => inner_types.iter().all(is_recursively_primitive_type),
         _ => false,
     }
 }
@@ -393,9 +393,9 @@ pub fn same_type_and_consts<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
 
 /// Checks if a given type looks safe to be uninitialized.
 pub fn is_uninit_value_valid_for_ty(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    match ty.kind() {
-        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, *component),
-        ty::Tuple(types) => types.types().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
+    match *ty.kind() {
+        ty::Array(component, _) => is_uninit_value_valid_for_ty(cx, component),
+        ty::Tuple(types) => types.iter().all(|ty| is_uninit_value_valid_for_ty(cx, ty)),
         ty::Adt(adt, _) => cx.tcx.lang_items().maybe_uninit() == Some(adt.did),
         _ => false,
     }
@@ -426,8 +426,8 @@ impl<'tcx> ExprFnSig<'tcx> {
     pub fn input(self, i: usize) -> Binder<'tcx, Ty<'tcx>> {
         match self {
             Self::Sig(sig) => sig.input(i),
-            Self::Closure(sig) => sig.input(0).map_bound(|ty| ty.tuple_element_ty(i).unwrap()),
-            Self::Trait(inputs, _) => inputs.map_bound(|ty| ty.tuple_element_ty(i).unwrap()),
+            Self::Closure(sig) => sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
+            Self::Trait(inputs, _) => inputs.map_bound(|ty| ty.tuple_fields()[i]),
         }
     }
 

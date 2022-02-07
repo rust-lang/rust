@@ -2,7 +2,7 @@ use super::TRANSMUTE_UNDEFINED_REPR;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::subst::{GenericArg, Subst};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_span::Span;
 
@@ -246,11 +246,10 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                 continue;
             },
             ty::Tuple(args) => {
-                let mut iter = args.iter().map(GenericArg::expect_ty);
-                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, *ty)) else {
+                let Some(sized_ty) =  args.iter().find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
-                if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
+                if args.iter().all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
                     continue;
                 }
