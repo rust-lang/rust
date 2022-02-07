@@ -602,53 +602,24 @@ impl<T> Trait<T> for X {
                 } else {
                     return false;
                 };
+                let Some(def_id) = def_id.as_local() else {
+                    return false;
+                };
 
                 // First look in the `where` clause, as this might be
                 // `fn foo<T>(x: T) where T: Trait`.
-                for predicate in hir_generics.predicates {
-                    if let hir::WherePredicate::BoundPredicate(pred) = predicate {
-                        if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) =
-                            pred.bounded_ty.kind
-                        {
-                            if path.res.opt_def_id() == Some(def_id) {
-                                // This predicate is binding type param `A` in `<A as T>::Foo` to
-                                // something, potentially `T`.
-                            } else {
-                                continue;
-                            }
-                        } else {
-                            continue;
-                        }
-
-                        if self.constrain_generic_bound_associated_type_structured_suggestion(
-                            diag,
-                            &trait_ref,
-                            pred.bounds,
-                            &assoc,
-                            assoc_substs,
-                            ty,
-                            msg,
-                            false,
-                        ) {
-                            return true;
-                        }
-                    }
-                }
-                for param in hir_generics.params {
-                    if self.hir().opt_local_def_id(param.hir_id).map(|id| id.to_def_id())
-                        == Some(def_id)
-                    {
-                        // This is type param `A` in `<A as T>::Foo`.
-                        return self.constrain_generic_bound_associated_type_structured_suggestion(
-                            diag,
-                            &trait_ref,
-                            param.bounds,
-                            &assoc,
-                            assoc_substs,
-                            ty,
-                            msg,
-                            false,
-                        );
+                for pred in hir_generics.bounds_for_param(def_id) {
+                    if self.constrain_generic_bound_associated_type_structured_suggestion(
+                        diag,
+                        &trait_ref,
+                        pred.bounds,
+                        &assoc,
+                        assoc_substs,
+                        ty,
+                        msg,
+                        false,
+                    ) {
+                        return true;
                     }
                 }
             }

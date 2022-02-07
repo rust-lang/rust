@@ -1,0 +1,10 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:13:5
+   |
+LL |     'a: 'static,
+   |     ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: 1 warning emitted
+

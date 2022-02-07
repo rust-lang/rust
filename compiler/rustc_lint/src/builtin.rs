@@ -1517,57 +1517,60 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             // Bounds are respected for `type X = impl Trait`
             return;
         }
-        let mut suggested_changing_assoc_types = false;
         // There must not be a where clause
-        if !type_alias_generics.predicates.is_empty() {
-            cx.lint(
-                TYPE_ALIAS_BOUNDS,
-                |lint| {
-                    let mut err = lint.build("where clauses are not enforced in type aliases");
-                    let spans: Vec<_> = type_alias_generics
-                        .predicates
-                        .iter()
-                        .map(|pred| pred.span())
-                        .collect();
-                    err.set_span(spans);
-                    err.span_suggestion(
-                        type_alias_generics.span_for_predicates_or_empty_place(),
-                        "the clause will not be checked when the type alias is used, and should be removed",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    );
-                    if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
-                        suggested_changing_assoc_types = true;
-                    }
-                    err.emit();
-                },
-            );
+        if type_alias_generics.predicates.is_empty() {
+            return;
         }
-        // The parameters must not have bounds
-        for param in type_alias_generics.params.iter() {
-            let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-            let suggestion = spans
-                .iter()
-                .map(|sp| {
-                    let start = param.span.between(*sp); // Include the `:` in `T: Bound`.
-                    (start.to(*sp), String::new())
-                })
-                .collect();
-            if !spans.is_empty() {
-                cx.struct_span_lint(TYPE_ALIAS_BOUNDS, spans, |lint| {
-                    let mut err =
-                        lint.build("bounds on generic parameters are not enforced in type aliases");
-                    let msg = "the bound will not be checked when the type alias is used, \
-                                   and should be removed";
-                    err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
-                    if !suggested_changing_assoc_types {
-                        TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
-                        suggested_changing_assoc_types = true;
-                    }
-                    err.emit();
-                });
+
+        let mut where_spans = Vec::new();
+        let mut inline_spans = Vec::new();
+        let mut inline_sugg = Vec::new();
+        for p in type_alias_generics.predicates {
+            let span = p.span();
+            if p.in_where_clause() {
+                where_spans.push(span);
+            } else {
+                for b in p.bounds() {
+                    inline_spans.push(b.span());
+                }
+                inline_sugg.push((span, String::new()));
             }
+        }
+
+        let mut suggested_changing_assoc_types = false;
+        if !where_spans.is_empty() {
+            cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
+                let mut err = lint.build("where clauses are not enforced in type aliases");
+                err.set_span(where_spans);
+                err.span_suggestion(
+                    type_alias_generics.where_clause_span,
+                    "the clause will not be checked when the type alias is used, and should be removed",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+                if !suggested_changing_assoc_types {
+                    TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                    suggested_changing_assoc_types = true;
+                }
+                err.emit();
+            });
+        }
+
+        if !inline_spans.is_empty() {
+            cx.lint(TYPE_ALIAS_BOUNDS, |lint| {
+                let mut err =
+                    lint.build("bounds on generic parameters are not enforced in type aliases");
+                err.set_span(inline_spans);
+                err.multipart_suggestion(
+                    "the bound will not be checked when the type alias is used, and should be removed",
+                    inline_sugg,
+                    Applicability::MachineApplicable,
+                );
+                if !suggested_changing_assoc_types {
+                    TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
+                }
+                err.emit();
+            });
         }
     }
 }
@@ -2084,27 +2087,6 @@ impl ExplicitOutlivesRequirements {
             .collect()
     }
 
-    fn collect_outlived_lifetimes<'tcx>(
-        &self,
-        param: &'tcx hir::GenericParam<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
-        ty_generics: &'tcx ty::Generics,
-    ) -> Vec<ty::Region<'tcx>> {
-        let index =
-            ty_generics.param_def_id_to_index[&tcx.hir().local_def_id(param.hir_id).to_def_id()];
-
-        match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
-                Self::lifetimes_outliving_lifetime(inferred_outlives, index)
-            }
-            hir::GenericParamKind::Type { .. } => {
-                Self::lifetimes_outliving_type(inferred_outlives, index)
-            }
-            hir::GenericParamKind::Const { .. } => Vec::new(),
-        }
-    }
-
     fn collect_outlives_bound_spans<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -2212,41 +2194,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             let mut bound_count = 0;
             let mut lint_spans = Vec::new();
-
-            for param in hir_generics.params {
-                let has_lifetime_bounds = param
-                    .bounds
-                    .iter()
-                    .any(|bound| matches!(bound, hir::GenericBound::Outlives(_)));
-                if !has_lifetime_bounds {
-                    continue;
-                }
-
-                let relevant_lifetimes =
-                    self.collect_outlived_lifetimes(param, cx.tcx, inferred_outlives, ty_generics);
-                if relevant_lifetimes.is_empty() {
-                    continue;
-                }
-
-                let bound_spans = self.collect_outlives_bound_spans(
-                    cx.tcx,
-                    &param.bounds,
-                    &relevant_lifetimes,
-                    infer_static,
-                );
-                bound_count += bound_spans.len();
-                lint_spans.extend(self.consolidate_outlives_bound_spans(
-                    param.span.shrink_to_hi(),
-                    &param.bounds,
-                    bound_spans,
-                ));
-            }
-
             let mut where_lint_spans = Vec::new();
             let mut dropped_predicate_count = 0;
             let num_predicates = hir_generics.predicates.len();
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
-                let (relevant_lifetimes, bounds, span) = match where_predicate {
+                let (relevant_lifetimes, bounds, span, in_where_clause) = match where_predicate {
                     hir::WherePredicate::RegionPredicate(predicate) => {
                         if let Some(Region::EarlyBound(index, ..)) =
                             cx.tcx.named_region(predicate.lifetime.hir_id)
@@ -2255,6 +2207,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                 Self::lifetimes_outliving_lifetime(inferred_outlives, index),
                                 &predicate.bounds,
                                 predicate.span,
+                                predicate.in_where_clause,
                             )
                         } else {
                             continue;
@@ -2273,6 +2226,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                     Self::lifetimes_outliving_type(inferred_outlives, index),
                                     &predicate.bounds,
                                     predicate.span,
+                                    predicate.in_where_clause,
                                 )
                             }
                             _ => {
@@ -2299,9 +2253,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     dropped_predicate_count += 1;
                 }
 
-                // If all the bounds on a predicate were inferable and there are
-                // further predicates, we want to eat the trailing comma.
-                if drop_predicate && i + 1 < num_predicates {
+                if drop_predicate && !in_where_clause {
+                    lint_spans.push(span);
+                } else if drop_predicate && i + 1 < num_predicates {
+                    // If all the bounds on a predicate were inferable and there are
+                    // further predicates, we want to eat the trailing comma.
                     let next_predicate_span = hir_generics.predicates[i + 1].span();
                     where_lint_spans.push(span.to(next_predicate_span.shrink_to_lo()));
                 } else {
@@ -2315,7 +2271,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
 
             // If all predicates are inferable, drop the entire clause
             // (including the `where`)
-            if num_predicates > 0 && dropped_predicate_count == num_predicates {
+            if hir_generics.has_where_clause && dropped_predicate_count == num_predicates {
                 let where_span = hir_generics
                     .where_clause_span()
                     .expect("span of (nonempty) where clause should exist");
@@ -2344,7 +2300,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                             },
                             lint_spans
                                 .into_iter()
-                                .map(|span| (span, "".to_owned()))
+                                .map(|span| (span, String::new()))
                                 .collect::<Vec<_>>(),
                             Applicability::MachineApplicable,
                         )

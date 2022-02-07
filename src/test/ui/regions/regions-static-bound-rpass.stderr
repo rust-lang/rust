@@ -1,0 +1,26 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound-rpass.rs:5:5
+   |
+LL |     'a: 'static,
+   |     ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-static-bound-rpass.rs:12:5
+   |
+LL |     'a: 'static,
+   |     ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'a`
+
+warning: unnecessary lifetime parameter `'b`
+  --> $DIR/regions-static-bound-rpass.rs:20:5
+   |
+LL |     'b: 'static,
+   |     ^^
+   |
+   = help: you can use the `'static` lifetime directly, in place of `'b`
+
+warning: 3 warnings emitted
+

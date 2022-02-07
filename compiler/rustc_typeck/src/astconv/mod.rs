@@ -924,14 +924,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    match pred.bounded_ty.kind {
-                        hir::TyKind::Path(hir::QPath::Resolved(_, path)) => match path.res {
-                            Res::Def(DefKind::TyParam, def_id) if def_id == self_ty_def_id => {}
-                            _ => continue,
-                        },
-                        _ => continue,
+                    if pred.is_param_bound(self_ty_def_id) {
+                        search_bounds(pred.bounds);
                     }
-                    search_bounds(pred.bounds);
                 }
             }
         }
@@ -2389,7 +2384,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     bf.unsafety,
                     bf.abi,
                     bf.decl,
-                    &hir::Generics::empty(),
                     None,
                     Some(ast_ty),
                 ))
@@ -2551,8 +2545,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         unsafety: hir::Unsafety,
         abi: abi::Abi,
         decl: &hir::FnDecl<'_>,
-        generics: &hir::Generics<'_>,
-        ident_span: Option<Span>,
+        generics: Option<&hir::Generics<'_>>,
         hir_ty: Option<&hir::Ty<'_>>,
     ) -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
@@ -2565,7 +2558,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut visitor = HirPlaceholderCollector::default();
         let mut infer_replacements = vec![];
 
-        walk_generics(&mut visitor, generics);
+        if let Some(generics) = generics {
+            walk_generics(&mut visitor, generics);
+        }
 
         let input_tys: Vec<_> = decl
             .inputs
@@ -2617,8 +2612,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut diag = crate::collect::placeholder_type_error_diag(
                 tcx,
-                ident_span.map(|sp| sp.shrink_to_hi()),
-                generics.params,
+                generics,
                 visitor.0,
                 infer_replacements.iter().map(|(s, _)| *s).collect(),
                 true,

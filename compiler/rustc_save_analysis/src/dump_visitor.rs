@@ -1267,13 +1267,11 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { ref default, .. } => {
-                    self.process_bounds(param.bounds);
                     if let Some(ref ty) = default {
                         self.visit_ty(ty);
                     }
                 }
                 hir::GenericParamKind::Const { ref ty, ref default } => {
-                    self.process_bounds(param.bounds);
                     self.visit_ty(ty);
                     if let Some(default) = default {
                         self.visit_anon_const(default);

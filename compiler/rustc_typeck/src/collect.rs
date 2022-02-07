@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -149,8 +148,7 @@ struct CollectItemTypesVisitor<'tcx> {
 /// all already existing generic type parameters to avoid suggesting a name that is already in use.
 crate fn placeholder_type_error<'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Option<Span>,
-    generics: &[hir::GenericParam<'_>],
+    generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,
     suggest: bool,
     hir_ty: Option<&hir::Ty<'_>>,
@@ -160,23 +158,13 @@ crate fn placeholder_type_error<'tcx>(
         return;
     }
 
-    placeholder_type_error_diag(
-        tcx,
-        span,
-        generics,
-        placeholder_types,
-        vec![],
-        suggest,
-        hir_ty,
-        kind,
-    )
-    .emit();
+    placeholder_type_error_diag(tcx, generics, placeholder_types, vec![], suggest, hir_ty, kind)
+        .emit();
 }
 
 crate fn placeholder_type_error_diag<'tcx>(
     tcx: TyCtxt<'tcx>,
-    span: Option<Span>,
-    generics: &[hir::GenericParam<'_>],
+    generics: Option<&hir::Generics<'_>>,
     placeholder_types: Vec<Span>,
     additional_spans: Vec<Span>,
     suggest: bool,
@@ -187,26 +175,24 @@ crate fn placeholder_type_error_diag<'tcx>(
         return bad_placeholder(tcx, additional_spans, kind);
     }
 
-    let type_name = generics.next_type_param_name(None);
+    let params = generics.map(|g| g.params).unwrap_or_default();
+    let type_name = params.next_type_param_name(None);
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
 
-    if generics.is_empty() {
-        if let Some(span) = span {
-            sugg.push((span, format!("<{}>", type_name)));
+    if let Some(generics) = generics {
+        if let Some(arg) = params.iter().find(|arg| {
+            matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. }))
+        }) {
+            // Account for `_` already present in cases like `struct S<_>(_);` and suggest
+            // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
+            sugg.push((arg.span, (*type_name).to_string()));
+        } else if let Some(span) = generics.span_for_param_suggestion() {
+            // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
+            sugg.push((span, format!(", {}", type_name)));
+        } else {
+            sugg.push((generics.span, format!("<{}>", type_name)));
         }
-    } else if let Some(arg) = generics
-        .iter()
-        .find(|arg| matches!(arg.name, hir::ParamName::Plain(Ident { name: kw::Underscore, .. })))
-    {
-        // Account for `_` already present in cases like `struct S<_>(_);` and suggest
-        // `struct S<T>(T);` instead of `struct S<_, T>(T);`.
-        sugg.push((arg.span, (*type_name).to_string()));
-    } else {
-        let last = generics.iter().last().unwrap();
-        // Account for bounds, we want `fn foo<T: E, K>(_: K)` not `fn foo<T, K: E>(_: K)`.
-        let span = last.bounds_span_for_suggestions().unwrap_or(last.span.shrink_to_hi());
-        sugg.push((span, format!(", {}", type_name)));
     }
 
     let mut err =
@@ -270,15 +256,7 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
     let mut visitor = HirPlaceholderCollector::default();
     visitor.visit_item(item);
 
-    placeholder_type_error(
-        tcx,
-        Some(generics.span),
-        generics.params,
-        visitor.0,
-        suggest,
-        None,
-        item.kind.descr(),
-    );
+    placeholder_type_error(tcx, Some(generics), visitor.0, suggest, None, item.kind.descr());
 }
 
 impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
@@ -680,26 +658,8 @@ impl<'tcx> ItemCtxt<'tcx> {
         only_self_bounds: OnlySelfBounds,
         assoc_name: Option<Ident>,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
-        let from_ty_params = ast_generics
-            .params
-            .iter()
-            .filter_map(|param| match param.kind {
-                GenericParamKind::Type { .. } | GenericParamKind::Const { .. }
-                    if param.hir_id == param_id =>
-                {
-                    Some(&param.bounds)
-                }
-                _ => None,
-            })
-            .flat_map(|bounds| bounds.iter())
-            .filter(|b| match assoc_name {
-                Some(assoc_name) => self.bound_defines_assoc_item(b, assoc_name),
-                None => true,
-            })
-            .flat_map(|b| predicates_from_bound(self, ty, b, ty::List::empty()));
-
         let param_def_id = self.tcx.hir().local_def_id(param_id).to_def_id();
-        let from_where_clauses = ast_generics
+        ast_generics
             .predicates
             .iter()
             .filter_map(|wp| match *wp {
@@ -724,9 +684,8 @@ impl<'tcx> ItemCtxt<'tcx> {
                     })
                     .filter_map(move |b| bt.map(|bt| (bt, b, bvars)))
             })
-            .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars));
-
-        from_ty_params.chain(from_where_clauses).collect()
+            .flat_map(|(bt, b, bvars)| predicates_from_bound(self, bt, b, bvars))
+            .collect()
     }
 
     fn bound_defines_assoc_item(&self, b: &hir::GenericBound<'_>, assoc_name: Ident) -> bool {
@@ -772,7 +731,6 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                         placeholder_type_error(
                             tcx,
                             None,
-                            &[],
                             visitor.0,
                             false,
                             None,
@@ -852,15 +810,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
                     if let hir::TyKind::TraitObject(..) = ty.kind {
                         let mut visitor = HirPlaceholderCollector::default();
                         visitor.visit_item(it);
-                        placeholder_type_error(
-                            tcx,
-                            None,
-                            &[],
-                            visitor.0,
-                            false,
-                            None,
-                            it.kind.descr(),
-                        );
+                        placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
                     }
                 }
                 _ => (),
@@ -888,7 +838,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             // Account for `const C: _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "constant");
+            placeholder_type_error(tcx, None, visitor.0, false, None, "constant");
         }
 
         hir::TraitItemKind::Type(_, Some(_)) => {
@@ -897,7 +847,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             // Account for `type T = _;`.
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
+            placeholder_type_error(tcx, None, visitor.0, false, None, "associated type");
         }
 
         hir::TraitItemKind::Type(_, None) => {
@@ -907,7 +857,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_trait_item(trait_item);
 
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
+            placeholder_type_error(tcx, None, visitor.0, false, None, "associated type");
         }
     };
 
@@ -929,7 +879,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
             let mut visitor = HirPlaceholderCollector::default();
             visitor.visit_impl_item(impl_item);
 
-            placeholder_type_error(tcx, None, &[], visitor.0, false, None, "associated type");
+            placeholder_type_error(tcx, None, visitor.0, false, None, "associated type");
         }
         hir::ImplItemKind::Const(..) => {}
     }
@@ -1892,15 +1842,14 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
     match tcx.hir().get(hir_id) {
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(sig, TraitFn::Provided(_)),
-            ident,
             generics,
             ..
         })
-        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), ident, .. }) => {
-            infer_return_ty_for_fn_sig(tcx, sig, *ident, generics, def_id, &icx)
+        | Item(hir::Item { kind: ItemKind::Fn(sig, generics, _), .. }) => {
+            infer_return_ty_for_fn_sig(tcx, sig, generics, def_id, &icx)
         }
 
-        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), ident, generics, .. }) => {
+        ImplItem(hir::ImplItem { kind: ImplItemKind::Fn(sig, _), generics, .. }) => {
             // Do not try to inference the return type for a impl method coming from a trait
             if let Item(hir::Item { kind: ItemKind::Impl(i), .. }) =
                 tcx.hir().get(tcx.hir().get_parent_node(hir_id))
@@ -1912,18 +1861,16 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                     sig.header.unsafety,
                     sig.header.abi,
                     sig.decl,
-                    generics,
-                    Some(ident.span),
+                    Some(generics),
                     None,
                 )
             } else {
-                infer_return_ty_for_fn_sig(tcx, sig, *ident, generics, def_id, &icx)
+                infer_return_ty_for_fn_sig(tcx, sig, generics, def_id, &icx)
             }
         }
 
         TraitItem(hir::TraitItem {
             kind: TraitItemKind::Fn(FnSig { header, decl, span: _ }, _),
-            ident,
             generics,
             ..
         }) => <dyn AstConv<'_>>::ty_of_fn(
@@ -1932,16 +1879,13 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
             header.unsafety,
             header.abi,
             decl,
-            generics,
-            Some(ident.span),
+            Some(generics),
             None,
         ),
 
-        ForeignItem(&hir::ForeignItem {
-            kind: ForeignItemKind::Fn(fn_decl, _, _), ident, ..
-        }) => {
+        ForeignItem(&hir::ForeignItem { kind: ForeignItemKind::Fn(fn_decl, _, _), .. }) => {
             let abi = tcx.hir().get_foreign_abi(hir_id);
-            compute_sig_of_foreign_fn_decl(tcx, def_id.to_def_id(), fn_decl, abi, ident)
+            compute_sig_of_foreign_fn_decl(tcx, def_id.to_def_id(), fn_decl, abi)
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor_hir_id().is_some() => {
@@ -1982,7 +1926,6 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
 fn infer_return_ty_for_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: &hir::FnSig<'_>,
-    ident: Ident,
     generics: &hir::Generics<'_>,
     def_id: LocalDefId,
     icx: &ItemCtxt<'tcx>,
@@ -2037,8 +1980,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             sig.header.unsafety,
             sig.header.abi,
             sig.decl,
-            generics,
-            Some(ident.span),
+            Some(generics),
             None,
         ),
     }
@@ -2301,29 +2243,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     // Collect the region predicates that were declared inline as
     // well. In the case of parameters declared on a fn or method, we
     // have to be careful to only iterate over early-bound regions.
-    let mut index = parent_count + has_own_self as u32;
-    for param in early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics) {
-        let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-            def_id: tcx.hir().local_def_id(param.hir_id).to_def_id(),
-            index,
-            name: param.name.ident().name,
-        }));
-        index += 1;
-
-        match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                param.bounds.iter().for_each(|bound| match bound {
-                    hir::GenericBound::Outlives(lt) => {
-                        let bound = <dyn AstConv<'_>>::ast_region_to_region(&icx, lt, None);
-                        let outlives = ty::Binder::dummy(ty::OutlivesPredicate(region, bound));
-                        predicates.insert((outlives.to_predicate(tcx), lt.span));
-                    }
-                    _ => bug!(),
-                });
-            }
-            _ => bug!(),
-        }
-    }
+    let mut index = parent_count
+        + has_own_self as u32
+        + early_bound_lifetimes_from_generics(tcx, hir_id.owner, ast_generics).count() as u32;
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
@@ -2336,12 +2258,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);
                 index += 1;
 
-                let mut bounds = <dyn AstConv<'_>>::compute_bounds(&icx, param_ty, param.bounds);
+                let mut bounds = Bounds::default();
                 // Params are implicitly sized unless a `?Sized` bound is found
                 <dyn AstConv<'_>>::add_implicitly_sized(
                     &icx,
                     &mut bounds,
-                    param.bounds,
+                    &[],
                     Some((param.hir_id, ast_generics.predicates)),
                     param.span,
                 );
@@ -2349,7 +2271,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             }
             GenericParamKind::Const { .. } => {
                 // Bounds on const parameters are currently not possible.
-                debug_assert!(param.bounds.is_empty());
                 index += 1;
             }
         }
@@ -2614,7 +2535,6 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     def_id: DefId,
     decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
-    ident: Ident,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
         intrinsic_operation_unsafety(tcx.item_name(def_id))
@@ -2628,8 +2548,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         unsafety,
         abi,
         decl,
-        &hir::Generics::empty(),
-        Some(ident.span),
+        None,
         None,
     );
 

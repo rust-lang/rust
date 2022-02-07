@@ -1755,8 +1755,7 @@ fn check_variances_for_type_defn<'tcx>(
         match param.name {
             hir::ParamName::Error => {}
             _ => {
-                let has_explicit_bounds =
-                    !param.bounds.is_empty() || explicitly_bounded_params.contains(&parameter);
+                let has_explicit_bounds = explicitly_bounded_params.contains(&parameter);
                 report_bivariance(tcx, param, has_explicit_bounds);
             }
         }

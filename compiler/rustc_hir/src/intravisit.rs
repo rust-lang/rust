@@ -899,7 +899,6 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
             }
         }
     }
-    walk_list!(visitor, visit_param_bound, param.bounds);
 }
 
 pub fn walk_const_param_default<'v, V: Visitor<'v>>(visitor: &mut V, ct: &'v AnonConst) {

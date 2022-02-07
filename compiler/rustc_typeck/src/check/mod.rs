@@ -373,16 +373,7 @@ fn typeck_with_fallback<'tcx>(
         let (fcx, wf_tys) = if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
             let fn_sig = if crate::collect::get_infer_ret_ty(&decl.output).is_some() {
                 let fcx = FnCtxt::new(&inh, param_env, body.value.hir_id);
-                <dyn AstConv<'_>>::ty_of_fn(
-                    &fcx,
-                    id,
-                    header.unsafety,
-                    header.abi,
-                    decl,
-                    &hir::Generics::empty(),
-                    None,
-                    None,
-                )
+                <dyn AstConv<'_>>::ty_of_fn(&fcx, id, header.unsafety, header.abi, decl, None, None)
             } else {
                 tcx.fn_sig(def_id)
             };

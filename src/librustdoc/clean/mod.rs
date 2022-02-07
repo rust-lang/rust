@@ -238,9 +238,12 @@ impl Clean<Option<Lifetime>> for ty::Region<'_> {
     }
 }
 
-impl Clean<WherePredicate> for hir::WherePredicate<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> WherePredicate {
-        match *self {
+impl Clean<Option<WherePredicate>> for hir::WherePredicate<'_> {
+    fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
+        if !self.in_where_clause() {
+            return None;
+        }
+        Some(match *self {
             hir::WherePredicate::BoundPredicate(ref wbp) => {
                 let bound_params = wbp
                     .bound_generic_params
@@ -250,11 +253,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
                         // Higher-ranked lifetimes can't have bounds.
                         assert_matches!(
                             param,
-                            hir::GenericParam {
-                                kind: hir::GenericParamKind::Lifetime { .. },
-                                bounds: [],
-                                ..
-                            }
+                            hir::GenericParam { kind: hir::GenericParamKind::Lifetime { .. }, .. }
                         );
                         Lifetime(param.name.ident().name)
                     })
@@ -275,7 +274,7 @@ impl Clean<WherePredicate> for hir::WherePredicate<'_> {
                 lhs: wrp.lhs_ty.clean(cx),
                 rhs: wrp.rhs_ty.clean(cx).into(),
             },
-        }
+        })
     }
 }
 
@@ -456,44 +455,75 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
     }
 }
 
-impl Clean<GenericParamDef> for hir::GenericParam<'_> {
-    fn clean(&self, cx: &mut DocContext<'_>) -> GenericParamDef {
-        let (name, kind) = match self.kind {
-            hir::GenericParamKind::Lifetime { .. } => {
-                let outlives = self
-                    .bounds
+fn clean_generic_param(
+    cx: &mut DocContext<'_>,
+    generics: Option<&hir::Generics<'_>>,
+    param: &hir::GenericParam<'_>,
+) -> GenericParamDef {
+    let (name, kind) = match param.kind {
+        hir::GenericParamKind::Lifetime { .. } => {
+            let outlives = if let Some(generics) = generics {
+                generics
+                    .predicates
                     .iter()
+                    .flat_map(|pred| {
+                        match pred {
+                            hir::WherePredicate::RegionPredicate(rp)
+                                if rp.lifetime.name == hir::LifetimeName::Param(param.name)
+                                    && !rp.in_where_clause =>
+                            {
+                                rp.bounds
+                            }
+                            _ => &[],
+                        }
+                        .iter()
+                    })
                     .map(|bound| match bound {
                         hir::GenericBound::Outlives(lt) => lt.clean(cx),
                         _ => panic!(),
                     })
-                    .collect();
-                (self.name.ident().name, GenericParamDefKind::Lifetime { outlives })
-            }
-            hir::GenericParamKind::Type { ref default, synthetic } => (
-                self.name.ident().name,
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            (param.name.ident().name, GenericParamDefKind::Lifetime { outlives })
+        }
+        hir::GenericParamKind::Type { ref default, synthetic } => {
+            let did = cx.tcx.hir().local_def_id(param.hir_id);
+            let bounds = if let Some(generics) = generics {
+                generics
+                    .bounds_for_param(did)
+                    .filter(|bp| !bp.in_where_clause)
+                    .flat_map(|bp| bp.bounds)
+                    .filter_map(|x| x.clean(cx))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            (
+                param.name.ident().name,
                 GenericParamDefKind::Type {
-                    did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
-                    bounds: self.bounds.iter().filter_map(|x| x.clean(cx)).collect(),
+                    did: did.to_def_id(),
+                    bounds,
                     default: default.map(|t| t.clean(cx)).map(Box::new),
                     synthetic,
                 },
-            ),
-            hir::GenericParamKind::Const { ref ty, default } => (
-                self.name.ident().name,
-                GenericParamDefKind::Const {
-                    did: cx.tcx.hir().local_def_id(self.hir_id).to_def_id(),
-                    ty: Box::new(ty.clean(cx)),
-                    default: default.map(|ct| {
-                        let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
-                        Box::new(ty::Const::from_anon_const(cx.tcx, def_id).to_string())
-                    }),
-                },
-            ),
-        };
+            )
+        }
+        hir::GenericParamKind::Const { ref ty, default } => (
+            param.name.ident().name,
+            GenericParamDefKind::Const {
+                did: cx.tcx.hir().local_def_id(param.hir_id).to_def_id(),
+                ty: Box::new(ty.clean(cx)),
+                default: default.map(|ct| {
+                    let def_id = cx.tcx.hir().local_def_id(ct.hir_id);
+                    Box::new(ty::Const::from_anon_const(cx.tcx, def_id).to_string())
+                }),
+            },
+        ),
+    };
 
-        GenericParamDef { name, kind }
-    }
+    GenericParamDef { name, kind }
 }
 
 impl Clean<Generics> for hir::Generics<'_> {
@@ -524,7 +554,7 @@ impl Clean<Generics> for hir::Generics<'_> {
             .iter()
             .filter(|param| is_impl_trait(param))
             .map(|param| {
-                let param: GenericParamDef = param.clean(cx);
+                let param = clean_generic_param(cx, Some(self), param);
                 match param.kind {
                     GenericParamDefKind::Lifetime { .. } => unreachable!(),
                     GenericParamDefKind::Type { did, ref bounds, .. } => {
@@ -538,14 +568,14 @@ impl Clean<Generics> for hir::Generics<'_> {
 
         let mut params = Vec::with_capacity(self.params.len());
         for p in self.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
-            let p = p.clean(cx);
+            let p = clean_generic_param(cx, Some(self), p);
             params.push(p);
         }
         params.extend(impl_trait_params);
 
         let mut generics = Generics {
             params,
-            where_predicates: self.predicates.iter().map(|x| x.clean(cx)).collect(),
+            where_predicates: self.predicates.iter().filter_map(|x| x.clean(cx)).collect(),
         };
 
         // Some duplicates are generated for ?Sized bounds between type params and where
@@ -954,7 +984,11 @@ impl Clean<PolyTrait> for hir::PolyTraitRef<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> PolyTrait {
         PolyTrait {
             trait_: self.trait_ref.clean(cx),
-            generic_params: self.bound_generic_params.iter().map(|x| x.clean(cx)).collect(),
+            generic_params: self
+                .bound_generic_params
+                .iter()
+                .map(|x| clean_generic_param(cx, None, x))
+                .collect(),
         }
     }
 }
@@ -1823,7 +1857,8 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> BareFunctionDecl {
         let (generic_params, decl) = enter_impl_trait(cx, |cx| {
             // NOTE: generics must be cleaned before args
-            let generic_params = self.generic_params.iter().map(|x| x.clean(cx)).collect();
+            let generic_params =
+                self.generic_params.iter().map(|x| clean_generic_param(cx, None, x)).collect();
             let args = clean_args_from_types_and_names(cx, self.decl.inputs, self.param_names);
             let decl = clean_fn_decl_with_args(cx, self.decl, args);
             (generic_params, decl)

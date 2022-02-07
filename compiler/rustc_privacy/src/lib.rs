@@ -1585,11 +1585,6 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        for param in generics.params {
-            for bound in param.bounds {
-                self.check_generic_bound(bound);
-            }
-        }
         for predicate in generics.predicates {
             match predicate {
                 hir::WherePredicate::BoundPredicate(bound_pred) => {

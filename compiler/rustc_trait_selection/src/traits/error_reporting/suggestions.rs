@@ -320,7 +320,7 @@ pub trait InferCtxtExt<'tcx> {
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
     (
         generics.tail_span_for_predicate_suggestion(),
-        format!("{} {}", if !generics.predicates.is_empty() { "," } else { " where" }, pred,),
+        format!("{} {}", if generics.has_where_clause { "," } else { " where" }, pred,),
     )
 }
 
@@ -392,21 +392,10 @@ fn suggest_restriction<'tcx>(
         let pred = trait_pred.to_predicate(tcx).to_string();
         let pred = pred.replace(&impl_trait_str, &type_param_name);
         let mut sugg = vec![
-            // Find the last of the generic parameters contained within the span of
-            // the generics
-            match generics
-                .params
-                .iter()
-                .map(|p| p.bounds_span_for_suggestions().unwrap_or(p.span.shrink_to_hi()))
-                .filter(|&span| generics.span.contains(span) && span.can_be_used_for_suggestions())
-                .max_by_key(|span| span.hi())
-            {
-                // `fn foo(t: impl Trait)`
-                //        ^ suggest `<T: Trait>` here
-                None => (generics.span, format!("<{}>", type_param)),
-                // `fn foo<A>(t: impl Trait)`
-                //        ^^^ suggest `<A, T: Trait>` here
-                Some(span) => (span, format!(", {}", type_param)),
+            if let Some(span) = generics.span_for_param_suggestion() {
+                (span, format!(", {}", type_param))
+            } else {
+                (generics.span, format!("<{}>", type_param))
             },
             // `fn foo(t: impl Trait)`
             //                       ^ suggest `where <T as Trait>::A: Bound`

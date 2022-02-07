@@ -2096,21 +2096,8 @@ impl<'a> State<'a> {
         self.print_ident(param.name.ident());
 
         match param.kind {
-            GenericParamKind::Lifetime { .. } => {
-                let mut sep = ":";
-                for bound in param.bounds {
-                    match bound {
-                        GenericBound::Outlives(ref lt) => {
-                            self.word(sep);
-                            self.print_lifetime(lt);
-                            sep = "+";
-                        }
-                        _ => panic!(),
-                    }
-                }
-            }
+            GenericParamKind::Lifetime { .. } => {}
             GenericParamKind::Type { ref default, .. } => {
-                self.print_bounds(":", param.bounds);
                 if let Some(default) = default {
                     self.space();
                     self.word_space("=");

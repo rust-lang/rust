@@ -2420,25 +2420,14 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let sized_trait = self.tcx.lang_items().sized_trait();
         debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
         debug!("maybe_suggest_unsized_generics: generics.predicates={:?}", generics.predicates);
-        let param = generics.params.iter().filter(|param| param.span == span).find(|param| {
-            // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
-            // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
-            param
-                .bounds
-                .iter()
-                .all(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait)
-        });
-        let Some(param) = param else {
+        let Some(param) = generics.params.iter().find(|param| param.span == span) else {
             return;
         };
-        let param_def_id = self.tcx.hir().local_def_id(param.hir_id).to_def_id();
-        let preds = generics.predicates.iter();
-        let explicitly_sized = preds
-            .filter_map(|pred| match pred {
-                hir::WherePredicate::BoundPredicate(bp) => Some(bp),
-                _ => None,
-            })
-            .filter(|bp| bp.is_param_bound(param_def_id))
+        let param_def_id = self.tcx.hir().local_def_id(param.hir_id);
+        // Check that none of the explicit trait bounds is `Sized`. Assume that an explicit
+        // `Sized` bound is there intentionally and we don't need to suggest relaxing it.
+        let explicitly_sized = generics
+            .bounds_for_param(param_def_id)
             .flat_map(|bp| bp.bounds)
             .any(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) == sized_trait);
         if explicitly_sized {
@@ -2461,9 +2450,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             _ => {}
         };
         // Didn't add an indirection suggestion, so add a general suggestion to relax `Sized`.
-        let (span, separator) = match param.bounds {
-            [] => (span.shrink_to_hi(), ":"),
-            [.., bound] => (bound.span().shrink_to_hi(), " +"),
+        let (span, separator) = if let Some(s) = generics.bounds_span_for_suggestions(param_def_id)
+        {
+            (s, " +")
+        } else {
+            (span.shrink_to_hi(), ":")
         };
         err.span_suggestion_verbose(
             span,

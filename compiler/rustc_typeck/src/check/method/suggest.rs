@@ -1868,37 +1868,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // instead we suggest `T: Foo + Bar` in that case.
                     match hir.get(id) {
                         Node::GenericParam(param) => {
-                            let mut impl_trait = false;
-                            let has_bounds =
-                                if let hir::GenericParamKind::Type { synthetic: true, .. } =
-                                    &param.kind
-                                {
-                                    // We've found `fn foo(x: impl Trait)` instead of
-                                    // `fn foo<T>(x: T)`. We want to suggest the correct
-                                    // `fn foo(x: impl Trait + TraitBound)` instead of
-                                    // `fn foo<T: TraitBound>(x: T)`. (#63706)
-                                    impl_trait = true;
-                                    param.bounds.get(1)
-                                } else {
-                                    param.bounds.get(0)
-                                };
-                            let sp = hir.span(id);
-                            let sp = if let Some(first_bound) = has_bounds {
-                                sp.until(first_bound.span())
-                            } else if let Some(colon_sp) =
-                                // If the generic param is declared with a colon but without bounds:
-                                // fn foo<T:>(t: T) { ... }
-                                param.colon_span_for_suggestions(
-                                    self.inh.tcx.sess.source_map(),
-                                )
+                            let impl_trait = matches!(
+                                param.kind,
+                                hir::GenericParamKind::Type { synthetic: true, .. },
+                            );
+                            let ast_generics = hir.get_generics(id.owner).unwrap();
+                            let (sp, has_bounds) = if let Some(span) =
+                                ast_generics.bounds_span_for_suggestions(def_id)
                             {
-                                sp.to(colon_sp)
+                                (span, true)
                             } else {
-                                sp
+                                (hir.span(id).shrink_to_hi(), false)
                             };
-                            let trait_def_ids: FxHashSet<DefId> = param
-                                .bounds
-                                .iter()
+                            let trait_def_ids: FxHashSet<DefId> = ast_generics
+                                .bounds_for_param(def_id)
+                                .flat_map(|bp| bp.bounds.iter())
                                 .filter_map(|bound| bound.trait_ref()?.trait_def_id())
                                 .collect();
                             if !candidates.iter().any(|t| trait_def_ids.contains(&t.def_id)) {
@@ -1910,11 +1894,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     )),
                                     candidates.iter().map(|t| {
                                         format!(
-                                            "{}{} {}{}",
-                                            param.name.ident(),
-                                            if impl_trait { " +" } else { ":" },
+                                            "{} {}",
+                                            if has_bounds || impl_trait { " +" } else { ":" },
                                             self.tcx.def_path_str(t.def_id),
-                                            if has_bounds.is_some() { " + " } else { "" },
                                         )
                                     }),
                                     Applicability::MaybeIncorrect,

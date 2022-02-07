@@ -2327,6 +2327,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => span,
         };
 
+        // type_param_span is (span, has_bounds)
         let type_param_span = match (generics, bound_kind) {
             (Some((_, ref generics, _)), GenericKind::Param(ref param)) => {
                 // Account for the case where `param` corresponds to `Self`,
@@ -2337,25 +2338,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // Get the `hir::Param` to verify whether it already has any bounds.
                         // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                         // instead we suggest `T: 'a + 'b` in that case.
-                        let id = hir.local_def_id_to_hir_id(def_id);
-                        let mut has_bounds = false;
-                        if let Node::GenericParam(param) = hir.get(id) {
-                            has_bounds = !param.bounds.is_empty();
-                        }
-                        let sp = self.tcx.def_span(def_id);
+                        let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+                        let ast_generics = self.tcx.hir().get_generics(hir_id.owner);
+                        let bounds =
+                            ast_generics.and_then(|g| g.bounds_span_for_suggestions(def_id));
                         // `sp` only covers `T`, change it so that it covers
                         // `T:` when appropriate
-                        let is_impl_trait = bound_kind.to_string().starts_with("impl ");
-                        let sp = if has_bounds && !is_impl_trait {
-                            sp.to(self
-                                .tcx
-                                .sess
-                                .source_map()
-                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                        if let Some(span) = bounds {
+                            (span, true)
                         } else {
-                            sp
-                        };
-                        (sp, has_bounds, is_impl_trait)
+                            let sp = self.tcx.def_span(def_id);
+                            (sp.shrink_to_hi(), false)
+                        }
                     })
                 } else {
                     None
@@ -2411,52 +2405,37 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         fn binding_suggestion<'tcx, S: fmt::Display>(
             err: &mut Diagnostic,
-            type_param_span: Option<(Span, bool, bool)>,
+            type_param_span: Option<(Span, bool)>,
             bound_kind: GenericKind<'tcx>,
             sub: S,
         ) {
             let msg = "consider adding an explicit lifetime bound";
-            if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
-                let suggestion = if is_impl_trait {
-                    format!("{} + {}", bound_kind, sub)
-                } else {
-                    let tail = if has_lifetimes { " + " } else { "" };
-                    format!("{}: {}{}", bound_kind, sub, tail)
-                };
-                err.span_suggestion(
+            if let Some((sp, has_lifetimes)) = type_param_span {
+                let suggestion =
+                    if has_lifetimes { format!(" + {}", sub) } else { format!(": {}", sub) };
+                err.span_suggestion_verbose(
                     sp,
                     &format!("{}...", msg),
                     suggestion,
                     Applicability::MaybeIncorrect, // Issue #41966
                 );
             } else {
-                let consider = format!(
-                    "{} {}...",
-                    msg,
-                    if type_param_span.map_or(false, |(_, _, is_impl_trait)| is_impl_trait) {
-                        format!(" `{}` to `{}`", sub, bound_kind)
-                    } else {
-                        format!("`{}: {}`", bound_kind, sub)
-                    },
-                );
+                let consider = format!("{} `{}: {}`...", msg, bound_kind, sub,);
                 err.help(&consider);
             }
         }
 
         let new_binding_suggestion =
-            |err: &mut Diagnostic,
-             type_param_span: Option<(Span, bool, bool)>,
-             bound_kind: GenericKind<'tcx>| {
+            |err: &mut Diagnostic, type_param_span: Option<(Span, bool)>| {
                 let msg = "consider introducing an explicit lifetime bound";
-                if let Some((sp, has_lifetimes, is_impl_trait)) = type_param_span {
-                    let suggestion = if is_impl_trait {
-                        (sp.shrink_to_hi(), format!(" + {}", new_lt))
+                if let Some((sp, has_lifetimes)) = type_param_span {
+                    let suggestion = if has_lifetimes {
+                        format!(" + {}", new_lt)
                     } else {
-                        let tail = if has_lifetimes { " +" } else { "" };
-                        (sp, format!("{}: {}{}", bound_kind, new_lt, tail))
+                        format!(": {}", new_lt)
                     };
                     let mut sugg =
-                        vec![suggestion, (span.shrink_to_hi(), format!(" + {}", new_lt))];
+                        vec![(sp, suggestion), (span.shrink_to_hi(), format!(" + {}", new_lt))];
                     if let Some(lt) = add_lt_sugg {
                         sugg.push(lt);
                         sugg.rotate_right(1);
@@ -2615,7 +2594,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
                         ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
-                            new_binding_suggestion(&mut err, type_param_span, bound_kind);
+                            new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
                             binding_suggestion(&mut err, type_param_span, bound_kind, new_lt);
