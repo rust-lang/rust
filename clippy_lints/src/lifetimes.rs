@@ -139,28 +139,35 @@ fn check_fn_inner<'tcx>(
         .iter()
         .filter(|param| matches!(param.kind, GenericParamKind::Type { .. }));
     for typ in types {
-        for bound in typ.bounds {
-            let mut visitor = RefVisitor::new(cx);
-            walk_param_bound(&mut visitor, bound);
-            if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
-                return;
+        for pred in generics.bounds_for_param(cx.tcx.hir().local_def_id(typ.hir_id)) {
+            if pred.in_where_clause {
+                // has_where_lifetimes checked that this predicate contains no lifetime.
+                continue;
             }
-            if let GenericBound::Trait(ref trait_ref, _) = *bound {
-                let params = &trait_ref
-                    .trait_ref
-                    .path
-                    .segments
-                    .last()
-                    .expect("a path must have at least one segment")
-                    .args;
-                if let Some(params) = *params {
-                    let lifetimes = params.args.iter().filter_map(|arg| match arg {
-                        GenericArg::Lifetime(lt) => Some(lt),
-                        _ => None,
-                    });
-                    for bound in lifetimes {
-                        if bound.name != LifetimeName::Static && !bound.is_elided() {
-                            return;
+
+            for bound in pred.bounds {
+                let mut visitor = RefVisitor::new(cx);
+                walk_param_bound(&mut visitor, bound);
+                if visitor.lts.iter().any(|lt| matches!(lt, RefLt::Named(_))) {
+                    return;
+                }
+                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                    let params = &trait_ref
+                        .trait_ref
+                        .path
+                        .segments
+                        .last()
+                        .expect("a path must have at least one segment")
+                        .args;
+                    if let Some(params) = *params {
+                        let lifetimes = params.args.iter().filter_map(|arg| match arg {
+                            GenericArg::Lifetime(lt) => Some(lt),
+                            _ => None,
+                        });
+                        for bound in lifetimes {
+                            if bound.name != LifetimeName::Static && !bound.is_elided() {
+                                return;
+                            }
                         }
                     }
                 }
@@ -322,9 +329,7 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxHashSet<RefLt> {
     let mut allowed_lts = FxHashSet::default();
     for par in named_generics.iter() {
         if let GenericParamKind::Lifetime { .. } = par.kind {
-            if par.bounds.is_empty() {
-                allowed_lts.insert(RefLt::Named(par.name.ident().name));
-            }
+            allowed_lts.insert(RefLt::Named(par.name.ident().name));
         }
     }
     allowed_lts.insert(RefLt::Unnamed);
