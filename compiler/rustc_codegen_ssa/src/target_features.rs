@@ -148,7 +148,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
 ];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("adx", Some(sym::adx_target_feature)),
+    ("adx", None),
     ("aes", None),
     ("avx", None),
     ("avx2", None),

@@ -207,7 +207,6 @@
 //
 // Target features:
 #![cfg_attr(bootstrap, feature(aarch64_target_feature))]
-#![feature(adx_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(cmpxchg16b_target_feature)]
@@ -219,6 +218,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![cfg_attr(bootstrap, feature(adx_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]
