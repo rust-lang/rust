@@ -402,7 +402,7 @@ macro_rules! define_queries {
                 }
             }
 
-            $(pub fn $name()-> DepKindStruct {
+            $(pub(crate) fn $name()-> DepKindStruct {
                 let is_anon = is_anon!([$($modifiers)*]);
                 let is_eval_always = is_eval_always!([$($modifiers)*]);
 
