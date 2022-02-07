@@ -2215,19 +2215,12 @@ pub fn walk_to_expr_usage<'tcx, T>(
             _ => return None,
         };
         match parent.kind {
-            ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => {
-                child_id = parent_id;
-                continue;
-            },
+            ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => child_id = parent_id,
             ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
                 child_id = id;
                 iter = map.parent_iter(id);
-                continue;
             },
-            ExprKind::Block(..) => {
-                child_id = parent_id;
-                continue;
-            },
+            ExprKind::Block(..) => child_id = parent_id,
             _ => return None,
         }
     }

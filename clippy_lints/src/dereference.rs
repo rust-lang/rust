@@ -6,8 +6,9 @@ use clippy_utils::{get_parent_expr, is_lint_allowed, path_to_local, walk_to_expr
 use rustc_ast::util::parser::{PREC_POSTFIX, PREC_PREFIX};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
+use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
-    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, FnRetTy, GenericArg, HirId, ImplItem,
+    self as hir, BindingAnnotation, Body, BodyId, BorrowKind, Expr, ExprKind, GenericArg, HirId, ImplItem,
     ImplItemKind, Item, ItemKind, Local, MatchSource, Mutability, Node, Pat, PatKind, Path, QPath, TraitItem,
     TraitItemKind, TyKind, UnOp,
 };
@@ -870,38 +871,32 @@ fn binding_ty_auto_deref_stability(ty: &hir::Ty<'_>, precedence: i8) -> Position
 // Checks whether a type is inferred at some point.
 // e.g. `_`, `Box<_>`, `[_]`
 fn ty_contains_infer(ty: &hir::Ty<'_>) -> bool {
-    match &ty.kind {
-        TyKind::Slice(ty) | TyKind::Array(ty, _) => ty_contains_infer(ty),
-        TyKind::Ptr(ty) | TyKind::Rptr(_, ty) => ty_contains_infer(ty.ty),
-        TyKind::Tup(tys) => tys.iter().any(ty_contains_infer),
-        TyKind::BareFn(ty) => {
-            if ty.decl.inputs.iter().any(ty_contains_infer) {
-                return true;
-            }
-            if let FnRetTy::Return(ty) = &ty.decl.output {
-                ty_contains_infer(ty)
+    struct V(bool);
+    impl Visitor<'_> for V {
+        fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
+            if self.0
+                || matches!(
+                    ty.kind,
+                    TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err
+                )
+            {
+                self.0 = true;
             } else {
-                false
+                walk_ty(self, ty);
             }
-        },
-        &TyKind::Path(
-            QPath::TypeRelative(_, path)
-            | QPath::Resolved(
-                _,
-                Path {
-                    segments: [.., path], ..
-                },
-            ),
-        ) => path.args.map_or(false, |args| {
-            args.args.iter().any(|arg| match arg {
-                GenericArg::Infer(_) => true,
-                GenericArg::Type(ty) => ty_contains_infer(ty),
-                _ => false,
-            })
-        }),
-        TyKind::Path(_) | TyKind::OpaqueDef(..) | TyKind::Infer | TyKind::Typeof(_) | TyKind::Err => true,
-        TyKind::Never | TyKind::TraitObject(..) => false,
+        }
+
+        fn visit_generic_arg(&mut self, arg: &GenericArg<'_>) {
+            if self.0 || matches!(arg, GenericArg::Infer(_)) {
+                self.0 = true;
+            } else if let GenericArg::Type(ty) = arg {
+                self.visit_ty(ty);
+            }
+        }
     }
+    let mut v = V(false);
+    v.visit_ty(ty);
+    v.0
 }
 
 // Checks whether a type is stable when switching to auto dereferencing,
@@ -951,7 +946,7 @@ fn param_auto_deref_stability(ty: Ty<'_>, precedence: i8) -> Position {
 
 fn ty_contains_field(ty: Ty<'_>, name: Symbol) -> bool {
     if let ty::Adt(adt, _) = *ty.kind() {
-        adt.is_struct() && adt.non_enum_variant().fields.iter().any(|f| f.name == name)
+        adt.is_struct() && adt.all_fields().any(|f| f.name == name)
     } else {
         false
     }

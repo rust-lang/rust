@@ -775,6 +775,7 @@ pub fn for_each_top_level_late_bound_region<B>(
     ty.visit_with(&mut V { index: 0, f })
 }
 
+/// Gets the struct or enum variant from the given `Res`
 pub fn variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<&'tcx VariantDef> {
     match res {
         Res::Def(DefKind::Struct, id) => Some(cx.tcx.adt_def(id).non_enum_variant()),
