@@ -62,10 +62,11 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 name: StaticTestName("1"),
                 ignore: true,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -74,10 +75,11 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
                 name: StaticTestName("2"),
                 ignore: false,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(move || {})),
         },
@@ -94,10 +96,11 @@ pub fn do_not_run_ignored_tests() {
             name: StaticTestName("whatever"),
             ignore: true,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -115,10 +118,11 @@ pub fn ignored_tests_result_in_ignored() {
             name: StaticTestName("whatever"),
             ignore: true,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -140,10 +144,11 @@ fn test_should_panic() {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::Yes,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -165,10 +170,11 @@ fn test_should_panic_good_message() {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage("error message"),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -195,10 +201,11 @@ fn test_should_panic_bad_message() {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage(expected),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -229,10 +236,11 @@ fn test_should_panic_non_string_message_type() {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::YesWithMessage(expected),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -255,10 +263,11 @@ fn test_should_panic_but_succeeds() {
                 name: StaticTestName("whatever"),
                 ignore: false,
                 should_panic,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(f)),
         };
@@ -289,10 +298,11 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -324,10 +334,11 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
             name: StaticTestName("whatever"),
             ignore: false,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(f)),
     };
@@ -363,10 +374,11 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
         name: StaticTestName("whatever"),
         ignore: false,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     }
 }
 
@@ -476,10 +488,11 @@ pub fn exclude_should_panic_option() {
             name: StaticTestName("3"),
             ignore: false,
             should_panic: ShouldPanic::Yes,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
+            #[cfg(bootstrap)]
+            allow_fail: false,
         },
         testfn: DynTestFn(Box::new(move || {})),
     });
@@ -500,10 +513,11 @@ pub fn exact_filter_match() {
                     name: StaticTestName(name),
                     ignore: false,
                     should_panic: ShouldPanic::No,
-                    allow_fail: false,
                     compile_fail: false,
                     no_run: false,
                     test_type: TestType::Unknown,
+                    #[cfg(bootstrap)]
+                    allow_fail: false,
                 },
                 testfn: DynTestFn(Box::new(move || {})),
             })
@@ -589,10 +603,11 @@ fn sample_tests() -> Vec<TestDescAndFn> {
                 name: DynTestName((*name).clone()),
                 ignore: false,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
+                #[cfg(bootstrap)]
+                allow_fail: false,
             },
             testfn: DynTestFn(Box::new(testfn)),
         };
@@ -740,10 +755,11 @@ pub fn test_bench_no_iter() {
         name: StaticTestName("f"),
         ignore: false,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     crate::bench::benchmark(TestId(0), desc, tx, true, f);
@@ -762,10 +778,11 @@ pub fn test_bench_iter() {
         name: StaticTestName("f"),
         ignore: false,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     crate::bench::benchmark(TestId(0), desc, tx, true, f);
@@ -778,20 +795,22 @@ fn should_sort_failures_before_printing_them() {
         name: StaticTestName("a"),
         ignore: false,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
+        #[cfg(bootstrap)]
+        allow_fail: false,
     };
 
     let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);
@@ -802,7 +821,6 @@ fn should_sort_failures_before_printing_them() {
         passed: 0,
         failed: 0,
         ignored: 0,
-        allowed_fail: 0,
         filtered_out: 0,
         measured: 0,
         exec_time: None,
