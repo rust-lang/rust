@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::is_ty_param_diagnostic_item;
+use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_hir::{self as hir, def_id::DefId, QPath};
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
+use rustc_span::{sym, Symbol};
 
 use super::BOX_COLLECTION;
 
@@ -11,10 +11,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
         if Some(def_id) == cx.tcx.lang_items().owned_box();
         if let Some(item_type) = get_std_collection(cx, qpath);
         then {
-            let generic = if item_type == "String" {
-                ""
-            } else {
-                "<..>"
+            let generic = match item_type {
+                sym::String => "",
+                _ => "<..>",
             };
             span_lint_and_help(
                 cx,
@@ -37,14 +36,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
     }
 }
 
-fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if is_ty_param_diagnostic_item(cx, qpath, sym::Vec).is_some() {
-        Some("Vec")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::String).is_some() {
-        Some("String")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::HashMap).is_some() {
-        Some("HashMap")
-    } else {
-        None
-    }
+fn get_std_collection(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<Symbol> {
+    let param = qpath_generic_tys(qpath).next()?;
+    let id = path_def_id(cx, param)?;
+    cx.tcx
+        .get_diagnostic_name(id)
+        .filter(|&name| matches!(name, sym::HashMap | sym::String | sym::Vec))
 }

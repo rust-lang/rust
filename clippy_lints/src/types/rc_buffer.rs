@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{get_qpath_generic_tys, is_ty_param_diagnostic_item};
+use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
 use rustc_lint::LateContext;
@@ -20,12 +20,17 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 format!("Rc<{}>", alternate),
                 Applicability::MachineApplicable,
             );
-        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Vec) {
+        } else {
+            let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
+            let Some(id) = path_def_id(cx, ty) else { return false };
+            if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
+                return false;
+            }
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
             };
-            let inner_span = match get_qpath_generic_tys(qpath).next() {
+            let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,
             };
@@ -55,12 +60,16 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 format!("Arc<{}>", alternate),
                 Applicability::MachineApplicable,
             );
-        } else if let Some(ty) = is_ty_param_diagnostic_item(cx, qpath, sym::Vec) {
+        } else if let Some(ty) = qpath_generic_tys(qpath).next() {
+            let Some(id) = path_def_id(cx, ty) else { return false };
+            if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
+                return false;
+            }
             let qpath = match &ty.kind {
                 TyKind::Path(qpath) => qpath,
                 _ => return false,
             };
-            let inner_span = match get_qpath_generic_tys(qpath).next() {
+            let inner_span = match qpath_generic_tys(qpath).next() {
                 Some(ty) => ty.span,
                 None => return false,
             };
@@ -85,13 +94,13 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
 }
 
 fn match_buffer_type(cx: &LateContext<'_>, qpath: &QPath<'_>) -> Option<&'static str> {
-    if is_ty_param_diagnostic_item(cx, qpath, sym::String).is_some() {
-        Some("str")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::OsString).is_some() {
-        Some("std::ffi::OsStr")
-    } else if is_ty_param_diagnostic_item(cx, qpath, sym::PathBuf).is_some() {
-        Some("std::path::Path")
-    } else {
-        None
-    }
+    let ty = qpath_generic_tys(qpath).next()?;
+    let id = path_def_id(cx, ty)?;
+    let path = match cx.tcx.get_diagnostic_name(id)? {
+        sym::String => "str",
+        sym::OsString => "std::ffi::OsStr",
+        sym::PathBuf => "std::path::Path",
+        _ => return None,
+    };
+    Some(path)
 }

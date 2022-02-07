@@ -20,8 +20,8 @@ use rustc_span::symbol::sym;
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    expr_path_res, get_item_name, get_parent_expr, in_constant, is_diag_trait_item, is_integer_const, iter_input_pats,
-    last_path_segment, match_any_def_paths, paths, unsext, SpanlessEq,
+    get_item_name, get_parent_expr, in_constant, is_diag_trait_item, is_integer_const, iter_input_pats,
+    last_path_segment, match_any_def_paths, path_def_id, paths, unsext, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -583,8 +583,7 @@ fn check_to_owned(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left:
             )
         },
         ExprKind::Call(path, [arg]) => {
-            if expr_path_res(cx, path)
-                .opt_def_id()
+            if path_def_id(cx, path)
                 .and_then(|id| match_any_def_paths(cx, id, &[&paths::FROM_STR_METHOD, &paths::FROM_FROM]))
                 .is_some()
             {

@@ -77,9 +77,9 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
     def, lang_items, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
-    ExprKind, FnDecl, ForeignItem, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem,
-    Local, MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    Target, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    ExprKind, FnDecl, ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
+    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Target,
+    TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
@@ -132,13 +132,6 @@ macro_rules! extract_msrv_attr {
             }
         }
     };
-}
-
-/// Returns `true` if the two spans come from differing expansions (i.e., one is
-/// from a macro and one isn't).
-#[must_use]
-pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
-    rhs.ctxt() != lhs.ctxt()
 }
 
 /// If the given expression is a local binding, find the initializer expression.
@@ -262,44 +255,6 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
     matches!(pat.kind, PatKind::Wild)
 }
 
-/// Checks if the first type parameter is a lang item.
-pub fn is_ty_param_lang_item<'tcx>(
-    cx: &LateContext<'_>,
-    qpath: &QPath<'tcx>,
-    item: LangItem,
-) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .map_or(false, |id| {
-                cx.tcx.lang_items().require(item).map_or(false, |lang_id| id == lang_id)
-            })
-            .then(|| ty)
-    } else {
-        None
-    }
-}
-
-/// Checks if the first type parameter is a diagnostic item.
-pub fn is_ty_param_diagnostic_item<'tcx>(
-    cx: &LateContext<'_>,
-    qpath: &QPath<'tcx>,
-    item: Symbol,
-) -> Option<&'tcx hir::Ty<'tcx>> {
-    let ty = get_qpath_generic_tys(qpath).next()?;
-
-    if let TyKind::Path(qpath) = &ty.kind {
-        cx.qpath_res(qpath, ty.hir_id)
-            .opt_def_id()
-            .map_or(false, |id| cx.tcx.is_diagnostic_item(item, id))
-            .then(|| ty)
-    } else {
-        None
-    }
-}
-
 /// Checks if the method call given in `expr` belongs to the given trait.
 /// This is a deprecated function, consider using [`is_trait_method`].
 pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) -> bool {
@@ -360,33 +315,15 @@ pub fn last_path_segment<'tcx>(path: &QPath<'tcx>) -> &'tcx PathSegment<'tcx> {
     }
 }
 
-pub fn get_qpath_generics<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx GenericArgs<'tcx>> {
-    match path {
-        QPath::Resolved(_, p) => p.segments.last().and_then(|s| s.args),
-        QPath::TypeRelative(_, s) => s.args,
-        QPath::LangItem(..) => None,
-    }
-}
-
-pub fn get_qpath_generic_tys<'tcx>(path: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
-    get_qpath_generics(path)
-        .map_or([].as_ref(), |a| a.args)
+pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tcx hir::Ty<'tcx>> {
+    last_path_segment(qpath)
+        .args
+        .map_or(&[][..], |a| a.args)
         .iter()
-        .filter_map(|a| {
-            if let hir::GenericArg::Type(ty) = a {
-                Some(ty)
-            } else {
-                None
-            }
+        .filter_map(|a| match a {
+            hir::GenericArg::Type(ty) => Some(ty),
+            _ => None,
         })
-}
-
-pub fn single_segment_path<'tcx>(path: &QPath<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    match *path {
-        QPath::Resolved(_, path) => path.segments.get(0),
-        QPath::TypeRelative(_, seg) => Some(seg),
-        QPath::LangItem(..) => None,
-    }
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -420,37 +357,17 @@ pub fn match_qpath(path: &QPath<'_>, segments: &[&str]) -> bool {
     }
 }
 
-/// If the expression is a path, resolve it. Otherwise, return `Res::Err`.
-pub fn expr_path_res(cx: &LateContext<'_>, expr: &Expr<'_>) -> Res {
-    if let ExprKind::Path(p) = &expr.kind {
-        cx.qpath_res(p, expr.hir_id)
-    } else {
-        Res::Err
-    }
-}
-
-/// Resolves the path to a `DefId` and checks if it matches the given path.
-pub fn is_qpath_def_path(cx: &LateContext<'_>, path: &QPath<'_>, hir_id: HirId, segments: &[&str]) -> bool {
-    cx.qpath_res(path, hir_id)
-        .opt_def_id()
-        .map_or(false, |id| match_def_path(cx, id, segments))
-}
-
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given path.
 ///
 /// Please use `is_expr_diagnostic_item` if the target is a diagnostic item.
 pub fn is_expr_path_def_path(cx: &LateContext<'_>, expr: &Expr<'_>, segments: &[&str]) -> bool {
-    expr_path_res(cx, expr)
-        .opt_def_id()
-        .map_or(false, |id| match_def_path(cx, id, segments))
+    path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, segments))
 }
 
 /// If the expression is a path, resolves it to a `DefId` and checks if it matches the given
 /// diagnostic item.
 pub fn is_expr_diagnostic_item(cx: &LateContext<'_>, expr: &Expr<'_>, diag_item: Symbol) -> bool {
-    expr_path_res(cx, expr)
-        .opt_def_id()
-        .map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
+    path_def_id(cx, expr).map_or(false, |id| cx.tcx.is_diagnostic_item(diag_item, id))
 }
 
 /// THIS METHOD IS DEPRECATED and will eventually be removed since it does not match against the
@@ -497,8 +414,46 @@ pub fn path_to_local_id(expr: &Expr<'_>, id: HirId) -> bool {
     path_to_local(expr) == Some(id)
 }
 
-/// Gets the definition associated to a path.
-pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
+pub trait MaybePath<'hir> {
+    fn hir_id(&self) -> HirId;
+    fn qpath_opt(&self) -> Option<&QPath<'hir>>;
+}
+
+macro_rules! maybe_path {
+    ($ty:ident, $kind:ident) => {
+        impl<'hir> MaybePath<'hir> for hir::$ty<'hir> {
+            fn hir_id(&self) -> HirId {
+                self.hir_id
+            }
+            fn qpath_opt(&self) -> Option<&QPath<'hir>> {
+                match &self.kind {
+                    hir::$kind::Path(qpath) => Some(qpath),
+                    _ => None,
+                }
+            }
+        }
+    };
+}
+maybe_path!(Expr, ExprKind);
+maybe_path!(Pat, PatKind);
+maybe_path!(Ty, TyKind);
+
+/// If `maybe_path` is a path node, resolves it, otherwise returns `Res::Err`
+pub fn path_res<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Res {
+    match maybe_path.qpath_opt() {
+        None => Res::Err,
+        Some(qpath) => cx.qpath_res(qpath, maybe_path.hir_id()),
+    }
+}
+
+/// If `maybe_path` is a path node which resolves to an item, retrieves the item ID
+pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>) -> Option<DefId> {
+    path_res(cx, maybe_path).opt_def_id()
+}
+
+/// Resolves a def path like `std::vec::Vec`.
+/// This function is expensive and should be used sparingly.
+pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     macro_rules! try_res {
         ($e:expr) => {
             match $e {
@@ -574,7 +529,7 @@ pub fn path_to_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
 /// Convenience function to get the `DefId` of a trait by path.
 /// It could be a trait or trait alias.
 pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
-    match path_to_res(cx, path) {
+    match def_path_res(cx, path) {
         Res::Def(DefKind::Trait | DefKind::TraitAlias, trait_id) => Some(trait_id),
         _ => None,
     }
@@ -1649,20 +1604,12 @@ pub fn match_function_call<'tcx>(
 /// Checks if the given `DefId` matches any of the paths. Returns the index of matching path, if
 /// any.
 ///
-/// Please use `match_any_diagnostic_items` if the targets are all diagnostic items.
+/// Please use `tcx.get_diagnostic_name` if the targets are all diagnostic items.
 pub fn match_any_def_paths(cx: &LateContext<'_>, did: DefId, paths: &[&[&str]]) -> Option<usize> {
     let search_path = cx.get_def_path(did);
     paths
         .iter()
         .position(|p| p.iter().map(|x| Symbol::intern(x)).eq(search_path.iter().copied()))
-}
-
-/// Checks if the given `DefId` matches any of provided diagnostic items. Returns the index of
-/// matching path, if any.
-pub fn match_any_diagnostic_items(cx: &LateContext<'_>, def_id: DefId, diag_items: &[Symbol]) -> Option<usize> {
-    diag_items
-        .iter()
-        .position(|item| cx.tcx.is_diagnostic_item(*item, def_id))
 }
 
 /// Checks if the given `DefId` matches the path.
@@ -1817,8 +1764,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 
     match expr.kind {
         ExprKind::Closure(_, _, body_id, _, _) => is_body_identity_function(cx, cx.tcx.hir().body(body_id)),
-        ExprKind::Path(ref path) => is_qpath_def_path(cx, path, expr.hir_id, &paths::CONVERT_IDENTITY),
-        _ => false,
+        _ => path_def_id(cx, expr).map_or(false, |id| match_def_path(cx, id, &paths::CONVERT_IDENTITY)),
     }
 }
 
