@@ -10,7 +10,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
-use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
+use rustc_middle::ty::{DefIdTree, Ty, TyCtxt, TyKind};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
@@ -723,10 +723,27 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 self.resolve_associated_item(res, item_name, ns, module_id)
             }
             Res::Def(
-                DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy,
+                def_kind @ (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::ForeignTy),
                 did,
             ) => {
                 debug!("looking for associated item named {} for item {:?}", item_name, did);
+                // Checks if item_name is a variant of the `SomeItem` enum
+                if ns == TypeNS && def_kind == DefKind::Enum {
+                    match tcx.type_of(did).kind() {
+                        TyKind::Adt(adt_def, _) => {
+                            for variant in &adt_def.variants {
+                                if variant.name == item_name {
+                                    return Some((
+                                        root_res,
+                                        ItemFragment(FragmentKind::Variant, variant.def_id),
+                                    ));
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
                 // Checks if item_name belongs to `impl SomeItem`
                 let assoc_item = tcx
                     .inherent_impls(did)
