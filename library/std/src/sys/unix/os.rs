@@ -294,9 +294,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
                 0,
             ))?;
             if path_len <= 1 {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
-                    &"KERN_PROC_PATHNAME sysctl returned zero-length string",
+                    "KERN_PROC_PATHNAME sysctl returned zero-length string",
                 ));
             }
             let mut path: Vec<u8> = Vec::with_capacity(path_len);
@@ -317,9 +317,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if curproc_exe.is_file() {
             return crate::fs::read_link(curproc_exe);
         }
-        Err(io::Error::new_const(
+        Err(io::const_io_error!(
             io::ErrorKind::Uncategorized,
-            &"/proc/curproc/exe doesn't point to regular file.",
+            "/proc/curproc/exe doesn't point to regular file.",
         ))
     }
     sysctl().or_else(|_| procfs())
@@ -336,9 +336,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::Uncategorized,
-                &"no current exe available",
+                "no current exe available",
             ));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
@@ -353,9 +353,9 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "emscripten"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     match crate::fs::read_link("/proc/self/exe") {
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::Error::new_const(
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => Err(io::const_io_error!(
             io::ErrorKind::Uncategorized,
-            &"no /proc/self/exe available. Is /proc mounted?",
+            "no /proc/self/exe available. Is /proc mounted?",
         )),
         other => other,
     }
@@ -417,7 +417,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         );
         if result != 0 {
             use crate::io::ErrorKind;
-            Err(io::Error::new_const(ErrorKind::Uncategorized, &"Error getting executable path"))
+            Err(io::const_io_error!(ErrorKind::Uncategorized, "Error getting executable path"))
         } else {
             let name = CStr::from_ptr((*info.as_ptr()).name.as_ptr()).to_bytes();
             Ok(PathBuf::from(OsStr::from_bytes(name)))
@@ -433,7 +433,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(any(target_os = "fuchsia", target_os = "l4re"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::Error::new_const(ErrorKind::Unsupported, &"Not yet implemented!"))
+    Err(io::const_io_error!(ErrorKind::Unsupported, "Not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]

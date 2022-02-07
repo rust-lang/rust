@@ -30,16 +30,16 @@ pub(super) fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::s
     let bytes = path.as_os_str().as_bytes();
 
     if bytes.contains(&0) {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"paths must not contain interior null bytes",
+            "paths must not contain interior null bytes",
         ));
     }
 
     if bytes.len() >= addr.sun_path.len() {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"path must be shorter than SUN_LEN",
+            "path must be shorter than SUN_LEN",
         ));
     }
     // SAFETY: `bytes` and `addr.sun_path` are not overlapping and
@@ -121,9 +121,9 @@ impl SocketAddr {
             // linux returns zero bytes of address
             len = sun_path_offset(&addr) as libc::socklen_t; // i.e., zero-length address
         } else if addr.sun_family != libc::AF_UNIX as libc::sa_family_t {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"file descriptor did not correspond to a Unix socket",
+                "file descriptor did not correspond to a Unix socket",
             ));
         }
 
@@ -323,9 +323,9 @@ impl SocketAddr {
             addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
 
             if namespace.len() + 1 > addr.sun_path.len() {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::InvalidInput,
-                    &"namespace must be shorter than SUN_LEN",
+                    "namespace must be shorter than SUN_LEN",
                 ));
             }
 

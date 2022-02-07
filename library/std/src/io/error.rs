@@ -1,6 +1,16 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(target_pointer_width = "64")]
+mod repr_bitpacked;
+#[cfg(target_pointer_width = "64")]
+use repr_bitpacked::Repr;
+
+#[cfg(not(target_pointer_width = "64"))]
+mod repr_unpacked;
+#[cfg(not(target_pointer_width = "64"))]
+use repr_unpacked::Repr;
+
 use crate::convert::From;
 use crate::error;
 use crate::fmt;
@@ -66,15 +76,58 @@ impl fmt::Debug for Error {
     }
 }
 
-enum Repr {
+// Only derive debug in tests, to make sure it
+// doesn't accidentally get printed.
+#[cfg_attr(test, derive(Debug))]
+enum ErrorData<C> {
     Os(i32),
     Simple(ErrorKind),
-    // &str is a fat pointer, but &&str is a thin pointer.
-    SimpleMessage(ErrorKind, &'static &'static str),
-    Custom(Box<Custom>),
+    SimpleMessage(&'static SimpleMessage),
+    Custom(C),
 }
 
+// `#[repr(align(4))]` is probably redundant, it should have that value or
+// higher already. We include it just because repr_bitpacked.rs's encoding
+// requires an alignment >= 4 (note that `#[repr(align)]` will not reduce the
+// alignment required by the struct, only increase it).
+//
+// If we add more variants to ErrorData, this can be increased to 8, but it
+// should probably be behind `#[cfg_attr(target_pointer_width = "64", ...)]` or
+// whatever cfg we're using to enable the `repr_bitpacked` code, since only the
+// that version needs the alignment, and 8 is higher than the alignment we'll
+// have on 32 bit platforms.
+//
+// (For the sake of being explicit: the alignment requirement here only matters
+// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
+// matter at all)
+#[repr(align(4))]
 #[derive(Debug)]
+pub(crate) struct SimpleMessage {
+    kind: ErrorKind,
+    message: &'static str,
+}
+
+impl SimpleMessage {
+    pub(crate) const fn new(kind: ErrorKind, message: &'static str) -> Self {
+        Self { kind, message }
+    }
+}
+
+/// Create and return an `io::Error` for a given `ErrorKind` and constant
+/// message. This doesn't allocate.
+pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
+    $crate::io::error::Error::from_static_message({
+        const MESSAGE_DATA: $crate::io::error::SimpleMessage =
+            $crate::io::error::SimpleMessage::new($kind, $message);
+        &MESSAGE_DATA
+    })
+}
+
+// As with `SimpleMessage`: `#[repr(align(4))]` here is just because
+// repr_bitpacked's encoding requires it. In practice it almost certainly be
+// already be this high or higher.
+#[derive(Debug)]
+#[repr(align(4))]
 struct Custom {
     kind: ErrorKind,
     error: Box<dyn error::Error + Send + Sync>,
@@ -396,7 +449,7 @@ impl From<ErrorKind> for Error {
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
-        Error { repr: Repr::Simple(kind) }
+        Error { repr: Repr::new_simple(kind) }
     }
 }
 
@@ -461,20 +514,22 @@ impl Error {
     }
 
     fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
-        Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
+        Error { repr: Repr::new_custom(Box::new(Custom { kind, error })) }
     }
 
-    /// Creates a new I/O error from a known kind of error as well as a
-    /// constant message.
+    /// Creates a new I/O error from a known kind of error as well as a constant
+    /// message.
     ///
     /// This function does not allocate.
     ///
-    /// This function should maybe change to
-    /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
-    /// in the future, when const generics allow that.
+    /// You should not use this directly, and instead use the `const_io_error!`
+    /// macro: `io::const_io_error!(ErrorKind::Something, "some_message")`.
+    ///
+    /// This function should maybe change to `from_static_message<const MSG: &'static
+    /// str>(kind: ErrorKind)` in the future, when const generics allow that.
     #[inline]
-    pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
-        Self { repr: Repr::SimpleMessage(kind, message) }
+    pub(crate) const fn from_static_message(msg: &'static SimpleMessage) -> Error {
+        Self { repr: Repr::new_simple_message(msg) }
     }
 
     /// Returns an error representing the last OS error which occurred.
@@ -532,7 +587,7 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn from_raw_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
+        Error { repr: Repr::new_os(code) }
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -568,11 +623,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn raw_os_error(&self) -> Option<i32> {
-        match self.repr {
-            Repr::Os(i) => Some(i),
-            Repr::Custom(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
+        match self.repr.data() {
+            ErrorData::Os(i) => Some(i),
+            ErrorData::Custom(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
         }
     }
 
@@ -607,11 +662,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => Some(&*c.error),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(&*c.error),
         }
     }
 
@@ -681,11 +736,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref mut c) => Some(&mut *c.error),
+        match self.repr.data_mut() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(&mut *c.error),
         }
     }
 
@@ -720,11 +775,11 @@ impl Error {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(c) => Some(c.error),
+        match self.repr.into_data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(c.error),
         }
     }
 
@@ -750,29 +805,31 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn kind(&self) -> ErrorKind {
-        match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
-            Repr::Custom(ref c) => c.kind,
-            Repr::Simple(kind) => kind,
-            Repr::SimpleMessage(kind, _) => kind,
+        match self.repr.data() {
+            ErrorData::Os(code) => sys::decode_error_kind(code),
+            ErrorData::Custom(c) => c.kind,
+            ErrorData::Simple(kind) => kind,
+            ErrorData::SimpleMessage(m) => m.kind,
         }
     }
 }
 
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Repr::Os(code) => fmt
+        match self.data() {
+            ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
                 .field("kind", &sys::decode_error_kind(code))
                 .field("message", &sys::os::error_string(code))
                 .finish(),
-            Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
-            Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
-            Repr::SimpleMessage(kind, &message) => {
-                fmt.debug_struct("Error").field("kind", &kind).field("message", &message).finish()
-            }
+            ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
+            ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+            ErrorData::SimpleMessage(msg) => fmt
+                .debug_struct("Error")
+                .field("kind", &msg.kind)
+                .field("message", &msg.message)
+                .finish(),
         }
     }
 }
@@ -780,14 +837,14 @@ impl fmt::Debug for Repr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.repr {
-            Repr::Os(code) => {
+        match self.repr.data() {
+            ErrorData::Os(code) => {
                 let detail = sys::os::error_string(code);
                 write!(fmt, "{} (os error {})", detail, code)
             }
-            Repr::Custom(ref c) => c.error.fmt(fmt),
-            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
-            Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
+            ErrorData::Custom(ref c) => c.error.fmt(fmt),
+            ErrorData::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+            ErrorData::SimpleMessage(msg) => msg.message.fmt(fmt),
         }
     }
 }
@@ -796,29 +853,29 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
-        match self.repr {
-            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
-            Repr::SimpleMessage(_, &msg) => msg,
-            Repr::Custom(ref c) => c.error.description(),
+        match self.repr.data() {
+            ErrorData::Os(..) | ErrorData::Simple(..) => self.kind().as_str(),
+            ErrorData::SimpleMessage(msg) => msg.message,
+            ErrorData::Custom(c) => c.error.description(),
         }
     }
 
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.cause(),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => c.error.cause(),
         }
     }
 
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.source(),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => c.error.source(),
         }
     }
 }

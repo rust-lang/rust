@@ -322,9 +322,6 @@ mod unsupported {
     }
 
     pub fn unsupported_err() -> io::Error {
-        io::Error::new_const(
-            io::ErrorKind::Unsupported,
-            &"operation not supported on this platform",
-        )
+        io::const_io_error!(io::ErrorKind::Unsupported, "operation not supported on this platform",)
     }
 }

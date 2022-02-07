@@ -711,7 +711,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
     f.to_str()
-        .ok_or_else(|| io::Error::new_const(io::ErrorKind::Uncategorized, &"input must be utf-8"))
+        .ok_or_else(|| io::const_io_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -757,7 +757,7 @@ fn remove_dir_all_recursive(parent: &WasiFd, path: &Path) -> io::Result<()> {
     for entry in ReadDir::new(fd, dummy_root) {
         let entry = entry?;
         let path = crate::str::from_utf8(&entry.name).map_err(|_| {
-            io::Error::new_const(io::ErrorKind::Uncategorized, &"invalid utf-8 file name found")
+            io::const_io_error!(io::ErrorKind::Uncategorized, "invalid utf-8 file name found")
         })?;
 
         if entry.file_type()?.is_dir() {

@@ -226,7 +226,7 @@ impl OpenOptions {
             (false, _, true) => Ok(O_WRONLY | O_APPEND),
             (true, _, true) => Ok(O_RDWR | O_APPEND),
             (false, false, false) => {
-                Err(io::Error::new_const(ErrorKind::InvalidInput, &"invalid access mode"))
+                Err(io::const_io_error!(ErrorKind::InvalidInput, "invalid access mode"))
             }
         }
     }
@@ -236,17 +236,17 @@ impl OpenOptions {
             (true, false) => {}
             (false, false) => {
                 if self.truncate || self.create || self.create_new {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         ErrorKind::InvalidInput,
-                        &"invalid creation mode",
+                        "invalid creation mode",
                     ));
                 }
             }
             (_, true) => {
                 if self.truncate && !self.create_new {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         ErrorKind::InvalidInput,
-                        &"invalid creation mode",
+                        "invalid creation mode",
                     ));
                 }
             }

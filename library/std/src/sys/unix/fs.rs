@@ -387,17 +387,17 @@ impl FileAttr {
                         tv_nsec: ext.stx_btime.tv_nsec as _,
                     }))
                 } else {
-                    Err(io::Error::new_const(
+                    Err(io::const_io_error!(
                         io::ErrorKind::Uncategorized,
-                        &"creation time is not available for the filesystem",
+                        "creation time is not available for the filesystem",
                     ))
                 };
             }
         }
 
-        Err(io::Error::new_const(
+        Err(io::const_io_error!(
             io::ErrorKind::Unsupported,
-            &"creation time is not available on this platform \
+            "creation time is not available on this platform \
                             currently",
         ))
     }

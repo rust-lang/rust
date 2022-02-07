@@ -135,7 +135,7 @@ impl OwnedSocket {
 
     #[cfg(target_vendor = "uwp")]
     pub(crate) fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
+        Err(io::const_io_error!(io::ErrorKind::Unsupported, "Unavailable on UWP"))
     }
 }
 

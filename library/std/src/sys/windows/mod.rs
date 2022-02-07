@@ -160,9 +160,9 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
         let mut maybe_result: Vec<u16> = s.encode_wide().collect();
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::Error::new_const(
+            return Err(crate::io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"strings passed to WinAPI cannot contain NULs",
+                "strings passed to WinAPI cannot contain NULs",
             ));
         }
         maybe_result.push(0);

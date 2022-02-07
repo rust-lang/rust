@@ -1077,7 +1077,7 @@ impl fmt::Display for NulError {
 impl From<NulError> for io::Error {
     /// Converts a [`NulError`] into a [`io::Error`].
     fn from(_: NulError) -> io::Error {
-        io::Error::new_const(io::ErrorKind::InvalidInput, &"data provided contains a nul byte")
+        io::const_io_error!(io::ErrorKind::InvalidInput, "data provided contains a nul byte")
     }
 }
 
