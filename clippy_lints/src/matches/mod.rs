@@ -1,14 +1,13 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{is_wild, meets_msrv, msrvs, path_to_local_id, peel_blocks, strip_pat_refs};
+use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::{is_wild, meets_msrv, msrvs};
 use if_chain::if_chain;
-use rustc_errors::Applicability;
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
+mod infalliable_detructuring_match;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
@@ -637,38 +636,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'_>) {
-        if_chain! {
-            if !local.span.from_expansion();
-            if let Some(expr) = local.init;
-            if let ExprKind::Match(target, arms, MatchSource::Normal) = expr.kind;
-            if arms.len() == 1 && arms[0].guard.is_none();
-            if let PatKind::TupleStruct(
-                QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind;
-            if args.len() == 1;
-            if let PatKind::Binding(_, arg, ..) = strip_pat_refs(&args[0]).kind;
-            let body = peel_blocks(arms[0].body);
-            if path_to_local_id(body, arg);
-
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                self.infallible_destructuring_match_linted = true;
-                span_lint_and_sugg(
-                    cx,
-                    INFALLIBLE_DESTRUCTURING_MATCH,
-                    local.span,
-                    "you seem to be trying to use `match` to destructure a single infallible pattern. \
-                    Consider using `let`",
-                    "try this",
-                    format!(
-                        "let {}({}) = {};",
-                        snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
-                        snippet_with_applicability(cx, target.span, "..", &mut applicability),
-                    ),
-                    applicability,
-                );
-            }
-        }
+        self.infallible_destructuring_match_linted |= infalliable_detructuring_match::check(cx, local);
     }
 
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
