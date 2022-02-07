@@ -1,4 +1,5 @@
 // check-pass
+// ignore-tidy-linelength
 
 fn main() {
     let i = true;
