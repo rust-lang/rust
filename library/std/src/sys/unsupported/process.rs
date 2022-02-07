@@ -166,7 +166,7 @@ impl From<u8> for ExitCode {
     fn from(code: u8) -> Self {
         match code {
             0 => Self::SUCCESS,
-            1..255 => Self::FAILURE,
+            1..=255 => Self::FAILURE,
         }
     }
 }
