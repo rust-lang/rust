@@ -1,7 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::{non_empty_vec::NonEmptyVec, always};
+use stdx::{always, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,

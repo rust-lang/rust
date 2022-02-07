@@ -430,7 +430,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         // be reported at the definition site (when we construct a def map).
         Err(err) => return ExpandResult::str_err(format!("invalid macro definition: {}", err)),
     };
-    let ExpandResult { value: tt, err } = expander.expand(db, id, &macro_arg.0);
+    let ExpandResult { value: mut tt, err } = expander.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     // XXX: Make ExpandResult a real error and use .map_err instead?
@@ -441,6 +441,8 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
             TOKEN_LIMIT.inner(),
         ));
     }
+
+    fixup::reverse_fixups(&mut tt);
 
     ExpandResult { value: Some(Arc::new(tt)), err }
 }

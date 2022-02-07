@@ -76,7 +76,6 @@ fn foo() {
 #[test]
 fn attribute_macro_syntax_completion_2() {
     // common case of dot completion while typing
-    // right now not working
     check(
         r#"
 //- proc_macros: identity_when_valid
@@ -88,7 +87,7 @@ fn foo() { bar.; blub }
 fn foo() { bar.; blub }
 
 fn foo() {
-    bar.;
+    bar. ;
     blub
 }"##]],
     );
