@@ -1,7 +1,7 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use stdx::non_empty_vec::NonEmptyVec;
+use stdx::{non_empty_vec::NonEmptyVec, always};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
     AstToken, Parse, PreorderWithTokens, SmolStr, SyntaxElement, SyntaxKind,
@@ -30,6 +30,8 @@ pub fn syntax_node_to_token_tree_censored(
     let mut c = Convertor::new(node, global_offset, replace, append);
     let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
+    always!(c.replace.is_empty());
+    always!(c.append.is_empty());
     (subtree, c.id_alloc.map)
 }
 
