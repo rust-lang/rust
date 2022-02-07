@@ -343,7 +343,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
             // All subcommands except `clean` can have an optional "Available paths" section
             if verbose {
-                let config = Config::parse(&["build".to_string()]);
+                let config = Config::parse(&["build".to_string()], false);
                 let build = Build::new(config);
 
                 let maybe_rules_help = Builder::get_help(&build, subcommand.as_str());
