@@ -2044,19 +2044,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // If a tuple of length one was expected and the found expression has
                         // parentheses around it, perhaps the user meant to write `(expr,)` to
                         // build a tuple (issue #86100)
-                        (ty::Tuple(_), _) if expected.tuple_fields().count() == 1 => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                                if let Some(code) =
-                                    code.strip_prefix('(').and_then(|s| s.strip_suffix(')'))
-                                {
-                                    err.span_suggestion(
-                                        span,
-                                        "use a trailing comma to create a tuple with one element",
-                                        format!("({},)", code),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                            }
+                        (ty::Tuple(_), _) => {
+                            self.emit_tuple_wrap_err(&mut err, span, found, expected)
                         }
                         // If a character was expected and the found expression is a string literal
                         // containing a single character, perhaps the user meant to write `'c'` to
@@ -2117,6 +2106,41 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false);
         diag
+    }
+
+    fn emit_tuple_wrap_err(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx>,
+        span: Span,
+        found: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) {
+        let [expected_tup_elem] = &expected.tuple_fields().collect::<Vec<_>>()[..]
+            else { return };
+
+        if !same_type_modulo_infer(expected_tup_elem, found) {
+            return;
+        }
+
+        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+            else { return };
+
+        let msg = "use a trailing comma to create a tuple with one element";
+        if code.starts_with('(') && code.ends_with(')') {
+            let before_close = span.hi() - BytePos::from_u32(1);
+            err.span_suggestion(
+                span.with_hi(before_close).shrink_to_hi(),
+                msg,
+                ",".into(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.multipart_suggestion(
+                msg,
+                vec![(span.shrink_to_lo(), "(".into()), (span.shrink_to_hi(), ",)".into())],
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     fn values_str(
