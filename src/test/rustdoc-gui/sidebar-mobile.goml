@@ -33,7 +33,7 @@ assert-property: (".mobile-topbar", {"clientHeight": "45"})
 // Check that clicking an element from the sidebar scrolls to the right place
 // so the target is not obscured by the topbar.
 click: ".sidebar-menu-toggle"
-click: ".sidebar-links a"
+click: ".sidebar-elems section .block li > a"
 assert-position: ("#method\.must_use", {"y": 45})
 
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
