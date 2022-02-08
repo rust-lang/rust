@@ -41,7 +41,7 @@
           <If Condition="(base.table.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item Name="{((tuple$&lt;$T1, $T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__0}">((tuple$&lt;$T1, $T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__1</Item>
+            <Item Name="{((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__0}">((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__1</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>
