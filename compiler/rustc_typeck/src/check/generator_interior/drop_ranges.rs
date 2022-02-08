@@ -116,6 +116,18 @@ impl TrackedValue {
             TrackedValue::Variable(hir_id) | TrackedValue::Temporary(hir_id) => *hir_id,
         }
     }
+
+    fn from_place_with_projections_allowed(place_with_id: &PlaceWithHirId<'_>) -> Self {
+        match place_with_id.place.base {
+            PlaceBase::Rvalue | PlaceBase::StaticItem => {
+                TrackedValue::Temporary(place_with_id.hir_id)
+            }
+            PlaceBase::Local(hir_id)
+            | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => {
+                TrackedValue::Variable(hir_id)
+            }
+        }
+    }
 }
 
 /// Represents a reason why we might not be able to convert a HirId or Place
@@ -142,15 +154,7 @@ impl TryFrom<&PlaceWithHirId<'_>> for TrackedValue {
             return Err(TrackedValueConversionError::PlaceProjectionsNotSupported);
         }
 
-        match place_with_id.place.base {
-            PlaceBase::Rvalue | PlaceBase::StaticItem => {
-                Ok(TrackedValue::Temporary(place_with_id.hir_id))
-            }
-            PlaceBase::Local(hir_id)
-            | PlaceBase::Upvar(ty::UpvarId { var_path: ty::UpvarPath { hir_id }, .. }) => {
-                Ok(TrackedValue::Variable(hir_id))
-            }
-        }
+        Ok(TrackedValue::from_place_with_projections_allowed(place_with_id))
     }
 }
 
