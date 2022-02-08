@@ -1,40 +1,40 @@
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:2:1
+  --> $DIR/not-an-allocator.rs:2:11
    |
 LL | #[global_allocator]
    | ------------------- in this procedural macro expansion
 LL | static A: usize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:2:1
+  --> $DIR/not-an-allocator.rs:2:11
    |
 LL | #[global_allocator]
    | ------------------- in this procedural macro expansion
 LL | static A: usize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:2:1
+  --> $DIR/not-an-allocator.rs:2:11
    |
 LL | #[global_allocator]
    | ------------------- in this procedural macro expansion
 LL | static A: usize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `usize: GlobalAlloc` is not satisfied
-  --> $DIR/not-an-allocator.rs:2:1
+  --> $DIR/not-an-allocator.rs:2:11
    |
 LL | #[global_allocator]
    | ------------------- in this procedural macro expansion
 LL | static A: usize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
+   |           ^^^^^ the trait `GlobalAlloc` is not implemented for `usize`
    |
    = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
