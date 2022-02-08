@@ -17,6 +17,7 @@ impl<T> UnsafeCopy for T {}
 fn main() {
     let b = Box::new(42usize);
     let copy = <()>::copy(&b);
+    //~^ type annotations needed
 
     let raw_b = Box::deref(&b) as *const _;
     let raw_copy = Box::deref(&copy) as *const _;

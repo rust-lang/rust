@@ -27,6 +27,13 @@ help: consider restricting type parameter `T`
 LL |     type Copy<T: std::clone::Clone>: Copy = Box<T>;
    |                +++++++++++++++++++
 
-error: aborting due to 2 previous errors
+error[E0282]: type annotations needed
+  --> $DIR/issue-74824.rs:19:16
+   |
+LL |     let copy = <()>::copy(&b);
+   |                ^^^^^^^^^^ cannot infer type for type parameter `T` declared on the associated function `copy`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0282.
+For more information about an error, try `rustc --explain E0277`.
