@@ -43,7 +43,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    fn get_horizontal_trim(lines: &[&str], kind: CommentKind) -> Option<usize> {
+    fn get_horizontal_trim<'a>(lines: &'a [&str], kind: CommentKind) -> Option<String> {
         let mut i = usize::MAX;
         let mut first = true;
 
@@ -51,7 +51,8 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         // present. However, we first need to strip the empty lines so they don't get in the middle
         // when we try to compute the "horizontal trim".
         let lines = if kind == CommentKind::Block {
-            let mut i = 0;
+            // Whatever happens, we skip the first line.
+            let mut i = if lines[0].trim_start().starts_with('*') { 0 } else { 1 };
             let mut j = lines.len();
 
             while i < j && lines[i].trim().is_empty() {
@@ -84,7 +85,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
                 return None;
             }
         }
-        Some(i)
+        if lines.is_empty() { None } else { Some(lines[0][..i].into()) }
     }
 
     let data_s = data.as_str();
@@ -102,8 +103,13 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
             changes = true;
             // remove a "[ \t]*\*" block from each line, if possible
             for line in lines.iter_mut() {
-                if horizontal + 1 < line.len() {
-                    *line = &line[horizontal + 1..];
+                if let Some(tmp) = line.strip_prefix(&horizontal) {
+                    *line = tmp;
+                    if kind == CommentKind::Block
+                        && (*line == "*" || line.starts_with("* ") || line.starts_with("**"))
+                    {
+                        *line = &line[1..];
+                    }
                 }
             }
         }
