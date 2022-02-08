@@ -12,7 +12,39 @@ pub(crate) mod ptr;
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 
-/// A SIMD vector of `LANES` elements of type `T`.
+/// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
+/// This type is commonly known by names like `f32x4` or `Vec4` in many programming languages.
+///
+/// Two vectors of the same type and length will, by convention, support the binary operations (+, *, etc.) that `T` does.
+/// These take the lanes at each index on the left-hand side and right-hand side, perform the binary operation,
+/// and return the result in the same lane in a vector of equal size. For a given operator, this is equivalent to zipping
+/// the two arrays together and mapping the operator over each lane.
+///
+/// ```rust
+/// # #![feature(array_zip, portable_simd)]
+/// # use core::simd::{Simd};
+/// let a0: [i32; 4] = [-2, 0, 2, 4];
+/// let a1 = [10, 9, 8, 7];
+/// let zm_add = a0.zip(a1).map(|(lhs, rhs)| lhs + rhs);
+/// let zm_mul = a0.zip(a1).map(|(lhs, rhs)| lhs * rhs);
+///
+/// // `Simd<T, N>` implements `From<[T; N]>
+/// let [v0, v1] = [a0, a1].map(|a| Simd::from(a));
+/// // Which means arrays implement `Into<Simd<T, N>>`.
+/// assert_eq!(v0 + v1, zm_add.into());
+/// assert_eq!(v0 * v1, zm_mul.into());
+/// ```
+///
+/// `Simd` with integers has the quirk that these operations are also inherently wrapping, as if `T` was [`Wrapping<T>`].
+/// Thus, `Simd` does not implement `wrapping_add`, because that is the behavior of the normal operation.
+/// This means there is no warning on overflows, even in "debug" builds.
+/// For most applications where `Simd` is appropriate, it is "not a bug" to wrap,
+/// and even "debug builds" are unlikely to tolerate the loss of performance.
+/// You may want to consider using explicitly checked arithmetic if such is required.
+/// Division by zero still causes a panic, so you may want to consider using floating point numbers if that is unacceptable.
+///
+/// [`Wrapping<T>`]: core::num::Wrapping
+///
 #[repr(simd)]
 pub struct Simd<T, const LANES: usize>([T; LANES])
 where
