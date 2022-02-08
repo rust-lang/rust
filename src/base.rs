@@ -1,6 +1,5 @@
 //! Codegen of a single function
 
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_ast::InlineAsmOptions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
@@ -175,9 +174,7 @@ fn compile_fn<'tcx>(
     // Define function
     tcx.sess.time("define function", || {
         context.want_disasm = crate::pretty_clif::should_write_ir(tcx);
-        module
-            .define_function(func_id, context, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap()
+        module.define_function(func_id, context).unwrap()
     });
 
     // Write optimized function to file for debugging
