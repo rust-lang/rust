@@ -463,9 +463,6 @@ nav.sub {
 .location a:first-of-type {
 	font-weight: 500;
 }
-.location a:hover {
-	text-decoration: underline;
-}
 
 .block {
 	padding: 0;
@@ -476,10 +473,11 @@ nav.sub {
 	list-style: none;
 }
 
-.block a {
+.block a,
+h2.location a {
 	display: block;
-	padding: 0.3em;
-	margin-left: -0.3em;
+	padding: 0.3rem;
+	margin-left: -0.3rem;
 
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -494,8 +492,8 @@ nav.sub {
 	font-weight: 500;
 	padding: 0;
 	margin: 0;
-	margin-top: 1rem;
-	margin-bottom: 1rem;
+	margin-top: 0.7rem;
+	margin-bottom: 0.7rem;
 }
 
 .sidebar h3 {
@@ -1812,10 +1810,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 	.mobile-topbar .location {
 		border: none;
-		margin: 0;
-		margin-left: auto;
-		padding: 0.3em;
-		padding-right: 0.6em;
+		margin: auto 0.5em auto auto;
 		text-overflow: ellipsis;
 		overflow: hidden;
 		white-space: nowrap;

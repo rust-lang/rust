@@ -61,16 +61,13 @@ pre, .rustdoc.source .example-wrap {
 	background-color: rgba(32, 34, 37, .6);
 }
 
-.sidebar .current {
-	background-color: #333;
+.sidebar .current,
+.sidebar a:hover {
+	background: #444;
 }
 
 .source .sidebar {
 	background-color: #565656;
-}
-
-.block a:hover {
-	background: #444;
 }
 
 .line-numbers span { color: #3B91E2; }
