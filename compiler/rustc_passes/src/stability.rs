@@ -147,7 +147,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             // Propagate unstability.  This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
-                if inherit_deprecation.yes() && stab.level.is_unstable() {
+                if inherit_deprecation.yes() && stab.is_unstable() {
                     self.index.stab_map.insert(def_id, stab);
                 }
             }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if const_stab.is_none() {
             debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
             if let Some(parent) = self.parent_const_stab {
-                if parent.level.is_unstable() {
+                if parent.is_const_unstable() {
                     self.index.const_stab_map.insert(def_id, parent);
                 }
             }
@@ -272,9 +272,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if stab.is_none() {
             debug!("annotate: stab not found, parent = {:?}", self.parent_stab);
             if let Some(stab) = self.parent_stab {
-                if inherit_deprecation.yes() && stab.level.is_unstable()
-                    || inherit_from_parent.yes()
-                {
+                if inherit_deprecation.yes() && stab.is_unstable() || inherit_from_parent.yes() {
                     self.index.stab_map.insert(def_id, stab);
                 }
             }

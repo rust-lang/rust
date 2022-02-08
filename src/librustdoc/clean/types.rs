@@ -632,7 +632,7 @@ impl Item {
         self.stability(tcx).as_ref().and_then(|s| {
             let mut classes = Vec::with_capacity(2);
 
-            if s.level.is_unstable() {
+            if s.is_unstable() {
                 classes.push("unstable");
             }
 
