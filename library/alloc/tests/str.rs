@@ -2272,3 +2272,95 @@ fn utf8_char_counts() {
         }
     }
 }
+
+#[test]
+fn floor_char_boundary() {
+    fn check_many(s: &str, arg: impl IntoIterator<Item = usize>, ret: usize) {
+        for idx in arg {
+            assert_eq!(
+                s.floor_char_boundary(idx),
+                ret,
+                "{:?}.floor_char_boundary({:?}) != {:?}",
+                s,
+                idx,
+                ret
+            );
+        }
+    }
+
+    // edge case
+    check_many("", [0, 1, isize::MAX as usize, usize::MAX], 0);
+
+    // basic check
+    check_many("x", [0], 0);
+    check_many("x", [1, isize::MAX as usize, usize::MAX], 1);
+
+    // 1-byte chars
+    check_many("jp", [0], 0);
+    check_many("jp", [1], 1);
+    check_many("jp", 2..4, 2);
+
+    // 2-byte chars
+    check_many("ĵƥ", 0..2, 0);
+    check_many("ĵƥ", 2..4, 2);
+    check_many("ĵƥ", 4..6, 4);
+
+    // 3-byte chars
+    check_many("日本", 0..3, 0);
+    check_many("日本", 3..6, 3);
+    check_many("日本", 6..8, 6);
+
+    // 4-byte chars
+    check_many("🇯🇵", 0..4, 0);
+    check_many("🇯🇵", 4..8, 4);
+    check_many("🇯🇵", 8..10, 8);
+}
+
+#[test]
+fn ceil_char_boundary() {
+    fn check_many(s: &str, arg: impl IntoIterator<Item = usize>, ret: usize) {
+        for idx in arg {
+            assert_eq!(
+                s.ceil_char_boundary(idx),
+                ret,
+                "{:?}.ceil_char_boundary({:?}) != {:?}",
+                s,
+                idx,
+                ret
+            );
+        }
+    }
+
+    // edge case
+    check_many("", [0], 0);
+
+    // basic check
+    check_many("x", [0], 0);
+    check_many("x", [1], 1);
+
+    // 1-byte chars
+    check_many("jp", [0], 0);
+    check_many("jp", [1], 1);
+    check_many("jp", [2], 2);
+
+    // 2-byte chars
+    check_many("ĵƥ", 0..=0, 0);
+    check_many("ĵƥ", 1..=2, 2);
+    check_many("ĵƥ", 3..=4, 4);
+
+    // 3-byte chars
+    check_many("日本", 0..=0, 0);
+    check_many("日本", 1..=3, 3);
+    check_many("日本", 4..=6, 6);
+
+    // 4-byte chars
+    check_many("🇯🇵", 0..=0, 0);
+    check_many("🇯🇵", 1..=4, 4);
+    check_many("🇯🇵", 5..=8, 8);
+}
+
+#[test]
+#[should_panic]
+fn ceil_char_boundary_above_len_panic() {
+    let _ = "x".ceil_char_boundary(2);
+}
