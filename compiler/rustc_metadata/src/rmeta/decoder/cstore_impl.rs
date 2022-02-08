@@ -200,7 +200,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.arena.alloc_slice(&result)
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
-    defined_lang_items => { cdata.get_lang_items(tcx) }
+    defined_lang_items => { tcx.arena.alloc_from_iter(cdata.get_lang_items()) }
     diagnostic_items => { cdata.get_diagnostic_items() }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
@@ -500,6 +500,11 @@ impl CStore {
         cnum: CrateNum,
     ) -> impl Iterator<Item = (DefId, DefId)> + '_ {
         self.get_crate_data(cnum).get_inherent_impls()
+    }
+
+    /// Decodes all lang items in the crate (for rustdoc).
+    pub fn lang_items_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
+        self.get_crate_data(cnum).get_lang_items().map(|(def_id, _)| def_id)
     }
 }
 
