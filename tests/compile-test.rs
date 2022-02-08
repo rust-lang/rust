@@ -165,14 +165,6 @@ fn run_ui() {
     compiletest::run_tests(&config);
 }
 
-fn run_ui_test() {
-    let mut config = base_config("ui_test");
-    let _g = VarGuard::set("CARGO_MANIFEST_DIR", fs::canonicalize("tests").unwrap());
-    let rustcflags = config.target_rustcflags.get_or_insert_with(Default::default);
-    rustcflags.push_str(" --test");
-    compiletest::run_tests(&config);
-}
-
 fn run_internal_tests() {
     // only run internal tests with the internal-tests feature
     if !RUN_INTERNAL_TESTS {
@@ -328,7 +320,6 @@ fn run_ui_cargo() {
 fn compile_test() {
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
     run_ui();
-    run_ui_test();
     run_ui_toml();
     run_ui_cargo();
     run_internal_tests();
