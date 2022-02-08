@@ -2263,7 +2263,7 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         sess: &'a Session,
         codegen_results: &CodegenResults,
         tmpdir: &Path,
-        crate_type: CrateType,
+        _crate_type: CrateType,
         cnum: CrateNum,
     ) {
         let src = &codegen_results.crate_info.used_crate_source[&cnum];
@@ -2274,13 +2274,15 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
             // whole of each object in our archive into that artifact. This is
             // because a `dylib` can be reused as an intermediate artifact.
             //
+            // NOTE(nbdd0121): Even for non-dylib, we still need to link rlibs
+            // in whole because so that `#[no_mangle]` and `#[used]` items from
+            // upstream need to be root (#47384, #50007).
+            //
             // Note, though, that we don't want to include the whole of a
             // compiler-builtins crate (e.g., compiler-rt) because it'll get
             // repeatedly linked anyway.
             let path = fix_windows_verbatim_for_gcc(path);
-            if crate_type == CrateType::Dylib
-                && codegen_results.crate_info.compiler_builtins != Some(cnum)
-            {
+            if codegen_results.crate_info.compiler_builtins != Some(cnum) {
                 cmd.link_whole_rlib(&path);
             } else {
                 cmd.link_rlib(&path);
