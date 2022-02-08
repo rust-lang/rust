@@ -27,7 +27,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Constant { span, user_ty, literal: literal.into() }
             }
             ExprKind::StaticRef { literal, .. } => {
-                Constant { span, user_ty: None, literal: literal.into() }
+                let const_val = literal.val.try_to_value().unwrap_or_else(|| {
+                    bug!("expected `ConstKind::Value`, but found {:?}", literal.val)
+                });
+                let literal = ConstantKind::Val(const_val, literal.ty);
+
+                Constant { span, user_ty: None, literal }
             }
             ExprKind::ConstBlock { value } => {
                 Constant { span: span, user_ty: None, literal: value.into() }
