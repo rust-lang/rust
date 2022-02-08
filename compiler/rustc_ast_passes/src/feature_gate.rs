@@ -196,6 +196,54 @@ impl<'a> PostExpansionVisitor<'a> {
                     "thiscall-unwind ABI is experimental and subject to change"
                 );
             }
+            "cdecl-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "cdecl-unwind ABI is experimental and subject to change"
+                );
+            }
+            "fastcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "fastcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "vectorcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "vectorcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "aapcs-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "aapcs-unwind ABI is experimental and subject to change"
+                );
+            }
+            "win64-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "win64-unwind ABI is experimental and subject to change"
+                );
+            }
+            "sysv64-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "sysv64-unwind ABI is experimental and subject to change"
+                );
+            }
             "wasm" => {
                 gate_feature_post!(
                     &self,
