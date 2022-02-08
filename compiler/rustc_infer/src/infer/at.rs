@@ -268,7 +268,10 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
@@ -292,27 +295,22 @@ impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
 impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
     fn to_trace(
-        tcx: TyCtxt<'tcx>,
+        _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        match (a, b) {
-            (ty::Term::Ty(a), ty::Term::Ty(b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, a, b)
-            }
-            (ty::Term::Const(a), ty::Term::Const(b)) => {
-                ToTrace::to_trace(tcx, cause, a_is_expected, a, b)
-            }
-            (_, _) => todo!(),
-        }
+        TypeTrace { cause: cause.clone(), values: Terms(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 
@@ -358,7 +356,7 @@ impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
         let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
         TypeTrace {
             cause: cause.clone(),
-            values: Types(ExpectedFound::new(a_is_expected, a_ty, b_ty)),
+            values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),
         }
     }
 }

@@ -366,11 +366,24 @@ pub struct InferCtxt<'a, 'tcx> {
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
-    Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
-    Consts(ExpectedFound<&'tcx ty::Const<'tcx>>),
+    Terms(ExpectedFound<ty::Term<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
+}
+
+impl<'tcx> ValuePairs<'tcx> {
+    pub fn ty(&self) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
+        if let ValuePairs::Terms(ExpectedFound {
+            expected: ty::Term::Ty(expected),
+            found: ty::Term::Ty(found),
+        }) = self
+        {
+            Some((expected, found))
+        } else {
+            None
+        }
+    }
 }
 
 /// The trace designates the path through inference that we took to
@@ -1817,7 +1830,10 @@ impl<'tcx> TypeTrace<'tcx> {
         a: Ty<'tcx>,
         b: Ty<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 
     pub fn consts(
@@ -1826,7 +1842,10 @@ impl<'tcx> TypeTrace<'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
