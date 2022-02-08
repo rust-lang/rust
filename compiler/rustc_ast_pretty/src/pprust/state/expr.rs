@@ -142,7 +142,7 @@ impl<'a> State<'a> {
             if !field.is_last || has_rest {
                 self.word_space(",");
             } else {
-                self.trailing_comma();
+                self.trailing_comma_or_space();
             }
         }
         if has_rest {
