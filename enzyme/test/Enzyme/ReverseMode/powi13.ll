@@ -1,4 +1,4 @@
-; RUN: if [ %llvmver -ge 13 ]; then %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S | FileCheck %s; fi
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -simplifycfg -S | FileCheck %s
 
 ; Function Attrs: noinline nounwind readnone uwtable
 define double @tester(double %x, i32 %y) {
@@ -22,10 +22,12 @@ declare double @__enzyme_autodiff(double (double, i32)*, ...)
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffetester(double %x, i32 %y, double %differeturn)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %[[ym1:.+]] = sub i32 %y, 1
-; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.powi.f64.i32(double %x, i32 %[[ym1]])
+; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.powi.f64{{(\.i32)?}}(double %x, i32 %[[ym1]])
 ; CHECK-DAG:    %[[sitofp:.+]] = sitofp i32 %y to double
 ; CHECK-DAG:    %[[newpowdret:.+]] = fmul fast double %differeturn, %[[newpow]]
 ; CHECK-NEXT:   %[[dx:.+]] = fmul fast double %[[newpowdret]], %[[sitofp]]
-; CHECK-NEXT:   %[[interres:.+]] = insertvalue { double } undef, double %[[dx:.+]], 0
+; CHECK-NEXT:   %[[cmp:.+]] = icmp eq i32 0, %y
+; CHECK-NEXT:   %[[res:.+]] = select {{(fast )?}}i1 %[[cmp]], double 0.000000e+00, double %[[dx]]
+; CHECK-NEXT:   %[[interres:.+]] = insertvalue { double } undef, double %[[res]], 0
 ; CHECK-NEXT:   ret { double } %[[interres]]
 ; CHECK-NEXT: }

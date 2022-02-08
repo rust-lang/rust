@@ -3328,10 +3328,10 @@ public:
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
           Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
           Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
+          Value *nop1 = lookup(op1, Builder2);
           SmallVector<Value *, 2> args = {
               lookup(op0, Builder2),
-              Builder2.CreateSub(lookup(op1, Builder2),
-                                 ConstantInt::get(op1->getType(), 1))};
+              Builder2.CreateSub(nop1, ConstantInt::get(op1->getType(), 1))};
           auto &CI = cast<CallInst>(I);
 #if LLVM_VERSION_MAJOR >= 11
           auto *PowF = CI.getCalledOperand();
@@ -3349,6 +3349,9 @@ public:
               Builder2.CreateFMul(vdiff, cal),
               Builder2.CreateSIToFP(lookup(op1, Builder2),
                                     op0->getType()->getScalarType()));
+          dif0 = Builder2.CreateSelect(
+              Builder2.CreateICmpEQ(ConstantInt::get(nop1->getType(), 0), nop1),
+              Constant::getNullValue(dif0->getType()), dif0);
           addToDiffe(orig_ops[0], dif0, Builder2, I.getType());
         }
         return;
@@ -3808,8 +3811,12 @@ public:
               Builder2.CreateSIToFP(op1, op0->getType()->getScalarType());
           Value *op = diffe(orig_ops[0], Builder2);
 
+          Value *cmp = Builder2.CreateICmpEQ(
+              ConstantInt::get(args[1]->getType(), 0), op1);
           auto rule = [&](Value *op) {
-            return Builder2.CreateFMul(Builder2.CreateFMul(op, cal), cast);
+            return Builder2.CreateSelect(
+                cmp, Constant::getNullValue(op->getType()),
+                Builder2.CreateFMul(Builder2.CreateFMul(op, cal), cast));
           };
 
           Value *dif0 = applyChainRule(I.getType(), Builder2, rule, op);
