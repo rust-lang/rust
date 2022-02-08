@@ -260,3 +260,14 @@ impl HeavilyDocumentedUnion {
 macro_rules! heavily_documented_macro {
     () => {};
 }
+
+pub trait EmptyTrait1 {}
+pub trait EmptyTrait2 {}
+pub trait EmptyTrait3 {}
+
+pub struct HasEmptyTraits{}
+
+impl EmptyTrait1 for HasEmptyTraits {}
+impl EmptyTrait2 for HasEmptyTraits {}
+#[doc(cfg(feature = "some-feature"))]
+impl EmptyTrait3 for HasEmptyTraits {}
