@@ -357,9 +357,9 @@ pub(super) fn check_for_substitution<'a>(
     // special help suggestion for "directed" double quotes
     if let Some(s) = peek_delimited(&reader.src[reader.src_index(pos)..], '“', '”') {
         let msg = format!(
-            "Unicode characters '“' (Left Double Quotation Mark) and \
-             '”' (Right Double Quotation Mark) look like '{}' ({}), but are not",
-            ascii_char, ascii_name
+            "unexpected token '{}': this Unicode characters '“' (Left Double Quotation Mark) and \
+             '”' (Right Double Quotation Mark) might be confused with '{}' ({})",
+            ch, ascii_char, ascii_name
         );
         err.span_suggestion(
             Span::with_root_ctxt(
@@ -372,8 +372,8 @@ pub(super) fn check_for_substitution<'a>(
         );
     } else {
         let msg = format!(
-            "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
-            ch, u_name, ascii_char, ascii_name
+            "unexpected token '{}': this Unicode character '{}' ({}) might be confused with '{}' ({})",
+            ch, ch, u_name, ascii_char, ascii_name
         );
         err.span_suggestion(span, &msg, ascii_char.to_string(), Applicability::MaybeIncorrect);
     }
