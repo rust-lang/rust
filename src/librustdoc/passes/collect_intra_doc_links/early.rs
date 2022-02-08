@@ -118,6 +118,7 @@ impl IntraLinkCrateLoader<'_, '_> {
                 Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
             let all_inherent_impls =
                 Vec::from_iter(self.resolver.cstore().inherent_impls_in_crate_untracked(cnum));
+            let all_lang_items = Vec::from_iter(self.resolver.cstore().lang_items_untracked(cnum));
 
             // Querying traits in scope is expensive so we try to prune the impl and traits lists
             // using privacy, private traits and impls from other crates are never documented in
@@ -140,6 +141,9 @@ impl IntraLinkCrateLoader<'_, '_> {
                 if self.resolver.cstore().visibility_untracked(ty_def_id) == Visibility::Public {
                     self.add_traits_in_parent_scope(impl_def_id);
                 }
+            }
+            for def_id in all_lang_items {
+                self.add_traits_in_parent_scope(def_id);
             }
 
             self.all_traits.extend(all_traits);
