@@ -500,7 +500,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::iter::{FromIterator, FusedIterator, TrustedLen};
+use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
@@ -2233,7 +2233,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
-        iter.into_iter().map(|x| x.ok_or(())).collect::<Result<_, _>>().ok()
+        iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
 
