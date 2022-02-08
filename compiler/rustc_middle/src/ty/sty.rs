@@ -211,6 +211,8 @@ pub enum TyKind<'tcx> {
     ///
     /// For RPIT the substitutions are for the generics of the function,
     /// while for TAIT it is used for the generic parameters of the alias.
+    ///
+    /// During codegen, `tcx.type_of(def_id)` can be used to get the underlying type.
     Opaque(DefId, SubstsRef<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
