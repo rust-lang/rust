@@ -208,7 +208,7 @@ pub fn resolve_interior<'a, 'tcx>(
     };
     intravisit::walk_body(&mut visitor, body);
 
-    // Check that we visited the same amount of expressions and the RegionResolutionVisitor
+    // Check that we visited the same amount of expressions as the RegionResolutionVisitor
     let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 

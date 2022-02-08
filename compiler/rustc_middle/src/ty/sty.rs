@@ -74,10 +74,10 @@ impl BoundRegionKind {
     }
 }
 
-/// Defines the kinds of types.
+/// Defines the kinds of types used by the type system.
 ///
-/// N.B., if you change this, you'll probably want to change the corresponding
-/// AST structure in `rustc_ast/src/ast.rs` as well.
+/// Types written by the user start out as [hir::TyKind](rustc_hir::TyKind) and get
+/// converted to this representation using `AstConv::ast_ty_to_ty`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable, Debug)]
 #[derive(HashStable)]
 #[rustc_diagnostic_item = "TyKind"]
@@ -100,10 +100,11 @@ pub enum TyKind<'tcx> {
 
     /// Algebraic data types (ADT). For example: structures, enumerations and unions.
     ///
-    /// InternalSubsts here, possibly against intuition, *may* contain `Param`s.
-    /// That is, even after substitution it is possible that there are type
-    /// variables. This happens when the `Adt` corresponds to an ADT
-    /// definition and not a concrete use of it.
+    /// For example, the type `List<i32>` would be represented using the `AdtDef`
+    /// for `struct List<T>` and the substs `[i32]`.
+    ///
+    /// Note that generic parameters in fields only get lazily substituted
+    /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, substs))`.
     Adt(&'tcx AdtDef, SubstsRef<'tcx>),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
@@ -112,7 +113,7 @@ pub enum TyKind<'tcx> {
     /// The pointee of a string slice. Written as `str`.
     Str,
 
-    /// An array with the given length. Written as `[T; n]`.
+    /// An array with the given length. Written as `[T; N]`.
     Array(Ty<'tcx>, &'tcx ty::Const<'tcx>),
 
     /// The pointee of an array slice. Written as `[T]`.
@@ -126,11 +127,12 @@ pub enum TyKind<'tcx> {
     Ref(Region<'tcx>, Ty<'tcx>, hir::Mutability),
 
     /// The anonymous type of a function declaration/definition. Each
-    /// function has a unique type, which is output (for a function
-    /// named `foo` returning an `i32`) as `fn() -> i32 {foo}`.
+    /// function has a unique type.
+    ///
+    /// For the function `fn foo() -> i32 { 3 }` this type would be
+    /// shown to the user as `fn() -> i32 {foo}`.
     ///
     /// For example the type of `bar` here:
-    ///
     /// ```rust
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
@@ -138,6 +140,9 @@ pub enum TyKind<'tcx> {
     FnDef(DefId, SubstsRef<'tcx>),
 
     /// A pointer to a function. Written as `fn() -> i32`.
+    ///
+    /// Note that both functions and closures start out as either
+    /// [FnDef] or [Closure] which can be then be coerced to this variant.
     ///
     /// For example the type of `bar` here:
     ///
@@ -150,17 +155,41 @@ pub enum TyKind<'tcx> {
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
     Dynamic(&'tcx List<Binder<'tcx, ExistentialPredicate<'tcx>>>, ty::Region<'tcx>),
 
-    /// The anonymous type of a closure. Used to represent the type of
-    /// `|a| a`.
-    /// For the order of the substs see the `ClosureSubsts` type's documentation.
+    /// The anonymous type of a closure. Used to represent the type of `|a| a`.
+    ///
+    /// Closure substs contain both the - potentially substituted - generic parameters
+    /// of its parent and some synthetic parameters. See the documentation for
+    /// [ClosureSubsts] for more details.
     Closure(DefId, SubstsRef<'tcx>),
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
+    ///
+    /// For more info about generator substs, visit the documentation for
+    /// [GeneratorSubsts].
     Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 
     /// A type representing the types stored inside a generator.
-    /// This should only appear in GeneratorInteriors.
+    /// This should only appear as part of the [GeneratorSubsts].
+    ///
+    /// Note that the captured variables for generators are stored separately
+    /// using a tuple in the same way as for closures.
+    ///
+    /// Unlike upvars, the witness can reference lifetimes from
+    /// inside of the generator itself. To deal with them in
+    /// the type of the generator, we convert them to higher ranked
+    /// lifetimes bound by the witness itself.
+    ///
+    /// Looking at the following example, the witness for this generator
+    /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
+    ///
+    /// ```rust
+    /// |a| {
+    ///     let x = &vec![3];
+    ///     yield a;
+    ///     yield x[0];
+    /// }
+    /// ```
     GeneratorWitness(Binder<'tcx, &'tcx List<Ty<'tcx>>>),
 
     /// The never type `!`.
@@ -175,23 +204,42 @@ pub enum TyKind<'tcx> {
     Projection(ProjectionTy<'tcx>),
 
     /// Opaque (`impl Trait`) type found in a return type.
+    ///
     /// The `DefId` comes either from
     /// * the `impl Trait` ast::Ty node,
     /// * or the `type Foo = impl Trait` declaration
-    /// The substitutions are for the generics of the function in question.
-    /// After typeck, the concrete type can be found in the `types` map.
+    ///
+    /// For RTIT the substitutions are for the generics of the function,
+    /// while for TAIT it is used for the generic parameters of the alias.
     Opaque(DefId, SubstsRef<'tcx>),
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}`.
     Param(ParamTy),
 
-    /// Bound type variable, used only when preparing a trait query.
+    /// Bound type variable, used to represent the `'a` in `for<'a> fn(&'a ())`.
+    ///
+    /// For canonical queries, we replace inference variables with bound variables,
+    /// so e.g. when checking whether `&'_ (): Trait<_>` holds, we canonicalize that to
+    /// `for<'a, T> &'a (): Trait<T>` and then convert the introduced bound variables
+    /// back to inference variables in a new inference context when inside of the query.
+    ///
+    /// See the `rustc-dev-guide` for more details about
+    /// [higher-ranked trait bounds][1] and [canonical queries][2].
+    ///
+    /// [1]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+    /// [2]: https://rustc-dev-guide.rust-lang.org/traits/canonical-queries.html
     Bound(ty::DebruijnIndex, BoundTy),
 
-    /// A placeholder type - universally quantified higher-ranked type.
+    /// A placeholder type, used during higher ranked subtyping to instantiate
+    /// bound variables.
     Placeholder(ty::PlaceholderType),
 
     /// A type variable used during type checking.
+    ///
+    /// Similar to placeholders, inference variables also live in a universe to
+    /// correctly deal with higher ranked types. Though unlike placeholders,
+    /// that universe is stored in the `InferCtxt` instead of directly
+    /// inside of the type.
     Infer(InferTy),
 
     /// A placeholder for a type which could not be computed; this is
