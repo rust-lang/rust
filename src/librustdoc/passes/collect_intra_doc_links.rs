@@ -2,10 +2,8 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
-use rustc_ast as ast;
 use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder};
-use rustc_expand::base::SyntaxExtensionKind;
 use rustc_hir::def::{
     DefKind,
     Namespace::{self, *},
@@ -14,7 +12,6 @@ use rustc_hir::def::{
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
-use rustc_resolve::ParentScope;
 use rustc_session::lint::Lint;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -486,23 +483,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         path_str: &'a str,
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
-        let path = ast::Path::from_ident(Ident::from_str(path_str));
         self.cx.enter_resolver(|resolver| {
-            // FIXME(jynelson): does this really need 3 separate lookups?
-            if let Ok((Some(ext), res)) = resolver.resolve_macro_path(
-                &path,
-                None,
-                &ParentScope::module(resolver.graph_root(), resolver),
-                false,
-                false,
-            ) {
-                if let SyntaxExtensionKind::LegacyBang { .. } = ext.kind {
-                    return Ok(res.try_into().unwrap());
-                }
-            }
-            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.try_into().unwrap());
-            }
+            // NOTE: this needs 2 separate lookups because `resolve_str_path_error` doesn't take
+            // lexical scope into account (it ignores all macros not defined at the mod-level)
             debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
             if let Ok((_, res)) =
                 resolver.resolve_str_path_error(DUMMY_SP, path_str, MacroNS, module_id)
@@ -511,6 +494,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if let Ok(res) = res.try_into() {
                     return Ok(res);
                 }
+            }
+            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
+                return Ok(res.try_into().unwrap());
             }
             Err(ResolutionFailure::NotResolved {
                 module_id,
