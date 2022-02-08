@@ -77,7 +77,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if move_out_indices.is_empty() {
             let root_place = PlaceRef { projection: &[], ..used_place };
 
-            self.set_tainted_by_errors();
             if !self.uninitialized_error_reported.insert(root_place) {
                 debug!(
                     "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
@@ -107,7 +106,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             self.buffer_error(err);
         } else {
-            if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
+            if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
                 if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed \
@@ -217,7 +216,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     place_name, partially_str, loop_message
                                 ),
                             );
-                            self.set_tainted_by_errors();
                             if self.fn_self_span_reported.insert(fn_span) {
                                 err.span_note(
                                     // Check whether the source is accessible
@@ -299,7 +297,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                             // Avoid pointing to the same function in multiple different
                             // error messages.
-                            self.set_tainted_by_errors();
                             if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span)
                             {
                                 err.span_note(
@@ -452,13 +449,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            self.set_tainted_by_errors();
-            if let Some((_, mut old_err)) =
-                self.move_error_reported.insert(move_out_indices, (used_place, err))
-            {
-                // Cancel the old error so it doesn't ICE.
-                old_err.cancel();
-            }
+            self.buffer_move_error(move_out_indices, (used_place, err));
         }
     }
 
@@ -1016,7 +1007,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         }
 
-        self.set_tainted_by_errors();
         self.access_place_error_reported.insert((
             Place { local: root_place.local, projection: root_place_projection },
             borrow_span,

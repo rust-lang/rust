@@ -1,7 +1,6 @@
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -373,7 +372,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
     opaque_type_values: &VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
-    errors_buffer: &mut Vec<Diagnostic>,
+    errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -418,8 +417,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
-    // FIXME(compiler-errors): Maybe we need to set tainted here
-    err.buffer(errors_buffer);
+    errors.buffer_error(err);
 }
 
 fn for_each_region_constraint(

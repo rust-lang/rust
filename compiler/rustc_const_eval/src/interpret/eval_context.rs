@@ -516,8 +516,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
                     throw_inval!(AlreadyReported(error_reported));
                 }
-                if self.tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(AlreadyReported(rustc_errors::ErrorReported {}));
+                if let Some(error_reported) =
+                    self.tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors
+                {
+                    throw_inval!(AlreadyReported(error_reported));
                 }
             }
         }

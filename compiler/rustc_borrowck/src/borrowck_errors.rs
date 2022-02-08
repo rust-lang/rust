@@ -327,7 +327,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         verb: &str,
         optional_adverb_for_moved: &str,
         moved_path: Option<String>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'tcx> {
         let moved_path = moved_path.map(|mp| format!(": `{}`", mp)).unwrap_or_default();
 
         struct_span_err!(
