@@ -343,7 +343,7 @@ impl CheckAttrVisitor<'_> {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[allow_internal_unstable]` attribute with just a lint, because we previously
+            // `#[naked]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
@@ -1210,8 +1210,8 @@ impl CheckAttrVisitor<'_> {
                 self.inline_attr_str_error_with_macro_def(hir_id, attr, "link_name");
             }
             _ => {
-                // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
-                // used this, so only emit a warning.
+                // FIXME: #[link_name] was previously allowed on non-functions/statics and
+                // some crates used this, so only emit a warning.
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     let mut diag =
                         lint.build("attribute should be applied to a foreign function or static");
@@ -1796,7 +1796,7 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
+    /// Outputs an error for `#[allow_const_fn_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
         &self,
@@ -1812,11 +1812,11 @@ impl CheckAttrVisitor<'_> {
                 true
             }
             // FIXME(#80564): We permit struct fields and match arms to have an
-            // `#[allow_internal_unstable]` attribute with just a lint, because we previously
+            // `#[allow_const_fn_unstable]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "allow_internal_unstable");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr, "allow_const_fn_unstable");
                 true
             }
             _ => {
