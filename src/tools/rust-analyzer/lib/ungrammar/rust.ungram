@@ -102,7 +102,7 @@ Item =
 | Use
 
 MacroRules =
-  Attr* Visibility?
+  Attr*
   'macro_rules' '!' Name
   TokenTree
 
@@ -173,7 +173,7 @@ TypeAlias =
   Attr* Visibility?
   'default'?
   'type' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
-  '=' Type ';'
+  ('=' Type)? ';'
 
 Struct =
   Attr* Visibility?
@@ -210,7 +210,7 @@ VariantList =
 
 Variant =
   Attr* Visibility?
-  Name FieldList ('=' Expr)?
+  Name FieldList? ('=' Expr)?
 
 Union =
   Attr* Visibility?
@@ -229,17 +229,17 @@ Const =
   Attr* Visibility?
   'default'?
   'const' (Name | '_') ':' Type
-  '=' body:Expr ';'
+  ('=' body:Expr)? ';'
 
 Static =
   Attr* Visibility?
-  'static'? 'mut'? Name ':' Type
-  '=' body:Expr ';'
+  'static' 'mut'? Name ':' Type
+  ('=' body:Expr)? ';'
 
 Trait =
   Attr* Visibility?
   'unsafe'? 'auto'?
-  'trait' Name GenericParamList (':' TypeBoundList?)? WhereClause
+  'trait' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
   AssocItemList
 
 AssocItemList =
@@ -258,7 +258,7 @@ Impl =
   AssocItemList
 
 ExternBlock =
-  Attr* Abi ExternItemList
+  Attr* 'unsafe'? Abi ExternItemList
 
 ExternItemList =
   '{' Attr* ExternItem* '}'
@@ -292,7 +292,7 @@ WhereClause =
   'where' predicates:(WherePred (',' WherePred)* ','?)
 
 WherePred =
-  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList
+  ('for' GenericParamList)?  (Lifetime | Type) ':' TypeBoundList?
 
 Visibility =
   'pub' ('(' 'in'? Path ')')?
