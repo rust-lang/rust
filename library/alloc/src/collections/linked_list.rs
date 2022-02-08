@@ -970,6 +970,14 @@ impl<T> LinkedList<T> {
     /// Note that `drain_filter` lets you mutate every element in the filter closure, regardless of
     /// whether you choose to keep or remove it.
     ///
+    /// # Leaking
+    ///
+    /// When the iterator **is** dropped, it drops any elements that it has not
+    /// yet yielded and for which the closure returns true.
+    /// If the iterator **is not** dropped (with [`mem::forget`], for example),
+    /// it is unspecified whether the elements not yet yielded are still in the
+    /// list or leaked.
+    ///
     /// # Examples
     ///
     /// Splitting a list into evens and odds, reusing the original list:

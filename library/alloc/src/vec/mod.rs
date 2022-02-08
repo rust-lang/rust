@@ -1802,6 +1802,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Removes the specified range from the vector, returning all removed
     /// elements as an iterator.
     ///
+    /// # Leaking
+    ///
     /// When the iterator **is** dropped, it drops any elements that it has not
     /// yet yielded (none if the iterator was fully consumed).
     /// If the iterator **is not** dropped (with [`mem::forget`], for example),
@@ -2731,6 +2733,14 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// Note that `drain_filter` also lets you mutate every element in the filter closure,
     /// regardless of whether you choose to keep or remove it.
+    ///
+    /// # Leaking
+    ///
+    /// When the iterator **is** dropped, it drops any elements that it has not
+    /// yet yielded and for which the closure returns true.
+    /// If the iterator **is not** dropped (with [`mem::forget`], for example),
+    /// it is unspecified which elements remain in the vector; even elements
+    /// outside the range may have been removed and leaked.
     ///
     /// # Examples
     ///

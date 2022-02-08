@@ -1218,6 +1218,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Removes the specified range from the `VecDeque`, returning all removed
     /// elements as an iterator.
     ///
+    /// # Leaking
+    ///
     /// When the iterator **is** dropped, it drops any elements that it has not
     /// yet yielded (none if the iterator was fully consumed).
     /// If the iterator **is not** dropped (with [`mem::forget`], for example),

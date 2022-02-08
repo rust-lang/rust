@@ -1631,6 +1631,11 @@ impl String {
     /// Removes the specified range from the string, returning all removed
     /// characters as an iterator.
     ///
+    /// # Leaking
+    ///
+    /// In case the iterator disappears without getting dropped (using
+    /// [`core::mem::forget`], for example), the range remains in the string.
+    ///
     /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]

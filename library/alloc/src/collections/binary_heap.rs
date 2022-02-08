@@ -754,6 +754,12 @@ impl<T: Ord> BinaryHeap<T> {
     /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
     ///   You should use the latter for most cases.
     ///
+    /// # Leaking
+    ///
+    /// In case the iterator disappears without getting dropped (using
+    /// [`mem::forget`], for example), it is unspecified whether the
+    /// remaining elements are still in the heap or leaked.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1161,6 +1167,14 @@ impl<T> BinaryHeap<T> {
     /// Clears the binary heap, returning an iterator over the removed elements.
     ///
     /// The elements are removed in arbitrary order.
+    ///
+    /// # Leaking
+    ///
+    /// When the iterator **is** dropped, it drops any elements that it has not
+    /// yet yielded (none if the iterator was fully consumed).
+    /// If the iterator **is not** dropped (with [`mem::forget`], for example),
+    /// it is unspecified whether the elements not yet yielded are still in the
+    /// heap or leaked.
     ///
     /// # Examples
     ///
