@@ -134,7 +134,7 @@ fn inject_impl_of_structural_trait(
 
     // Create the type of `self`.
     //
-    // in addition, remove defaults from type params (impls cannot have them).
+    // in addition, remove defaults from generic params (impls cannot have them).
     let self_params: Vec<_> = generics
         .params
         .iter_mut()
