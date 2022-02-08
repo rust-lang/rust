@@ -343,6 +343,10 @@ fn source_edit_from_name_ref(
     new_name: &str,
     def: Definition,
 ) -> bool {
+    if name_ref.super_token().is_some() {
+        return true;
+    }
+
     if let Some(record_field) = ast::RecordExprField::for_name_ref(name_ref) {
         let rcf_name_ref = record_field.name_ref();
         let rcf_expr = record_field.expr();
