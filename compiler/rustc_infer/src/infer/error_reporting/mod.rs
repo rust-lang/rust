@@ -2053,7 +2053,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 if let Some(code) =
                                     code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                                 {
-                                    if code.chars().nth(1).is_none() {
+                                    if code.chars().count() == 1 {
                                         err.span_suggestion(
                                             span,
                                             "if you meant to write a `char` literal, use single quotes",
