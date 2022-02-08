@@ -6,8 +6,8 @@
     6|       |    println!("called but not covered");
     7|       |}
     8|       |
-    9|       |#[no_coverage]
-   10|       |fn do_not_add_coverage_2() {
+    9|       |fn do_not_add_coverage_2() {
+   10|       |    #![no_coverage]
    11|       |    println!("called but not covered");
    12|       |}
    13|       |
@@ -28,10 +28,60 @@
    28|      0|    println!("not called but covered");
    29|      0|}
    30|       |
-   31|      1|fn main() {
-   32|      1|    do_not_add_coverage_1();
-   33|      1|    do_not_add_coverage_2();
-   34|      1|    add_coverage_1();
-   35|      1|    add_coverage_2();
-   36|      1|}
+   31|       |// FIXME: These test-cases illustrate confusing results of nested functions.
+   32|       |// See https://github.com/rust-lang/rust/issues/93319
+   33|       |mod nested_fns {
+   34|       |    #[no_coverage]
+   35|       |    pub fn outer_not_covered(is_true: bool) {
+   36|      1|        fn inner(is_true: bool) {
+   37|      1|            if is_true {
+   38|      1|                println!("called and covered");
+   39|      1|            } else {
+   40|      0|                println!("absolutely not covered");
+   41|      0|            }
+   42|      1|        }
+   43|       |        println!("called but not covered");
+   44|       |        inner(is_true);
+   45|       |    }
+   46|       |
+   47|      1|    pub fn outer(is_true: bool) {
+   48|      1|        println!("called and covered");
+   49|      1|        inner_not_covered(is_true);
+   50|      1|
+   51|      1|        #[no_coverage]
+   52|      1|        fn inner_not_covered(is_true: bool) {
+   53|      1|            if is_true {
+   54|      1|                println!("called but not covered");
+   55|      1|            } else {
+   56|      1|                println!("absolutely not covered");
+   57|      1|            }
+   58|      1|        }
+   59|      1|    }
+   60|       |
+   61|      1|    pub fn outer_both_covered(is_true: bool) {
+   62|      1|        println!("called and covered");
+   63|      1|        inner(is_true);
+   64|      1|
+   65|      1|        fn inner(is_true: bool) {
+   66|      1|            if is_true {
+   67|      1|                println!("called and covered");
+   68|      1|            } else {
+   69|      0|                println!("absolutely not covered");
+   70|      0|            }
+   71|      1|        }
+   72|      1|    }
+   73|       |}
+   74|       |
+   75|      1|fn main() {
+   76|      1|    let is_true = std::env::args().len() == 1;
+   77|      1|
+   78|      1|    do_not_add_coverage_1();
+   79|      1|    do_not_add_coverage_2();
+   80|      1|    add_coverage_1();
+   81|      1|    add_coverage_2();
+   82|      1|
+   83|      1|    nested_fns::outer_not_covered(is_true);
+   84|      1|    nested_fns::outer(is_true);
+   85|      1|    nested_fns::outer_both_covered(is_true);
+   86|      1|}
 
