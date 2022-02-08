@@ -24,6 +24,10 @@ use text_edit::TextEdit;
 //
 // This action needs to be assigned to shortcut explicitly.
 //
+// Note that, depending on the other installed extensions, this feature can visibly slow down typing.
+// Similarly, if rust-analyzer crashes or stops responding, `Enter` might not work.
+// In that case, you can still press `Shift-Enter` to insert a newline.
+//
 // VS Code::
 //
 // Add the following to `keybindings.json`:
