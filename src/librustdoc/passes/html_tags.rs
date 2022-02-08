@@ -38,7 +38,7 @@ fn drop_tag(
     tags: &mut Vec<(String, Range<usize>)>,
     tag_name: String,
     range: Range<usize>,
-    f: &impl Fn(&str, &Range<usize>),
+    f: &impl Fn(&str, &Range<usize>, bool),
 ) {
     let tag_name_low = tag_name.to_lowercase();
     if let Some(pos) = tags.iter().rposition(|(t, _)| t.to_lowercase() == tag_name_low) {
@@ -59,14 +59,42 @@ fn drop_tag(
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
             // So `<h2><h3></h2>` will look like `["h2", "h3"]`. So when closing `h2`, we will still
             // have `h3`, meaning the tag wasn't closed as it should have.
-            f(&format!("unclosed HTML tag `{}`", last_tag_name), &last_tag_span);
+            f(&format!("unclosed HTML tag `{}`", last_tag_name), &last_tag_span, true);
         }
         // Remove the `tag_name` that was originally closed
         tags.pop();
     } else {
         // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
         // but it helps for the visualization).
-        f(&format!("unopened HTML tag `{}`", tag_name), &range);
+        f(&format!("unopened HTML tag `{}`", tag_name), &range, false);
+    }
+}
+
+fn extract_path_backwards(text: &str, end_pos: usize) -> Option<usize> {
+    use rustc_lexer::{is_id_continue, is_id_start};
+    let mut current_pos = end_pos;
+    loop {
+        if current_pos >= 2 && text[..current_pos].ends_with("::") {
+            current_pos -= 2;
+        }
+        let new_pos = text[..current_pos]
+            .char_indices()
+            .rev()
+            .take_while(|(_, c)| is_id_start(*c) || is_id_continue(*c))
+            .reduce(|_accum, item| item)
+            .and_then(|(new_pos, c)| is_id_start(c).then_some(new_pos));
+        if let Some(new_pos) = new_pos {
+            if current_pos != new_pos {
+                current_pos = new_pos;
+                continue;
+            }
+        }
+        break;
+    }
+    if current_pos == end_pos {
+        return None;
+    } else {
+        return Some(current_pos);
     }
 }
 
@@ -76,7 +104,7 @@ fn extract_html_tag(
     range: &Range<usize>,
     start_pos: usize,
     iter: &mut Peekable<CharIndices<'_>>,
-    f: &impl Fn(&str, &Range<usize>),
+    f: &impl Fn(&str, &Range<usize>, bool),
 ) {
     let mut tag_name = String::new();
     let mut is_closing = false;
@@ -140,7 +168,7 @@ fn extract_tags(
     text: &str,
     range: Range<usize>,
     is_in_comment: &mut Option<Range<usize>>,
-    f: &impl Fn(&str, &Range<usize>),
+    f: &impl Fn(&str, &Range<usize>, bool),
 ) {
     let mut iter = text.char_indices().peekable();
 
@@ -178,14 +206,42 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
         };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
         if !dox.is_empty() {
-            let report_diag = |msg: &str, range: &Range<usize>| {
+            let report_diag = |msg: &str, range: &Range<usize>, is_open_tag: bool| {
                 let sp = match super::source_span_for_markdown_range(tcx, &dox, range, &item.attrs)
                 {
                     Some(sp) => sp,
                     None => item.attr_span(tcx),
                 };
                 tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, |lint| {
-                    lint.build(msg).emit()
+                    use rustc_lint_defs::Applicability;
+                    let mut diag = lint.build(msg);
+                    // If a tag looks like `<this>`, it might actually be a generic.
+                    // We don't try to detect stuff `<like, this>` because that's not valid HTML,
+                    // and we don't try to detect stuff `<like this>` because that's not valid Rust.
+                    if let Some(Some(generics_start)) = (is_open_tag
+                        && dox[..range.end].ends_with(">"))
+                    .then(|| extract_path_backwards(&dox, range.start))
+                    {
+                        let generics_sp = match super::source_span_for_markdown_range(
+                            tcx,
+                            &dox,
+                            &(generics_start..range.end),
+                            &item.attrs,
+                        ) {
+                            Some(sp) => sp,
+                            None => item.attr_span(tcx),
+                        };
+                        // multipart form is chosen here because ``Vec<i32>`` would be confusing.
+                        diag.multipart_suggestion(
+                            "try marking as source code",
+                            vec![
+                                (generics_sp.shrink_to_lo(), String::from("`")),
+                                (generics_sp.shrink_to_hi(), String::from("`")),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    diag.emit()
                 });
             };
 
@@ -210,11 +266,11 @@ impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
                 let t = t.to_lowercase();
                 !ALLOWED_UNCLOSED.contains(&t.as_str())
             }) {
-                report_diag(&format!("unclosed HTML tag `{}`", tag), range);
+                report_diag(&format!("unclosed HTML tag `{}`", tag), range, true);
             }
 
             if let Some(range) = is_in_comment {
-                report_diag("Unclosed HTML comment", &range);
+                report_diag("Unclosed HTML comment", &range, false);
             }
         }
 

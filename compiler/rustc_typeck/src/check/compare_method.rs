@@ -377,9 +377,9 @@ fn compare_predicate_entailment<'tcx>(
                 &mut diag,
                 &cause,
                 trait_err_span.map(|sp| (sp, "type in trait".to_owned())),
-                Some(infer::ValuePairs::Types(ExpectedFound {
-                    expected: trait_fty,
-                    found: impl_fty,
+                Some(infer::ValuePairs::Terms(ExpectedFound {
+                    expected: trait_fty.into(),
+                    found: impl_fty.into(),
                 })),
                 &terr,
                 false,
@@ -1068,9 +1068,9 @@ crate fn compare_const_impl<'tcx>(
                 &mut diag,
                 &cause,
                 trait_c_span.map(|span| (span, "type in trait".to_owned())),
-                Some(infer::ValuePairs::Types(ExpectedFound {
-                    expected: trait_ty,
-                    found: impl_ty,
+                Some(infer::ValuePairs::Terms(ExpectedFound {
+                    expected: trait_ty.into(),
+                    found: impl_ty.into(),
                 })),
                 &terr,
                 false,

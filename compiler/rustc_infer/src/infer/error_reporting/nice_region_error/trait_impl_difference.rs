@@ -2,7 +2,7 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::{SubregionOrigin, Subtype, ValuePairs};
+use crate::infer::{SubregionOrigin, Subtype};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -34,16 +34,16 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin) {
                 if let (
-                    ValuePairs::Types(sub_expected_found),
-                    ValuePairs::Types(sup_expected_found),
+                    sub_expected_found @ Some((sub_expected, sub_found)),
+                    sup_expected_found @ Some(_),
                     CompareImplMethodObligation { trait_item_def_id, .. },
-                ) = (&sub_trace.values, &sup_trace.values, sub_trace.cause.code())
+                ) = (&sub_trace.values.ty(), &sup_trace.values.ty(), sub_trace.cause.code())
                 {
                     if sup_expected_found == sub_expected_found {
                         self.emit_err(
                             var_origin.span(),
-                            sub_expected_found.expected,
-                            sub_expected_found.found,
+                            sub_expected,
+                            sub_found,
                             *trait_item_def_id,
                         );
                         return Some(ErrorReported);

@@ -1382,26 +1382,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     normalized_ty,
                     data.term,
                 ) {
-                    values = Some(match (normalized_ty, data.term) {
-                        (ty::Term::Ty(normalized_ty), ty::Term::Ty(ty)) => {
-                            infer::ValuePairs::Types(ExpectedFound::new(
-                                is_normalized_ty_expected,
-                                normalized_ty,
-                                ty,
-                            ))
-                        }
-                        (ty::Term::Const(normalized_ct), ty::Term::Const(ct)) => {
-                            infer::ValuePairs::Consts(ExpectedFound::new(
-                                is_normalized_ty_expected,
-                                normalized_ct,
-                                ct,
-                            ))
-                        }
-                        (_, _) => span_bug!(
-                            obligation.cause.span,
-                            "found const or type where other expected"
-                        ),
-                    });
+                    values = Some(infer::ValuePairs::Terms(ExpectedFound::new(
+                        is_normalized_ty_expected,
+                        normalized_ty,
+                        data.term,
+                    )));
                     err_buf = error;
                     err = &err_buf;
                 }
