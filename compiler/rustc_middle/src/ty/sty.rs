@@ -209,7 +209,7 @@ pub enum TyKind<'tcx> {
     /// * the `impl Trait` ast::Ty node,
     /// * or the `type Foo = impl Trait` declaration
     ///
-    /// For RTIT the substitutions are for the generics of the function,
+    /// For RPIT the substitutions are for the generics of the function,
     /// while for TAIT it is used for the generic parameters of the alias.
     Opaque(DefId, SubstsRef<'tcx>),
 
