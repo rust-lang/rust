@@ -87,6 +87,16 @@ pub struct Ident {
     pub id: TokenId,
 }
 
+impl Leaf {
+    pub fn id(&self) -> TokenId {
+        match self {
+            Leaf::Literal(l) => l.id,
+            Leaf::Punct(p) => p.id,
+            Leaf::Ident(i) => i.id,
+        }
+    }
+}
+
 fn print_debug_subtree(f: &mut fmt::Formatter<'_>, subtree: &Subtree, level: usize) -> fmt::Result {
     let align = "  ".repeat(level);
 

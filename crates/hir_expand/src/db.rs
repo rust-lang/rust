@@ -5,8 +5,8 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult, SyntheticToken};
-use rustc_hash::{FxHashMap, FxHashSet};
+use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
+use rustc_hash::FxHashSet;
 use syntax::{
     algo::diff,
     ast::{self, HasAttrs, HasDocComments},
@@ -442,7 +442,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         ));
     }
 
-    fixup::reverse_fixups(&mut tt);
+    fixup::reverse_fixups(&mut tt, &macro_arg.1);
 
     ExpandResult { value: Some(Arc::new(tt)), err }
 }

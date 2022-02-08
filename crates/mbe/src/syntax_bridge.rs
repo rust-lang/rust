@@ -1,6 +1,6 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use stdx::{always, non_empty_vec::NonEmptyVec};
 use syntax::{
     ast::{self, make::tokens::doc_comment},
@@ -35,7 +35,16 @@ pub fn syntax_node_to_token_tree_censored(
     (subtree, c.id_alloc.map)
 }
 
-pub type SyntheticToken = (SyntaxKind, SmolStr);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct SyntheticTokenId(pub u32);
+
+#[derive(Debug, Clone)]
+pub struct SyntheticToken {
+    pub kind: SyntaxKind,
+    pub text: SmolStr,
+    pub range: TextRange,
+    pub id: SyntheticTokenId,
+}
 
 // The following items are what `rustc` macro can be parsed into :
 // link: https://github.com/rust-lang/rust/blob/9ebf47851a357faa4cd97f4b1dc7835f6376e639/src/libsyntax/ext/expand.rs#L141
@@ -153,13 +162,14 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             Some(it) => it,
             None => break,
         };
+        let synth_id = token.synthetic_id(&conv);
 
         let kind = token.kind(&conv);
         if kind == COMMENT {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
                 // FIXME: There has to be a better way to do this
                 // Add the comments token id to the converted doc string
-                let id = conv.id_alloc().alloc(range);
+                let id = conv.id_alloc().alloc(range, synth_id);
                 result.extend(tokens.into_iter().map(|mut tt| {
                     if let tt::TokenTree::Subtree(sub) = &mut tt {
                         if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) =
@@ -174,7 +184,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             continue;
         }
         let tt = if kind.is_punct() && kind != UNDERSCORE {
-            assert_eq!(range.len(), TextSize::of('.'));
+            // assert_eq!(range.len(), TextSize::of('.'));
 
             if let Some(delim) = subtree.delimiter {
                 let expected = match delim.kind {
@@ -226,11 +236,13 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                     panic!("Token from lexer must be single char: token = {:#?}", token);
                 }
             };
-            tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range) }).into()
+            tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range, synth_id) })
+                .into()
         } else {
             macro_rules! make_leaf {
                 ($i:ident) => {
-                    tt::$i { id: conv.id_alloc().alloc(range), text: token.to_text(conv) }.into()
+                    tt::$i { id: conv.id_alloc().alloc(range, synth_id), text: token.to_text(conv) }
+                        .into()
                 };
             }
             let leaf: tt::Leaf = match kind {
@@ -245,14 +257,14 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                     let apostrophe = tt::Leaf::from(tt::Punct {
                         char: '\'',
                         spacing: tt::Spacing::Joint,
-                        id: conv.id_alloc().alloc(r),
+                        id: conv.id_alloc().alloc(r, synth_id),
                     });
                     result.push(apostrophe.into());
 
                     let r = TextRange::at(range.start() + char_unit, range.len() - char_unit);
                     let ident = tt::Leaf::from(tt::Ident {
                         text: SmolStr::new(&token.to_text(conv)[1..]),
-                        id: conv.id_alloc().alloc(r),
+                        id: conv.id_alloc().alloc(r, synth_id),
                     });
                     result.push(ident.into());
                     continue;
@@ -273,7 +285,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
 
         conv.id_alloc().close_delim(entry.idx, None);
         let leaf: tt::Leaf = tt::Punct {
-            id: conv.id_alloc().alloc(entry.open_range),
+            id: conv.id_alloc().alloc(entry.open_range, None),
             char: match entry.subtree.delimiter.unwrap().kind {
                 tt::DelimiterKind::Parenthesis => '(',
                 tt::DelimiterKind::Brace => '{',
@@ -367,11 +379,18 @@ struct TokenIdAlloc {
 }
 
 impl TokenIdAlloc {
-    fn alloc(&mut self, absolute_range: TextRange) -> tt::TokenId {
+    fn alloc(
+        &mut self,
+        absolute_range: TextRange,
+        synthetic_id: Option<SyntheticTokenId>,
+    ) -> tt::TokenId {
         let relative_range = absolute_range - self.global_offset;
         let token_id = tt::TokenId(self.next_id);
         self.next_id += 1;
         self.map.insert(token_id, relative_range);
+        if let Some(id) = synthetic_id {
+            self.map.insert_synthetic(token_id, id);
+        }
         token_id
     }
 
@@ -411,6 +430,8 @@ trait SrcToken<Ctx>: std::fmt::Debug {
     fn to_char(&self, ctx: &Ctx) -> Option<char>;
 
     fn to_text(&self, ctx: &Ctx) -> SmolStr;
+
+    fn synthetic_id(&self, ctx: &Ctx) -> Option<SyntheticTokenId>;
 }
 
 trait TokenConvertor: Sized {
@@ -436,6 +457,10 @@ impl<'a> SrcToken<RawConvertor<'a>> for usize {
 
     fn to_text(&self, ctx: &RawConvertor<'_>) -> SmolStr {
         ctx.lexed.text(*self).into()
+    }
+
+    fn synthetic_id(&self, _ctx: &RawConvertor<'a>) -> Option<SyntheticTokenId> {
+        None
     }
 }
 
@@ -564,13 +589,14 @@ impl SrcToken<Convertor> for SynToken {
         match self {
             SynToken::Ordinary(token) => token.kind(),
             SynToken::Punch(token, _) => token.kind(),
-            SynToken::Synthetic((kind, _)) => *kind,
+            SynToken::Synthetic(token) => token.kind,
         }
     }
     fn to_char(&self, _ctx: &Convertor) -> Option<char> {
         match self {
             SynToken::Ordinary(_) => None,
             SynToken::Punch(it, i) => it.text().chars().nth((*i).into()),
+            SynToken::Synthetic(token) if token.text.len() == 1 => token.text.chars().next(),
             SynToken::Synthetic(_) => None,
         }
     }
@@ -578,7 +604,14 @@ impl SrcToken<Convertor> for SynToken {
         match self {
             SynToken::Ordinary(token) => token.text().into(),
             SynToken::Punch(token, _) => token.text().into(),
-            SynToken::Synthetic((_, text)) => text.clone(),
+            SynToken::Synthetic(token) => token.text.clone(),
+        }
+    }
+
+    fn synthetic_id(&self, _ctx: &Convertor) -> Option<SyntheticTokenId> {
+        match self {
+            SynToken::Synthetic(token) => Some(token.id),
+            _ => None,
         }
     }
 }
