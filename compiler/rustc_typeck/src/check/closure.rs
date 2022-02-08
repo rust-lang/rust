@@ -259,6 +259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
     /// know that.
+    #[instrument(level = "debug", skip(self, cause_span))]
     fn deduce_sig_from_projection(
         &self,
         cause_span: Option<Span>,
@@ -266,15 +267,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<ExpectedSig<'tcx>> {
         let tcx = self.tcx;
 
-        debug!("deduce_sig_from_projection({:?})", projection);
-
         let trait_def_id = projection.trait_def_id(tcx);
 
         let is_fn = tcx.fn_trait_kind_from_lang_item(trait_def_id).is_some();
         let gen_trait = tcx.require_lang_item(LangItem::Generator, cause_span);
         let is_gen = gen_trait == trait_def_id;
         if !is_fn && !is_gen {
-            debug!("deduce_sig_from_projection: not fn or generator");
+            debug!("not fn or generator");
             return None;
         }
 
@@ -283,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // associated item and not yield.
             let return_assoc_item = self.tcx.associated_item_def_ids(gen_trait)[1];
             if return_assoc_item != projection.projection_def_id() {
-                debug!("deduce_sig_from_projection: not return assoc item of generator");
+                debug!("not return assoc item of generator");
                 return None;
             }
         }
@@ -291,7 +290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let input_tys = if is_fn {
             let arg_param_ty = projection.skip_binder().projection_ty.substs.type_at(1);
             let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
-            debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
+            debug!(?arg_param_ty);
 
             match arg_param_ty.kind() {
                 ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()).collect::<Vec<_>>(),
@@ -306,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Since this is a return parameter type it is safe to unwrap.
         let ret_param_ty = projection.skip_binder().term.ty().unwrap();
         let ret_param_ty = self.resolve_vars_if_possible(ret_param_ty);
-        debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
+        debug!(?ret_param_ty);
 
         let sig = projection.rebind(self.tcx.mk_fn_sig(
             input_tys.iter(),
@@ -315,7 +314,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Unsafety::Normal,
             Abi::Rust,
         ));
-        debug!("deduce_sig_from_projection: sig={:?}", sig);
+        debug!(?sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
