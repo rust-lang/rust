@@ -62,8 +62,7 @@ fn proc_macros_qualified() {
 struct Foo;
 "#,
         expect![[r#"
-            at input_replace pub macro input_replace
-            at identity      pub macro identity
+            at identity pub macro identity
         "#]],
     )
 }
