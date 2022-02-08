@@ -104,8 +104,8 @@ fn mir_build(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> Body<'_
     let span_with_body = span_with_body.unwrap_or_else(|| tcx.hir().span(id));
 
     tcx.infer_ctxt().enter(|infcx| {
-        let body = if let Some(ErrorReported) = typeck_results.tainted_by_errors {
-            build::construct_error(&infcx, def, id, body_id, body_owner_kind)
+        let body = if let Some(error_reported) = typeck_results.tainted_by_errors {
+            build::construct_error(&infcx, def, id, body_id, body_owner_kind, error_reported)
         } else if body_owner_kind.is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
@@ -715,6 +715,7 @@ fn construct_error<'a, 'tcx>(
     hir_id: hir::HirId,
     body_id: hir::BodyId,
     body_owner_kind: hir::BodyOwnerKind,
+    err: ErrorReported,
 ) -> Body<'tcx> {
     let tcx = infcx.tcx;
     let span = tcx.hir().span(hir_id);
@@ -769,6 +770,7 @@ fn construct_error<'a, 'tcx>(
         vec![],
         span,
         generator_kind,
+        Some(err),
     );
     body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
@@ -857,6 +859,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info,
             self.fn_span,
             self.generator_kind,
+            self.typeck_results.tainted_by_errors,
         )
     }
 

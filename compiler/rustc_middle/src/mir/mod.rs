@@ -13,6 +13,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
+use rustc_errors::ErrorReported;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -284,6 +285,8 @@ pub struct Body<'tcx> {
 
     predecessor_cache: PredecessorCache,
     is_cyclic: GraphIsCyclicCache,
+
+    pub tainted_by_errors: Option<ErrorReported>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -297,6 +300,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         generator_kind: Option<GeneratorKind>,
+        tainted_by_errors: Option<ErrorReported>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -329,6 +333,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            tainted_by_errors,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -356,6 +361,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body

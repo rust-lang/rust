@@ -252,8 +252,11 @@ fn mir_promoted<'tcx>(
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
-    let _ = tcx.mir_const_qualif_opt_const_arg(def);
+    let const_qualifs = tcx.mir_const_qualif_opt_const_arg(def);
     let mut body = tcx.mir_const(def).steal();
+    if let Some(error_reported) = const_qualifs.tainted_by_errors {
+        body.tainted_by_errors = Some(error_reported);
+    }
 
     let mut required_consts = Vec::new();
     let mut required_consts_visitor = RequiredConstsVisitor::new(&mut required_consts);
@@ -358,13 +361,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
 
-    // (Mir-)Borrowck uses `mir_promoted`, so we have to force it to
-    // execute before we can steal.
-    if let Some(param_did) = def.const_param_did {
-        tcx.ensure().mir_borrowck_const_arg((def.did, param_did));
-    } else {
-        tcx.ensure().mir_borrowck(def.did);
-    }
+    let mir_borrowck = tcx.mir_borrowck_opt_const_arg(def);
 
     let is_fn_like = tcx.hir().get_by_def_id(def.did).fn_kind().is_some();
     if is_fn_like {
@@ -379,6 +376,9 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
 
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
+    if let Some(error_reported) = mir_borrowck.tainted_by_errors {
+        body.tainted_by_errors = Some(error_reported);
+    }
 
     // IMPORTANT
     pm::run_passes(tcx, &mut body, &[&remove_false_edges::RemoveFalseEdges]);
@@ -544,15 +544,13 @@ fn promoted_mir<'tcx>(
         return tcx.arena.alloc(IndexVec::new());
     }
 
-    if let Some(param_did) = def.const_param_did {
-        tcx.ensure().mir_borrowck_const_arg((def.did, param_did));
-    } else {
-        tcx.ensure().mir_borrowck(def.did);
-    }
-    let (_, promoted) = tcx.mir_promoted(def);
-    let mut promoted = promoted.steal();
+    let tainted_by_errors = tcx.mir_borrowck_opt_const_arg(def).tainted_by_errors;
+    let mut promoted = tcx.mir_promoted(def).1.steal();
 
     for body in &mut promoted {
+        if let Some(error_reported) = tainted_by_errors {
+            body.tainted_by_errors = Some(error_reported);
+        }
         run_post_borrowck_cleanup_passes(tcx, body);
     }
 

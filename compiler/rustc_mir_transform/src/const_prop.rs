@@ -145,6 +145,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
             Default::default(),
             body.span,
             body.generator_kind(),
+            body.tainted_by_errors,
         );
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
