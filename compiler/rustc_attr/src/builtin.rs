@@ -101,6 +101,16 @@ pub struct Stability {
     pub feature: Symbol,
 }
 
+impl Stability {
+    pub fn is_unstable(&self) -> bool {
+        self.level.is_unstable()
+    }
+
+    pub fn is_stable(&self) -> bool {
+        self.level.is_stable()
+    }
+}
+
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
@@ -109,6 +119,16 @@ pub struct ConstStability {
     pub feature: Symbol,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
+}
+
+impl ConstStability {
+    pub fn is_const_unstable(&self) -> bool {
+        self.level.is_unstable()
+    }
+
+    pub fn is_const_stable(&self) -> bool {
+        self.level.is_stable()
+    }
 }
 
 /// The available stability levels.
