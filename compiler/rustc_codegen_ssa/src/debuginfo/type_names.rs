@@ -470,7 +470,7 @@ fn push_debuginfo_type_name<'tcx>(
 }
 
 pub enum VTableNameKind {
-    // Is the name for const/static holding the vtable?
+    // Is the name for the const/static holding the vtable?
     GlobalVariable,
     // Is the name for the type of the vtable?
     Type,

@@ -2662,11 +2662,13 @@ fn vtable_type_metadata<'ll, 'tcx>(
                 }
                 ty::VtblEntry::Method(_) => {
                     // Note: This code does not try to give a proper name to each method
-                    //       because their might be multiple methods with the same name
+                    //       because there might be multiple methods with the same name
                     //       (coming from different traits).
                     (format!("__method{}", index), void_pointer_type_debuginfo)
                 }
                 ty::VtblEntry::TraitVPtr(_) => {
+                    // Note: In the future we could try to set the type of this pointer
+                    //       to the type that we generate for the corresponding vtable.
                     (format!("__super_trait_ptr{}", index), void_pointer_type_debuginfo)
                 }
                 ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_debuginfo),
