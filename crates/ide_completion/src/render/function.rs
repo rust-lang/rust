@@ -110,7 +110,19 @@ fn render(
 
 fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
     let ret_ty = func.ret_type(db);
-    let mut detail = format!("fn({})", params_display(db, func));
+    let mut detail = String::new();
+
+    if func.is_const(db) {
+        format_to!(detail, "const ");
+    }
+    if func.is_async(db) {
+        format_to!(detail, "async ");
+    }
+    if func.is_unsafe(db) {
+        format_to!(detail, "unsafe ");
+    }
+
+    format_to!(detail, "fn({})", params_display(db, func));
     if !ret_ty.is_unit() {
         format_to!(detail, " -> {}", ret_ty.display(db));
     }
