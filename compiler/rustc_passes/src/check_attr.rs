@@ -1741,12 +1741,46 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn check_used(&self, attrs: &[Attribute], target: Target) {
+        let mut used_linker_span = None;
+        let mut used_compiler_span = None;
         for attr in attrs {
             if attr.has_name(sym::used) && target != Target::Static {
                 self.tcx
                     .sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
+            let inner = attr.meta_item_list();
+            match inner.as_deref() {
+                Some([item]) if item.has_name(sym::linker) => {
+                    if used_linker_span.is_none() {
+                        used_linker_span = Some(attr.span);
+                    }
+                }
+                Some([item]) if item.has_name(sym::compiler) => {
+                    if used_compiler_span.is_none() {
+                        used_compiler_span = Some(attr.span);
+                    }
+                }
+                Some(_) => {
+                    // This error case is handled in rustc_typeck::collect.
+                }
+                None => {
+                    // Default case (compiler) when arg isn't defined.
+                    if used_compiler_span.is_none() {
+                        used_compiler_span = Some(attr.span);
+                    }
+                }
+            }
+        }
+        if let (Some(linker_span), Some(compiler_span)) = (used_linker_span, used_compiler_span) {
+            let spans = vec![linker_span, compiler_span];
+            self.tcx
+                .sess
+                .struct_span_err(
+                    spans,
+                    "`used(compiler)` and `used(linker)` can't be used together",
+                )
+                .emit();
         }
     }
 
