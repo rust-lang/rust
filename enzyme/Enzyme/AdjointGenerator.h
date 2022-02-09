@@ -122,7 +122,8 @@ public:
       return;
 
     PHINode *pn = nullptr;
-    if (!I.getType()->isVoidTy() && isa<Instruction>(iload)) {
+    if (!I.getType()->isVoidTy() && !I.getType()->isTokenTy() &&
+        isa<Instruction>(iload)) {
       IRBuilder<> BuilderZ(cast<Instruction>(iload));
       pn = BuilderZ.CreatePHI(I.getType(), 1,
                               (I.getName() + "_replacementA").str());
@@ -7086,8 +7087,9 @@ public:
             gutils->replaceAWithB(newCall, normalReturn);
             BuilderZ.SetInsertPoint(newCall->getNextNode());
             gutils->erase(newCall);
-          } else if (!orig->mayWriteToMemory() ||
-                     Mode == DerivativeMode::ReverseModeGradient)
+          } else if ((!orig->mayWriteToMemory() ||
+                      Mode == DerivativeMode::ReverseModeGradient) &&
+                     !orig->getType()->isTokenTy())
             eraseIfUnused(*orig, /*erase*/ true, /*check*/ false);
         }
         return;
