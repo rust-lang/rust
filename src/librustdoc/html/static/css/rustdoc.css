@@ -108,7 +108,9 @@ html {
 /* General structure and fonts */
 
 body {
-	font: 1rem/1.4 "Source Serif 4", NanumBarunGothic, serif;
+	/* Line spacing at least 1.5 per Web Content Accessibility Guidelines
+	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
 	margin: 0;
 	position: relative;
 	/* We use overflow-wrap: break-word for Safari, which doesn't recognize
@@ -124,13 +126,13 @@ body {
 }
 
 h1 {
-	font-size: 1.5rem;
+	font-size: 1.5rem; /* 24px */
 }
 h2 {
-	font-size: 1.4rem;
+	font-size: 1.375rem; /* 22px */
 }
 h3 {
-	font-size: 1.3rem;
+	font-size: 1.25rem; /* 20px */
 }
 h1, h2, h3, h4, h5, h6 {
 	font-weight: 500;
@@ -170,7 +172,7 @@ h2,
 	border-bottom: 1px solid;
 }
 h3.code-header {
-	font-size: 1.1rem;
+	font-size: 1.125rem; /* 18px */
 }
 h4.code-header {
 	font-size: 1rem;
@@ -221,19 +223,18 @@ a.srclink,
 	font-family: "Fira Sans", Arial, NanumBarunGothic, sans-serif;
 }
 
-.content ul.crate a.crate {
-	font-size: 1rem/1.6;
-}
-
 ol, ul {
-	padding-left: 25px;
+	padding-left: 24px;
 }
 ul ul, ol ul, ul ol, ol ol {
-	margin-bottom: .6em;
+	margin-bottom: .625em;
 }
 
 p {
-	margin: 0 0 .6em 0;
+	/* Paragraph spacing at least 1.5 times line spacing per Web Content Accessibility Guidelines.
+	   Line-height is 1.5rem, so line spacing is .5rem; .75em is 1.5 times that.
+	   https://www.w3.org/WAI/WCAG21/Understanding/visual-presentation.html */
+	margin: 0 0 .75em 0;
 }
 
 summary {
@@ -303,7 +304,7 @@ code, pre, a.test-arrow, .code-header {
 }
 .docblock code, .docblock-short code {
 	border-radius: 3px;
-	padding: 0 0.1em;
+	padding: 0 0.125em;
 }
 .docblock pre code, .docblock-short pre code {
 	padding: 0;
@@ -364,7 +365,7 @@ nav.sub {
 }
 
 .sidebar {
-	font-size: 0.9rem;
+	font-size: 0.875rem;
 	width: 250px;
 	min-width: 200px;
 	overflow-y: scroll;
@@ -476,8 +477,8 @@ nav.sub {
 .block a,
 h2.location a {
 	display: block;
-	padding: 0.3rem;
-	margin-left: -0.3rem;
+	padding: 0.25rem;
+	margin-left: -0.25rem;
 
 	text-overflow: ellipsis;
 	overflow: hidden;
@@ -497,7 +498,7 @@ h2.location a {
 }
 
 .sidebar h3 {
-	font-size: 1.1rem;
+	font-size: 1.125rem; /* 18px */
 	font-weight: 500;
 	padding: 0;
 	margin: 0;
@@ -598,18 +599,18 @@ h2.location a {
 	white-space: pre-wrap;
 }
 
-.top-doc .docblock h2 { font-size: 1.3rem; }
-.top-doc .docblock h3 { font-size: 1.15rem; }
+.top-doc .docblock h2 { font-size: 1.375rem; }
+.top-doc .docblock h3 { font-size: 1.25; }
 .top-doc .docblock h4,
 .top-doc .docblock h5 {
-	font-size: 1.1rem;
+	font-size: 1.125rem;
 }
 .top-doc .docblock h6 {
 	font-size: 1rem;
 }
 
 .docblock h5 { font-size: 1rem; }
-.docblock h6 { font-size: 0.95rem; }
+.docblock h6 { font-size: 0.875rem; }
 
 .docblock {
 	margin-left: 24px;
@@ -623,12 +624,12 @@ h2.location a {
 
 .content .out-of-band {
 	flex-grow: 0;
-	font-size: 1.15rem;
+	font-size: 1.125rem;
 	font-weight: normal;
 	float: right;
 }
 
-.method > .code-header, .trait-impl > .code-header, .invisible > .code-header {
+.method > .code-header, .trait-impl > .code-header {
 	max-width: calc(100% - 41px);
 	display: block;
 }
@@ -664,7 +665,7 @@ h2.location a {
 .content td { vertical-align: top; }
 .content td:first-child { padding-right: 20px; }
 .content td p:first-child { margin-top: 0; }
-.content td h1, .content td h2 { margin-left: 0; font-size: 1.1rem; }
+.content td h1, .content td h2 { margin-left: 0; font-size: 1.125rem; }
 .content tr:first-child td { border-top: 0; }
 
 .docblock table {
@@ -713,7 +714,7 @@ h2.location a {
 .content .fn .where,
 .content .where.fmt-newline {
 	display: block;
-	font-size: 0.8rem;
+	font-size: 0.875rem;
 }
 
 .content .methods > div:not(.notable-traits):not(.method) {
@@ -736,7 +737,7 @@ h2.location a {
 }
 
 .content .item-info code {
-	font-size: 0.81rem;
+	font-size: 0.875rem;
 }
 
 .content .item-info {
@@ -839,15 +840,6 @@ h2.small-section-header > .anchor {
 	text-decoration: underline;
 }
 
-.invisible > .srclink,
-.method > .code-header + .srclink {
-	position: absolute;
-	top: 0;
-	right: 0;
-	font-size: 1.0625rem;
-	font-weight: normal;
-}
-
 .block a.current.crate { font-weight: 500; }
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
@@ -885,7 +877,7 @@ table,
 	display: table-cell;
 }
 .item-left {
-	padding-right: 1.2rem;
+	padding-right: 1.25rem;
 }
 
 .search-container {
@@ -907,8 +899,8 @@ table,
 #crate-search {
 	min-width: 115px;
 	margin-top: 5px;
-	margin-left: 0.2em;
-	padding-left: 0.3em;
+	margin-left: 0.25em;
+	padding-left: 0.3125em;
 	padding-right: 23px;
 	border: 0;
 	border-radius: 4px;
@@ -942,7 +934,7 @@ table,
 	border: 1px solid;
 	border-radius: 2px;
 	padding: 5px 8px;
-	font-size: 1.0625rem;
+	font-size: 1rem;
 	transition: border-color 300ms ease;
 	width: 100%;
 }
@@ -1054,7 +1046,7 @@ body.blur > :not(#help) {
 .stab {
 	padding: 3px;
 	margin-bottom: 5px;
-	font-size: 0.9rem;
+	font-size: 0.875rem;
 	font-weight: normal;
 }
 .stab p {
@@ -1062,7 +1054,7 @@ body.blur > :not(#help) {
 }
 
 .stab .emoji {
-	font-size: 1.2rem;
+	font-size: 1.25rem;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1078,10 +1070,10 @@ body.blur > :not(#help) {
 .import-item .stab {
 	border-radius: 3px;
 	display: inline-block;
-	font-size: 0.8rem;
+	font-size: 0.875rem;
 	line-height: 1.2;
 	margin-bottom: 0;
-	margin-left: .3em;
+	margin-left: 0.3125em;
 	padding: 2px;
 	vertical-align: text-bottom;
 }
@@ -1106,9 +1098,6 @@ body.blur > :not(#help) {
 	/* Override header settings otherwise it's too bold */
 	font-weight: normal;
 	font-size: 1rem;
-}
-.impl .srclink {
-	font-size: 1.0625rem;
 }
 
 .rightside {
@@ -1141,7 +1130,7 @@ a.test-arrow {
 	position: absolute;
 	padding: 5px 10px 5px 10px;
 	border-radius: 5px;
-	font-size: 1.3rem;
+	font-size: 1.375rem;
 	top: 5px;
 	right: 5px;
 	z-index: 1;
@@ -1179,7 +1168,7 @@ a.test-arrow:hover{
 
 h3.variant {
 	font-weight: 600;
-	font-size: 1.1rem;
+	font-size: 1.125rem;
 	margin-bottom: 10px;
 	border-bottom: none;
 }
@@ -1391,7 +1380,7 @@ pre.rust {
 	left: 0;
 	cursor: pointer;
 	font-weight: bold;
-	font-size: 1.2rem;
+	font-size: 1.25rem;
 	border-bottom: 1px solid;
 	display: flex;
 	height: 40px;
@@ -1516,11 +1505,8 @@ kbd {
 }
 .table-display .out-of-band {
 	position: relative;
-	font-size: 1.1875rem;
+	font-size: 1.125rem;
 	display: block;
-}
-#implementors-list > .impl-items .table-display .out-of-band {
-	font-size: 1.0625rem;
 }
 
 .table-display td:hover .anchor {
@@ -1562,7 +1548,7 @@ div.name.expand + .children {
 div.name::before {
 	content: "\25B6";
 	padding-left: 4px;
-	font-size: 0.7rem;
+	font-size: 0.625rem;
 	position: absolute;
 	left: -16px;
 	top: 4px;
@@ -1595,8 +1581,8 @@ details.rustdoc-toggle > summary.hideme > span {
 details.rustdoc-toggle > summary::before {
 	content: "";
 	cursor: pointer;
-	width: 17px;
-	height: max(17px, 1.1em);
+	width: 16px;
+	height: 16px;
 	background-repeat: no-repeat;
 	background-position: top left;
 	display: inline-block;
@@ -1643,7 +1629,7 @@ details.rustdoc-toggle > summary.hideme::before {
 details.rustdoc-toggle > summary:not(.hideme)::before {
 	position: absolute;
 	left: -24px;
-	top: 3px;
+	top: 4px;
 }
 
 .impl-items > details.rustdoc-toggle > summary:not(.hideme)::before {
@@ -1680,8 +1666,8 @@ details.undocumented > summary::before, details.rustdoc-toggle > summary::before
 
 details.rustdoc-toggle[open] > summary::before,
 details.rustdoc-toggle[open] > summary.hideme::before {
-	width: 17px;
-	height: max(17px, 1.1em);
+	width: 16px;
+	height: 16px;
 	background-repeat: no-repeat;
 	background-position: top left;
 	display: inline-block;
@@ -1808,8 +1794,14 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		width: 0;
 	}
 
+	.mobile-topbar .location a {
+		padding: 0;
+		margin: 0;
+	}
+
 	.mobile-topbar .location {
 		border: none;
+		padding: 0;
 		margin: auto 0.5em auto auto;
 		text-overflow: ellipsis;
 		overflow: hidden;
@@ -1818,7 +1810,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		   height is specified in pixels, this also has to be specified in
 		   pixels to avoid overflowing the topbar when the user sets a bigger
 		   font size. */
-		font-size: 22.4px;
+		font-size: 24px;
 	}
 
 	.mobile-topbar .logo-container {
