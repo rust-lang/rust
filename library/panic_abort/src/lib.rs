@@ -113,7 +113,11 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-    // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
+    // In the past this module used to contain stubs for the personality
+    // functions of various platforms, but these where removed when personality
+    // functions were moved to std.
+
+    // This corresponds to the `eh_catch_typeinfo` lang item
     // that's only used on Emscripten currently.
     //
     // Since panics don't generate exceptions and foreign exceptions are
