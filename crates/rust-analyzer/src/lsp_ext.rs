@@ -242,21 +242,25 @@ pub struct InlayHintsParams {
     pub text_document: TextDocumentIdentifier,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum InlayKind {
-    Other,
-    Type,
-    Parameter,
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct InlayHintKind(u8);
+
+impl InlayHintKind {
+    pub const OTHER: InlayHintKind = InlayHintKind(0);
+    pub const TYPE: InlayHintKind = InlayHintKind(1);
+    pub const PARAMETER: InlayHintKind = InlayHintKind(2);
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InlayHint {
-    pub text: String,
-    pub range: Range,
-    pub kind: Option<InlayKind>,
-    pub description: Option<String>,
-    pub whitespace_before: Option<bool>,
-    pub whitespace_after: Option<bool>,
+    pub label: String,
+    pub position: Position,
+    pub kind: Option<InlayHintKind>,
+    pub tooltip: Option<String>,
+    pub padding_left: Option<bool>,
+    pub padding_right: Option<bool>,
 }
 
 pub enum Ssr {}
