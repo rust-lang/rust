@@ -21,9 +21,11 @@
         "Programming Languages"
     ],
     "engines": {
-        "vscode": "^1.63.0"
+        "vscode": "^1.64.0"
     },
-    "enableProposedApi": true,
+    "enabledApiProposals": [
+        "inlayHints"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
@@ -33,16 +35,17 @@
         "lint": "tsfmt --verify && eslint -c .eslintrc.js --ext ts ./src ./tests",
         "fix": " tsfmt -r       && eslint -c .eslintrc.js --ext ts ./src ./tests --fix",
         "pretest": "tsc && npm run build",
-        "test": "node ./out/tests/runTests.js"
+        "test": "node ./out/tests/runTests.js",
+        "postinstall": "vscode-dts dev"
     },
     "dependencies": {
-        "vscode-languageclient": "8.0.0-next.8",
+        "vscode-languageclient": "8.0.0-next.12",
         "d3": "^7.3.0",
         "d3-graphviz": "^4.0.0"
     },
     "devDependencies": {
         "@types/node": "~14.17.5",
-        "@types/vscode": "~1.63.0",
+        "@types/vscode": "~1.64.0",
         "@typescript-eslint/eslint-plugin": "^5.10.0",
         "@typescript-eslint/parser": "^5.10.0",
         "@vscode/test-electron": "^2.1.1",
@@ -52,7 +55,7 @@
         "typescript": "^4.5.5",
         "typescript-formatter": "^7.2.2",
         "vsce": "^2.6.7",
-        "vscode-dts": "^0.3.1"
+        "vscode-dts": "^0.3.3"
     },
     "activationEvents": [
         "onLanguage:rust",

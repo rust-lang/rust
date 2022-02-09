@@ -23,6 +23,6 @@
     "include": [
         "src",
         "tests",
-        "vscode.proposed.d.ts"
+        "vscode.proposed.inlayHints.d.ts"
     ]
 }
