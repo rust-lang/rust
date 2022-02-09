@@ -1,17 +1,4 @@
 FROM ubuntu:20.04
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        curl \
-        ca-certificates
-WORKDIR /tmp
-RUN curl -f https://curl.se/ca/cacert.pem -o cacert.pem
-
-FROM ubuntu:16.04
-
-# The ca-certificates in ubuntu-16 is too old, so update the certificates
-# with something more recent.
-COPY --from=0 /tmp/cacert.pem /tmp/cacert.pem
-ENV CURL_CA_BUNDLE /tmp/cacert.pem
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
