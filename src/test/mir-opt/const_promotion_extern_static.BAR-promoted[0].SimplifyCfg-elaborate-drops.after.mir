@@ -17,3 +17,7 @@ promoted[0] in BAR: &[&i32; 1] = {
         return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
     }
 }
+
+alloc1 (static: Y, size: 4, align: 4) {
+    2a 00 00 00                                     │ *...
+}

@@ -49,5 +49,9 @@
       bb2 (cleanup): {
           resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
       }
+- }
+- 
+- alloc1 (static: Y, size: 4, align: 4) {
+-     2a 00 00 00                                     │ *...
   }
   

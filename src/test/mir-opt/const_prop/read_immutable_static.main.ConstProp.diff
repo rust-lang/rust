@@ -42,3 +42,7 @@
       }
   }
   
+  alloc1 (static: FOO, size: 1, align: 1) {
+      02                                              │ .
+  }
+  
