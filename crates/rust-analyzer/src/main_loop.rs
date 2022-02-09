@@ -455,7 +455,7 @@ impl GlobalState {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
                     self.semantic_tokens_cache.lock().clear();
-                    self.send_request::<lsp_types::request::SemanticTokensRefesh>((), |_, _| ());
+                    self.send_request::<lsp_types::request::SemanticTokensRefresh>((), |_, _| ());
                 }
 
                 // Refresh code lens if the client supports it.
