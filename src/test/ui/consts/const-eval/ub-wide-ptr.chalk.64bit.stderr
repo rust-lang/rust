@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/ub-wide-ptr.rs:90:67
+   |
+LL | const MYSLICE_SUFFIX_BAD: &MySliceBool = &MySlice(true, [unsafe { mem::transmute(3u8) }]);
+   |                                                                   ^^^^^^^^^^^^^^ cannot infer type for type parameter `U` declared on the function `transmute`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.
