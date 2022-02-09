@@ -73,20 +73,15 @@ fn decodable_body(
                 variants.len()
             );
             quote! {
-                ::rustc_serialize::Decoder::read_enum(
+                ::rustc_serialize::Decoder::read_enum_variant(
                     __decoder,
-                    |__decoder| {
-                        ::rustc_serialize::Decoder::read_enum_variant(
-                            __decoder,
-                            &[#names],
-                            |__decoder, __variant_idx| {
-                                match __variant_idx {
-                                    #match_inner
-                                    _ => panic!(#message),
-                                }
-                            })
-                    }
-                )
+                    &[#names],
+                    |__decoder, __variant_idx| {
+                        match __variant_idx {
+                            #match_inner
+                            _ => panic!(#message),
+                        }
+                    })
             }
         }
     };

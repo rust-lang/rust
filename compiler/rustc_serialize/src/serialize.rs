@@ -201,15 +201,6 @@ pub trait Decoder {
     fn read_str(&mut self) -> Cow<'_, str>;
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
 
-    // Compound types:
-    #[inline]
-    fn read_enum<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
     #[inline]
     fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> T
     where
@@ -264,12 +255,10 @@ pub trait Decoder {
     where
         F: FnMut(&mut Self, bool) -> T,
     {
-        self.read_enum(move |this| {
-            this.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
-                0 => f(this, false),
-                1 => f(this, true),
-                _ => panic!("read_option: expected 0 for None or 1 for Some"),
-            })
+        self.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
+            0 => f(this, false),
+            1 => f(this, true),
+            _ => panic!("read_option: expected 0 for None or 1 for Some"),
         })
     }
 
@@ -582,12 +571,10 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
-        d.read_enum(|d| {
-            d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
-                0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
-                1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
-                _ => panic!("Encountered invalid discriminant while decoding `Result`."),
-            })
+        d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
+            0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
+            1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
+            _ => panic!("Encountered invalid discriminant while decoding `Result`."),
         })
     }
 }
