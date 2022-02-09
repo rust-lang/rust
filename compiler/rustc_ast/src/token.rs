@@ -416,8 +416,10 @@ impl Token {
     pub fn can_begin_bound(&self) -> bool {
         self.is_path_start()
             || self.is_lifetime()
-            || self.is_keyword(kw::For)
+            || self == &Not
             || self == &Question
+            || self == &Tilde
+            || self.is_keyword(kw::For)
             || self == &OpenDelim(Paren)
     }
 
