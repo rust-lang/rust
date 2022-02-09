@@ -1369,8 +1369,6 @@ options! {
         "use the given `.prof` file for sampled profile-guided optimization (also known as AutoFDO)"),
     query_dep_graph: bool = (false, parse_bool, [UNTRACKED],
         "enable queries of the dependency graph for regression testing (default: no)"),
-    query_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print some statistics about the query system (default: no)"),
     randomize_layout: bool = (false, parse_bool, [TRACKED],
         "randomize the layout of types (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
