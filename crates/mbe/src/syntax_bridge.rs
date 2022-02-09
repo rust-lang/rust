@@ -192,7 +192,9 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             continue;
         }
         let tt = if kind.is_punct() && kind != UNDERSCORE {
-            // assert_eq!(range.len(), TextSize::of('.'));
+            if synth_id.is_none() {
+                assert_eq!(range.len(), TextSize::of('.'));
+            }
 
             if let Some(delim) = subtree.delimiter {
                 let expected = match delim.kind {

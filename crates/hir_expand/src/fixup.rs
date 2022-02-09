@@ -150,7 +150,6 @@ mod tests {
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
-        eprintln!("parse: {:#?}", parsed.syntax_node());
         let fixups = super::fixup_syntax(&parsed.syntax_node());
         let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
             &parsed.syntax_node(),
