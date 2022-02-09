@@ -1073,6 +1073,16 @@ fn project<'cx, 'tcx>(
         return Ok(Projected::Progress(Progress::error(selcx.tcx())));
     }
 
+    // If the obligation contains any inference types or consts in associated
+    // type substs, then we don't assemble any candidates.
+    // This isn't really correct, but otherwise we can end up in a case where
+    // we constrain inference variables by selecting a single predicate, when
+    // we need to stay general. See issue #91762.
+    let (_, predicate_own_substs) = obligation.predicate.trait_ref_and_own_substs(selcx.tcx());
+    if predicate_own_substs.iter().any(|g| g.has_infer_types_or_consts()) {
+        return Err(ProjectionError::TooManyCandidates);
+    }
+
     let mut candidates = ProjectionCandidateSet::None;
 
     // Make sure that the following procedures are kept in order. ParamEnv
