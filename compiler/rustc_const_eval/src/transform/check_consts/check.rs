@@ -359,7 +359,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             match *ty.kind() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
-                ty::FnPtr(..) => self.check_op(ops::ty::FnPtr(kind)),
 
                 ty::Dynamic(preds, _) => {
                     for pred in preds.iter() {
@@ -395,6 +394,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     | ty::PredicateKind::Projection(_)
                     | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
+                    | ty::PredicateKind::Trait(..)
                     | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                     ty::PredicateKind::ObjectSafe(_) => {
                         bug!("object safe predicate on function: {:#?}", predicate)
@@ -404,27 +404,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                     }
                     ty::PredicateKind::Subtype(_) | ty::PredicateKind::Coerce(_) => {
                         bug!("subtype/coerce predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::Trait(pred) => {
-                        if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
-                            continue;
-                        }
-                        match pred.self_ty().kind() {
-                            ty::Param(p) => {
-                                let generics = tcx.generics_of(current);
-                                let def = generics.type_param(p, tcx);
-                                let span = tcx.def_span(def.def_id);
-
-                                // These are part of the function signature, so treat them like
-                                // arguments when determining importance.
-                                let kind = LocalKind::Arg;
-
-                                self.check_op_spanned(ops::ty::TraitBound(kind), span);
-                            }
-                            // other kinds of bounds are either tautologies
-                            // or cause errors in other passes
-                            _ => continue,
-                        }
                     }
                 }
             }
@@ -613,7 +592,9 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 ),
                 _,
                 _,
-            ) => self.check_op(ops::FnPtrCast),
+            ) => {
+                // Nothing to do here. Function pointer casts are allowed now.
+            }
 
             Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => {
                 // Nothing to check here (`check_local_or_return_ty` ensures no trait objects occur

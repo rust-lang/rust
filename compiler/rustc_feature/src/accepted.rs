@@ -86,6 +86,10 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511), None),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456), None),
+    /// Allows using and casting function pointers in a `const fn`.
+    (accepted, const_fn_fn_ptr_basics, "1.60.0", Some(57563), None),
+    /// Allows trait bounds in `const fn`.
+    (accepted, const_fn_trait_bound, "1.60.0", Some(93706), None),
     /// Allows calling `transmute` in const fn
     (accepted, const_fn_transmute, "1.56.0", Some(53605), None),
     /// Allows accessing fields of unions inside `const` functions.

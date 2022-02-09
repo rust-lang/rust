@@ -356,31 +356,6 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
 }
 
 #[derive(Debug)]
-pub struct FnPtrCast;
-impl<'tcx> NonConstOp<'tcx> for FnPtrCast {
-    fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-        if ccx.const_kind() != hir::ConstContext::ConstFn {
-            Status::Allowed
-        } else {
-            Status::Unstable(sym::const_fn_fn_ptr_basics)
-        }
-    }
-
-    fn build_error(
-        &self,
-        ccx: &ConstCx<'_, 'tcx>,
-        span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        feature_err(
-            &ccx.tcx.sess.parse_sess,
-            sym::const_fn_fn_ptr_basics,
-            span,
-            &format!("function pointer casts are not allowed in {}s", ccx.const_kind()),
-        )
-    }
-}
-
-#[derive(Debug)]
 pub struct Generator(pub hir::GeneratorKind);
 impl<'tcx> NonConstOp<'tcx> for Generator {
     fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
@@ -822,40 +797,6 @@ pub mod ty {
     }
 
     #[derive(Debug)]
-    pub struct FnPtr(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for FnPtr {
-        fn importance(&self) -> DiagnosticImportance {
-            match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
-            }
-        }
-
-        fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_fn_fn_ptr_basics)
-            }
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_fn_fn_ptr_basics,
-                span,
-                &format!("function pointers cannot appear in {}s", ccx.const_kind()),
-            )
-        }
-    }
-
-    #[derive(Debug)]
     pub struct ImplTrait;
     impl<'tcx> NonConstOp<'tcx> for ImplTrait {
         fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
@@ -873,49 +814,6 @@ pub mod ty {
                 span,
                 &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
             )
-        }
-    }
-
-    #[derive(Debug)]
-    pub struct TraitBound(pub mir::LocalKind);
-    impl<'tcx> NonConstOp<'tcx> for TraitBound {
-        fn importance(&self) -> DiagnosticImportance {
-            match self.0 {
-                mir::LocalKind::Var | mir::LocalKind::Temp => DiagnosticImportance::Secondary,
-                mir::LocalKind::ReturnPointer | mir::LocalKind::Arg => {
-                    DiagnosticImportance::Primary
-                }
-            }
-        }
-
-        fn status_in_item(&self, ccx: &ConstCx<'_, 'tcx>) -> Status {
-            if ccx.const_kind() != hir::ConstContext::ConstFn {
-                Status::Allowed
-            } else {
-                Status::Unstable(sym::const_fn_trait_bound)
-            }
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-            let mut err = feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_fn_trait_bound,
-                span,
-                "trait bounds other than `Sized` on const fn parameters are unstable",
-            );
-
-            match ccx.fn_sig() {
-                Some(fn_sig) if !fn_sig.span.contains(span) => {
-                    err.span_label(fn_sig.span, "function declared as const here");
-                }
-                _ => {}
-            }
-
-            err
         }
     }
 
