@@ -666,6 +666,12 @@ impl ExitCode {
     }
 }
 
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        ExitCode(c::DWORD::from(code))
+    }
+}
+
 fn zeroed_startupinfo() -> c::STARTUPINFO {
     c::STARTUPINFO {
         cb: 0,
