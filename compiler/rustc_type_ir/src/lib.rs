@@ -5,7 +5,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate rustc_macros;
 
-use rustc_data_structures::stable_hasher::{HashStable, HashStableEq, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
 use std::mem::discriminant;
@@ -449,7 +449,7 @@ impl UnifyKey for FloatVid {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Decodable, Encodable, Hash, HashStableEq)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -557,12 +557,6 @@ impl<CTX> HashStable<CTX> for InferTy {
 impl<CTX> HashStable<CTX> for Variance {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         discriminant(self).hash_stable(ctx, hasher);
-    }
-}
-
-impl HashStableEq for Variance {
-    fn hash_stable_eq(&self, other: &Self) -> bool {
-        self == other
     }
 }
 

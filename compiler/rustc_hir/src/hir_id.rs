@@ -11,7 +11,7 @@ use std::fmt;
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStableEq)]
 #[derive(Encodable, Decodable)]
 pub struct HirId {
     pub owner: LocalDefId,
