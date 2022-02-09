@@ -546,11 +546,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Fn => lang_items.fn_trait(),
             FnMut => lang_items.fn_mut_trait(),
             FnOnce => lang_items.fn_once_trait(),
+            Generator => lang_items.gen_trait(),
             Unsize => lang_items.unsize_trait(),
             Unpin => lang_items.unpin_trait(),
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
-            Generator => lang_items.generator_return(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -674,28 +674,18 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         let variances = self.interner.tcx.variances_of(def_id.0);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 
     fn adt_variance(
         &self,
-        def_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
-        let variances = self.interner.tcx.variances_of(def_id.0.did);
+        let variances = self.interner.tcx.variances_of(adt_id.0.did);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 }

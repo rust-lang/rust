@@ -188,12 +188,18 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
                 chalk_ir::DomainGoal::ObjectSafe(chalk_ir::TraitId(t)),
             ),
 
+            ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ }) => {
+                chalk_ir::GoalData::SubtypeGoal(chalk_ir::SubtypeGoal {
+                    a: a.lower_into(interner),
+                    b: b.lower_into(interner),
+                })
+            }
+
             // FIXME(chalk): other predicates
             //
             // We can defer this, but ultimately we'll want to express
             // some of these in terms of chalk operations.
             ty::PredicateKind::ClosureKind(..)
-            | ty::PredicateKind::Subtype(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..) => {
@@ -787,6 +793,16 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::Polarity> for ty::ImplPolarity 
             ty::ImplPolarity::Negative => chalk_solve::rust_ir::Polarity::Negative,
             // FIXME(chalk) reservation impls
             ty::ImplPolarity::Reservation => chalk_solve::rust_ir::Polarity::Negative,
+        }
+    }
+}
+impl<'tcx> LowerInto<'tcx, chalk_ir::Variance> for ty::Variance {
+    fn lower_into(self, _interner: RustInterner<'tcx>) -> chalk_ir::Variance {
+        match self {
+            ty::Variance::Covariant => chalk_ir::Variance::Covariant,
+            ty::Variance::Invariant => chalk_ir::Variance::Invariant,
+            ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+            ty::Variance::Bivariant => unimplemented!(),
         }
     }
 }
