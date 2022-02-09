@@ -14,12 +14,12 @@ use tt::Subtree;
 /// (appending to and replacing nodes), the information that is needed to
 /// reverse those changes afterwards, and a token map.
 #[derive(Debug)]
-pub struct SyntaxFixups {
-    pub append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    pub replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    pub undo_info: SyntaxFixupUndoInfo,
-    pub token_map: TokenMap,
-    pub next_id: u32,
+pub(crate) struct SyntaxFixups {
+    pub(crate) append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    pub(crate) replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    pub(crate) undo_info: SyntaxFixupUndoInfo,
+    pub(crate) token_map: TokenMap,
+    pub(crate) next_id: u32,
 }
 
 /// This is the information needed to reverse the fixups.
@@ -30,7 +30,7 @@ pub struct SyntaxFixupUndoInfo {
 
 const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
 
-pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
+pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
     let mut append = FxHashMap::default();
     let mut replace = FxHashMap::default();
     let mut preorder = node.preorder();
@@ -122,7 +122,7 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, undo_info: &SyntaxFixupUndoInfo) {
+pub(crate) fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, undo_info: &SyntaxFixupUndoInfo) {
     tt.token_trees.retain(|tt| match tt {
         tt::TokenTree::Leaf(leaf) => {
             token_map.synthetic_token_id(leaf.id()).is_none()
