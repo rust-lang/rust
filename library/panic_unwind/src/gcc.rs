@@ -87,37 +87,3 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
     // M O Z \0  R U S T -- vendor, language
     0x4d4f5a_00_52555354
 }
-
-// Frame unwind info registration
-//
-// Each module's image contains a frame unwind info section (usually
-// ".eh_frame").  When a module is loaded/unloaded into the process, the
-// unwinder must be informed about the location of this section in memory. The
-// methods of achieving that vary by the platform.  On some (e.g., Linux), the
-// unwinder can discover unwind info sections on its own (by dynamically
-// enumerating currently loaded modules via the dl_iterate_phdr() API and
-// finding their ".eh_frame" sections); Others, like Windows, require modules
-// to actively register their unwind info sections via unwinder API.
-//
-// This module defines two symbols which are referenced and called from
-// rsbegin.rs to register our information with the GCC runtime. The
-// implementation of stack unwinding is (for now) deferred to libgcc_eh, however
-// Rust crates use these Rust-specific entry points to avoid potential clashes
-// with any GCC runtime.
-#[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
-pub mod eh_frame_registry {
-    extern "C" {
-        fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
-        fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
-    }
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn rust_eh_register_frames(eh_frame_begin: *const u8, object: *mut u8) {
-        __register_frame_info(eh_frame_begin, object);
-    }
-
-    #[rustc_std_internal_symbol]
-    pub unsafe extern "C" fn rust_eh_unregister_frames(eh_frame_begin: *const u8, object: *mut u8) {
-        __deregister_frame_info(eh_frame_begin, object);
-    }
-}

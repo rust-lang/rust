@@ -123,13 +123,4 @@ pub mod personalities {
     #[allow(non_upper_case_globals)]
     #[cfg(target_os = "emscripten")]
     static rust_eh_catch_typeinfo: [usize; 2] = [0; 2];
-
-    // These two are called by our startup objects on i686-pc-windows-gnu, but
-    // they don't need to do anything so the bodies are nops.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_register_frames() {}
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-    pub extern "C" fn rust_eh_unregister_frames() {}
 }

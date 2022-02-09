@@ -52,9 +52,6 @@ cfg_if::cfg_if! {
         all(target_family = "unix", not(target_os = "espidf")),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
-        // Rust runtime's startup objects depend on these symbols, so make them public.
-        #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
-        pub use real_imp::eh_frame_registry::*;
         #[path = "gcc.rs"]
         mod real_imp;
     } else {
