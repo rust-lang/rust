@@ -133,7 +133,7 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
             d.read_seq(|d, len| {
                 let start = edge_list_data.len().try_into().unwrap();
                 for _ in 0..len {
-                    let edge = d.read_seq_elt(Decodable::decode);
+                    let edge = Decodable::decode(d);
                     edge_list_data.push(edge);
                 }
                 let end = edge_list_data.len().try_into().unwrap();

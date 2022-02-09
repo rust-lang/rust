@@ -18,7 +18,7 @@ impl<S: Encoder, A: Array<Item: Encodable<S>>> Encodable<S> for SmallVec<A> {
 
 impl<D: Decoder, A: Array<Item: Decodable<D>>> Decodable<D> for SmallVec<A> {
     fn decode(d: &mut D) -> SmallVec<A> {
-        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
+        d.read_seq(|d, len| (0..len).map(|_| Decodable::decode(d)).collect())
     }
 }
 
@@ -35,7 +35,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for LinkedList<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for LinkedList<T> {
     fn decode(d: &mut D) -> LinkedList<T> {
-        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
+        d.read_seq(|d, len| (0..len).map(|_| Decodable::decode(d)).collect())
     }
 }
 
@@ -52,7 +52,7 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for VecDeque<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for VecDeque<T> {
     fn decode(d: &mut D) -> VecDeque<T> {
-        d.read_seq(|d, len| (0..len).map(|_| d.read_seq_elt(|d| Decodable::decode(d))).collect())
+        d.read_seq(|d, len| (0..len).map(|_| Decodable::decode(d)).collect())
     }
 }
 
@@ -112,7 +112,7 @@ where
         d.read_seq(|d, len| {
             let mut set = BTreeSet::new();
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
+                set.insert(Decodable::decode(d));
             }
             set
         })
@@ -191,7 +191,7 @@ where
             let state = Default::default();
             let mut set = HashSet::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
+                set.insert(Decodable::decode(d));
             }
             set
         })
@@ -260,7 +260,7 @@ where
             let state = Default::default();
             let mut set = indexmap::IndexSet::with_capacity_and_hasher(len, state);
             for _ in 0..len {
-                set.insert(d.read_seq_elt(|d| Decodable::decode(d)));
+                set.insert(Decodable::decode(d));
             }
             set
         })

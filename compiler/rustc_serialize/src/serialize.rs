@@ -230,14 +230,6 @@ pub trait Decoder {
         f(self, len)
     }
 
-    #[inline]
-    fn read_seq_elt<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
     fn read_map<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self, usize) -> T,
@@ -449,10 +441,7 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
             unsafe {
                 let ptr: *mut T = vec.as_mut_ptr();
                 for i in 0..len {
-                    std::ptr::write(
-                        ptr.offset(i as isize),
-                        d.read_seq_elt(|d| Decodable::decode(d)),
-                    );
+                    std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
                 }
                 vec.set_len(len);
             }
@@ -474,7 +463,7 @@ impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
             assert!(len == N);
             let mut v = [0u8; N];
             for i in 0..len {
-                v[i] = d.read_seq_elt(|d| Decodable::decode(d));
+                v[i] = Decodable::decode(d);
             }
             v
         })
