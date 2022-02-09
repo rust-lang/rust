@@ -130,16 +130,16 @@ impl<'a, K: DepKind + Decodable<opaque::Decoder<'a>>> Decodable<opaque::Decoder<
             let _i: SerializedDepNodeIndex = fingerprints.push(fingerprint);
             debug_assert_eq!(_i.index(), _index);
 
-            d.read_seq(|d, len| {
-                let start = edge_list_data.len().try_into().unwrap();
-                for _ in 0..len {
-                    let edge = Decodable::decode(d);
-                    edge_list_data.push(edge);
-                }
-                let end = edge_list_data.len().try_into().unwrap();
-                let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
-                debug_assert_eq!(_i.index(), _index);
-            })
+            // Deserialize edges -- sequence of DepNodeIndex
+            let len = d.read_usize();
+            let start = edge_list_data.len().try_into().unwrap();
+            for _ in 0..len {
+                let edge = Decodable::decode(d);
+                edge_list_data.push(edge);
+            }
+            let end = edge_list_data.len().try_into().unwrap();
+            let _i: SerializedDepNodeIndex = edge_list_indices.push((start, end));
+            debug_assert_eq!(_i.index(), _index);
         }
 
         let index: FxHashMap<_, _> =

@@ -201,14 +201,6 @@ pub trait Decoder {
     fn read_str(&mut self) -> Cow<'_, str>;
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
 
-    fn read_seq<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self, usize) -> T,
-    {
-        let len = self.read_usize();
-        f(self, len)
-    }
-
     fn read_map<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self, usize) -> T,
@@ -397,19 +389,18 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
     default fn decode(d: &mut D) -> Vec<T> {
-        d.read_seq(|d, len| {
-            // SAFETY: we set the capacity in advance, only write elements, and
-            // only set the length at the end once the writing has succeeded.
-            let mut vec = Vec::with_capacity(len);
-            unsafe {
-                let ptr: *mut T = vec.as_mut_ptr();
-                for i in 0..len {
-                    std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
-                }
-                vec.set_len(len);
+        let len = d.read_usize();
+        // SAFETY: we set the capacity in advance, only write elements, and
+        // only set the length at the end once the writing has succeeded.
+        let mut vec = Vec::with_capacity(len);
+        unsafe {
+            let ptr: *mut T = vec.as_mut_ptr();
+            for i in 0..len {
+                std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
             }
-            vec
-        })
+            vec.set_len(len);
+        }
+        vec
     }
 }
 
@@ -422,14 +413,13 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
 
 impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
     fn decode(d: &mut D) -> [u8; N] {
-        d.read_seq(|d, len| {
-            assert!(len == N);
-            let mut v = [0u8; N];
-            for i in 0..len {
-                v[i] = Decodable::decode(d);
-            }
-            v
-        })
+        let len = d.read_usize();
+        assert!(len == N);
+        let mut v = [0u8; N];
+        for i in 0..len {
+            v[i] = Decodable::decode(d);
+        }
+        v
     }
 }
 
