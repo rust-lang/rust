@@ -15,13 +15,12 @@ use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, TokenMap};
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
-    syntax_node_to_token_tree_censored(node, Default::default(), Default::default())
+    syntax_node_to_token_tree_with_modifications(node, Default::default(), Default::default())
 }
 
-// TODO rename
 /// Convert the syntax node to a `TokenTree` (what macro will consume)
 /// with the censored range excluded.
-pub fn syntax_node_to_token_tree_censored(
+pub fn syntax_node_to_token_tree_with_modifications(
     node: &SyntaxNode,
     replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,

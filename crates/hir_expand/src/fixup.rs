@@ -123,7 +123,7 @@ mod tests {
         let parsed = syntax::SourceFile::parse(ra_fixture);
         eprintln!("parse: {:#?}", parsed.syntax_node());
         let fixups = super::fixup_syntax(&parsed.syntax_node());
-        let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(
+        let (mut tt, tmap) = mbe::syntax_node_to_token_tree_with_modifications(
             &parsed.syntax_node(),
             fixups.replace,
             fixups.append,

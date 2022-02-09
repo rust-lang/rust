@@ -151,8 +151,11 @@ pub fn expand_speculative(
     let censor = censor_for_macro_input(&loc, &speculative_args);
     let mut fixups = fixup::fixup_syntax(&speculative_args);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
-    let (mut tt, spec_args_tmap) =
-        mbe::syntax_node_to_token_tree_censored(&speculative_args, fixups.replace, fixups.append);
+    let (mut tt, spec_args_tmap) = mbe::syntax_node_to_token_tree_with_modifications(
+        &speculative_args,
+        fixups.replace,
+        fixups.append,
+    );
 
     let (attr_arg, token_id) = match loc.kind {
         MacroCallKind::Attr { invoc_attr_index, .. } => {
@@ -303,11 +306,10 @@ fn macro_arg(
 
     let node = SyntaxNode::new_root(arg);
     let censor = censor_for_macro_input(&loc, &node);
-    // TODO only fixup for attribute macro input
     let mut fixups = fixup::fixup_syntax(&node);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
     let (mut tt, tmap) =
-        mbe::syntax_node_to_token_tree_censored(&node, fixups.replace, fixups.append);
+        mbe::syntax_node_to_token_tree_with_modifications(&node, fixups.replace, fixups.append);
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
