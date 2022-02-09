@@ -6,6 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
+use rustc_errors::struct_span_err;
 use rustc_expand::base::*;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -107,6 +108,17 @@ pub fn expand_test_or_bench(
             item.span,
             "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.",
         );
+        return vec![Annotatable::Item(item)];
+    }
+
+    if let Some(attr) = cx.sess.find_by_name(&item.attrs, sym::naked) {
+        struct_span_err!(
+            cx.sess,
+            attr.span,
+            E0788,
+            "cannot use testing attributes with `#[naked]`",
+        )
+        .emit();
         return vec![Annotatable::Item(item)];
     }
 
