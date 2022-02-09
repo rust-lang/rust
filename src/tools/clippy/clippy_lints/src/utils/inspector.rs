@@ -54,9 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             ),
             hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
         }
-        if item.defaultness.is_default() {
-            println!("default");
-        }
         match item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 println!("associated constant");

@@ -894,9 +894,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             AssocItemKind::MacCall(..) => panic!("`TyMac` should have been expanded by now"),
         };
 
-        // Since `default impl` is not yet implemented, this is always true in impls.
-        let has_value = true;
-        let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = self.lower_node_id(i.id);
         self.lower_attrs(hir_id, &i.attrs);
         let item = hir::ImplItem {
@@ -904,7 +901,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ident: self.lower_ident(i.ident),
             generics,
             vis: self.lower_visibility(&i.vis),
-            defaultness,
             kind,
             span: self.lower_span(i.span),
         };

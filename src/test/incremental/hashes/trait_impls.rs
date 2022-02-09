@@ -358,9 +358,11 @@ pub trait AddDefaultTrait {
 
 #[cfg(any(cfail1,cfail4))]
 impl AddDefaultTrait for Foo {
-    // -------------------------------------------------------------------------------------------
+    // ----------------------------------------------------
     // -------------------------
-            fn method_name() { }
+    // ----------------------------------------------------
+    // -------------------------
+    fn         method_name() { }
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
@@ -369,9 +371,9 @@ impl AddDefaultTrait for Foo {
 #[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
 #[rustc_clean(cfg="cfail6")]
 impl AddDefaultTrait for Foo {
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item", cfg="cfail2")]
+    #[rustc_clean(except="associated_item", cfg="cfail2")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(except="hir_owner,hir_owner_nodes,associated_item,optimized_mir", cfg="cfail5")]
+    #[rustc_clean(except="associated_item", cfg="cfail5")]
     #[rustc_clean(cfg="cfail6")]
     default fn method_name() { }
 }
