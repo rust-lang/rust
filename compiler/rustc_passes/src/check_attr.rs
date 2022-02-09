@@ -80,9 +80,7 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_must_implement_one_of(attr, span, target)
                 }
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
-                sym::track_caller => {
-                    self.check_track_caller(hir_id, attr.span, attrs, span, target)
-                }
+                sym::track_caller => self.check_track_caller(hir_id, attr, span, target),
                 sym::doc => self.check_doc_attrs(
                     attr,
                     hir_id,
@@ -90,41 +88,41 @@ impl CheckAttrVisitor<'_> {
                     &mut specified_inline,
                     &mut doc_aliases,
                 ),
-                sym::no_link => self.check_no_link(hir_id, &attr, span, target),
-                sym::export_name => self.check_export_name(hir_id, &attr, span, target),
+                sym::no_link => self.check_no_link(hir_id, attr, span, target),
+                sym::export_name => self.check_export_name(hir_id, attr, span, target),
                 sym::rustc_layout_scalar_valid_range_start
                 | sym::rustc_layout_scalar_valid_range_end => {
-                    self.check_rustc_layout_scalar_valid_range(&attr, span, target)
+                    self.check_rustc_layout_scalar_valid_range(attr, span, target)
                 }
                 sym::allow_internal_unstable => {
-                    self.check_allow_internal_unstable(hir_id, &attr, span, target, &attrs)
+                    self.check_allow_internal_unstable(hir_id, attr, span, target, attrs)
                 }
                 sym::rustc_allow_const_fn_unstable => {
-                    self.check_rustc_allow_const_fn_unstable(hir_id, &attr, span, target)
+                    self.check_rustc_allow_const_fn_unstable(hir_id, attr, span, target)
                 }
-                sym::naked => self.check_naked(hir_id, attr, span, target),
+                sym::naked => self.check_naked(hir_id, attr, span, target, attrs),
                 sym::rustc_legacy_const_generics => {
-                    self.check_rustc_legacy_const_generics(&attr, span, target, item)
+                    self.check_rustc_legacy_const_generics(attr, span, target, item)
                 }
                 sym::rustc_lint_query_instability => {
-                    self.check_rustc_lint_query_instability(&attr, span, target)
+                    self.check_rustc_lint_query_instability(attr, span, target)
                 }
                 sym::rustc_clean
                 | sym::rustc_dirty
                 | sym::rustc_if_this_changed
-                | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(&attr),
+                | sym::rustc_then_this_would_need => self.check_rustc_dirty_clean(attr),
                 sym::cmse_nonsecure_entry => self.check_cmse_nonsecure_entry(attr, span, target),
                 sym::default_method_body_is_const => {
                     self.check_default_method_body_is_const(attr, span, target)
                 }
-                sym::must_not_suspend => self.check_must_not_suspend(&attr, span, target),
-                sym::must_use => self.check_must_use(hir_id, &attr, span, target),
-                sym::rustc_pass_by_value => self.check_pass_by_value(&attr, span, target),
+                sym::must_not_suspend => self.check_must_not_suspend(attr, span, target),
+                sym::must_use => self.check_must_use(hir_id, attr, span, target),
+                sym::rustc_pass_by_value => self.check_pass_by_value(attr, span, target),
                 sym::rustc_const_unstable
                 | sym::rustc_const_stable
                 | sym::unstable
                 | sym::stable
-                | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
+                | sym::rustc_promotable => self.check_stability_promotable(attr, span, target),
                 _ => true,
             };
             is_valid &= attr_is_valid;
@@ -338,7 +336,27 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
+    fn check_naked(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        target: Target,
+        attrs: &[Attribute],
+    ) -> bool {
+        for any_attr in attrs {
+            if any_attr.has_name(sym::track_caller) || any_attr.has_name(sym::inline) {
+                struct_span_err!(
+                    self.tcx.sess,
+                    any_attr.span,
+                    E0736,
+                    "cannot use additional code generation attributes with `#[naked]`",
+                )
+                .emit();
+                return false;
+            }
+        }
+
         match target {
             Target::Fn
             | Target::Method(MethodKind::Trait { body: true } | MethodKind::Inherent) => true,
@@ -383,41 +401,28 @@ impl CheckAttrVisitor<'_> {
         }
     }
 
-    /// Checks if a `#[track_caller]` is applied to a non-naked function. Returns `true` if valid.
+    /// Checks if a `#[track_caller]` is applied to a function. Returns `true` if valid.
     fn check_track_caller(
         &self,
         hir_id: HirId,
-        attr_span: Span,
-        attrs: &[Attribute],
+        attr: &Attribute,
         span: Span,
         target: Target,
     ) -> bool {
         match target {
-            _ if attrs.iter().any(|attr| attr.has_name(sym::naked)) => {
-                struct_span_err!(
-                    self.tcx.sess,
-                    attr_span,
-                    E0736,
-                    "cannot use `#[track_caller]` with `#[naked]`",
-                )
-                .emit();
-                false
-            }
             Target::Fn | Target::Method(..) | Target::ForeignFn | Target::Closure => true,
             // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
             // `#[track_caller]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                for attr in attrs {
-                    self.inline_attr_str_error_with_macro_def(hir_id, attr, "track_caller");
-                }
+                self.inline_attr_str_error_with_macro_def(hir_id, attr, "track_caller");
                 true
             }
             _ => {
                 struct_span_err!(
                     self.tcx.sess,
-                    attr_span,
+                    attr.span,
                     E0739,
                     "attribute should be applied to function"
                 )

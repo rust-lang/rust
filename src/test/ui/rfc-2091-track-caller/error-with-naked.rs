@@ -3,7 +3,7 @@
 
 use std::arch::asm;
 
-#[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
+#[track_caller] //~ ERROR cannot use additional code generation attributes with `#[naked]`
 #[naked]
 extern "C" fn f() {
     asm!("", options(noreturn));
@@ -12,7 +12,7 @@ extern "C" fn f() {
 struct S;
 
 impl S {
-    #[track_caller] //~ ERROR cannot use `#[track_caller]` with `#[naked]`
+    #[track_caller] //~ ERROR cannot use additional code generation attributes with `#[naked]`
     #[naked]
     extern "C" fn g() {
         asm!("", options(noreturn));

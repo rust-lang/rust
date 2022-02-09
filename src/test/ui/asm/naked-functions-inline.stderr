@@ -1,0 +1,21 @@
+error[E0736]: cannot use additional code generation attributes with `#[naked]`
+  --> $DIR/naked-functions-inline.rs:14:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+
+error[E0736]: cannot use additional code generation attributes with `#[naked]`
+  --> $DIR/naked-functions-inline.rs:21:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0736]: cannot use additional code generation attributes with `#[naked]`
+  --> $DIR/naked-functions-inline.rs:28:1
+   |
+LL | #[inline(never)]
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0736`.
