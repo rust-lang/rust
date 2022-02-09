@@ -225,14 +225,6 @@ pub trait Decoder {
         let len = self.read_usize();
         f(self, len)
     }
-
-    #[inline]
-    fn read_map_elt_val<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
 }
 
 /// Trait for types that can be serialized

@@ -82,7 +82,7 @@ where
             let mut map = BTreeMap::new();
             for _ in 0..len {
                 let key = Decodable::decode(d);
-                let val = d.read_map_elt_val(|d| Decodable::decode(d));
+                let val = Decodable::decode(d);
                 map.insert(key, val);
             }
             map
@@ -148,7 +148,7 @@ where
             let mut map = HashMap::with_capacity_and_hasher(len, state);
             for _ in 0..len {
                 let key = Decodable::decode(d);
-                let val = d.read_map_elt_val(|d| Decodable::decode(d));
+                let val = Decodable::decode(d);
                 map.insert(key, val);
             }
             map
@@ -227,7 +227,7 @@ where
             let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
             for _ in 0..len {
                 let key = Decodable::decode(d);
-                let val = d.read_map_elt_val(|d| Decodable::decode(d));
+                let val = Decodable::decode(d);
                 map.insert(key, val);
             }
             map
