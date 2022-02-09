@@ -359,22 +359,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             match *ty.kind() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
-
-                ty::Dynamic(preds, _) => {
-                    for pred in preds.iter() {
-                        match pred.skip_binder() {
-                            ty::ExistentialPredicate::AutoTrait(_)
-                            | ty::ExistentialPredicate::Projection(_) => {
-                                self.check_op(ops::ty::DynTrait(kind))
-                            }
-                            ty::ExistentialPredicate::Trait(trait_ref) => {
-                                if Some(trait_ref.def_id) != self.tcx.lang_items().sized_trait() {
-                                    self.check_op(ops::ty::DynTrait(kind))
-                                }
-                            }
-                        }
-                    }
-                }
                 _ => {}
             }
         }
