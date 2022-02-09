@@ -5,15 +5,14 @@ use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub trait InferCtxtExt<'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
     ) -> Ty<'tcx>;
 }
 
@@ -45,8 +44,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
     ) -> Ty<'tcx> {
         if self.is_tainted_by_errors() {
             return self.tcx.ty_error();
@@ -69,12 +67,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
+        let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
             def_id,
             map,
-            instantiated_ty,
-            span,
+            instantiated_ty.ty,
+            instantiated_ty.span,
         ));
         debug!(?definition_ty);
 

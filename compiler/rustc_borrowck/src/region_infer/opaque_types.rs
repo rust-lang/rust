@@ -3,7 +3,7 @@ use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
@@ -53,15 +53,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (Ty<'tcx>, Span, OpaqueTyOrigin)>,
-        span: Span,
-    ) -> VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>> {
+        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+    ) -> VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> {
         opaque_ty_decls
             .into_iter()
-            .map(|(opaque_type_key, (concrete_type, decl_span, origin))| {
+            .map(|(opaque_type_key, (concrete_type, origin))| {
                 let substs = opaque_type_key.substs;
-                // FIXME: why are the spans in decl_span often DUMMY_SP?
-                let span = decl_span.substitute_dummy(span);
                 debug!(?concrete_type, ?substs);
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
@@ -85,7 +82,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         None => {
                             subst_regions.push(vid);
                             infcx.tcx.sess.delay_span_bug(
-                                span,
+                                concrete_type.span,
                                 "opaque type with non-universal region substs",
                             );
                             infcx.tcx.lifetimes.re_static
@@ -113,17 +110,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let remapped_type = infcx.infer_opaque_definition_from_instantiation(
                     opaque_type_key,
                     universal_concrete_type,
-                    span,
                 );
-
-                (
+                let ty = if check_opaque_type_parameter_valid(
+                    infcx.tcx,
                     opaque_type_key,
-                    if check_opaque_type_parameter_valid(infcx.tcx, opaque_type_key, origin, span) {
-                        remapped_type
-                    } else {
-                        infcx.tcx.ty_error()
-                    },
-                )
+                    origin,
+                    concrete_type.span,
+                ) {
+                    remapped_type
+                } else {
+                    infcx.tcx.ty_error()
+                };
+                (opaque_type_key, OpaqueHiddenType { ty, span: concrete_type.span })
             })
             .collect()
     }

@@ -13,6 +13,6 @@ fn two<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
 }
 
 fn three<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
-    //~^ ERROR concrete type differs from previous
     (u, t)
+    //~^ ERROR concrete type differs from previous
 }
