@@ -102,7 +102,7 @@ export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, Te
 
 export interface InlayHintsParams {
     textDocument: lc.TextDocumentIdentifier;
-    range: lc.Range,
+    range: lc.Range;
 }
 export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void>("rust-analyzer/inlayHints");
 
