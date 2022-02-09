@@ -210,18 +210,6 @@ pub trait Decoder {
         f(self, disr)
     }
 
-    // Specialized types:
-    fn read_option<T, F>(&mut self, mut f: F) -> T
-    where
-        F: FnMut(&mut Self, bool) -> T,
-    {
-        self.read_enum_variant(move |this, idx| match idx {
-            0 => f(this, false),
-            1 => f(this, true),
-            _ => panic!("read_option: expected 0 for None or 1 for Some"),
-        })
-    }
-
     fn read_seq<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self, usize) -> T,
@@ -501,7 +489,11 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &mut D) -> Option<T> {
-        d.read_option(|d, b| if b { Some(Decodable::decode(d)) } else { None })
+        d.read_enum_variant(move |this, idx| match idx {
+            0 => None,
+            1 => Some(Decodable::decode(this)),
+            _ => panic!("Encountered invalid discriminant while decoding `Option`."),
+        })
     }
 }
 
