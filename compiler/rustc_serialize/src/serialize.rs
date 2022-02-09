@@ -591,9 +591,8 @@ macro_rules! tuple {
             #[allow(non_snake_case)]
             fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)+) = *self;
-                let mut n = 0;
-                $(let $name = $name; n += 1;)+
-                s.emit_tuple(n, |s| {
+                let len: usize = count!($($name)+);
+                s.emit_tuple(len, |s| {
                     let mut i = 0;
                     $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)+
                     Ok(())
