@@ -1769,9 +1769,11 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   if (todiff->empty()) {
     if (todiff->empty() && CustomErrorHandler) {
-      std::string s =
-          ("No augmented forward pass found for " + todiff->getName()).str();
-      CustomErrorHandler(s.c_str());
+      std::string s;
+      llvm::raw_string_ostream ss(s);
+      ss << "No augmented forward pass found for " + todiff->getName() << "\n";
+      ss << *todiff << "\n";
+      CustomErrorHandler(ss.str().c_str());
     }
     llvm::errs() << "mod: " << *todiff->getParent() << "\n";
     llvm::errs() << *todiff << "\n";
@@ -3277,12 +3279,15 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
   }
 
   if (key.todiff->empty()) {
-    std::string str =
-        ("No derivative found for " + key.todiff->getName()).str();
+    std::string s;
+    llvm::raw_string_ostream ss(s);
+    ss << "No reverse pass found for " + key.todiff->getName() << "\n";
+    ss << *key.todiff << "\n";
+    CustomErrorHandler(ss.str().c_str());
     if (CustomErrorHandler) {
-      CustomErrorHandler(str.c_str());
+      CustomErrorHandler(ss.str().c_str());
     } else {
-      llvm_unreachable(str.c_str());
+      llvm_unreachable(ss.str().c_str());
     }
   }
   assert(!key.todiff->empty());
@@ -4020,8 +4025,10 @@ Function *EnzymeLogic::CreateForwardDiff(
                 "Cannot use provided custom derivative pass");
   }
   if (todiff->empty() && CustomErrorHandler) {
-    std::string s =
-        ("No forward derivative found for " + todiff->getName()).str();
+    std::string s;
+    llvm::raw_string_ostream ss(s);
+    ss << "No forward derivative found for " + todiff->getName() << "\n";
+    ss << *todiff << "\n";
     CustomErrorHandler(s.c_str());
   }
   if (todiff->empty())
