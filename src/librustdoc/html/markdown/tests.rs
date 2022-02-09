@@ -159,10 +159,7 @@ fn test_header() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
-    t(
-        "# Foo bar",
-        "<h2 id=\"foo-bar\"><a href=\"#foo-bar\">Foo bar</a></h2>",
-    );
+    t("# Foo bar", "<h2 id=\"foo-bar\"><a href=\"#foo-bar\">Foo bar</a></h2>");
     t(
         "## Foo-bar_baz qux",
         "<h3 id=\"foo-bar_baz-qux\">\
@@ -201,36 +198,12 @@ fn test_header_ids_multiple_blocks() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example\"><a href=\"#example\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Panics",
-        "<h2 id=\"panics\"><a href=\"#panics\">Panics</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example-1\"><a href=\"#example-1\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Search",
-        "<h2 id=\"search-1\"><a href=\"#search-1\">Search</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example-2\"><a href=\"#example-2\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Panics",
-        "<h2 id=\"panics-1\"><a href=\"#panics-1\">Panics</a></h2>",
-    );
+    t(&mut map, "# Example", "<h2 id=\"example\"><a href=\"#example\">Example</a></h2>");
+    t(&mut map, "# Panics", "<h2 id=\"panics\"><a href=\"#panics\">Panics</a></h2>");
+    t(&mut map, "# Example", "<h2 id=\"example-1\"><a href=\"#example-1\">Example</a></h2>");
+    t(&mut map, "# Search", "<h2 id=\"search-1\"><a href=\"#search-1\">Search</a></h2>");
+    t(&mut map, "# Example", "<h2 id=\"example-2\"><a href=\"#example-2\">Example</a></h2>");
+    t(&mut map, "# Panics", "<h2 id=\"panics-1\"><a href=\"#panics-1\">Panics</a></h2>");
 }
 
 #[test]
