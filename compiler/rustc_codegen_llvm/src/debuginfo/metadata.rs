@@ -21,6 +21,7 @@ use crate::value::Value;
 
 use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
+use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -276,6 +277,12 @@ impl<'ll, 'tcx> TypeMap<'ll, 'tcx> {
     ) -> String {
         format!("{}_variant_part", self.get_unique_type_id_as_string(enum_type_id))
     }
+
+    /// Gets the `UniqueTypeId` for the type of a vtable.
+    fn get_unique_type_id_of_vtable_type(&mut self, vtable_type_name: &str) -> UniqueTypeId {
+        let interner_key = self.unique_id_interner.intern(vtable_type_name);
+        interner_key
+    }
 }
 
 /// A description of some recursive type. It can either be already finished (as
@@ -351,14 +358,15 @@ impl<'ll, 'tcx> RecursiveTypeDescription<'ll, 'tcx> {
 
                 // ... then create the member descriptions ...
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
+                let type_params = compute_type_parameters(cx, unfinished_type);
 
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(
                     cx,
-                    unfinished_type,
                     member_holding_stub,
                     member_descriptions,
                     None,
+                    type_params,
                 );
                 MetadataCreationResult::new(metadata_stub, true)
             }
@@ -983,7 +991,17 @@ fn foreign_type_metadata<'ll, 'tcx>(
     debug!("foreign_type_metadata: {:?}", t);
 
     let name = compute_debuginfo_type_name(cx.tcx, t, false);
-    create_struct_stub(cx, t, &name, unique_type_id, NO_SCOPE_METADATA, DIFlags::FlagZero)
+    let (size, align) = cx.size_and_align_of(t);
+    create_struct_stub(
+        cx,
+        size,
+        align,
+        &name,
+        unique_type_id,
+        NO_SCOPE_METADATA,
+        DIFlags::FlagZero,
+        None,
+    )
 }
 
 fn param_type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll DIType {
@@ -1299,14 +1317,17 @@ fn prepare_struct_metadata<'ll, 'tcx>(
     };
 
     let containing_scope = get_namespace_for_item(cx, struct_def_id);
+    let (size, align) = cx.size_and_align_of(struct_type);
 
     let struct_metadata_stub = create_struct_stub(
         cx,
-        struct_type,
+        size,
+        align,
         &struct_name,
         unique_type_id,
         Some(containing_scope),
         DIFlags::FlagZero,
+        None,
     );
 
     create_and_register_recursive_type_forward_declaration(
@@ -1398,15 +1419,18 @@ fn prepare_tuple_metadata<'ll, 'tcx>(
     unique_type_id: UniqueTypeId,
     containing_scope: Option<&'ll DIScope>,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
+    let (size, align) = cx.size_and_align_of(tuple_type);
     let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
     let struct_stub = create_struct_stub(
         cx,
-        tuple_type,
+        size,
+        align,
         &tuple_name[..],
         unique_type_id,
         containing_scope,
         DIFlags::FlagZero,
+        None,
     );
 
     create_and_register_recursive_type_forward_declaration(
@@ -1581,13 +1605,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
                     describe_enum_variant(cx, self.layout, variant_info, self_metadata);
 
                 let member_descriptions = member_description_factory.create_member_descriptions(cx);
+                let type_params = compute_type_parameters(cx, self.enum_type);
 
                 set_members_of_composite_type(
                     cx,
-                    self.enum_type,
                     variant_type_metadata,
                     member_descriptions,
                     Some(&self.common_members),
+                    type_params,
                 );
                 vec![MemberDescription {
                     name: variant_info.variant_name(),
@@ -1648,13 +1673,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                         let member_descriptions =
                             member_desc_factory.create_member_descriptions(cx);
+                        let type_params = compute_type_parameters(cx, self.enum_type);
 
                         set_members_of_composite_type(
                             cx,
-                            self.enum_type,
                             variant_type_metadata,
                             member_descriptions,
                             Some(&self.common_members),
+                            type_params,
                         );
 
                         MemberDescription {
@@ -1777,13 +1803,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
                     );
 
                     let member_descriptions = member_desc_factory.create_member_descriptions(cx);
+                    let type_params = compute_type_parameters(cx, self.enum_type);
 
                     set_members_of_composite_type(
                         cx,
-                        self.enum_type,
                         variant_type_metadata,
                         member_descriptions,
                         Some(&self.common_members),
+                        type_params,
                     );
 
                     let (size, align) =
@@ -1823,13 +1850,14 @@ impl<'ll, 'tcx> EnumMemberDescriptionFactory<'ll, 'tcx> {
 
                             let member_descriptions =
                                 member_desc_factory.create_member_descriptions(cx);
+                            let type_params = compute_type_parameters(cx, self.enum_type);
 
                             set_members_of_composite_type(
                                 cx,
-                                self.enum_type,
                                 variant_type_metadata,
                                 member_descriptions,
                                 Some(&self.common_members),
+                                type_params,
                             );
 
                             let niche_value = calculate_niche_value(i);
@@ -1965,13 +1993,18 @@ fn describe_enum_variant<'ll, 'tcx>(
             .type_map
             .borrow_mut()
             .get_unique_type_id_of_enum_variant(cx, layout.ty, variant_name);
+
+        let (size, align) = cx.size_and_align_of(layout.ty);
+
         create_struct_stub(
             cx,
-            layout.ty,
+            size,
+            align,
             variant_name,
             unique_type_id,
             Some(containing_scope),
             DIFlags::FlagZero,
+            None,
         )
     });
 
@@ -2308,22 +2341,27 @@ fn composite_type_metadata<'ll, 'tcx>(
     member_descriptions: Vec<MemberDescription<'ll>>,
     containing_scope: Option<&'ll DIScope>,
 ) -> &'ll DICompositeType {
+    let (size, align) = cx.size_and_align_of(composite_type);
+
     // Create the (empty) struct metadata node ...
     let composite_type_metadata = create_struct_stub(
         cx,
-        composite_type,
+        size,
+        align,
         composite_type_name,
         composite_type_unique_id,
         containing_scope,
         DIFlags::FlagZero,
+        None,
     );
+
     // ... and immediately create and add the member descriptions.
     set_members_of_composite_type(
         cx,
-        composite_type,
         composite_type_metadata,
         member_descriptions,
         None,
+        compute_type_parameters(cx, composite_type),
     );
 
     composite_type_metadata
@@ -2331,10 +2369,10 @@ fn composite_type_metadata<'ll, 'tcx>(
 
 fn set_members_of_composite_type<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    composite_type: Ty<'tcx>,
     composite_type_metadata: &'ll DICompositeType,
     member_descriptions: Vec<MemberDescription<'ll>>,
     common_members: Option<&Vec<Option<&'ll DIType>>>,
+    type_params: &'ll DIArray,
 ) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
     // description being used instead of a new one created in
@@ -2361,13 +2399,12 @@ fn set_members_of_composite_type<'ll, 'tcx>(
         member_metadata.extend(other_members.iter());
     }
 
-    let type_params = compute_type_parameters(cx, composite_type);
     unsafe {
-        let type_array = create_DIArray(DIB(cx), &member_metadata);
+        let field_array = create_DIArray(DIB(cx), &member_metadata);
         llvm::LLVMRustDICompositeTypeReplaceArrays(
             DIB(cx),
             composite_type_metadata,
-            Some(type_array),
+            Some(field_array),
             Some(type_params),
         );
     }
@@ -2420,14 +2457,14 @@ fn compute_type_parameters<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -
 /// with `set_members_of_composite_type()`.
 fn create_struct_stub<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    struct_type: Ty<'tcx>,
-    struct_type_name: &str,
+    size: Size,
+    align: Align,
+    type_name: &str,
     unique_type_id: UniqueTypeId,
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
+    vtable_holder: Option<&'ll DIType>,
 ) -> &'ll DICompositeType {
-    let (struct_size, struct_align) = cx.size_and_align_of(struct_type);
-
     let type_map = debug_context(cx).type_map.borrow();
     let unique_type_id = type_map.get_unique_type_id_as_string(unique_type_id);
 
@@ -2440,17 +2477,17 @@ fn create_struct_stub<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateStructType(
             DIB(cx),
             containing_scope,
-            struct_type_name.as_ptr().cast(),
-            struct_type_name.len(),
+            type_name.as_ptr().cast(),
+            type_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
-            struct_size.bits(),
-            struct_align.bits() as u32,
+            size.bits(),
+            align.bits() as u32,
             flags,
             None,
             empty_array,
             0,
-            None,
+            vtable_holder,
             unique_type_id.as_ptr().cast(),
             unique_type_id.len(),
         )
@@ -2556,6 +2593,14 @@ pub fn create_global_var_metadata<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId, g
 }
 
 /// Generates LLVM debuginfo for a vtable.
+///
+/// The vtable type looks like a struct with a field for each function pointer and super-trait
+/// pointer it contains (plus the `size` and `align` fields).
+///
+/// Except for `size`, `align`, and `drop_in_place`, the field names don't try to mirror
+/// the name of the method they implement. This can be implemented in the future once there
+/// is a proper disambiguation scheme for dealing with methods from different traits that have
+/// the same name.
 fn vtable_type_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
@@ -2572,16 +2617,81 @@ fn vtable_type_metadata<'ll, 'tcx>(
         COMMON_VTABLE_ENTRIES
     };
 
-    // FIXME: We describe the vtable as an array of *const () pointers. The length of the array is
-    //        correct - but we could create a more accurate description, e.g. by describing it
-    //        as a struct where each field has a name that corresponds to the name of the method
-    //        it points to.
-    //        However, this is not entirely straightforward because there might be multiple
-    //        methods with the same name if the vtable is for multiple traits. So for now we keep
-    //        things simple instead of adding some ad-hoc disambiguation scheme.
-    let vtable_type = tcx.mk_array(tcx.mk_imm_ptr(tcx.types.unit), vtable_entries.len() as u64);
+    // All function pointers are described as opaque pointers. This could be improved in the future
+    // by describing them as actual function pointers.
+    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types.unit);
+    let void_pointer_type_debuginfo = type_metadata(cx, void_pointer_ty);
+    let usize_debuginfo = type_metadata(cx, tcx.types.usize);
+    let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);
+    // If `usize` is not pointer-sized and -aligned then the size and alignment computations
+    // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
+    // platforms.
+    assert_eq!(cx.size_and_align_of(tcx.types.usize), (pointer_size, pointer_align));
 
-    type_metadata(cx, vtable_type)
+    let vtable_type_name =
+        compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::Type);
+    let unique_type_id = debug_context(cx)
+        .type_map
+        .borrow_mut()
+        .get_unique_type_id_of_vtable_type(&vtable_type_name);
+    let size = pointer_size * vtable_entries.len() as u64;
+
+    // This gets mapped to a DW_AT_containing_type attribute which allows GDB to correlate
+    // the vtable to the type it is for.
+    let vtable_holder = type_metadata(cx, ty);
+
+    let vtable_type_metadata = create_struct_stub(
+        cx,
+        size,
+        pointer_align,
+        &vtable_type_name,
+        unique_type_id,
+        NO_SCOPE_METADATA,
+        DIFlags::FlagArtificial,
+        Some(vtable_holder),
+    );
+
+    // Create a field for each entry in the vtable.
+    let fields: Vec<_> = vtable_entries
+        .iter()
+        .enumerate()
+        .filter_map(|(index, vtable_entry)| {
+            let (field_name, field_type) = match vtable_entry {
+                ty::VtblEntry::MetadataDropInPlace => {
+                    ("drop_in_place".to_string(), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::Method(_) => {
+                    // Note: This code does not try to give a proper name to each method
+                    //       because there might be multiple methods with the same name
+                    //       (coming from different traits).
+                    (format!("__method{}", index), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::TraitVPtr(_) => {
+                    // Note: In the future we could try to set the type of this pointer
+                    //       to the type that we generate for the corresponding vtable.
+                    (format!("__super_trait_ptr{}", index), void_pointer_type_debuginfo)
+                }
+                ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_debuginfo),
+                ty::VtblEntry::MetadataSize => ("size".to_string(), usize_debuginfo),
+                ty::VtblEntry::Vacant => return None,
+            };
+
+            Some(MemberDescription {
+                name: field_name,
+                type_metadata: field_type,
+                offset: pointer_size * index as u64,
+                size: pointer_size,
+                align: pointer_align,
+                flags: DIFlags::FlagZero,
+                discriminant: None,
+                source_info: None,
+            })
+        })
+        .collect();
+
+    let type_params = create_DIArray(DIB(cx), &[]);
+    set_members_of_composite_type(cx, vtable_type_metadata, fields, None, type_params);
+    vtable_type_metadata
 }
 
 /// Creates debug information for the given vtable, which is for the
@@ -2603,11 +2713,12 @@ pub fn create_vtable_metadata<'ll, 'tcx>(
         return;
     }
 
-    let vtable_name = compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref);
+    let vtable_name =
+        compute_debuginfo_vtable_name(cx.tcx, ty, poly_trait_ref, VTableNameKind::GlobalVariable);
     let vtable_type = vtable_type_metadata(cx, ty, poly_trait_ref);
+    let linkage_name = "";
 
     unsafe {
-        let linkage_name = "";
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,
