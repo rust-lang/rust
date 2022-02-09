@@ -202,7 +202,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
                 }
             }
             // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
-            Res::SelfTy(None, Some((did, _))) => {
+            Res::SelfTy { trait_: None, alias_to: Some((did, _)) } => {
                 if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
                     if let Some(name @ (sym::Ty | sym::TyCtxt)) =
                         cx.tcx.get_diagnostic_name(adt.did)

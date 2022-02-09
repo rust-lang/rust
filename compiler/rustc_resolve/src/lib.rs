@@ -2784,7 +2784,7 @@ impl<'a> Resolver<'a> {
                     return Res::Err;
                 }
             }
-            Res::Def(DefKind::TyParam, _) | Res::SelfTy(..) => {
+            Res::Def(DefKind::TyParam, _) | Res::SelfTy { .. } => {
                 for rib in ribs {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         NormalRibKind
@@ -2804,8 +2804,8 @@ impl<'a> Resolver<'a> {
                                 // HACK(min_const_generics): If we encounter `Self` in an anonymous constant
                                 // we can't easily tell if it's generic at this stage, so we instead remember
                                 // this and then enforce the self type to be concrete later on.
-                                if let Res::SelfTy(trait_def, Some((impl_def, _))) = res {
-                                    res = Res::SelfTy(trait_def, Some((impl_def, true)));
+                                if let Res::SelfTy { trait_, alias_to: Some((def, _)) } = res {
+                                    res = Res::SelfTy { trait_, alias_to: Some((def, true)) }
                                 } else {
                                     if record_used {
                                         self.report_error(

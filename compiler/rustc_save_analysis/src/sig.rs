@@ -573,7 +573,7 @@ impl<'hir> Sig for hir::Path<'hir> {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match res {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::Err => {
                 return Ok(Signature { text: path_to_string(self), defs: vec![], refs: vec![] });
             }
             Res::Def(DefKind::AssocConst | DefKind::Variant | DefKind::Ctor(..), _) => {

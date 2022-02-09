@@ -289,7 +289,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
-                    | Res::SelfTy(..)
+                    | Res::SelfTy { .. }
             ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
@@ -326,7 +326,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::TyAlias
                         | DefKind::AssocTy,
                     _,
-                ) | Res::SelfTy(..)
+                ) | Res::SelfTy { .. }
             ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
@@ -911,9 +911,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                 let item_def_id = this.r.local_def_id(item.id).to_def_id();
-                this.with_self_rib(Res::SelfTy(None, Some((item_def_id, false))), |this| {
-                    visit::walk_item(this, item);
-                });
+                this.with_self_rib(
+                    Res::SelfTy { trait_: None, alias_to: Some((item_def_id, false)) },
+                    |this| {
+                        visit::walk_item(this, item);
+                    },
+                );
             });
         });
     }
@@ -999,8 +1002,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                    this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
+                    let def = this.r.local_def_id(item.id).to_def_id();
+                    this.with_self_rib(Res::SelfTy { trait_: Some(def), alias_to: None }, |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
 
@@ -1051,8 +1054,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                    this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
+                    let def = this.r.local_def_id(item.id).to_def_id();
+                    this.with_self_rib(Res::SelfTy { trait_: Some(def), alias_to: None }, |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
                     });
@@ -1296,7 +1299,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
-            this.with_self_rib(Res::SelfTy(None, None), |this| {
+            this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
                     let item_def_id = this.r.local_def_id(item_id);
@@ -1307,7 +1310,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
 
                     let item_def_id = item_def_id.to_def_id();
-                    this.with_self_rib(Res::SelfTy(trait_id, Some((item_def_id, false))), |this| {
+                    let res =
+                        Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
+                    this.with_self_rib(res, |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
                             visit::walk_trait_ref(this, trait_ref);

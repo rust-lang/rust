@@ -313,12 +313,12 @@ pub enum Res<Id = hir::HirId> {
     /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint.
     ///
     /// FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
-    SelfTy(
+    SelfTy {
         /// Optionally, the trait associated with this `Self` type.
-        Option<DefId>,
-        /// Optionally, the impl associated with this `Self` type.
-        Option<(DefId, bool)>,
-    ),
+        trait_: Option<DefId>,
+        /// Optionally, the impl or adt associated with this `Self` type.
+        alias_to: Option<(DefId, bool)>,
+    },
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
     ///
     /// **Belongs to the type namespace.**
@@ -550,7 +550,7 @@ impl<Id> Res<Id> {
 
             Res::Local(..)
             | Res::PrimTy(..)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
             | Res::NonMacroAttr(..)
@@ -573,7 +573,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(..) => "self constructor",
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
-            Res::SelfTy(..) => "self type",
+            Res::SelfTy { .. } => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
@@ -596,7 +596,7 @@ impl<Id> Res<Id> {
             Res::SelfCtor(id) => Res::SelfCtor(id),
             Res::PrimTy(id) => Res::PrimTy(id),
             Res::Local(id) => Res::Local(map(id)),
-            Res::SelfTy(a, b) => Res::SelfTy(a, b),
+            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
@@ -620,7 +620,7 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => Some(Namespace::TypeNS),
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::ToolMod => Some(Namespace::TypeNS),
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,

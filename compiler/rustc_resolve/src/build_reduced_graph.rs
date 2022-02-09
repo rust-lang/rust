@@ -991,7 +991,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _,
             )
             | Res::Local(..)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..)
             | Res::Err => bug!("unexpected resolution: {:?}", res),
         }

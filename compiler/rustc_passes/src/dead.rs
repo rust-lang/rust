@@ -104,7 +104,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.check_def_id(variant_id);
                 }
             }
-            Res::SelfTy(t, i) => {
+            Res::SelfTy { trait_: t, alias_to: i } => {
                 if let Some(t) = t {
                     self.check_def_id(t);
                 }

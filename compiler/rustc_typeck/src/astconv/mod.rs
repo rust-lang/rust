@@ -1805,7 +1805,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
-            (_, Res::SelfTy(Some(_), Some((impl_def_id, _)))) => {
+            (_, Res::SelfTy { trait_: Some(_), alias_to: Some((impl_def_id, _)) }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
@@ -1826,7 +1826,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             (
                 &ty::Param(_),
-                Res::SelfTy(Some(param_did), None) | Res::Def(DefKind::TyParam, param_did),
+                Res::SelfTy { trait_: Some(param_did), alias_to: None }
+                | Res::Def(DefKind::TyParam, param_did),
             ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
             _ => {
                 if variant_resolution.is_some() {
@@ -2270,13 +2271,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let index = generics.param_def_id_to_index[&def_id];
                 tcx.mk_ty_param(index, tcx.hir().name(hir_id))
             }
-            Res::SelfTy(Some(_), None) => {
+            Res::SelfTy { trait_: Some(_), alias_to: None } => {
                 // `Self` in trait or type alias.
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
                 tcx.types.self_param
             }
-            Res::SelfTy(_, Some((def_id, forbid_generic))) => {
+            Res::SelfTy { trait_: _, alias_to: Some((def_id, forbid_generic)) } => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
