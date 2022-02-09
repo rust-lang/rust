@@ -211,14 +211,6 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
     fn read_struct<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
@@ -572,8 +564,8 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
         d.read_enum_variant(|d, disr| match disr {
-            0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
-            1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
+            0 => Ok(T1::decode(d)),
+            1 => Err(T2::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Result`."),
         })
     }

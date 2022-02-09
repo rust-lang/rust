@@ -96,19 +96,20 @@ fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro
     } else {
         quote! { ::rustc_serialize::Decodable::decode }
     };
-    let (decode_method, opt_field_name) = if is_struct {
-        let field_name = field.ident.as_ref().map_or_else(|| index.to_string(), |i| i.to_string());
-        (proc_macro2::Ident::new("read_struct_field", field_span), quote! { #field_name, })
-    } else {
-        (proc_macro2::Ident::new("read_enum_variant_arg", field_span), quote! {})
-    };
-
     let __decoder = quote! { __decoder };
-    // Use the span of the field for the method call, so
-    // that backtraces will point to the field.
-    let decode_call = quote_spanned! {field_span=>
-        ::rustc_serialize::Decoder::#decode_method(
-                #__decoder, #opt_field_name #decode_inner_method)
+    let decode_call = if is_struct {
+        let field_name = field.ident.as_ref().map_or_else(|| index.to_string(), |i| i.to_string());
+        let decode_method = proc_macro2::Ident::new("read_struct_field", field_span);
+        // Use the span of the field for the method call, so
+        // that backtraces will point to the field.
+        quote_spanned! {field_span=>
+            ::rustc_serialize::Decoder::#decode_method(
+                    #__decoder, #field_name, #decode_inner_method)
+        }
+    } else {
+        // Use the span of the field for the method call, so
+        // that backtraces will point to the field.
+        quote_spanned! {field_span=> #decode_inner_method(#__decoder) }
     };
 
     quote! { #decode_call }
