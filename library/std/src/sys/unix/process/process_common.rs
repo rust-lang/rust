@@ -476,6 +476,12 @@ impl ExitCode {
     }
 }
 
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        Self(code)
+    }
+}
+
 pub struct CommandArgs<'a> {
     iter: crate::slice::Iter<'a, CString>,
 }

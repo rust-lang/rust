@@ -96,9 +96,9 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         _diag_expr_id: HirId,
         _bk: rustc_middle::ty::BorrowKind,
     ) {
-        place_with_id
-            .try_into()
-            .map_or(false, |tracked_value| self.places.borrowed.insert(tracked_value));
+        self.places
+            .borrowed
+            .insert(TrackedValue::from_place_with_projections_allowed(place_with_id));
     }
 
     fn mutate(

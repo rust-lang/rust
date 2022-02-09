@@ -22,11 +22,6 @@ use tracing::debug;
 
 mod drop_ranges;
 
-// FIXME(eholk): This flag is here to give a quick way to disable drop tracking in case we find
-// unexpected breakages while it's still new. It should be removed before too long. For example,
-// see #93161.
-const ENABLE_DROP_TRACKING: bool = false;
-
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
@@ -82,7 +77,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                                 yield_data.expr_and_pat_count, self.expr_count, source_span
                             );
 
-                            if ENABLE_DROP_TRACKING
+                            if self.fcx.sess().opts.debugging_opts.drop_tracking
                                 && self
                                     .drop_ranges
                                     .is_dropped_at(hir_id, yield_data.expr_and_pat_count)
@@ -208,7 +203,7 @@ pub fn resolve_interior<'a, 'tcx>(
     };
     intravisit::walk_body(&mut visitor, body);
 
-    // Check that we visited the same amount of expressions and the RegionResolutionVisitor
+    // Check that we visited the same amount of expressions as the RegionResolutionVisitor
     let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
