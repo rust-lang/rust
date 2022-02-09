@@ -211,14 +211,6 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
     fn read_tuple_arg<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
@@ -578,13 +570,9 @@ macro_rules! tuple {
         impl<D: Decoder, $($name: Decodable<D>),+> Decodable<D> for ($($name,)+) {
             #[allow(non_snake_case)]
             fn decode(d: &mut D) -> ($($name,)+) {
-                let len: usize = count!($($name)+);
-                d.read_tuple(len, |d| {
-                    let ret = ($(d.read_tuple_arg(|d| -> $name {
-                        Decodable::decode(d)
-                    }),)+);
-                    ret
-                })
+                ($(d.read_tuple_arg(|d| -> $name {
+                    Decodable::decode(d)
+                }),)+)
             }
         }
         impl<S: Encoder, $($name: Encodable<S>),+> Encodable<S> for ($($name,)+) {
