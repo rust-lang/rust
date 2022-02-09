@@ -299,7 +299,7 @@ macro_rules! define_queries {
         }
 
         #[allow(nonstandard_style)]
-        pub mod queries {
+        mod queries {
             use std::marker::PhantomData;
 
             $(pub struct $name<$tcx> {
@@ -353,7 +353,7 @@ macro_rules! define_queries {
         })*
 
         #[allow(nonstandard_style)]
-        pub mod query_callbacks {
+        mod query_callbacks {
             use super::*;
             use rustc_middle::dep_graph::DepNode;
             use rustc_middle::ty::query::query_keys;
@@ -402,7 +402,7 @@ macro_rules! define_queries {
                 }
             }
 
-            $(pub fn $name()-> DepKindStruct {
+            $(pub(crate) fn $name()-> DepKindStruct {
                 let is_anon = is_anon!([$($modifiers)*]);
                 let is_eval_always = is_eval_always!([$($modifiers)*]);
 
