@@ -7,7 +7,7 @@
 type Y<A, B> = impl std::fmt::Debug;
 
 fn g<A, B>() -> (Y<A, B>, Y<B, A>) {
-    (42_i64, 60) //~^ ERROR concrete type differs from previous defining opaque type use
+    (42_i64, 60) //~ ERROR concrete type differs from previous defining opaque type use
 }
 
 fn main() {}

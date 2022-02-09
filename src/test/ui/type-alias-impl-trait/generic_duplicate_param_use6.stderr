@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use6.rs:15:1
+  --> $DIR/generic_duplicate_param_use6.rs:16:5
    |
-LL | fn three<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, T)`, got `(U, T)`
+LL |     (u, t)
+   |     ^^^^^^ expected `(T, T)`, got `(U, T)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use6.rs:11:1
+  --> $DIR/generic_duplicate_param_use6.rs:12:5
    |
-LL | fn two<T: Copy + Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (t, t)
+   |     ^^^^^^
 
 error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/generic_duplicate_param_use6.rs:8:18

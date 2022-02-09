@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use9.rs:21:1
+  --> $DIR/generic_duplicate_param_use9.rs:22:5
    |
-LL | fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
+LL |     (t, u, 42)
+   |     ^^^^^^^^^^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use9.rs:17:1
+  --> $DIR/generic_duplicate_param_use9.rs:18:5
    |
-LL | fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (t, u, T::BAR)
+   |     ^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `A: Foo` is not satisfied in `(A, B, <A as Foo>::Bar)`
   --> $DIR/generic_duplicate_param_use9.rs:7:18

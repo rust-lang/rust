@@ -388,6 +388,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         .concrete_opaque_types
                         .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
                         .copied()
+                        .map(|concrete| concrete.ty)
                         .unwrap_or_else(|| {
                             let table = tcx.typeck(owner);
                             if let Some(ErrorReported) = table.tainted_by_errors {
@@ -585,7 +586,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
         /// with the first type that we find, and then later types are
         /// checked against it (we also carry the span of that first
         /// type).
-        found: Option<(Span, Ty<'tcx>)>,
+        found: Option<ty::OpaqueHiddenType<'tcx>>,
     }
 
     impl ConstraintLocator<'_> {
@@ -609,7 +610,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // ```
             let tables = self.tcx.typeck(def_id);
             if let Some(_) = tables.tainted_by_errors {
-                self.found = Some((DUMMY_SP, self.tcx.ty_error()));
+                self.found = Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: self.tcx.ty_error() });
                 return;
             }
             if tables.concrete_opaque_types.get(&self.def_id).is_none() {
@@ -619,7 +620,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            for (opaque_type_key, concrete_type) in concrete_opaque_types {
+            for &(opaque_type_key, concrete_type) in concrete_opaque_types {
                 if opaque_type_key.def_id != self.def_id {
                     // Ignore constraints for other opaque types.
                     continue;
@@ -627,26 +628,22 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
                 debug!(?concrete_type, ?opaque_type_key.substs, "found constraint");
 
-                // FIXME(oli-obk): trace the actual span from inference to improve errors.
-                let span = self.tcx.def_span(def_id);
-
-                if let Some((prev_span, prev_ty)) = self.found {
-                    if *concrete_type != prev_ty && !(*concrete_type, prev_ty).references_error() {
-                        debug!(?span);
+                if let Some(prev) = self.found {
+                    if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
                         // Found different concrete types for the opaque type.
                         let mut err = self.tcx.sess.struct_span_err(
-                            span,
+                            concrete_type.span,
                             "concrete type differs from previous defining opaque type use",
                         );
                         err.span_label(
-                            span,
-                            format!("expected `{}`, got `{}`", prev_ty, concrete_type),
+                            concrete_type.span,
+                            format!("expected `{}`, got `{}`", prev.ty, concrete_type.ty),
                         );
-                        err.span_note(prev_span, "previous use here");
+                        err.span_note(prev.span, "previous use here");
                         err.emit();
                     }
                 } else {
-                    self.found = Some((span, concrete_type));
+                    self.found = Some(concrete_type);
                 }
             }
         }
@@ -721,7 +718,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     }
 
     match locator.found {
-        Some((_, ty)) => ty,
+        Some(hidden) => hidden.ty,
         None => {
             let span = tcx.def_span(def_id);
             let name = tcx.item_name(tcx.parent(def_id.to_def_id()).unwrap());

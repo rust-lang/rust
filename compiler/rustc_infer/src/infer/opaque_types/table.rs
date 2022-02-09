@@ -1,11 +1,11 @@
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty};
 use rustc_span::DUMMY_SP;
 
 use crate::infer::{InferCtxtUndoLogs, UndoLog};
 
-use super::{OpaqueHiddenType, OpaqueTypeDecl, OpaqueTypeMap};
+use super::{OpaqueTypeDecl, OpaqueTypeMap};
 
 #[derive(Default, Debug)]
 pub struct OpaqueTypeStorage<'tcx> {

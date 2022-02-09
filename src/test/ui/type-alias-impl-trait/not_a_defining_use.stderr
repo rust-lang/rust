@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/not_a_defining_use.rs:24:1
+  --> $DIR/not_a_defining_use.rs:25:5
    |
-LL | fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
+LL |     (t, <U as Bar>::FOO)
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `(T, i8)`, got `(T, <U as Bar>::Blub)`
    |
 note: previous use here
-  --> $DIR/not_a_defining_use.rs:10:1
+  --> $DIR/not_a_defining_use.rs:11:5
    |
-LL | fn three<T: Debug, U>(t: T) -> Two<T, U> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     (t, 5i8)
+   |     ^^^^^^^^
 
 error[E0277]: `T` doesn't implement `Debug`
   --> $DIR/not_a_defining_use.rs:7:18

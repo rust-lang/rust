@@ -30,8 +30,8 @@ use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef, UserSubsts};
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueTypeKey, RegionVid,
-    ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, OpaqueHiddenType,
+    OpaqueTypeKey, RegionVid, ToPredicate, Ty, TyCtxt, UserType, UserTypeAnnotationIndex,
 };
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, DUMMY_SP};
@@ -213,21 +213,21 @@ pub(crate) fn type_check<'mir, 'tcx>(
                         ),
                     )
                     .unwrap();
-                    let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type.ty);
+                    let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
                     trace!(
                         "finalized opaque type {:?} to {:#?}",
                         opaque_type_key,
-                        hidden_type.kind()
+                        hidden_type.ty.kind()
                     );
                     if hidden_type.has_infer_types_or_consts() {
                         infcx.tcx.sess.delay_span_bug(
                             decl.hidden_type.span,
-                            &format!("could not resolve {:#?}", hidden_type.kind()),
+                            &format!("could not resolve {:#?}", hidden_type.ty.kind()),
                         );
-                        hidden_type = infcx.tcx.ty_error();
+                        hidden_type.ty = infcx.tcx.ty_error();
                     }
 
-                    (opaque_type_key, (hidden_type, decl.hidden_type.span, decl.origin))
+                    (opaque_type_key, (hidden_type, decl.origin))
                 })
                 .collect()
         },
@@ -893,7 +893,7 @@ struct BorrowCheckContext<'a, 'tcx> {
 crate struct MirTypeckResults<'tcx> {
     crate constraints: MirTypeckRegionConstraints<'tcx>,
     crate universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, (Ty<'tcx>, Span, OpaqueTyOrigin)>,
+    crate opaque_type_values: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
 }
 
 /// A collection of region constraints that must be satisfied for the
