@@ -4,6 +4,7 @@ use crate::traits::engine::TraitEngineExt as _;
 use crate::traits::query::type_op::TypeOpOutput;
 use crate::traits::query::Fallible;
 use crate::traits::TraitEngine;
+use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::traits::TraitEngineExt as _;
 use rustc_span::source_map::DUMMY_SP;
 
@@ -31,6 +32,9 @@ where
     G: Fn() -> String,
 {
     type Output = R;
+    /// We can't do any custom error reporting for `CustomTypeOp`, so
+    /// we can use `!` to enforce that the implementation never provides it.
+    type ErrorInfo = !;
 
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
@@ -40,7 +44,7 @@ where
             info!("fully_perform({:?})", self);
         }
 
-        scrape_region_constraints(infcx, || (self.closure)(infcx))
+        Ok(scrape_region_constraints(infcx, || (self.closure)(infcx))?.0)
     }
 }
 
@@ -55,10 +59,10 @@ where
 
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
-fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
+pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     infcx: &InferCtxt<'_, 'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
-) -> Fallible<TypeOpOutput<'tcx, Op>> {
+) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
     let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
 
     // During NLL, we expect that nobody will register region
@@ -97,12 +101,18 @@ fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     if region_constraints.is_empty() {
-        Ok(TypeOpOutput { output: value, constraints: None, canonicalized_query: None })
+        Ok((
+            TypeOpOutput { output: value, constraints: None, error_info: None },
+            region_constraint_data,
+        ))
     } else {
-        Ok(TypeOpOutput {
-            output: value,
-            constraints: Some(Rc::new(region_constraints)),
-            canonicalized_query: None,
-        })
+        Ok((
+            TypeOpOutput {
+                output: value,
+                constraints: Some(Rc::new(region_constraints)),
+                error_info: None,
+            },
+            region_constraint_data,
+        ))
     }
 }

@@ -22,6 +22,7 @@
 #![feature(control_flow_enum)]
 #![feature(min_specialization)]
 #![feature(label_break_value)]
+#![feature(backtrace)]
 #![recursion_limit = "512"] // For rustdoc
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 

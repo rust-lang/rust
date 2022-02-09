@@ -1,5 +1,5 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
-use rustc_infer::infer::{InferOk, NllRegionVariableOrigin};
+use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::relate::TypeRelation;
@@ -9,7 +9,7 @@ use rustc_trait_selection::traits::query::Fallible;
 
 use crate::constraints::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
-use crate::type_check::{CustomTypeOp, Locations, TypeChecker};
+use crate::type_check::{InstantiateOpaqueType, Locations, TypeChecker};
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
@@ -146,21 +146,18 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
             .fully_perform_op(
                 self.locations,
                 self.category,
-                CustomTypeOp::new(
-                    |infcx| {
-                        Ok(InferOk {
-                            value: (),
-                            obligations: vec![infcx.opaque_ty_obligation(
-                                a,
-                                b,
-                                a_is_expected,
-                                param_env,
-                                cause,
-                            )],
-                        })
-                    },
-                    || "register_opaque_type".to_string(),
-                ),
+                InstantiateOpaqueType {
+                    obligation: self.type_checker.infcx.opaque_ty_obligation(
+                        a,
+                        b,
+                        a_is_expected,
+                        param_env,
+                        cause,
+                    ),
+                    // These fields are filled in during exectuion of the operation
+                    base_universe: None,
+                    region_constraints: None,
+                },
             )
             .unwrap();
     }
