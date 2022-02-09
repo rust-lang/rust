@@ -469,7 +469,14 @@ fn push_debuginfo_type_name<'tcx>(
     }
 }
 
-/// Computes a name for the global variable storing a vtable.
+pub enum VTableNameKind {
+    // Is the name for the const/static holding the vtable?
+    GlobalVariable,
+    // Is the name for the type of the vtable?
+    Type,
+}
+
+/// Computes a name for the global variable storing a vtable (or the type of that global variable).
 ///
 /// The name is of the form:
 ///
@@ -478,10 +485,15 @@ fn push_debuginfo_type_name<'tcx>(
 /// or, when generating C++-like names:
 ///
 /// `impl$<path::to::SomeType, path::to::SomeTrait>::vtable$`
+///
+/// If `kind` is `VTableNameKind::Type` then the last component is `{vtable_ty}` instead of just
+/// `{vtable}`, so that the type and the corresponding global variable get assigned different
+/// names.
 pub fn compute_debuginfo_vtable_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    kind: VTableNameKind,
 ) -> String {
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
 
@@ -514,7 +526,12 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
 
     push_close_angle_bracket(cpp_like_debuginfo, &mut vtable_name);
 
-    let suffix = if cpp_like_debuginfo { "::vtable$" } else { "::{vtable}" };
+    let suffix = match (cpp_like_debuginfo, kind) {
+        (true, VTableNameKind::GlobalVariable) => "::vtable$",
+        (false, VTableNameKind::GlobalVariable) => "::{vtable}",
+        (true, VTableNameKind::Type) => "::vtable_type$",
+        (false, VTableNameKind::Type) => "::{vtable_type}",
+    };
 
     vtable_name.reserve_exact(suffix.len());
     vtable_name.push_str(suffix);
