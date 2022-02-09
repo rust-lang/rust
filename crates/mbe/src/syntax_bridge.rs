@@ -15,23 +15,32 @@ use crate::{to_parser_input::to_parser_input, tt_iter::TtIter, TokenMap};
 /// Convert the syntax node to a `TokenTree` (what macro
 /// will consume).
 pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> (tt::Subtree, TokenMap) {
-    syntax_node_to_token_tree_with_modifications(node, Default::default(), Default::default())
+    let (subtree, token_map, _) = syntax_node_to_token_tree_with_modifications(
+        node,
+        Default::default(),
+        0,
+        Default::default(),
+        Default::default(),
+    );
+    (subtree, token_map)
 }
 
 /// Convert the syntax node to a `TokenTree` (what macro will consume)
 /// with the censored range excluded.
 pub fn syntax_node_to_token_tree_with_modifications(
     node: &SyntaxNode,
+    existing_token_map: TokenMap,
+    next_id: u32,
     replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-) -> (tt::Subtree, TokenMap) {
+) -> (tt::Subtree, TokenMap, u32) {
     let global_offset = node.text_range().start();
-    let mut c = Convertor::new(node, global_offset, replace, append);
+    let mut c = Convertor::new(node, global_offset, existing_token_map, next_id, replace, append);
     let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
     always!(c.replace.is_empty(), "replace: {:?}", c.replace);
     always!(c.append.is_empty(), "append: {:?}", c.append);
-    (subtree, c.id_alloc.map)
+    (subtree, c.id_alloc.map, c.id_alloc.next_id)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -510,6 +519,8 @@ impl Convertor {
     fn new(
         node: &SyntaxNode,
         global_offset: TextSize,
+        existing_token_map: TokenMap,
+        next_id: u32,
         mut replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
         mut append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     ) -> Convertor {
@@ -517,7 +528,7 @@ impl Convertor {
         let mut preorder = node.preorder_with_tokens();
         let (first, synthetic) = Self::next_token(&mut preorder, &mut replace, &mut append);
         Convertor {
-            id_alloc: { TokenIdAlloc { map: TokenMap::default(), global_offset, next_id: 0 } },
+            id_alloc: { TokenIdAlloc { map: existing_token_map, global_offset, next_id } },
             current: first,
             current_synthetic: synthetic,
             preorder,

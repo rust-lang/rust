@@ -1,3 +1,7 @@
+//! To make attribute macros work reliably when typing, we need to take care to
+//! fix up syntax errors in the code we're passing to them.
+use std::mem;
+
 use mbe::{SyntheticToken, SyntheticTokenId, TokenMap};
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -6,16 +10,22 @@ use syntax::{
 };
 use tt::Subtree;
 
+/// The result of calculating fixes for a syntax node -- a bunch of changes
+/// (appending to and replacing nodes), the information that is needed to
+/// reverse those changes afterwards, and a token map.
 #[derive(Debug)]
 pub struct SyntaxFixups {
     pub append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     pub replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
-    pub map: SyntaxFixupMap,
+    pub undo_info: SyntaxFixupUndoInfo,
+    pub token_map: TokenMap,
+    pub next_id: u32,
 }
 
+/// This is the information needed to reverse the fixups.
 #[derive(Debug, PartialEq, Eq)]
-pub struct SyntaxFixupMap {
-    original: Vec<(Subtree, TokenMap)>,
+pub struct SyntaxFixupUndoInfo {
+    original: Vec<Subtree>,
 }
 
 const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
@@ -25,15 +35,26 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
     let mut replace = FxHashMap::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
+    let mut token_map = TokenMap::default();
+    let mut next_id = 0;
     while let Some(event) = preorder.next() {
         let node = match event {
             syntax::WalkEvent::Enter(node) => node,
             syntax::WalkEvent::Leave(_) => continue,
         };
+
         if can_handle_error(&node) && has_error_to_handle(&node) {
             // the node contains an error node, we have to completely replace it by something valid
-            let original_tree = mbe::syntax_node_to_token_tree(&node);
-            // TODO handle token ids / token map
+            let (original_tree, new_tmap, new_next_id) =
+                mbe::syntax_node_to_token_tree_with_modifications(
+                    &node,
+                    mem::take(&mut token_map),
+                    next_id,
+                    Default::default(),
+                    Default::default(),
+                );
+            token_map = new_tmap;
+            next_id = new_next_id;
             let idx = original.len() as u32;
             original.push(original_tree);
             let replacement = SyntheticToken {
@@ -46,6 +67,8 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             preorder.skip_subtree();
             continue;
         }
+
+        // In some other situations, we can fix things by just appending some tokens.
         let end_range = TextRange::empty(node.text_range().end());
         match_ast! {
             match node {
@@ -78,7 +101,13 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             }
         }
     }
-    SyntaxFixups { append, replace, map: SyntaxFixupMap { original } }
+    SyntaxFixups {
+        append,
+        replace,
+        token_map,
+        next_id,
+        undo_info: SyntaxFixupUndoInfo { original },
+    }
 }
 
 fn has_error(node: &SyntaxNode) -> bool {
@@ -93,7 +122,7 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, fixup_map: &SyntaxFixupMap) {
+pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, undo_info: &SyntaxFixupUndoInfo) {
     tt.token_trees.retain(|tt| match tt {
         tt::TokenTree::Leaf(leaf) => {
             token_map.synthetic_token_id(leaf.id()).is_none()
@@ -102,10 +131,10 @@ pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, fixup_map: &Syntax
         _ => true,
     });
     tt.token_trees.iter_mut().for_each(|tt| match tt {
-        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, fixup_map),
+        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, undo_info),
         tt::TokenTree::Leaf(leaf) => {
             if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
-                let (original, _original_tmap) = &fixup_map.original[id.0 as usize];
+                let original = &undo_info.original[id.0 as usize];
                 *tt = tt::TokenTree::Subtree(original.clone());
             }
         }
@@ -123,8 +152,10 @@ mod tests {
         let parsed = syntax::SourceFile::parse(ra_fixture);
         eprintln!("parse: {:#?}", parsed.syntax_node());
         let fixups = super::fixup_syntax(&parsed.syntax_node());
-        let (mut tt, tmap) = mbe::syntax_node_to_token_tree_with_modifications(
+        let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
             &parsed.syntax_node(),
+            fixups.token_map,
+            fixups.next_id,
             fixups.replace,
             fixups.append,
         );
@@ -144,7 +175,7 @@ mod tests {
             parse.syntax_node()
         );
 
-        reverse_fixups(&mut tt, &tmap, &fixups.map);
+        reverse_fixups(&mut tt, &tmap, &fixups.undo_info);
 
         // the fixed-up + reversed version should be equivalent to the original input
         // (but token IDs don't matter)

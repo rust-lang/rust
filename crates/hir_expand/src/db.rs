@@ -111,7 +111,7 @@ pub trait AstDatabase: SourceDatabase {
     fn macro_arg(
         &self,
         id: MacroCallId,
-    ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>>;
+    ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>>;
     /// Extracts syntax node, corresponding to a macro call. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
@@ -151,8 +151,10 @@ pub fn expand_speculative(
     let censor = censor_for_macro_input(&loc, &speculative_args);
     let mut fixups = fixup::fixup_syntax(&speculative_args);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
-    let (mut tt, spec_args_tmap) = mbe::syntax_node_to_token_tree_with_modifications(
+    let (mut tt, spec_args_tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
         &speculative_args,
+        fixups.token_map,
+        fixups.next_id,
         fixups.replace,
         fixups.append,
     );
@@ -202,7 +204,7 @@ pub fn expand_speculative(
 
     // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
-    let speculative_expansion = if let MacroDefKind::ProcMacro(expander, ..) = loc.def.kind {
+    let mut speculative_expansion = if let MacroDefKind::ProcMacro(expander, ..) = loc.def.kind {
         tt.delimiter = None;
         expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
     } else {
@@ -210,6 +212,7 @@ pub fn expand_speculative(
     };
 
     let expand_to = macro_expand_to(db, actual_macro_call);
+    fixup::reverse_fixups(&mut speculative_expansion.value, &spec_args_tmap, &fixups.undo_info);
     let (node, rev_tmap) = token_tree_to_syntax_node(&speculative_expansion.value, expand_to);
 
     let range = rev_tmap.first_range_by_token(token_id, token_to_map.kind())?;
@@ -300,7 +303,7 @@ fn parse_macro_expansion(
 fn macro_arg(
     db: &dyn AstDatabase,
     id: MacroCallId,
-) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>> {
+) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupUndoInfo)>> {
     let arg = db.macro_arg_text(id)?;
     let loc = db.lookup_intern_macro_call(id);
 
@@ -308,15 +311,20 @@ fn macro_arg(
     let censor = censor_for_macro_input(&loc, &node);
     let mut fixups = fixup::fixup_syntax(&node);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
-    let (mut tt, tmap) =
-        mbe::syntax_node_to_token_tree_with_modifications(&node, fixups.replace, fixups.append);
+    let (mut tt, tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
+        &node,
+        fixups.token_map,
+        fixups.next_id,
+        fixups.replace,
+        fixups.append,
+    );
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
         tt.delimiter = None;
     }
 
-    Some(Arc::new((tt, tmap, fixups.map)))
+    Some(Arc::new((tt, tmap, fixups.undo_info)))
 }
 
 fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
