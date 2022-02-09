@@ -201,15 +201,6 @@ pub trait Decoder {
     fn read_str(&mut self) -> Cow<'_, str>;
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
 
-    #[inline]
-    fn read_enum_variant<T, F>(&mut self, mut f: F) -> T
-    where
-        F: FnMut(&mut Self, usize) -> T,
-    {
-        let disr = self.read_usize();
-        f(self, disr)
-    }
-
     fn read_seq<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self, usize) -> T,
@@ -473,11 +464,11 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &mut D) -> Option<T> {
-        d.read_enum_variant(move |this, idx| match idx {
+        match d.read_usize() {
             0 => None,
-            1 => Some(Decodable::decode(this)),
+            1 => Some(Decodable::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Option`."),
-        })
+        }
     }
 }
 
@@ -496,11 +487,11 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
-        d.read_enum_variant(|d, disr| match disr {
+        match d.read_usize() {
             0 => Ok(T1::decode(d)),
             1 => Err(T2::decode(d)),
             _ => panic!("Encountered invalid discriminant while decoding `Result`."),
-        })
+        }
     }
 }
 
