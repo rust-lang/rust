@@ -24,6 +24,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
+option(ENZYME_CLANG "Build enzyme clang plugin" ON)
 option(ENZYME_EXTERNAL_SHARED_LIB "Build external shared library" OFF)
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(ENZYME_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -62,6 +63,8 @@ get_filename_component(LLVM_ABSOLUTE_LIT
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
 list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
+
+if (ENZYME_CLANG)
 if (DEFINED Clang_DIR)
     get_filename_component(Clang_ABSOLUTE_DIR
       "${Clang_DIR}"
@@ -88,6 +91,9 @@ else()
   endif()
   message("clang dir from llvm ${Clang_DIR}")
 endif()
+else()
+endif()
+
 message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
 
 find_package(LLVM REQUIRED CONFIG)

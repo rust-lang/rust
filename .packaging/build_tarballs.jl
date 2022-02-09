@@ -19,6 +19,7 @@ cd Enzyme
 CMAKE_FLAGS=()
 # Release build for best performance
 CMAKE_FLAGS+=(-DENZYME_EXTERNAL_SHARED_LIB=ON)
+CMAKE_FLAGS+=(-DENZYME_CLANG=OFF)
 CMAKE_FLAGS+=(-DCMAKE_BUILD_TYPE=RelWithDebInfo)
 # Install things into $prefix
 CMAKE_FLAGS+=(-DCMAKE_INSTALL_PREFIX=${prefix})
