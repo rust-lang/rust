@@ -42,13 +42,13 @@ fn decodable_body(
     }
     let ty_name = s.ast().ident.to_string();
     let decode_body = match s.variants() {
-        [vi] => vi.construct(|field, index| decode_field(field, index, true)),
+        [vi] => vi.construct(|field, _index| decode_field(field)),
         variants => {
             let match_inner: TokenStream = variants
                 .iter()
                 .enumerate()
                 .map(|(idx, vi)| {
-                    let construct = vi.construct(|field, index| decode_field(field, index, false));
+                    let construct = vi.construct(|field, _index| decode_field(field));
                     quote! { #idx => { #construct } }
                 })
                 .collect();
@@ -80,7 +80,7 @@ fn decodable_body(
     )
 }
 
-fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro2::TokenStream {
+fn decode_field(field: &syn::Field) -> proc_macro2::TokenStream {
     let field_span = field.ident.as_ref().map_or(field.ty.span(), |ident| ident.span());
 
     let decode_inner_method = if let syn::Type::Reference(_) = field.ty {
@@ -89,22 +89,9 @@ fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro
         quote! { ::rustc_serialize::Decodable::decode }
     };
     let __decoder = quote! { __decoder };
-    let decode_call = if is_struct {
-        let field_name = field.ident.as_ref().map_or_else(|| index.to_string(), |i| i.to_string());
-        let decode_method = proc_macro2::Ident::new("read_struct_field", field_span);
-        // Use the span of the field for the method call, so
-        // that backtraces will point to the field.
-        quote_spanned! {field_span=>
-            ::rustc_serialize::Decoder::#decode_method(
-                    #__decoder, #field_name, #decode_inner_method)
-        }
-    } else {
-        // Use the span of the field for the method call, so
-        // that backtraces will point to the field.
-        quote_spanned! {field_span=> #decode_inner_method(#__decoder) }
-    };
-
-    quote! { #decode_call }
+    // Use the span of the field for the method call, so
+    // that backtraces will point to the field.
+    quote_spanned! {field_span=> #decode_inner_method(#__decoder) }
 }
 
 pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {

@@ -979,8 +979,8 @@ impl<E: Encoder> Encodable<E> for Span {
 }
 impl<D: Decoder> Decodable<D> for Span {
     default fn decode(s: &mut D) -> Span {
-        let lo = s.read_struct_field("lo", Decodable::decode);
-        let hi = s.read_struct_field("hi", Decodable::decode);
+        let lo = Decodable::decode(s);
+        let hi = Decodable::decode(s);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
     }
@@ -1438,11 +1438,11 @@ impl<S: Encoder> Encodable<S> for SourceFile {
 
 impl<D: Decoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> SourceFile {
-        let name: FileName = d.read_struct_field("name", |d| Decodable::decode(d));
-        let src_hash: SourceFileHash = d.read_struct_field("src_hash", |d| Decodable::decode(d));
-        let start_pos: BytePos = d.read_struct_field("start_pos", |d| Decodable::decode(d));
-        let end_pos: BytePos = d.read_struct_field("end_pos", |d| Decodable::decode(d));
-        let lines: Vec<BytePos> = d.read_struct_field("lines", |d| {
+        let name: FileName = Decodable::decode(d);
+        let src_hash: SourceFileHash = Decodable::decode(d);
+        let start_pos: BytePos = Decodable::decode(d);
+        let end_pos: BytePos = Decodable::decode(d);
+        let lines: Vec<BytePos> = {
             let num_lines: u32 = Decodable::decode(d);
             let mut lines = Vec::with_capacity(num_lines as usize);
 
@@ -1469,15 +1469,12 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             }
 
             lines
-        });
-        let multibyte_chars: Vec<MultiByteChar> =
-            d.read_struct_field("multibyte_chars", |d| Decodable::decode(d));
-        let non_narrow_chars: Vec<NonNarrowChar> =
-            d.read_struct_field("non_narrow_chars", |d| Decodable::decode(d));
-        let name_hash: u128 = d.read_struct_field("name_hash", |d| Decodable::decode(d));
-        let normalized_pos: Vec<NormalizedPos> =
-            d.read_struct_field("normalized_pos", |d| Decodable::decode(d));
-        let cnum: CrateNum = d.read_struct_field("cnum", |d| Decodable::decode(d));
+        };
+        let multibyte_chars: Vec<MultiByteChar> = Decodable::decode(d);
+        let non_narrow_chars: Vec<NonNarrowChar> = Decodable::decode(d);
+        let name_hash: u128 = Decodable::decode(d);
+        let normalized_pos: Vec<NormalizedPos> = Decodable::decode(d);
+        let cnum: CrateNum = Decodable::decode(d);
         SourceFile {
             name,
             start_pos,
