@@ -122,7 +122,11 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
     has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
 }
 
-pub(crate) fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, undo_info: &SyntaxFixupUndoInfo) {
+pub(crate) fn reverse_fixups(
+    tt: &mut Subtree,
+    token_map: &TokenMap,
+    undo_info: &SyntaxFixupUndoInfo,
+) {
     tt.token_trees.retain(|tt| match tt {
         tt::TokenTree::Leaf(leaf) => {
             token_map.synthetic_token_id(leaf.id()).is_none()
