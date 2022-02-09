@@ -42,7 +42,7 @@ intrinsics! {
             "sub sp, sp, #16",
             "add r4, sp, #8",
             "str r4, [sp]",
-            bl!("__udivmodsi4"),
+            bl!("__udivmoddi4"),
             "ldr r2, [sp, #8]",
             "ldr r3, [sp, #12]",
             "add sp, sp, #16",
