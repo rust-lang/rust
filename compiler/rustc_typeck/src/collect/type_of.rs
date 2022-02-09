@@ -639,7 +639,11 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
                             concrete_type.span,
                             format!("expected `{}`, got `{}`", prev.ty, concrete_type.ty),
                         );
-                        err.span_note(prev.span, "previous use here");
+                        if prev.span == concrete_type.span {
+                            err.span_label(prev.span, "this expression supplies two conflicting concrete types for the same opaque type");
+                        } else {
+                            err.span_note(prev.span, "previous use here");
+                        }
                         err.emit();
                     }
                 } else {
