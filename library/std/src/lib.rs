@@ -242,7 +242,7 @@
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
 #![feature(cfg_eval)]
-#![feature(cfg_target_has_atomic)]
+#![cfg_attr(bootstrap, feature(cfg_target_has_atomic))]
 #![feature(cfg_target_thread_local)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]

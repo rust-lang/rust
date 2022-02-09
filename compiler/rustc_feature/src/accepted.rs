@@ -72,6 +72,8 @@ declare_features! (
     (accepted, cfg_doctest, "1.40.0", Some(62210), None),
     /// Allows `cfg(target_feature = "...")`.
     (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
+    /// Allows `cfg(target_has_atomic = "...")`.
+    (accepted, cfg_target_has_atomic, "1.60.0", Some(32976), None),
     /// Allows `cfg(target_vendor = "...")`.
     (accepted, cfg_target_vendor, "1.33.0", Some(29718), None),
     /// Allows implementing `Clone` for closures where possible (RFC 2132).
