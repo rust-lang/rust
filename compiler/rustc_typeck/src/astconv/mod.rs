@@ -2281,8 +2281,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
                 // Try to evaluate any array length constants.
-                let normalized_ty = self.normalize_ty(span, tcx.at(span).type_of(def_id));
-                if forbid_generic && normalized_ty.needs_subst() {
+                let ty = tcx.at(span).type_of(def_id);
+                // HACK(min_const_generics): Forbid generic `Self` types
+                // here as we can't easily do that during nameres.
+                //
+                // We do this before normalization as we otherwise allow
+                // ```rust
+                // trait AlwaysApplicable { type Assoc; }
+                // impl<T: ?Sized> AlwaysApplicable for T { type Assoc = usize; }
+                //
+                // trait BindsParam<T> {
+                //     type ArrayTy;
+                // }
+                // impl<T> BindsParam<T> for <T as AlwaysApplicable>::Assoc {
+                //    type ArrayTy = [u8; Self::MAX];
+                // }
+                // ```
+                // Note that the normalization happens in the param env of
+                // the anon const, which is empty. This is why the
+                // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
+                // this to compile if we were to normalize here.
+                if forbid_generic && ty.needs_subst() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
@@ -2297,7 +2316,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.emit();
                     tcx.ty_error()
                 } else {
-                    normalized_ty
+                    self.normalize_ty(span, ty)
                 }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
