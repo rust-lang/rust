@@ -2,7 +2,6 @@ const QUERY = ['A::B', 'A::B,C',  'A::B<f>,C'];
 
 const PARSED = [
     {
-        args: [],
         elems: [{
             name: "a::b",
             fullPath: ["a", "b"],
@@ -18,7 +17,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [
             {
                 name: "a::b",
@@ -43,7 +41,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [
             {
                 name: "a::b",

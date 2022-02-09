@@ -19,7 +19,6 @@ const QUERY = [
 
 const PARSED = [
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "<\"P\">",
@@ -29,7 +28,6 @@ const PARSED = [
         error: "`\"` cannot be used in generics",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "\"P\" \"P\"",
@@ -39,7 +37,6 @@ const PARSED = [
         error: "Cannot have more than one literal search element",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "P \"P\"",
@@ -49,7 +46,6 @@ const PARSED = [
         error: "Cannot use literal search when there is more than one element",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "\"p\" p",
@@ -59,7 +55,6 @@ const PARSED = [
         error: "You cannot have more than one element if you use quotes",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "\"const\": p",
@@ -69,7 +64,6 @@ const PARSED = [
         error: "You cannot use quotes on type filter",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "<:a>",
@@ -79,7 +73,6 @@ const PARSED = [
         error: "Unexpected `:` after `<`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "<::a>",
@@ -89,17 +82,15 @@ const PARSED = [
         error: "Unexpected `::`: paths cannot start with `::`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "((a))",
         returned: [],
         typeFilter: -1,
         userQuery: "((a))",
-        error: "Unexpected `(` after `(`",
+        error: "Unexpected `(`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "->,a",
@@ -109,17 +100,15 @@ const PARSED = [
         error: "Unexpected `,` after `->`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "(p -> p",
         returned: [],
         typeFilter: -1,
         userQuery: "(p -> p",
-        error: "Unexpected `-` after `(`",
+        error: "Unexpected `(`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "::a::b",
@@ -129,7 +118,6 @@ const PARSED = [
         error: "Paths cannot start with `::`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "a::::b",
@@ -139,7 +127,6 @@ const PARSED = [
         error: "Unexpected `::::`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "a::b::",
@@ -149,7 +136,6 @@ const PARSED = [
         error: "Paths cannot end with `::`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: ":a",
@@ -159,7 +145,6 @@ const PARSED = [
         error: "Expected type filter before `:`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "a b:",
@@ -169,17 +154,15 @@ const PARSED = [
         error: "Unexpected `:`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "a (b:",
         returned: [],
         typeFilter: -1,
         userQuery: "a (b:",
-        error: "Unexpected `:` after `(`",
+        error: "Unexpected `(`",
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "{:",

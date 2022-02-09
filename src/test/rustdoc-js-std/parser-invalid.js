@@ -5,7 +5,6 @@ const QUERY = ['a b', 'a   b', 'a,b(c)'];
 
 const PARSED = [
     {
-        args: [],
         elems: [
             {
                 name: "a",
@@ -30,7 +29,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [
             {
                 name: "a",
@@ -55,36 +53,12 @@ const PARSED = [
         error: null,
     },
     {
-        args: [
-            {
-                name: "c",
-                fullPath: ["c"],
-                pathWithoutLast: [],
-                pathLast: "c",
-                generics: [],
-            },
-        ],
-        elems: [
-            {
-                name: "a",
-                fullPath: ["a"],
-                pathWithoutLast: [],
-                pathLast: "a",
-                generics: [],
-            },
-            {
-                name: "b",
-                fullPath: ["b"],
-                pathWithoutLast: [],
-                pathLast: "b",
-                generics: [],
-            },
-        ],
-        foundElems: 3,
+        elems: [],
+        foundElems: 0,
         original: "a,b(c)",
         returned: [],
         typeFilter: -1,
         userQuery: "a,b(c)",
-        error: null,
+        error: "Unexpected `(`",
     },
 ];

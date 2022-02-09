@@ -129,15 +129,19 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function isSpecialStartCharacter(c) {
-        return "(<\"".indexOf(c) !== -1;
+        return "<\"".indexOf(c) !== -1;
     }
 
     function isEndCharacter(c) {
-        return "),>-".indexOf(c) !== -1;
+        return ",>-".indexOf(c) !== -1;
     }
 
     function isStopCharacter(c) {
         return isWhitespace(c) || isEndCharacter(c);
+    }
+
+    function isErrorCharacter(c) {
+        return "()".indexOf(c) !== -1;
     }
 
     function itemTypeFromName(typename) {
@@ -267,7 +271,9 @@ window.initSearch = function(rawSearchIndex) {
         } else {
             while (parserState.pos < parserState.length) {
                 var c = parserState.userQuery[parserState.pos];
-                if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
+                if (isErrorCharacter(c)) {
+                    throw new Error(`Unexpected \`${c}\``);
+                } else if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
                     break;
                 }
                 // If we allow paths ("str::string" for example).
@@ -285,6 +291,9 @@ window.initSearch = function(rawSearchIndex) {
         if (parserState.pos < parserState.length &&
             parserState.userQuery[parserState.pos] === "<")
         {
+            if (isInGenerics) {
+                throw new Error("Unexpected `<` after `<`");
+            }
             parserState.pos += 1;
             getItemsBefore(query, parserState, generics, ">");
         }
@@ -317,12 +326,10 @@ window.initSearch = function(rawSearchIndex) {
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw new Error("Unexpected `::`: paths cannot start with `::`");
-            } else if (c === "(" || c === ":" || isEndCharacter(c)) {
+            } else if (c === ":" || isEndCharacter(c)) {
                 var extra = "";
                 if (limit === ">") {
                     extra = "`<`";
-                } else if (limit === ")") {
-                    extra = "`(`";
                 } else if (limit === "") {
                     extra = "`->`";
                 }
@@ -356,8 +363,6 @@ window.initSearch = function(rawSearchIndex) {
                 } else if (c === "-" && isReturnArrow(parserState)) {
                     break;
                 }
-            } else if (c == "(") {
-                break;
             } else if (c === ":" &&
                 parserState.typeFilter === null &&
                 !isPathStart(parserState))
@@ -391,11 +396,7 @@ window.initSearch = function(rawSearchIndex) {
         }
         while (parserState.pos < parserState.length) {
             c = parserState.userQuery[parserState.pos];
-            if (query.args.length === 0 && c === "(") {
-                parserState.pos += 1;
-                // Check for function/method arguments.
-                getItemsBefore(query, parserState, query.args, ")");
-            } else if (isReturnArrow(parserState)) {
+            if (isReturnArrow(parserState)) {
                 parserState.pos += 2;
                 // Get returned elements.
                 getItemsBefore(query, parserState, query.returned, "");
@@ -419,7 +420,6 @@ window.initSearch = function(rawSearchIndex) {
             userQuery: userQuery.toLowerCase(),
             typeFilter: NO_TYPE_FILTER,
             elems: [],
-            args: [],
             returned: [],
             // Total number of "top" elements (does not include generics).
             foundElems: 0,
@@ -466,19 +466,19 @@ window.initSearch = function(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *1(ALPHA / DIGIT)
-     * path = ident *WS *(DOUBLE-COLON *WS ident)
-     * arg = path *WS [generics]
+     * ident = *(ALPHA / DIGIT)
+     * path = ident *(DOUBLE-COLON ident)
+     * arg = path [generics]
+     * arg-without-generic = path
      * nonempty-arg-list = arg *WS *(COMMA *WS arg)
-     * generics = OPEN-ANGLE-BRACKET *WS nonempty-arg-list *WS CLOSE-ANGLE-BRACKET
-     * function-args = OPEN-PAREN *WS [nonempty-arg-list] *WS END-PAREN
-     * return-args = RETURN-ARROW *WS function-args
+     * nonempty-arg-list-without-generics = arg-without-generic *WS *(COMMA *WS arg-without-generic)
+     * generics = OPEN-ANGLE-BRACKET *WS nonempty-arg-list-without-generics *WS CLOSE-ANGLE-BRACKET
+     * return-args = RETURN-ARROW *WS nonempty-arg-list
      *
      * exact-search = [type-filter *WS COLON] *WS QUOTE ident QUOTE *WS [generics]
      * type-search = [type-filter *WS COLON] *WS path *WS generics
-     * function-search = path *WS function-args *WS [return-args]
      *
-     * query = *WS (exact-search / type-search / function-search / return-args) *WS
+     * query = *WS (exact-search / type-search / return-args) *WS
      *
      * type-filter = (
      *     "mod" /
@@ -510,8 +510,6 @@ window.initSearch = function(rawSearchIndex) {
      *
      * OPEN-ANGLE-BRACKET = "<"
      * CLOSE-ANGLE-BRACKET = ">"
-     * OPEN-PAREN = "("
-     * END-PAREN = ")"
      * COLON = ":"
      * DOUBLE-COLON = "::"
      * QUOTE = %x22
@@ -554,7 +552,7 @@ window.initSearch = function(rawSearchIndex) {
             // case.
             query.literalSearch = parserState.totalElems > 1;
         }
-        query.foundElems = query.elems.length + query.args.length + query.returned.length;
+        query.foundElems = query.elems.length + query.returned.length;
         if (query.foundElems === 0 && parserState.length !== 0) {
             // In this case, we'll simply keep whatever was entered by the user...
             createQueryElement(query, parserState, query.elems, userQuery, []);
@@ -743,6 +741,11 @@ window.initSearch = function(rawSearchIndex) {
         function checkGenerics(row, elem, defaultLev) {
             if (row.length <= GENERICS_DATA || row[GENERICS_DATA].length === 0) {
                 return elem.generics.length === 0 ? defaultLev : MAX_LEV_DISTANCE + 1;
+            } else if (row[GENERICS_DATA].length > 0 && row[GENERICS_DATA][0][NAME] === "") {
+                if (row.length > GENERICS_DATA) {
+                    return checkGenerics(row[GENERICS_DATA][0], elem, defaultLev);
+                }
+                return elem.generics.length === 0 ? defaultLev : MAX_LEV_DISTANCE + 1;
             }
             // The names match, but we need to be sure that all generics kinda
             // match as well.
@@ -751,7 +754,15 @@ window.initSearch = function(rawSearchIndex) {
                 var elems = {};
                 for (var x = 0, length = row[GENERICS_DATA].length; x < length; ++x) {
                     elem_name = row[GENERICS_DATA][x][NAME];
-                    if (!elems[elem_name]) {
+                    if (elem_name === "") {
+                        // Pure generic, needs to check into it.
+                        if (checkGenerics(
+                                row[GENERICS_DATA][x], elem, MAX_LEV_DISTANCE + 1) !== 0) {
+                            return MAX_LEV_DISTANCE + 1;
+                        }
+                        continue;
+                    }
+                    if (elems[elem_name] === undefined) {
                         elems[elem_name] = 0;
                     }
                     elems[elem_name] += 1;
@@ -1216,9 +1227,6 @@ window.initSearch = function(rawSearchIndex) {
             if (!checkArgs(parsedQuery.elems, findArg)) {
                 return;
             }
-            if (!checkArgs(parsedQuery.args, findArg)) {
-                return;
-            }
             if (!checkArgs(parsedQuery.returned, checkReturned)) {
                 return;
             }
@@ -1231,7 +1239,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         function innerRunQuery() {
-            var elem, i, nSearchWords, in_args, in_returned, row;
+            var elem, i, nSearchWords, in_returned, row;
 
             if (parsedQuery.foundElems === 1) {
                 if (parsedQuery.elems.length === 1) {
@@ -1240,14 +1248,6 @@ window.initSearch = function(rawSearchIndex) {
                         // It means we want to check for this element everywhere (in names, args and
                         // returned).
                         handleSingleArg(searchIndex[i], i, elem);
-                    }
-                } else if (parsedQuery.args.length === 1) {
-                    // We received one argument to check, so looking into args.
-                    elem = parsedQuery.args[0];
-                    for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
-                        row = searchIndex[i];
-                        in_args = findArg(row, elem, parsedQuery.typeFilter);
-                        addIntoResults(results_in_args, row.id, i, -1, in_args);
                     }
                 } else if (parsedQuery.returned.length === 1) {
                     // We received one returned argument to check, so looking into returned values.
@@ -1262,9 +1262,7 @@ window.initSearch = function(rawSearchIndex) {
                 var container = results_others;
                 // In the special case where only a "returned" information is available, we want to
                 // put the information into the "results_returned" dict.
-                if (parsedQuery.returned.length !== 0 && parsedQuery.args.length === 0 &&
-                    parsedQuery.elems.length === 0)
-                {
+                if (parsedQuery.returned.length !== 0 && parsedQuery.elems.length === 0) {
                     container = results_returned;
                 }
                 for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {

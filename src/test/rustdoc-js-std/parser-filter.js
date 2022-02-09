@@ -2,7 +2,6 @@ const QUERY = ['fn:foo', 'enum : foo', 'macro<f>:foo'];
 
 const PARSED = [
     {
-        args: [],
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -18,7 +17,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [{
             name: "foo",
             fullPath: ["foo"],
@@ -34,7 +32,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [],
         foundElems: 0,
         original: "macro<f>:foo",

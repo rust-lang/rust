@@ -2,7 +2,6 @@ const QUERY = ['-> <P>', '-> P'];
 
 const PARSED = [
     {
-        args: [],
         elems: [],
         foundElems: 1,
         original: "-> <P>",
@@ -26,7 +25,6 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
         elems: [],
         foundElems: 1,
         original: "-> P",

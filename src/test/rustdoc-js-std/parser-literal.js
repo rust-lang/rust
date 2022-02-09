@@ -2,7 +2,6 @@ const QUERY = ['R<P>'];
 
 const PARSED = [
     {
-        args: [],
         elems: [{
             name: "r",
             fullPath: ["r"],

@@ -2,7 +2,6 @@ const QUERY = ['<P>', 'A<B<C<D>,  E>', 'p<> u8'];
 
 const PARSED = [
     {
-        args: [],
         elems: [{
             name: "",
             fullPath: [""],
@@ -26,54 +25,15 @@ const PARSED = [
         error: null,
     },
     {
-        args: [],
-        elems: [{
-            name: "a",
-            fullPath: ["a"],
-            pathWithoutLast: [],
-            pathLast: "a",
-            generics: [
-                {
-                    name: "b",
-                    fullPath: ["b"],
-                    pathWithoutLast: [],
-                    pathLast: "b",
-                    generics: [
-                        {
-                            name: "c",
-                            fullPath: ["c"],
-                            pathWithoutLast: [],
-                            pathLast: "c",
-                            generics: [
-                                {
-                                    name: "d",
-                                    fullPath: ["d"],
-                                    pathWithoutLast: [],
-                                    pathLast: "d",
-                                    generics: [],
-                                },
-                            ],
-                        },
-                        {
-                            name: "e",
-                            fullPath: ["e"],
-                            pathWithoutLast: [],
-                            pathLast: "e",
-                            generics: [],
-                        },
-                    ],
-                },
-            ],
-        }],
-        foundElems: 1,
+        elems: [],
+        foundElems: 0,
         original: 'A<B<C<D>,  E>',
         returned: [],
         typeFilter: -1,
         userQuery: 'a<b<c<d>,  e>',
-        error: null,
+        error: 'Unexpected `<` after `<`',
     },
     {
-        args: [],
         elems: [
             {
                 name: "p",
