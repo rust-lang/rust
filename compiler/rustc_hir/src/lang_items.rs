@@ -171,6 +171,7 @@ language_item_table! {
     Slice,                   sym::slice,               slice_impl,                 Target::Impl,           GenericRequirement::None;
     SliceU8,                 sym::slice_u8,            slice_u8_impl,              Target::Impl,           GenericRequirement::None;
     StrAlloc,                sym::str_alloc,           str_alloc_impl,             Target::Impl,           GenericRequirement::None;
+    StrAllocAdd,             sym::str_alloc_add,       str_alloc_add_impl,         Target::Impl,           GenericRequirement::None;
     SliceAlloc,              sym::slice_alloc,         slice_alloc_impl,           Target::Impl,           GenericRequirement::None;
     SliceU8Alloc,            sym::slice_u8_alloc,      slice_u8_alloc_impl,        Target::Impl,           GenericRequirement::None;
     ConstPtr,                sym::const_ptr,           const_ptr_impl,             Target::Impl,           GenericRequirement::None;

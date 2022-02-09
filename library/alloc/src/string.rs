@@ -2215,6 +2215,23 @@ impl AddAssign<&str> for String {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[cfg(not(bootstrap))]
+#[lang = "str_alloc_add"]
+#[stable(feature = "stradd", since = "1.60.0")]
+/// # Examples
+/// ```
+/// let hello: String = "hello, " + "world!";
+/// println!("{}", hello);
+/// ```
+impl core::ops::Add<&str> for &str {
+    type Output = String;
+
+    fn add(self, other: &str) -> String {
+        String::from(self) + other
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::Range<usize>> for String {
     type Output = str;

@@ -1330,6 +1330,7 @@ symbols! {
         store,
         str,
         str_alloc,
+        str_alloc_add,
         stringify,
         stringify_macro,
         struct_field_attributes,

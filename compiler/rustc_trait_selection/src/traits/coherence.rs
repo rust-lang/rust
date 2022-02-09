@@ -439,6 +439,11 @@ pub enum OrphanCheckErr<'tcx> {
 pub fn orphan_check(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Result<(), OrphanCheckErr<'_>> {
     debug!("orphan_check({:?})", impl_def_id);
 
+    // `alloc` breaks coherence so it can define `&str + &str = String`
+    if Some(impl_def_id) == tcx.lang_items().str_alloc_add_impl() {
+        return Ok(());
+    }
+
     // We only except this routine to be invoked on implementations
     // of a trait, not inherent implementations.
     let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
