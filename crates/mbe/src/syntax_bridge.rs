@@ -30,8 +30,8 @@ pub fn syntax_node_to_token_tree_censored(
     let mut c = Convertor::new(node, global_offset, replace, append);
     let subtree = convert_tokens(&mut c);
     c.id_alloc.map.shrink_to_fit();
-    always!(c.replace.is_empty());
-    always!(c.append.is_empty());
+    always!(c.replace.is_empty(), "replace: {:?}", c.replace);
+    always!(c.append.is_empty(), "append: {:?}", c.append);
     (subtree, c.id_alloc.map)
 }
 
@@ -539,7 +539,6 @@ impl Convertor {
                 WalkEvent::Enter(ele) => ele,
                 WalkEvent::Leave(SyntaxElement::Node(node)) => {
                     if let Some(mut v) = append.remove(&node) {
-                        eprintln!("after {:?}, appending {:?}", node, v);
                         if !v.is_empty() {
                             v.reverse();
                             return (None, v);
@@ -554,7 +553,6 @@ impl Convertor {
                 SyntaxElement::Node(node) => {
                     if let Some(mut v) = replace.remove(&node) {
                         preorder.skip_subtree();
-                        eprintln!("replacing {:?} by {:?}", node, v);
                         if !v.is_empty() {
                             v.reverse();
                             return (None, v);
@@ -640,8 +638,8 @@ impl TokenConvertor for Convertor {
                 self.current = new_current;
                 self.current_synthetic = new_synth;
             }
-            // TODO fix range?
-            return Some((SynToken::Synthetic(synth_token), self.range));
+            let range = synth_token.range;
+            return Some((SynToken::Synthetic(synth_token), range));
         }
 
         let curr = self.current.clone()?;
@@ -675,7 +673,6 @@ impl TokenConvertor for Convertor {
         }
 
         if let Some(synth_token) = self.current_synthetic.last() {
-            // TODO fix range?
             return Some(SynToken::Synthetic(synth_token.clone()));
         }
 

@@ -108,7 +108,10 @@ pub trait AstDatabase: SourceDatabase {
 
     /// Lowers syntactic macro call to a token tree representation.
     #[salsa::transparent]
-    fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
+    fn macro_arg(
+        &self,
+        id: MacroCallId,
+    ) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>>;
     /// Extracts syntax node, corresponding to a macro call. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
@@ -291,29 +294,27 @@ fn parse_macro_expansion(
     }
 }
 
-fn macro_arg(db: &dyn AstDatabase, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
+fn macro_arg(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+) -> Option<Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>> {
     let arg = db.macro_arg_text(id)?;
     let loc = db.lookup_intern_macro_call(id);
 
     let node = SyntaxNode::new_root(arg);
-    eprintln!("input text:\n{node}");
-    eprintln!("input syntax:\n{node:#?}");
     let censor = censor_for_macro_input(&loc, &node);
     // TODO only fixup for attribute macro input
     let mut fixups = fixup::fixup_syntax(&node);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
-    eprintln!("fixups: {fixups:?}");
     let (mut tt, tmap) =
         mbe::syntax_node_to_token_tree_censored(&node, fixups.replace, fixups.append);
-
-    eprintln!("fixed-up input: {}", tt);
 
     if loc.def.is_proc_macro() {
         // proc macros expect their inputs without parentheses, MBEs expect it with them included
         tt.delimiter = None;
     }
 
-    Some(Arc::new((tt, tmap)))
+    Some(Arc::new((tt, tmap, fixups.map)))
 }
 
 fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
@@ -433,7 +434,6 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
     let ExpandResult { value: mut tt, err } = expander.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
-    // XXX: Make ExpandResult a real error and use .map_err instead?
     if TOKEN_LIMIT.check(count).is_err() {
         return ExpandResult::str_err(format!(
             "macro invocation exceeds token limit: produced {} tokens, limit is {}",
@@ -442,7 +442,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         ));
     }
 
-    fixup::reverse_fixups(&mut tt, &macro_arg.1);
+    fixup::reverse_fixups(&mut tt, &macro_arg.1, &macro_arg.2);
 
     ExpandResult { value: Some(Arc::new(tt)), err }
 }

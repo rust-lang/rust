@@ -10,21 +10,39 @@ use tt::Subtree;
 pub struct SyntaxFixups {
     pub append: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
     pub replace: FxHashMap<SyntaxNode, Vec<SyntheticToken>>,
+    pub map: SyntaxFixupMap,
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SyntaxFixupMap {
+    original: Vec<(Subtree, TokenMap)>,
+}
+
+const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
 
 pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
     let mut append = FxHashMap::default();
     let mut replace = FxHashMap::default();
     let mut preorder = node.preorder();
-    let empty_id = SyntheticTokenId(0);
+    let mut original = Vec::new();
     while let Some(event) = preorder.next() {
         let node = match event {
             syntax::WalkEvent::Enter(node) => node,
             syntax::WalkEvent::Leave(_) => continue,
         };
-        if node.kind() == SyntaxKind::ERROR {
-            // TODO this might not be helpful
-            replace.insert(node, Vec::new());
+        if can_handle_error(&node) && has_error_to_handle(&node) {
+            // the node contains an error node, we have to completely replace it by something valid
+            let original_tree = mbe::syntax_node_to_token_tree(&node);
+            // TODO handle token ids / token map
+            let idx = original.len() as u32;
+            original.push(original_tree);
+            let replacement = SyntheticToken {
+                kind: SyntaxKind::IDENT,
+                text: "__ra_fixup".into(),
+                range: node.text_range(),
+                id: SyntheticTokenId(idx),
+            };
+            replace.insert(node.clone(), vec![replacement]);
             preorder.skip_subtree();
             continue;
         }
@@ -39,7 +57,7 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                                 kind: SyntaxKind::IDENT,
                                 text: "__ra_fixup".into(),
                                 range: end_range,
-                                id: empty_id,
+                                id: EMPTY_ID,
                             },
                         ]);
                     }
@@ -51,7 +69,7 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                                 kind: SyntaxKind::SEMICOLON,
                                 text: ";".into(),
                                 range: end_range,
-                                id: empty_id,
+                                id: EMPTY_ID,
                             },
                         ]);
                     }
@@ -60,18 +78,37 @@ pub fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
             }
         }
     }
-    SyntaxFixups { append, replace }
+    SyntaxFixups { append, replace, map: SyntaxFixupMap { original } }
 }
 
-pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap) {
-    eprintln!("token_map: {:?}", token_map);
+fn has_error(node: &SyntaxNode) -> bool {
+    node.children().any(|c| c.kind() == SyntaxKind::ERROR)
+}
+
+fn can_handle_error(node: &SyntaxNode) -> bool {
+    ast::Expr::can_cast(node.kind())
+}
+
+fn has_error_to_handle(node: &SyntaxNode) -> bool {
+    has_error(node) || node.children().any(|c| !can_handle_error(&c) && has_error_to_handle(&c))
+}
+
+pub fn reverse_fixups(tt: &mut Subtree, token_map: &TokenMap, fixup_map: &SyntaxFixupMap) {
     tt.token_trees.retain(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => token_map.synthetic_token_id(leaf.id()).is_none(),
+        tt::TokenTree::Leaf(leaf) => {
+            token_map.synthetic_token_id(leaf.id()).is_none()
+                || token_map.synthetic_token_id(leaf.id()) != Some(EMPTY_ID)
+        }
         _ => true,
     });
     tt.token_trees.iter_mut().for_each(|tt| match tt {
-        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map),
-        _ => {}
+        tt::TokenTree::Subtree(tt) => reverse_fixups(tt, token_map, fixup_map),
+        tt::TokenTree::Leaf(leaf) => {
+            if let Some(id) = token_map.synthetic_token_id(leaf.id()) {
+                let (original, _original_tmap) = &fixup_map.original[id.0 as usize];
+                *tt = tt::TokenTree::Subtree(original.clone());
+            }
+        }
     });
 }
 
@@ -84,6 +121,7 @@ mod tests {
     #[track_caller]
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
+        eprintln!("parse: {:#?}", parsed.syntax_node());
         let fixups = super::fixup_syntax(&parsed.syntax_node());
         let (mut tt, tmap) = mbe::syntax_node_to_token_tree_censored(
             &parsed.syntax_node(),
@@ -106,7 +144,7 @@ mod tests {
             parse.syntax_node()
         );
 
-        reverse_fixups(&mut tt, &tmap);
+        reverse_fixups(&mut tt, &tmap, &fixups.map);
 
         // the fixed-up + reversed version should be equivalent to the original input
         // (but token IDs don't matter)
@@ -169,6 +207,20 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {a . b ; bar () ;}
+"#]],
+        )
+    }
+
+    #[test]
+    fn extraneous_comma() {
+        check(
+            r#"
+fn foo() {
+    bar(,);
+}
+"#,
+            expect![[r#"
+fn foo () {__ra_fixup ;}
 "#]],
         )
     }

@@ -427,7 +427,7 @@ pub struct ExpansionInfo {
     attr_input_or_mac_def: Option<InFile<ast::TokenTree>>,
 
     macro_def: Arc<TokenExpander>,
-    macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    macro_arg: Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>,
     /// A shift built from `macro_arg`'s subtree, relevant for attributes as the item is the macro arg
     /// and as such we need to shift tokens if they are part of an attributes input instead of their item.
     macro_arg_shift: mbe::Shift,

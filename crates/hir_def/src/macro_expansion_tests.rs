@@ -186,7 +186,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         let range: Range<usize> = range.into();
 
         if show_token_ids {
-            if let Some((tree, map)) = arg.as_deref() {
+            if let Some((tree, map, _)) = arg.as_deref() {
                 let tt_range = call.token_tree().unwrap().syntax().text_range();
                 let mut ranges = Vec::new();
                 extract_id_ranges(&mut ranges, &map, &tree);

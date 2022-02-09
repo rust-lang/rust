@@ -15,6 +15,7 @@ use syntax::{
 
 use crate::{
     db::{self, AstDatabase},
+    fixup,
     name::{AsName, Name},
     HirFileId, HirFileIdRepr, InFile, MacroCallKind, MacroCallLoc, MacroDefKind, MacroFile,
 };
@@ -127,7 +128,7 @@ struct HygieneInfo {
     attr_input_or_mac_def_start: Option<InFile<TextSize>>,
 
     macro_def: Arc<TokenExpander>,
-    macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    macro_arg: Arc<(tt::Subtree, mbe::TokenMap, fixup::SyntaxFixupMap)>,
     macro_arg_shift: mbe::Shift,
     exp_map: Arc<mbe::TokenMap>,
 }

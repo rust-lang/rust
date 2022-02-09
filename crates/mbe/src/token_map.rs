@@ -74,6 +74,7 @@ impl TokenMap {
 
     pub(crate) fn shrink_to_fit(&mut self) {
         self.entries.shrink_to_fit();
+        self.synthetic_entries.shrink_to_fit();
     }
 
     pub(crate) fn insert(&mut self, token_id: tt::TokenId, relative_range: TextRange) {
