@@ -2567,7 +2567,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
         w,
         "<div class=\"docblock scraped-example-list\">\
           <span></span>\
-          <h5 id=\"{id}\" class=\"section-header\">\
+          <h5 id=\"{id}\">\
              <a href=\"#{id}\">Examples found in repository</a>\
           </h5>",
         id = id
