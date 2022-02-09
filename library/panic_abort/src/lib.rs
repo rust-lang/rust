@@ -113,26 +113,6 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
 pub mod personalities {
-    #[rustc_std_internal_symbol]
-    #[cfg(not(any(
-        all(target_family = "wasm", not(target_os = "emscripten")),
-        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
-    )))]
-    pub extern "C" fn rust_eh_personality() {}
-
-    // On x86_64-pc-windows-gnu we use our own personality function that needs
-    // to return `ExceptionContinueSearch` as we're passing on all our frames.
-    #[rustc_std_internal_symbol]
-    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"))]
-    pub extern "C" fn rust_eh_personality(
-        _record: usize,
-        _frame: usize,
-        _context: usize,
-        _dispatcher: usize,
-    ) -> u32 {
-        1 // `ExceptionContinueSearch`
-    }
-
     // Similar to above, this corresponds to the `eh_catch_typeinfo` lang item
     // that's only used on Emscripten currently.
     //

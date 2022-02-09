@@ -12,7 +12,6 @@ use core::intrinsics;
 use core::mem;
 use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
-use libc::{self, c_int};
 use unwind as uw;
 
 // This matches the layout of std::type_info in C++
@@ -103,21 +102,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
         }
         ptr
     }
-}
-
-// This is required by the compiler to exist (e.g., it's a lang item), but it's
-// never actually called by the compiler.  Emscripten EH doesn't use a
-// personality function at all, it instead uses __cxa_find_matching_catch.
-// Wasm error handling would use __gxx_personality_wasm0.
-#[lang = "eh_personality"]
-unsafe extern "C" fn rust_eh_personality(
-    _version: c_int,
-    _actions: uw::_Unwind_Action,
-    _exception_class: uw::_Unwind_Exception_Class,
-    _exception_object: *mut uw::_Unwind_Exception,
-    _context: *mut uw::_Unwind_Context,
-) -> uw::_Unwind_Reason_Code {
-    core::intrinsics::abort()
 }
 
 extern "C" {
