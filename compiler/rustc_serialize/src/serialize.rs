@@ -227,14 +227,6 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_map_elt_key<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
     fn read_map_elt_val<T, F>(&mut self, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
