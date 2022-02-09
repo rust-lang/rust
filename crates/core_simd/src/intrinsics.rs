@@ -17,9 +17,15 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_mul<T>(x: T, y: T) -> T;
 
     /// udiv/sdiv/fdiv
+    /// ints and uints: {s,u}div incur UB if division by zero occurs.
+    /// ints: sdiv is UB for int::MIN / -1.
+    /// floats: fdiv is never UB, but may create NaNs or infinities.
     pub(crate) fn simd_div<T>(x: T, y: T) -> T;
 
     /// urem/srem/frem
+    /// ints and uints: {s,u}rem incur UB if division by zero occurs.
+    /// ints: srem is UB for int::MIN / -1.
+    /// floats: frem is equivalent to libm::fmod in the "default" floating point environment, sans errno.
     pub(crate) fn simd_rem<T>(x: T, y: T) -> T;
 
     /// shl
@@ -45,6 +51,9 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_as<T, U>(x: T) -> U;
 
     /// neg/fneg
+    /// ints: ultimately becomes a call to cg_ssa's BuilderMethods::neg. cg_llvm equates this to `simd_sub(Simd::splat(0), x)`.
+    /// floats: LLVM's fneg, which changes the floating point sign bit. Some arches have instructions for it.
+    /// Rust panics for Neg::neg(int::MIN) due to overflow, but it is not UB in LLVM without `nsw`.
     pub(crate) fn simd_neg<T>(x: T) -> T;
 
     /// fabs
