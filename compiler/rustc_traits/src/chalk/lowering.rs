@@ -1034,10 +1034,6 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match *t.kind() {
-            // FIXME(chalk): currently we convert params to placeholders starting at
-            // index `0`. To support placeholders, we'll actually need to do a
-            // first pass to collect placeholders. Then we can insert params after.
-            ty::Placeholder(_) => unimplemented!(),
             ty::Param(param) => match self.list.iter().position(|r| r == &param) {
                 Some(idx) => self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
                     universe: ty::UniverseIndex::from_usize(0),
@@ -1053,15 +1049,15 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                     }))
                 }
             },
-
             _ => t.super_fold_with(self),
         }
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
         match r {
-            // FIXME(chalk) - jackh726 - this currently isn't hit in any tests.
-            // This covers any region variables in a goal, right?
+            // FIXME(chalk) - jackh726 - this currently isn't hit in any tests,
+            // since canonicalization will already change these to canonical
+            // variables (ty::ReLateBound).
             ty::ReEarlyBound(_re) => match self.named_regions.get(&_re.def_id) {
                 Some(idx) => {
                     let br = ty::BoundRegion {
@@ -1080,6 +1076,39 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
             },
 
             _ => r.super_fold_with(self),
+        }
+    }
+}
+
+crate struct ReverseParamsSubstitutor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
+}
+
+impl<'tcx> ReverseParamsSubstitutor<'tcx> {
+    crate fn new(
+        tcx: TyCtxt<'tcx>,
+        params: rustc_data_structures::fx::FxHashMap<usize, rustc_middle::ty::ParamTy>,
+    ) -> Self {
+        Self { tcx, params }
+    }
+}
+
+impl<'tcx> TypeFolder<'tcx> for ReverseParamsSubstitutor<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            ty::Placeholder(ty::PlaceholderType { universe: ty::UniverseIndex::ROOT, name }) => {
+                match self.params.get(&name.as_usize()) {
+                    Some(param) => self.tcx.mk_ty(ty::Param(*param)),
+                    None => t,
+                }
+            }
+
+            _ => t.super_fold_with(self),
         }
     }
 }

@@ -23,7 +23,7 @@ use rustc_infer::traits::{self, CanonicalChalkEnvironmentAndGoal};
 
 use crate::chalk::db::RustIrDatabase as ChalkRustIrDatabase;
 use crate::chalk::lowering::LowerInto;
-use crate::chalk::lowering::{ParamsSubstitutor, PlaceholdersCollector};
+use crate::chalk::lowering::{ParamsSubstitutor, PlaceholdersCollector, ReverseParamsSubstitutor};
 
 use chalk_solve::Solution;
 
@@ -44,7 +44,7 @@ crate fn evaluate_goal<'tcx>(
     let mut params_substitutor =
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
-    let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
+    let params: FxHashMap<usize, ParamTy> = params_substitutor.params;
 
     let max_universe = obligation.max_universe.index();
 
@@ -101,8 +101,9 @@ crate fn evaluate_goal<'tcx>(
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
+        let mut reverse_param_substitutor = ReverseParamsSubstitutor::new(tcx, params);
         subst.as_slice(interner).iter().for_each(|p| {
-            var_values.push(p.lower_into(interner));
+            var_values.push(p.lower_into(interner).fold_with(&mut reverse_param_substitutor));
         });
         let variables: Vec<_> = binders
             .iter(interner)
