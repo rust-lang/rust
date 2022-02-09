@@ -83,4 +83,63 @@ static void loadLTOPass(const PassManagerBuilder &Builder,
 static RegisterStandardPasses
     clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly,
                         loadLTOPass);
+
+#include "clang/AST/Attr.h"
+#include "clang/AST/DeclGroup.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendAction.h"
+#include "clang/Frontend/FrontendPluginRegistry.h"
+
+template <typename ConsumerType>
+class EnzymeAction : public clang::PluginASTAction {
+protected:
+  std::unique_ptr<clang::ASTConsumer>
+  CreateASTConsumer(clang::CompilerInstance &CI, llvm::StringRef InFile) {
+    return std::unique_ptr<clang::ASTConsumer>(new ConsumerType(CI));
+  }
+
+  bool ParseArgs(const clang::CompilerInstance &CI,
+                 const std::vector<std::string> &args) {
+    return true;
+  }
+
+  PluginASTAction::ActionType getActionType() override {
+    return AddBeforeMainAction;
+  }
+};
+
+class EnzymePlugin : public clang::ASTConsumer {
+  clang::CompilerInstance &CI;
+
+public:
+  EnzymePlugin(clang::CompilerInstance &CI) : CI(CI) {}
+  ~EnzymePlugin() {}
+  bool HandleTopLevelDecl(clang::DeclGroupRef dg) override {
+    using namespace clang;
+    DeclGroupRef::iterator it;
+
+    // Forcibly require emission of all libdevice
+    for (it = dg.begin(); it != dg.end(); ++it) {
+      auto FD = dyn_cast<FunctionDecl>(*it);
+      if (!FD)
+        continue;
+
+      if (!FD->hasAttr<clang::CUDADeviceAttr>())
+        continue;
+
+      if (!FD->getIdentifier())
+        continue;
+      if (!StringRef(FD->getLocation().printToString(CI.getSourceManager()))
+               .contains("/__clang_cuda_math.h"))
+        continue;
+
+      FD->addAttr(UsedAttr::CreateImplicit(CI.getASTContext()));
+    }
+    return true;
+  }
+};
+
+// register the PluginASTAction in the registry.
+static clang::FrontendPluginRegistry::Add<EnzymeAction<EnzymePlugin>>
+    X("enzyme", "Enzyme Plugin");
 #endif

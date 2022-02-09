@@ -19,6 +19,7 @@ if (${LLVM_VERSION_MAJOR} LESS 8)
         PLUGIN_TOOL
         opt
     )
+if (${Clang_FOUND})
     add_llvm_loadable_module( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
         DEPENDS
@@ -26,6 +27,7 @@ if (${LLVM_VERSION_MAJOR} LESS 8)
         PLUGIN_TOOL
         opt
     )
+endif()
 else()
 # on windows `PLUGIN_TOOL` doesn't link against LLVM.dll
 if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
@@ -37,6 +39,7 @@ if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
 	LINK_COMPONENTS
 	LLVM
     )
+if (${Clang_FOUND})
     add_llvm_library( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
         MODULE
@@ -45,6 +48,7 @@ if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
 	LINK_COMPONENTS
 	LLVM
     )
+endif()
 else()
     add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC}
@@ -54,6 +58,7 @@ else()
         PLUGIN_TOOL
         opt
     )
+if (${Clang_FOUND})
     add_llvm_library( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
         MODULE
@@ -62,6 +67,7 @@ else()
         PLUGIN_TOOL
         opt
     )
+endif()
 endif()
 endif()
 
@@ -82,12 +88,22 @@ if (APPLE)
 # Darwin-specific linker flags for loadable modules.
 set_target_properties(LLVMEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
     LINK_FLAGS "-Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
+if (${Clang_FOUND})
 set_target_properties(ClangEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
         LINK_FLAGS "-Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif()
+endif()
 
-install(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR} ClangEnzyme-${LLVM_VERSION_MAJOR}
+install(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR}
     EXPORT EnzymeTargets
     LIBRARY DESTINATION lib COMPONENT shlib
     PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
     COMPONENT dev)
+
+if (${Clang_FOUND})
+install(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
+    EXPORT EnzymeTargets
+    LIBRARY DESTINATION lib COMPONENT shlib
+    PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
+    COMPONENT dev)
+endif()

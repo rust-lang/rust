@@ -10,5 +10,7 @@ set(ENZYME_TEST_DEPS LLVMEnzyme-${LLVM_VERSION_MAJOR} BCPass-${LLVM_VERSION_MAJO
 add_subdirectory(ActivityAnalysis)
 add_subdirectory(TypeAnalysis)
 add_subdirectory(Enzyme)
+if (${Clang_FOUND})
 add_subdirectory(Integration)
+endif()
 add_subdirectory(BCLoader)

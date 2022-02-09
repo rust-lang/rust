@@ -55,11 +55,8 @@ public:
 
   bool runOnFunction(Function &F) override {
     bool changed = false;
-    std::map<std::pair<Type *, std::string>,
-             std::pair<std::string, std::string>>
-        Implements;
-    for (Type *T : {Type::getFloatTy(F.getContext()),
-                    Type::getDoubleTy(F.getContext())}) {
+    std::map<std::string, std::pair<std::string, std::string>> Implements;
+    for (std::string T : {"", "f"}) {
       // sincos, sinpi, cospi, sincospi, cyl_bessel_i1
       for (std::string name :
            {"sin",        "cos",     "tan",       "log2",   "exp",    "exp2",
@@ -75,19 +72,20 @@ public:
             "sqrt"}) {
         std::string nvname = "__nv_" + name;
         std::string llname = "llvm." + name + ".";
+        std::string mathname = name;
 
-        if (T->isFloatTy()) {
+        if (T == "f") {
+          mathname += "f";
           nvname += "f";
           llname += "f32";
         } else {
           llname += "f64";
         }
 
-        Implements[std::make_pair(T, nvname)] = std::make_pair(name, llname);
+        Implements[nvname] = std::make_pair(mathname, llname);
       }
     }
-    auto idx = std::make_pair(F.getReturnType(), F.getName().str());
-    auto found = Implements.find(idx);
+    auto found = Implements.find(F.getName().str());
     if (found != Implements.end()) {
       if (Begin) {
         F.removeFnAttr(Attribute::AlwaysInline);
@@ -96,6 +94,7 @@ public:
         // cannot be erased.
         F.setLinkage(Function::LinkageTypes::ExternalLinkage);
         F.addFnAttr("implements", found->second.second);
+        F.addFnAttr("implements2", found->second.first);
         F.addFnAttr("enzyme_math", found->second.first);
         changed = true;
       } else {

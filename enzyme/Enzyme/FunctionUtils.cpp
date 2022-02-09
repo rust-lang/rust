@@ -2084,36 +2084,40 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
   // EarlyCSEPass(/*memoryssa*/ true).run(*F, FAM);
 
   for (Function &Impl : *F->getParent()) {
-    if (!Impl.hasFnAttribute("implements"))
-      continue;
-    const Attribute &A = Impl.getFnAttribute("implements");
+    for (auto attr : {"implements", "implements2"}) {
+      if (!Impl.hasFnAttribute(attr))
+        continue;
+      const Attribute &A = Impl.getFnAttribute(attr);
 
-    const StringRef SpecificationName = A.getValueAsString();
-    Function *Specification = F->getParent()->getFunction(SpecificationName);
-    if (!Specification) {
-      LLVM_DEBUG(dbgs() << "Found implementation '" << Impl.getName()
-                        << "' but no matching specification with name '"
-                        << SpecificationName
-                        << "', potentially inlined and/or eliminated.\n");
-      continue;
-    }
-    LLVM_DEBUG(dbgs() << "Replace specification '" << Specification->getName()
-                      << "' with implementation '" << Impl.getName() << "'\n");
+      const StringRef SpecificationName = A.getValueAsString();
+      Function *Specification = F->getParent()->getFunction(SpecificationName);
+      if (!Specification) {
+        LLVM_DEBUG(dbgs() << "Found implementation '" << Impl.getName()
+                          << "' but no matching specification with name '"
+                          << SpecificationName
+                          << "', potentially inlined and/or eliminated.\n");
+        continue;
+      }
+      LLVM_DEBUG(dbgs() << "Replace specification '" << Specification->getName()
+                        << "' with implementation '" << Impl.getName()
+                        << "'\n");
 
-    for (auto I = Specification->use_begin(), UE = Specification->use_end();
-         I != UE;) {
-      auto &use = *I;
-      ++I;
-      auto cext = ConstantExpr::getBitCast(&Impl, Specification->getType());
-      use.set(cext);
-      if (auto CI = dyn_cast<CallInst>(use.getUser())) {
+      for (auto I = Specification->use_begin(), UE = Specification->use_end();
+           I != UE;) {
+        auto &use = *I;
+        ++I;
+        auto cext = ConstantExpr::getBitCast(&Impl, Specification->getType());
+        use.set(cext);
+        if (auto CI = dyn_cast<CallInst>(use.getUser())) {
 #if LLVM_VERSION_MAJOR >= 11
-        if (CI->getCalledOperand() == cext || CI->getCalledFunction() == &Impl)
+          if (CI->getCalledOperand() == cext ||
+              CI->getCalledFunction() == &Impl)
 #else
-        if (CI->getCalledValue() == cext || CI->getCalledFunction() == &Impl)
+          if (CI->getCalledValue() == cext || CI->getCalledFunction() == &Impl)
 #endif
-        {
-          CI->setCallingConv(Impl.getCallingConv());
+          {
+            CI->setCallingConv(Impl.getCallingConv());
+          }
         }
       }
     }

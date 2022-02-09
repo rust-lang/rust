@@ -41,7 +41,18 @@ get_filename_component(LLVM_ABSOLUTE_DIR
 
 set(LLVM_DIR "${LLVM_ABSOLUTE_DIR}" CACHE FILEPATH "b" FORCE)
 
-message("found llvm dir " ${LLVM_DIR})
+if (NOT DEFINED LLVM_EXTERNAL_LIT)
+  if(LLVM_DIR MATCHES ".*/cmake/llvm/?$")
+      message("found llvm match ${CMAKE_MATCH_1} dir ${LLVM_DIR}")
+    if (EXISTS ${LLVM_DIR}/../../../bin/llvm-lit) 
+      set(LLVM_EXTERNAL_LIT ${LLVM_DIR}/../../../bin/llvm-lit) 
+    endif()
+  else()
+    if (EXISTS ${LLVM_DIR}/bin/llvm-lit) 
+      set(LLVM_EXTERNAL_LIT ${LLVM_DIR}/bin/llvm-lit) 
+    endif()
+  endif()
+endif()
 
 get_filename_component(LLVM_ABSOLUTE_LIT
                        "${LLVM_EXTERNAL_LIT}"
@@ -50,14 +61,54 @@ get_filename_component(LLVM_ABSOLUTE_LIT
                    set(LLVM_EXTERNAL_LIT "${LLVM_ABSOLUTE_LIT}" CACHE FILEPATH "a" FORCE)
 message("found llvm lit " ${LLVM_EXTERNAL_LIT})
 
-
-
 list(INSERT CMAKE_PREFIX_PATH 0 "${LLVM_DIR}")
+if (DEFINED Clang_DIR)
+    get_filename_component(Clang_ABSOLUTE_DIR
+      "${Clang_DIR}"
+    REALPATH BASE_DIR "${CMAKE_BINARY_DIR}")
+set(Clang_DIR "${Clang_ABSOLUTE_DIR}" CACHE FILEPATH "b" FORCE)
+  list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+  message("clang dir defined ${Clang_DIR}")
+else()
+  if(LLVM_DIR MATCHES ".*/cmake/llvm/?$")
+    if (EXISTS ${LLVM_DIR}/../clang/../../libclangBasic.a)
+      set(Clang_DIR ${LLVM_DIR}/../clang)
+     list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+    endif()
+  elseif(LLVM_DIR MATCHES ".*/llvm-([0-9]+)/?$")
+    if (EXISTS ${LLVM_DIR}/lib/libclangBasic.a)
+      set(Clang_DIR ${LLVM_DIR}/lib/cmake/clang)
+     list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+    endif()
+  else()
+    if (EXISTS ${LLVM_DIR}/lib/libclangBasic.a)
+      set(Clang_DIR ${LLVM_DIR})
+      list(INSERT CMAKE_PREFIX_PATH 0 "${Clang_DIR}")
+    endif()
+  endif()
+  message("clang dir from llvm ${Clang_DIR}")
+endif()
 message("CMAKE_PREFIX_PATH " ${CMAKE_PREFIX_PATH})
+
 find_package(LLVM REQUIRED CONFIG)
 
 list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(AddLLVM)
+
+message("clang dir ${Clang_DIR}")
+
+if (DEFINED Clang_DIR)
+    find_package(Clang REQUIRED CONFIG PATHS ${Clang_DIR} NO_DEFAULT_PATH)
+if (${Clang_FOUND})
+    include_directories(${CLANG_INCLUDE_DIRS})
+    message("clang inc dir ${CLANG_INCLUDE_DIRS}")
+    add_definitions(${CLANG_DEFINITIONS})
+endif()
+else()
+    set(Clang_FOUND 0) 
+endif()
+message("found ${Clang_FOUND}")
+# include(AddClang)
 
 add_definitions(${LLVM_DEFINITIONS})
 include_directories(${LLVM_INCLUDE_DIRS})
@@ -132,9 +183,13 @@ if(NOT IS_ABSOLUTE "${${var}}")
 endif()
 endforeach()
 
-export(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR} ClangEnzyme-${LLVM_VERSION_MAJOR}
+export(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR}
   FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
 
+if (${Clang_FOUND})
+export(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
+    APPEND FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
+endif()
 export(PACKAGE Enzyme)
 
 set(CONF_LLVM_VERSION_MAJOR ${LLVM_VERSION_MAJOR})
