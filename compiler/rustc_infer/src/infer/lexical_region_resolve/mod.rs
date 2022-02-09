@@ -61,6 +61,7 @@ pub(crate) fn resolve<'tcx>(
 
 /// Contains the result of lexical region resolution. Offers methods
 /// to lookup up the final value of a region variable.
+#[derive(Clone)]
 pub struct LexicalRegionResolutions<'tcx> {
     values: IndexVec<RegionVid, VarValue<'tcx>>,
     error_region: ty::Region<'tcx>,

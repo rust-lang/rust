@@ -379,7 +379,7 @@ fn negative_impl_exists<'cx, 'tcx>(
     region_context: DefId,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
-    let infcx = selcx.infcx().clone();
+    let infcx = &selcx.infcx().fork();
     let tcx = infcx.tcx;
     o.flip_polarity(tcx)
         .map(|o| {

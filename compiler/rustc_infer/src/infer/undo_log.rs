@@ -17,6 +17,7 @@ pub struct Snapshot<'tcx> {
 }
 
 /// Records the "undo" data for a single operation that affects some form of inference variable.
+#[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
     TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ty::ConstVid<'tcx>>>),
@@ -84,6 +85,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
 
 /// The combined undo log for all the various unification tables. For each change to the storage
 /// for any kind of inference variable, we record an UndoLog entry in the vector here.
+#[derive(Clone)]
 pub(crate) struct InferCtxtUndoLogs<'tcx> {
     logs: Vec<UndoLog<'tcx>>,
     num_open_snapshots: usize,

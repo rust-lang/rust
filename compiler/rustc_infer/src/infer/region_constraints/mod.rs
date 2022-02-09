@@ -28,7 +28,7 @@ mod leak_check;
 
 pub use rustc_middle::infer::MemberConstraint;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
     var_infos: IndexVec<RegionVid, RegionVariableInfo>,
