@@ -1,4 +1,3 @@
-// ignore-compare-mode-chalk
 #![feature(arbitrary_self_types)]
 #![feature(type_alias_impl_trait)]
 
