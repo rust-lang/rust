@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
@@ -116,13 +116,20 @@ where
     }
 
     #[inline]
-    pub unsafe fn to_bitmask_integer<U>(self) -> U {
+    pub fn to_bitmask_integer<U>(self) -> U
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: these are the same types
         unsafe { core::mem::transmute_copy(&self.0) }
     }
 
-    // Safety: U must be the integer with the exact number of bits required to hold the bitmask for
     #[inline]
-    pub unsafe fn from_bitmask_integer<U>(bitmask: U) -> Self {
+    pub fn from_bitmask_integer<U>(bitmask: U) -> Self
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: these are the same types
         unsafe { Self(core::mem::transmute_copy(&bitmask), PhantomData) }
     }
 

@@ -2,7 +2,7 @@
 
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
@@ -66,6 +66,23 @@ where
     }
 }
 
+// Used for bitmask bit order workaround
+pub(crate) trait ReverseBits {
+    fn reverse_bits(self) -> Self;
+}
+
+macro_rules! impl_reverse_bits {
+    { $($int:ty),* } => {
+        $(
+        impl ReverseBits for $int {
+            fn reverse_bits(self) -> Self { <$int>::reverse_bits(self) }
+        }
+        )*
+    }
+}
+
+impl_reverse_bits! { u8, u16, u32, u64 }
+
 impl<T, const LANES: usize> Mask<T, LANES>
 where
     T: MaskElement,
@@ -110,16 +127,34 @@ where
     }
 
     #[inline]
-    pub unsafe fn to_bitmask_integer<U>(self) -> U {
-        // Safety: caller must only return bitmask types
-        unsafe { intrinsics::simd_bitmask(self.0) }
+    pub(crate) fn to_bitmask_integer<U: ReverseBits>(self) -> U
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: U is required to be the appropriate bitmask type
+        let bitmask: U = unsafe { intrinsics::simd_bitmask(self.0) };
+
+        // LLVM assumes bit order should match endianness
+        if cfg!(target_endian = "big") {
+            bitmask.reverse_bits()
+        } else {
+            bitmask
+        }
     }
 
-    // Safety: U must be the integer with the exact number of bits required to hold the bitmask for
-    // this mask
     #[inline]
-    pub unsafe fn from_bitmask_integer<U>(bitmask: U) -> Self {
-        // Safety: caller must only pass bitmask types
+    pub(crate) fn from_bitmask_integer<U: ReverseBits>(bitmask: U) -> Self
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // LLVM assumes bit order should match endianness
+        let bitmask = if cfg!(target_endian = "big") {
+            bitmask.reverse_bits()
+        } else {
+            bitmask
+        };
+
+        // Safety: U is required to be the appropriate bitmask type
         unsafe {
             Self::from_int_unchecked(intrinsics::simd_select_bitmask(
                 bitmask,
