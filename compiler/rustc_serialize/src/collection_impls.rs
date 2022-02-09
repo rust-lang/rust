@@ -81,15 +81,14 @@ where
     V: Decodable<D>,
 {
     fn decode(d: &mut D) -> BTreeMap<K, V> {
-        d.read_map(|d, len| {
-            let mut map = BTreeMap::new();
-            for _ in 0..len {
-                let key = Decodable::decode(d);
-                let val = Decodable::decode(d);
-                map.insert(key, val);
-            }
-            map
-        })
+        let len = d.read_usize();
+        let mut map = BTreeMap::new();
+        for _ in 0..len {
+            let key = Decodable::decode(d);
+            let val = Decodable::decode(d);
+            map.insert(key, val);
+        }
+        map
     }
 }
 
@@ -145,16 +144,15 @@ where
     S: BuildHasher + Default,
 {
     fn decode(d: &mut D) -> HashMap<K, V, S> {
-        d.read_map(|d, len| {
-            let state = Default::default();
-            let mut map = HashMap::with_capacity_and_hasher(len, state);
-            for _ in 0..len {
-                let key = Decodable::decode(d);
-                let val = Decodable::decode(d);
-                map.insert(key, val);
-            }
-            map
-        })
+        let len = d.read_usize();
+        let state = Default::default();
+        let mut map = HashMap::with_capacity_and_hasher(len, state);
+        for _ in 0..len {
+            let key = Decodable::decode(d);
+            let val = Decodable::decode(d);
+            map.insert(key, val);
+        }
+        map
     }
 }
 
@@ -223,16 +221,15 @@ where
     S: BuildHasher + Default,
 {
     fn decode(d: &mut D) -> indexmap::IndexMap<K, V, S> {
-        d.read_map(|d, len| {
-            let state = Default::default();
-            let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
-            for _ in 0..len {
-                let key = Decodable::decode(d);
-                let val = Decodable::decode(d);
-                map.insert(key, val);
-            }
-            map
-        })
+        let len = d.read_usize();
+        let state = Default::default();
+        let mut map = indexmap::IndexMap::with_capacity_and_hasher(len, state);
+        for _ in 0..len {
+            let key = Decodable::decode(d);
+            let val = Decodable::decode(d);
+            map.insert(key, val);
+        }
+        map
     }
 }
 

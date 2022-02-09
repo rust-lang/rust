@@ -200,14 +200,6 @@ pub trait Decoder {
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> Cow<'_, str>;
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
-
-    fn read_map<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self, usize) -> T,
-    {
-        let len = self.read_usize();
-        f(self, len)
-    }
 }
 
 /// Trait for types that can be serialized
