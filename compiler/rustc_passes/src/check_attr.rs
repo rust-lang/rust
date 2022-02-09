@@ -345,7 +345,10 @@ impl CheckAttrVisitor<'_> {
         attrs: &[Attribute],
     ) -> bool {
         for any_attr in attrs {
-            if any_attr.has_name(sym::track_caller) || any_attr.has_name(sym::inline) {
+            if any_attr.has_name(sym::track_caller)
+                || any_attr.has_name(sym::inline)
+                || any_attr.has_name(sym::target_feature)
+            {
                 struct_span_err!(
                     self.tcx.sess,
                     any_attr.span,

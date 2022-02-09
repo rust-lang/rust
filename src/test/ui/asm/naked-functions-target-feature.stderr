@@ -1,0 +1,9 @@
+error[E0736]: cannot use additional code generation attributes with `#[naked]`
+  --> $DIR/naked-functions-target-feature.rs:21:1
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0736`.
