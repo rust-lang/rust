@@ -10,15 +10,20 @@ use std::{
     sync::Arc,
 };
 
-use dashmap::{lock::RwLockWriteGuard, DashMap, SharedValue};
+use dashmap::{DashMap, SharedValue};
+use lock_api::RwLockWriteGuard;
 use once_cell::sync::OnceCell;
+use parking_lot::RawRwLock;
 use rustc_hash::FxHasher;
 
 use crate::generics::GenericParams;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
-type Guard<T> =
-    RwLockWriteGuard<'static, HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>>;
+type Guard<T> = RwLockWriteGuard<
+    'static,
+    RawRwLock,
+    HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>,
+>;
 
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,
