@@ -42,15 +42,7 @@ fn decodable_body(
     }
     let ty_name = s.ast().ident.to_string();
     let decode_body = match s.variants() {
-        [vi] => {
-            let construct = vi.construct(|field, index| decode_field(field, index, true));
-            quote! {
-                ::rustc_serialize::Decoder::read_struct(
-                    __decoder,
-                    |__decoder| { #construct },
-                )
-            }
-        }
+        [vi] => vi.construct(|field, index| decode_field(field, index, true)),
         variants => {
             let match_inner: TokenStream = variants
                 .iter()

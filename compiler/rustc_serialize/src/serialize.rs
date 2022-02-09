@@ -211,14 +211,6 @@ pub trait Decoder {
     }
 
     #[inline]
-    fn read_struct<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
     fn read_struct_field<T, F>(&mut self, _f_name: &str, f: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
