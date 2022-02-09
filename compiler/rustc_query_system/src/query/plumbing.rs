@@ -5,9 +5,7 @@
 use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
 use crate::query::caches::QueryCache;
 use crate::query::config::{QueryDescription, QueryVtable};
-use crate::query::job::{
-    report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId,
-};
+use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHasher};
@@ -24,7 +22,6 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::mem;
-use std::num::NonZeroU32;
 use std::ptr;
 
 pub struct QueryCacheStore<C: QueryCache> {
@@ -69,36 +66,32 @@ impl<C: QueryCache> QueryCacheStore<C> {
     }
 }
 
-struct QueryStateShard<D, K> {
-    active: FxHashMap<K, QueryResult<D>>,
-
-    /// Used to generate unique ids for active jobs.
-    jobs: u32,
+struct QueryStateShard<K> {
+    active: FxHashMap<K, QueryResult>,
 }
 
-impl<D, K> Default for QueryStateShard<D, K> {
-    fn default() -> QueryStateShard<D, K> {
-        QueryStateShard { active: Default::default(), jobs: 0 }
+impl<K> Default for QueryStateShard<K> {
+    fn default() -> QueryStateShard<K> {
+        QueryStateShard { active: Default::default() }
     }
 }
 
-pub struct QueryState<D, K> {
-    shards: Sharded<QueryStateShard<D, K>>,
+pub struct QueryState<K> {
+    shards: Sharded<QueryStateShard<K>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult<D> {
+enum QueryResult {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob<D>),
+    Started(QueryJob),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<D, K> QueryState<D, K>
+impl<K> QueryState<K>
 where
-    D: Copy + Clone + Eq + Hash,
     K: Eq + Hash + Clone + Debug,
 {
     pub fn all_inactive(&self) -> bool {
@@ -109,19 +102,17 @@ where
     pub fn try_collect_active_jobs<CTX: Copy>(
         &self,
         tcx: CTX,
-        kind: D,
         make_query: fn(CTX, K) -> QueryStackFrame,
-        jobs: &mut QueryMap<D>,
+        jobs: &mut QueryMap,
     ) -> Option<()> {
         // We use try_lock_shards here since we are called from the
         // deadlock handler, and this shouldn't be locked.
         let shards = self.shards.try_lock_shards()?;
-        for (shard_id, shard) in shards.iter().enumerate() {
+        for shard in shards.iter() {
             for (k, v) in shard.active.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    let id = QueryJobId::new(job.id, shard_id, kind);
                     let query = make_query(tcx, k.clone());
-                    jobs.insert(id, QueryJobInfo { query, job: job.clone() });
+                    jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
                 }
             }
         }
@@ -130,22 +121,21 @@ where
     }
 }
 
-impl<D, K> Default for QueryState<D, K> {
-    fn default() -> QueryState<D, K> {
+impl<K> Default for QueryState<K> {
+    fn default() -> QueryState<K> {
         QueryState { shards: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, D, K>
+struct JobOwner<'tcx, K>
 where
-    D: Copy + Clone + Eq + Hash,
     K: Eq + Hash + Clone,
 {
-    state: &'tcx QueryState<D, K>,
+    state: &'tcx QueryState<K>,
     key: K,
-    id: QueryJobId<D>,
+    id: QueryJobId,
 }
 
 #[cold]
@@ -166,9 +156,8 @@ where
     cache.store_nocache(value)
 }
 
-impl<'tcx, D, K> JobOwner<'tcx, D, K>
+impl<'tcx, K> JobOwner<'tcx, K>
 where
-    D: Copy + Clone + Eq + Hash,
     K: Eq + Hash + Clone,
 {
     /// Either gets a `JobOwner` corresponding the query, allowing us to
@@ -182,12 +171,11 @@ where
     #[inline(always)]
     fn try_start<'b, CTX>(
         tcx: &'b CTX,
-        state: &'b QueryState<CTX::DepKind, K>,
+        state: &'b QueryState<K>,
         span: Span,
         key: K,
         lookup: QueryLookup,
-        dep_kind: CTX::DepKind,
-    ) -> TryGetJob<'b, CTX::DepKind, K>
+    ) -> TryGetJob<'b, K>
     where
         CTX: QueryContext,
     {
@@ -197,27 +185,21 @@ where
 
         match lock.active.entry(key) {
             Entry::Vacant(entry) => {
-                // Generate an id unique within this shard.
-                let id = lock.jobs.checked_add(1).unwrap();
-                lock.jobs = id;
-                let id = QueryShardJobId(NonZeroU32::new(id).unwrap());
-
+                let id = tcx.next_job_id();
                 let job = tcx.current_query_job();
                 let job = QueryJob::new(id, span, job);
 
                 let key = entry.key().clone();
                 entry.insert(QueryResult::Started(job));
 
-                let global_id = QueryJobId::new(id, shard, dep_kind);
-                let owner = JobOwner { state, id: global_id, key };
+                let owner = JobOwner { state, id, key };
                 return TryGetJob::NotYetStarted(owner);
             }
             Entry::Occupied(mut entry) => {
                 match entry.get_mut() {
                     #[cfg(not(parallel_compiler))]
                     QueryResult::Started(job) => {
-                        let id = QueryJobId::new(job.id, shard, dep_kind);
-
+                        let id = job.id;
                         drop(state_lock);
 
                         // If we are single-threaded we know that we have cycle error,
@@ -295,9 +277,8 @@ where
     }
 }
 
-impl<'tcx, D, K> Drop for JobOwner<'tcx, D, K>
+impl<'tcx, K> Drop for JobOwner<'tcx, K>
 where
-    D: Copy + Clone + Eq + Hash,
     K: Eq + Hash + Clone,
 {
     #[inline(never)]
@@ -329,13 +310,12 @@ pub(crate) struct CycleError {
 }
 
 /// The result of `try_start`.
-enum TryGetJob<'tcx, D, K>
+enum TryGetJob<'tcx, K>
 where
-    D: Copy + Clone + Eq + Hash,
     K: Eq + Hash + Clone,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'tcx, D, K>),
+    NotYetStarted(JobOwner<'tcx, K>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep-node index
@@ -375,7 +355,7 @@ where
 
 fn try_execute_query<CTX, C>(
     tcx: CTX,
-    state: &QueryState<CTX::DepKind, C::Key>,
+    state: &QueryState<C::Key>,
     cache: &QueryCacheStore<C>,
     span: Span,
     key: C::Key,
@@ -388,14 +368,7 @@ where
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    match JobOwner::<'_, CTX::DepKind, C::Key>::try_start(
-        &tcx,
-        state,
-        span,
-        key.clone(),
-        lookup,
-        query.dep_kind,
-    ) {
+    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone(), lookup) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id);
             let result = job.complete(cache, result, dep_node_index);
@@ -427,7 +400,7 @@ fn execute_job<CTX, K, V>(
     key: K,
     mut dep_node_opt: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, K, V>,
-    job_id: QueryJobId<CTX::DepKind>,
+    job_id: QueryJobId,
 ) -> (V, DepNodeIndex)
 where
     K: Clone + DepNodeParams<CTX::DepContext>,

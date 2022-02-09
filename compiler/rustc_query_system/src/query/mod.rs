@@ -117,10 +117,12 @@ impl QuerySideEffects {
 }
 
 pub trait QueryContext: HasDepContext {
-    /// Get the query information from the TLS context.
-    fn current_query_job(&self) -> Option<QueryJobId<Self::DepKind>>;
+    fn next_job_id(&self) -> QueryJobId;
 
-    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
+    /// Get the query information from the TLS context.
+    fn current_query_job(&self) -> Option<QueryJobId>;
+
+    fn try_collect_active_jobs(&self) -> Option<QueryMap>;
 
     /// Load side effects associated to the node in the previous session.
     fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
@@ -140,7 +142,7 @@ pub trait QueryContext: HasDepContext {
     /// captured during execution and the actual result.
     fn start_query<R>(
         &self,
-        token: QueryJobId<Self::DepKind>,
+        token: QueryJobId,
         diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
         compute: impl FnOnce() -> R,
     ) -> R;
