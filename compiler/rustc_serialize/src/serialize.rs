@@ -202,7 +202,7 @@ pub trait Decoder {
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
 
     #[inline]
-    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> T
+    fn read_enum_variant<T, F>(&mut self, mut f: F) -> T
     where
         F: FnMut(&mut Self, usize) -> T,
     {
@@ -255,7 +255,7 @@ pub trait Decoder {
     where
         F: FnMut(&mut Self, bool) -> T,
     {
-        self.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
+        self.read_enum_variant(move |this, idx| match idx {
             0 => f(this, false),
             1 => f(this, true),
             _ => panic!("read_option: expected 0 for None or 1 for Some"),
@@ -571,7 +571,7 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
-        d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
+        d.read_enum_variant(|d, disr| match disr {
             0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
             1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
             _ => panic!("Encountered invalid discriminant while decoding `Result`."),

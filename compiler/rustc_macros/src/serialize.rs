@@ -60,13 +60,6 @@ fn decodable_body(
                     quote! { #idx => { #construct } }
                 })
                 .collect();
-            let names: TokenStream = variants
-                .iter()
-                .map(|vi| {
-                    let variant_name = vi.ast().ident.to_string();
-                    quote!(#variant_name,)
-                })
-                .collect();
             let message = format!(
                 "invalid enum variant tag while decoding `{}`, expected 0..{}",
                 ty_name,
@@ -75,7 +68,6 @@ fn decodable_body(
             quote! {
                 ::rustc_serialize::Decoder::read_enum_variant(
                     __decoder,
-                    &[#names],
                     |__decoder, __variant_idx| {
                         match __variant_idx {
                             #match_inner
