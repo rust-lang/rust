@@ -4,6 +4,7 @@ error[E0658]: `#[used(linker)]` is currently unstable
 LL | #[used(linker)]
    | ^^^^^^^^^^^^^^^
    |
+   = note: see issue #93798 <https://github.com/rust-lang/rust/issues/93798> for more information
    = help: add `#![feature(used_with_arg)]` to the crate attributes to enable
 
 error[E0658]: `#[used(compiler)]` is currently unstable
@@ -12,6 +13,7 @@ error[E0658]: `#[used(compiler)]` is currently unstable
 LL | #[used(compiler)]
    | ^^^^^^^^^^^^^^^^^
    |
+   = note: see issue #93798 <https://github.com/rust-lang/rust/issues/93798> for more information
    = help: add `#![feature(used_with_arg)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
