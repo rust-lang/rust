@@ -13,10 +13,9 @@ use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
-/// This type is commonly known by names like `f32x4` or `Vec4` in many programming languages.
 ///
-/// Two vectors of the same type and length will, by convention, support the binary operations (+, *, etc.) that `T` does.
-/// These take the lanes at each index on the left-hand side and right-hand side, perform the binary operation,
+/// Two vectors of the same type and length will, by convention, support the operators (+, *, etc.) that `T` does.
+/// These take the lanes at each index on the left-hand side and right-hand side, perform the operation,
 /// and return the result in the same lane in a vector of equal size. For a given operator, this is equivalent to zipping
 /// the two arrays together and mapping the operator over each lane.
 ///
@@ -29,14 +28,14 @@ use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
 /// let zm_mul = a0.zip(a1).map(|(lhs, rhs)| lhs * rhs);
 ///
 /// // `Simd<T, N>` implements `From<[T; N]>
-/// let [v0, v1] = [a0, a1].map(|a| Simd::from(a));
+/// let (v0, v1) = (Simd::from(a0), Simd::from(a1));
 /// // Which means arrays implement `Into<Simd<T, N>>`.
 /// assert_eq!(v0 + v1, zm_add.into());
 /// assert_eq!(v0 * v1, zm_mul.into());
 /// ```
 ///
 /// `Simd` with integers has the quirk that these operations are also inherently wrapping, as if `T` was [`Wrapping<T>`].
-/// Thus, `Simd` does not implement `wrapping_add`, because that is the behavior of the normal operation.
+/// Thus, `Simd` does not implement `wrapping_add`, because that is the default behavior.
 /// This means there is no warning on overflows, even in "debug" builds.
 /// For most applications where `Simd` is appropriate, it is "not a bug" to wrap,
 /// and even "debug builds" are unlikely to tolerate the loss of performance.

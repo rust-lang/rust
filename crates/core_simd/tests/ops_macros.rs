@@ -213,13 +213,13 @@ macro_rules! impl_signed_tests {
                 fn div_min_may_overflow<const LANES: usize>() {
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(-1);
-                    assert_eq!(a / b, a / (b * b));
+                    assert_eq!(a / b, a);
                 }
 
                 fn rem_min_may_overflow<const LANES: usize>() {
                     let a = Vector::<LANES>::splat(Scalar::MIN);
                     let b = Vector::<LANES>::splat(-1);
-                    assert_eq!(a % b, a % (b * b));
+                    assert_eq!(a % b, Vector::<LANES>::splat(0));
                 }
 
             }
