@@ -4,7 +4,7 @@ use crate::build::Builder;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::CanonicalUserTypeAnnotation;
+use rustc_middle::ty::{CanonicalUserTypeAnnotation, Variance};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
@@ -22,6 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         span,
                         user_ty,
                         inferred_ty: ty,
+                        variance: Variance::Invariant,
                     })
                 });
                 assert_eq!(literal.ty(), ty);

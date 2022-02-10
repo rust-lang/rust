@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Variance};
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -364,6 +364,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         span: source_info.span,
                         user_ty: ty,
                         inferred_ty,
+                        variance: Variance::Invariant,
                     })
                 });
                 let adt = Box::new(AggregateKind::Adt(

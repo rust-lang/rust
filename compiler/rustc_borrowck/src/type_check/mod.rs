@@ -1068,15 +1068,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             self.user_type_annotations
         );
         for user_annotation in self.user_type_annotations {
-            let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty } = *user_annotation;
+            let CanonicalUserTypeAnnotation { span, ref user_ty, inferred_ty, variance } =
+                *user_annotation;
             let inferred_ty = self.normalize(inferred_ty, Locations::All(span));
             let annotation = self.instantiate_canonical_with_fresh_inference_vars(span, user_ty);
             match annotation {
                 UserType::Ty(mut ty) => {
                     ty = self.normalize(ty, Locations::All(span));
 
-                    if let Err(terr) = self.eq_types(
+                    // `ty` and `inferred_ty` are swapped for
+                    // better diagnostics.
+                    if let Err(terr) = self.relate_types(
                         ty,
+                        variance.xform(ty::Variance::Contravariant),
                         inferred_ty,
                         Locations::All(span),
                         ConstraintCategory::BoringNoLocation,

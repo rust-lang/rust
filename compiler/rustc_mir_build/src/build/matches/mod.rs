@@ -19,7 +19,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, Variance};
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, Pos, Span};
 use rustc_target::abi::VariantIdx;
@@ -538,8 +538,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let ty_source_info = self.source_info(user_ty_span);
                 let user_ty = pat_ascription_ty.user_ty(
                     &mut self.canonical_user_type_annotations,
-                    place.ty(&self.local_decls, self.tcx).ty,
                     ty_source_info.span,
+                    place.ty(&self.local_decls, self.tcx).ty,
+                    Variance::Invariant,
                 );
                 self.cfg.push(
                     block,
@@ -796,6 +797,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     span: user_ty_span,
                     user_ty: user_ty.user_ty,
                     inferred_ty: subpattern.ty,
+                    variance: Variance::Invariant,
                 };
                 let projection = UserTypeProjection {
                     base: self.canonical_user_type_annotations.push(annotation),
@@ -2076,8 +2078,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let user_ty = ascription.user_ty.user_ty(
                 &mut self.canonical_user_type_annotations,
-                ascription.source.ty(&self.local_decls, self.tcx).ty,
                 source_info.span,
+                ascription.source.ty(&self.local_decls, self.tcx).ty,
+                ascription.variance,
             );
             self.cfg.push(
                 block,

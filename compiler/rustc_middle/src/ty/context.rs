@@ -22,6 +22,7 @@ use crate::ty::{
     FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
     ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
+    Variance,
 };
 use rustc_ast as ast;
 use rustc_attr as attr;
@@ -833,6 +834,7 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
+    pub variance: Variance,
 }
 
 /// Canonicalized user type annotation.

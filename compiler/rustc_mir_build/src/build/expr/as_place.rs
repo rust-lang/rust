@@ -493,6 +493,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: source_info.span,
                             user_ty,
                             inferred_ty: expr.ty,
+                            variance: Variance::Invariant,
                         });
 
                     let place = place_builder.clone().into_place(this.tcx, this.typeck_results);
@@ -522,6 +523,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             span: source_info.span,
                             user_ty,
                             inferred_ty: expr.ty,
+                            variance: Variance::Invariant,
                         });
                     this.cfg.push(
                         block,

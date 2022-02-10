@@ -552,14 +552,16 @@ impl<'tcx> PatTyProj<'tcx> {
     pub fn user_ty(
         self,
         annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
-        inferred_ty: Ty<'tcx>,
         span: Span,
+        inferred_ty: Ty<'tcx>,
+        variance: ty::Variance,
     ) -> UserTypeProjection {
         UserTypeProjection {
             base: annotations.push(CanonicalUserTypeAnnotation {
                 span,
                 user_ty: self.user_ty,
                 inferred_ty,
+                variance,
             }),
             projs: Vec::new(),
         }
