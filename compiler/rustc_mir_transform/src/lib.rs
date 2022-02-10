@@ -43,7 +43,8 @@ mod add_retag;
 mod check_const_item_mutation;
 mod check_packed_ref;
 pub mod check_unsafety;
-mod cleanup_post_borrowck;
+// This pass is public to allow external drivers to perform MIR cleanup
+pub mod cleanup_post_borrowck;
 mod const_debuginfo;
 mod const_goto;
 mod const_prop;
@@ -65,7 +66,8 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
-mod remove_false_edges;
+// This pass is public to allow external drivers to perform MIR cleanup
+pub mod remove_false_edges;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_uninit_drops;
@@ -75,7 +77,8 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
-mod simplify;
+// This pass is public to allow external drivers to perform MIR cleanup
+pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
 mod simplify_try;

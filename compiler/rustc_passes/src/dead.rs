@@ -466,7 +466,10 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 
     // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
     // forcefully, e.g., for placing it in a specific section.
-    if cg_attrs.contains_extern_indicator() || cg_attrs.flags.contains(CodegenFnAttrFlags::USED) {
+    if cg_attrs.contains_extern_indicator()
+        || cg_attrs.flags.contains(CodegenFnAttrFlags::USED)
+        || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+    {
         return true;
     }
 

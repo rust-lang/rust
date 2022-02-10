@@ -9,19 +9,41 @@
 // compile-flags: -Cdebuginfo=2 -Copt-level=0 -Csymbol-mangling-version=v0
 // ignore-tidy-linelength
 
+// NONMSVC: ![[USIZE:[0-9]+]] = !DIBasicType(name: "usize"
+// MSVC: ![[USIZE:[0-9]+]] = !DIDerivedType(tag: DW_TAG_typedef, name: "usize"
+// NONMSVC: ![[PTR:[0-9]+]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "*const ()"
+// MSVC: ![[PTR:[0-9]+]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "ptr_const$<tuple$<> >"
+
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::Foo as debug_vtable::SomeTrait>::{vtable}"
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::Foo, debug_vtable::SomeTrait>::vtable$"
-// NONMSVC: !DIDerivedType(tag: DW_TAG_pointer_type, name: "*const ()",
-// MSVC: !DIDerivedType(tag: DW_TAG_pointer_type, name: "ptr_const$<tuple$<> >",
-// CHECK: !DISubrange(count: 5
+
+// NONMSVC: ![[VTABLE_TY0:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "<debug_vtable::Foo as debug_vtable::SomeTrait>::{vtable_type}", {{.*}} size: {{320|160}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}} vtableHolder: ![[FOO_TYPE:[0-9]+]],
+// MSVC: ![[VTABLE_TY0:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "impl$<debug_vtable::Foo, debug_vtable::SomeTrait>::vtable_type$", {{.*}} size: {{320|160}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}} vtableHolder: ![[FOO_TYPE:[0-9]+]],
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "drop_in_place", scope: ![[VTABLE_TY0]], {{.*}} baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "size", scope: ![[VTABLE_TY0]], {{.*}} baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "align", scope: ![[VTABLE_TY0]], {{.*}} baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{128|64}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "__method3", scope: ![[VTABLE_TY0]], {{.*}} baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}}, offset: {{192|96}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "__method4", scope: ![[VTABLE_TY0]], {{.*}} baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}}, offset: {{256|128}})
+// CHECK: ![[FOO_TYPE]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Foo",
 
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::Foo as debug_vtable::SomeTraitWithGenerics<u64, i8>>::{vtable}"
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::Foo, debug_vtable::SomeTraitWithGenerics<u64,i8> >::vtable$"
-// CHECK: !DISubrange(count: 4
+
+// NONMSVC: ![[VTABLE_TY1:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "<debug_vtable::Foo as debug_vtable::SomeTraitWithGenerics<u64, i8>>::{vtable_type}", {{.*}}, size: {{256|128}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}}, vtableHolder: ![[FOO_TYPE]],
+// MSVC: ![[VTABLE_TY1:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "impl$<debug_vtable::Foo, debug_vtable::SomeTraitWithGenerics<u64,i8> >::vtable_type$", {{.*}}, size: {{256|128}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}}, vtableHolder: ![[FOO_TYPE]],
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "drop_in_place", scope: ![[VTABLE_TY1]], {{.*}} baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "size", scope: ![[VTABLE_TY1]], {{.*}} baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "align", scope: ![[VTABLE_TY1]], {{.*}} baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{128|64}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "__method3", scope: ![[VTABLE_TY1]], {{.*}} baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}}, offset: {{192|96}})
 
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::Foo as _>::{vtable}"
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::Foo, _>::vtable$"
-// CHECK: !DISubrange(count: 3
+
+// NONMSVC: ![[VTABLE_TY2:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "<debug_vtable::Foo as _>::{vtable_type}", {{.*}}, size: {{192|96}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}}, vtableHolder: ![[FOO_TYPE]],
+// MSVC: ![[VTABLE_TY2:[0-9]+]] = !DICompositeType(tag: DW_TAG_structure_type, name: "impl$<debug_vtable::Foo, _>::vtable_type$", {{.*}}, size: {{192|96}}, align: {{64|32}}, flags: DIFlagArtificial, {{.*}}, vtableHolder: ![[FOO_TYPE]],
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "drop_in_place", scope: ![[VTABLE_TY2]], {{.*}}, baseType: ![[PTR]], size: {{64|32}}, align: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "size", scope: ![[VTABLE_TY2]], {{.*}}, baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{64|32}})
+// CHECK: !DIDerivedType(tag: DW_TAG_member, name: "align", scope: ![[VTABLE_TY2]], {{.*}}, baseType: ![[USIZE]], size: {{64|32}}, align: {{64|32}}, offset: {{128|64}})
 
 // NONMSVC: !DIGlobalVariable(name: "<debug_vtable::bar::{closure_env#0} as core::ops::function::FnOnce<(core::option::Option<&dyn core::ops::function::Fn<(), Output=()>>)>>::{vtable}"
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::bar::closure_env$0, core::ops::function::FnOnce<tuple$<enum$<core::option::Option<ref$<dyn$<core::ops::function::Fn<tuple$<>,assoc$<Output,tuple$<> > > > > >, {{.*}}, {{.*}}, Some> > > >::vtable$"
@@ -33,6 +55,9 @@
 // MSVC: !DIGlobalVariable(name: "impl$<debug_vtable::generic_closure::closure_env$0<u32>, core::ops::function::FnOnce<tuple$<> > >::vtable$
 
 #![crate_type = "lib"]
+
+// Force emission for debuginfo for usize and *const() early..
+pub static mut XYZ: Option<(usize, *const ())> = None;
 
 pub struct Foo;
 

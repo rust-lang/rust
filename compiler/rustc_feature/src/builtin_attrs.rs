@@ -324,7 +324,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(export_name, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(link_section, Normal, template!(NameValueStr: "name"), FutureWarnPreceding),
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing),
-    ungated!(used, Normal, template!(Word), WarnFollowing),
+    ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -339,7 +339,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(main, Normal, template!(Word), WarnFollowing),
     ungated!(start, Normal, template!(Word), WarnFollowing),
     ungated!(no_start, CrateLevel, template!(Word), WarnFollowing),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing),

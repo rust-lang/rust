@@ -62,6 +62,10 @@ impl<'tcx> OnUnimplementedDirective {
         let mut errored = false;
         let mut item_iter = items.iter();
 
+        let parse_value = |value_str| {
+            OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span).map(Some)
+        };
+
         let condition = if is_root {
             None
         } else {
@@ -86,7 +90,14 @@ impl<'tcx> OnUnimplementedDirective {
                         None,
                     )
                 })?;
-            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |_| true);
+            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |item| {
+                if let Some(symbol) = item.value_str() {
+                    if parse_value(symbol).is_err() {
+                        errored = true;
+                    }
+                }
+                true
+            });
             Some(cond.clone())
         };
 
@@ -96,10 +107,6 @@ impl<'tcx> OnUnimplementedDirective {
         let mut enclosing_scope = None;
         let mut subcommands = vec![];
         let mut append_const_msg = None;
-
-        let parse_value = |value_str| {
-            OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span).map(Some)
-        };
 
         for item in item_iter {
             if item.has_name(sym::message) && message.is_none() {
@@ -221,6 +228,9 @@ impl<'tcx> OnUnimplementedDirective {
         let mut append_const_msg = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
+        let options_map: FxHashMap<Symbol, String> =
+            options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
+
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition {
                 if !attr::eval_condition(
@@ -229,7 +239,11 @@ impl<'tcx> OnUnimplementedDirective {
                     Some(tcx.features()),
                     &mut |c| {
                         c.ident().map_or(false, |ident| {
-                            options.contains(&(ident.name, c.value_str().map(|s| s.to_string())))
+                            let value = c.value_str().map(|s| {
+                                OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
+                            });
+
+                            options.contains(&(ident.name, value))
                         })
                     },
                 ) {
@@ -257,13 +271,11 @@ impl<'tcx> OnUnimplementedDirective {
             append_const_msg = command.append_const_msg.clone();
         }
 
-        let options: FxHashMap<Symbol, String> =
-            options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
         OnUnimplementedNote {
-            label: label.map(|l| l.format(tcx, trait_ref, &options)),
-            message: message.map(|m| m.format(tcx, trait_ref, &options)),
-            note: note.map(|n| n.format(tcx, trait_ref, &options)),
-            enclosing_scope: enclosing_scope.map(|e_s| e_s.format(tcx, trait_ref, &options)),
+            label: label.map(|l| l.format(tcx, trait_ref, &options_map)),
+            message: message.map(|m| m.format(tcx, trait_ref, &options_map)),
+            note: note.map(|n| n.format(tcx, trait_ref, &options_map)),
+            enclosing_scope: enclosing_scope.map(|e_s| e_s.format(tcx, trait_ref, &options_map)),
             append_const_msg,
         }
     }
@@ -306,6 +318,12 @@ impl<'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
                     // `{ItemContext}` is allowed
                     Position::ArgumentNamed(s) if s == sym::ItemContext => (),
+                    // `{integral}` and `{integer}` and `{float}` are allowed
+                    Position::ArgumentNamed(s)
+                        if s == sym::integral || s == sym::integer_ || s == sym::float =>
+                    {
+                        ()
+                    }
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => {
                         match generics.params.iter().find(|param| param.name == s) {
@@ -385,6 +403,12 @@ impl<'tcx> OnUnimplementedFormatString {
                                 &empty_string
                             } else if s == sym::ItemContext {
                                 &item_context
+                            } else if s == sym::integral {
+                                "{integral}"
+                            } else if s == sym::integer_ {
+                                "{integer}"
+                            } else if s == sym::float {
+                                "{float}"
                             } else {
                                 bug!(
                                     "broken on_unimplemented {:?} for {:?}: \
