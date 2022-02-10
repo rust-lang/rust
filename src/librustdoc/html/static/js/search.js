@@ -1197,110 +1197,19 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     function execSearch(query, searchWords, filterCrates) {
-        function getSmallest(arrays, positions, notDuplicates) {
-            var start = null;
-
-            for (var it = 0, len = positions.length; it < len; ++it) {
-                if (arrays[it].length > positions[it] &&
-                    (start === null || start > arrays[it][positions[it]].lev) &&
-                    !notDuplicates[arrays[it][positions[it]].fullPath]) {
-                    start = arrays[it][positions[it]].lev;
-                }
-            }
-            return start;
-        }
-
-        function mergeArrays(arrays) {
-            var ret = [];
-            var positions = [];
-            var notDuplicates = {};
-
-            for (var x = 0, arrays_len = arrays.length; x < arrays_len; ++x) {
-                positions.push(0);
-            }
-            while (ret.length < MAX_RESULTS) {
-                var smallest = getSmallest(arrays, positions, notDuplicates);
-
-                if (smallest === null) {
-                    break;
-                }
-                for (x = 0; x < arrays_len && ret.length < MAX_RESULTS; ++x) {
-                    if (arrays[x].length > positions[x] &&
-                            arrays[x][positions[x]].lev === smallest &&
-                            !notDuplicates[arrays[x][positions[x]].fullPath]) {
-                        ret.push(arrays[x][positions[x]]);
-                        notDuplicates[arrays[x][positions[x]].fullPath] = true;
-                        positions[x] += 1;
-                    }
-                }
-            }
-            return ret;
-        }
-
-        // Split search query by ",", while respecting angle bracket nesting.
-        // Since "<" is an alias for the Ord family of traits, it also uses
-        // lookahead to distinguish "<"-as-less-than from "<"-as-angle-bracket.
-        //
-        // tokenizeQuery("A<B, C>, D") == ["A<B, C>", "D"]
-        // tokenizeQuery("A<B, C, D") == ["A<B", "C", "D"]
-        function tokenizeQuery(raw) {
-            var i, matched;
-            var l = raw.length;
-            var depth = 0;
-            var nextAngle = /(<|>)/g;
-            var ret = [];
-            var start = 0;
-            for (i = 0; i < l; ++i) {
-                switch (raw[i]) {
-                    case "<":
-                        nextAngle.lastIndex = i + 1;
-                        matched = nextAngle.exec(raw);
-                        if (matched && matched[1] === '>') {
-                            depth += 1;
-                        }
-                        break;
-                    case ">":
-                        if (depth > 0) {
-                            depth -= 1;
-                        }
-                        break;
-                    case ",":
-                        if (depth === 0) {
-                            ret.push(raw.substring(start, i));
-                            start = i + 1;
-                        }
-                        break;
-                }
-            }
-            if (start !== i) {
-                ret.push(raw.substring(start, i));
-            }
-            return ret;
-        }
-
-        var queries = tokenizeQuery(query.raw);
+        query = query.raw.trim();
         var results = {
             "in_args": [],
             "returned": [],
             "others": [],
         };
 
-        for (var i = 0, len = queries.length; i < len; ++i) {
-            query = queries[i].trim();
-            if (query.length !== 0) {
-                var tmp = execQuery(getQuery(query), searchWords, filterCrates);
+        if (query.length !== 0) {
+            var tmp = execQuery(getQuery(query), searchWords, filterCrates);
 
-                results.in_args.push(tmp.in_args);
-                results.returned.push(tmp.returned);
-                results.others.push(tmp.others);
-            }
-        }
-        if (queries.length > 1) {
-            return {
-                "in_args": mergeArrays(results.in_args),
-                "returned": mergeArrays(results.returned),
-                "others": mergeArrays(results.others),
-            };
+            results.in_args.push(tmp.in_args);
+            results.returned.push(tmp.returned);
+            results.others.push(tmp.others);
         }
         return {
             "in_args": results.in_args[0],
