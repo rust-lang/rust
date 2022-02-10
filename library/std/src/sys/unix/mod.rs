@@ -43,10 +43,10 @@ pub mod thread_local_key;
 pub mod thread_parker;
 pub mod time;
 
-#[cfg(any(target_os = "espidf", target_os = "horizon"))]
+#[cfg(target_os = "espidf")]
 pub fn init(argc: isize, argv: *const *const u8) {}
 
-#[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+#[cfg(not(target_os = "espidf"))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {
@@ -88,6 +88,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
             target_os = "ios",
             target_os = "redox",
             target_os = "l4re",
+            target_os = "horizon",
         )))]
         'poll: {
             use crate::sys::os::errno;
@@ -131,6 +132,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
             target_os = "fuchsia",
             target_os = "vxworks",
             target_os = "l4re",
+            target_os = "horizon",
         )))]
         {
             use crate::sys::os::errno;
@@ -149,7 +151,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
     }
 
     unsafe fn reset_sigpipe() {
-        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia")))]
+        #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
         rtassert!(signal(libc::SIGPIPE, libc::SIG_IGN) != libc::SIG_ERR);
     }
 }
