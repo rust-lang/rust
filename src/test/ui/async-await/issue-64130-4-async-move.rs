@@ -13,8 +13,8 @@ impl Client {
 async fn get() {}
 
 pub fn foo() -> impl Future + Send {
+    //~^ ERROR future cannot be sent between threads safely
     async {
-        //~^ ERROR future cannot be sent between threads safely
         match Client(Box::new(true)).status() {
             200 => {
                 let _x = get().await;
