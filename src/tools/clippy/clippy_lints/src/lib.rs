@@ -5,6 +5,7 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(iter_intersperse)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -17,6 +18,8 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 // warn on rustc internal lints
 #![warn(rustc::internal)]
+// Disable this rustc lint for now, as it was also done in rustc
+#![allow(rustc::potential_query_instability)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
@@ -189,6 +192,7 @@ mod create_dir;
 mod dbg_macro;
 mod default;
 mod default_numeric_fallback;
+mod default_union_representation;
 mod dereference;
 mod derivable_impls;
 mod derive;
@@ -859,6 +863,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(single_char_lifetime_names::SingleCharLifetimeNames));
     store.register_late_pass(move || Box::new(borrow_as_ptr::BorrowAsPtr::new(msrv)));
     store.register_late_pass(move || Box::new(manual_bits::ManualBits::new(msrv)));
+    store.register_late_pass(|| Box::new(default_union_representation::DefaultUnionRepresentation));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

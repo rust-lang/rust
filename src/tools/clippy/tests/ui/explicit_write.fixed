@@ -10,6 +10,12 @@ fn stderr() -> String {
     String::new()
 }
 
+macro_rules! one {
+    () => {
+        1
+    };
+}
+
 fn main() {
     // these should warn
     {
@@ -24,6 +30,12 @@ fn main() {
         // including newlines
         println!("test\ntest");
         eprintln!("test\ntest");
+
+        let value = 1;
+        eprintln!("with {}", value);
+        eprintln!("with {} {}", 2, value);
+        eprintln!("with {value}");
+        eprintln!("macro arg {}", one!());
     }
     // these should not warn, different destination
     {

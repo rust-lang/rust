@@ -58,6 +58,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT),
     LintId::of(swap::ALMOST_SWAPPED),
     LintId::of(to_string_in_display::TO_STRING_IN_DISPLAY),
+    LintId::of(transmute::TRANSMUTE_UNDEFINED_REPR),
     LintId::of(transmute::UNSOUND_COLLECTION_TRANSMUTE),
     LintId::of(transmute::WRONG_TRANSMUTE),
     LintId::of(transmuting_null::TRANSMUTING_NULL),

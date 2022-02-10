@@ -7,7 +7,7 @@ use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor}
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_typeck::hir_ty_to_ty;
@@ -332,18 +332,21 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     } else {
         // (&x).into_iter() ==> x.iter()
         // (&mut x).into_iter() ==> x.iter_mut()
-        match &arg.kind {
-            ExprKind::AddrOf(BorrowKind::Ref, mutability, arg_inner)
-                if has_iter_method(cx, cx.typeck_results().expr_ty(arg_inner)).is_some() =>
-            {
-                let meth_name = match mutability {
+        let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
+        match &arg_ty.kind() {
+            ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, inner_ty).is_some() => {
+                let method_name = match mutbl {
                     Mutability::Mut => "iter_mut",
                     Mutability::Not => "iter",
                 };
+                let caller = match &arg.kind {
+                    ExprKind::AddrOf(BorrowKind::Ref, _, arg_inner) => arg_inner,
+                    _ => arg,
+                };
                 format!(
                     "{}.{}()",
-                    sugg::Sugg::hir_with_applicability(cx, arg_inner, "_", applic_ref).maybe_par(),
-                    meth_name,
+                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
+                    method_name,
                 )
             },
             _ => format!(

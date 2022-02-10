@@ -1,0 +1,44 @@
+error: transmute from `Ty2<u32, i32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:23:33
+   |
+LL |         let _: Ty2C<u32, i32> = core::mem::transmute(value::<Ty2<u32, i32>>()); // Lint, Ty2 is unordered
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::transmute-undefined-repr` implied by `-D warnings`
+
+error: transmute into `Ty2<u32, i32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:24:32
+   |
+LL |         let _: Ty2<u32, i32> = core::mem::transmute(value::<Ty2C<u32, i32>>()); // Lint, Ty2 is unordered
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `Ty<Ty2<u32, i32>>` to `Ty2<u32, f32>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:29:32
+   |
+LL |         let _: Ty2<u32, f32> = core::mem::transmute(value::<Ty<Ty2<u32, i32>>>()); // Lint, different Ty2 instances
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `Ty2<u32, f32>` to `Ty<Ty2<u32, i32>>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:30:36
+   |
+LL |         let _: Ty<Ty2<u32, i32>> = core::mem::transmute(value::<Ty2<u32, f32>>()); // Lint, different Ty2 instances
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute to `&Ty2<u32, f32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:35:33
+   |
+LL |         let _: &Ty2<u32, f32> = core::mem::transmute(value::<Ty<&Ty2<u32, i32>>>()); // Lint, different Ty2 instances
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `&Ty2<u32, f32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:36:37
+   |
+LL |         let _: Ty<&Ty2<u32, i32>> = core::mem::transmute(value::<&Ty2<u32, f32>>()); // Lint, different Ty2 instances
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

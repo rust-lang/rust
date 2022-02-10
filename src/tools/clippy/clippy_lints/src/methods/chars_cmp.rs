@@ -1,13 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{method_chain_args, single_segment_path};
+use clippy_utils::{method_chain_args, path_def_id};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_lint::Lint;
-use rustc_middle::ty;
-use rustc_span::sym;
+use rustc_middle::ty::{self, DefIdTree};
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints.
 pub(super) fn check(
@@ -19,11 +18,9 @@ pub(super) fn check(
 ) -> bool {
     if_chain! {
         if let Some(args) = method_chain_args(info.chain, chain_methods);
-        if let hir::ExprKind::Call(fun, arg_char) = info.other.kind;
-        if arg_char.len() == 1;
-        if let hir::ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(segment) = single_segment_path(qpath);
-        if segment.ident.name == sym::Some;
+        if let hir::ExprKind::Call(fun, [arg_char]) = info.other.kind;
+        if let Some(id) = path_def_id(cx, fun).and_then(|ctor_id| cx.tcx.parent(ctor_id));
+        if Some(id) == cx.tcx.lang_items().option_some_variant();
         then {
             let mut applicability = Applicability::MachineApplicable;
             let self_ty = cx.typeck_results().expr_ty_adjusted(&args[0][0]).peel_refs();
@@ -42,7 +39,7 @@ pub(super) fn check(
                         if info.eq { "" } else { "!" },
                         snippet_with_applicability(cx, args[0][0].span, "..", &mut applicability),
                         suggest,
-                        snippet_with_applicability(cx, arg_char[0].span, "..", &mut applicability)),
+                        snippet_with_applicability(cx, arg_char.span, "..", &mut applicability)),
                 applicability,
             );
 
