@@ -5,6 +5,12 @@
 
 /// Checks implementation of the `EXPECT_FUN_CALL` lint
 
+macro_rules! one {
+    () => {
+        1
+    };
+}
+
 fn main() {
     struct Foo;
 
@@ -30,6 +36,9 @@ fn main() {
 
     let with_none_and_as_str: Option<i32> = None;
     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
+
+    let with_none_and_format_with_macro: Option<i32> = None;
+    with_none_and_format_with_macro.expect(format!("Error {}: fake error", one!()).as_str());
 
     let with_ok: Result<(), ()> = Ok(());
     with_ok.expect("error");

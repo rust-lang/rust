@@ -7,6 +7,10 @@ fn main() {}
 fn starts_with() {
     "".starts_with(' ');
     !"".starts_with(' ');
+
+    // Ensure that suggestion is escaped correctly
+    "".starts_with('\n');
+    !"".starts_with('\n');
 }
 
 fn chars_cmp_with_unwrap() {
@@ -31,7 +35,7 @@ fn chars_cmp_with_unwrap() {
         // !s.ends_with('o')
         // Nothing here
     }
-    if !s.ends_with('o') {
+    if !s.ends_with('\n') {
         // !s.ends_with('o')
         // Nothing here
     }
@@ -43,4 +47,8 @@ fn ends_with() {
     !"".ends_with(' ');
     "".ends_with(' ');
     !"".ends_with(' ');
+
+    // Ensure that suggestion is escaped correctly
+    "".ends_with('\n');
+    !"".ends_with('\n');
 }

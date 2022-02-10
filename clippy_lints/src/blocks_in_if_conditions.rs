@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::get_parent_expr;
 use clippy_utils::higher;
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{differing_macro_contexts, get_parent_expr};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                         if let Some(ex) = &block.expr {
                             // don't dig into the expression here, just suggest that they remove
                             // the block
-                            if expr.span.from_expansion() || differing_macro_contexts(expr.span, ex.span) {
+                            if expr.span.from_expansion() || ex.span.from_expansion() {
                                 return;
                             }
                             let mut applicability = Applicability::MachineApplicable;
@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                         }
                     } else {
                         let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                        if span.from_expansion() || differing_macro_contexts(expr.span, span) {
+                        if span.from_expansion() || expr.span.from_expansion() {
                             return;
                         }
                         // move block higher
