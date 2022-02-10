@@ -15,8 +15,6 @@ use rustc_macros::HashStable;
 pub enum LifetimeDefOrigin {
     // Explicit binders like `fn foo<'a>(x: &'a u8)` or elided like `impl Foo<&u32>`
     ExplicitOrElided,
-    // In-band declarations like `fn foo(x: &'a u8)`
-    InBand,
     // Some kind of erroneous origin
     Error,
 }
@@ -25,7 +23,6 @@ impl LifetimeDefOrigin {
     pub fn from_param(param: &GenericParam<'_>) -> Self {
         match param.kind {
             GenericParamKind::Lifetime { kind } => match kind {
-                LifetimeParamKind::InBand => LifetimeDefOrigin::InBand,
                 LifetimeParamKind::Explicit => LifetimeDefOrigin::ExplicitOrElided,
                 LifetimeParamKind::Elided => LifetimeDefOrigin::ExplicitOrElided,
                 LifetimeParamKind::Error => LifetimeDefOrigin::Error,

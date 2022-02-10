@@ -1,5 +1,4 @@
 #![feature(generic_associated_types)]
-#![allow(unused)]
 
 trait Trait<'a> {
     type Foo;
