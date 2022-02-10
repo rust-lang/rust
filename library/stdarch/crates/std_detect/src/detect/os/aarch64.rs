@@ -87,7 +87,11 @@ pub(crate) fn detect_features() -> cache::Initializer {
             );
         }
 
+        // Check for either APA or API field
+        enable_feature(Feature::paca, bits_shift(aa64isar1, 11, 4) >= 1);
         enable_feature(Feature::rcpc, bits_shift(aa64isar1, 23, 20) >= 1);
+        // Check for either GPA or GPI field
+        enable_feature(Feature::pacg, bits_shift(aa64isar1, 31, 24) >= 1);
     }
 
     value

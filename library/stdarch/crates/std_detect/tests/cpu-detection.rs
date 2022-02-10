@@ -55,7 +55,8 @@ fn aarch64_linux() {
     println!("flagm: {}", is_aarch64_feature_detected!("flagm"));
     println!("ssbs: {}", is_aarch64_feature_detected!("ssbs"));
     println!("sb: {}", is_aarch64_feature_detected!("sb"));
-    println!("pauth: {}", is_aarch64_feature_detected!("pauth"));
+    println!("paca: {}", is_aarch64_feature_detected!("paca"));
+    println!("pacg: {}", is_aarch64_feature_detected!("pacg"));
     println!("dpb: {}", is_aarch64_feature_detected!("dpb"));
     println!("dpb2: {}", is_aarch64_feature_detected!("dpb2"));
     println!("sve2: {}", is_aarch64_feature_detected!("sve2"));

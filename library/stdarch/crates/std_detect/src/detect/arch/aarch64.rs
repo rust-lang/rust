@@ -31,7 +31,8 @@ features! {
     /// * `"flagm"` - FEAT_FLAGM
     /// * `"ssbs"` - FEAT_SSBS
     /// * `"sb"` - FEAT_SB
-    /// * `"pauth"` - FEAT_PAuth
+    /// * `"paca"` - FEAT_PAuth (address authentication)
+    /// * `"pacg"` - FEAT_Pauth (generic authentication)
     /// * `"dpb"` - FEAT_DPB
     /// * `"dpb2"` - FEAT_DPB2
     /// * `"sve2"` - FEAT_SVE2
@@ -101,8 +102,10 @@ features! {
     /// FEAT_SSBS (speculative store bypass safe)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] sb: "sb";
     /// FEAT_SB (speculation barrier)
-    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] pauth: "pauth";
-    /// FEAT_PAuth (pointer authentication)
+    @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] paca: "paca";
+    /// FEAT_PAuth (address authentication)
+    @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] pacg: "pacg";
+    /// FEAT_PAuth (generic authentication)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] dpb: "dpb";
     /// FEAT_DPB (aka dcpop - data cache clean to point of persistence)
     @FEATURE: #[stable(feature = "simd_aarch64", since = "1.60.0")] dpb2: "dpb2";

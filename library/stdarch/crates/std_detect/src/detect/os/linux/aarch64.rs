@@ -230,8 +230,8 @@ impl AtHwcap {
             enable_feature(Feature::flagm, self.flagm);
             enable_feature(Feature::ssbs, self.ssbs);
             enable_feature(Feature::sb, self.sb);
-            // FEAT_PAuth provides both paca & pacg
-            enable_feature(Feature::pauth, self.paca && self.pacg);
+            enable_feature(Feature::paca, self.paca);
+            enable_feature(Feature::pacg, self.pacg);
             enable_feature(Feature::dpb, self.dcpop);
             enable_feature(Feature::dpb2, self.dcpodp);
             enable_feature(Feature::rand, self.rng);
