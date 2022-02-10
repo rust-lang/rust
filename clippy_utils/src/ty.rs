@@ -42,7 +42,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
 /// Walks into `ty` and returns `true` if any inner type is the same as `other_ty`
 pub fn contains_ty(ty: Ty<'_>, other_ty: Ty<'_>) -> bool {
     ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => ty::TyS::same_type(other_ty, inner_ty),
+        GenericArgKind::Type(inner_ty) => other_ty == inner_ty,
         GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
     })
 }

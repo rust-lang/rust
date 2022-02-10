@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
@@ -33,9 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         } else if !found_mapping && !mutates_arg {
             let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
             match cx.typeck_results().expr_ty(&body.value).kind() {
-                ty::Adt(adt, subst)
-                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && TyS::same_type(in_ty, subst.type_at(0)) =>
-                {
+                ty::Adt(adt, subst) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) => {
                     "filter"
                 },
                 _ => return,

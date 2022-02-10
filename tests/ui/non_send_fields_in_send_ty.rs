@@ -1,4 +1,5 @@
 #![warn(clippy::non_send_fields_in_send_ty)]
+#![allow(suspicious_auto_trait_impls)]
 #![feature(extern_types)]
 
 use std::cell::UnsafeCell;

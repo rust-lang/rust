@@ -3,7 +3,6 @@ use clippy_utils::source::snippet;
 use clippy_utils::{path_to_local, search_same, SpanlessEq, SpanlessHash};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdMap, HirIdSet, MatchSource, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
 use std::collections::hash_map::Entry;
 
 use super::MATCH_SAME_ARMS;
@@ -32,7 +31,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) {
                     };
                     // the names technically don't have to match; this makes the lint more conservative
                     if cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id);
-                    if TyS::same_type(cx.typeck_results().expr_ty(a), cx.typeck_results().expr_ty(b));
+                    if cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b);
                     if pat_contains_local(lhs.pat, a_id);
                     if pat_contains_local(rhs.pat, b_id);
                     then {

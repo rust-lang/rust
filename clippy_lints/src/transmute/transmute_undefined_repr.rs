@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, Subst};
-use rustc_middle::ty::{self, Ty, TyS, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_span::Span;
 
 #[allow(clippy::too_many_lines)]
@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     let mut from_ty = cx.tcx.erase_regions(from_ty_orig);
     let mut to_ty = cx.tcx.erase_regions(to_ty_orig);
 
-    while !TyS::same_type(from_ty, to_ty) {
+    while from_ty != to_ty {
         match reduce_refs(cx, e.span, from_ty, to_ty) {
             ReducedTys::FromFatPtr { unsized_ty, .. } => {
                 span_lint_and_then(
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
                     e.span,
                     &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
                     |diag| {
-                        if !TyS::same_type(from_ty_orig.peel_refs(), unsized_ty) {
+                        if from_ty_orig.peel_refs() != unsized_ty {
                             diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
                         }
                     },
@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(
                     e.span,
                     &format!("transmute to `{}` which has an undefined layout", to_ty_orig),
                     |diag| {
-                        if !TyS::same_type(to_ty_orig.peel_refs(), unsized_ty) {
+                        if to_ty_orig.peel_refs() != unsized_ty {
                             diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
                         }
                     },
@@ -57,7 +57,7 @@ pub(super) fn check<'tcx>(
                         e.span,
                         &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
                         |diag| {
-                            if !TyS::same_type(from_ty_orig.peel_refs(), from_ty) {
+                            if from_ty_orig.peel_refs() != from_ty {
                                 diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
                             }
                         },
@@ -82,7 +82,7 @@ pub(super) fn check<'tcx>(
                         e.span,
                         &format!("transmute to `{}` which has an undefined layout", to_ty_orig),
                         |diag| {
-                            if !TyS::same_type(to_ty_orig.peel_refs(), to_ty) {
+                            if to_ty_orig.peel_refs() != to_ty {
                                 diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
                             }
                         },
@@ -101,9 +101,7 @@ pub(super) fn check<'tcx>(
                 to_ty: to_sub_ty,
             } => match (reduce_ty(cx, from_sub_ty), reduce_ty(cx, to_sub_ty)) {
                 (ReducedTy::IntArray, _) | (_, ReducedTy::IntArray) => return false,
-                (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty))
-                    if !TyS::same_type(from_ty, to_ty) =>
-                {
+                (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
                     span_lint_and_then(
                         cx,
                         TRANSMUTE_UNDEFINED_REPR,
@@ -121,10 +119,10 @@ pub(super) fn check<'tcx>(
                                     cx.tcx.item_name(from_def.did)
                                 ));
                             } else {
-                                if !TyS::same_type(from_ty_orig.peel_refs(), from_ty) {
+                                if from_ty_orig.peel_refs() != from_ty {
                                     diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
                                 }
-                                if !TyS::same_type(to_ty_orig.peel_refs(), to_ty) {
+                                if to_ty_orig.peel_refs() != to_ty {
                                     diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
                                 }
                             }
@@ -142,7 +140,7 @@ pub(super) fn check<'tcx>(
                         e.span,
                         &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
                         |diag| {
-                            if !TyS::same_type(from_ty_orig.peel_refs(), from_ty) {
+                            if from_ty_orig.peel_refs() != from_ty {
                                 diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
                             }
                         },
@@ -159,7 +157,7 @@ pub(super) fn check<'tcx>(
                         e.span,
                         &format!("transmute into `{}` which has an undefined layout", to_ty_orig),
                         |diag| {
-                            if !TyS::same_type(to_ty_orig.peel_refs(), to_ty) {
+                            if to_ty_orig.peel_refs() != to_ty {
                                 diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
                             }
                         },
