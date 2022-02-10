@@ -338,6 +338,32 @@ macro_rules! int_module {
                 assert_eq!(MIN.checked_next_multiple_of(-3), None);
                 assert_eq!(MIN.checked_next_multiple_of(-1), Some(MIN));
             }
+
+            #[test]
+            fn test_carrying_add() {
+                assert_eq!($T::MAX.carrying_add(1, false), ($T::MIN, true));
+                assert_eq!($T::MAX.carrying_add(0, true), ($T::MIN, true));
+                assert_eq!($T::MAX.carrying_add(1, true), ($T::MIN + 1, true));
+                assert_eq!($T::MAX.carrying_add(-1, false), ($T::MAX - 1, false));
+                assert_eq!($T::MAX.carrying_add(-1, true), ($T::MAX, false)); // no intermediate overflow
+                assert_eq!($T::MIN.carrying_add(-1, false), ($T::MAX, true));
+                assert_eq!($T::MIN.carrying_add(-1, true), ($T::MIN, false)); // no intermediate overflow
+                assert_eq!((0 as $T).carrying_add($T::MAX, true), ($T::MIN, true));
+                assert_eq!((0 as $T).carrying_add($T::MIN, true), ($T::MIN + 1, false));
+            }
+
+            #[test]
+            fn test_borrowing_sub() {
+                assert_eq!($T::MIN.borrowing_sub(1, false), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(0, true), ($T::MAX, true));
+                assert_eq!($T::MIN.borrowing_sub(1, true), ($T::MAX - 1, true));
+                assert_eq!($T::MIN.borrowing_sub(-1, false), ($T::MIN + 1, false));
+                assert_eq!($T::MIN.borrowing_sub(-1, true), ($T::MIN, false)); // no intermediate overflow
+                assert_eq!($T::MAX.borrowing_sub(-1, false), ($T::MIN, true));
+                assert_eq!($T::MAX.borrowing_sub(-1, true), ($T::MAX, false)); // no intermediate overflow
+                assert_eq!((0 as $T).borrowing_sub($T::MIN, false), ($T::MIN, true));
+                assert_eq!((0 as $T).borrowing_sub($T::MIN, true), ($T::MAX, false));
+            }
         }
     };
 }
