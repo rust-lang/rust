@@ -3,10 +3,9 @@
 #![cfg_attr(
     any(
         all(target_arch = "arm", any(target_os = "linux", target_os = "android")),
-        all(target_arch = "aarch64", any(target_os = "linux", target_os = "android")),
+        all(bootstrap, target_arch = "aarch64", any(target_os = "linux", target_os = "android")),
         all(target_arch = "powerpc", target_os = "linux"),
         all(target_arch = "powerpc64", target_os = "linux"),
-        any(target_arch = "x86", target_arch = "x86_64"),
     ),
     feature(stdsimd)
 )]
@@ -46,7 +45,8 @@ fn aarch64_linux() {
     println!("flagm: {}", is_aarch64_feature_detected!("flagm"));
     println!("ssbs: {}", is_aarch64_feature_detected!("ssbs"));
     println!("sb: {}", is_aarch64_feature_detected!("sb"));
-    println!("pauth: {}", is_aarch64_feature_detected!("pauth"));
+    println!("paca: {}", is_aarch64_feature_detected!("paca"));
+    println!("pacg: {}", is_aarch64_feature_detected!("pacg"));
     println!("dpb: {}", is_aarch64_feature_detected!("dpb"));
     println!("dpb2: {}", is_aarch64_feature_detected!("dpb2"));
     println!("sve2: {}", is_aarch64_feature_detected!("sve2"));
