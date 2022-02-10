@@ -233,7 +233,6 @@ declare_features! (
     // FIXME: Document these and merge with the list below.
 
     // Unstable `#[target_feature]` directives.
-    (active, aarch64_target_feature, "1.27.0", Some(44839), None),
     (active, adx_target_feature, "1.32.0", Some(44839), None),
     (active, arm_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),

@@ -41,95 +41,95 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // FEAT_AdvSimd
-    ("neon", Some(sym::aarch64_target_feature)),
+    ("neon", None),
     // FEAT_FP
-    ("fp", Some(sym::aarch64_target_feature)),
+    ("fp", None),
     // FEAT_FP16
-    ("fp16", Some(sym::aarch64_target_feature)),
+    ("fp16", None),
     // FEAT_SVE
-    ("sve", Some(sym::aarch64_target_feature)),
+    ("sve", None),
     // FEAT_CRC
-    ("crc", Some(sym::aarch64_target_feature)),
+    ("crc", None),
     // FEAT_RAS
-    ("ras", Some(sym::aarch64_target_feature)),
+    ("ras", None),
     // FEAT_LSE
-    ("lse", Some(sym::aarch64_target_feature)),
+    ("lse", None),
     // FEAT_RDM
-    ("rdm", Some(sym::aarch64_target_feature)),
+    ("rdm", None),
     // FEAT_RCPC
-    ("rcpc", Some(sym::aarch64_target_feature)),
+    ("rcpc", None),
     // FEAT_RCPC2
-    ("rcpc2", Some(sym::aarch64_target_feature)),
+    ("rcpc2", None),
     // FEAT_DotProd
-    ("dotprod", Some(sym::aarch64_target_feature)),
+    ("dotprod", None),
     // FEAT_TME
-    ("tme", Some(sym::aarch64_target_feature)),
+    ("tme", None),
     // FEAT_FHM
-    ("fhm", Some(sym::aarch64_target_feature)),
+    ("fhm", None),
     // FEAT_DIT
-    ("dit", Some(sym::aarch64_target_feature)),
+    ("dit", None),
     // FEAT_FLAGM
-    ("flagm", Some(sym::aarch64_target_feature)),
+    ("flagm", None),
     // FEAT_SSBS
-    ("ssbs", Some(sym::aarch64_target_feature)),
+    ("ssbs", None),
     // FEAT_SB
-    ("sb", Some(sym::aarch64_target_feature)),
+    ("sb", None),
     // FEAT_PAUTH (address authentication)
-    ("paca", Some(sym::aarch64_target_feature)),
+    ("paca", None),
     // FEAT_PAUTH (generic authentication)
-    ("pacg", Some(sym::aarch64_target_feature)),
+    ("pacg", None),
     // FEAT_DPB
-    ("dpb", Some(sym::aarch64_target_feature)),
+    ("dpb", None),
     // FEAT_DPB2
-    ("dpb2", Some(sym::aarch64_target_feature)),
+    ("dpb2", None),
     // FEAT_SVE2
-    ("sve2", Some(sym::aarch64_target_feature)),
+    ("sve2", None),
     // FEAT_SVE2_AES
-    ("sve2-aes", Some(sym::aarch64_target_feature)),
+    ("sve2-aes", None),
     // FEAT_SVE2_SM4
-    ("sve2-sm4", Some(sym::aarch64_target_feature)),
+    ("sve2-sm4", None),
     // FEAT_SVE2_SHA3
-    ("sve2-sha3", Some(sym::aarch64_target_feature)),
+    ("sve2-sha3", None),
     // FEAT_SVE2_BitPerm
-    ("sve2-bitperm", Some(sym::aarch64_target_feature)),
+    ("sve2-bitperm", None),
     // FEAT_FRINTTS
-    ("frintts", Some(sym::aarch64_target_feature)),
+    ("frintts", None),
     // FEAT_I8MM
-    ("i8mm", Some(sym::aarch64_target_feature)),
+    ("i8mm", None),
     // FEAT_F32MM
-    ("f32mm", Some(sym::aarch64_target_feature)),
+    ("f32mm", None),
     // FEAT_F64MM
-    ("f64mm", Some(sym::aarch64_target_feature)),
+    ("f64mm", None),
     // FEAT_BF16
-    ("bf16", Some(sym::aarch64_target_feature)),
+    ("bf16", None),
     // FEAT_RAND
-    ("rand", Some(sym::aarch64_target_feature)),
+    ("rand", None),
     // FEAT_BTI
-    ("bti", Some(sym::aarch64_target_feature)),
+    ("bti", None),
     // FEAT_MTE
-    ("mte", Some(sym::aarch64_target_feature)),
+    ("mte", None),
     // FEAT_JSCVT
-    ("jsconv", Some(sym::aarch64_target_feature)),
+    ("jsconv", None),
     // FEAT_FCMA
-    ("fcma", Some(sym::aarch64_target_feature)),
+    ("fcma", None),
     // FEAT_AES
-    ("aes", Some(sym::aarch64_target_feature)),
+    ("aes", None),
     // FEAT_SHA1 & FEAT_SHA256
-    ("sha2", Some(sym::aarch64_target_feature)),
+    ("sha2", None),
     // FEAT_SHA512 & FEAT_SHA3
-    ("sha3", Some(sym::aarch64_target_feature)),
+    ("sha3", None),
     // FEAT_SM3 & FEAT_SM4
-    ("sm4", Some(sym::aarch64_target_feature)),
+    ("sm4", None),
     // FEAT_PAN
-    ("pan", Some(sym::aarch64_target_feature)),
+    ("pan", None),
     // FEAT_LOR
-    ("lor", Some(sym::aarch64_target_feature)),
+    ("lor", None),
     // FEAT_VHE
-    ("vh", Some(sym::aarch64_target_feature)),
+    ("vh", None),
     // FEAT_PMUv3
-    ("pmuv3", Some(sym::aarch64_target_feature)),
+    ("pmuv3", None),
     // FEAT_SPE
-    ("spe", Some(sym::aarch64_target_feature)),
+    ("spe", None),
     ("v8.1a", Some(sym::aarch64_target_feature)),
     ("v8.2a", Some(sym::aarch64_target_feature)),
     ("v8.3a", Some(sym::aarch64_target_feature)),
