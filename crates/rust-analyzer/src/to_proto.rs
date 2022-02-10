@@ -413,11 +413,11 @@ pub(crate) fn signature_help(
 pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
     lsp_ext::InlayHint {
         label: inlay_hint.label.to_string(),
-        position: position(line_index, inlay_hint.range.start()),
+        position: position(line_index, inlay_hint.range.end()),
         kind: Some(match inlay_hint.kind {
             InlayKind::ParameterHint => lsp_ext::InlayHintKind::PARAMETER,
             InlayKind::TypeHint => lsp_ext::InlayHintKind::TYPE,
-            InlayKind::ChainingHint => lsp_ext::InlayHintKind::OTHER,
+            InlayKind::ChainingHint => lsp_ext::InlayHintKind::TYPE,
         }),
         tooltip: Some("test description".to_string()),
         padding_left: Some(true),

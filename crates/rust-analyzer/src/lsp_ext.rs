@@ -247,7 +247,6 @@ pub struct InlayHintsParams {
 pub struct InlayHintKind(u8);
 
 impl InlayHintKind {
-    pub const OTHER: InlayHintKind = InlayHintKind(0);
     pub const TYPE: InlayHintKind = InlayHintKind(1);
     pub const PARAMETER: InlayHintKind = InlayHintKind(2);
 }
