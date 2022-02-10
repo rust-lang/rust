@@ -40,7 +40,8 @@ goto: file://|DOC_PATH|/test_docs/index.html
 assert-css: (".small-section-header a", {"color": "rgb(197, 197, 197)"}, ALL)
 
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
-assert-css: (".section-header a", {"color": "rgb(57, 175, 215)"}, ALL)
+// We select headings (h2, h3, h...).
+assert-css: (".docblock > :not(p) > a", {"color": "rgb(57, 175, 215)"}, ALL)
 
 // Dark theme
 local-storage: {
@@ -78,7 +79,8 @@ goto: file://|DOC_PATH|/test_docs/index.html
 assert-css: (".small-section-header a", {"color": "rgb(221, 221, 221)"}, ALL)
 
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
-assert-css: (".section-header a", {"color": "rgb(210, 153, 29)"}, ALL)
+// We select headings (h2, h3, h...).
+assert-css: (".docblock > :not(p) > a", {"color": "rgb(210, 153, 29)"}, ALL)
 
 // Light theme
 local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
@@ -111,4 +113,5 @@ goto: file://|DOC_PATH|/test_docs/index.html
 assert-css: (".small-section-header a", {"color": "rgb(0, 0, 0)"}, ALL)
 
 goto: file://|DOC_PATH|/test_docs/struct.HeavilyDocumentedStruct.html
-assert-css: (".section-header a", {"color": "rgb(56, 115, 173)"}, ALL)
+// We select headings (h2, h3, h...).
+assert-css: (".docblock > :not(p) > a", {"color": "rgb(56, 115, 173)"}, ALL)
