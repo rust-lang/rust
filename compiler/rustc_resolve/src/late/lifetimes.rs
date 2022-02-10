@@ -16,7 +16,7 @@ use rustc_hir::def_id::{DefIdMap, LocalDefId};
 use rustc_hir::hir_id::ItemLocalId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericArg, GenericParam, LifetimeName, Node, ParamName, QPath};
-use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet, LifetimeParamKind};
+use rustc_hir::{GenericParamKind, HirIdMap, HirIdSet};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::*;
@@ -1325,9 +1325,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        if !self.trait_definition_only {
-            check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
-        }
         let scope = Scope::TraitRefBoundary { s: self.scope };
         self.with(scope, |_, this| {
             for param in generics.params {
@@ -1532,30 +1529,6 @@ impl ShadowKind {
             ShadowKind::Label => "label",
             ShadowKind::Lifetime => "lifetime",
         }
-    }
-}
-
-fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &[hir::GenericParam<'_>]) {
-    let lifetime_params: Vec<_> = params
-        .iter()
-        .filter_map(|param| match param.kind {
-            GenericParamKind::Lifetime { kind, .. } => Some((kind, param.span)),
-            _ => None,
-        })
-        .collect();
-    let explicit = lifetime_params.iter().find(|(kind, _)| *kind == LifetimeParamKind::Explicit);
-    let in_band = lifetime_params.iter().find(|(kind, _)| *kind == LifetimeParamKind::InBand);
-
-    if let (Some((_, explicit_span)), Some((_, in_band_span))) = (explicit, in_band) {
-        struct_span_err!(
-            tcx.sess,
-            *in_band_span,
-            E0688,
-            "cannot mix in-band and explicit lifetime definitions"
-        )
-        .span_label(*in_band_span, "in-band lifetime definition here")
-        .span_label(*explicit_span, "explicit lifetime definition here")
-        .emit();
     }
 }
 
@@ -1845,13 +1818,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn lifetime_deletion_span(&self, name: Ident, generics: &hir::Generics<'_>) -> Option<Span> {
         generics.params.iter().enumerate().find_map(|(i, param)| {
             if param.name.ident() == name {
-                let in_band = matches!(
-                    param.kind,
-                    hir::GenericParamKind::Lifetime { kind: hir::LifetimeParamKind::InBand }
-                );
-                if in_band {
-                    Some(param.span)
-                } else if generics.params.len() == 1 {
+                if generics.params.len() == 1 {
                     // if sole lifetime, remove the entire `<>` brackets
                     Some(generics.span)
                 } else {
@@ -2334,39 +2301,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         def = Region::Free(scope.to_def_id(), def.id().unwrap());
                     }
                     _ => {}
-                }
-            }
-
-            // Check for fn-syntax conflicts with in-band lifetime definitions
-            if !self.trait_definition_only && self.is_in_fn_syntax {
-                match def {
-                    Region::EarlyBound(_, _, LifetimeDefOrigin::InBand)
-                    | Region::LateBound(_, _, _, LifetimeDefOrigin::InBand) => {
-                        struct_span_err!(
-                            self.tcx.sess,
-                            lifetime_ref.span,
-                            E0687,
-                            "lifetimes used in `fn` or `Fn` syntax must be \
-                             explicitly declared using `<...>` binders"
-                        )
-                        .span_label(lifetime_ref.span, "in-band lifetime definition")
-                        .emit();
-                    }
-
-                    Region::Static
-                    | Region::EarlyBound(
-                        _,
-                        _,
-                        LifetimeDefOrigin::ExplicitOrElided | LifetimeDefOrigin::Error,
-                    )
-                    | Region::LateBound(
-                        _,
-                        _,
-                        _,
-                        LifetimeDefOrigin::ExplicitOrElided | LifetimeDefOrigin::Error,
-                    )
-                    | Region::LateBoundAnon(..)
-                    | Region::Free(..) => {}
                 }
             }
 

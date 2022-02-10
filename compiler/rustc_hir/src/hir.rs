@@ -471,11 +471,6 @@ pub enum LifetimeParamKind {
     // `fn foo<'a>(x: &'a u8) -> &'a u8 { x }`).
     Explicit,
 
-    // Indicates that the lifetime definition was synthetically added
-    // as a result of an in-band lifetime usage (e.g., in
-    // `fn foo(x: &'a u8) -> &'a u8 { x }`).
-    InBand,
-
     // Indication that the lifetime was elided (e.g., in both cases in
     // `fn foo(x: &u8) -> &'_ u8 { x }`).
     Elided,
