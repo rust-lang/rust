@@ -111,19 +111,21 @@ pub(super) fn check<'tcx>(
                             from_ty_orig, to_ty_orig
                         ),
                         |diag| {
-                            if let (Some(from_def), Some(to_def)) = (from_ty.ty_adt_def(), to_ty.ty_adt_def())
-                                && from_def == to_def
-                            {
-                                diag.note(&format!(
-                                    "two instances of the same generic type (`{}`) may have different layouts",
-                                    cx.tcx.item_name(from_def.did)
-                                ));
-                            } else {
-                                if from_ty_orig.peel_refs() != from_ty {
-                                    diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
-                                }
-                                if to_ty_orig.peel_refs() != to_ty {
-                                    diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                            if_chain! {
+                                if let (Some(from_def), Some(to_def)) = (from_ty.ty_adt_def(), to_ty.ty_adt_def());
+                                if from_def == to_def;
+                                then {
+                                    diag.note(&format!(
+                                        "two instances of the same generic type (`{}`) may have different layouts",
+                                        cx.tcx.item_name(from_def.did)
+                                    ));
+                                } else {
+                                    if from_ty_orig.peel_refs() != from_ty {
+                                        diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                                    }
+                                    if to_ty_orig.peel_refs() != to_ty {
+                                        diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                                    }
                                 }
                             }
                         },
@@ -279,11 +281,13 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty)
-        && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
-    {
-        layout.layout.size.bytes() == 0
-    } else {
-        false
+    if_chain! {
+        if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
+        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
+        then {
+            layout.layout.size.bytes() == 0
+        } else {
+            false
+        }
     }
 }
