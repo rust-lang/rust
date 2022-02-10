@@ -32,9 +32,11 @@ impl<'tcx> From<ty::RegionVid> for RegionVidKey<'tcx> {
 
 impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     type Value = UnifiedRegion<'tcx>;
+    #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         RegionVidKey::from(ty::RegionVid::from_u32(i))
     }
@@ -118,9 +120,11 @@ pub struct ConstVarValue<'tcx> {
 
 impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
     type Value = ConstVarValue<'tcx>;
+    #[inline]
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         ty::ConstVid { index: i, phantom: PhantomData }
     }
