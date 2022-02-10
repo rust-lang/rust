@@ -192,7 +192,7 @@ mod waiter_queue {
                     let insert_after = {
                         let mut cursor = head.last;
                         loop {
-                            if waiter.priority <= cursor.as_ref().priority {
+                            if waiter.priority >= cursor.as_ref().priority {
                                 // `cursor` and all previous waiters have the same or higher
                                 // priority than `current_task_priority`. Insert the new
                                 // waiter right after `cursor`.
