@@ -3202,13 +3202,14 @@ dependencies = [
  "tokio-stream",
  "tokio-util",
  "toml",
+ "toml_edit",
  "url 2.2.2",
  "walkdir",
 ]
 
 [[package]]
 name = "rls-analysis"
-version = "0.18.2"
+version = "0.18.3"
 dependencies = [
  "derive-new",
  "env_logger 0.9.0",
