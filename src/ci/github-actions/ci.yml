@@ -486,9 +486,9 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-xl
 
-          - name: x86_64-apple
-            env:
-              SCRIPT: ./x.py --stage 2 test
+          - name: x86_64-apple-1
+            env: &env-x86_64-apple-tests
+              SCRIPT: ./x.py --stage 2 test --exclude src/test/ui --exclude src/test/rustdoc --exclude src/test/run-make-fulldeps
               RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.8
@@ -496,6 +496,12 @@ jobs:
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
+
+          - name: x86_64-apple-2
+            env:
+              SCRIPT: ./x.py --stage 2 test src/test/ui src/test/rustdoc src/test/run-make-fulldeps
+              <<: *env-x86_64-apple-tests
             <<: *job-macos-xl
 
           # This target only needs to support 11.0 and up as nothing else supports the hardware
