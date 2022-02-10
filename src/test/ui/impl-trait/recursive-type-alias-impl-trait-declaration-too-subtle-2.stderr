@@ -1,0 +1,11 @@
+error[E0277]: can't compare `Bar` with `(Bar, i32)`
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:14:5
+   |
+LL |     Bar
+   |     ^^^ no implementation for `Bar == (Bar, i32)`
+   |
+   = help: the trait `PartialEq<(Bar, i32)>` is not implemented for `Bar`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
