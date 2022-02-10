@@ -392,6 +392,13 @@ fn negative_impl_exists<'cx, 'tcx>(
             }
 
             let mut outlives_env = OutlivesEnvironment::new(param_env);
+            // FIXME -- add "assumed to be well formed" types into the `outlives_env`
+
+            // "Save" the accumulated implied bounds into the outlives environment
+            // (due to the FIXME above, there aren't any, but this step is still needed).
+            // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
+            // by the "dummy" causes elsewhere (body-id is only relevant when checking
+            // function bodies with closures).
             outlives_env.save_implied_bounds(CRATE_HIR_ID);
 
             infcx.process_registered_region_obligations(
