@@ -52,6 +52,9 @@ macro_rules! arena_types {
                         Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
+            [] dtorck_constraint: rustc_middle::traits::query::DtorckConstraint<'tcx>,
+            [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
+            [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
             [] type_op_subtype:
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, ()>
@@ -95,6 +98,7 @@ macro_rules! arena_types {
             // This is used to decode the &'tcx [Span] for InlineAsm's line_spans.
             [decode] span: rustc_span::Span,
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
+            [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
         ]);

@@ -120,7 +120,7 @@ crate struct CrateMetadata {
     /// How to link (or not link) this crate to the currently compiled crate.
     dep_kind: Lock<CrateDepKind>,
     /// Filesystem location of this crate.
-    source: CrateSource,
+    source: Lrc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     private_dep: bool,
@@ -1875,7 +1875,7 @@ impl CrateMetadata {
             cnum_map,
             dependencies,
             dep_kind: Lock::new(dep_kind),
-            source,
+            source: Lrc::new(source),
             private_dep,
             host_hash,
             extern_crate: Lock::new(None),
@@ -1903,7 +1903,7 @@ impl CrateMetadata {
     }
 
     crate fn source(&self) -> &CrateSource {
-        &self.source
+        &*self.source
     }
 
     crate fn dep_kind(&self) -> CrateDepKind {

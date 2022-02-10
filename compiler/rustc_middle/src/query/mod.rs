@@ -215,7 +215,8 @@ rustc_queries! {
         desc { |tcx| "elaborating item bounds for `{}`", tcx.def_path_str(key) }
     }
 
-    query native_libraries(_: CrateNum) -> Lrc<Vec<NativeLib>> {
+    query native_libraries(_: CrateNum) -> Vec<NativeLib> {
+        storage(ArenaCacheSelector<'tcx>)
         desc { "looking up the native libraries of a linked crate" }
         separate_provide_extern
     }
@@ -254,6 +255,7 @@ rustc_queries! {
     /// Create a THIR tree for debugging.
     query thir_tree(key: ty::WithOptConstParam<LocalDefId>) -> String {
         no_hash
+        storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "constructing THIR tree for `{}`", tcx.def_path_str(key.did.to_def_id()) }
     }
 
@@ -368,6 +370,7 @@ rustc_queries! {
     query symbols_for_closure_captures(
         key: (LocalDefId, DefId)
     ) -> Vec<rustc_span::Symbol> {
+        storage(ArenaCacheSelector<'tcx>)
         desc {
             |tcx| "symbols for captures of closure `{}` in `{}`",
             tcx.def_path_str(key.1),
@@ -538,7 +541,7 @@ rustc_queries! {
 
     query adt_dtorck_constraint(
         key: DefId
-    ) -> Result<DtorckConstraint<'tcx>, NoSolution> {
+    ) -> Result<&'tcx DtorckConstraint<'tcx>, NoSolution> {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
@@ -646,8 +649,8 @@ rustc_queries! {
     /// The map returned for `tcx.impl_item_implementor_ids(impl_id)` would be
     ///`{ trait_f: impl_f, trait_g: impl_g }`
     query impl_item_implementor_ids(impl_id: DefId) -> FxHashMap<DefId, DefId> {
-        desc { |tcx| "comparing impl items against trait for {}", tcx.def_path_str(impl_id) }
         storage(ArenaCacheSelector<'tcx>)
+        desc { |tcx| "comparing impl items against trait for {}", tcx.def_path_str(impl_id) }
     }
 
     /// Given an `impl_id`, return the trait it implements.
@@ -1042,6 +1045,7 @@ rustc_queries! {
     /// Gets the rendered value of the specified constant or associated constant.
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
+        storage(ArenaCacheSelector<'tcx>)
         desc { |tcx| "rendering constant intializer of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1091,7 +1095,7 @@ rustc_queries! {
 
     query codegen_fulfill_obligation(
         key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)
-    ) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
+    ) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorReported> {
         cache_on_disk_if { true }
         desc { |tcx|
             "checking if `{}` fulfills its obligations",
@@ -1237,6 +1241,7 @@ rustc_queries! {
     }
 
     query dependency_formats(_: ()) -> Lrc<crate::middle::dependency_format::Dependencies> {
+        storage(ArenaCacheSelector<'tcx>)
         desc { "get the linkage format of all dependencies" }
     }
 
@@ -1369,13 +1374,15 @@ rustc_queries! {
     /// You likely want to call `Instance::upstream_monomorphization()`
     /// instead of invoking this query directly.
     query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {
-            desc { |tcx|
-                "collecting available upstream monomorphizations for `{}`",
-                tcx.def_path_str(def_id),
-            }
-            separate_provide_extern
+        -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>>
+    {
+        storage(ArenaCacheSelector<'tcx>)
+        desc { |tcx|
+            "collecting available upstream monomorphizations for `{}`",
+            tcx.def_path_str(def_id),
         }
+        separate_provide_extern
+    }
 
     /// Returns the upstream crate that exports drop-glue for the given
     /// type (`substs` is expected to be a single-item list containing the
@@ -1396,7 +1403,8 @@ rustc_queries! {
         desc { "available upstream drop-glue for `{:?}`", substs }
     }
 
-    query foreign_modules(_: CrateNum) -> Lrc<FxHashMap<DefId, ForeignModule>> {
+    query foreign_modules(_: CrateNum) -> FxHashMap<DefId, ForeignModule> {
+        storage(ArenaCacheSelector<'tcx>)
         desc { "looking up the foreign modules of a linked crate" }
         separate_provide_extern
     }
@@ -1422,11 +1430,13 @@ rustc_queries! {
         separate_provide_extern
     }
     query extra_filename(_: CrateNum) -> String {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "looking up the extra filename for a crate" }
         separate_provide_extern
     }
     query crate_extern_paths(_: CrateNum) -> Vec<PathBuf> {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "looking up the paths for extern crates" }
         separate_provide_extern
@@ -1478,8 +1488,7 @@ rustc_queries! {
     /// for each parameter if a trait object were to be passed for that parameter.
     /// For example, for `struct Foo<'a, T, U>`, this would be `['static, 'static]`.
     /// For `struct Foo<'a, T: 'a, U>`, this would instead be `['a, 'static]`.
-    query object_lifetime_defaults_map(_: LocalDefId)
-        -> Option<Vec<ObjectLifetimeDefault>> {
+    query object_lifetime_defaults(_: LocalDefId) -> Option<&'tcx [ObjectLifetimeDefault]> {
         desc { "looking up lifetime defaults for a region on an item" }
     }
     query late_bound_vars_map(_: LocalDefId)
@@ -1488,6 +1497,7 @@ rustc_queries! {
     }
 
     query lifetime_scope_map(_: LocalDefId) -> Option<FxHashMap<ItemLocalId, LifetimeScopeForPath>> {
+        storage(ArenaCacheSelector<'tcx>)
         desc { "finds the lifetime scope for an HirId of a PathSegment" }
     }
 
@@ -1501,7 +1511,7 @@ rustc_queries! {
     /// check whether the forest is empty.
     query type_uninhabited_from(
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
-    ) -> ty::inhabitedness::DefIdForest {
+    ) -> ty::inhabitedness::DefIdForest<'tcx> {
         desc { "computing the inhabitedness of `{:?}`", key }
         remap_env_constness
     }
@@ -1566,7 +1576,8 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
-    query visible_parent_map(_: ()) -> Lrc<DefIdMap<DefId>> {
+    query visible_parent_map(_: ()) -> DefIdMap<DefId> {
+        storage(ArenaCacheSelector<'tcx>)
         desc { "calculating the visible parent map" }
     }
     query trimmed_def_paths(_: ()) -> FxHashMap<DefId, Symbol> {
@@ -1579,6 +1590,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query used_crate_source(_: CrateNum) -> Lrc<CrateSource> {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "looking at the source for a crate" }
         separate_provide_extern
@@ -1669,7 +1681,11 @@ rustc_queries! {
         desc { "optimization level used by backend" }
     }
 
-    query output_filenames(_: ()) -> Arc<OutputFilenames> {
+    /// Return the filenames where output artefacts shall be stored.
+    ///
+    /// This query returns an `&Arc` because codegen backends need the value even after the `TyCtxt`
+    /// has been destroyed.
+    query output_filenames(_: ()) -> &'tcx Arc<OutputFilenames> {
         eval_always
         desc { "output_filenames" }
     }
@@ -1911,6 +1927,7 @@ rustc_queries! {
     /// all of the cases that the normal `ty::Ty`-based wfcheck does. This is fine,
     /// because the `ty::Ty`-based wfcheck is always run.
     query diagnostic_hir_wf_check(key: (ty::Predicate<'tcx>, traits::WellFormedLoc)) -> Option<traits::ObligationCause<'tcx>> {
+        storage(ArenaCacheSelector<'tcx>)
         eval_always
         no_hash
         desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }

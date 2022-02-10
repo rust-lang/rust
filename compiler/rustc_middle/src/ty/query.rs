@@ -106,6 +106,12 @@ impl<'tcx> TyCtxt<'tcx> {
 #[inline(always)]
 fn noop<T>(_: &T) {}
 
+/// Helper to ensure that queries only return `Copy` types.
+#[inline(always)]
+fn copy<T: Copy>(x: &T) -> T {
+    *x
+}
+
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
@@ -243,7 +249,7 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, Clone::clone);
+                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
 
                 let lookup = match cached {
                     Ok(value) => return value,
@@ -344,6 +350,13 @@ mod sealed {
         #[inline(always)]
         fn into_query_param(self) -> P {
             self
+        }
+    }
+
+    impl<'a, P: Copy> IntoQueryParam<P> for &'a P {
+        #[inline(always)]
+        fn into_query_param(self) -> P {
+            *self
         }
     }
 

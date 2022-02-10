@@ -13,6 +13,7 @@ use crate::mir::{
     interpret::{AllocId, Allocation},
 };
 use crate::thir;
+use crate::traits;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
@@ -156,6 +157,7 @@ macro_rules! encodable_via_deref {
 encodable_via_deref! {
     &'tcx ty::TypeckResults<'tcx>,
     ty::Region<'tcx>,
+    &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
@@ -385,6 +387,7 @@ impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+    &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,

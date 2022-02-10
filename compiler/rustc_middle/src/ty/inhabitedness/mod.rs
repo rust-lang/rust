@@ -112,7 +112,7 @@ impl<'tcx> AdtDef {
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         // Non-exhaustive ADTs from other crates are always considered inhabited.
         if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
             DefIdForest::empty()
@@ -135,7 +135,7 @@ impl<'tcx> VariantDef {
         substs: SubstsRef<'tcx>,
         adt_kind: AdtKind,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
             // The precise semantics of inhabitedness with respect to unions is currently undecided.
@@ -163,7 +163,7 @@ impl<'tcx> FieldDef {
         substs: SubstsRef<'tcx>,
         is_enum: bool,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
+    ) -> DefIdForest<'tcx> {
         let data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(tcx, param_env);
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // `Visibility::Invisible` so we need to override `self.vis` if we're
@@ -190,8 +190,8 @@ impl<'tcx> TyS<'tcx> {
         &'tcx self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> DefIdForest {
-        tcx.type_uninhabited_from(param_env.and(self))
+    ) -> DefIdForest<'tcx> {
+        tcx.type_uninhabited_from(param_env.and(self)).clone()
     }
 }
 
@@ -199,7 +199,7 @@ impl<'tcx> TyS<'tcx> {
 pub(crate) fn type_uninhabited_from<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
-) -> DefIdForest {
+) -> DefIdForest<'tcx> {
     let ty = key.value;
     let param_env = key.param_env;
     match *ty.kind() {

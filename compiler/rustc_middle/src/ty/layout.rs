@@ -2839,7 +2839,7 @@ pub fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 }
 
 /// Error produced by attempting to compute or adjust a `FnAbi`.
-#[derive(Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum FnAbiError<'tcx> {
     /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
     Layout(LayoutError<'tcx>),

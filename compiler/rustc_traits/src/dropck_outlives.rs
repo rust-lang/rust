@@ -278,9 +278,9 @@ fn dtorck_constraint_for_ty<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did)?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
-            constraints.outlives.extend(outlives.subst(tcx, substs));
-            constraints.overflows.extend(overflows.subst(tcx, substs));
+            constraints.dtorck_types.extend(dtorck_types.iter().map(|t| t.subst(tcx, substs)));
+            constraints.outlives.extend(outlives.iter().map(|t| t.subst(tcx, substs)));
+            constraints.overflows.extend(overflows.iter().map(|t| t.subst(tcx, substs)));
         }
 
         // Objects must be alive in order for their destructor
@@ -308,7 +308,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 crate fn adt_dtorck_constraint(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<DtorckConstraint<'_>, NoSolution> {
+) -> Result<&DtorckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
@@ -324,7 +324,7 @@ crate fn adt_dtorck_constraint(
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return Ok(result);
+        return Ok(tcx.arena.alloc(result));
     }
 
     let mut result = DtorckConstraint::empty();
@@ -337,7 +337,7 @@ crate fn adt_dtorck_constraint(
 
     debug!("dtorck_constraint: {:?} => {:?}", def, result);
 
-    Ok(result)
+    Ok(tcx.arena.alloc(result))
 }
 
 fn dedup_dtorck_constraint(c: &mut DtorckConstraint<'_>) {
