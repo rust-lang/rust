@@ -163,7 +163,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     Ok(_) => span_bug!(
                         cause.span,
                         "opaque types are never equal to anything but themselves: {:#?}",
-                        (a, b)
+                        (a.kind(), b.kind())
                     ),
                     Err(e) => Err(e),
                 }
@@ -449,10 +449,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
         trace!(?origin);
         origin
-    }
-
-    pub fn opaque_types(&self) -> OpaqueTypeMap<'tcx> {
-        self.inner.borrow().opaque_type_storage.opaque_types()
     }
 }
 
