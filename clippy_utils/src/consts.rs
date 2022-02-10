@@ -331,17 +331,16 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect();
                     if let ["core", "num", int_impl, "max_value"] = *def_path;
                     then {
-                       let value = match int_impl {
-                           "<impl i8>" => i8::MAX as u128,
-                           "<impl i16>" => i16::MAX as u128,
-                           "<impl i32>" => i32::MAX as u128,
-                           "<impl i64>" => i64::MAX as u128,
-                           "<impl i128>" => i128::MAX as u128,
-                           _ => return None,
-                       };
-                       Some(Constant::Int(value))
-                    }
-                    else {
+                        let value = match int_impl {
+                            "<impl i8>" => i8::MAX as u128,
+                            "<impl i16>" => i16::MAX as u128,
+                            "<impl i32>" => i32::MAX as u128,
+                            "<impl i64>" => i64::MAX as u128,
+                            "<impl i128>" => i128::MAX as u128,
+                            _ => return None,
+                        };
+                        Some(Constant::Int(value))
+                    } else {
                         None
                     }
                 }

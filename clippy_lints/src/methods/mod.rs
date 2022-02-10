@@ -566,17 +566,20 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)`
+    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
     ///
     /// ### Example
     /// ```rust
     /// let vec = vec![vec![1]];
+    /// let opt = Some(5);
     ///
     /// // Bad
     /// vec.iter().map(|x| x.iter()).flatten();
+    /// opt.map(|x| Some(x * 2)).flatten();
     ///
     /// // Good
     /// vec.iter().flat_map(|x| x.iter());
+    /// opt.and_then(|x| Some(x * 2));
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
@@ -2399,10 +2402,17 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv);
             },
-            ("unwrap", []) => match method_call(recv) {
-                Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
-                Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
-                _ => unwrap_used::check(cx, expr, recv),
+            ("unwrap", []) => {
+                match method_call(recv) {
+                    Some(("get", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, false);
+                    },
+                    Some(("get_mut", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, true);
+                    },
+                    _ => {},
+                }
+                unwrap_used::check(cx, expr, recv);
             },
             ("unwrap_or", [u_arg]) => match method_call(recv) {
                 Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {

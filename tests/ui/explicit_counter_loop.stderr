@@ -46,13 +46,13 @@ error: the variable `idx_usize` is used as a loop counter
   --> $DIR/explicit_counter_loop.rs:170:9
    |
 LL |         for _item in slice {
-   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.into_iter().enumerate()`
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.iter().enumerate()`
 
 error: the variable `idx_u32` is used as a loop counter
   --> $DIR/explicit_counter_loop.rs:182:9
    |
 LL |         for _item in slice {
-   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.into_iter())`
+   |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.iter())`
    |
    = note: `idx_u32` is of type `u32`, making it ineligible for `Iterator::enumerate`
 

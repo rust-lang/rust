@@ -235,7 +235,11 @@ Use the following functions to deal with macros:
    assert_eq!(in_external_macro(cx.sess(), match_span), true);
    ```
 
-- `differing_macro_contexts()`: returns true if the two given spans are not from the same context
+- `span.ctxt()`: the span's context represents whether it is from expansion, and if so, what expanded it
+
+One thing `SpanContext` is useful for is to check if two spans are in the same context. For example,
+in `a == b`, `a` and `b` have the same context. In a `macro_rules!` with `a == $b`, `$b` is expanded to some
+expression with a different context from `a`.
 
    ```rust
    macro_rules! m {
@@ -252,7 +256,7 @@ Use the following functions to deal with macros:
    // These spans are not from the same context
    // x.is_some() is from inside the macro
    // x.unwrap() is from outside the macro
-   assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
+   assert_eq!(x_is_some_span.ctxt(), x_unwrap_span.ctxt());
    ```
 
 [TyS]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html

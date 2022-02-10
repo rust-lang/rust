@@ -180,3 +180,9 @@ fn dyn_fn_requires_vec(v: &Vec<u32>, f: &dyn Fn(&Vec<u32>)) {
 // No error for types behind an alias (#7699)
 type A = Vec<u8>;
 fn aliased(a: &A) {}
+
+// Issue #8366
+pub trait Trait {
+    fn f(v: &mut Vec<i32>);
+    fn f2(v: &mut Vec<i32>) {}
+}
