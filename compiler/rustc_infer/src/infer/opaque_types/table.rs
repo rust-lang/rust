@@ -29,14 +29,6 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         }
     }
 
-    pub fn get_decl(&self, key: &OpaqueTypeKey<'tcx>) -> Option<&OpaqueTypeDecl<'tcx>> {
-        self.opaque_types.get(key)
-    }
-
-    pub fn opaque_types(&self) -> OpaqueTypeMap<'tcx> {
-        self.opaque_types.clone()
-    }
-
     #[instrument(level = "debug")]
     pub fn take_opaque_types(&mut self) -> OpaqueTypeMap<'tcx> {
         std::mem::take(&mut self.opaque_types)
@@ -69,7 +61,7 @@ pub struct OpaqueTypeTable<'a, 'tcx> {
 
 impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
-    pub fn register(
+    pub(crate) fn register(
         &mut self,
         key: OpaqueTypeKey<'tcx>,
         hidden_type: OpaqueHiddenType<'tcx>,
