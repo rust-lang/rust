@@ -5,7 +5,6 @@
 #![feature(control_flow_enum)]
 #![feature(drain_filter)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
@@ -19,7 +18,7 @@
 // warn on rustc internal lints
 #![warn(rustc::internal)]
 // Disable this rustc lint for now, as it was also done in rustc
-#![allow(rustc::potential_query_instability)]
+#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
