@@ -12,8 +12,8 @@ reasons:
 - The dependency may have transitive dependencies that have one of the above
   problems.
 
-As of <!-- date: 2021-07 --> July 2021, there is no official policy for vetting
-new dependencies to the compiler. Generally, new dependencies are not added 
+As of <!-- date: 2022-02 --> February 2022, there is no official policy for vetting
+new dependencies to the compiler. Generally, new dependencies are not added
 to the compiler unless there is a good reason to do so.
 
 ## Permitted dependencies

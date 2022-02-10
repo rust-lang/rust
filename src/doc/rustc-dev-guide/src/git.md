@@ -157,8 +157,8 @@ no changes added to commit (use "git add" and/or "git commit -a")
 These changes are not changes to files: they are changes to submodules (more on
 this [later](#git-submodules)). To get rid of those, run `git submodule update`
 (or run any `x.py` command, which will automatically update the submodules).
-Note that there is (as of <!-- date: 2021-07 --> July 2021) a [bug][#77620] if you use
-worktrees, submodules, and `x.py` in a commit hook.  If you run into an error
+Note that there is (as of <!-- date: 2022-02 --> February 2022) a [bug][#77620] if you use
+worktrees, submodules, and `x.py` in a commit hook. If you run into an error
 like:
 
 ```

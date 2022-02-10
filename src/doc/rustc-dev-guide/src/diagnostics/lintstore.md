@@ -17,7 +17,7 @@ First, we have the lint declarations themselves: this is where the name and defa
 other metadata come from. These are normally defined by way of the [`declare_lint!`] macro, which
 boils down to a static with type `&rustc_session::lint::Lint`.
 
-As of <!-- date: 2021-07 --> July 2021, we lint against direct declarations
+As of <!-- date: 2022-02 --> February 2022, we lint against direct declarations
 without the use of the macro today (although this may change in the future, as
 the macro is somewhat unwieldy to add new fields to, like all macros).
 
@@ -56,11 +56,11 @@ internally.
 
 #### Internal lints
 
-These are lints used just by the compiler or plugins like `clippy`. They can be found in 
+These are lints used just by the compiler or plugins like `clippy`. They can be found in
 `rustc_lint::internal`.
 
-An example of such a lint is the check that lint passes are implemented using the 
-`declare_lint_pass!` macro and not by hand. This is accomplished with the 
+An example of such a lint is the check that lint passes are implemented using the
+`declare_lint_pass!` macro and not by hand. This is accomplished with the
 `LINT_PASS_IMPL_WITHOUT_MACRO` lint.
 
 Registration of these lints happens in the [`rustc_lint::register_internals`] function which is
@@ -81,7 +81,7 @@ with internal lints, this happens inside of [`rustc_lint::new_lint_store`].
 This is one of the primary use cases remaining for plugins/drivers. Plugins are given access 
 to the mutable `LintStore` during registration (which happens inside of 
 [`rustc_interface::register_plugins`]) and they can call any functions they need on 
-the `LintStore`, just like rustc code. 
+the `LintStore`, just like rustc code.
 
 Plugins are intended to declare lints with the `plugin` field set to true (e.g., by
 way of the [`declare_tool_lint!`] macro), but this is purely for diagnostics and help text;
