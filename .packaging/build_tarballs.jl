@@ -17,9 +17,9 @@ script = raw"""
 cd Enzyme
 # install_license LICENSE.TXT
 CMAKE_FLAGS=()
-# Release build for best performance
 CMAKE_FLAGS+=(-DENZYME_EXTERNAL_SHARED_LIB=ON)
 CMAKE_FLAGS+=(-DENZYME_CLANG=OFF)
+# RelWithDebInfo for decent performance, with debugability
 CMAKE_FLAGS+=(-DCMAKE_BUILD_TYPE=RelWithDebInfo)
 # Install things into $prefix
 CMAKE_FLAGS+=(-DCMAKE_INSTALL_PREFIX=${prefix})
@@ -32,8 +32,8 @@ CMAKE_FLAGS+=(-DLLVM_DIR="${prefix}/lib/cmake/llvm")
 CMAKE_FLAGS+=(-DLLVM_LINK_LLVM_DYLIB=ON)
 # Build the library
 CMAKE_FLAGS+=(-DBUILD_SHARED_LIBS=ON)
-if [[ "${target}" == *apple* ]]; then
-  CMAKE_FLAGS+=(-DCMAKE_CXX_FLAGS=-mmacosx-version-min=12)
+if [[ "${target}" == x86_64-apple* ]]; then
+  CMAKE_FLAGS+=(-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=10.12)
 fi
 cmake -B build -S enzyme -GNinja ${CMAKE_FLAGS[@]}
 ninja -C build -j ${nproc} install
