@@ -11,6 +11,7 @@ where
     /// For each lane in the mask, choose the corresponding lane from `true_values` if
     /// that lane mask is true, and `false_values` if that lane mask is false.
     ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
@@ -31,6 +32,8 @@ where
     where
         U: SimdElement<Mask = T>,
     {
+        // Safety: The mask has been cast to a vector of integers,
+        // and the operands to select between are vectors of the same type and length.
         unsafe { intrinsics::simd_select(self.to_int(), true_values, false_values) }
     }
 
@@ -39,6 +42,7 @@ where
     /// For each lane in the mask, choose the corresponding lane from `true_values` if
     /// that lane mask is true, and `false_values` if that lane mask is false.
     ///
+    /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "std")] use core_simd::Mask;

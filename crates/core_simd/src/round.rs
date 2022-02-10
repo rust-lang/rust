@@ -19,6 +19,11 @@ macro_rules! implement {
             /// * Not be NaN
             /// * Not be infinite
             /// * Be representable in the return type, after truncating off its fractional part
+            ///
+            /// If these requirements are infeasible or costly, consider using the safe function [cast],
+            /// which saturates on conversion.
+            ///
+            /// [cast]: Simd::cast
             #[inline]
             pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
             where

@@ -3,6 +3,7 @@
     const_fn_trait_bound,
     convert_float_to_int,
     decl_macro,
+    intra_doc_pointers,
     platform_intrinsics,
     repr_simd,
     simd_ffi,
