@@ -1281,16 +1281,22 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
+    /// ```
+    /// fn squared_string(x: u32) -> Result<String, &'static str> {
+    ///     Ok((x * x).to_string())
+    /// }
+    ///
+    /// assert_eq!(Ok(2).and_then(squared_string), Ok(4.to_string()));
+    /// assert_eq!(Err("not a number").and_then(squared_string), Err("not a number"));
+    /// ```
+    ///
+    /// Often used to chain fallible operations that may return [`Err`].
     ///
     /// ```
-    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
-    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
+    /// use std::path::Path;
     ///
-    /// assert_eq!(Ok(2).and_then(sq).and_then(sq), Ok(16));
-    /// assert_eq!(Ok(2).and_then(sq).and_then(err), Err(4));
-    /// assert_eq!(Ok(2).and_then(err).and_then(sq), Err(2));
-    /// assert_eq!(Err(3).and_then(sq).and_then(sq), Err(3));
+    /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());
+    /// assert!(root_modified_time.is_ok())
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
