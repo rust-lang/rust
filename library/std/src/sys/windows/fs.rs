@@ -784,8 +784,10 @@ impl FromInner<Handle> for File {
     }
 }
 
-impl<'a> AsHandle<'a> for &'a File {
-    fn as_handle(self) -> BorrowedHandle<'a> {
+impl File {
+    /// Similar to `AsHandle::as_handle`, but doesn't require `File` to have
+    /// stability attributes.
+    pub fn as_handle(&self) -> BorrowedHandle<'_> {
         self.as_inner().as_handle()
     }
 }
