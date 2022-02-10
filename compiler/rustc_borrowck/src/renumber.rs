@@ -6,7 +6,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
 /// Replaces all free regions appearing in the MIR with fresh
-/// inference variables, returning the number of variables created.
+/// inference variables.
 #[instrument(skip(infcx, body, promoted), level = "debug")]
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
