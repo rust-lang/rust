@@ -108,6 +108,7 @@ pub struct Config {
     pub llvm_polly: bool,
     pub llvm_clang: bool,
     pub llvm_from_ci: bool,
+    pub llvm_build_config: HashMap<String, String>,
 
     pub use_lld: bool,
     pub lld_enabled: bool,
@@ -477,6 +478,7 @@ derive_merge! {
         polly: Option<bool>,
         clang: Option<bool>,
         download_ci_llvm: Option<StringOrBool>,
+        build_config: Option<HashMap<String, String>>,
     }
 }
 
@@ -807,6 +809,7 @@ impl Config {
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
             config.llvm_clang = llvm.clang.unwrap_or(false);
+            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -876,6 +879,7 @@ impl Config {
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
                 check_ci_llvm!(llvm.clang);
+                check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
 
                 // CI-built LLVM can be either dynamic or static.

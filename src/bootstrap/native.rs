@@ -353,6 +353,10 @@ impl Step for Llvm {
 
         configure_cmake(builder, target, &mut cfg, true);
 
+        for (key, val) in &builder.config.llvm_build_config {
+            cfg.define(key, val);
+        }
+
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
         //        tools. Figure out how to filter them down and only build the right
