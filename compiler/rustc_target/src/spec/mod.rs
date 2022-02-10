@@ -964,6 +964,7 @@ supported_targets! {
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
 
+    ("aarch64-unknown-none-hermitkernel", aarch64_unknown_none_hermitkernel),
     ("x86_64-unknown-none-hermitkernel", x86_64_unknown_none_hermitkernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
