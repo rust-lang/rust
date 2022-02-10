@@ -125,9 +125,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %i17_unwrap4 = trunc i64 %"iv1'ac.0" to i32
 ; CHECK-NEXT:   %6 = sub i32 %i17_unwrap4, 1
 ; CHECK-NEXT:   %7 = call fast double @llvm.powi.f64{{(\.i32)?}}(double %arg, i32 %6)
-; CHECK-NEXT:   %8 = sitofp i32 %i17_unwrap4 to double
-; CHECK-NEXT:   %9 = fmul fast double %16, %7
-; CHECK-NEXT:   %10 = fmul fast double %9, %8
+; CHECK-DAG:    %[[a8:.+]] = sitofp i32 %i17_unwrap4 to double
+; CHECK-DAG:    %[[a9:.+]] = fmul fast double %16, %7
+; CHECK-NEXT:   %10 = fmul fast double %[[a9]], %[[a8]]
 ; CHECK-NEXT:   %11 = icmp eq i32 0, %i17_unwrap4
 ; CHECK-NEXT:   %12 = fadd fast double %"arg'de.1", %10
 ; CHECK-NEXT:   %13 = select {{(fast )?}}i1 %11, double %"arg'de.1", double %12
@@ -156,13 +156,13 @@ attributes #4 = { nounwind }
 ; CHECK: remat_loop_setLoop:                               ; preds = %remat_loop_setLoop, %remat_enter
 ; CHECK-NEXT:   %fiv = phi i64 [ %17, %remat_loop_setLoop ], [ 0, %remat_enter ]
 ; CHECK-NEXT:   %17 = add i64 %fiv, 1
-; CHECK-NEXT:   %i20_unwrap = getelementptr inbounds [30 x double], [30 x double]* %i, i64 0, i64 %fiv
-; CHECK-NEXT:   %i15_unwrap1 = and i64 %fiv, 1
-; CHECK-NEXT:   %i16_unwrap2 = icmp eq i64 %i15_unwrap1, 0
-; CHECK-NEXT:   %i17_unwrap = trunc i64 %fiv to i32
-; CHECK-NEXT:   %18 = call fast double @llvm.powi.f64{{(\.i32)?}}(double %arg, i32 %i17_unwrap) 
-; CHECK-NEXT:   %19 = select i1 %i16_unwrap2, double %18, double 0.000000e+00
-; CHECK-NEXT:   store double %19, double* %i20_unwrap, align 8
+; CHECK-DAG:   %i20_unwrap = getelementptr inbounds [30 x double], [30 x double]* %i, i64 0, i64 %fiv
+; CHECK-DAG:   %i15_unwrap1 = and i64 %fiv, 1
+; CHECK-DAG:   %i16_unwrap2 = icmp eq i64 %i15_unwrap1, 0
+; CHECK-DAG   %i17_unwrap = trunc i64 %fiv to i32
+; CHECK-DAG:   %18 = call fast double @llvm.powi.f64{{(\.i32)?}}(double %arg, i32 %i17_unwrap) 
+; CHECK-DAG:   %19 = select i1 %i16_unwrap2, double %18, double 0.000000e+00
+; CHECK-DAG:   store double %19, double* %i20_unwrap, align 8
 ; CHECK-NEXT:   %i22_unwrap = icmp eq i64 %17, 30
 ; CHECK-NEXT:   br i1 %i22_unwrap, label %remat_loop_loopExit, label %remat_loop_setLoop
 

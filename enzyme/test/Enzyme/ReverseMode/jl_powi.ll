@@ -63,9 +63,9 @@ entry:
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = sub i64 %y1, 1
 ; CHECK-NEXT:   %1 = call fast fastcc double @julia___2797(double %y0, i64 %0)
-; CHECK-NEXT:   %2 = sitofp i64 %y1 to double
-; CHECK-NEXT:   %3 = fmul fast double %differeturn, %1
-; CHECK-NEXT:   %4 = fmul fast double %3, %2
+; CHECK-DAG:    %[[a2:.+]]  = fmul fast double %differeturn, %1
+; CHECK-DAG:    %[[a3:.+]]  = sitofp i64 %y1 to double
+; CHECK-NEXT:   %4 = fmul fast double %[[a2]], %[[a3]]
 ; CHECK-NEXT:   %5 = icmp eq i64 0, %y1
 ; CHECK-NEXT:   %6 = select {{(fast )?}}i1 %5, double 0.000000e+00, double %4
 ; CHECK-NEXT:   %7 = insertvalue { double } undef, double %6, 0
