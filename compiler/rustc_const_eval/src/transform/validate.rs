@@ -169,8 +169,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Equal types, all is good.
             return true;
         }
+        // Normalization reveals opaque types, but we may be validating MIR while computing
+        // said opaque types, causing cycles.
+        if (src, dest).has_opaque_types() {
+            return true;
+        }
         // Normalize projections and things like that.
-        let param_env = self.param_env;
+        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);
 
