@@ -3,6 +3,12 @@ error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrai
    |
 LL |     NonConst.func();
    |              ^^^^^^ the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
+   |
+note: the trait `cross_crate::MyTrait` is implemented for `cross_crate::NonConst`, but that implementation is not `const`
+  --> $DIR/cross-crate.rs:15:14
+   |
+LL |     NonConst.func();
+   |              ^^^^^^
 
 error[E0015]: cannot call non-const fn `<cross_crate::NonConst as cross_crate::MyTrait>::func` in constant functions
   --> $DIR/cross-crate.rs:15:14

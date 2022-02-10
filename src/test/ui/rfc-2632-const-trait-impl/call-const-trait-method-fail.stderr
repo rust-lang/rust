@@ -3,6 +3,12 @@ error[E0277]: the trait bound `u32: ~const Plus` is not satisfied
    |
 LL |     a.plus(b)
    |       ^^^^^^^ the trait `~const Plus` is not implemented for `u32`
+   |
+note: the trait `Plus` is implemented for `u32`, but that implementation is not `const`
+  --> $DIR/call-const-trait-method-fail.rs:24:7
+   |
+LL |     a.plus(b)
+   |       ^^^^^^^
 
 error[E0015]: cannot call non-const fn `<u32 as Plus>::plus` in constant functions
   --> $DIR/call-const-trait-method-fail.rs:24:7

@@ -6,7 +6,6 @@ const fn f(x: usize) -> usize {
         //~^ ERROR mutable references
         //~| ERROR cannot convert
         //~| ERROR cannot call non-const fn
-        //~| ERROR E0080
         //~| ERROR `for` is not allowed in a `const fn`
         sum += i;
     }
