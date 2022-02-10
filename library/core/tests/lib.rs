@@ -7,7 +7,7 @@
 #![feature(box_syntax)]
 #![feature(cell_update)]
 #![feature(cfg_panic)]
-#![feature(cfg_target_has_atomic)]
+#![cfg_attr(bootstrap, feature(cfg_target_has_atomic))]
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]

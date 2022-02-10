@@ -565,7 +565,7 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
             self.buf.push_back((Event::Html(format!("</a></h{}>", level).into()), 0..0));
 
             let start_tags = format!(
-                "<h{level} id=\"{id}\" class=\"section-header\">\
+                "<h{level} id=\"{id}\">\
                     <a href=\"#{id}\">",
                 id = id,
                 level = level

@@ -1,9 +1,10 @@
 use crate::spec::Target;
 
 pub fn target() -> Target {
-    let mut base = super::hermit_base::opts();
+    let mut base = super::hermit_kernel_base::opts();
     base.max_atomic_width = Some(128);
-    base.features = "+strict-align,+neon,+fp-armv8".to_string();
+    base.abi = "softfloat".to_string();
+    base.features = "+strict-align,-neon,-fp-armv8".to_string();
 
     Target {
         llvm_target: "aarch64-unknown-hermit".to_string(),

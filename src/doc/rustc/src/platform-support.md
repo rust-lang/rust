@@ -204,7 +204,8 @@ target | std | host | notes
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
-`aarch64-unknown-hermit` | ? |  |
+`aarch64-unknown-hermit` | ✓ |  | ARM64 HermitCore
+[`aarch64-unknown-none-hermitkernel`](platform-support/aarch64-unknown-none-hermitkernel.md) | * |  | ARM64 HermitCore kernel
 `aarch64-unknown-uefi` | * |  | ARM64 UEFI
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 `aarch64-unknown-netbsd` | ✓ | ✓ |
@@ -286,10 +287,10 @@ target | std | host | notes
 `x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
-`x86_64-unknown-hermit` | ? |  |
+`x86_64-unknown-hermit` | ✓ |  | HermitCore
 `x86_64-unknown-l4re-uclibc` | ? |  |
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * |  | Freestanding/bare-metal x86_64, softfloat
-`x86_64-unknown-none-hermitkernel` | ? |  | HermitCore kernel
+`x86_64-unknown-none-hermitkernel` | * |  | HermitCore kernel
 `x86_64-unknown-none-linuxkernel` | * |  | Linux kernel modules
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-unknown-uefi` | * |  | 64-bit UEFI
