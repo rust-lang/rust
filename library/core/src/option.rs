@@ -1207,13 +1207,22 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// fn sq(x: u32) -> Option<u32> { Some(x * x) }
-    /// fn nope(_: u32) -> Option<u32> { None }
+    /// fn squared_string(x: u32) -> Option<String> { Some((x * x).to_string()) }
     ///
-    /// assert_eq!(Some(2).and_then(sq).and_then(sq), Some(16));
-    /// assert_eq!(Some(2).and_then(sq).and_then(nope), None);
-    /// assert_eq!(Some(2).and_then(nope).and_then(sq), None);
-    /// assert_eq!(None.and_then(sq).and_then(sq), None);
+    /// assert_eq!(Some(2).and_then(squared_string), Some(4.to_string()));
+    /// assert_eq!(None.and_then(squared_string), None);
+    /// ```
+    ///
+    /// Often used to chain fallible operations that may return [`None`].
+    ///
+    /// ```
+    /// let arr_2d = [["A1", "A2"], ["B1", "B2"]];
+    ///
+    /// let item_0_1 = arr_2d.get(0).and_then(|row| row.get(1));
+    /// assert_eq!(item_0_1, Some(&"A2"));
+    ///
+    /// let item_2_0 = arr_2d.get(2).and_then(|row| row.get(0));
+    /// assert_eq!(item_2_0, None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
