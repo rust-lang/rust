@@ -784,8 +784,8 @@ impl FromInner<Handle> for File {
     }
 }
 
-impl AsHandle for File {
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+impl<'a> AsHandle<'a> for &'a File {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         self.as_inner().as_handle()
     }
 }

@@ -966,12 +966,12 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let f = std::fs::File::open("/file")?;
-///     fs::fchown(f, Some(0), Some(0))?;
+///     fs::fchown(&f, Some(0), Some(0))?;
 ///     Ok(())
 /// }
 /// ```
 #[unstable(feature = "unix_chown", issue = "88989")]
-pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+pub fn fchown<'a, F: AsFd<'a>>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::fchown(fd.as_fd().as_raw_fd(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
 

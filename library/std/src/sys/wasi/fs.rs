@@ -482,8 +482,8 @@ impl FromInner<WasiFd> for File {
     }
 }
 
-impl AsFd for File {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a File {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.fd.as_fd()
     }
 }

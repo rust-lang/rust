@@ -93,49 +93,49 @@ pub fn panic_output() -> Option<impl io::Write> {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for io::Stdin {
+impl<'a> AsFd<'a> for &'a io::Stdin {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDIN_FILENO) }
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl<'a> AsFd for io::StdinLock<'a> {
+impl<'a, 'b> AsFd<'a> for io::StdinLock<'b> {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDIN_FILENO) }
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for io::Stdout {
+impl<'a> AsFd<'a> for &'a io::Stdout {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDOUT_FILENO) }
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl<'a> AsFd for io::StdoutLock<'a> {
+impl<'a, 'b> AsFd<'a> for &'a io::StdoutLock<'b> {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDOUT_FILENO) }
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for io::Stderr {
+impl<'a> AsFd<'a> for &'a io::Stderr {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDERR_FILENO) }
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl<'a> AsFd for io::StderrLock<'a> {
+impl<'a, 'b> AsFd<'a> for &'a io::StderrLock<'b> {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         unsafe { BorrowedFd::borrow_raw_fd(libc::STDERR_FILENO) }
     }
 }

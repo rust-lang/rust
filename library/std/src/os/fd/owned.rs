@@ -177,7 +177,7 @@ impl fmt::Debug for OwnedFd {
 /// call the method. Windows platforms have a corresponding `AsHandle` and
 /// `AsSocket` set of traits.
 #[unstable(feature = "io_safety", issue = "87074")]
-pub trait AsFd {
+pub trait AsFd<'a> {
     /// Borrows the file descriptor.
     ///
     /// # Example
@@ -197,21 +197,21 @@ pub trait AsFd {
     /// # Ok::<(), io::Error>(())
     /// ```
     #[unstable(feature = "io_safety", issue = "87074")]
-    fn as_fd(&self) -> BorrowedFd<'_>;
+    fn as_fd(self) -> BorrowedFd<'a>;
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a BorrowedFd<'_> {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         *self
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for OwnedFd {
+impl<'a> AsFd<'a> for &'a OwnedFd {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         // Safety: `OwnedFd` and `BorrowedFd` have the same validity
         // invariants, and the `BorrowdFd` is bounded by the lifetime
         // of `&self`.
@@ -220,9 +220,9 @@ impl AsFd for OwnedFd {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for fs::File {
+impl<'a> AsFd<'a> for &'a fs::File {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().as_fd()
     }
 }
@@ -244,9 +244,9 @@ impl From<OwnedFd> for fs::File {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::net::TcpStream {
+impl<'a> AsFd<'a> for &'a crate::net::TcpStream {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().socket().as_fd()
     }
 }
@@ -270,9 +270,9 @@ impl From<OwnedFd> for crate::net::TcpStream {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::net::TcpListener {
+impl<'a> AsFd<'a> for &'a crate::net::TcpListener {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().socket().as_fd()
     }
 }
@@ -296,9 +296,9 @@ impl From<OwnedFd> for crate::net::TcpListener {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::net::UdpSocket {
+impl<'a> AsFd<'a> for &'a crate::net::UdpSocket {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().socket().as_fd()
     }
 }

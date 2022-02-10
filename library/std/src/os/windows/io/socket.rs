@@ -205,21 +205,21 @@ impl fmt::Debug for OwnedSocket {
 
 /// A trait to borrow the socket from an underlying object.
 #[unstable(feature = "io_safety", issue = "87074")]
-pub trait AsSocket {
+pub trait AsSocket<'a> {
     /// Borrows the socket.
-    fn as_socket(&self) -> BorrowedSocket<'_>;
+    fn as_socket(self) -> BorrowedSocket<'a>;
 }
 
-impl AsSocket for BorrowedSocket<'_> {
+impl<'a> AsSocket<'a> for &'a BorrowedSocket<'_> {
     #[inline]
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         *self
     }
 }
 
-impl AsSocket for OwnedSocket {
+impl<'a> AsSocket<'a> for &'a OwnedSocket {
     #[inline]
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
         // invariants, and the `BorrowdSocket` is bounded by the lifetime
         // of `&self`.
@@ -227,9 +227,9 @@ impl AsSocket for OwnedSocket {
     }
 }
 
-impl AsSocket for crate::net::TcpStream {
+impl<'a> AsSocket<'a> for &'a crate::net::TcpStream {
     #[inline]
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
     }
 }
@@ -248,9 +248,9 @@ impl From<OwnedSocket> for crate::net::TcpStream {
     }
 }
 
-impl AsSocket for crate::net::TcpListener {
+impl<'a> AsSocket<'a> for &'a crate::net::TcpListener {
     #[inline]
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
     }
 }
@@ -269,9 +269,9 @@ impl From<OwnedSocket> for crate::net::TcpListener {
     }
 }
 
-impl AsSocket for crate::net::UdpSocket {
+impl<'a> AsSocket<'a> for &'a crate::net::UdpSocket {
     #[inline]
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
     }
 }

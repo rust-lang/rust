@@ -1008,9 +1008,9 @@ impl IntoRawFd for UnixDatagram {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for UnixDatagram {
+impl<'a> AsFd<'a> for &'a UnixDatagram {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.0.as_inner().as_fd()
     }
 }

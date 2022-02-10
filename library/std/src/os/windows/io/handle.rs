@@ -298,7 +298,7 @@ impl fmt::Debug for OwnedHandle {
 
 /// A trait to borrow the handle from an underlying object.
 #[unstable(feature = "io_safety", issue = "87074")]
-pub trait AsHandle {
+pub trait AsHandle<'a> {
     /// Borrows the handle.
     ///
     /// # Example
@@ -313,19 +313,19 @@ pub trait AsHandle {
     /// let borrowed_handle: BorrowedHandle<'_> = f.as_handle();
     /// # Ok::<(), io::Error>(())
     /// ```
-    fn as_handle(&self) -> BorrowedHandle<'_>;
+    fn as_handle(self) -> BorrowedHandle<'a>;
 }
 
-impl AsHandle for BorrowedHandle<'_> {
+impl<'a> AsHandle<'a> for &'a BorrowedHandle<'_> {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         *self
     }
 }
 
-impl AsHandle for OwnedHandle {
+impl<'a> AsHandle<'a> for &'a OwnedHandle {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
         // invariants, and the `BorrowdHandle` is bounded by the lifetime
         // of `&self`.
@@ -333,9 +333,9 @@ impl AsHandle for OwnedHandle {
     }
 }
 
-impl AsHandle for fs::File {
+impl<'a> AsHandle<'a> for &'a fs::File {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         self.as_inner().as_handle()
     }
 }
@@ -354,51 +354,51 @@ impl From<OwnedHandle> for fs::File {
     }
 }
 
-impl AsHandle for crate::io::Stdin {
+impl<'a> AsHandle<'a> for &'a crate::io::Stdin {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl<'a> AsHandle for crate::io::StdinLock<'a> {
+impl<'a, 'b> AsHandle<'a> for &'a crate::io::StdinLock<'b> {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl AsHandle for crate::io::Stdout {
+impl<'a> AsHandle<'a> for &'a crate::io::Stdout {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl<'a> AsHandle for crate::io::StdoutLock<'a> {
+impl<'a, 'b> AsHandle<'a> for &'a crate::io::StdoutLock<'b> {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl AsHandle for crate::io::Stderr {
+impl<'a> AsHandle<'a> for &'a crate::io::Stderr {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl<'a> AsHandle for crate::io::StderrLock<'a> {
+impl<'a, 'b> AsHandle<'a> for &'a crate::io::StderrLock<'b> {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
 
-impl AsHandle for crate::process::ChildStdin {
+impl<'a> AsHandle<'a> for &'a crate::process::ChildStdin {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
@@ -410,9 +410,9 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
     }
 }
 
-impl AsHandle for crate::process::ChildStdout {
+impl<'a> AsHandle<'a> for &'a crate::process::ChildStdout {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
@@ -424,9 +424,9 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
     }
 }
 
-impl AsHandle for crate::process::ChildStderr {
+impl<'a> AsHandle<'a> for &'a crate::process::ChildStderr {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }
@@ -438,9 +438,9 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
     }
 }
 
-impl<T> AsHandle for crate::thread::JoinHandle<T> {
+impl<'a, T> AsHandle<'a> for &'a crate::thread::JoinHandle<T> {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
     }
 }

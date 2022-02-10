@@ -461,13 +461,15 @@ impl FromInner<FileDesc> for Socket {
     }
 }
 
-impl AsFd for Socket {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl Socket {
+    pub fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
 }
 
 impl AsRawFd for Socket {
+    /// Similar to `AsFd::as_fd`, but doesn't require `Socket` to have
+    /// stability attributes.
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }

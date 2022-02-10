@@ -707,9 +707,9 @@ impl IntoRawFd for UnixStream {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for UnixStream {
+impl<'a> AsFd<'a> for &'a UnixStream {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.0.as_fd()
     }
 }

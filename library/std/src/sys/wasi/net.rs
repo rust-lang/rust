@@ -35,8 +35,8 @@ impl FromInner<WasiFd> for Socket {
     }
 }
 
-impl AsFd for Socket {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a Socket {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.0.as_fd()
     }
 }

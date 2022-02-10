@@ -289,8 +289,8 @@ impl FromInner<OwnedFd> for FileDesc {
     }
 }
 
-impl AsFd for FileDesc {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a FileDesc {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.0.as_fd()
     }
 }

@@ -388,9 +388,9 @@ impl IntoRawFd for process::ChildStderr {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::process::ChildStdin {
+impl<'a> AsFd<'a> for &'a crate::process::ChildStdin {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().as_fd()
     }
 }
@@ -404,9 +404,9 @@ impl From<crate::process::ChildStdin> for OwnedFd {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::process::ChildStdout {
+impl<'a> AsFd<'a> for &'a crate::process::ChildStdout {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().as_fd()
     }
 }
@@ -420,9 +420,9 @@ impl From<crate::process::ChildStdout> for OwnedFd {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for crate::process::ChildStderr {
+impl<'a> AsFd<'a> for &'a crate::process::ChildStderr {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().as_fd()
     }
 }

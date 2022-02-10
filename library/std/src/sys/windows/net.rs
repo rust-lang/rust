@@ -451,8 +451,8 @@ impl IntoInner<OwnedSocket> for Socket {
     }
 }
 
-impl AsSocket for Socket {
-    fn as_socket(&self) -> BorrowedSocket<'_> {
+impl<'a> AsSocket<'a> for &'a Socket {
+    fn as_socket(self) -> BorrowedSocket<'a> {
         self.0.as_socket()
     }
 }

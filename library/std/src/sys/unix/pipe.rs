@@ -132,8 +132,10 @@ impl AsRawFd for AnonPipe {
     }
 }
 
-impl AsFd for AnonPipe {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl AnonPipe {
+    /// Similar to `AsFd::as_fd`, but doesn't require `AnonPipe` to have
+    /// stability attributes.
+    pub fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
 }

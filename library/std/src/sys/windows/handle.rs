@@ -48,8 +48,8 @@ impl FromInner<OwnedHandle> for Handle {
     }
 }
 
-impl AsHandle for Handle {
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+impl<'a> AsHandle<'a> for &'a Handle {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         self.0.as_handle()
     }
 }

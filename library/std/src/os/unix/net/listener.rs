@@ -301,9 +301,9 @@ impl IntoRawFd for UnixListener {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsFd for UnixListener {
+impl<'a> AsFd<'a> for &'a UnixListener {
     #[inline]
-    fn as_fd(&self) -> BorrowedFd<'_> {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.0.as_inner().as_fd()
     }
 }

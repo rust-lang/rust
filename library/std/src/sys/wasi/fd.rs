@@ -282,8 +282,8 @@ impl FromInner<OwnedFd> for WasiFd {
     }
 }
 
-impl AsFd for WasiFd {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a WasiFd {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.fd.as_fd()
     }
 }

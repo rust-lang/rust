@@ -40,9 +40,9 @@ impl AsRawHandle for process::Child {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl AsHandle for process::Child {
+impl<'a> AsHandle<'a> for &'a process::Child {
     #[inline]
-    fn as_handle(&self) -> BorrowedHandle<'_> {
+    fn as_handle(self) -> BorrowedHandle<'a> {
         self.as_inner().handle().as_handle()
     }
 }

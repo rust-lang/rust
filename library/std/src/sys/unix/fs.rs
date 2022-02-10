@@ -983,13 +983,15 @@ impl FromInner<FileDesc> for File {
     }
 }
 
-impl AsFd for File {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl File {
+    pub fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
 }
 
 impl AsRawFd for File {
+    /// Similar to `AsFd::as_fd`, but doesn't require `File` to have
+    /// stability attributes.
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }

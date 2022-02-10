@@ -87,8 +87,8 @@ impl IntoRawFd for PidFd {
     }
 }
 
-impl AsFd for PidFd {
-    fn as_fd(&self) -> BorrowedFd<'_> {
+impl<'a> AsFd<'a> for &'a PidFd {
+    fn as_fd(self) -> BorrowedFd<'a> {
         self.as_inner().as_fd()
     }
 }
