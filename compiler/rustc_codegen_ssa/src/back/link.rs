@@ -371,10 +371,6 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    // After adding all files to the archive, we need to update the
-    // symbol table of the archive.
-    ab.update_symbols();
-
     return Ok(ab);
 }
 
@@ -503,7 +499,6 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         sess.fatal(&e);
     }
 
-    ab.update_symbols();
     ab.build();
 
     if !all_native_libs.is_empty() {
@@ -2304,7 +2299,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
         sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
-            archive.update_symbols();
 
             let mut any_objects = false;
             for f in archive.src_files() {
