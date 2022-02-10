@@ -953,6 +953,26 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       blocks.insert(edge.first);
     }
 
+    BasicBlock *oldB = BuilderM.GetInsertBlock();
+    if (BuilderM.GetInsertPoint() != oldB->end()) {
+      assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
+      goto endCheck;
+    }
+
+    BasicBlock *fwd = oldB;
+    bool inReverseBlocks = false;
+    if (!isOriginalBlock(*fwd)) {
+      auto found = reverseBlockToPrimal.find(oldB);
+      if (found == reverseBlockToPrimal.end()) {
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
+        goto endCheck;
+      }
+      fwd = found->second;
+      inReverseBlocks =
+          std::find(reverseBlocks[fwd].begin(), reverseBlocks[fwd].end(),
+                    oldB) != reverseBlocks[fwd].end();
+    }
+
     if (targetToPreds.size() == 3) {
       for (auto block : blocks) {
         if (!DT.dominates(block, phi->getParent()))
@@ -1048,19 +1068,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               goto endCheck;
             }
 
-            BasicBlock *oldB = BuilderM.GetInsertBlock();
-            if (BuilderM.GetInsertPoint() != oldB->end()) {
-              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
-              goto endCheck;
-            }
-
-            auto found = reverseBlockToPrimal.find(oldB);
-            if (found == reverseBlockToPrimal.end()) {
-              assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
-              goto endCheck;
-            }
-            BasicBlock *fwd = found->second;
-
             SmallVector<BasicBlock *, 2> predBlocks;
             predBlocks.push_back(bi2->getSuccessor(0));
             predBlocks.push_back(bi2->getSuccessor(1));
@@ -1091,7 +1098,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                   val->getContext(), oldB->getName() + "_phirc", newFunc));
               blocks[i]->moveAfter(last);
               last = blocks[i];
-              reverseBlocks[fwd].push_back(blocks[i]);
+              if (inReverseBlocks)
+                reverseBlocks[fwd].push_back(blocks[i]);
               reverseBlockToPrimal[blocks[i]] = fwd;
               IRBuilder<> B(blocks[i]);
 
@@ -1126,9 +1134,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 
               if (!vals[i]) {
                 for (size_t j = 0; j <= i; j++) {
-                  reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                     reverseBlocks[fwd].end(),
-                                                     blocks[j]));
+                  if (inReverseBlocks)
+                    reverseBlocks[fwd].erase(
+                        std::find(reverseBlocks[fwd].begin(),
+                                  reverseBlocks[fwd].end(), blocks[j]));
                   reverseBlockToPrimal.erase(blocks[j]);
                   unwrap_cache.erase(blocks[j]);
                   lookup_cache.erase(blocks[j]);
@@ -1170,7 +1179,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             BuilderM.CreateCondBr(cond2, blocks[0], blocks[1]);
 
             BuilderM.SetInsertPoint(bret);
-            reverseBlocks[fwd].push_back(bret);
+            if (inReverseBlocks)
+              reverseBlocks[fwd].push_back(bret);
             reverseBlockToPrimal[bret] = fwd;
             auto toret = BuilderM.CreatePHI(val->getType(), vals.size());
             for (size_t i = 0; i < vals.size(); i++)
@@ -1226,16 +1236,6 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         isa<SwitchInst>(equivalentTerminator)) {
       BasicBlock *oldB = BuilderM.GetInsertBlock();
 
-      BasicBlock *fwd = oldB;
-      if (!isOriginalBlock(*fwd)) {
-        auto found = reverseBlockToPrimal.find(oldB);
-        if (found == reverseBlockToPrimal.end()) {
-          assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
-          goto endCheck;
-        }
-        fwd = found->second;
-      }
-
       SmallVector<BasicBlock *, 2> predBlocks;
       Value *cond = nullptr;
       if (auto branch = dyn_cast<BranchInst>(equivalentTerminator)) {
@@ -1280,7 +1280,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         blocks[i]->moveAfter(last);
         last = blocks[i];
         if (reverseBlocks.size() > 0) {
-          reverseBlocks[fwd].push_back(blocks[i]);
+          if (inReverseBlocks)
+            reverseBlocks[fwd].push_back(blocks[i]);
           reverseBlockToPrimal[blocks[i]] = fwd;
         }
         IRBuilder<> B(blocks[i]);
@@ -1313,9 +1314,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (!vals[i]) {
           for (size_t j = 0; j <= i; j++) {
             if (reverseBlocks.size() > 0) {
-              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                 reverseBlocks[fwd].end(),
-                                                 blocks[j]));
+              if (inReverseBlocks)
+                reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                                   reverseBlocks[fwd].end(),
+                                                   blocks[j]));
               reverseBlockToPrimal.erase(blocks[j]);
             }
             unwrap_cache.erase(blocks[j]);
@@ -1346,9 +1348,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           blocks[1]->size() == 1) {
         for (size_t j = 0; j < blocks.size(); j++) {
           if (reverseBlocks.size() > 0) {
-            reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                               reverseBlocks[fwd].end(),
-                                               blocks[j]));
+            if (inReverseBlocks)
+              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                                 reverseBlocks[fwd].end(),
+                                                 blocks[j]));
             reverseBlockToPrimal.erase(blocks[j]);
           }
           unwrap_cache.erase(blocks[j]);
@@ -1379,9 +1382,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       if (BuilderM.GetInsertPoint() != oldB->end()) {
         for (size_t j = 0; j < blocks.size(); j++) {
           if (reverseBlocks.size() > 0) {
-            reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                               reverseBlocks[fwd].end(),
-                                               blocks[j]));
+            if (inReverseBlocks)
+              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
+                                                 reverseBlocks[fwd].end(),
+                                                 blocks[j]));
             reverseBlockToPrimal.erase(blocks[j]);
           }
           unwrap_cache.erase(blocks[j]);
@@ -1415,7 +1419,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
       }
       BuilderM.SetInsertPoint(bret);
-      reverseBlocks[fwd].push_back(bret);
+      if (inReverseBlocks)
+        reverseBlocks[fwd].push_back(bret);
       reverseBlockToPrimal[bret] = fwd;
       auto toret = BuilderM.CreatePHI(val->getType(), vals.size());
       for (size_t i = 0; i < vals.size(); i++)
@@ -2017,67 +2022,299 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
   if (newBlocksForLoop_cache.find(tup) != newBlocksForLoop_cache.end())
     return newBlocksForLoop_cache[tup];
 
-  if (inLoop && inLoopContext && branchingBlock == lc.header &&
-      lc.header == branchingContext.header) {
-    BasicBlock *incB = BasicBlock::Create(
-        BB->getContext(), "inc" + reverseBlocks[lc.header].front()->getName(),
-        BB->getParent());
-    incB->moveAfter(reverseBlocks[lc.header].back());
-
-    IRBuilder<> tbuild(incB);
-
-#if LLVM_VERSION_MAJOR > 7
-    Value *av = tbuild.CreateLoad(
-        cast<PointerType>(lc.antivaralloc->getType())->getElementType(),
-        lc.antivaralloc);
-#else
-    Value *av = tbuild.CreateLoad(lc.antivaralloc);
-#endif
-    Value *sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "",
-                                  /*NUW*/ false, /*NSW*/ true);
-    tbuild.CreateStore(sub, lc.antivaralloc);
-    tbuild.CreateBr(reverseBlocks[BB].front());
-    return newBlocksForLoop_cache[tup] = incB;
-  }
-
   if (inLoop) {
+    // If we're reversing a latch edge.
+    bool incEntering = inLoopContext && branchingBlock == lc.header &&
+                       lc.header == branchingContext.header;
+
     auto L = LI.getLoopFor(BB);
     auto latches = getLatches(L, lc.exitBlocks);
-
-    if (std::find(latches.begin(), latches.end(), BB) != latches.end() &&
+    // If we're reverseing a loop exit.
+    bool exitEntering =
+        std::find(latches.begin(), latches.end(), BB) != latches.end() &&
         std::find(lc.exitBlocks.begin(), lc.exitBlocks.end(), branchingBlock) !=
-            lc.exitBlocks.end()) {
-      BasicBlock *incB = BasicBlock::Create(
-          BB->getContext(),
-          "merge" + reverseBlocks[lc.header].front()->getName() + "_" +
-              branchingBlock->getName(),
-          BB->getParent());
-      incB->moveAfter(reverseBlocks[branchingBlock].back());
+            lc.exitBlocks.end();
 
-      IRBuilder<> tbuild(reverseBlocks[branchingBlock].back());
+    // If we're re-entering a loop, prepare a loop-level forward pass to
+    // rematerialize any loop-scope rematerialization.
+    if (incEntering || exitEntering) {
+      SmallPtrSet<Instruction *, 1> loopRematerializations;
+      Loop *origLI = nullptr;
+      for (auto pair : rematerializableAllocations) {
+        if (pair.second.LI &&
+            getNewFromOriginal(pair.second.LI->getHeader()) == L->getHeader()) {
+          bool rematerialized = false;
+          std::map<UsageKey, bool> Seen;
+          for (auto pair : knownRecomputeHeuristic)
+            if (!pair.second)
+              Seen[UsageKey(pair.first, ValueType::Primal)] = false;
 
-      Value *lim = nullptr;
-      if (lc.dynamic && assumeDynamicLoopOfSizeOne(L)) {
-        lim = ConstantInt::get(lc.var->getType(), 0);
-      } else if (lc.dynamic) {
-        // Must be in a reverse pass fashion for a lookup to index bound to be
-        // legal
-        assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
-        LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
-                          lc.preheader);
-        lim =
-            lookupValueFromCache(/*forwardPass*/ false, tbuild, lctx,
-                                 getDynamicLoopLimit(LI.getLoopFor(lc.header)),
-                                 /*isi1*/ false);
-      } else {
-        lim = lookupM(lc.trueLimit, tbuild);
+          if (is_value_needed_in_reverse<ValueType::Primal>(
+                  *my_TR, this, pair.first, mode, Seen, notForAnalysis)) {
+            rematerialized = true;
+          }
+          if (rematerialized) {
+            for (auto I : pair.second.stores)
+              loopRematerializations.insert(I);
+            origLI = pair.second.LI;
+          }
+        }
+      }
+      BasicBlock *resumeblock = reverseBlocks[BB].front();
+      if (loopRematerializations.size() != 0) {
+        auto found = rematerializedLoops_cache.find(L);
+        if (found != rematerializedLoops_cache.end()) {
+          resumeblock = found->second;
+        } else {
+          BasicBlock *enterB = BasicBlock::Create(
+              BB->getContext(), "remat_enter", BB->getParent());
+          BasicBlock *exitB = resumeblock;
+          std::map<BasicBlock *, BasicBlock *> origToNewForward;
+          for (auto B : origLI->getBlocks()) {
+            BasicBlock *newB = BasicBlock::Create(
+                B->getContext(),
+                "remat_" + lc.header->getName() + "_" + B->getName(),
+                BB->getParent());
+            origToNewForward[B] = newB;
+            reverseBlockToPrimal[newB] = getNewFromOriginal(B);
+          }
+
+          {
+            IRBuilder<> NB(enterB);
+            NB.CreateBr(origToNewForward[origLI->getHeader()]);
+          }
+          {
+            llvm::SmallPtrSet<llvm::BasicBlock *, 8> origExitBlocks;
+            getExitBlocks(origLI, origExitBlocks);
+            for (auto EB : origExitBlocks)
+              origToNewForward[EB] = exitB;
+          }
+
+          ValueToValueMapTy available;
+
+          std::function<void(Loop *, bool)> handleLoop = [&](Loop *OL,
+                                                             bool subLoop) {
+            if (subLoop) {
+              auto Header = OL->getHeader();
+              IRBuilder<> NB(origToNewForward[Header]);
+              LoopContext flc;
+              getContext(getNewFromOriginal(Header), flc);
+
+              auto iv = NB.CreatePHI(flc.var->getType(), 2, "fiv");
+              auto inc = NB.CreateAdd(iv, ConstantInt::get(iv->getType(), 1));
+
+              SmallVector<BasicBlock *, 8> ExitingBlocks;
+              OL->getExitingBlocks(ExitingBlocks);
+              SmallPtrSet<BasicBlock *, 2> ExitingBlocksSet(
+                  ExitingBlocks.begin(), ExitingBlocks.end());
+
+              for (auto PH : predecessors(Header)) {
+                if (notForAnalysis.count(PH))
+                  continue;
+
+                if (ExitingBlocksSet.count(PH))
+                  iv->addIncoming(inc, origToNewForward[PH]);
+                else
+                  iv->addIncoming(ConstantInt::get(iv->getType(), 0),
+                                  origToNewForward[PH]);
+              }
+              available[flc.var] = iv;
+              available[flc.incvar] = inc;
+            }
+            for (auto SL : OL->getSubLoops())
+              handleLoop(SL, /*subLoop*/ true);
+          };
+          handleLoop(origLI, /*subLoop*/ false);
+
+          for (auto B : origLI->getBlocks()) {
+            auto newB = origToNewForward[B];
+            IRBuilder<> NB(newB);
+
+            // TODO fill available with relevant IV's surrounding and
+            // IV's of inner loop phi's
+
+            for (auto &I : *B) {
+              // Only handle store, memset, and julia.write_barrier
+              if (loopRematerializations.count(&I)) {
+                if (auto SI = dyn_cast<StoreInst>(&I)) {
+                  // TODO
+                  auto ts = NB.CreateStore(
+                      lookupM(getNewFromOriginal(SI->getValueOperand()), NB,
+                              available),
+                      lookupM(getNewFromOriginal(SI->getPointerOperand()), NB,
+                              available));
+#if LLVM_VERSION_MAJOR >= 10
+                  ts->setAlignment(SI->getAlign());
+#else
+                  ts->setAlignment(SI->getAlignment());
+#endif
+                  ts->setVolatile(SI->isVolatile());
+                  ts->setOrdering(SI->getOrdering());
+                  ts->setSyncScopeID(SI->getSyncScopeID());
+                } else if (auto MS = dyn_cast<MemSetInst>(&I)) {
+                  // TODO
+                  SmallVector<Value *, 2> args;
+#if LLVM_VERSION_MAJOR >= 14
+                  for (auto &arg : MS->args())
+#else
+                  for (auto &arg : MS->arg_operands())
+#endif
+                    args.push_back(
+                        lookupM(getNewFromOriginal(arg), NB, available));
+
+                  SmallVector<ValueType, 2> BundleTypes(args.size(),
+                                                        ValueType::Primal);
+
+                  auto Defs = getInvertedBundles(MS, BundleTypes, NB,
+                                                 /*lookup*/ true, available);
+                  auto cal = NB.CreateCall(MS->getCalledFunction(), args, Defs);
+                  cal->setAttributes(MS->getAttributes());
+                  cal->setCallingConv(MS->getCallingConv());
+                  cal->setTailCallKind(MS->getTailCallKind());
+                } else if (auto CI = dyn_cast<CallInst>(&I)) {
+                  Function *called = getFunctionFromCall(CI);
+                  assert(called);
+                  if (called->getName() == "julia.write_barrier") {
+
+                    // TODO
+                    SmallVector<Value *, 2> args;
+#if LLVM_VERSION_MAJOR >= 14
+                    for (auto &arg : CI->args())
+#else
+                    for (auto &arg : CI->arg_operands())
+#endif
+                      args.push_back(
+                          lookupM(getNewFromOriginal(arg), NB, available));
+
+                    SmallVector<ValueType, 2> BundleTypes(args.size(),
+                                                          ValueType::Primal);
+
+                    auto Defs = getInvertedBundles(CI, BundleTypes, NB,
+                                                   /*lookup*/ true, available);
+                    auto cal = NB.CreateCall(called, args, Defs);
+                    cal->setAttributes(CI->getAttributes());
+                    cal->setCallingConv(CI->getCallingConv());
+                    cal->setTailCallKind(CI->getTailCallKind());
+                  } else {
+                    assert(isDeallocationFunction(*called, TLI));
+                    continue;
+                  }
+                } else {
+                  assert(0 && "unhandlable loop rematerialization instruction");
+                }
+              }
+            }
+
+            // Remap a branch to the header to continue to the block.
+            auto remap = [&](BasicBlock *rB) {
+              if (rB == origLI->getHeader())
+                return exitB;
+              return origToNewForward[rB];
+            };
+
+            // TODO clone terminator
+            auto TI = B->getTerminator();
+            assert(TI);
+            if (notForAnalysis.count(B)) {
+              NB.CreateUnreachable();
+            } else if (auto BI = dyn_cast<BranchInst>(TI)) {
+              if (BI->isUnconditional())
+                NB.CreateBr(remap(BI->getSuccessor(0)));
+              else
+                NB.CreateCondBr(lookupM(getNewFromOriginal(BI->getCondition()),
+                                        NB, available),
+                                remap(BI->getSuccessor(0)),
+                                remap(BI->getSuccessor(1)));
+            } else if (auto SI = dyn_cast<SwitchInst>(TI)) {
+              auto NSI = NB.CreateSwitch(
+                  lookupM(getNewFromOriginal(BI->getCondition()), NB,
+                          available),
+                  remap(SI->getDefaultDest()));
+              for (auto cas : SI->cases()) {
+                NSI->addCase(cas.getCaseValue(), remap(cas.getCaseSuccessor()));
+              }
+            } else {
+              assert(isa<UnreachableInst>(TI));
+              NB.CreateUnreachable();
+            }
+            // Fixup phi nodes that may have their predecessors now changed by
+            // the phi unwrapping
+            if (!notForAnalysis.count(B) &&
+                NB.GetInsertBlock() != origToNewForward[B]) {
+              for (auto S : successors(B)) {
+                S = origToNewForward[S];
+                for (auto I = S->begin(), E = S->end(); I != E; ++I) {
+                  PHINode *orig = dyn_cast<PHINode>(&*I);
+                  if (orig == nullptr)
+                    break;
+                  for (unsigned Op = 0, NumOps = orig->getNumOperands();
+                       Op != NumOps; ++Op)
+                    if (orig->getIncomingBlock(Op) == origToNewForward[B])
+                      orig->setIncomingBlock(Op, NB.GetInsertBlock());
+                }
+              }
+            }
+          }
+          rematerializedLoops_cache[L] = resumeblock = enterB;
+        }
       }
 
-      tbuild.SetInsertPoint(incB);
-      tbuild.CreateStore(lim, lc.antivaralloc);
-      tbuild.CreateBr(reverseBlocks[BB].front());
+      if (incEntering) {
+        BasicBlock *incB = BasicBlock::Create(
+            BB->getContext(),
+            "inc" + reverseBlocks[lc.header].front()->getName(),
+            BB->getParent());
+        incB->moveAfter(reverseBlocks[lc.header].back());
 
-      return newBlocksForLoop_cache[tup] = incB;
+        IRBuilder<> tbuild(incB);
+
+#if LLVM_VERSION_MAJOR > 7
+        Value *av = tbuild.CreateLoad(
+            cast<PointerType>(lc.antivaralloc->getType())->getElementType(),
+            lc.antivaralloc);
+#else
+        Value *av = tbuild.CreateLoad(lc.antivaralloc);
+#endif
+        Value *sub =
+            tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "",
+                             /*NUW*/ false, /*NSW*/ true);
+        tbuild.CreateStore(sub, lc.antivaralloc);
+        tbuild.CreateBr(resumeblock);
+        return newBlocksForLoop_cache[tup] = incB;
+      } else {
+        assert(exitEntering);
+        BasicBlock *incB = BasicBlock::Create(
+            BB->getContext(),
+            "merge" + reverseBlocks[lc.header].front()->getName() + "_" +
+                branchingBlock->getName(),
+            BB->getParent());
+        incB->moveAfter(reverseBlocks[branchingBlock].back());
+
+        IRBuilder<> tbuild(reverseBlocks[branchingBlock].back());
+
+        Value *lim = nullptr;
+        if (lc.dynamic && assumeDynamicLoopOfSizeOne(L)) {
+          lim = ConstantInt::get(lc.var->getType(), 0);
+        } else if (lc.dynamic) {
+          // Must be in a reverse pass fashion for a lookup to index bound to be
+          // legal
+          assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
+          LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
+                            lc.preheader);
+          lim = lookupValueFromCache(
+              /*forwardPass*/ false, tbuild, lctx,
+              getDynamicLoopLimit(LI.getLoopFor(lc.header)),
+              /*isi1*/ false);
+        } else {
+          lim = lookupM(lc.trueLimit, tbuild);
+        }
+
+        tbuild.SetInsertPoint(incB);
+        tbuild.CreateStore(lim, lc.antivaralloc);
+        tbuild.CreateBr(resumeblock);
+
+        return newBlocksForLoop_cache[tup] = incB;
+      }
     }
   }
 
@@ -5475,13 +5712,12 @@ void GradientUtils::computeMinCache(
         Required.insert(V);
       } else {
         for (auto V2 : V->users()) {
-          if (auto SI = dyn_cast<StoreInst>(V2)) {
+          if (auto Inst = dyn_cast<Instruction>(V2))
             for (auto pair : rematerializableAllocations) {
-              if (pair.second.second.count(SI)) {
+              if (pair.second.stores.count(Inst)) {
                 todo.push_back(pair.first);
               }
             }
-          }
           todo.push_back(V2);
         }
       }

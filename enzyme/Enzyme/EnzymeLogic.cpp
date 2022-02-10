@@ -105,8 +105,7 @@ struct CacheAnalysis {
 
   const ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
       &allocationsWithGuaranteedFree;
-  const ValueMap<Value *, std::pair<SmallPtrSet<LoadInst *, 1>,
-                                    SmallPtrSet<Instruction *, 1>>>
+  const ValueMap<Value *, GradientUtils::Rematerializer>
       &rematerializableAllocations;
   TypeResults &TR;
   AAResults &AA;
@@ -123,8 +122,7 @@ struct CacheAnalysis {
   CacheAnalysis(
       const ValueMap<const CallInst *, SmallPtrSet<const CallInst *, 1>>
           &allocationsWithGuaranteedFree,
-      const ValueMap<Value *, std::pair<SmallPtrSet<LoadInst *, 1>,
-                                        SmallPtrSet<Instruction *, 1>>>
+      const ValueMap<Value *, GradientUtils::Rematerializer>
           &rematerializableAllocations,
       TypeResults &TR, AAResults &AA, Function *oldFunc, ScalarEvolution &SE,
       LoopInfo &OrigLI, DominatorTree &OrigDT, TargetLibraryInfo &TLI,
@@ -268,6 +266,13 @@ struct CacheAnalysis {
           return false;
         }
       }
+
+    // Any load from a rematerializable allocation is definitionally
+    // reloadable. Notably we don't need to perform the allFollowers
+    // of check as the loop scope caching should allow us to ignore
+    // such stores.
+    if (rematerializableAllocations.count(obj))
+      return false;
 
     // If not running combined, check if pointer operand is overwritten
     // by a subsequent call (i.e. not this function).

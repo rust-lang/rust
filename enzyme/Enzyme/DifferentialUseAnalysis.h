@@ -364,8 +364,8 @@ static inline bool is_value_needed_in_reverse(
           // we'll set it to unused, then check the gep, then here we'll
           // directly say unused by induction instead of checking the final
           // loads.
-          if (pair.second.second.count(SI))
-            for (LoadInst *L : pair.second.first)
+          if (pair.second.stores.count(SI))
+            for (LoadInst *L : pair.second.loads)
               if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
                                                  oldUnreachable)) {
                 return seen[idx] = true;
@@ -535,21 +535,20 @@ static inline int cmpLoopNest(Loop *prev, Loop *next) {
   return -1;
 }
 
-static inline void
-minCut(const DataLayout &DL, LoopInfo &OrigLI,
-       const SmallPtrSetImpl<Value *> &Recomputes,
-       const SmallPtrSetImpl<Value *> &Intermediates,
-       SmallPtrSetImpl<Value *> &Required, SmallPtrSetImpl<Value *> &MinReq,
-       const ValueMap<Value *, std::pair<SmallPtrSet<LoadInst *, 1>,
-                                         SmallPtrSet<Instruction *, 1>>>
-           &rematerializableAllocations) {
+static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
+                          const SmallPtrSetImpl<Value *> &Recomputes,
+                          const SmallPtrSetImpl<Value *> &Intermediates,
+                          SmallPtrSetImpl<Value *> &Required,
+                          SmallPtrSetImpl<Value *> &MinReq,
+                          const ValueMap<Value *, GradientUtils::Rematerializer>
+                              &rematerializableAllocations) {
   Graph G;
   for (auto V : Intermediates) {
     G[Node(V, false)].insert(Node(V, true));
     for (auto U : V->users()) {
       if (auto I = dyn_cast<Instruction>(U)) {
         for (auto pair : rematerializableAllocations) {
-          if (Intermediates.count(pair.first) && pair.second.second.count(I))
+          if (Intermediates.count(pair.first) && pair.second.stores.count(I))
             G[Node(V, true)].insert(Node(pair.first, false));
         }
       }
@@ -560,7 +559,7 @@ minCut(const DataLayout &DL, LoopInfo &OrigLI,
   }
   for (auto pair : rematerializableAllocations) {
     if (Intermediates.count(pair.first)) {
-      for (LoadInst *L : pair.second.first) {
+      for (LoadInst *L : pair.second.loads) {
         if (Intermediates.count(L)) {
           G[Node(pair.first, true)].insert(Node(L, false));
         }

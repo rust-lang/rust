@@ -818,8 +818,12 @@ static inline bool mayExecuteAfter(llvm::Instruction *inst,
     return false;
 
   llvm::SmallVector<BasicBlock *, 2> todo;
-  for (auto B : successors(instBlk))
+  for (auto B : successors(instBlk)) {
+    if (region && region->getHeader() == B) {
+      continue;
+    }
     todo.push_back(B);
+  }
 
   SmallPtrSet<BasicBlock *, 2> seen;
   while (todo.size()) {
