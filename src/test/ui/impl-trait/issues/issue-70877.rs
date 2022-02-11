@@ -13,7 +13,7 @@ impl Iterator for Bar {
     type Item = FooItem;
 
     fn next(&mut self) -> Option<Self::Item> {
-        Some(Box::new(quux)) //~ ERROR mismatched types
+        Some(Box::new(quux))
     }
 }
 
