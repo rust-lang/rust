@@ -763,7 +763,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             HirId, ImplItem, ImplItemKind, Item, ItemKind,
         };
 
-        fn maybe_body_id_of_fn(hir_map: &Map<'_>, id: HirId) -> Option<BodyId> {
+        fn maybe_body_id_of_fn(hir_map: Map<'_>, id: HirId) -> Option<BodyId> {
             match hir_map.find(id) {
                 Some(Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. }))
                 | Some(Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })) => {
@@ -774,7 +774,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
         let hir_map = self.infcx.tcx.hir();
         let mir_body_hir_id = self.mir_hir_id();
-        if let Some(fn_body_id) = maybe_body_id_of_fn(&hir_map, mir_body_hir_id) {
+        if let Some(fn_body_id) = maybe_body_id_of_fn(hir_map, mir_body_hir_id) {
             if let Block(
                 hir::Block {
                     expr:

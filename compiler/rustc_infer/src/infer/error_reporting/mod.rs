@@ -2226,7 +2226,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
     ) -> DiagnosticBuilder<'a> {
-        let hir = &self.tcx.hir();
+        let hir = self.tcx.hir();
         // Attempt to obtain the span of the parameter so we can
         // suggest adding an explicit lifetime bound to it.
         let generics = self
