@@ -966,7 +966,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let f = std::fs::File::open("/file")?;
-///     fs::fchown(f, Some(0), Some(0))?;
+///     fs::fchown(&f, Some(0), Some(0))?;
 ///     Ok(())
 /// }
 /// ```
