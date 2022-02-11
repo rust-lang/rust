@@ -241,7 +241,7 @@ in other sections:
 - Building things:
   - `./x.py build` – builds everything using the stage 1 compiler,
     not just up to `std`
-  - `./x.py build --stage 2` – builds the stage2 compiler, along with `std` and
+  - `./x.py build --stage 2` – builds everything with the stage 2 compiler including
     `rustdoc` (which doesn't take too long)
 - Running tests (see the [section on running tests](../tests/running.html) for
   more details):
