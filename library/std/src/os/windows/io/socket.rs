@@ -210,6 +210,22 @@ pub trait AsSocket {
     fn as_socket(&self) -> BorrowedSocket<'_>;
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsSocket> AsSocket for &T {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        T::as_socket(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsSocket> AsSocket for &mut T {
+    #[inline]
+    fn as_socket(&self) -> BorrowedSocket<'_> {
+        T::as_socket(self)
+    }
+}
+
 impl AsSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
