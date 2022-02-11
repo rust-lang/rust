@@ -192,6 +192,8 @@ public:
   getInvertedBundles(CallInst *orig, ArrayRef<ValueType> types,
                      IRBuilder<> &Builder2, bool lookup,
                      const ValueToValueMapTy &available = ValueToValueMapTy()) {
+    assert(!(lookup && mode == DerivativeMode::ForwardMode));
+
     SmallVector<OperandBundleDef, 2> OrigDefs;
     orig->getOperandBundlesAsDefs(OrigDefs);
     SmallVector<OperandBundleDef, 2> Defs;

@@ -9051,7 +9051,7 @@ public:
           BundleTypes.push_back(ValueType::Both);
 
       auto Defs = gutils->getInvertedBundles(orig, BundleTypes, Builder2,
-                                             /*lookup*/ true);
+                                             /*lookup*/ false);
 
 #if LLVM_VERSION_MAJOR > 7
       CallInst *diffes = Builder2.CreateCall(FT, newcalled, args, Defs);
