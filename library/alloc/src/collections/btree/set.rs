@@ -1539,7 +1539,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_len, b_len) = self.0.lens();
         // No checked_add, because even if a and b refer to the same set,
-        // and T is an empty type, the storage overhead of sets limits
+        // and T is a zero-sized type, the storage overhead of sets limits
         // the number of elements to less than half the range of usize.
         (0, Some(a_len + b_len))
     }
