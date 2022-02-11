@@ -816,26 +816,4 @@ pub mod ty {
             )
         }
     }
-
-    /// A trait bound with the `?const Trait` opt-out
-    #[derive(Debug)]
-    pub struct TraitBoundNotConst;
-    impl<'tcx> NonConstOp<'tcx> for TraitBoundNotConst {
-        fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
-            Status::Unstable(sym::const_trait_bound_opt_out)
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_trait_bound_opt_out,
-                span,
-                "`?const Trait` syntax is unstable",
-            )
-        }
-    }
 }

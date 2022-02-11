@@ -230,8 +230,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 }
             }
 
-            self.check_item_predicates();
-
             for (idx, local) in body.local_decls.iter_enumerated() {
                 // Handle the return place below.
                 if idx == RETURN_PLACE || local.internal {
@@ -360,40 +358,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
                 ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
                 _ => {}
-            }
-        }
-    }
-
-    fn check_item_predicates(&mut self) {
-        let ConstCx { tcx, .. } = *self.ccx;
-
-        let mut current = self.def_id().to_def_id();
-        loop {
-            let predicates = tcx.predicates_of(current);
-            for (predicate, _) in predicates.predicates {
-                match predicate.kind().skip_binder() {
-                    ty::PredicateKind::RegionOutlives(_)
-                    | ty::PredicateKind::TypeOutlives(_)
-                    | ty::PredicateKind::WellFormed(_)
-                    | ty::PredicateKind::Projection(_)
-                    | ty::PredicateKind::ConstEvaluatable(..)
-                    | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::Trait(..)
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
-                    ty::PredicateKind::ObjectSafe(_) => {
-                        bug!("object safe predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::ClosureKind(..) => {
-                        bug!("closure kind predicate on function: {:#?}", predicate)
-                    }
-                    ty::PredicateKind::Subtype(_) | ty::PredicateKind::Coerce(_) => {
-                        bug!("subtype/coerce predicate on function: {:#?}", predicate)
-                    }
-                }
-            }
-            match predicates.parent {
-                Some(parent) => current = parent,
-                None => break,
             }
         }
     }
