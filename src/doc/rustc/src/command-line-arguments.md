@@ -37,6 +37,8 @@ KIND=PATH` where `KIND` may be one of:
 <a id="option-l-link-lib"></a>
 ## `-l`: link the generated crate to a native library
 
+Syntax: `-l [KIND[:MODIFIERS]=]NAME[:RENAME]`.
+
 This flag allows you to specify linking to a specific native library when building
 a crate.
 
@@ -47,7 +49,13 @@ where `KIND` may be one of:
 - `static` — A native static library (such as a `.a` archive).
 - `framework` — A macOS framework.
 
-The kind of library can be specified in a [`#[link]`
+If the kind is specified, then linking modifiers can be attached to it.
+Modifiers are specified as a comma-delimited string with each modifier prefixed with
+either a `+` or `-` to indicate that the modifier is enabled or disabled, respectively.
+The last boolean value specified for a given modifier wins. \
+Example: `-l static:+whole-archive=mylib`.
+
+The kind of library and the modifiers can also be specified in a [`#[link]`
 attribute][link-attribute]. If the kind is not specified in the `link`
 attribute or on the command-line, it will link a dynamic library if available,
 otherwise it will use a static library. If the kind is specified on the
@@ -58,6 +66,22 @@ ATTR_NAME:LINK_NAME` where `ATTR_NAME` is the name in the `link` attribute,
 and `LINK_NAME` is the name of the actual library that will be linked.
 
 [link-attribute]: ../reference/items/external-blocks.html#the-link-attribute
+
+### Linking modifiers: `whole-archive`
+
+This modifier is only compatible with the `static` linking kind.
+Using any other kind will result in a compiler error.
+
+`+whole-archive` means that the static library is linked as a whole archive
+without throwing any object files away.
+
+This modifier translates to `--whole-archive` for `ld`-like linkers,
+to `/WHOLEARCHIVE` for `link.exe`, and to `-force_load` for `ld64`.
+The modifier does nothing for linkers that don't support it.
+
+The default for this modifier is `-whole-archive`. \
+NOTE: The default may currently be different when building dylibs for some targets,
+but it is not guaranteed.
 
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit

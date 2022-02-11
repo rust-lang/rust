@@ -43,6 +43,20 @@ pub enum NativeLibKind {
     Unspecified,
 }
 
+impl NativeLibKind {
+    pub fn has_modifiers(&self) -> bool {
+        match self {
+            NativeLibKind::Static { bundle, whole_archive } => {
+                bundle.is_some() || whole_archive.is_some()
+            }
+            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
+                as_needed.is_some()
+            }
+            NativeLibKind::RawDylib | NativeLibKind::Unspecified => false,
+        }
+    }
+}
+
 rustc_data_structures::impl_stable_hash_via_hash!(NativeLibKind);
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
@@ -51,6 +65,12 @@ pub struct NativeLib {
     pub new_name: Option<String>,
     pub kind: NativeLibKind,
     pub verbatim: Option<bool>,
+}
+
+impl NativeLib {
+    pub fn has_modifiers(&self) -> bool {
+        self.verbatim.is_some() || self.kind.has_modifiers()
+    }
 }
 
 rustc_data_structures::impl_stable_hash_via_hash!(NativeLib);
