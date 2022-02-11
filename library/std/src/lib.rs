@@ -546,13 +546,14 @@ pub mod arch {
     #[doc(no_inline)] // Note (#82861): required for correct documentation
     pub use core::arch::*;
 
+    #[stable(feature = "simd_aarch64", since = "1.60.0")]
+    pub use std_detect::is_aarch64_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdsimd", issue = "48556")]
     pub use std_detect::{
-        is_aarch64_feature_detected, is_arm_feature_detected, is_mips64_feature_detected,
-        is_mips_feature_detected, is_powerpc64_feature_detected, is_powerpc_feature_detected,
-        is_riscv_feature_detected,
+        is_arm_feature_detected, is_mips64_feature_detected, is_mips_feature_detected,
+        is_powerpc64_feature_detected, is_powerpc_feature_detected, is_riscv_feature_detected,
     };
 }
 
