@@ -3,7 +3,7 @@ use crate::check::{FnCtxt, Inherited};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -258,145 +258,131 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 .emit();
         }
     }
-
-    check_gat_where_clauses(tcx, trait_item, encl_trait_def_id);
 }
 
 /// Require that the user writes where clauses on GATs for the implicit
 /// outlives bounds involving trait parameters in trait functions and
 /// lifetimes passed as GAT substs. See `self-outlives-lint` test.
-///
-/// This trait will be our running example. We are currently WF checking the `Item` item...
-///
-/// ```rust
-/// trait LendingIterator {
-///   type Item<'me>; // <-- WF checking this trait item
-///
-///   fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
-/// }
 /// ```
-fn check_gat_where_clauses(tcx: TyCtxt<'_>, gat_hir: &hir::TraitItem<'_>, gat_def_id: DefId) {
-    let gat_item = tcx.associated_item(gat_def_id);
-    let gat_def_id = gat_hir.def_id;
-    // If the current trait item isn't a type, it isn't a GAT
-    if !matches!(gat_item.kind, ty::AssocKind::Type) {
-        return;
-    }
-    let gat_generics: &ty::Generics = tcx.generics_of(gat_def_id);
-    // If the current associated type doesn't have any (own) params, it's not a GAT
-    // FIXME(jackh726): we can also warn in the more general case
-    if gat_generics.params.len() == 0 {
-        return;
-    }
-    let associated_items: &ty::AssocItems<'_> = tcx.associated_items(gat_def_id);
-    let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
-    // For every function in this trait...
-    // In our example, this would be the `next` method
-    for item in
-        associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
-    {
-        let item_hir_id = hir::HirId::make_owner(item.def_id.expect_local());
-        let param_env = tcx.param_env(item.def_id.expect_local());
+fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRef]) {
+    let mut required_bounds_by_item = FxHashMap::default();
 
-        // Get the signature using placeholders. In our example, this would
-        // convert the late-bound 'a into a free region.
-        let sig = tcx.liberate_late_bound_regions(item.def_id, tcx.fn_sig(item.def_id));
+    for gat_item in associated_items {
+        let gat_def_id = gat_item.id.def_id;
+        let gat_item = tcx.associated_item(gat_def_id);
+        // If this item is not an assoc ty, or has no substs, then it's not a GAT
+        if gat_item.kind != ty::AssocKind::Type {
+            continue;
+        }
+        let gat_generics = tcx.generics_of(gat_def_id);
+        if gat_generics.params.is_empty() {
+            continue;
+        }
 
-        // The types we can assume to be well-formed. In our example, this
-        // would be &'a mut Self, from the first argument.
-        let mut wf_tys = FxHashSet::default();
-        wf_tys.extend(sig.inputs());
+        let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
+        for item in associated_items {
+            if !matches!(&item.kind, hir::AssocItemKind::Fn { .. }) {
+                // FIXME: next commit will add items...
+                continue;
+            }
 
-        // The clauses we that we would require from this function
-        let function_clauses = gather_gat_bounds(
-            tcx,
-            param_env,
-            item_hir_id,
-            sig.output(),
-            &wf_tys,
-            gat_def_id,
-            gat_generics,
-        );
+            let item_def_id = item.id.def_id;
+            // Skip our own GAT, since it would blow away the required bounds
+            if item_def_id == gat_def_id {
+                continue;
+            }
 
-        if let Some(function_clauses) = function_clauses {
-            // Imagine we have:
-            // ```
-            // trait Foo {
-            //   type Bar<'me>;
-            //   fn gimme(&self) -> Self::Bar<'_>;
-            //   fn gimme_default(&self) -> Self::Bar<'static>;
-            // }
-            // ```
-            // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
-            // case, `'me` can be `static` from `gimme_default`)
-            match clauses.as_mut() {
-                Some(clauses) => {
-                    clauses.drain_filter(|p| !function_clauses.contains(p));
-                }
-                None => {
-                    clauses = Some(function_clauses);
+            let item_hir_id = item.id.hir_id();
+            let param_env = tcx.param_env(item_def_id);
+
+            // Get the signature using placeholders. In our example, this would
+            // convert the late-bound 'a into a free region.
+            let sig = tcx.liberate_late_bound_regions(
+                item_def_id.to_def_id(),
+                tcx.fn_sig(item_def_id.to_def_id()),
+            );
+
+            // The types we can assume to be well-formed. In our example, this
+            // would be &'a mut Self, from the first argument.
+            let mut wf_tys = FxHashSet::default();
+            wf_tys.extend(sig.inputs());
+
+            // The clauses we that we would require from this function
+            let item_required_bounds = gather_gat_bounds(
+                tcx,
+                param_env,
+                item_hir_id,
+                sig.output(),
+                &wf_tys,
+                gat_def_id,
+                gat_generics,
+            );
+
+            if let Some(item_required_bounds) = item_required_bounds {
+                // Take the intersection of the new_required_bounds and the item_required_bounds
+                // for this item. This is why we use an Option<_>, since we need to distinguish
+                // the empty set of bounds from the uninitialized set of bounds.
+                if let Some(new_required_bounds) = &mut new_required_bounds {
+                    new_required_bounds.retain(|b| item_required_bounds.contains(b));
+                } else {
+                    new_required_bounds = Some(item_required_bounds);
                 }
             }
         }
+
+        if let Some(required_bounds) = new_required_bounds {
+            required_bounds_by_item.insert(gat_def_id, required_bounds);
+        }
     }
 
-    // If there are any clauses that aren't provable, emit an error
-    let clauses = clauses.unwrap_or_default();
-    debug!(?clauses);
-    if !clauses.is_empty() {
+    for (gat_def_id, required_bounds) in required_bounds_by_item {
+        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id);
+        debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
+        let gat_hir = gat_item_hir.hir_id();
 
-        let mut clauses: Vec<_> = clauses
+        let mut unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !region_known_to_outlive(
-                        tcx,
-                        gat_hir.hir_id(),
-                        param_env,
-                        &FxHashSet::default(),
-                        a,
-                        b,
-                    )
+                    !region_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
                 }
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
-                    !ty_known_to_outlive(
-                        tcx,
-                        gat_hir.hir_id(),
-                        param_env,
-                        &FxHashSet::default(),
-                        a,
-                        b,
-                    )
+                    !ty_known_to_outlive(tcx, gat_hir, param_env, &FxHashSet::default(), a, b)
                 }
                 _ => bug!("Unexpected PredicateKind"),
             })
-            .map(|clause| format!("{}", clause))
+            .map(|clause| clause.to_string())
             .collect();
 
         // We sort so that order is predictable
-        clauses.sort();
+        unsatisfied_bounds.sort();
 
-        if !clauses.is_empty() {
-            let plural = if clauses.len() > 1 { "s" } else { "" };
+        if !unsatisfied_bounds.is_empty() {
+            let plural = if unsatisfied_bounds.len() > 1 { "s" } else { "" };
             let mut err = tcx.sess.struct_span_err(
-                gat_hir.span,
-                &format!("missing required bound{} on `{}`", plural, gat_hir.ident),
+                gat_item_hir.span,
+                &format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
             );
 
             let suggestion = format!(
                 "{} {}",
-                if !gat_hir.generics.where_clause.predicates.is_empty() { "," } else { " where" },
-                clauses.join(", "),
+                if !gat_item_hir.generics.where_clause.predicates.is_empty() {
+                    ","
+                } else {
+                    " where"
+                },
+                unsatisfied_bounds.join(", "),
             );
             err.span_suggestion(
-                gat_hir.generics.where_clause.tail_span_for_suggestion(),
+                gat_item_hir.generics.where_clause.tail_span_for_suggestion(),
                 &format!("add the required where clause{}", plural),
                 suggestion,
                 Applicability::MachineApplicable,
             );
 
-            let bound = if clauses.len() > 1 { "these bounds are" } else { "this bound is" };
+            let bound =
+                if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
             err.note(&format!(
                 "{} currently required to ensure that impls have maximum flexibility",
                 bound
@@ -1025,6 +1011,11 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
 
         FxHashSet::default()
     });
+
+    // Only check traits, don't check trait aliases
+    if let hir::ItemKind::Trait(_, _, _, _, items) = item.kind {
+        check_gat_where_clauses(tcx, items);
+    }
 }
 
 /// Checks all associated type defaults of trait `trait_def_id`.
