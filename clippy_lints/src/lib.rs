@@ -432,7 +432,6 @@ pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Se
 
     store.register_pre_expansion_pass(|| Box::new(write::Write::default()));
     store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes { msrv }));
-    store.register_pre_expansion_pass(|| Box::new(dbg_macro::DbgMacro));
 }
 
 #[doc(hidden)]
@@ -864,6 +863,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(borrow_as_ptr::BorrowAsPtr::new(msrv)));
     store.register_late_pass(move || Box::new(manual_bits::ManualBits::new(msrv)));
     store.register_late_pass(|| Box::new(default_union_representation::DefaultUnionRepresentation));
+    store.register_late_pass(|| Box::new(dbg_macro::DbgMacro));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
