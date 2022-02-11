@@ -262,18 +262,19 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled {
-            if !target.contains("msvc") {
+        // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
+        // We also do this if the user explicitly requested static libstdc++.
+        if builder.config.llvm_tools_enabled || builder.config.llvm_static_stdcpp {
+            if !target.contains("msvc") && !target.contains("netbsd") {
                 if target.contains("apple") {
-                    ldflags.exe.push(" -static-libstdc++");
+                    ldflags.push_all("-static-libstdc++");
                 } else {
-                    ldflags.exe.push(" -Wl,-Bsymbolic -static-libstdc++");
+                    ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
                 }
             }
         }
 
-        if !target.contains("freebsd") && target.starts_with("riscv") {
+        if target.starts_with("riscv") && !target.contains("freebsd") {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
@@ -281,11 +282,7 @@ impl Step for Llvm {
             // FreeBSD uses Clang as its system compiler and
             // provides no libatomic in its base system so does
             // not want this.
-            if !builder.config.llvm_tools_enabled {
-                ldflags.exe.push(" -latomic");
-            } else {
-                ldflags.exe.push(" -latomic -static-libstdc++");
-            }
+            ldflags.exe.push(" -latomic");
             ldflags.shared.push(" -latomic");
         }
 
@@ -554,9 +551,6 @@ fn configure_cmake(
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm).join(" ").into();
-    if builder.config.llvm_static_stdcpp && !target.contains("msvc") && !target.contains("netbsd") {
-        cxxflags.push(" -static-libstdc++");
-    }
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
