@@ -20,7 +20,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
 
-use crate::{expr_path_res, match_def_path, must_use_attr};
+use crate::{match_def_path, must_use_attr, path_res};
 
 // Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -443,7 +443,7 @@ impl<'tcx> ExprFnSig<'tcx> {
 
 /// If the expression is function like, get the signature for it.
 pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
-    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = expr_path_res(cx, expr) {
+    if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = path_res(cx, expr) {
         Some(ExprFnSig::Sig(cx.tcx.fn_sig(id)))
     } else {
         let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, path_to_local, usage::is_potentially_mutated};
+use clippy_utils::{path_to_local, usage::is_potentially_mutated};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
@@ -238,8 +238,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.local_id == id);
                 // Span contexts should not differ with the conditional branch
-                if !differing_macro_contexts(unwrappable.branch.span, expr.span);
-                if !differing_macro_contexts(unwrappable.branch.span, unwrappable.check.span);
+                let span_ctxt = expr.span.ctxt();
+                if unwrappable.branch.span.ctxt() == span_ctxt;
+                if unwrappable.check.span.ctxt() == span_ctxt;
                 then {
                     if call_to_unwrap == unwrappable.safe_to_unwrap {
                         let is_entire_condition = unwrappable.is_entire_condition;

@@ -322,6 +322,9 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
     let mut current = env::var_os("CLIPPY_CONF_DIR")
         .or_else(|| env::var_os("CARGO_MANIFEST_DIR"))
         .map_or_else(|| PathBuf::from("."), PathBuf::from);
+
+    let mut found_config: Option<PathBuf> = None;
+
     loop {
         for config_file_name in &CONFIG_FILE_NAMES {
             if let Ok(config_file) = current.join(config_file_name).canonicalize() {
@@ -329,9 +332,24 @@ pub fn lookup_conf_file() -> io::Result<Option<PathBuf>> {
                     Err(e) if e.kind() == io::ErrorKind::NotFound => {},
                     Err(e) => return Err(e),
                     Ok(md) if md.is_dir() => {},
-                    Ok(_) => return Ok(Some(config_file)),
+                    Ok(_) => {
+                        // warn if we happen to find two config files #8323
+                        if let Some(ref found_config_) = found_config {
+                            eprintln!(
+                                "Using config file `{}`\nWarning: `{}` will be ignored.",
+                                found_config_.display(),
+                                config_file.display(),
+                            );
+                        } else {
+                            found_config = Some(config_file);
+                        }
+                    },
                 }
             }
+        }
+
+        if found_config.is_some() {
+            return Ok(found_config);
         }
 
         // If the current directory has no parent, we're done searching.

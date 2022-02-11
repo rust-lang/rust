@@ -612,8 +612,8 @@ fn get_lint_group_and_level_or_lint(
 }
 
 fn get_lint_group(cx: &LateContext<'_>, lint_id: LintId) -> Option<String> {
-    for (group_name, lints, _) in &cx.lint_store.get_lint_groups() {
-        if IGNORED_LINT_GROUPS.contains(group_name) {
+    for (group_name, lints, _) in cx.lint_store.get_lint_groups() {
+        if IGNORED_LINT_GROUPS.contains(&group_name) {
             continue;
         }
 
