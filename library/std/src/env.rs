@@ -23,6 +23,11 @@ use crate::sys::os as os_imp;
 
 /// Returns the current working directory as a [`PathBuf`].
 ///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `getcwd` function on Unix
+/// and the `GetCurrentDirectoryW` function on Windows.
+///
 /// # Errors
 ///
 /// Returns an [`Err`] if the current working directory value is invalid.
@@ -48,6 +53,11 @@ pub fn current_dir() -> io::Result<PathBuf> {
 }
 
 /// Changes the current working directory to the specified path.
+///
+/// # Platform-specific behavior
+///
+/// This function currently corresponds to the `chdir` function on Unix
+/// and the `SetCurrentDirectoryW` function on Windows.
 ///
 /// Returns an [`Err`] if the operation fails.
 ///
