@@ -27,7 +27,6 @@ pub struct LlvmArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     removals: Vec<String>,
     additions: Vec<Addition>,
-    should_update_symbols: bool,
     src_archive: Option<Option<ArchiveRO>>,
 }
 
@@ -75,7 +74,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             config,
             removals: Vec::new(),
             additions: Vec::new(),
-            should_update_symbols: false,
             src_archive: None,
         }
     }
@@ -127,12 +125,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
         let name = file.file_name().unwrap().to_str().unwrap();
         self.additions
             .push(Addition::File { path: file.to_path_buf(), name_in_archive: name.to_owned() });
-    }
-
-    /// Indicate that the next call to `build` should update all symbols in
-    /// the archive (equivalent to running 'ar s' over it).
-    fn update_symbols(&mut self) {
-        self.should_update_symbols = true;
     }
 
     /// Combine the provided files, rlibs, and native libraries into a single
@@ -313,7 +305,6 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut members = Vec::new();
 
         let dst = CString::new(self.config.dst.to_str().unwrap())?;
-        let should_update_symbols = self.should_update_symbols;
 
         unsafe {
             if let Some(archive) = self.src_archive() {
@@ -385,7 +376,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 dst.as_ptr(),
                 members.len() as libc::size_t,
                 members.as_ptr() as *const &_,
-                should_update_symbols,
+                true,
                 kind,
             );
             let ret = if r.into_result().is_err() {
