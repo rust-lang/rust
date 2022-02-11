@@ -266,72 +266,96 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 /// ```
 fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRef]) {
     let mut required_bounds_by_item = FxHashMap::default();
-
-    for gat_item in associated_items {
-        let gat_def_id = gat_item.id.def_id;
-        let gat_item = tcx.associated_item(gat_def_id);
-        // If this item is not an assoc ty, or has no substs, then it's not a GAT
-        if gat_item.kind != ty::AssocKind::Type {
-            continue;
-        }
-        let gat_generics = tcx.generics_of(gat_def_id);
-        if gat_generics.params.is_empty() {
-            continue;
-        }
-
-        let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
-        for item in associated_items {
-            let item_def_id = item.id.def_id;
-            // Skip our own GAT, since it would blow away the required bounds
-            if item_def_id == gat_def_id {
+    loop {
+        let mut should_continue = false;
+        for gat_item in associated_items {
+            let gat_def_id = gat_item.id.def_id;
+            let gat_item = tcx.associated_item(gat_def_id);
+            // If this item is not an assoc ty, or has no substs, then it's not a GAT
+            if gat_item.kind != ty::AssocKind::Type {
+                continue;
+            }
+            let gat_generics = tcx.generics_of(gat_def_id);
+            if gat_generics.params.is_empty() {
                 continue;
             }
 
-            let item_hir_id = item.id.hir_id();
-            let param_env = tcx.param_env(item_def_id);
-
-            let item_required_bounds = match item.kind {
-                hir::AssocItemKind::Fn { .. } => {
-                    let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
-                        item_def_id.to_def_id(),
-                        tcx.fn_sig(item_def_id),
-                    );
-                    gather_gat_bounds(
-                        tcx,
-                        param_env,
-                        item_hir_id,
-                        sig.output(),
-                        &sig.inputs().iter().copied().collect(),
-                        gat_def_id,
-                        gat_generics,
-                    )
+            let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
+            for item in associated_items {
+                let item_def_id = item.id.def_id;
+                // Skip our own GAT, since it would blow away the required bounds
+                if item_def_id == gat_def_id {
+                    continue;
                 }
-                hir::AssocItemKind::Type => gather_gat_bounds(
-                    tcx,
-                    param_env,
-                    item_hir_id,
-                    tcx.explicit_item_bounds(item_def_id).iter().copied().collect::<Vec<_>>(),
-                    &FxHashSet::default(),
-                    gat_def_id,
-                    gat_generics,
-                ),
-                hir::AssocItemKind::Const => None,
-            };
 
-            if let Some(item_required_bounds) = item_required_bounds {
-                // Take the intersection of the new_required_bounds and the item_required_bounds
-                // for this item. This is why we use an Option<_>, since we need to distinguish
-                // the empty set of bounds from the uninitialized set of bounds.
-                if let Some(new_required_bounds) = &mut new_required_bounds {
-                    new_required_bounds.retain(|b| item_required_bounds.contains(b));
-                } else {
-                    new_required_bounds = Some(item_required_bounds);
+                let item_hir_id = item.id.hir_id();
+                let param_env = tcx.param_env(item_def_id);
+
+                let item_required_bounds = match item.kind {
+                    hir::AssocItemKind::Fn { .. } => {
+                        let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
+                            item_def_id.to_def_id(),
+                            tcx.fn_sig(item_def_id),
+                        );
+                        gather_gat_bounds(
+                            tcx,
+                            param_env,
+                            item_hir_id,
+                            sig.output(),
+                            &sig.inputs().iter().copied().collect(),
+                            gat_def_id,
+                            gat_generics,
+                        )
+                    }
+                    hir::AssocItemKind::Type => {
+                        // If our associated item is a GAT with missing bounds, add them to
+                        // the param-env here. This allows this GAT to propagate missing bounds
+                        // to other GATs.
+                        let param_env = augment_param_env(
+                            tcx,
+                            param_env,
+                            required_bounds_by_item.get(&item_def_id),
+                        );
+                        gather_gat_bounds(
+                            tcx,
+                            param_env,
+                            item_hir_id,
+                            tcx.explicit_item_bounds(item_def_id)
+                                .iter()
+                                .copied()
+                                .collect::<Vec<_>>(),
+                            &FxHashSet::default(),
+                            gat_def_id,
+                            gat_generics,
+                        )
+                    }
+                    hir::AssocItemKind::Const => None,
+                };
+
+                if let Some(item_required_bounds) = item_required_bounds {
+                    // Take the intersection of the new_required_bounds and the item_required_bounds
+                    // for this item. This is why we use an Option<_>, since we need to distinguish
+                    // the empty set of bounds from the uninitialized set of bounds.
+                    if let Some(new_required_bounds) = &mut new_required_bounds {
+                        new_required_bounds.retain(|b| item_required_bounds.contains(b));
+                    } else {
+                        new_required_bounds = Some(item_required_bounds);
+                    }
+                }
+            }
+
+            if let Some(new_required_bounds) = new_required_bounds {
+                let required_bounds = required_bounds_by_item.entry(gat_def_id).or_default();
+                if new_required_bounds != *required_bounds {
+                    *required_bounds = new_required_bounds;
+                    // Iterate until our required_bounds no longer change
+                    // Since they changed here, we should continue the loop
+                    should_continue = true;
                 }
             }
         }
-
-        if let Some(required_bounds) = new_required_bounds {
-            required_bounds_by_item.insert(gat_def_id, required_bounds);
+        if !should_continue {
+            break;
         }
     }
 
@@ -396,6 +420,28 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             err.emit()
         }
     }
+}
+
+/// Add a new set of predicates to the caller_bounds of an existing param_env,
+/// and normalize the param_env afterwards
+fn augment_param_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    new_predicates: Option<&FxHashSet<ty::Predicate<'tcx>>>,
+) -> ty::ParamEnv<'tcx> {
+    let Some(new_predicates) = new_predicates else {
+        return param_env;
+    };
+
+    if new_predicates.is_empty() {
+        return param_env;
+    }
+
+    let bounds =
+        tcx.mk_predicates(param_env.caller_bounds().iter().chain(new_predicates.iter().cloned()));
+    // FIXME(compiler-errors): Perhaps there is a case where we need to normalize this
+    // i.e. traits::normalize_param_env_or_error
+    ty::ParamEnv::new(bounds, param_env.reveal(), param_env.constness())
 }
 
 fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
