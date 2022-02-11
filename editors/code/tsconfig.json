@@ -22,7 +22,6 @@
     ],
     "include": [
         "src",
-        "tests",
-        "vscode.proposed.inlayHints.d.ts"
+        "tests"
     ]
 }
