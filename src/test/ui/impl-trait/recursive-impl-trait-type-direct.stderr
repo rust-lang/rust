@@ -1,0 +1,12 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-impl-trait-type-direct.rs:5:14
+   |
+LL | fn test() -> impl Sized {
+   |              ^^^^^^^^^^ recursive opaque type
+LL |
+LL |     test()
+   |     ------ returning here with type `impl Sized`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

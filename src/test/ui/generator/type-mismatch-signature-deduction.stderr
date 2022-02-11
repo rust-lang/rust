@@ -13,19 +13,13 @@ LL |             return Ok(6);
    |                    ^^^^^
 
 error[E0271]: type mismatch resolving `<[generator@$DIR/type-mismatch-signature-deduction.rs:6:5: 14:6] as Generator>::Return == i32`
-  --> $DIR/type-mismatch-signature-deduction.rs:6:5
+  --> $DIR/type-mismatch-signature-deduction.rs:5:13
    |
-LL | /     || {
-LL | |         if false {
-LL | |             return Ok(6);
-LL | |         }
-...  |
-LL | |         5
-LL | |     }
-   | |_____^ expected enum `Result`, found `i32`
+LL | fn foo() -> impl Generator<Return = i32> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found enum `Result`
    |
-   = note: expected enum `Result<{integer}, _>`
-              found type `i32`
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
 
 error: aborting due to 2 previous errors
 

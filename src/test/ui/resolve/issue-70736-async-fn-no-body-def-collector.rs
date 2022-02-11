@@ -14,6 +14,7 @@ trait B {
 impl B for A {
     async fn associated(); //~ ERROR without body
     //~^ ERROR cannot be declared `async`
+    //~| ERROR incompatible type for trait
 }
 
 fn main() {}

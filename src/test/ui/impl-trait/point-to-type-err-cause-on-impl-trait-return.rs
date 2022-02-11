@@ -14,10 +14,10 @@ fn bar() -> impl std::fmt::Display {
 }
 
 fn baz() -> impl std::fmt::Display {
-    if false { //~ ERROR mismatched types
+    if false {
         return 0i32;
     } else {
-        1u32
+        1u32 //~ ERROR mismatched types
     }
 }
 
@@ -30,9 +30,9 @@ fn qux() -> impl std::fmt::Display {
 }
 
 fn bat() -> impl std::fmt::Display {
-    match 13 { //~ ERROR mismatched types
+    match 13 {
         0 => return 0i32,
-        _ => 1u32,
+        _ => 1u32, //~ ERROR mismatched types
     }
 }
 
@@ -45,12 +45,12 @@ fn can() -> impl std::fmt::Display {
 }
 
 fn cat() -> impl std::fmt::Display {
-    match 13 { //~ ERROR mismatched types
+    match 13 {
         0 => {
             return 0i32;
         }
         _ => {
-            1u32
+            1u32 //~ ERROR mismatched types
         }
     }
 }

@@ -1,5 +1,6 @@
 #![feature(type_alias_impl_trait)]
-// check-pass
+#![feature(type_alias_impl_trait)]
+#![allow(incomplete_features)]
 
 pub trait Foo {}
 
@@ -27,8 +28,11 @@ impl Bar for () {
     }
 }
 
+// FIXME(#86731): The below is illegal use of `type_alias_impl_trait`
+// but the compiler doesn't report it, we should fix it.
 pub type FooImpl = impl Foo;
 pub type BarImpl = impl Bar<Foo = FooImpl>;
+//~^ ERROR: type mismatch resolving `<() as Bar>::Foo == ()`
 
 impl Baz for () {
     type Foo = FooImpl;

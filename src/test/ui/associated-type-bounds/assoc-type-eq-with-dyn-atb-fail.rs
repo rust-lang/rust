@@ -30,7 +30,7 @@ impl Thing for AssocNoCopy {
     type Out = Box<dyn Bar<Assoc: Copy>>;
 
     fn func() -> Self::Out {
-        Box::new(AssocNoCopy)
         //~^ ERROR the trait bound `String: Copy` is not satisfied
+        Box::new(AssocNoCopy)
     }
 }

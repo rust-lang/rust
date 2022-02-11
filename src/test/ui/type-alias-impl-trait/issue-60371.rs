@@ -11,6 +11,7 @@ impl Bug for &() {
 
     const FUN: fn() -> Self::Item = || ();
     //~^ ERROR the trait bound `(): Bug` is not satisfied
+    //~| ERROR non-defining opaque type use in defining scope
 }
 
 fn main() {}

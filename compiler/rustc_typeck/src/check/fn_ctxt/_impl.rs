@@ -367,6 +367,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (result, spans)
     }
 
+    /// Replaces the opaque types from the given value with type variables,
+    /// and records the `OpaqueTypeMap` for later use during writeback. See
+    /// `InferCtxt::instantiate_opaque_types` for more details.
+    #[instrument(skip(self, value_span), level = "debug")]
+    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
+        &self,
+        value: T,
+        value_span: Span,
+    ) -> T {
+        self.register_infer_ok_obligations(self.instantiate_opaque_types(
+            self.body_id,
+            self.param_env,
+            value,
+            value_span,
+        ))
+    }
+
     /// Convenience method which tracks extra diagnostic information for normalization
     /// that occurs as a result of WF checking. The `hir_id` is the `HirId` of the hir item
     /// whose type is being wf-checked - this is used to construct a more precise span if
@@ -703,7 +720,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // inference variable.
                     ty::PredicateKind::ClosureKind(..) => None,
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                    ty::PredicateKind::OpaqueType(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))

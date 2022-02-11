@@ -1,5 +1,5 @@
-// Tests that we correctly handle opaque types being used opaquely,
-// even within their defining scope.
+// Tests that we correctly handle the instantiated
+// inference variable being completely unconstrained.
 //
 // check-pass
 #![feature(type_alias_impl_trait)]

@@ -11,7 +11,7 @@ trait Service {
 struct Struct;
 
 impl Service for Struct {
-    type Future = impl Trait; //~ ERROR: unconstrained opaque type
+    type Future = impl Trait; //~ ERROR: could not find defining uses
 }
 
 fn main() {}

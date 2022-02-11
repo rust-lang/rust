@@ -1207,11 +1207,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     type BreakTy = FoundFlags;
 
     #[inline]
-    #[instrument(skip(self), level = "trace")]
-    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        let flags = t.flags();
-        trace!(t.flags=?t.flags());
-        if flags.intersects(self.flags) {
+    #[instrument(level = "trace")]
+    fn visit_ty(&mut self, t: Ty<'_>) -> ControlFlow<Self::BreakTy> {
+        debug!(
+            "HasTypeFlagsVisitor: t={:?} t.flags={:?} self.flags={:?}",
+            t,
+            t.flags(),
+            self.flags
+        );
+        if t.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1231,7 +1235,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    #[instrument(skip(self), level = "trace")]
+    #[instrument(level = "trace")]
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         trace!(r.flags=?flags);
