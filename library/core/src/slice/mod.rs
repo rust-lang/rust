@@ -81,7 +81,7 @@ pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::range;
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
 
 /// Calculates the direction and split point of a one-sided range.

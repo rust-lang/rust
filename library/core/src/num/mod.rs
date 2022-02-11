@@ -791,7 +791,6 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inherent_ascii_escape)]
     ///
     /// assert_eq!("0", b'0'.escape_ascii().to_string());
     /// assert_eq!("\\t", b'\t'.escape_ascii().to_string());
@@ -804,7 +803,7 @@ impl u8 {
     /// ```
     #[must_use = "this returns the escaped byte as an iterator, \
                   without modifying the original"]
-    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     #[inline]
     pub fn escape_ascii(self) -> ascii::EscapeDefault {
         ascii::escape_default(self)

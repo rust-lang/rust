@@ -68,7 +68,6 @@ impl [u8] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inherent_ascii_escape)]
     ///
     /// let s = b"0\t\r\n'\"\\\x9d";
     /// let escaped = s.escape_ascii().to_string();
@@ -76,7 +75,7 @@ impl [u8] {
     /// ```
     #[must_use = "this returns the escaped bytes as an iterator, \
                   without modifying the original"]
-    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
     }
@@ -93,13 +92,13 @@ impl_fn_for_zst! {
 ///
 /// This `struct` is created by the [`slice::escape_ascii`] method. See its
 /// documentation for more information.
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 #[derive(Clone)]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
 }
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::Iterator for EscapeAscii<'a> {
     type Item = u8;
     #[inline]
@@ -131,23 +130,23 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     }
 }
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     fn next_back(&mut self) -> Option<u8> {
         self.inner.next_back()
     }
 }
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Display for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.clone().try_for_each(|b| f.write_char(b as char))
     }
 }
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Debug for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("EscapeAscii").finish_non_exhaustive()
