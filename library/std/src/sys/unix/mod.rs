@@ -159,7 +159,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ENOSPC => StorageFull,
         libc::ENOSYS => Unsupported,
         libc::EMLINK => TooManyLinks,
-        libc::ENAMETOOLONG => FilenameTooLong,
+        libc::ENAMETOOLONG => InvalidFilename,
         libc::ENETDOWN => NetworkDown,
         libc::ENETUNREACH => NetworkUnreachable,
         libc::ENOTCONN => NotConnected,
