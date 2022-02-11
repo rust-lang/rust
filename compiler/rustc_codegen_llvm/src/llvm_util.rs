@@ -2,8 +2,8 @@ use crate::back::write::create_informational_target_machine;
 use crate::{llvm, llvm_util};
 use libc::c_int;
 use libloading::Library;
-use rustc_codegen_ssa::target_features::supported_target_features;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_codegen_ssa::target_features::{supported_target_features, tied_target_features};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
@@ -191,8 +191,28 @@ pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> Vec<&'a str> {
         ("aarch64", "frintts") => vec!["fptoint"],
         ("aarch64", "fcma") => vec!["complxnum"],
         ("aarch64", "pmuv3") => vec!["perfmon"],
+        ("aarch64", "paca") => vec!["pauth"],
+        ("aarch64", "pacg") => vec!["pauth"],
         (_, s) => vec![s],
     }
+}
+
+// Given a map from target_features to whether they are enabled or disabled,
+// ensure only valid combinations are allowed.
+pub fn check_tied_features(
+    sess: &Session,
+    features: &FxHashMap<&str, bool>,
+) -> Option<&'static [&'static str]> {
+    for tied in tied_target_features(sess) {
+        // Tied features must be set to the same value, or not set at all
+        let mut tied_iter = tied.iter();
+        let enabled = features.get(tied_iter.next().unwrap());
+
+        if tied_iter.any(|f| enabled != features.get(f)) {
+            return Some(tied);
+        }
+    }
+    None
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
@@ -395,15 +415,19 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
         Some(_) | None => {}
     };
 
+    fn strip(s: &str) -> &str {
+        s.strip_prefix(&['+', '-']).unwrap_or(s)
+    }
+
     let filter = |s: &str| {
         if s.is_empty() {
             return vec![];
         }
-        let feature = if s.starts_with('+') || s.starts_with('-') {
-            &s[1..]
-        } else {
+        let feature = strip(s);
+        if feature == s {
             return vec![s.to_string()];
-        };
+        }
+
         // Rustc-specific feature requests like `+crt-static` or `-crt-static`
         // are not passed down to LLVM.
         if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
@@ -420,8 +444,17 @@ pub fn llvm_global_features(sess: &Session) -> Vec<String> {
     features.extend(sess.target.features.split(',').flat_map(&filter));
 
     // -Ctarget-features
-    features.extend(sess.opts.cg.target_feature.split(',').flat_map(&filter));
-
+    let feats: Vec<&str> = sess.opts.cg.target_feature.split(',').collect();
+    // LLVM enables based on the last occurence of a feature
+    if let Some(f) =
+        check_tied_features(sess, &feats.iter().map(|f| (strip(f), !f.starts_with("-"))).collect())
+    {
+        sess.err(&format!(
+            "Target features {} must all be enabled or disabled together",
+            f.join(", ")
+        ));
+    }
+    features.extend(feats.iter().flat_map(|&f| filter(f)));
     features
 }
 
