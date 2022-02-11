@@ -34,20 +34,20 @@ fn main() {
     Qux.clone();
     //~^ ERROR no method named `clone` found for struct `Qux`
     //~| NOTE method not found in `Qux`
-    //~| NOTE `Clone` defines an item `clone`, but is explicitely unimplemented
+    //~| NOTE `Clone` defines an item `clone`, but is explicitly unimplemented
 
     0_u32.bar();
     //~^ ERROR no method named `bar` found for type `u32`
     //~| NOTE method not found in `u32`
-    //~| NOTE `Bar` defines an item `bar`, but is explicitely unimplemented
+    //~| NOTE `Bar` defines an item `bar`, but is explicitly unimplemented
 
     Qux.foo();
     //~^ ERROR no method named `foo` found for struct `Qux`
     //~| NOTE method not found in `Qux`
-    //~| NOTE the following traits define an item `foo`, but are explicitely unimplemented
+    //~| NOTE the following traits define an item `foo`, but are explicitly unimplemented
 
     0_u32.foo();
     //~^ ERROR no method named `foo` found for type `u32`
     //~| NOTE method not found in `u32`
-    //~| NOTE `FooBar` defines an item `foo`, but is explicitely unimplemented
+    //~| NOTE `FooBar` defines an item `foo`, but is explicitly unimplemented
 }
