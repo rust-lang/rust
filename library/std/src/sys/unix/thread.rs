@@ -51,8 +51,7 @@ impl Thread {
     pub unsafe fn new(
         stack: usize,
         p: Box<dyn FnOnce()>,
-        #[cfg(target_os = "horizon")] priority: i32,
-        #[cfg(target_os = "horizon")] affinity: i32,
+        #[allow(unused)] native_options: BuilderOptions,
     ) -> io::Result<Thread> {
         let p = Box::into_raw(box p);
         let mut native: libc::pthread_t = mem::zeroed();
@@ -91,9 +90,19 @@ impl Thread {
 
         #[cfg(target_os = "horizon")]
         {
-            // Set the priority and affinity values
-            assert_eq!(libc::pthread_attr_setpriority(&mut attr, priority), 0);
-            assert_eq!(libc::pthread_attr_setaffinity(&mut attr, affinity), 0);
+            // If no priority value is specified, spawn with the same priority
+            // as the parent thread.
+            let priority = native_options
+                .priority
+                .unwrap_or_else(crate::os::horizon::thread::current_priority);
+            let sched_param = libc::sched_param { sched_priority: priority };
+
+            // If no processor is specified, spawn on the default core.
+            // (determined by the application's Exheader)
+            let processor_id = native_options.processor_id.unwrap_or(-2);
+
+            assert_eq!(libc::pthread_attr_setschedparam(&mut attr, &sched_param), 0);
+            assert_eq!(libc::pthread_attr_setprocessorid_np(&mut attr, processor_id), 0);
         }
 
         let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
@@ -284,10 +293,25 @@ impl Drop for Thread {
     }
 }
 
-/// Returns the current thread's priority value.
-#[cfg(target_os = "horizon")]
-pub(crate) fn current_priority() -> i32 {
-    unsafe { libc::pthread_getpriority() }
+#[derive(Debug)]
+pub struct BuilderOptions {
+    /// The spawned thread's priority value
+    #[cfg(target_os = "horizon")]
+    pub(crate) priority: Option<i32>,
+    /// The processor to spawn the thread on. See [`os::horizon::thread::BuilderExt`].
+    #[cfg(target_os = "horizon")]
+    pub(crate) processor_id: Option<i32>,
+}
+
+impl Default for BuilderOptions {
+    fn default() -> Self {
+        BuilderOptions {
+            #[cfg(target_os = "horizon")]
+            priority: None,
+            #[cfg(target_os = "horizon")]
+            processor_id: None,
+        }
+    }
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
