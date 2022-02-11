@@ -201,6 +201,22 @@ pub trait AsFd {
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsFd> AsFd for &T {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        T::as_fd(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsFd> AsFd for &mut T {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        T::as_fd(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
 impl AsFd for BorrowedFd<'_> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
