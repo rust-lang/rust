@@ -8,7 +8,7 @@ LL |     Qux.clone();
    |         ^^^^^ method not found in `Qux`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the trait `Clone` defines an item `clone`, but is explicitely unimplemented
+   = note: the trait `Clone` defines an item `clone`, but is explicitly unimplemented
 
 error[E0599]: no method named `bar` found for type `u32` in the current scope
   --> $DIR/explicitly-unimplemented-error-message.rs:39:11
@@ -17,7 +17,7 @@ LL |     0_u32.bar();
    |           ^^^ method not found in `u32`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the trait `Bar` defines an item `bar`, but is explicitely unimplemented
+   = note: the trait `Bar` defines an item `bar`, but is explicitly unimplemented
 
 error[E0599]: no method named `foo` found for struct `Qux` in the current scope
   --> $DIR/explicitly-unimplemented-error-message.rs:44:9
@@ -29,7 +29,7 @@ LL |     Qux.foo();
    |         ^^^ method not found in `Qux`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-   = note: the following traits define an item `foo`, but are explicitely unimplemented:
+   = note: the following traits define an item `foo`, but are explicitly unimplemented:
            Foo
            FooBar
 
@@ -45,7 +45,7 @@ note: `Foo` defines an item `foo`, perhaps you need to implement it
    |
 LL | trait Foo {
    | ^^^^^^^^^
-   = note: the trait `FooBar` defines an item `foo`, but is explicitely unimplemented
+   = note: the trait `FooBar` defines an item `foo`, but is explicitly unimplemented
 
 error: aborting due to 4 previous errors
 
