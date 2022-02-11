@@ -40,10 +40,13 @@ use suggestions::InferCtxtExt as _;
 pub use rustc_infer::traits::error_reporting::*;
 
 // When outputting impl candidates, prefer showing those that are more similar.
+//
+// We also compare candidates after skipping lifetimes, which has a lower
+// priority than exact matches.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CandidateSimilarity {
-    Exact,
-    Fuzzy,
+    Exact { ignoring_lifetimes: bool },
+    Fuzzy { ignoring_lifetimes: bool },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1155,7 +1158,12 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         error: &MismatchedProjectionTypes<'tcx>,
     );
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool;
+    fn fuzzy_match_tys(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        ignoring_lifetimes: bool,
+    ) -> Option<CandidateSimilarity>;
 
     fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str>;
 
@@ -1458,24 +1466,32 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         });
     }
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    fn fuzzy_match_tys(
+        &self,
+        mut a: Ty<'tcx>,
+        mut b: Ty<'tcx>,
+        ignoring_lifetimes: bool,
+    ) -> Option<CandidateSimilarity> {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
-        fn type_category(t: Ty<'_>) -> Option<u32> {
+        fn type_category(tcx: TyCtxt<'_>, t: Ty<'_>) -> Option<u32> {
             match t.kind() {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Int(..) | ty::Uint(..) | ty::Infer(ty::IntVar(..)) => Some(3),
-                ty::Float(..) | ty::Infer(ty::FloatVar(..)) => Some(4),
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did) => Some(2),
+                ty::Int(..)
+                | ty::Uint(..)
+                | ty::Float(..)
+                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),
                 ty::Array(..) | ty::Slice(..) => Some(6),
                 ty::FnDef(..) | ty::FnPtr(..) => Some(7),
                 ty::Dynamic(..) => Some(8),
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
-                ty::Projection(..) => Some(11),
-                ty::Param(..) => Some(12),
+                ty::Param(..) => Some(11),
+                ty::Projection(..) => Some(12),
                 ty::Opaque(..) => Some(13),
                 ty::Never => Some(14),
                 ty::Adt(..) => Some(15),
@@ -1497,17 +1513,33 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        match (type_category(a), type_category(b)) {
-            (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
+        if !ignoring_lifetimes {
+            a = strip_references(a);
+            b = strip_references(b);
+        }
+
+        let cat_a = type_category(self.tcx, a)?;
+        let cat_b = type_category(self.tcx, b)?;
+        if a == b {
+            Some(CandidateSimilarity::Exact { ignoring_lifetimes })
+        } else if cat_a == cat_b {
+            match (a.kind(), b.kind()) {
                 (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
-                _ if cat_a == cat_b => true,
-                (ty::Ref(..), _) | (_, ty::Ref(..)) => {
-                    self.fuzzy_match_tys(strip_references(a), strip_references(b))
+                // Matching on references results in a lot of unhelpful
+                // suggestions, so let's just not do that for now.
+                //
+                // We still upgrade successful matches to `ignoring_lifetimes: true`
+                // to prioritize that impl.
+                (ty::Ref(..) | ty::RawPtr(..), ty::Ref(..) | ty::RawPtr(..)) => {
+                    self.fuzzy_match_tys(a, b, true).is_some()
                 }
-                _ => false,
-            },
-            // infer and error can be equated to all types
-            _ => true,
+                _ => true,
+            }
+            .then_some(CandidateSimilarity::Fuzzy { ignoring_lifetimes })
+        } else if ignoring_lifetimes {
+            None
+        } else {
+            self.fuzzy_match_tys(a, b, true)
         }
     }
 
@@ -1533,22 +1565,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
                 let imp = self.tcx.impl_trait_ref(def_id).unwrap();
 
-                // Check for exact match.
-                if trait_ref.skip_binder().self_ty() == imp.self_ty() {
-                    return Some(ImplCandidate {
-                        trait_ref: imp,
-                        similarity: CandidateSimilarity::Exact,
-                    });
-                }
-
-                if self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty()) {
-                    return Some(ImplCandidate {
-                        trait_ref: imp,
-                        similarity: CandidateSimilarity::Fuzzy,
-                    });
-                }
-
-                None
+                self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty(), false)
+                    .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
             })
             .collect()
     }

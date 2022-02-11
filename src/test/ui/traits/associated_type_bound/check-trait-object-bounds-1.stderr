@@ -4,6 +4,8 @@ error[E0277]: the trait bound `str: Clone` is not satisfied
 LL |     f::<dyn X<Y = str>>();
    |     ^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
+   = help: the following implementations were found:
+             <String as Clone>
 note: required by a bound in `f`
   --> $DIR/check-trait-object-bounds-1.rs:7:9
    |

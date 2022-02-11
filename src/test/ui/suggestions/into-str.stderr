@@ -7,6 +7,12 @@ LL |     foo(String::new());
    |     required by a bound introduced by this call
    |
    = note: to coerce a `String` into a `&str`, use `&*` as a prefix
+   = help: the following implementations were found:
+             <String as From<&String>>
+             <String as From<&mut str>>
+             <String as From<&str>>
+             <String as From<Box<str>>>
+           and 2 others
    = note: required because of the requirements on the impl of `Into<&str>` for `String`
 note: required by a bound in `foo`
   --> $DIR/into-str.rs:1:31
