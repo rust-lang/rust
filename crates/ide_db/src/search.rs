@@ -309,13 +309,14 @@ impl Definition {
     }
 
     pub fn usages<'a>(self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
-        FindUsages {
-            def: self,
-            sema,
-            scope: None,
-            include_self_kw_refs: None,
-            search_self_mod: false,
-        }
+        let def = match self {
+            def @ Definition::Function(f) => {
+                // search for proc-macro usages if this function describes a proc macro
+                f.as_proc_macro(sema.db).map(Definition::Macro).unwrap_or(def)
+            }
+            def => def,
+        };
+        FindUsages { def, sema, scope: None, include_self_kw_refs: None, search_self_mod: false }
     }
 }
 

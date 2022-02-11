@@ -1380,6 +1380,23 @@ impl Function {
         db.function_data(self.id).has_body()
     }
 
+    pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<MacroDef> {
+        let function_data = db.function_data(self.id);
+        let attrs = &function_data.attrs;
+        if !(attrs.is_proc_macro()
+            || attrs.is_proc_macro_attribute()
+            || attrs.is_proc_macro_derive())
+        {
+            return None;
+        }
+        let loc = self.id.lookup(db.upcast());
+        let krate = loc.krate(db);
+        let def_map = db.crate_def_map(krate.into());
+        let name = &function_data.name;
+        let mut exported_proc_macros = def_map.exported_proc_macros();
+        exported_proc_macros.find(|(_, mac_name)| mac_name == name).map(|(id, _)| MacroDef { id })
+    }
+
     /// A textual representation of the HIR of this function for debugging purposes.
     pub fn debug_hir(self, db: &dyn HirDatabase) -> String {
         let body = db.body(self.id.into());
