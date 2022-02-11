@@ -286,8 +286,7 @@ pub fn configure_and_expand(
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     krate = sess.time("crate_injection", || {
-        let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| Symbol::intern(s));
-        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess, alt_std_name)
+        rustc_builtin_macros::standard_library_imports::inject(krate, resolver, sess)
     });
 
     util::check_attr_crate_type(sess, &krate.attrs, &mut resolver.lint_buffer());

@@ -373,7 +373,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     err.emit();
                                 }
                                 Entry::Vacant(v) => {
-                                    v.insert(idx);
+                                    if r == reg {
+                                        v.insert(idx);
+                                    }
                                 }
                             }
                         };

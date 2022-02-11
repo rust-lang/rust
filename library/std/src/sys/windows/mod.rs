@@ -71,6 +71,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return NotFound,
         c::ERROR_PATH_NOT_FOUND => return NotFound,
         c::ERROR_NO_DATA => return BrokenPipe,
+        c::ERROR_INVALID_NAME => return InvalidFilename,
         c::ERROR_INVALID_PARAMETER => return InvalidInput,
         c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
@@ -104,7 +105,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
         c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
-        c::ERROR_FILENAME_EXCED_RANGE => return FilenameTooLong,
+        c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         _ => {}
     }
 

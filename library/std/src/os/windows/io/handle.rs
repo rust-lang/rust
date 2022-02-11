@@ -316,6 +316,22 @@ pub trait AsHandle {
     fn as_handle(&self) -> BorrowedHandle<'_>;
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &mut T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
 impl AsHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {

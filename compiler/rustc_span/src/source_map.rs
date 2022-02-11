@@ -629,26 +629,41 @@ impl SourceMap {
     }
 
     /// Extends the given `Span` to just after the previous occurrence of `pat` when surrounded by
-    /// whitespace. Returns the same span if no character could be found or if an error occurred
-    /// while retrieving the code snippet.
-    pub fn span_extend_to_prev_str(&self, sp: Span, pat: &str, accept_newlines: bool) -> Span {
+    /// whitespace. Returns None if the pattern could not be found or if an error occurred while
+    /// retrieving the code snippet.
+    pub fn span_extend_to_prev_str(
+        &self,
+        sp: Span,
+        pat: &str,
+        accept_newlines: bool,
+        include_whitespace: bool,
+    ) -> Option<Span> {
         // assure that the pattern is delimited, to avoid the following
         //     fn my_fn()
         //           ^^^^ returned span without the check
         //     ---------- correct span
+        let prev_source = self.span_to_prev_source(sp).ok()?;
         for ws in &[" ", "\t", "\n"] {
             let pat = pat.to_owned() + ws;
-            if let Ok(prev_source) = self.span_to_prev_source(sp) {
-                let prev_source = prev_source.rsplit(&pat).next().unwrap_or("").trim_start();
-                if prev_source.is_empty() && sp.lo().0 != 0 {
-                    return sp.with_lo(BytePos(sp.lo().0 - 1));
-                } else if accept_newlines || !prev_source.contains('\n') {
-                    return sp.with_lo(BytePos(sp.lo().0 - prev_source.len() as u32));
+            if let Some(pat_pos) = prev_source.rfind(&pat) {
+                let just_after_pat_pos = pat_pos + pat.len() - 1;
+                let just_after_pat_plus_ws = if include_whitespace {
+                    just_after_pat_pos
+                        + prev_source[just_after_pat_pos..]
+                            .find(|c: char| !c.is_whitespace())
+                            .unwrap_or(0)
+                } else {
+                    just_after_pat_pos
+                };
+                let len = prev_source.len() - just_after_pat_plus_ws;
+                let prev_source = &prev_source[just_after_pat_plus_ws..];
+                if accept_newlines || !prev_source.trim_start().contains('\n') {
+                    return Some(sp.with_lo(BytePos(sp.lo().0 - len as u32)));
                 }
             }
         }
 
-        sp
+        None
     }
 
     /// Returns the source snippet as `String` after the given `Span`.
@@ -927,7 +942,7 @@ impl SourceMap {
     }
 
     pub fn generate_fn_name_span(&self, span: Span) -> Option<Span> {
-        let prev_span = self.span_extend_to_prev_str(span, "fn", true);
+        let prev_span = self.span_extend_to_prev_str(span, "fn", true, true).unwrap_or(span);
         if let Ok(snippet) = self.span_to_snippet(prev_span) {
             debug!(
                 "generate_fn_name_span: span={:?}, prev_span={:?}, snippet={:?}",
@@ -968,8 +983,7 @@ impl SourceMap {
     pub fn generate_local_type_param_snippet(&self, span: Span) -> Option<(Span, String)> {
         // Try to extend the span to the previous "fn" keyword to retrieve the function
         // signature.
-        let sugg_span = self.span_extend_to_prev_str(span, "fn", false);
-        if sugg_span != span {
+        if let Some(sugg_span) = self.span_extend_to_prev_str(span, "fn", false, true) {
             if let Ok(snippet) = self.span_to_snippet(sugg_span) {
                 // Consume the function name.
                 let mut offset = snippet
