@@ -206,6 +206,9 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
+        // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
+        // the body satisfies the condition of two nodes being different have different
+        // `hash_stable` results.
         let OwnerNodes {
             hash_including_bodies,
             hash_without_bodies: _,
