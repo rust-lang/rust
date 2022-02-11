@@ -298,143 +298,47 @@ fn check_gat_where_clauses(
     for item in
         associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
     {
-        // The clauses we that we would require from this function
-        let mut function_clauses = FxHashSet::default();
-
         let id = hir::HirId::make_owner(item.def_id.expect_local());
         let param_env = tcx.param_env(item.def_id.expect_local());
 
-        let sig = tcx.fn_sig(item.def_id);
         // Get the signature using placeholders. In our example, this would
         // convert the late-bound 'a into a free region.
-        let sig = tcx.liberate_late_bound_regions(item.def_id, sig);
-        // Collect the arguments that are given to this GAT in the return type
-        // of  the function signature. In our example, the GAT in the return
-        // type is `<Self as LendingIterator>::Item<'a>`, so 'a and Self are arguments.
-        let (regions, types) =
-            GATSubstCollector::visit(tcx, trait_item.def_id.to_def_id(), sig.output());
-
-        // If both regions and types are empty, then this GAT isn't in the
-        // return type, and we shouldn't try to do clause analysis
-        // (particularly, doing so would end up with an empty set of clauses,
-        // since the current method would require none, and we take the
-        // intersection of requirements of all methods)
-        if types.is_empty() && regions.is_empty() {
-            continue;
-        }
+        let sig = tcx.liberate_late_bound_regions(item.def_id, tcx.fn_sig(item.def_id));
 
         // The types we can assume to be well-formed. In our example, this
         // would be &'a mut Self, from the first argument.
         let mut wf_tys = FxHashSet::default();
         wf_tys.extend(sig.inputs());
 
-        // For each region argument (e.g., 'a in our example), check for a
-        // relationship to the type arguments (e.g., Self). If there is an
-        // outlives relationship (`Self: 'a`), then we want to ensure that is
-        // reflected in a where clause on the GAT itself.
-        for (region, region_idx) in &regions {
-            // Ignore `'static` lifetimes for the purpose of this lint: it's
-            // because we know it outlives everything and so doesn't give meaninful
-            // clues
-            if region.is_static() {
-                continue;
-            }
-            for (ty, ty_idx) in &types {
-                // In our example, requires that Self: 'a
-                if ty_known_to_outlive(tcx, id, param_env, &wf_tys, *ty, *region) {
-                    debug!(?ty_idx, ?region_idx);
-                    debug!("required clause: {} must outlive {}", ty, region);
-                    // Translate into the generic parameters of the GAT. In
-                    // our example, the type was Self, which will also be
-                    // Self in the GAT.
-                    let ty_param = generics.param_at(*ty_idx, tcx);
-                    let ty_param = tcx.mk_ty(ty::Param(ty::ParamTy {
-                        index: ty_param.index,
-                        name: ty_param.name,
-                    }));
-                    // Same for the region. In our example, 'a corresponds
-                    // to the 'me parameter.
-                    let region_param = generics.param_at(*region_idx, tcx);
-                    let region_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_param.def_id,
-                        index: region_param.index,
-                        name: region_param.name,
-                    }));
-                    // The predicate we expect to see. (In our example,
-                    // `Self: 'me`.)
-                    let clause = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                        ty_param,
-                        region_param,
-                    ));
-                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
-                    function_clauses.insert(clause);
-                }
-            }
-        }
+        // The clauses we that we would require from this function
+        let function_clauses = gather_gat_bounds(
+            tcx,
+            param_env,
+            id,
+            sig.output(),
+            &wf_tys,
+            trait_item.def_id,
+            generics,
+        );
 
-        // For each region argument (e.g., 'a in our example), also check for a
-        // relationship to the other region arguments. If there is an
-        // outlives relationship, then we want to ensure that is
-        // reflected in a where clause on the GAT itself.
-        for (region_a, region_a_idx) in &regions {
-            // Ignore `'static` lifetimes for the purpose of this lint: it's
-            // because we know it outlives everything and so doesn't give meaninful
-            // clues
-            if region_a.is_static() {
-                continue;
-            }
-            for (region_b, region_b_idx) in &regions {
-                if region_a == region_b {
-                    continue;
+        if let Some(function_clauses) = function_clauses {
+            // Imagine we have:
+            // ```
+            // trait Foo {
+            //   type Bar<'me>;
+            //   fn gimme(&self) -> Self::Bar<'_>;
+            //   fn gimme_default(&self) -> Self::Bar<'static>;
+            // }
+            // ```
+            // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
+            // case, `'me` can be `static` from `gimme_default`)
+            match clauses.as_mut() {
+                Some(clauses) => {
+                    clauses.drain_filter(|p| !function_clauses.contains(p));
                 }
-                if region_b.is_static() {
-                    continue;
+                None => {
+                    clauses = Some(function_clauses);
                 }
-
-                if region_known_to_outlive(tcx, id, param_env, &wf_tys, *region_a, *region_b) {
-                    debug!(?region_a_idx, ?region_b_idx);
-                    debug!("required clause: {} must outlive {}", region_a, region_b);
-                    // Translate into the generic parameters of the GAT.
-                    let region_a_param = generics.param_at(*region_a_idx, tcx);
-                    let region_a_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_a_param.def_id,
-                        index: region_a_param.index,
-                        name: region_a_param.name,
-                    }));
-                    // Same for the region.
-                    let region_b_param = generics.param_at(*region_b_idx, tcx);
-                    let region_b_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
-                        def_id: region_b_param.def_id,
-                        index: region_b_param.index,
-                        name: region_b_param.name,
-                    }));
-                    // The predicate we expect to see.
-                    let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                        region_a_param,
-                        region_b_param,
-                    ));
-                    let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
-                    function_clauses.insert(clause);
-                }
-            }
-        }
-
-        // Imagine we have:
-        // ```
-        // trait Foo {
-        //   type Bar<'me>;
-        //   fn gimme(&self) -> Self::Bar<'_>;
-        //   fn gimme_default(&self) -> Self::Bar<'static>;
-        // }
-        // ```
-        // We only want to require clauses on `Bar` that we can prove from *all* functions (in this
-        // case, `'me` can be `static` from `gimme_default`)
-        match clauses.as_mut() {
-            Some(clauses) => {
-                clauses.drain_filter(|p| !function_clauses.contains(p));
-            }
-            None => {
-                clauses = Some(function_clauses);
             }
         }
     }
@@ -513,6 +417,110 @@ fn check_gat_where_clauses(
             err.emit()
         }
     }
+}
+
+fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    item_hir: hir::HirId,
+    to_check: T,
+    wf_tys: &FxHashSet<Ty<'tcx>>,
+    gat_def_id: LocalDefId,
+    gat_generics: &'tcx ty::Generics,
+) -> Option<FxHashSet<ty::Predicate<'tcx>>> {
+    // The bounds we that we would require from this function
+    let mut bounds = FxHashSet::default();
+
+    let (regions, types) = GATSubstCollector::visit(tcx, gat_def_id.to_def_id(), to_check);
+
+    // If both regions and types are empty, then this GAT isn't in the
+    // return type, and we shouldn't try to do clause analysis
+    // (particularly, doing so would end up with an empty set of clauses,
+    // since the current method would require none, and we take the
+    // intersection of requirements of all methods)
+    if types.is_empty() && regions.is_empty() {
+        return None;
+    }
+
+    for (region_a, region_a_idx) in &regions {
+        // Ignore `'static` lifetimes for the purpose of this lint: it's
+        // because we know it outlives everything and so doesn't give meaninful
+        // clues
+        if let ty::ReStatic = **region_a {
+            continue;
+        }
+        // For each region argument (e.g., 'a in our example), check for a
+        // relationship to the type arguments (e.g., Self). If there is an
+        // outlives relationship (`Self: 'a`), then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (ty, ty_idx) in &types {
+            // In our example, requires that Self: 'a
+            if ty_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *ty, *region_a) {
+                debug!(?ty_idx, ?region_a_idx);
+                debug!("required clause: {} must outlive {}", ty, region_a);
+                // Translate into the generic parameters of the GAT. In
+                // our example, the type was Self, which will also be
+                // Self in the GAT.
+                let ty_param = gat_generics.param_at(*ty_idx, tcx);
+                let ty_param = tcx
+                    .mk_ty(ty::Param(ty::ParamTy { index: ty_param.index, name: ty_param.name }));
+                // Same for the region. In our example, 'a corresponds
+                // to the 'me parameter.
+                let region_param = gat_generics.param_at(*region_a_idx, tcx);
+                let region_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_param.def_id,
+                        index: region_param.index,
+                        name: region_param.name,
+                    }));
+                // The predicate we expect to see. (In our example,
+                // `Self: 'me`.)
+                let clause =
+                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_param, region_param));
+                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                bounds.insert(clause);
+            }
+        }
+
+        // For each region argument (e.g., 'a in our example), also check for a
+        // relationship to the other region arguments. If there is an
+        // outlives relationship, then we want to ensure that is
+        // reflected in a where clause on the GAT itself.
+        for (region_b, region_b_idx) in &regions {
+            if ty::ReStatic == **region_b || region_a == region_b {
+                continue;
+            }
+            if region_known_to_outlive(tcx, item_hir, param_env, &wf_tys, *region_a, *region_b) {
+                debug!(?region_a_idx, ?region_b_idx);
+                debug!("required clause: {} must outlive {}", region_a, region_b);
+                // Translate into the generic parameters of the GAT.
+                let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
+                let region_a_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_a_param.def_id,
+                        index: region_a_param.index,
+                        name: region_a_param.name,
+                    }));
+                // Same for the region.
+                let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
+                let region_b_param =
+                    tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_b_param.def_id,
+                        index: region_b_param.index,
+                        name: region_b_param.name,
+                    }));
+                // The predicate we expect to see.
+                let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
+                    region_a_param,
+                    region_b_param,
+                ));
+                let clause = tcx.mk_predicate(ty::Binder::dummy(clause));
+                bounds.insert(clause);
+            }
+        }
+    }
+
+    Some(bounds)
 }
 
 /// Given a known `param_env` and a set of well formed types, can we prove that
