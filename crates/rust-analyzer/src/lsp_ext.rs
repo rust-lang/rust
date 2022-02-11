@@ -240,6 +240,7 @@ impl Request for InlayHints {
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintsParams {
     pub text_document: TextDocumentIdentifier,
+    pub range: Option<lsp_types::Range>,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]

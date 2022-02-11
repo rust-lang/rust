@@ -1318,11 +1318,18 @@ pub(crate) fn handle_inlay_hints(
     params: InlayHintsParams,
 ) -> Result<Vec<InlayHint>> {
     let _p = profile::span("handle_inlay_hints");
-    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let document_uri = &params.text_document.uri;
+    let file_id = from_proto::file_id(&snap, document_uri)?;
     let line_index = snap.file_line_index(file_id)?;
+    let range = params
+        .range
+        .map(|range| {
+            from_proto::file_range(&snap, TextDocumentIdentifier::new(document_uri.to_owned()), range)
+        })
+        .transpose()?;
     Ok(snap
         .analysis
-        .inlay_hints(&snap.config.inlay_hints(), file_id)?
+        .inlay_hints(&snap.config.inlay_hints(), file_id, range)?
         .into_iter()
         .map(|it| to_proto::inlay_hint(&line_index, it))
         .collect())

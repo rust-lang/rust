@@ -358,8 +358,9 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
+        range: Option<FileRange>,
     ) -> Cancellable<Vec<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, config))
+        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
     }
 
     /// Returns the set of folding ranges.
