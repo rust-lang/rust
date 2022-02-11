@@ -8,7 +8,7 @@ use super::{ForeignItem, ImplItem, Item, TraitItem};
 ///
 /// 1. **Shallow visit**: Get a simple callback for every item (or item-like thing) in the HIR.
 ///    - Example: find all items with a `#[foo]` attribute on them.
-///    - How: Implement `ItemLikeVisitor` and call `tcx.hir().krate().visit_all_item_likes()`.
+///    - How: Implement `ItemLikeVisitor` and call `tcx.hir().visit_all_item_likes()`.
 ///    - Pro: Efficient; just walks the lists of item-like things, not the nodes themselves.
 ///    - Con: Don't get information about nesting
 ///    - Con: Don't have methods for specific bits of HIR, like "on
@@ -19,9 +19,9 @@ use super::{ForeignItem, ImplItem, Item, TraitItem};
 ///    - Example: Examine each expression to look for its type and do some check or other.
 ///    - How: Implement `intravisit::Visitor` and override the `nested_visit_map()` method
 ///      to return `NestedVisitorMap::OnlyBodies` and use
-///      `tcx.hir().krate().visit_all_item_likes(&mut visitor.as_deep_visitor())`. Within
-///      your `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget
-///      to invoke `intravisit::walk_expr()` to keep walking the subparts).
+///      `tcx.hir().visit_all_item_likes(&mut visitor.as_deep_visitor())`. Within your
+///      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
+///      `intravisit::walk_expr()` to keep walking the subparts).
 ///    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 ///    - Pro: Integrates well into dependency tracking.
 ///    - Con: Don't get information about nesting between items
