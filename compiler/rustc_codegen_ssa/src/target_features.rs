@@ -74,8 +74,10 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("ssbs", Some(sym::aarch64_target_feature)),
     // FEAT_SB
     ("sb", Some(sym::aarch64_target_feature)),
-    // FEAT_PAUTH
-    ("pauth", Some(sym::aarch64_target_feature)),
+    // FEAT_PAUTH (address authentication)
+    ("paca", Some(sym::aarch64_target_feature)),
+    // FEAT_PAUTH (generic authentication)
+    ("pacg", Some(sym::aarch64_target_feature)),
     // FEAT_DPB
     ("dpb", Some(sym::aarch64_target_feature)),
     // FEAT_DPB2
@@ -136,6 +138,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("v8.6a", Some(sym::aarch64_target_feature)),
     ("v8.7a", Some(sym::aarch64_target_feature)),
 ];
+
+const AARCH64_TIED_FEATURES: &[&[&str]] = &[&["paca", "pacg"]];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("adx", Some(sym::adx_target_feature)),
@@ -252,6 +256,13 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
+        _ => &[],
+    }
+}
+
+pub fn tied_target_features(sess: &Session) -> &'static [&'static [&'static str]] {
+    match &*sess.target.arch {
+        "aarch64" => AARCH64_TIED_FEATURES,
         _ => &[],
     }
 }
