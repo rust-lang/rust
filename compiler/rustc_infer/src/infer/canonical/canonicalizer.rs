@@ -53,7 +53,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// example, canonicalizing `&'?0: Trait<'?1>`, where `'?0` is in `U1` and
     /// `'?1` is in `U3` would be canonicalized to have ?0` in `U1` and `'?1`
     /// in `U2`.
-    pub fn canonicalize_chalk_query<V>(
+    ///
+    /// This is used for Chalk integration.
+    pub fn canonicalize_query_preserving_universes<V>(
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,

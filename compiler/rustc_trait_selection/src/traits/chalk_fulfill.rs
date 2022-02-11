@@ -95,7 +95,8 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                     continue;
                 }
 
-                let canonical_goal = infcx.canonicalize_chalk_query(goal, &mut orig_values);
+                let canonical_goal =
+                    infcx.canonicalize_query_preserving_universes(goal, &mut orig_values);
 
                 match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {
