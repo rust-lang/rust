@@ -394,9 +394,8 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
         format!("{}\n\n", reason)
     };
     let msg = format!(
-        "{}Format Rust code\n\nusage: {} [options] <file>...",
-        sep,
-        env::args_os().next().unwrap().to_string_lossy()
+        "{}Format Rust code\n\nusage: rustfmt [options] <file>...",
+        sep
     );
     println!("{}", opts.usage(&msg));
 }
