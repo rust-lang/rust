@@ -710,14 +710,14 @@ fn ascend_call_token(
     expansion: &ExpansionInfo,
     token: InFile<SyntaxToken>,
 ) -> Option<InFile<SyntaxToken>> {
-    let (mapped, origin) = expansion.map_token_up(db, token.as_ref())?;
-    if origin != Origin::Call {
-        return None;
+    let mut mapping = expansion.map_token_up(db, token.as_ref())?;
+    while let (mapped, Origin::Call) = mapping {
+        match mapped.file_id.expansion_info(db) {
+            Some(info) => mapping = info.map_token_up(db, mapped.as_ref())?,
+            None => return Some(mapped),
+        }
     }
-    if let Some(info) = mapped.file_id.expansion_info(db) {
-        return ascend_call_token(db, &info, mapped);
-    }
-    Some(mapped)
+    None
 }
 
 impl InFile<SyntaxToken> {
