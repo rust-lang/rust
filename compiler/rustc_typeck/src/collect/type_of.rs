@@ -508,8 +508,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                               })
                       }) =>
                 {
-                  // FIXME(associated_const_equality) when does this unwrap fail? I have no idea what case it would.
-                  let trait_def_id = trait_ref.trait_def_id().unwrap();
+                  let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                    return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
+                  };
                   let assoc_items = tcx.associated_items(trait_def_id);
                   let assoc_item = assoc_items.find_by_name_and_kind(
                     tcx, binding.ident, ty::AssocKind::Const, def_id.to_def_id(),

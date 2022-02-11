@@ -77,7 +77,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// Used to set on_unimplemented's `ItemContext`
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str> {
-        let hir = &self.tcx.hir();
+        let hir = self.tcx.hir();
         let node = hir.find(hir_id)?;
         match &node {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {

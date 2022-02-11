@@ -51,7 +51,6 @@ pub trait ArchiveBuilder<'a> {
     fn add_archive<F>(&mut self, archive: &Path, skip: F) -> io::Result<()>
     where
         F: FnMut(&str) -> bool + 'static;
-    fn update_symbols(&mut self);
 
     fn build(self);
 

@@ -141,22 +141,22 @@ pub trait Map<'hir> {
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
     fn find(&self, _: HirId) -> Option<Node<'hir>> {
-        unreachable!()
+        *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
-        unreachable!()
+        *self;
     }
     fn item(&self, _: ItemId) -> &'hir Item<'hir> {
-        unreachable!()
+        *self;
     }
     fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        unreachable!()
+        *self;
     }
     fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        unreachable!()
+        *self;
     }
     fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        unreachable!()
+        *self;
     }
 }
 

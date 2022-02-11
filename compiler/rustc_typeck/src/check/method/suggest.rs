@@ -1663,7 +1663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let table_owner = table.borrow().hir_owner;
                 let generics = self.tcx.generics_of(table_owner.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
-                let hir = &self.tcx.hir();
+                let hir = self.tcx.hir();
                 if let Some(def_id) = type_param.def_id.as_local() {
                     let id = hir.local_def_id_to_hir_id(def_id);
                     // Get the `hir::Param` to verify whether it already has any bounds.

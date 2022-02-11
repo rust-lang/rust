@@ -386,7 +386,10 @@ impl Builder {
         // for users to install the additional component manually, if needed.
         if self.versions.channel() == "nightly" {
             self.extend_profile("complete", &mut manifest.profiles, &["rustc-dev"]);
-            self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
+            // Do not include the rustc-docs component for now, as it causes
+            // conflicts with the rust-docs component when installed. See
+            // #75833.
+            // self.extend_profile("complete", &mut manifest.profiles, &["rustc-docs"]);
         }
     }
 

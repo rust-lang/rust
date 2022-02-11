@@ -333,10 +333,6 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
     }
 
-    // After adding all files to the archive, we need to update the
-    // symbol table of the archive.
-    ab.update_symbols();
-
     // Note that it is important that we add all of our non-object "magical
     // files" *after* all of the object files in the archive. The reason for
     // this is as follows:
@@ -365,13 +361,6 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             // normal linkers for the platform.
             let metadata = create_rmeta_file(sess, codegen_results.metadata.raw_data());
             ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
-
-            // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on macOS (see
-            // #11162), and isn't necessary there anyway
-            if !sess.target.is_like_osx {
-                ab.update_symbols();
-            }
         }
 
         RlibFlavor::StaticlibBase => {
@@ -381,6 +370,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
             }
         }
     }
+
     return Ok(ab);
 }
 
@@ -509,7 +499,6 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         sess.fatal(&e);
     }
 
-    ab.update_symbols();
     ab.build();
 
     if !all_native_libs.is_empty() {
@@ -2310,7 +2299,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
         sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
-            archive.update_symbols();
 
             let mut any_objects = false;
             for f in archive.src_files() {
