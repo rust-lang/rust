@@ -275,30 +275,27 @@ pub fn check_trait_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 ///   fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
 /// }
 /// ```
-fn check_gat_where_clauses(
-    tcx: TyCtxt<'_>,
-    trait_item: &hir::TraitItem<'_>,
-    encl_trait_def_id: DefId,
-) {
-    let item = tcx.associated_item(trait_item.def_id);
+fn check_gat_where_clauses(tcx: TyCtxt<'_>, gat_hir: &hir::TraitItem<'_>, gat_def_id: DefId) {
+    let gat_item = tcx.associated_item(gat_def_id);
+    let gat_def_id = gat_hir.def_id;
     // If the current trait item isn't a type, it isn't a GAT
-    if !matches!(item.kind, ty::AssocKind::Type) {
+    if !matches!(gat_item.kind, ty::AssocKind::Type) {
         return;
     }
-    let generics: &ty::Generics = tcx.generics_of(trait_item.def_id);
+    let gat_generics: &ty::Generics = tcx.generics_of(gat_def_id);
     // If the current associated type doesn't have any (own) params, it's not a GAT
     // FIXME(jackh726): we can also warn in the more general case
-    if generics.params.len() == 0 {
+    if gat_generics.params.len() == 0 {
         return;
     }
-    let associated_items: &ty::AssocItems<'_> = tcx.associated_items(encl_trait_def_id);
+    let associated_items: &ty::AssocItems<'_> = tcx.associated_items(gat_def_id);
     let mut clauses: Option<FxHashSet<ty::Predicate<'_>>> = None;
     // For every function in this trait...
     // In our example, this would be the `next` method
     for item in
         associated_items.in_definition_order().filter(|item| matches!(item.kind, ty::AssocKind::Fn))
     {
-        let id = hir::HirId::make_owner(item.def_id.expect_local());
+        let item_hir_id = hir::HirId::make_owner(item.def_id.expect_local());
         let param_env = tcx.param_env(item.def_id.expect_local());
 
         // Get the signature using placeholders. In our example, this would
@@ -314,11 +311,11 @@ fn check_gat_where_clauses(
         let function_clauses = gather_gat_bounds(
             tcx,
             param_env,
-            id,
+            item_hir_id,
             sig.output(),
             &wf_tys,
-            trait_item.def_id,
-            generics,
+            gat_def_id,
+            gat_generics,
         );
 
         if let Some(function_clauses) = function_clauses {
@@ -347,7 +344,7 @@ fn check_gat_where_clauses(
     let clauses = clauses.unwrap_or_default();
     debug!(?clauses);
     if !clauses.is_empty() {
-        let param_env = tcx.param_env(trait_item.def_id);
+        let param_env = tcx.param_env(gat_def_id);
 
         let mut clauses: Vec<_> = clauses
             .into_iter()
@@ -355,7 +352,7 @@ fn check_gat_where_clauses(
                 ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
                     !region_known_to_outlive(
                         tcx,
-                        trait_item.hir_id(),
+                        gat_hir.hir_id(),
                         param_env,
                         &FxHashSet::default(),
                         a,
@@ -365,7 +362,7 @@ fn check_gat_where_clauses(
                 ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     !ty_known_to_outlive(
                         tcx,
-                        trait_item.hir_id(),
+                        gat_hir.hir_id(),
                         param_env,
                         &FxHashSet::default(),
                         a,
@@ -383,21 +380,17 @@ fn check_gat_where_clauses(
         if !clauses.is_empty() {
             let plural = if clauses.len() > 1 { "s" } else { "" };
             let mut err = tcx.sess.struct_span_err(
-                trait_item.span,
-                &format!("missing required bound{} on `{}`", plural, trait_item.ident),
+                gat_hir.span,
+                &format!("missing required bound{} on `{}`", plural, gat_hir.ident),
             );
 
             let suggestion = format!(
                 "{} {}",
-                if !trait_item.generics.where_clause.predicates.is_empty() {
-                    ","
-                } else {
-                    " where"
-                },
+                if !gat_hir.generics.where_clause.predicates.is_empty() { "," } else { " where" },
                 clauses.join(", "),
             );
             err.span_suggestion(
-                trait_item.generics.where_clause.tail_span_for_suggestion(),
+                gat_hir.generics.where_clause.tail_span_for_suggestion(),
                 &format!("add the required where clause{}", plural),
                 suggestion,
                 Applicability::MachineApplicable,
