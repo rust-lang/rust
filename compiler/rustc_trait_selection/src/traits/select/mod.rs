@@ -37,7 +37,6 @@ use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
@@ -698,19 +697,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
-                ty::PredicateKind::OpaqueType(a, b) => {
-                    match self.infcx().handle_opaque_type(
-                        a,
-                        b,
-                        &obligation.cause,
-                        obligation.param_env,
-                    ) {
-                        Ok(res) => {
-                            self.evaluate_predicates_recursively(previous_stack, res.obligations)
-                        }
-                        Err(_) => Ok(EvaluatedToErr),
-                    }
-                }
             }
         });
 
@@ -1351,7 +1337,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, param_env, cache_fresh_trait_pred, dep_node), level = "debug")]
     fn insert_candidate_cache(
         &mut self,
         mut param_env: ty::ParamEnv<'tcx>,
@@ -1392,7 +1377,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// a projection, look at the bounds of `T::Bar`, see if we can find a
     /// `Baz` bound. We return indexes into the list returned by
     /// `tcx.item_bounds` for any applicable bounds.
-    #[instrument(level = "debug", skip(self))]
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -1400,7 +1384,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
-        debug!(?placeholder_trait_predicate);
+        debug!(
+            ?placeholder_trait_predicate,
+            "match_projection_obligation_against_definition_bounds"
+        );
 
         let tcx = self.infcx.tcx;
         let (def_id, substs) = match *placeholder_trait_predicate.trait_ref.self_ty().kind() {
@@ -1451,7 +1438,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             })
             .collect();
 
-        debug!(?matching_bounds);
+        debug!(?matching_bounds, "match_projection_obligation_against_definition_bounds");
         matching_bounds
     }
 
@@ -1481,7 +1468,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         });
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .define_opaque_types(false)
             .sup(ty::Binder::dummy(placeholder_trait_ref), trait_bound)
             .map(|InferOk { obligations: _, value: () }| {
                 // This method is called within a probe, so we can't have
@@ -1537,7 +1523,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            .define_opaque_types(false)
             .sup(obligation.predicate, infer_projection)
             .map_or(false, |InferOk { obligations, value: () }| {
                 self.evaluate_predicates_recursively(
@@ -2096,22 +2081,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.match_impl(impl_def_id, obligation) {
             Ok(substs) => substs,
             Err(()) => {
-                self.infcx.tcx.sess.delay_span_bug(
-                    obligation.cause.span,
-                    &format!(
-                        "Impl {:?} was matchable against {:?} but now is not",
-                        impl_def_id, obligation
-                    ),
+                bug!(
+                    "Impl {:?} was matchable against {:?} but now is not",
+                    impl_def_id,
+                    obligation
                 );
-                let value = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
-                let err = self.tcx().ty_error();
-                let value = value.fold_with(&mut BottomUpFolder {
-                    tcx: self.tcx(),
-                    ty_op: |_| err,
-                    lt_op: |l| l,
-                    ct_op: |c| c,
-                });
-                Normalized { value, obligations: vec![] }
             }
         }
     }
@@ -2248,11 +2222,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> Result<Vec<PredicateObligation<'tcx>>, ()> {
         self.infcx
             .at(&obligation.cause, obligation.param_env)
-            // We don't want predicates for opaque types to just match all other types,
-            // if there is an obligation on the opaque type, then that obligation must be met
-            // opaquely. Otherwise we'd match any obligation to the opaque type and then error
-            // out later.
-            .define_opaque_types(false)
             .sup(obligation.predicate.to_poly_trait_ref(), poly_trait_ref)
             .map(|InferOk { obligations, .. }| obligations)
             .map_err(|_| ())

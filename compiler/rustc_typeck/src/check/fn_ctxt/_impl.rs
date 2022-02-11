@@ -367,6 +367,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (result, spans)
     }
 
+    /// Replaces the opaque types from the given value with type variables,
+    /// and records the `OpaqueTypeMap` for later use during writeback. See
+    /// `InferCtxt::instantiate_opaque_types` for more details.
+    #[instrument(skip(self, value_span), level = "debug")]
+    pub(in super::super) fn instantiate_opaque_types_from_value<T: TypeFoldable<'tcx>>(
+        &self,
+        value: T,
+        value_span: Span,
+    ) -> T {
+        self.register_infer_ok_obligations(self.instantiate_opaque_types(
+            self.body_id,
+            self.param_env,
+            value,
+            value_span,
+        ))
+    }
+
     /// Convenience method which tracks extra diagnostic information for normalization
     /// that occurs as a result of WF checking. The `hir_id` is the `HirId` of the hir item
     /// whose type is being wf-checked - this is used to construct a more precise span if
@@ -703,7 +720,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // inference variable.
                     ty::PredicateKind::ClosureKind(..) => None,
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-                    ty::PredicateKind::OpaqueType(..) => None,
                 }
             })
             .filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
@@ -730,32 +746,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Vec<Ty<'tcx>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
         let ret_ty = match expected_ret.only_has_type(self) {
-            Some(ret) => {
-                // HACK(oli-obk): This is a backwards compatibility hack. Without it, the inference
-                // variable will get instantiated with the opaque type. The inference variable often
-                // has various helpful obligations registered for it that help closures figure out their
-                // signature. If we infer the inference var to the opaque type, the closure won't be able
-                // to find those obligations anymore, and it can't necessarily find them from the opaque
-                // type itself. We could be more powerful with inference if we *combined* the obligations
-                // so that we got both the obligations from the opaque type and the ones from the inference
-                // variable. That will accept more code than we do right now, so we need to carefully consider
-                // the implications.
-                // Note: this check is pessimistic, as the inference type could be matched with something other
-                // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
-                // can't re-use `sup` below.
-                if formal_ret.has_infer_types() {
-                    for ty in ret.walk() {
-                        if let ty::subst::GenericArgKind::Type(ty) = ty.unpack() {
-                            if let ty::Opaque(def_id, _) = *ty.kind() {
-                                if self.infcx.opaque_type_origin(def_id, DUMMY_SP).is_some() {
-                                    return Vec::new();
-                                }
-                            }
-                        }
-                    }
-                }
-                ret
-            }
+            Some(ret) => ret,
             None => return Vec::new(),
         };
         let expect_args = self

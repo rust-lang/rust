@@ -23,7 +23,7 @@ pub struct A<T: Foo> {
 }
 
 extern "C" {
-    pub fn lint_me() -> A<()>; //~ ERROR: uses type `Qux`
+    pub fn lint_me() -> A<()>; //~ ERROR: uses type `impl Baz`
 }
 
 fn main() {}

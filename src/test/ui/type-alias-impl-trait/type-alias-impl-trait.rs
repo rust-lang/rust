@@ -1,4 +1,4 @@
-// check-pass
+// run-pass
 
 #![allow(dead_code)]
 #![allow(unused_assignments)]

@@ -51,12 +51,6 @@ pub struct CombineFields<'infcx, 'tcx> {
     pub cause: Option<ty::relate::Cause>,
     pub param_env: ty::ParamEnv<'tcx>,
     pub obligations: PredicateObligations<'tcx>,
-    /// Whether we should define opaque types
-    /// or just treat them opaquely.
-    /// Currently only used to prevent predicate
-    /// matching from matching anything against opaque
-    /// types.
-    pub define_opaque_types: bool,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -328,7 +322,6 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     /// will first instantiate `b_vid` with a *generalized* version
     /// of `a_ty`. Generalization introduces other inference
     /// variables wherever subtyping could occur.
-    #[instrument(skip(self), level = "debug")]
     pub fn instantiate(
         &mut self,
         a_ty: Ty<'tcx>,
@@ -340,6 +333,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 
         // Get the actual variable that b_vid has been inferred to
         debug_assert!(self.infcx.inner.borrow_mut().type_variables().probe(b_vid).is_unknown());
+
+        debug!("instantiate(a_ty={:?} dir={:?} b_vid={:?})", a_ty, dir, b_vid);
 
         // Generalize type of `a_ty` appropriately depending on the
         // direction.  As an example, assume:
@@ -353,7 +348,10 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // variables. (Down below, we will relate `a_ty <: b_ty`,
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
         let Generalization { ty: b_ty, needs_wf } = self.generalize(a_ty, b_vid, dir)?;
-        debug!(?b_ty);
+        debug!(
+            "instantiate(a_ty={:?}, dir={:?}, b_vid={:?}, generalized b_ty={:?})",
+            a_ty, dir, b_vid, b_ty
+        );
         self.infcx.inner.borrow_mut().type_variables().instantiate(b_vid, b_ty);
 
         if needs_wf {
@@ -394,13 +392,13 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     /// Preconditions:
     ///
     /// - `for_vid` is a "root vid"
-    #[instrument(skip(self), level = "trace")]
     fn generalize(
         &self,
         ty: Ty<'tcx>,
         for_vid: ty::TyVid,
         dir: RelationDir,
     ) -> RelateResult<'tcx, Generalization<'tcx>> {
+        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?}", ty, for_vid, dir);
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
         //
@@ -414,7 +412,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             RelationDir::SupertypeOf => ty::Contravariant,
         };
 
-        trace!(?ambient_variance);
+        debug!("generalize: ambient_variance = {:?}", ambient_variance);
 
         let for_universe = match self.infcx.inner.borrow_mut().type_variables().probe(for_vid) {
             v @ TypeVariableValue::Known { .. } => {
@@ -423,8 +421,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
             TypeVariableValue::Unknown { universe } => universe,
         };
 
-        trace!(?for_universe);
-        trace!(?self.trace);
+        debug!("generalize: for_universe = {:?}", for_universe);
+        debug!("generalize: trace = {:?}", self.trace);
 
         let mut generalize = Generalizer {
             infcx: self.infcx,
@@ -441,12 +439,12 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         let ty = match generalize.relate(ty, ty) {
             Ok(ty) => ty,
             Err(e) => {
-                debug!(?e, "failure");
+                debug!("generalize: failure {:?}", e);
                 return Err(e);
             }
         };
         let needs_wf = generalize.needs_wf;
-        trace!(?ty, ?needs_wf, "success");
+        debug!("generalize: success {{ {:?}, {:?} }}", ty, needs_wf);
         Ok(Generalization { ty, needs_wf })
     }
 

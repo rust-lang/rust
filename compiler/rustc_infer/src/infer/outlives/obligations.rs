@@ -153,7 +153,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// This function may have to perform normalizations, and hence it
     /// returns an `InferOk` with subobligations that must be
     /// processed.
-    #[instrument(level = "debug", skip(self, region_bound_pairs_map))]
     pub fn process_registered_region_obligations(
         &self,
         region_bound_pairs_map: &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
@@ -164,6 +163,8 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             !self.in_snapshot.get(),
             "cannot process registered region obligations in a snapshot"
         );
+
+        debug!(?param_env, "process_registered_region_obligations()");
 
         let my_region_obligations = self.take_registered_region_obligations();
 

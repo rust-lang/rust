@@ -15,7 +15,9 @@ LL | fn hide<T: Foo>(x: T) -> impl Foo {
    |                          -------- the found opaque type
 ...
 LL |     let _: u32 = hide(0_u32);
-   |                  ^^^^^^^^^^^ expected `u32`, found opaque type
+   |            ---   ^^^^^^^^^^^ expected `u32`, found opaque type
+   |            |
+   |            expected due to this
    |
    = note:     expected type `u32`
            found opaque type `impl Foo`

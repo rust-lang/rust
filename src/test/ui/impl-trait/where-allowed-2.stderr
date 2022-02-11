@@ -1,0 +1,13 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/where-allowed-2.rs:6:30
+   |
+LL | fn in_adt_in_return() -> Vec<impl Debug> { panic!() }
+   |                              ^^^^^^^^^^    -------- this returned value is of `!` type
+   |                              |
+   |                              cannot resolve opaque type
+   |
+   = help: this error will resolve once the item's body returns a concrete type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

@@ -1,10 +1,8 @@
-error: unconstrained opaque type
+error: could not find defining uses
   --> $DIR/no_inferrable_concrete_type.rs:6:12
    |
 LL | type Foo = impl Copy;
    |            ^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 

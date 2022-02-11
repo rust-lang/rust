@@ -12,9 +12,9 @@ const fn value() -> Foo {
 const VALUE: Foo = value();
 
 fn test() {
-    match VALUE {
+    match todo!() {
         VALUE => (),
-        //~^ `Foo` cannot be used in patterns
+        //~^ `impl Send` cannot be used in patterns
         _ => (),
     }
 }

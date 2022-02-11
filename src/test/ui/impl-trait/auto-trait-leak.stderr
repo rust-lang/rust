@@ -30,45 +30,47 @@ note: ...which requires building MIR for `cycle1`...
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
+  --> $DIR/auto-trait-leak.rs:14:5
    |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     send(cycle2().clone());
+   |     ^^^^
+   = note: ...which requires evaluating trait selection obligation `impl core::clone::Clone: core::marker::Send`...
 note: ...which requires computing type of `cycle2::{opaque#0}`...
-  --> $DIR/auto-trait-leak.rs:20:16
+  --> $DIR/auto-trait-leak.rs:19:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires borrow-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires processing MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires unsafety-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires building MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:19:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
+  --> $DIR/auto-trait-leak.rs:20:5
    |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     send(cycle1().clone());
+   |     ^^^^
+   = note: ...which requires evaluating trait selection obligation `impl core::clone::Clone: core::marker::Send`...
    = note: ...which again requires computing type of `cycle1::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/auto-trait-leak.rs:1:1
@@ -82,90 +84,6 @@ LL | |     Rc::new(String::from("foo"))
 LL | | }
    | |_^
 
-error[E0391]: cycle detected when computing type of `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:12:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-   |
-note: ...which requires borrow-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing MIR for `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building MIR for `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires type-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:12:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires computing type of `cycle2::{opaque#0}`...
-  --> $DIR/auto-trait-leak.rs:20:16
-   |
-LL | fn cycle2() -> impl Clone {
-   |                ^^^^^^^^^^
-note: ...which requires borrow-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires unsafety-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires building MIR for `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `cycle1::{opaque#0}`, completing the cycle
-note: cycle used when checking item types in top-level module
-  --> $DIR/auto-trait-leak.rs:1:1
-   |
-LL | / use std::cell::Cell;
-LL | | use std::rc::Rc;
-LL | |
-LL | | fn send<T: Send>(_: T) {}
-...  |
-LL | |     Rc::new(String::from("foo"))
-LL | | }
-   | |_^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0391`.

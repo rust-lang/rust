@@ -20,7 +20,7 @@ fn assign() -> Qux {
 }
 
 extern "C" {
-    pub fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR: uses type `Qux`
+    pub fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR: uses type `impl Baz`
 }
 
 fn main() {}
