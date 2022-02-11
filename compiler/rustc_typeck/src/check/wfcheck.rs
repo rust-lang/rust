@@ -281,11 +281,6 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
 
         let mut new_required_bounds: Option<FxHashSet<ty::Predicate<'_>>> = None;
         for item in associated_items {
-            if !matches!(&item.kind, hir::AssocItemKind::Fn { .. }) {
-                // FIXME: next commit will add items...
-                continue;
-            }
-
             let item_def_id = item.id.def_id;
             // Skip our own GAT, since it would blow away the required bounds
             if item_def_id == gat_def_id {
@@ -295,28 +290,33 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
             let item_hir_id = item.id.hir_id();
             let param_env = tcx.param_env(item_def_id);
 
-            // Get the signature using placeholders. In our example, this would
-            // convert the late-bound 'a into a free region.
-            let sig = tcx.liberate_late_bound_regions(
-                item_def_id.to_def_id(),
-                tcx.fn_sig(item_def_id.to_def_id()),
-            );
-
-            // The types we can assume to be well-formed. In our example, this
-            // would be &'a mut Self, from the first argument.
-            let mut wf_tys = FxHashSet::default();
-            wf_tys.extend(sig.inputs());
-
-            // The clauses we that we would require from this function
-            let item_required_bounds = gather_gat_bounds(
-                tcx,
-                param_env,
-                item_hir_id,
-                sig.output(),
-                &wf_tys,
-                gat_def_id,
-                gat_generics,
-            );
+            let item_required_bounds = match item.kind {
+                hir::AssocItemKind::Fn { .. } => {
+                    let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
+                        item_def_id.to_def_id(),
+                        tcx.fn_sig(item_def_id),
+                    );
+                    gather_gat_bounds(
+                        tcx,
+                        param_env,
+                        item_hir_id,
+                        sig.output(),
+                        &sig.inputs().iter().copied().collect(),
+                        gat_def_id,
+                        gat_generics,
+                    )
+                }
+                hir::AssocItemKind::Type => gather_gat_bounds(
+                    tcx,
+                    param_env,
+                    item_hir_id,
+                    tcx.explicit_item_bounds(item_def_id).iter().copied().collect::<Vec<_>>(),
+                    &FxHashSet::default(),
+                    gat_def_id,
+                    gat_generics,
+                ),
+                hir::AssocItemKind::Const => None,
+            };
 
             if let Some(item_required_bounds) = item_required_bounds {
                 // Take the intersection of the new_required_bounds and the item_required_bounds
