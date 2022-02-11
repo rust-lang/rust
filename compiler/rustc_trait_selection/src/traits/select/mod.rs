@@ -1508,12 +1508,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         })
     }
 
+    /// Return Some(true) if the obligation's predicate type applies to the env_predicate, and
+    /// Some(false) if it does not. Returns None in the case that the projection type is a GAT,
+    /// and applying this env_predicate constrains any of the obligation's GAT substitutions.
     pub(super) fn match_projection_projections(
         &mut self,
         obligation: &ProjectionTyObligation<'tcx>,
         env_predicate: PolyProjectionPredicate<'tcx>,
         potentially_unnormalized_candidates: bool,
-    ) -> bool {
+    ) -> Option<bool> {
         let mut nested_obligations = Vec::new();
         let (infer_predicate, _) = self.infcx.replace_bound_vars_with_fresh_vars(
             obligation.cause.span,
@@ -1535,7 +1538,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             infer_predicate.projection_ty
         };
 
-        self.infcx
+        let is_match = self
+            .infcx
             .at(&obligation.cause, obligation.param_env)
             .define_opaque_types(false)
             .sup(obligation.predicate, infer_projection)
@@ -1545,7 +1549,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     nested_obligations.into_iter().chain(obligations),
                 )
                 .map_or(false, |res| res.may_apply())
-            })
+            });
+
+        if is_match {
+            let generics = self.tcx().generics_of(obligation.predicate.item_def_id);
+            if !generics.params.is_empty() {
+                // If any of the obligation's predicate substs shallow-resolve to
+                // something new, that means that we must have newly inferred something
+                // about the GAT. We should give up with ambiguity in that case.
+                if obligation.predicate.substs[generics.parent_count..]
+                    .iter()
+                    .any(|&p| p.has_infer_types_or_consts() && self.infcx.shallow_resolve(p) != p)
+                {
+                    return None;
+                }
+            }
+        }
+
+        Some(is_match)
     }
 
     ///////////////////////////////////////////////////////////////////////////
