@@ -1,20 +1,14 @@
-error: implementation of `Hrtb` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue-88236-2.rs:17:5
    |
 LL |     &()
-   |     ^^^ implementation of `Hrtb` is not general enough
-   |
-   = note: `Hrtb<'0>` would have to be implemented for the type `&()`, for any lifetime `'0`...
-   = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+   |     ^^^
 
-error: implementation of `Hrtb` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue-88236-2.rs:17:5
    |
 LL |     &()
-   |     ^^^ implementation of `Hrtb` is not general enough
-   |
-   = note: `Hrtb<'0>` would have to be implemented for the type `&()`, for any lifetime `'0`...
-   = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+   |     ^^^
 
 error: lifetime may not live long enough
   --> $DIR/issue-88236-2.rs:20:5
@@ -29,23 +23,17 @@ help: to allow this `impl Trait` to capture borrowed data with lifetime `'b`, ad
 LL | fn make_bad_impl<'b>(x: &'b ()) -> impl for<'a> Hrtb<'a, Assoc = impl Send + 'a> + 'b {
    |                                                                                  ++++
 
-error: implementation of `Hrtb` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue-88236-2.rs:20:5
    |
 LL |     x
-   |     ^ implementation of `Hrtb` is not general enough
-   |
-   = note: `Hrtb<'0>` would have to be implemented for the type `&()`, for any lifetime `'0`...
-   = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+   |     ^
 
-error: implementation of `Hrtb` is not general enough
+error: higher-ranked subtype error
   --> $DIR/issue-88236-2.rs:20:5
    |
 LL |     x
-   |     ^ implementation of `Hrtb` is not general enough
-   |
-   = note: `Hrtb<'0>` would have to be implemented for the type `&()`, for any lifetime `'0`...
-   = note: ...but `Hrtb<'1>` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+   |     ^
 
 error: aborting due to 5 previous errors
 

@@ -268,7 +268,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         TypeOpOutput {
                             output: self.infcx.tcx.ty_error(),
                             constraints: None,
-                            error_info: None,
+                            canonicalized_query: None,
                         }
                     });
                 // Note: we need this in examples like
