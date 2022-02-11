@@ -1520,35 +1520,7 @@ macro_rules! int_impl {
         ///
         /// # Examples
         ///
-        /// Standard signed bit integer implementation
-        ///
-        /// ```rs
-        /// #![feature(bigint_helper_methods)]
-        /// struct I16 {
-        ///     pub low: u8, // Low-order bytes has to be unsigned.
-        ///     /// Most Significant Data has to be of the same signedness as the desired type.
-        ///     /// So u8 to implement U16, i8 to implement I16.
-        ///     pub high: i8,
-        /// }
-        ///
-        /// impl I16 {
-        ///     /// Adds `rhs` to `self` and returns true if signed overflow occurs, false otherwise.
-        ///     pub fn overflowing_add(&mut self, rhs: Self) -> bool {
-        ///         let (low_res, low_carry) = self.low.carrying_add(rhs.low, false);
-        ///
-        ///         // The signed `carrying_add` method is used to detect signed overflow.
-        ///         let (high_res, high_carry) = self.high.carrying_add(rhs.high, low_carry);
-        ///
-        ///         self.low = low_res;
-        ///         self.high = high_res;
-        ///         high_carry
-        ///     }
-        /// }
-        ///
-        /// fn main() {}
-        /// ```
-        ///
-        /// General behavior
+        /// Basic usage:
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
@@ -1644,35 +1616,7 @@ macro_rules! int_impl {
         ///
         /// # Examples
         ///
-        /// Standard signed bit integer implementation
-        ///
-        /// ```rs
-        /// #![feature(bigint_helper_methods)]
-        /// struct I16 {
-        ///     pub low: u8, // Low-order bytes has to be unsigned.
-        ///     /// Most Significant Data has to be of the same signedness as the desired type.
-        ///     /// So u8 to implement U16, i8 to implement I16.
-        ///     pub high: i8,
-        /// }
-        ///
-        /// impl I16 {
-        ///     /// Subtracts `rhs` from `self` and returns true if signed overflow occurs, false otherwise.
-        ///     pub fn overflowing_sub(&mut self, rhs: Self) -> bool {
-        ///         let (low_res, low_carry) = self.low.borrowing_sub(rhs.low, false);
-        ///
-        ///         // The signed `borrowing_sub` method is used to detect signed overflow.
-        ///         let (high_res, high_carry) = self.high.borrowing_sub(rhs.high, low_carry);
-        ///
-        ///         self.low = low_res;
-        ///         self.high = high_res;
-        ///         high_carry
-        ///     }
-        /// }
-        ///
-        /// fn main() {}
-        /// ```
-        ///
-        /// General behavior
+        /// Basic usage:
         ///
         /// ```
         /// #![feature(bigint_helper_methods)]
