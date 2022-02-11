@@ -1655,6 +1655,8 @@ macro_rules! nop_lift {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
                 if tcx.interners.$set.contains_pointer_to(&InternedInSet(self.0.0)) {
+                    // SAFETY: `self` is interned and therefore valid
+                    // for the entire lifetime of the `TyCtxt`.
                     Some(unsafe { mem::transmute(self) })
                 } else {
                     None
@@ -1674,7 +1676,9 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<Ty<'a>> {
             return Some(List::empty());
         }
         if tcx.interners.substs.contains_pointer_to(&InternedInSet(self.as_substs())) {
-            Some(unsafe { mem::transmute(self) })
+            // SAFETY: `self` is interned and therefore valid
+            // for the entire lifetime of the `TyCtxt`.
+            Some(unsafe { mem::transmute::<&'a List<Ty<'a>>, &'tcx List<Ty<'tcx>>>(self) })
         } else {
             None
         }
