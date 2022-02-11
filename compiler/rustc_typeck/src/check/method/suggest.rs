@@ -1819,7 +1819,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [] => {}
                 [trait_info] => {
                     let msg = format!(
-                        "the trait `{}` defines an item `{}`, but is explicitely unimplemented",
+                        "the trait `{}` defines an item `{}`, but is explicitly unimplemented",
                         self.tcx.def_path_str(trait_info.def_id),
                         item_name
                     );
@@ -1827,7 +1827,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 trait_infos => {
                     let mut msg = format!(
-                        "the following traits define an item `{}`, but are explicitely unimplemented:",
+                        "the following traits define an item `{}`, but are explicitly unimplemented:",
                         item_name
                     );
                     for trait_info in trait_infos {
