@@ -309,45 +309,57 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * This function parses the next query element until it finds `endChar`, calling `getNextElem`
+     * to collect each element.
+     *
+     * If there is no `endChar`, this function will implicitly stop at the end without raising an
+     * error.
+     *
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
-     * @param {string} limit              - This function will stop when it'll encounter this
+     * @param {string} endChar            - This function will stop when it'll encounter this
      *                                      character.
      */
-    function getItemsBefore(query, parserState, elems, limit) {
+    function getItemsBefore(query, parserState, elems, endChar) {
         var turns = 0;
         while (parserState.pos < parserState.length) {
             var c = parserState.userQuery[parserState.pos];
-            if (c === limit) {
+            if (c === endChar) {
                 break;
-            } else if (c === "," && limit !== "" && turns > 0) {
+            } else if (c === "," && endChar !== "" && turns > 0) {
                 parserState.pos += 1;
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw new Error("Unexpected `::`: paths cannot start with `::`");
             } else if (c === ":" || isEndCharacter(c)) {
                 var extra = "";
-                if (limit === ">") {
+                if (endChar === ">") {
                     extra = "`<`";
-                } else if (limit === "") {
+                } else if (endChar === "") {
                     extra = "`->`";
                 }
                 throw new Error("Unexpected `" + c + "` after " + extra);
             }
             var posBefore = parserState.pos;
-            getNextElem(query, parserState, elems, limit === ">");
+            getNextElem(query, parserState, elems, endChar === ">");
             turns += 1;
+            // This case can be encountered if `getNextElem` encounted a "stop character" right from
+            // the start. For example if you have `,,`. In this case, we simply move up the current
+            // position to continue the parsing.
             if (posBefore === parserState.pos) {
                 parserState.pos += 1;
             }
         }
-        // We are either at the end of the string or on the "limit" character, let's move forward
+        // We are either at the end of the string or on the `endChar`` character, let's move forward
         // in any case.
         parserState.pos += 1;
     }
 
     /**
+     * Parses the provided `query` input to fill `parserState`. If it encounters an error while
+     * parsing `query`, it'll throw an error.
+     *
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      */
@@ -1194,7 +1206,9 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         /**
-         * This function is called in case the query has more than one element.
+         * This function is called in case the query has more than one element. In this case, it'll
+         * try to match the items which validates all the elements. For `aa -> bb` will look for
+         * functions which have a parameter `aa` and has `bb` in its returned values.
          *
          * @param {Row} row
          * @param {integer} pos      - Position in the `searchIndex`.

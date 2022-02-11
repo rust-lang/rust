@@ -12,7 +12,7 @@ const QUERY = [
 
 const EXPECTED = [
     {
-        // "R"<P>
+        // R<P>
         'returned': [
             { 'path': 'generics', 'name': 'alef' },
         ],
