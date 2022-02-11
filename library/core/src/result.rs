@@ -1293,10 +1293,14 @@ impl<T, E> Result<T, E> {
     /// Often used to chain fallible operations that may return [`Err`].
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::{io::ErrorKind, path::Path};
     ///
     /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());
-    /// assert!(root_modified_time.is_ok())
+    /// assert!(root_modified_time.is_ok());
+    ///
+    /// let should_fail = Path::new("/bad/path").metadata().and_then(|md| md.modified());
+    /// assert!(should_fail.is_err());
+    /// assert_eq!(should_fail.unwrap_err().kind(), ErrorKind::NotFound);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
