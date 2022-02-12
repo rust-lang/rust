@@ -1282,14 +1282,13 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// fn sq(x: u32) -> Result<u32, &'static str> {
-    ///     x.checked_mul(x).ok_or("overflowed")
+    /// fn sq_then_to_string(x: u32) -> Result<String, &'static str> {
+    ///     x.checked_mul(x).map(|sq| sq.to_string()).ok_or("overflowed")
     /// }
     ///
-    /// assert_eq!(Ok(2).and_then(sq), Ok(4));
-    /// assert_eq!(Ok(1_000_000).and_then(sq), Err("overflowed"));
-    /// assert_eq!(Err("not a number").and_then(sq), Err("not a number"));
-
+    /// assert_eq!(Ok(2).and_then(sq_then_to_string), Ok(4.to_string()));
+    /// assert_eq!(Ok(1_000_000).and_then(sq_then_to_string), Err("overflowed"));
+    /// assert_eq!(Err("not a number").and_then(sq_then_to_string), Err("not a number"));
     /// ```
     ///
     /// Often used to chain fallible operations that may return [`Err`].
