@@ -1,5 +1,4 @@
 // run-pass
-// ignore-compare-mode-chalk
 pub trait DeclaredTrait {
     type Type;
 }
