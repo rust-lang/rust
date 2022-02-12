@@ -442,6 +442,7 @@ pub enum MetadataType {
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
     MD_type = 19,
+    MD_noundef = 29,
 }
 
 /// LLVMRustAsmDialect
