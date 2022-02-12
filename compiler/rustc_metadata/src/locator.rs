@@ -580,6 +580,11 @@ impl<'a> CrateLocator<'a> {
             ) {
                 Ok(blob) => {
                     if let Some(h) = self.crate_matches(&blob, &lib) {
+                        if blob.get_header().is_reference {
+                            if slot.is_none() {
+                                todo!("return error");
+                            }
+                        }
                         (h, blob)
                     } else {
                         info!("metadata mismatch");
