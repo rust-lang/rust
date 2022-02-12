@@ -97,6 +97,7 @@ E0184: include_str!("./error_codes/E0184.md"),
 E0185: include_str!("./error_codes/E0185.md"),
 E0186: include_str!("./error_codes/E0186.md"),
 E0191: include_str!("./error_codes/E0191.md"),
+E0192: include_str!("./error_codes/E0192.md"),
 E0193: include_str!("./error_codes/E0193.md"),
 E0195: include_str!("./error_codes/E0195.md"),
 E0197: include_str!("./error_codes/E0197.md"),
@@ -522,7 +523,6 @@ E0787: include_str!("./error_codes/E0787.md"),
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
-//  E0192, // negative impl only applicable to auto traits
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
     E0208,
