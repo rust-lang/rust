@@ -2,6 +2,7 @@
 
 // When adding or modifying a test, please do the same for parking_lot::Mutex.
 mod std_mutex {
+    use super::baz;
     use std::sync::{Mutex, RwLock};
 
     pub async fn bad(x: &Mutex<u32>) -> u32 {
@@ -43,10 +44,6 @@ mod std_mutex {
         47
     }
 
-    pub async fn baz() -> u32 {
-        42
-    }
-
     pub async fn also_bad(x: &Mutex<u32>) -> u32 {
         let first = baz().await;
 
@@ -83,6 +80,7 @@ mod std_mutex {
 
 // When adding or modifying a test, please do the same for std::Mutex.
 mod parking_lot_mutex {
+    use super::baz;
     use parking_lot::{Mutex, RwLock};
 
     pub async fn bad(x: &Mutex<u32>) -> u32 {
@@ -124,10 +122,6 @@ mod parking_lot_mutex {
         47
     }
 
-    pub async fn baz() -> u32 {
-        42
-    }
-
     pub async fn also_bad(x: &Mutex<u32>) -> u32 {
         let first = baz().await;
 
@@ -160,6 +154,26 @@ mod parking_lot_mutex {
             baz().await
         }
     }
+}
+
+async fn baz() -> u32 {
+    42
+}
+
+async fn no_await(x: std::sync::Mutex<u32>) {
+    let mut guard = x.lock().unwrap();
+    *guard += 1;
+}
+
+// FIXME: FP, because the `MutexGuard` is dropped before crossing the await point. This is
+// something the needs to be fixed in rustc. There's already drop-tracking, but this is currently
+// disabled, see rust-lang/rust#93751. This case isn't picked up by drop-tracking though. If the
+// `*guard += 1` is removed it is picked up.
+async fn dropped_before_await(x: std::sync::Mutex<u32>) {
+    let mut guard = x.lock().unwrap();
+    *guard += 1;
+    drop(guard);
+    baz().await;
 }
 
 fn main() {
