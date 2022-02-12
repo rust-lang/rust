@@ -266,57 +266,65 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Belongs to the type namespace.**
     PrimTy(hir::PrimTy),
-    /// The `Self` type, optionally with the trait it is associated with
-    /// and optionally with the [`DefId`] of the impl it is associated with.
+    /// The `Self` type, optionally with the [`DefId`] of the trait it belongs to and
+    /// optionally with the [`DefId`] of the item introducing the `Self` type alias.
     ///
     /// **Belongs to the type namespace.**
     ///
-    /// For example, the `Self` in
-    ///
+    /// Examples:
     /// ```
+    /// struct Bar(Box<Self>);
+    /// // `Res::SelfTy { trait_: None, alias_of: Some(Bar) }`
+    /// 
     /// trait Foo {
     ///     fn foo() -> Box<Self>;
+    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: None }`
     /// }
-    /// ```
-    ///
-    /// would have the [`DefId`] of `Foo` associated with it. The `Self` in
-    ///
-    /// ```
-    /// struct Bar;
-    ///
+    /// 
     /// impl Bar {
-    ///     fn new() -> Self { Bar }
+    ///     fn blah() {
+    ///         let _: Self;
+    ///         // `Res::SelfTy { trait_: None, alias_of: Some(::{impl#0}) }`
+    ///     }
     /// }
-    /// ```
-    ///
-    /// would have the [`DefId`] of the impl associated with it. Finally, the `Self` in
-    ///
-    /// ```
+    /// 
     /// impl Foo for Bar {
-    ///     fn foo() -> Box<Self> { Box::new(Bar) }
+    ///     fn foo() -> Box<Self> {
+    ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    ///         let _: Self;
+    ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
+    /// 
+    ///         todo!()
+    ///     }
     /// }
     /// ```
-    ///
-    /// would have both the [`DefId`] of `Foo` and the [`DefId`] of the impl
-    /// associated with it.
     ///
     /// *See also [`Res::SelfCtor`].*
     ///
     /// -----
     ///
-    /// HACK(min_const_generics): impl self types also have an optional requirement to **not** mention
+    /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+    /// 
+    /// struct Bar([u8; baz::<Self>()]);
+    /// const fn baz<T>() -> usize { 10 }
     /// ```
     /// We do however allow `Self` in repeat expression even if it is generic to not break code
-    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint.
-    ///
-    /// FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
+    /// which already works on stable while causing the `const_evaluatable_unchecked` future compat lint:
+    /// ```
+    /// fn foo<T>() {
+    ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+    /// }
+    /// ```
+    // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
     SelfTy {
-        /// Optionally, the trait associated with this `Self` type.
+        /// The trait this `Self` is a generic arg for.
         trait_: Option<DefId>,
-        /// Optionally, the impl or adt associated with this `Self` type.
+        /// The item introducing the `Self` type alias. Can be used in the `type_of` query
+        /// to get the underlying type. Additionally whether the `Self` type is disallowed 
+        /// from mentioning generics (i.e. when used in an anonymous constant).
         alias_to: Option<(DefId, bool)>,
     },
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
