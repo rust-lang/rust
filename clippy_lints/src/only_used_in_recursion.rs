@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// The could contain a useless calculation and can make function simpler.
     ///
-    /// ### Known Issues
+    /// ### Known problems
     /// It could not catch the variable that has no side effects but only used in recursion.
     ///
     /// ### Example
@@ -61,7 +61,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.60.0"]
     pub ONLY_USED_IN_RECURSION,
     complexity,
-    "default lint description"
+    "arguments that is only used in recursion can be removed"
 }
 declare_lint_pass!(OnlyUsedInRecursion => [ONLY_USED_IN_RECURSION]);
 
