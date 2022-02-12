@@ -63,6 +63,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(neg_cmp_op_on_partial_ord::NEG_CMP_OP_ON_PARTIAL_ORD),
     LintId::of(no_effect::NO_EFFECT),
     LintId::of(no_effect::UNNECESSARY_OPERATION),
+    LintId::of(only_used_in_recursion::ONLY_USED_IN_RECURSION),
     LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
     LintId::of(partialeq_ne_impl::PARTIALEQ_NE_IMPL),
     LintId::of(precedence::PRECEDENCE),

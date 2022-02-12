@@ -3349,6 +3349,7 @@ Released 2018-09-13
 [`not_unsafe_ptr_arg_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref
 [`octal_escapes`]: https://rust-lang.github.io/rust-clippy/master/index.html#octal_escapes
 [`ok_expect`]: https://rust-lang.github.io/rust-clippy/master/index.html#ok_expect
+[`only_used_in_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#only_used_in_recursion
 [`op_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#op_ref
 [`option_as_ref_deref`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref
 [`option_env_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_env_unwrap

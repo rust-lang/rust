@@ -388,6 +388,7 @@ store.register_lints(&[
     non_send_fields_in_send_ty::NON_SEND_FIELDS_IN_SEND_TY,
     nonstandard_macro_braces::NONSTANDARD_MACRO_BRACES,
     octal_escapes::OCTAL_ESCAPES,
+    only_used_in_recursion::ONLY_USED_IN_RECURSION,
     open_options::NONSENSICAL_OPEN_OPTIONS,
     option_env_unwrap::OPTION_ENV_UNWRAP,
     option_if_let_else::OPTION_IF_LET_ELSE,
