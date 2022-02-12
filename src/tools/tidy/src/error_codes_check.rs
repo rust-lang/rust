@@ -1,7 +1,7 @@
 //! Checks that all error codes have at least one test to prevent having error
 //! codes that are silently not thrown by the compiler anymore.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -205,6 +205,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     let mut found_explanations = 0;
     let mut found_tests = 0;
     let mut error_codes: HashMap<String, ErrorCodeStatus> = HashMap::new();
+    let mut explanations: HashSet<String> = HashSet::new();
     // We want error codes which match the following cases:
     //
     // * foo(a, E0111, a)
@@ -218,17 +219,27 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     for path in paths {
         super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
             let file_name = entry.file_name();
+            let entry_path = entry.path();
+
             if file_name == "error_codes.rs" {
                 extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
                 found_explanations += 1;
-            } else if entry.path().extension() == Some(OsStr::new("stderr")) {
+            } else if entry_path.extension() == Some(OsStr::new("stderr")) {
                 extract_error_codes_from_tests(contents, &mut error_codes);
                 found_tests += 1;
-            } else if entry.path().extension() == Some(OsStr::new("rs")) {
+            } else if entry_path.extension() == Some(OsStr::new("rs")) {
                 let path = entry.path().to_string_lossy();
                 if PATHS_TO_IGNORE_FOR_EXTRACTION.iter().all(|c| !path.contains(c)) {
                     extract_error_codes_from_source(contents, &mut error_codes, &regex);
                 }
+            } else if entry_path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|p| p == "error_codes")
+                .unwrap_or(false)
+                && entry_path.extension() == Some(OsStr::new("md"))
+            {
+                explanations.insert(file_name.to_str().unwrap().replace(".md", ""));
             }
         });
     }
@@ -238,6 +249,10 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     }
     if found_tests == 0 {
         eprintln!("No error code was found in compilation errors!");
+        *bad = true;
+    }
+    if explanations.is_empty() {
+        eprintln!("No error code explanation was found!");
         *bad = true;
     }
     if errors.is_empty() {
@@ -282,11 +297,21 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
             }
         }
     }
+    if errors.is_empty() {
+        for explanation in explanations {
+            if !error_codes.contains_key(&explanation) {
+                errors.push(format!(
+                    "{} error code explanation should be listed in `error_codes.rs`",
+                    explanation
+                ));
+            }
+        }
+    }
     errors.sort();
     for err in &errors {
         eprintln!("{}", err);
     }
-    println!("Found {} error codes with no tests", errors.len());
+    println!("Found {} error(s) in error codes", errors.len());
     if !errors.is_empty() {
         *bad = true;
     }

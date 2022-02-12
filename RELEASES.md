@@ -156,6 +156,7 @@ Language
 - [Macro attributes may follow `#[derive]` and will see the original (pre-`cfg`) input.][87220]
 - [Accept curly-brace macros in expressions, like `m!{ .. }.method()` and `m!{ .. }?`.][88690]
 - [Allow panicking in constant evaluation.][89508]
+- [Ignore derived `Clone` and `Debug` implementations during dead code analysis.][85200]
 
 Compiler
 --------
@@ -216,6 +217,9 @@ Cargo
 Compatibility notes
 -------------------
 
+- [Ignore derived `Clone` and `Debug` implementations during dead code analysis.][85200]
+  This will break some builds that set `#![deny(dead_code)]`.
+
 Internal changes
 ----------------
 These changes provide no direct user facing benefits, but represent significant
@@ -224,6 +228,7 @@ and related tools.
 
 - [Added an experimental backend for codegen with `libgccjit`.][87260]
 
+[85200]: https://github.com/rust-lang/rust/pull/85200/
 [86191]: https://github.com/rust-lang/rust/pull/86191/
 [87220]: https://github.com/rust-lang/rust/pull/87220/
 [87260]: https://github.com/rust-lang/rust/pull/87260/

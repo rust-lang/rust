@@ -1,5 +1,6 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::{AnnNode, PrintState, State};
+use crate::pprust::state::delimited::IterDelimited;
+use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
@@ -138,11 +139,10 @@ impl<'a> State<'a> {
                 self.end(); // end outer head-block
             }
             ast::ItemKind::Use(ref tree) => {
-                self.head(visibility_qualified(&item.vis, "use"));
+                self.print_visibility(&item.vis);
+                self.word_nbsp("use");
                 self.print_use_tree(tree);
                 self.word(";");
-                self.end(); // end inner head-block
-                self.end(); // end outer head-block
             }
             ast::ItemKind::Static(ref ty, mutbl, ref body) => {
                 let def = ast::Defaultness::Final;
@@ -615,8 +615,8 @@ impl<'a> State<'a> {
             ast::UseTreeKind::Simple(rename, ..) => {
                 self.print_path(&tree.prefix, false, 0);
                 if let Some(rename) = rename {
-                    self.space();
-                    self.word_space("as");
+                    self.nbsp();
+                    self.word_nbsp("as");
                     self.print_ident(rename);
                 }
             }
@@ -628,16 +628,36 @@ impl<'a> State<'a> {
                 self.word("*");
             }
             ast::UseTreeKind::Nested(ref items) => {
-                if tree.prefix.segments.is_empty() {
-                    self.word("{");
-                } else {
+                if !tree.prefix.segments.is_empty() {
                     self.print_path(&tree.prefix, false, 0);
-                    self.word("::{");
+                    self.word("::");
                 }
-                self.commasep(Inconsistent, &items, |this, &(ref tree, _)| {
-                    this.print_use_tree(tree)
-                });
-                self.word("}");
+                if items.is_empty() {
+                    self.word("{}");
+                } else if items.len() == 1 {
+                    self.print_use_tree(&items[0].0);
+                } else {
+                    self.cbox(INDENT_UNIT);
+                    self.word("{");
+                    self.zerobreak();
+                    self.ibox(0);
+                    for use_tree in items.iter().delimited() {
+                        self.print_use_tree(&use_tree.0);
+                        if !use_tree.is_last {
+                            self.word(",");
+                            if let ast::UseTreeKind::Nested(_) = use_tree.0.kind {
+                                self.hardbreak();
+                            } else {
+                                self.space();
+                            }
+                        }
+                    }
+                    self.end();
+                    self.trailing_comma();
+                    self.offset(-INDENT_UNIT);
+                    self.word("}");
+                    self.end();
+                }
             }
         }
     }
