@@ -7,4 +7,5 @@ fn foo() {
     move || {};
     async move || {};
     static || {};
+    static move || {};
 }
