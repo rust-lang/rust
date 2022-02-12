@@ -1296,6 +1296,7 @@ impl<T, E> Result<T, E> {
     /// ```
     /// use std::{io::ErrorKind, path::Path};
     ///
+    /// // Note: on Windows "/" maps to "C:\"
     /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());
     /// assert!(root_modified_time.is_ok());
     ///
