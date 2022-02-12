@@ -211,22 +211,14 @@ details.undocumented > summary::before {
 }
 
 #theme-picker, #settings-menu, #help-button,
-#crate-search, .search-input, .search-input::placeholder {
-	color: grey;
+#crate-search, .search-input {
+	color: white;
 	background-color: #353535;
 	border-color: #505050;
 }
 
 #theme-picker > img, #settings-menu > img {
-	filter: invert(50%);
-}
-
-#crate-search {
-	color: white;
-}
-
-.search-input {
-	color: white;
+	filter: invert(100%);
 }
 
 .search-input:focus {

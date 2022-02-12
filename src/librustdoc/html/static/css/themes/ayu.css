@@ -237,14 +237,6 @@ details.undocumented > summary::before {
 	color: grey;
 }
 
-#crate-search {
-	color: white;
-}
-
-.search-input {
-	color: white;
-}
-
 .module-item .stab,
 .import-item .stab {
 	color: #000;

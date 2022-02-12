@@ -211,18 +211,10 @@ details.undocumented > summary::before {
 }
 
 #theme-picker, #settings-menu, #help-button,
-#crate-search, .search-input, .search-input::placeholder {
-	color: grey;
+#crate-search, .search-input {
+	color: black;
 	background-color: white;
 	border-color: #e0e0e0;
-}
-
-#crate-search {
-	color: black;
-}
-
-.sub-container img {
-	opacity: 50%;
 }
 
 .search-input:focus {
