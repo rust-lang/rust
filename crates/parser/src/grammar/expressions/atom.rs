@@ -74,6 +74,7 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![|] => closure_expr(p),
         T![move] if la == T![|] => closure_expr(p),
         T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => closure_expr(p),
+        T![static] if la == T![|] => closure_expr(p),
         T![if] => if_expr(p),
 
         T![loop] => loop_expr(p, None),
@@ -234,6 +235,7 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 //     async || {};
 //     move || {};
 //     async move || {};
+//     static || {};
 // }
 fn closure_expr(p: &mut Parser) -> CompletedMarker {
     assert!(
@@ -241,10 +243,12 @@ fn closure_expr(p: &mut Parser) -> CompletedMarker {
             || (p.at(T![move]) && p.nth(1) == T![|])
             || (p.at(T![async]) && p.nth(1) == T![|])
             || (p.at(T![async]) && p.nth(1) == T![move] && p.nth(2) == T![|])
+            || (p.at(T![static]) && p.nth(1) == T![|])
     );
     let m = p.start();
     p.eat(T![async]);
     p.eat(T![move]);
+    p.eat(T![static]);
     params::param_list_closure(p);
     if opt_ret_type(p) {
         // test lambda_ret_block
