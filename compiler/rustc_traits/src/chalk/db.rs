@@ -20,11 +20,10 @@ use rustc_span::symbol::sym;
 use std::fmt;
 use std::sync::Arc;
 
-use crate::chalk::lowering::{self, LowerInto};
+use crate::chalk::lowering::LowerInto;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
-    pub(crate) reempty_placeholder: ty::Region<'tcx>,
 }
 
 impl fmt::Debug for RustIrDatabase<'_> {
@@ -40,12 +39,9 @@ impl<'tcx> RustIrDatabase<'tcx> {
         bound_vars: SubstsRef<'tcx>,
     ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
         let predicates = self.interner.tcx.predicates_defined_on(def_id).predicates;
-        let mut regions_substitutor =
-            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
         predicates
             .iter()
             .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
-            .map(|wc| wc.fold_with(&mut regions_substitutor))
             .filter_map(|wc| LowerInto::<
                     Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
                     >::lower_into(wc, self.interner)).collect()
@@ -287,9 +283,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
-        let mut regions_substitutor =
-            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-        let trait_ref = trait_ref.fold_with(&mut regions_substitutor);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
@@ -335,9 +328,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
             let self_ty = trait_ref.self_ty();
             let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
-            let mut regions_substitutor =
-                lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-            let self_ty = self_ty.fold_with(&mut regions_substitutor);
             let lowered_ty = self_ty.lower_into(self.interner);
 
             parameters[0].assert_ty_ref(self.interner).could_match(
@@ -556,11 +546,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Fn => lang_items.fn_trait(),
             FnMut => lang_items.fn_mut_trait(),
             FnOnce => lang_items.fn_once_trait(),
+            Generator => lang_items.gen_trait(),
             Unsize => lang_items.unsize_trait(),
             Unpin => lang_items.unpin_trait(),
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
-            Generator => lang_items.generator_return(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -684,28 +674,18 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         let variances = self.interner.tcx.variances_of(def_id.0);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 
     fn adt_variance(
         &self,
-        def_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
-        let variances = self.interner.tcx.variances_of(def_id.0.did);
+        let variances = self.interner.tcx.variances_of(adt_id.0.did);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 }
