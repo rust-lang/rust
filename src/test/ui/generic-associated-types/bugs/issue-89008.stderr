@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == impl Stream<Item = Repr>`
-  --> $DIR/issue-89008.rs:38:43
+  --> $DIR/issue-89008.rs:39:43
    |
 LL |     type LineStream<'a, Repr> = impl Stream<Item = Repr>;
    |                                 ------------------------ the expected opaque type
@@ -11,7 +11,7 @@ LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {
                    found struct `Empty<_>`
 
 error: could not find defining uses
-  --> $DIR/issue-89008.rs:34:33
+  --> $DIR/issue-89008.rs:35:33
    |
 LL |     type LineStream<'a, Repr> = impl Stream<Item = Repr>;
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^

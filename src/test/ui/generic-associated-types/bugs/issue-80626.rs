@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but it requires `Sized` to be coinductive.
 
@@ -11,7 +12,6 @@ trait Allocator {
 enum LinkedList<A: Allocator> {
     Head,
     Next(A::Allocated<Self>)
-    //~^ overflow
 }
 
 fn main() {}
