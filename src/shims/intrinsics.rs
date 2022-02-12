@@ -54,6 +54,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let right = this.read_immediate(right)?;
                 this.binop_ignore_overflow(mir::BinOp::Ne, &left, &right, dest)?;
             }
+            "const_allocate" => {
+                // For now, for compatibility with the run-time implementation of this, we just return null.
+                // See <https://github.com/rust-lang/rust/issues/93935>.
+                this.write_null(dest)?;
+            }
 
             // Raw memory accesses
             "volatile_load" => {
