@@ -1,4 +1,4 @@
-use crate::errors::{FailCreateFileEncoder, FailWriteFile};
+use crate::errors::{FailCreateFileEncoder, FailWriteFile, FailedCreateFile};
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
@@ -2281,6 +2281,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: &Path) {
                 is_reference: true,
             });
             header.position.get()
+        });
+    } else {
+        std::fs::File::create(&ref_path).unwrap_or_else(|err| {
+            tcx.dcx().emit_fatal(FailedCreateFile { filename: &ref_path, err });
         });
     }
 }
