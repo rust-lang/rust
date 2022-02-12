@@ -3053,6 +3053,11 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 return;
             }
 
+            // Scalars which have invalid values cannot be undef.
+            if !scalar.is_always_valid(self) {
+                attrs.set(ArgAttribute::NoUndef);
+            }
+
             // Only pointer types handled below.
             if scalar.value != Pointer {
                 return;

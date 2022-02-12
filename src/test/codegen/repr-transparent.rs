@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -O -C no-prepopulate-passes
 
 // ignore-riscv64 riscv64 has an i128 type used with test_Vector
 // see codegen/riscv-abi for riscv functiona call tests
@@ -56,7 +56,7 @@ pub struct GenericPlusZst<T>(T, Zst2);
 #[repr(u8)]
 pub enum Bool { True, False, FileNotFound }
 
-// CHECK: define{{( dso_local)?}}{{( zeroext)?}} i8 @test_Gpz(i8{{( zeroext)?}} %_1)
+// CHECK: define{{( dso_local)?}} noundef{{( zeroext)?}} i8 @test_Gpz(i8 noundef{{( zeroext)?}} %_1)
 #[no_mangle]
 pub extern "C" fn test_Gpz(_: GenericPlusZst<Bool>) -> GenericPlusZst<Bool> { loop {} }
 

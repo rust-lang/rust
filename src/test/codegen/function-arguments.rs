@@ -4,6 +4,7 @@
 #![feature(rustc_attrs)]
 
 use std::mem::MaybeUninit;
+use std::num::NonZeroU64;
 
 pub struct S {
   _field: [i32; 8],
@@ -11,6 +12,11 @@ pub struct S {
 
 pub struct UnsafeInner {
   _field: std::cell::UnsafeCell<i16>,
+}
+
+pub enum MyBool {
+  True,
+  False,
 }
 
 // CHECK: noundef zeroext i1 @boolean(i1 noundef zeroext %x)
@@ -22,6 +28,48 @@ pub fn boolean(x: bool) -> bool {
 // CHECK: i8 @maybeuninit_boolean(i8 %x)
 #[no_mangle]
 pub fn maybeuninit_boolean(x: MaybeUninit<bool>) -> MaybeUninit<bool> {
+  x
+}
+
+// CHECK: noundef zeroext i1 @enum_bool(i1 noundef zeroext %x)
+#[no_mangle]
+pub fn enum_bool(x: MyBool) -> MyBool {
+  x
+}
+
+// CHECK: i8 @maybeuninit_enum_bool(i8 %x)
+#[no_mangle]
+pub fn maybeuninit_enum_bool(x: MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
+  x
+}
+
+// CHECK: noundef i32 @char(i32 noundef %x)
+#[no_mangle]
+pub fn char(x: char) -> char {
+  x
+}
+
+// CHECK: i32 @maybeuninit_char(i32 %x)
+#[no_mangle]
+pub fn maybeuninit_char(x: MaybeUninit<char>) -> MaybeUninit<char> {
+  x
+}
+
+// CHECK: i64 @int(i64 %x)
+#[no_mangle]
+pub fn int(x: u64) -> u64 {
+  x
+}
+
+// CHECK: noundef i64 @nonzero_int(i64 noundef %x)
+#[no_mangle]
+pub fn nonzero_int(x: NonZeroU64) -> NonZeroU64 {
+  x
+}
+
+// CHECK: i64 @option_nonzero_int(i64 %x)
+#[no_mangle]
+pub fn option_nonzero_int(x: Option<NonZeroU64>) -> Option<NonZeroU64> {
   x
 }
 
@@ -156,7 +204,7 @@ pub fn return_slice(x: &[u16]) -> &[u16] {
   x
 }
 
-// CHECK: { i16, i16 } @enum_id_1(i16 %x.0, i16 %x.1)
+// CHECK: { i16, i16 } @enum_id_1(i16 noundef %x.0, i16 %x.1)
 #[no_mangle]
 pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
   x
