@@ -70,7 +70,7 @@ pub mod tests {
     #[no_mangle]
     pub extern "fastcall" fn f5(_: i64, _: i32) {}
 
-    // CHECK: @f6(i1 inreg zeroext %_1, i32 inreg %_2, i32 %_3)
+    // CHECK: @f6(i1 inreg noundef zeroext %_1, i32 inreg %_2, i32 %_3)
     #[no_mangle]
     pub extern "fastcall" fn f6(_: bool, _: i32, _: i32) {}
 }

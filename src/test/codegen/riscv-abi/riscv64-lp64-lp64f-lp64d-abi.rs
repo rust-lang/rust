@@ -9,7 +9,7 @@
 #[no_mangle]
 pub extern "C" fn f_void() {}
 
-// CHECK: define zeroext i1 @f_scalar_0(i1 zeroext %a)
+// CHECK: define noundef zeroext i1 @f_scalar_0(i1 noundef zeroext %a)
 #[no_mangle]
 pub extern "C" fn f_scalar_0(a: bool) -> bool {
     a
