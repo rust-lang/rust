@@ -1457,9 +1457,9 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Brace)) || self.token.is_whole_block() {
             self.parse_block_expr(label, lo, BlockCheckMode::Default, attrs)
         } else if !ate_colon && (self.check(&TokenKind::Comma) || self.check(&TokenKind::Gt)) {
-            // We're probably inside of a `Path<'a>` that needs a turbofish, so suppress the
-            // "must be followed by a colon" error, and the "expected one of" error.
-            self.diagnostic().delay_span_bug(lo, "this label wasn't parsed correctly");
+            // We're probably inside of a `Path<'a>` that needs a turbofish
+            let msg = "expected `while`, `for`, `loop` or `{` after a label";
+            self.struct_span_err(self.token.span, msg).span_label(self.token.span, msg).emit();
             consume_colon = false;
             Ok(self.mk_expr_err(lo))
         } else {
