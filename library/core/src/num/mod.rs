@@ -806,8 +806,8 @@ impl u8 {
                   without modifying the original"]
     #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
     #[inline]
-    pub fn escape_ascii(&self) -> ascii::EscapeDefault {
-        ascii::escape_default(*self)
+    pub fn escape_ascii(self) -> ascii::EscapeDefault {
+        ascii::escape_default(self)
     }
 
     pub(crate) fn is_utf8_char_boundary(self) -> bool {
