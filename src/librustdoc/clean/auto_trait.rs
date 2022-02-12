@@ -362,7 +362,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             let types = args
                                 .iter()
                                 .filter_map(|arg| match arg {
-                                    GenericArg::Type(ty) => Some(ty.clone()),
+                                    GenericArg::Type(ty) => Some((**ty).clone()),
                                     _ => None,
                                 })
                                 .collect();

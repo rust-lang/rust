@@ -1985,7 +1985,7 @@ impl Path {
                 Some(
                     args.iter()
                         .filter_map(|arg| match arg {
-                            GenericArg::Type(ty) => Some(ty),
+                            GenericArg::Type(ty) => Some(&**ty),
                             _ => None,
                         })
                         .collect(),
@@ -2010,7 +2010,7 @@ impl Path {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArg {
     Lifetime(Lifetime),
-    Type(Type),
+    Type(Box<Type>),
     Const(Box<Constant>),
     Infer,
 }
@@ -2018,7 +2018,7 @@ crate enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
+rustc_data_structures::static_assert_size!(GenericArg, 16);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {

@@ -1767,7 +1767,7 @@ impl Clean<GenericArgs> for hir::GenericArgs<'_> {
                         GenericArg::Lifetime(lt.clean(cx))
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                    hir::GenericArg::Type(ty) => GenericArg::Type(ty.clean(cx)),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(Box::new(ty.clean(cx))),
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(ct.clean(cx))),
                     hir::GenericArg::Infer(_inf) => GenericArg::Infer,
                 })

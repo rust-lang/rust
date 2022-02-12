@@ -101,7 +101,7 @@ fn external_generic_args(
             }
             GenericArgKind::Type(ty) => {
                 ty_kind = Some(ty.kind());
-                Some(GenericArg::Type(ty.clean(cx)))
+                Some(GenericArg::Type(Box::new(ty.clean(cx))))
             }
             GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
         })
