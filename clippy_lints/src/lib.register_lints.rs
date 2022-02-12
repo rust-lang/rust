@@ -299,6 +299,7 @@ store.register_lints(&[
     methods::ITER_NTH_ZERO,
     methods::ITER_OVEREAGER_CLONED,
     methods::ITER_SKIP_NEXT,
+    methods::ITER_WITH_DRAIN,
     methods::MANUAL_FILTER_MAP,
     methods::MANUAL_FIND_MAP,
     methods::MANUAL_SATURATING_ARITHMETIC,

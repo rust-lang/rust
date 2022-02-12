@@ -473,7 +473,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     /// ```
     fn check_expr(&mut self, cx: &LateContext<'hir>, expr: &'hir hir::Expr<'_>) {
         if let Some(args) = match_lint_emission(cx, expr) {
-            let mut emission_info = extract_emission_info(cx, args);
+            let emission_info = extract_emission_info(cx, args);
             if emission_info.is_empty() {
                 // See:
                 // - src/misc.rs:734:9
@@ -483,7 +483,7 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 return;
             }
 
-            for (lint_name, applicability, is_multi_part) in emission_info.drain(..) {
+            for (lint_name, applicability, is_multi_part) in emission_info {
                 let app_info = self.applicability_info.entry(lint_name).or_default();
                 app_info.applicability = applicability;
                 app_info.is_multi_part_suggestion = is_multi_part;
@@ -693,7 +693,7 @@ fn extract_emission_info<'hir>(
     }
 
     lints
-        .drain(..)
+        .into_iter()
         .map(|lint_name| (lint_name, applicability, multi_part))
         .collect()
 }
