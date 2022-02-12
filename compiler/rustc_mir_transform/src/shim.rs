@@ -235,6 +235,8 @@ fn new_body<'tcx>(
         vec![],
         span,
         None,
+        // FIXME(compiler-errors): is this correct?
+        None,
     )
 }
 

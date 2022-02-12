@@ -104,9 +104,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!("{} occurs due to use{}", desired_action.as_noun(), use_spans.describe()),
             );
 
-            err.buffer(&mut self.errors_buffer);
+            self.buffer_error(err);
         } else {
-            if let Some((reported_place, _)) = self.move_error_reported.get(&move_out_indices) {
+            if let Some((reported_place, _)) = self.has_move_error(&move_out_indices) {
                 if self.prefixes(*reported_place, PrefixSet::All).any(|p| p == used_place) {
                     debug!(
                         "report_use_of_moved_or_uninitialized place: error suppressed \
@@ -449,12 +449,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
-            if let Some((_, mut old_err)) =
-                self.move_error_reported.insert(move_out_indices, (used_place, err))
-            {
-                // Cancel the old error so it doesn't ICE.
-                old_err.cancel();
-            }
+            self.buffer_move_error(move_out_indices, (used_place, err));
         }
     }
 
@@ -503,7 +498,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(borrow_span),
                 None,
             );
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     pub(crate) fn report_use_while_mutably_borrowed(
@@ -1021,7 +1016,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if self.body.local_decls[borrowed_local].is_ref_to_thread_local() {
             let err =
                 self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
-            err.buffer(&mut self.errors_buffer);
+            self.buffer_error(err);
             return;
         }
 
@@ -1113,7 +1108,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             ),
         };
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn report_local_value_does_not_live_long_enough(
@@ -1295,7 +1290,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None,
         );
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn report_thread_local_value_does_not_live_long_enough(
@@ -1810,7 +1805,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     loan.kind.describe_mutability(),
                 );
 
-                err.buffer(&mut self.errors_buffer);
+                self.buffer_error(err);
 
                 return;
             }
@@ -1836,7 +1831,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         self.explain_deref_coercion(loan, &mut err);
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
@@ -1938,7 +1933,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         err.span_label(span, msg);
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     fn classify_drop_access_kind(&self, place: PlaceRef<'tcx>) -> StorageDeadOrDrop<'tcx> {

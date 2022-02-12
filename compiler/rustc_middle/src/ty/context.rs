@@ -8,7 +8,9 @@ use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath};
 use crate::middle::stability;
 use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
-use crate::mir::{Body, Field, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{
+    Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
+};
 use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
@@ -1058,6 +1060,17 @@ impl<'tcx> TyCtxt<'tcx> {
             self.typeck_const_arg((def.did, param_did))
         } else {
             self.typeck(def.did)
+        }
+    }
+
+    pub fn mir_borrowck_opt_const_arg(
+        self,
+        def: ty::WithOptConstParam<LocalDefId>,
+    ) -> &'tcx BorrowCheckResult<'tcx> {
+        if let Some(param_did) = def.const_param_did {
+            self.mir_borrowck_const_arg((def.did, param_did))
+        } else {
+            self.mir_borrowck(def.did)
         }
     }
 

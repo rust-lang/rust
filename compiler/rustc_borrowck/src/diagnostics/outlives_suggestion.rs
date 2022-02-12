@@ -256,6 +256,6 @@ impl OutlivesSuggestionBuilder {
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        diag.buffer(&mut mbcx.errors_buffer);
+        mbcx.buffer_error(diag);
     }
 }

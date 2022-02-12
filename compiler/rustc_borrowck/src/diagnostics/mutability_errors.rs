@@ -626,7 +626,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     /// User cannot make signature of a trait mutable without changing the

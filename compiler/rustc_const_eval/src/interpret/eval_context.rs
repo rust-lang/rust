@@ -509,20 +509,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        // do not continue if typeck errors occurred (can only occur in local crate)
         let def = instance.with_opt_param();
-        if let Some(def) = def.as_local() {
-            if self.tcx.has_typeck_results(def.did) {
-                if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(AlreadyReported(error_reported))
-                }
-            }
-        }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
-        if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
+        let body = if let Some(promoted) = promoted {
+            &self.tcx.promoted_mir_opt_const_arg(def)[promoted]
+        } else {
+            M::load_mir(self, instance)?
+        };
+        // do not continue if typeck errors occurred (can only occur in local crate)
+        if let Some(err) = body.tainted_by_errors {
+            throw_inval!(AlreadyReported(err));
         }
-        M::load_mir(self, instance)
+        Ok(body)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current

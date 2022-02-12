@@ -168,14 +168,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let type_test_span = type_test.locations.span(&self.body);
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        self.infcx
-                            .construct_generic_bound_failure(
-                                type_test_span,
-                                None,
-                                type_test.generic_kind,
-                                lower_bound_region,
-                            )
-                            .buffer(&mut self.errors_buffer);
+                        self.buffer_error(self.infcx.construct_generic_bound_failure(
+                            type_test_span,
+                            None,
+                            type_test.generic_kind,
+                            lower_bound_region,
+                        ));
                     } else {
                         // FIXME. We should handle this case better. It
                         // indicates that we have e.g., some region variable
@@ -186,27 +184,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        self.infcx
-                            .tcx
-                            .sess
-                            .struct_span_err(
-                                type_test_span,
-                                &format!("`{}` does not live long enough", type_test.generic_kind),
-                            )
-                            .buffer(&mut self.errors_buffer);
+                        self.buffer_error(self.infcx.tcx.sess.struct_span_err(
+                            type_test_span,
+                            &format!("`{}` does not live long enough", type_test.generic_kind),
+                        ));
                     }
                 }
 
                 RegionErrorKind::UnexpectedHiddenRegion { span, hidden_ty, member_region } => {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    unexpected_hidden_region_diagnostic(
+                    self.buffer_error(unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
                         named_region,
-                    )
-                    .buffer(&mut self.errors_buffer);
+                    ));
                 }
 
                 RegionErrorKind::BoundUniversalRegionError {
@@ -285,7 +278,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
             let nice = NiceRegionError::new_from_span(self.infcx, cause.span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
-                diag.buffer(&mut self.errors_buffer);
+                self.buffer_error(diag);
                 return;
             }
         }
@@ -375,7 +368,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        diag.buffer(&mut self.errors_buffer);
+        self.buffer_error(diag);
     }
 
     /// Report a specialized error when `FnMut` closures return a reference to a captured variable.

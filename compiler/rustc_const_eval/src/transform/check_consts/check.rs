@@ -120,7 +120,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
     fn in_return_place(
         &mut self,
         ccx: &'mir ConstCx<'mir, 'tcx>,
-        error_occured: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorReported>,
     ) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
@@ -134,7 +134,9 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), error_occured),
+            None => {
+                return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), tainted_by_errors);
+            }
             Some(bb) => bb,
         };
 
@@ -166,7 +168,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             needs_non_const_drop: self.needs_non_const_drop(ccx, RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior(ccx, RETURN_PLACE, return_loc),
             custom_eq,
-            error_occured,
+            tainted_by_errors,
         }
     }
 }

@@ -6,7 +6,6 @@ use crate::interpret::{
     ScalarMaybeUninit, StackPopCleanup,
 };
 
-use rustc_errors::ErrorReported;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -281,25 +280,6 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
 
     let cid = key.value;
     let def = cid.instance.def.with_opt_param();
-
-    if let Some(def) = def.as_local() {
-        if tcx.has_typeck_results(def.did) {
-            if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                return Err(ErrorHandled::Reported(error_reported));
-            }
-        }
-        if !tcx.is_mir_available(def.did) {
-            tcx.sess.delay_span_bug(
-                tcx.def_span(def.did),
-                &format!("no MIR body is available for {:?}", def.did),
-            );
-            return Err(ErrorHandled::Reported(ErrorReported {}));
-        }
-        if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
-            return Err(ErrorHandled::Reported(error_reported));
-        }
-    }
-
     let is_static = tcx.is_static(def.did);
 
     let mut ecx = InterpCx::new(
