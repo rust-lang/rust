@@ -689,6 +689,7 @@ fn test_debugging_options_tracking_hash() {
     untracked!(self_profile_events, Some(vec![String::new()]));
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
+    untracked!(split_metadata, true);
     untracked!(temps_dir, Some(String::from("abc")));
     untracked!(terminal_width, Some(80));
     untracked!(threads, 99);

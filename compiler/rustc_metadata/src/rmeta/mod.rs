@@ -54,10 +54,29 @@ const METADATA_VERSION: u8 = 6;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
-/// This header is followed by the position of the `CrateRoot`,
-/// which is encoded as a 32-bit big-endian unsigned integer,
-/// and further followed by the rustc version string.
+/// # Format
+///
+/// |field   |size    |
+/// |--------|--------|
+/// |magic   |8       |
+/// |svh     |8       |
+/// |root    |4       |
+/// |reserved|4       |
+/// |version |variable|
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
+
+/// The previous metadata header.
+///
+/// This is only used for reporting the rustc version of the incompatible crate.
+///
+/// # Format
+///
+/// |field  |size    |
+/// |-------|--------|
+/// |magic  |8       |
+/// |root   |4       |
+/// |version|variable|
+pub const PREV_METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 5];
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).

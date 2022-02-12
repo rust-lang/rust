@@ -539,6 +539,11 @@ impl<'a> CrateLocator<'a> {
                 match get_metadata_section(self.target, flavor, &lib, self.metadata_loader) {
                     Ok(blob) => {
                         if let Some(h) = self.crate_matches(&blob, &lib) {
+                            if blob.is_reference_only() {
+                                if slot.is_none() {
+                                    todo!("return error");
+                                }
+                            }
                             (h, blob)
                         } else {
                             info!("metadata mismatch");
@@ -603,6 +608,19 @@ impl<'a> CrateLocator<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
+        if metadata.is_reference_only() {
+            let hash = metadata.get_hash();
+            if let Some(expected_hash) = self.hash {
+                if hash != expected_hash {
+                    info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
+                    self.crate_rejections
+                        .via_hash
+                        .push(CrateMismatch { path: libpath.to_path_buf(), got: hash.to_string() });
+                    return None;
+                }
+            }
+        }
+
         let root = metadata.get_root();
         if root.is_proc_macro_crate() != self.is_proc_macro {
             info!(

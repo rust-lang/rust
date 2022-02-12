@@ -628,15 +628,22 @@ impl<'tcx> MetadataBlob {
 
     crate fn check_compatibility(&self) -> Result<(), String> {
         if !self.blob().starts_with(METADATA_HEADER) {
-            if self.blob().starts_with(b"rust") {
+            if self.blob().starts_with(PREV_METADATA_HEADER) {
+                let found_version = Lazy::<String>::from_position(
+                    NonZeroUsize::new(PREV_METADATA_HEADER.len() + 4).unwrap(),
+                )
+                .decode(self);
+                return Err(found_version);
+            } else if self.blob().starts_with(b"rust") {
                 return Err("<unknown rustc version>".to_string());
             }
             return Err("<invalid metadata header>".to_string());
         }
 
-        let found_version =
-            Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
-                .decode(self);
+        let found_version = Lazy::<String>::from_position(
+            NonZeroUsize::new(METADATA_HEADER.len() + 8 + 4 + 4).unwrap(),
+        )
+        .decode(self);
         if rustc_version() != found_version {
             return Err(found_version);
         }
@@ -644,14 +651,33 @@ impl<'tcx> MetadataBlob {
         Ok(())
     }
 
+    crate fn is_reference_only(&self) -> bool {
+        let slice = &self.blob()[..];
+        let offset = METADATA_HEADER.len() + 8;
+        let pos = u32::from_le_bytes(slice[offset..offset + 4].try_into().unwrap());
+        pos == 0
+    }
+
+    crate fn get_hash(&self) -> Svh {
+        let slice = &self.blob()[..];
+        let offset = METADATA_HEADER.len() + 4;
+        Svh::new(u64::from_le_bytes(slice[offset..offset + 8].try_into().unwrap()))
+    }
+
     crate fn get_root(&self) -> CrateRoot<'tcx> {
         let slice = &self.blob()[..];
-        let offset = METADATA_HEADER.len();
+        let offset = METADATA_HEADER.len() + 8;
         let pos = (u32::from_le_bytes(slice[offset..offset + 4].try_into().unwrap())) as usize;
+        assert_ne!(pos, 0, "Tried to get crate root for reference-only metadata");
         Lazy::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
     crate fn list_crate_metadata(&self, out: &mut dyn io::Write) -> io::Result<()> {
+        if self.is_reference_only() {
+            writeln!(out, "Split metadata crate hash {}", self.get_hash())?;
+            return Ok(());
+        }
+
         let root = self.get_root();
         writeln!(out, "Crate info:")?;
         writeln!(out, "name {}{}", root.name, root.extra_filename)?;

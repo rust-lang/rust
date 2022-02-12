@@ -252,6 +252,7 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
 // As a result, we choose a slightly shorter name! As to why
 // `.note.rustc` works on MinGW, see
 // https://github.com/llvm/llvm-project/blob/llvmorg-12.0.0/lld/COFF/Writer.cpp#L1190-L1197
+// TODO rename function
 pub fn create_compressed_metadata_file(
     sess: &Session,
     metadata: &EncodedMetadata,
@@ -260,7 +261,7 @@ pub fn create_compressed_metadata_file(
     let mut file = if let Some(file) = create_object_file(sess) {
         file
     } else {
-        return metadata.raw_data().to_vec();
+        return metadata.maybe_reference().to_vec();
     };
     let section = file.add_section(
         file.segment_name(StandardSegment::Data).to_vec(),
@@ -274,14 +275,14 @@ pub fn create_compressed_metadata_file(
         }
         _ => {}
     };
-    let offset = file.append_section_data(section, metadata.raw_data(), 1);
+    let offset = file.append_section_data(section, metadata.maybe_reference(), 1);
 
     // For MachO and probably PE this is necessary to prevent the linker from throwing away the
     // .rustc section. For ELF this isn't necessary, but it also doesn't harm.
     file.add_symbol(Symbol {
         name: symbol_name.as_bytes().to_vec(),
         value: offset,
-        size: metadata.raw_data().len() as u64,
+        size: metadata.maybe_reference().len() as u64,
         kind: SymbolKind::Data,
         scope: SymbolScope::Dynamic,
         weak: false,

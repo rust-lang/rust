@@ -1427,6 +1427,8 @@ options! {
     split_dwarf_inlining: bool = (true, parse_bool, [UNTRACKED],
         "provide minimal debug info in the object/executable to facilitate online \
          symbolication/stack traces in the absence of .dwo/.dwp files when using Split DWARF"),
+    split_metadata: bool = (false, parse_bool, [UNTRACKED],
+        "split metadata out of libraries into .rmeta files"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),

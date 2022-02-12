@@ -2136,18 +2136,24 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
 
 #[derive(Encodable, Decodable)]
 pub struct EncodedMetadata {
-    raw_data: Vec<u8>,
+    full: Vec<u8>,
+    reference: Option<Vec<u8>>,
 }
 
 impl EncodedMetadata {
     #[inline]
     pub fn new() -> EncodedMetadata {
-        EncodedMetadata { raw_data: Vec::new() }
+        EncodedMetadata { full: Vec::new(), reference: None }
     }
 
     #[inline]
-    pub fn raw_data(&self) -> &[u8] {
-        &self.raw_data
+    pub fn full(&self) -> &[u8] {
+        &self.full
+    }
+
+    #[inline]
+    pub fn maybe_reference(&self) -> &[u8] {
+        self.reference.as_ref().unwrap_or(&self.full)
     }
 }
 
@@ -2173,19 +2179,25 @@ pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     .0
 }
 
-fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
+fn encode_metadata_header<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hygiene_ctxt: &'a HygieneEncodeContext,
+) -> EncodeContext<'a, 'tcx> {
     let mut encoder = opaque::Encoder::new(vec![]);
     encoder.emit_raw_bytes(METADATA_HEADER).unwrap();
 
+    encoder.emit_raw_bytes(&tcx.crate_hash(LOCAL_CRATE).as_u64().to_le_bytes()).unwrap();
+
     // Will be filled with the root position after encoding everything.
+    encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
+
+    // Reserved for future extension
     encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
 
     let source_map_files = tcx.sess.source_map().files();
     let source_file_cache = (source_map_files[0].clone(), 0);
     let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
     drop(source_map_files);
-
-    let hygiene_ctxt = HygieneEncodeContext::default();
 
     let mut ecx = EncodeContext {
         opaque: encoder,
@@ -2199,11 +2211,18 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
         interpret_allocs: Default::default(),
         required_source_files,
         is_proc_macro: tcx.sess.crate_types().contains(&CrateType::ProcMacro),
-        hygiene_ctxt: &hygiene_ctxt,
+        hygiene_ctxt,
     };
 
     // Encode the rustc version string in a predictable location.
     rustc_version().encode(&mut ecx).unwrap();
+
+    ecx
+}
+
+fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
+    let hygiene_ctxt = HygieneEncodeContext::default();
+    let mut ecx = encode_metadata_header(tcx, &hygiene_ctxt);
 
     // Encode all the entries and extra information in the crate,
     // culminating in the `CrateRoot` which points to all of it.
@@ -2212,14 +2231,23 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let mut result = ecx.opaque.into_inner();
 
     // Encode the root position.
-    let header = METADATA_HEADER.len();
+    let header = METADATA_HEADER.len() + 8;
     let pos = root.position.get();
     result[header..header + 4].copy_from_slice(&pos.to_le_bytes());
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
 
-    EncodedMetadata { raw_data: result }
+    let reference_result = if tcx.sess.opts.debugging_opts.split_metadata {
+        let hygiene_ctxt = HygieneEncodeContext::default();
+        let ecx = encode_metadata_header(tcx, &hygiene_ctxt);
+        // Don't fill in the root position for reference metadata
+        Some(ecx.opaque.into_inner())
+    } else {
+        None
+    };
+
+    EncodedMetadata { full: result, reference: reference_result }
 }
 
 pub fn provide(providers: &mut Providers) {
