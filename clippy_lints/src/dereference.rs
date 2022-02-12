@@ -12,7 +12,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, Ty, TyCtxt, TyS, TypeckResults};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{symbol::sym, Span};
 
@@ -448,7 +448,7 @@ fn try_parse_ref_op<'tcx>(
 // the reference.
 fn deref_method_same_type(result_ty: Ty<'_>, arg_ty: Ty<'_>) -> bool {
     match (result_ty.kind(), arg_ty.kind()) {
-        (ty::Ref(_, result_ty, _), ty::Ref(_, arg_ty, _)) => TyS::same_type(result_ty, arg_ty),
+        (ty::Ref(_, result_ty, _), ty::Ref(_, arg_ty, _)) => result_ty == arg_ty,
 
         // The result type for a deref method is always a reference
         // Not matching the previous pattern means the argument type is not a reference

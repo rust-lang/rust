@@ -8,7 +8,6 @@ use rustc_hir as hir;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::TyS;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -103,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             if cx.access_levels.is_reachable(impl_item.def_id);
                             let self_def_id = cx.tcx.hir().get_parent_item(id);
                             let self_ty = cx.tcx.type_of(self_def_id);
-                            if TyS::same_type(self_ty, return_ty(cx, id));
+                            if self_ty == return_ty(cx, id);
                             if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
                             then {
                                 if self.impling_types.is_none() {

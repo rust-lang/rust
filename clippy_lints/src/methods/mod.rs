@@ -78,7 +78,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, TraitRef, Ty, TyS};
+use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
@@ -2198,7 +2198,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !TyS::same_type(ret_ty, self_ty) {
+            if name == "new" && ret_ty != self_ty {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
