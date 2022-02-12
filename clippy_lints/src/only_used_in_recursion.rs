@@ -126,8 +126,20 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 }
             }
 
+            let mut pre_order = FxHashMap::default();
+
+            visitor.graph.iter().for_each(|(_, next)| {
+                next.iter().for_each(|i| {
+                    *pre_order.entry(*i).or_insert(0) += 1;
+                });
+            });
+
             for (id, span, ident) in param_span {
-                if !visitor.has_side_effect.contains(&id) {
+                // if the variable is not used in recursion, it would be marked as unused
+                if !visitor.has_side_effect.contains(&id)
+                    && *pre_order.get(&id).unwrap_or(&0) > 0
+                    && visitor.graph.contains_key(&id)
+                {
                     span_lint_and_sugg(
                         cx,
                         ONLY_USED_IN_RECURSION,
