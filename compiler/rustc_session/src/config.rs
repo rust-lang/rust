@@ -63,6 +63,22 @@ pub enum CFGuard {
     Checks,
 }
 
+/// The different settings that the `-Z cf-protection` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum CFProtection {
+    /// Do not enable control-flow protection
+    None,
+
+    /// Emit control-flow protection for branches (enables indirect branch tracking).
+    Branch,
+
+    /// Emit control-flow protection for returns.
+    Return,
+
+    /// Emit control-flow protection for both branches and returns.
+    Full,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum OptLevel {
     No,         // -O0
@@ -2630,11 +2646,11 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 crate mod dep_tracking {
-    use super::LdImpl;
     use super::{
-        BranchProtection, CFGuard, CrateType, DebugInfo, ErrorOutputType, InstrumentCoverage,
-        LinkerPluginLto, LocationDetail, LtoCli, OptLevel, OutputType, OutputTypes, Passes,
-        SourceFileHashAlgorithm, SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
+        InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OptLevel, OutputType,
+        OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath, SymbolManglingVersion,
+        TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2715,6 +2731,7 @@ crate mod dep_tracking {
         NativeLibKind,
         SanitizerSet,
         CFGuard,
+        CFProtection,
         TargetTriple,
         Edition,
         LinkerPluginLto,
