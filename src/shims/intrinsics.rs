@@ -59,6 +59,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // See <https://github.com/rust-lang/rust/issues/93935>.
                 this.write_null(dest)?;
             }
+            "const_deallocate" => {
+                // complete NOP
+            }
 
             // Raw memory accesses
             "volatile_load" => {
