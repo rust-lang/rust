@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
@@ -118,23 +118,36 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
             if is_mutex_guard(cx, adt.did) {
-                span_lint_and_note(
+                span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_LOCK,
                     ty_cause.span,
-                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await",
-                    ty_cause.scope_span.or(Some(span)),
-                    "these are all the await points this lock is held through",
+                    "this `MutexGuard` is held across an `await` point",
+                    |diag| {
+                        diag.help(
+                            "consider using an async-aware `Mutex` type or ensuring the \
+                                `MutexGuard` is dropped before calling await",
+                        );
+                        diag.span_note(
+                            ty_cause.scope_span.unwrap_or(span),
+                            "these are all the `await` points this lock is held through",
+                        );
+                    },
                 );
             }
             if is_refcell_ref(cx, adt.did) {
-                span_lint_and_note(
+                span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_REFCELL_REF,
                     ty_cause.span,
-                    "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
-                    ty_cause.scope_span.or(Some(span)),
-                    "these are all the await points this ref is held through",
+                    "this `RefCell` reference is held across an `await` point",
+                    |diag| {
+                        diag.help("ensure the reference is dropped before calling `await`");
+                        diag.span_note(
+                            ty_cause.scope_span.unwrap_or(span),
+                            "these are all the `await` points this reference is held through",
+                        );
+                    },
                 );
             }
         }

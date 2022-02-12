@@ -1,6 +1,6 @@
 #![warn(clippy::await_holding_lock)]
 
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
 async fn bad(x: &Mutex<u32>) -> u32 {
     let guard = x.lock().unwrap();
@@ -14,6 +14,30 @@ async fn good(x: &Mutex<u32>) -> u32 {
     }
     baz().await;
     let guard = x.lock().unwrap();
+    47
+}
+
+pub async fn bad_rw(x: &RwLock<u32>) -> u32 {
+    let guard = x.read().unwrap();
+    baz().await
+}
+
+pub async fn bad_rw_write(x: &RwLock<u32>) -> u32 {
+    let mut guard = x.write().unwrap();
+    baz().await
+}
+
+pub async fn good_rw(x: &RwLock<u32>) -> u32 {
+    {
+        let guard = x.read().unwrap();
+        let y = *guard + 1;
+    }
+    {
+        let mut guard = x.write().unwrap();
+        *guard += 1;
+    }
+    baz().await;
+    let guard = x.read().unwrap();
     47
 }
 
