@@ -795,25 +795,4 @@ pub mod ty {
             )
         }
     }
-
-    #[derive(Debug)]
-    pub struct ImplTrait;
-    impl<'tcx> NonConstOp<'tcx> for ImplTrait {
-        fn status_in_item(&self, _: &ConstCx<'_, '_>) -> Status {
-            Status::Unstable(sym::const_impl_trait)
-        }
-
-        fn build_error(
-            &self,
-            ccx: &ConstCx<'_, 'tcx>,
-            span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-            feature_err(
-                &ccx.tcx.sess.parse_sess,
-                sym::const_impl_trait,
-                span,
-                &format!("`impl Trait` is not allowed in {}s", ccx.const_kind()),
-            )
-        }
-    }
 }

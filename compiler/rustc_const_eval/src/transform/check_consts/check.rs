@@ -356,7 +356,6 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
             match *ty.kind() {
                 ty::Ref(_, _, hir::Mutability::Mut) => self.check_op(ops::ty::MutRef(kind)),
-                ty::Opaque(..) => self.check_op(ops::ty::ImplTrait),
                 _ => {}
             }
         }

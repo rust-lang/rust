@@ -340,8 +340,6 @@ declare_features! (
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
-    /// Allows argument and return position `impl Trait` in a `const fn`.
-    (active, const_impl_trait, "1.48.0", Some(77463), None),
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
     /// Be more precise when looking for live drops in a const context.

@@ -100,6 +100,8 @@ declare_features! (
     (accepted, const_generics_defaults, "1.59.0", Some(44580), None),
     /// Allows the use of `if` and `match` in constants.
     (accepted, const_if_match, "1.46.0", Some(49146), None),
+    /// Allows argument and return position `impl Trait` in a `const fn`.
+    (accepted, const_impl_trait, "1.60.0", Some(77463), None),
     /// Allows indexing into constant arrays.
     (accepted, const_indexing, "1.26.0", Some(29947), None),
     /// Allows let bindings, assignments and destructuring in `const` functions and constants.

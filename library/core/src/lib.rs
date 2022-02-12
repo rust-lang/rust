@@ -160,7 +160,7 @@
 #![feature(const_fn_floating_point_arithmetic)]
 #![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
 #![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
-#![feature(const_impl_trait)]
+#![cfg_attr(bootstrap, feature(const_impl_trait))]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
