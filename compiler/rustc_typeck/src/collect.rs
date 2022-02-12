@@ -2162,8 +2162,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
-                    origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
-                    ..
+                    origin: hir::OpaqueTyOrigin::FnReturn(..), ..
                 }) => {
                     // return-position impl trait
                     //
@@ -2183,7 +2182,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
                     ref generics,
-                    origin: hir::OpaqueTyOrigin::TyAlias,
+                    origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::TyAlias,
                     ..
                 }) => {
                     // type-alias impl trait
