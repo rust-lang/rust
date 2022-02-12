@@ -1207,10 +1207,13 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// fn squared_string(x: u32) -> Option<String> { Some((x * x).to_string()) }
+    /// fn sq_then_to_string(x: u32) -> Option<String> {
+    ///     x.checked_mul(x).map(|sq| sq.to_string())
+    /// }
     ///
-    /// assert_eq!(Some(2).and_then(squared_string), Some(4.to_string()));
-    /// assert_eq!(None.and_then(squared_string), None);
+    /// assert_eq!(Some(2).and_then(sq_then_to_string), Some(4.to_string()));
+    /// assert_eq!(Some(1_000_000).and_then(sq_then_to_string), None); // overflowed!
+    /// assert_eq!(None.and_then(sq_then_to_string), None);
     /// ```
     ///
     /// Often used to chain fallible operations that may return [`None`].
