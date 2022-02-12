@@ -1,9 +1,24 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/const-default-method-bodies.rs:25:5
+error[E0277]: the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
+  --> $DIR/const-default-method-bodies.rs:25:18
    |
 LL |     NonConstImpl.a();
-   |     ^^^^^^^^^^^^^^^^
+   |                  ^^^ the trait `~const ConstDefaultFn` is not implemented for `NonConstImpl`
+   |
+note: the trait `ConstDefaultFn` is implemented for `NonConstImpl`, but that implementation is not `const`
+  --> $DIR/const-default-method-bodies.rs:25:18
+   |
+LL |     NonConstImpl.a();
+   |                  ^^^
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `<NonConstImpl as ConstDefaultFn>::a` in constant functions
+  --> $DIR/const-default-method-bodies.rs:25:18
+   |
+LL |     NonConstImpl.a();
+   |                  ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

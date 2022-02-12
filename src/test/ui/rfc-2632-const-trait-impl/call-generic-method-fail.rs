@@ -3,7 +3,8 @@
 
 pub const fn equals_self<T: PartialEq>(t: &T) -> bool {
     *t == *t
-    //~^ ERROR calls in constant functions are limited to constant functions
+    //~^ ERROR can't compare
+    //~| ERROR cannot call non-const
 }
 
 fn main() {}

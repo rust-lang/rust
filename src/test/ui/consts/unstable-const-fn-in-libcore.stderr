@@ -1,8 +1,14 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/unstable-const-fn-in-libcore.rs:24:26
    |
 LL |             Opt::None => f(),
    |                          ^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider further restricting this bound
+   |
+LL |     const fn unwrap_or_else<F: FnOnce() -> T + ~const std::ops::FnOnce<()>>(self, f: F) -> T {
+   |                                              +++++++++++++++++++++++++++++
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/unstable-const-fn-in-libcore.rs:19:53

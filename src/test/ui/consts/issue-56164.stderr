@@ -1,8 +1,11 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/issue-56164.rs:3:18
    |
 LL | const fn foo() { (||{})() }
    |                  ^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constant functions
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: function pointers are not allowed in const fn
   --> $DIR/issue-56164.rs:7:5

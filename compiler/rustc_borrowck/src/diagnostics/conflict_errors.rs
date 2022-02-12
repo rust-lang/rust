@@ -1,4 +1,5 @@
 use either::Either;
+use rustc_const_eval::util::{CallDesugaringKind, CallKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
@@ -26,7 +27,7 @@ use crate::{
 
 use super::{
     explain_borrow::{BorrowExplanation, LaterUseKind},
-    FnSelfUseKind, IncludingDowncast, RegionName, RegionNameSource, UseSpans,
+    IncludingDowncast, RegionName, RegionNameSource, UseSpans,
 };
 
 #[derive(Debug)]
@@ -195,7 +196,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .map(|n| format!("`{}`", n))
                         .unwrap_or_else(|| "value".to_owned());
                     match kind {
-                        FnSelfUseKind::FnOnceCall => {
+                        CallKind::FnCall { fn_trait_id, .. }
+                            if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
+                        {
                             err.span_label(
                                 fn_call_span,
                                 &format!(
@@ -208,7 +211,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 "this value implements `FnOnce`, which causes it to be moved when called",
                             );
                         }
-                        FnSelfUseKind::Operator { self_arg } => {
+                        CallKind::Operator { self_arg, .. } => {
+                            let self_arg = self_arg.unwrap();
                             err.span_label(
                                 fn_call_span,
                                 &format!(
@@ -235,12 +239,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
                             }
                         }
-                        FnSelfUseKind::Normal {
-                            self_arg,
-                            implicit_into_iter,
-                            is_option_or_result,
-                        } => {
-                            if implicit_into_iter {
+                        CallKind::Normal { self_arg, desugaring, is_option_or_result } => {
+                            let self_arg = self_arg.unwrap();
+                            if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
                                 err.span_label(
                                     fn_call_span,
                                     &format!(
@@ -305,8 +306,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     );
                             }
                         }
-                        // Deref::deref takes &self, which cannot cause a move
-                        FnSelfUseKind::DerefCoercion { .. } => unreachable!(),
+                        // Other desugarings takes &self, which cannot cause a move
+                        _ => unreachable!(),
                     }
                 } else {
                     err.span_label(
@@ -433,7 +434,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             if let UseSpans::FnSelfUse {
-                kind: FnSelfUseKind::DerefCoercion { deref_target, deref_target_ty },
+                kind: CallKind::DerefCoercion { deref_target, deref_target_ty, .. },
                 ..
             } = use_spans
             {

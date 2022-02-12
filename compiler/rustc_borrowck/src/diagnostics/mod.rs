@@ -1,10 +1,10 @@
 //! Borrow checker diagnostics.
 
+use rustc_const_eval::util::call_kind;
 use rustc_errors::DiagnosticBuilder;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItemGroup;
 use rustc_hir::GeneratorKind;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
@@ -13,7 +13,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
-use rustc_span::{hygiene::DesugaringKind, symbol::sym, Span};
+use rustc_span::{symbol::sym, Span};
 use rustc_target::abi::VariantIdx;
 
 use super::borrow_set::BorrowData;
@@ -37,7 +37,7 @@ crate use mutability_errors::AccessKind;
 crate use outlives_suggestion::OutlivesSuggestionBuilder;
 crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
 crate use region_name::{RegionName, RegionNameSource};
-use rustc_span::symbol::Ident;
+crate use rustc_const_eval::util::CallKind;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
@@ -563,35 +563,12 @@ pub(super) enum UseSpans<'tcx> {
         fn_call_span: Span,
         /// The definition span of the method being called
         fn_span: Span,
-        kind: FnSelfUseKind<'tcx>,
+        kind: CallKind<'tcx>,
     },
     /// This access is caused by a `match` or `if let` pattern.
     PatUse(Span),
     /// This access has a single span associated to it: common case.
     OtherUse(Span),
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub(super) enum FnSelfUseKind<'tcx> {
-    /// A normal method call of the form `receiver.foo(a, b, c)`
-    Normal {
-        self_arg: Ident,
-        implicit_into_iter: bool,
-        /// Whether the self type of the method call has an `.as_ref()` method.
-        /// Used for better diagnostics.
-        is_option_or_result: bool,
-    },
-    /// A call to `FnOnce::call_once`, desugared from `my_closure(a, b, c)`
-    FnOnceCall,
-    /// A call to an operator trait, desuraged from operator syntax (e.g. `a << b`)
-    Operator { self_arg: Ident },
-    DerefCoercion {
-        /// The `Span` of the `Target` associated type
-        /// in the `Deref` impl we are using.
-        deref_target: Span,
-        /// The type `T::Deref` we are dereferencing to
-        deref_target_ty: Ty<'tcx>,
-    },
 }
 
 impl UseSpans<'_> {
@@ -600,9 +577,9 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { args_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse {
-                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
-            } => fn_call_span,
+            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
+                fn_call_span
+            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -613,9 +590,9 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { path_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse {
-                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
-            } => fn_call_span,
+            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
+                fn_call_span
+            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -626,9 +603,9 @@ impl UseSpans<'_> {
             UseSpans::ClosureUse { capture_kind_span: span, .. }
             | UseSpans::PatUse(span)
             | UseSpans::OtherUse(span) => span,
-            UseSpans::FnSelfUse {
-                fn_call_span, kind: FnSelfUseKind::DerefCoercion { .. }, ..
-            } => fn_call_span,
+            UseSpans::FnSelfUse { fn_call_span, kind: CallKind::DerefCoercion { .. }, .. } => {
+                fn_call_span
+            }
             UseSpans::FnSelfUse { var_span, .. } => var_span,
         }
     }
@@ -904,67 +881,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return normal_ret;
             };
 
-            let tcx = self.infcx.tcx;
-            let parent = tcx.parent(method_did);
-            let is_fn_once = parent == tcx.lang_items().fn_once_trait();
-            let is_operator = !from_hir_call
-                && parent.map_or(false, |p| tcx.lang_items().group(LangItemGroup::Op).contains(&p));
-            let is_deref = !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did);
-            let fn_call_span = *fn_span;
-
-            let self_arg = tcx.fn_arg_names(method_did)[0];
-
-            debug!(
-                "terminator = {:?} from_hir_call={:?}",
-                self.body[location.block].terminator, from_hir_call
+            let kind = call_kind(
+                self.infcx.tcx,
+                self.param_env,
+                method_did,
+                method_substs,
+                *fn_span,
+                *from_hir_call,
+                Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
             );
-
-            // Check for a 'special' use of 'self' -
-            // an FnOnce call, an operator (e.g. `<<`), or a
-            // deref coercion.
-            let kind = if is_fn_once {
-                Some(FnSelfUseKind::FnOnceCall)
-            } else if is_operator {
-                Some(FnSelfUseKind::Operator { self_arg })
-            } else if is_deref {
-                let deref_target =
-                    tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
-                        Instance::resolve(tcx, self.param_env, deref_target, method_substs)
-                            .transpose()
-                    });
-                if let Some(Ok(instance)) = deref_target {
-                    let deref_target_ty = instance.ty(tcx, self.param_env);
-                    Some(FnSelfUseKind::DerefCoercion {
-                        deref_target: tcx.def_span(instance.def_id()),
-                        deref_target_ty,
-                    })
-                } else {
-                    None
-                }
-            } else {
-                None
-            };
-
-            let kind = kind.unwrap_or_else(|| {
-                // This isn't a 'special' use of `self`
-                debug!("move_spans: method_did={:?}, fn_call_span={:?}", method_did, fn_call_span);
-                let implicit_into_iter = Some(method_did) == tcx.lang_items().into_iter_fn()
-                    && fn_call_span.desugaring_kind() == Some(DesugaringKind::ForLoop);
-                let parent_self_ty = parent
-                    .filter(|did| tcx.def_kind(*did) == rustc_hir::def::DefKind::Impl)
-                    .and_then(|did| match tcx.type_of(did).kind() {
-                        ty::Adt(def, ..) => Some(def.did),
-                        _ => None,
-                    });
-                let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-                    matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
-                });
-                FnSelfUseKind::Normal { self_arg, implicit_into_iter, is_option_or_result }
-            });
 
             return FnSelfUse {
                 var_span: stmt.source_info.span,
-                fn_call_span,
+                fn_call_span: *fn_span,
                 fn_span: self
                     .infcx
                     .tcx
