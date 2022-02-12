@@ -1196,10 +1196,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(adt) if adt.did.is_local() => adt,
                 _ => continue,
             };
-            let diagnostic_name = self.tcx.get_diagnostic_name(trait_pred.def_id());
-            let can_derive = match diagnostic_name {
-                Some(sym::Default) => !adt.is_enum(),
-                Some(
+            if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
+                let can_derive = match diagnostic_name {
+                    sym::Default => !adt.is_enum(),
                     sym::Eq
                     | sym::PartialEq
                     | sym::Ord
@@ -1207,24 +1206,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | sym::Clone
                     | sym::Copy
                     | sym::Hash
-                    | sym::Debug,
-                ) => true,
-                _ => false,
-            };
-            if can_derive {
-                let self_name = trait_pred.self_ty().to_string();
-                let self_span = self.tcx.def_span(adt.did);
-                if let Some(sym::Ord) = diagnostic_name {
-                    derives.push((self_name.clone(), self_span.clone(), "PartialOrd".to_string()));
+                    | sym::Debug => true,
+                    _ => false,
+                };
+                if can_derive {
+                    let self_name = trait_pred.self_ty().to_string();
+                    let self_span = self.tcx.def_span(adt.did);
+                    use crate::rustc_middle::ty::ToPolyTraitRef;
+                    if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
+                        for super_trait in rustc_middle::traits::util::supertraits(
+                            self.tcx,
+                            poly_trait_ref.to_poly_trait_ref(),
+                        ) {
+                            if let Some(parent_diagnostic_name) =
+                                self.tcx.get_diagnostic_name(super_trait.def_id())
+                            {
+                                derives.push((
+                                    self_name.clone(),
+                                    self_span.clone(),
+                                    parent_diagnostic_name.to_string(),
+                                ));
+                            }
+                        }
+                    }
+                    derives.push((self_name, self_span, diagnostic_name.to_string()));
+                } else {
+                    traits.push(self.tcx.def_span(trait_pred.def_id()));
                 }
-                if let Some(sym::Eq) = diagnostic_name {
-                    derives.push((self_name.clone(), self_span.clone(), "PartialEq".to_string()));
-                }
-                derives.push((
-                    self_name,
-                    self_span,
-                    trait_pred.trait_ref.print_only_trait_name().to_string(),
-                ));
             } else {
                 traits.push(self.tcx.def_span(trait_pred.def_id()));
             }

@@ -51,9 +51,9 @@ LL |     foo.use_ord();
    |
    = note: the following trait bounds were not satisfied:
            `NoDerives: Ord`
-help: consider annotating `NoDerives` with `#[derive(Ord, PartialOrd)]`
+help: consider annotating `NoDerives` with `#[derive(Eq, Ord, PartialEq, PartialOrd)]`
    |
-LL | #[derive(Ord, PartialOrd)]
+LL | #[derive(Eq, Ord, PartialEq, PartialOrd)]
    |
 
 error[E0599]: the method `use_ord_and_partial_ord` exists for struct `Object<NoDerives>`, but its trait bounds were not satisfied
@@ -74,9 +74,9 @@ LL |     foo.use_ord_and_partial_ord();
    = note: the following trait bounds were not satisfied:
            `NoDerives: Ord`
            `NoDerives: PartialOrd`
-help: consider annotating `NoDerives` with `#[derive(Ord, PartialOrd)]`
+help: consider annotating `NoDerives` with `#[derive(Eq, Ord, PartialEq, PartialOrd)]`
    |
-LL | #[derive(Ord, PartialOrd)]
+LL | #[derive(Eq, Ord, PartialEq, PartialOrd)]
    |
 
 error: aborting due to 4 previous errors
