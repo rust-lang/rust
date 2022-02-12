@@ -377,7 +377,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub TRANSMUTE_UNDEFINED_REPR,
-    correctness,
+    nursery,
     "transmute to or from a type with an undefined representation"
 }
 
