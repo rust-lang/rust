@@ -75,7 +75,6 @@ LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unreachable` implied by `-D warnings`
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:33:5
@@ -83,7 +82,7 @@ error: usage of the `unreachable!` macro
 LL |     unreachable!("message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `$crate::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the `unreachable!` macro
   --> $DIR/panicking_macros.rs:34:5
@@ -91,7 +90,7 @@ error: usage of the `unreachable!` macro
 LL |     unreachable!("{} {}", "panic with", "multiple arguments");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::unreachable_2021` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `panic` should not be present in production code
   --> $DIR/panicking_macros.rs:40:5
@@ -120,8 +119,6 @@ error: usage of the `unreachable!` macro
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 16 previous errors
 

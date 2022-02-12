@@ -35,9 +35,7 @@ fn main() {
                                                                 lit.set_span(crate::Span::recover_proc_macro_span(2));
                                                                 lit
                                                             } else {
-                                                                {
-                                                                    ::core::panicking::panic("internal error: entered unreachable code")
-                                                                }
+                                                                ::core::panicking::panic("internal error: entered unreachable code")
                                                             }
                                                         })),
      crate::TokenStream::from(crate::TokenTree::Punct(crate::Punct::new('\u{3b}',
