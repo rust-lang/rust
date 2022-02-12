@@ -1095,6 +1095,11 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        if stage != 0 {
+            // FIXME remove once cargo enables this by default
+            rustflags.arg("-Zsplit-metadata");
+        }
+
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
