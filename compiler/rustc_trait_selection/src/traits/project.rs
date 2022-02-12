@@ -19,6 +19,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -1248,7 +1249,7 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
             });
 
             match is_match {
-                Some(true) => {
+                ProjectionMatchesProjection::Yes => {
                     candidate_set.push_candidate(ctor(data));
 
                     if potentially_unnormalized_candidates
@@ -1260,10 +1261,10 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
                         return;
                     }
                 }
-                Some(false) => {}
-                None => {
+                ProjectionMatchesProjection::Ambiguous => {
                     candidate_set.mark_ambiguous();
                 }
+                ProjectionMatchesProjection::No => {}
             }
         }
     }
