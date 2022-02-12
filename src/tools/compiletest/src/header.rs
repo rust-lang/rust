@@ -126,6 +126,12 @@ pub struct TestProps {
     // empty before the test starts. Incremental mode tests will reuse the
     // incremental directory between passes in the same test.
     pub incremental: bool,
+    // If `true`, this test is a known bug.
+    //
+    // When set, some requirements are relaxed. Currently, this only means no
+    // error annotations are needed, but this may be updated in the future to
+    // include other relaxations.
+    pub known_bug: bool,
     // How far should the test proceed while still passing.
     pass_mode: Option<PassMode>,
     // Ignore `--pass` overrides from the command line for this test.
@@ -176,6 +182,7 @@ impl TestProps {
             forbid_output: vec![],
             incremental_dir: None,
             incremental: false,
+            known_bug: false,
             pass_mode: None,
             fail_mode: None,
             ignore_pass: false,
@@ -361,6 +368,10 @@ impl TestProps {
 
                 if !self.incremental {
                     self.incremental = config.parse_incremental(ln);
+                }
+
+                if !self.known_bug {
+                    self.known_bug = config.parse_known_bug(ln);
                 }
             });
         }
@@ -750,6 +761,10 @@ impl Config {
 
     fn parse_incremental(&self, line: &str) -> bool {
         self.parse_name_directive(line, "incremental")
+    }
+
+    fn parse_known_bug(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "known-bug")
     }
 }
 

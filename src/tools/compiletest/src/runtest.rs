@@ -1310,7 +1310,14 @@ impl<'test> TestCx<'test> {
                 }
 
                 None => {
-                    if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
+                    // If the test is a known bug, don't require that the error is annotated
+                    if !self.props.known_bug
+                        && self.is_unexpected_compiler_message(
+                            actual_error,
+                            expect_help,
+                            expect_note,
+                        )
+                    {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
