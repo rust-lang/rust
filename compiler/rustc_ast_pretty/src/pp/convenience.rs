@@ -75,6 +75,10 @@ impl Printer {
     }
 
     pub fn trailing_comma(&mut self) {
+        self.scan_break(BreakToken { pre_break: Some(','), ..BreakToken::default() });
+    }
+
+    pub fn trailing_comma_or_space(&mut self) {
         self.scan_break(BreakToken {
             blank_space: 1,
             pre_break: Some(','),
