@@ -278,6 +278,8 @@ interface SsrParams {
     textDocument: TextDocumentIdentifier;
     /// Position where SSR was invoked.
     position: Position;
+    /// Current selections. Search/replace will be restricted to these if non-empty.
+    selections: Range[];
 }
 ```
 
