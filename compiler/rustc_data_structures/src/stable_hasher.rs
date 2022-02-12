@@ -80,22 +80,22 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.state.write_u16(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.state.write_u32(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.state.write_u64(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write_u128(i.to_le());
+        self.state.write(&i.to_le_bytes());
     }
 
     #[inline]
@@ -103,7 +103,7 @@ impl Hasher for StableHasher {
         // Always treat usize as u64 so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
         // for example.
-        self.state.write_u64((i as u64).to_le());
+        self.state.short_write((i as u64).to_le_bytes());
     }
 
     #[inline]
@@ -113,22 +113,22 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.state.write_i16(i.to_le());
+        self.state.short_write((i as u16).to_le_bytes());
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.state.write_i32(i.to_le());
+        self.state.short_write((i as u32).to_le_bytes());
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.state.write_i64(i.to_le());
+        self.state.short_write((i as u64).to_le_bytes());
     }
 
     #[inline]
     fn write_i128(&mut self, i: i128) {
-        self.state.write_i128(i.to_le());
+        self.state.write(&(i as u128).to_le_bytes());
     }
 
     #[inline]
@@ -144,7 +144,7 @@ impl Hasher for StableHasher {
         #[inline(never)]
         fn hash_value(state: &mut SipHasher128, value: u64) {
             state.write_u8(0xFF);
-            state.write_u64(value.to_le());
+            state.short_write(value.to_le_bytes());
         }
 
         // `isize` values often seem to have a small (positive) numeric value in practice.
@@ -161,10 +161,6 @@ impl Hasher for StableHasher {
         // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
         // `isize`s that fit within a different amount of bytes, they should always produce a different
         // byte stream for the hasher.
-        //
-        // To ensure that this optimization hashes the exact same bytes on both little-endian and
-        // big-endian architectures, we compare the value with 0xFF before we convert the number
-        // into a unified representation (little-endian).
         if value < 0xFF {
             self.state.write_u8(value as u8);
         } else {
