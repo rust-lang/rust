@@ -63,7 +63,7 @@ def support_xz():
     except tarfile.CompressionError:
         return False
 
-def get(base, url, path, checksums, verbose=False, do_verify=True):
+def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error=None):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
 
@@ -82,7 +82,7 @@ def get(base, url, path, checksums, verbose=False, do_verify=True):
                         print("ignoring already-download file",
                             path, "due to failed verification")
                     os.unlink(path)
-        download(temp_path, "{}/{}".format(base, url), True, verbose)
+        download(temp_path, "{}/{}".format(base, url), True, verbose, help_on_error=help_on_error)
         if do_verify and not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
         if verbose:
@@ -95,17 +95,17 @@ def get(base, url, path, checksums, verbose=False, do_verify=True):
             os.unlink(temp_path)
 
 
-def download(path, url, probably_big, verbose):
+def download(path, url, probably_big, verbose, help_on_error=None):
     for _ in range(0, 4):
         try:
-            _download(path, url, probably_big, verbose, True)
+            _download(path, url, probably_big, verbose, True, help_on_error=help_on_error)
             return
         except RuntimeError:
             print("\nspurious failure, trying again")
-    _download(path, url, probably_big, verbose, False)
+    _download(path, url, probably_big, verbose, False, help_on_error=help_on_error)
 
 
-def _download(path, url, probably_big, verbose, exception):
+def _download(path, url, probably_big, verbose, exception, help_on_error=None):
     if probably_big or verbose:
         print("downloading {}".format(url))
     # see https://serverfault.com/questions/301128/how-to-download
@@ -126,7 +126,8 @@ def _download(path, url, probably_big, verbose, exception):
              "--connect-timeout", "30",  # timeout if cannot connect within 30 seconds
              "--retry", "3", "-Sf", "-o", path, url],
             verbose=verbose,
-            exception=exception)
+            exception=exception,
+            help_on_error=help_on_error)
 
 
 def verify(path, expected, verbose):
@@ -167,7 +168,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
+def run(args, verbose=False, exception=False, is_bootstrap=False, help_on_error=None, **kwargs):
     """Run a child program in a new process"""
     if verbose:
         print("running: " + ' '.join(args))
@@ -178,6 +179,8 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + ' '.join(args)
+        if help_on_error is not None:
+            err += "\n" + help_on_error
         if verbose or exception:
             raise RuntimeError(err)
         # For most failures, we definitely do want to print this error, or the user will have no
@@ -624,6 +627,14 @@ class RustBuild(object):
         filename = "rust-dev-nightly-" + self.build + tarball_suffix
         tarball = os.path.join(rustc_cache, filename)
         if not os.path.exists(tarball):
+            help_on_error = "error: failed to download llvm from ci"
+            help_on_error += "\nhelp: old builds get deleted after a certain time"
+            help_on_error += "\nhelp: if trying to compile an old commit of rustc,"
+            help_on_error += " disable `download-ci-llvm` in config.toml:"
+            help_on_error += "\n"
+            help_on_error += "\n[llvm]"
+            help_on_error += "\ndownload-ci-llvm = false"
+            help_on_error += "\n"
             get(
                 base,
                 "{}/{}".format(url, filename),
@@ -631,6 +642,7 @@ class RustBuild(object):
                 self.checksums_sha256,
                 verbose=self.verbose,
                 do_verify=False,
+                help_on_error=help_on_error,
             )
         unpack(tarball, tarball_suffix, self.llvm_root(),
                 match="rust-dev",
