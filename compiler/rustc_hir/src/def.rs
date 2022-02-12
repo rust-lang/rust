@@ -275,25 +275,25 @@ pub enum Res<Id = hir::HirId> {
     /// ```
     /// struct Bar(Box<Self>);
     /// // `Res::SelfTy { trait_: None, alias_of: Some(Bar) }`
-    /// 
+    ///
     /// trait Foo {
     ///     fn foo() -> Box<Self>;
     ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: None }`
     /// }
-    /// 
+    ///
     /// impl Bar {
     ///     fn blah() {
     ///         let _: Self;
     ///         // `Res::SelfTy { trait_: None, alias_of: Some(::{impl#0}) }`
     ///     }
     /// }
-    /// 
+    ///
     /// impl Foo for Bar {
     ///     fn foo() -> Box<Self> {
     ///     // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
     ///         let _: Self;
     ///         // `Res::SelfTy { trait_: Some(Foo), alias_of: Some(::{impl#1}) }`
-    /// 
+    ///
     ///         todo!()
     ///     }
     /// }
@@ -307,7 +307,7 @@ pub enum Res<Id = hir::HirId> {
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
-    /// 
+    ///
     /// struct Bar([u8; baz::<Self>()]);
     /// const fn baz<T>() -> usize { 10 }
     /// ```
@@ -323,7 +323,7 @@ pub enum Res<Id = hir::HirId> {
         /// The trait this `Self` is a generic arg for.
         trait_: Option<DefId>,
         /// The item introducing the `Self` type alias. Can be used in the `type_of` query
-        /// to get the underlying type. Additionally whether the `Self` type is disallowed 
+        /// to get the underlying type. Additionally whether the `Self` type is disallowed
         /// from mentioning generics (i.e. when used in an anonymous constant).
         alias_to: Option<(DefId, bool)>,
     },
