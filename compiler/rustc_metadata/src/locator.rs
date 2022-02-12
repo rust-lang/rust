@@ -241,7 +241,6 @@ use tracing::{debug, info};
 crate struct CrateLocator<'a> {
     // Immutable per-session configuration.
     only_needs_metadata: bool,
-    sysroot: &'a Path,
     metadata_loader: &'a dyn MetadataLoader,
 
     // Immutable per-search configuration.
@@ -308,7 +307,6 @@ impl<'a> CrateLocator<'a> {
 
         CrateLocator {
             only_needs_metadata,
-            sysroot: &sess.sysroot,
             metadata_loader,
             crate_name,
             exact_paths: if hash.is_none() {
@@ -547,6 +545,20 @@ impl<'a> CrateLocator<'a> {
                             continue;
                         }
                     }
+                    Err(MetadataError::VersionMismatch(found_version)) => {
+                        // The file was present and created by the same compiler version, but we
+                        // couldn't load it for some reason.  Give a hard error instead of silently
+                        // ignoring it, but only if we would have given an error anyway.
+                        let rustc_version = rustc_version();
+                        info!(
+                            "Rejecting via version: expected {} got {}",
+                            rustc_version, found_version
+                        );
+                        self.crate_rejections
+                            .via_version
+                            .push(CrateMismatch { path: lib, got: found_version });
+                        continue;
+                    }
                     Err(MetadataError::LoadFailure(err)) => {
                         info!("no metadata found: {}", err);
                         // The file was present and created by the same compiler version, but we
@@ -591,16 +603,6 @@ impl<'a> CrateLocator<'a> {
     }
 
     fn crate_matches(&mut self, metadata: &MetadataBlob, libpath: &Path) -> Option<Svh> {
-        let rustc_version = rustc_version();
-        let found_version = metadata.get_rustc_version();
-        if found_version != rustc_version {
-            info!("Rejecting via version: expected {} got {}", rustc_version, found_version);
-            self.crate_rejections
-                .via_version
-                .push(CrateMismatch { path: libpath.to_path_buf(), got: found_version });
-            return None;
-        }
-
         let root = metadata.get_root();
         if root.is_proc_macro_crate() != self.is_proc_macro {
             info!(
@@ -742,13 +744,9 @@ fn get_metadata_section<'p>(
         }
     };
     let blob = MetadataBlob::new(raw_bytes);
-    if blob.is_compatible() {
-        Ok(blob)
-    } else {
-        Err(MetadataError::LoadFailure(format!(
-            "invalid metadata version found: {}",
-            filename.display()
-        )))
+    match blob.check_compatibility() {
+        Ok(()) => Ok(blob),
+        Err(version) => Err(MetadataError::VersionMismatch(version)),
     }
 }
 
@@ -862,6 +860,8 @@ enum MetadataError<'a> {
     NotPresent(&'a Path),
     /// The file was present and invalid.
     LoadFailure(String),
+    /// The file was present, but compiled with a different rustc version.
+    VersionMismatch(String),
 }
 
 impl fmt::Display for MetadataError<'_> {
@@ -871,6 +871,11 @@ impl fmt::Display for MetadataError<'_> {
                 f.write_str(&format!("no such file: '{}'", filename.display()))
             }
             MetadataError::LoadFailure(msg) => f.write_str(msg),
+            MetadataError::VersionMismatch(found_version) => f.write_str(&format!(
+                "rustc version mismatch. expected {}, found {}",
+                rustc_version(),
+                found_version,
+            )),
         }
     }
 }

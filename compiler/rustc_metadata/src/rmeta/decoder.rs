@@ -626,13 +626,22 @@ impl<'tcx> MetadataBlob {
         MetadataBlob(Lrc::new(metadata_ref))
     }
 
-    crate fn is_compatible(&self) -> bool {
-        self.blob().starts_with(METADATA_HEADER)
-    }
+    crate fn check_compatibility(&self) -> Result<(), String> {
+        if !self.blob().starts_with(METADATA_HEADER) {
+            if self.blob().starts_with(b"rust") {
+                return Err("<unknown rustc version>".to_string());
+            }
+            return Err("<invalid metadata header>".to_string());
+        }
 
-    crate fn get_rustc_version(&self) -> String {
-        Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
-            .decode(self)
+        let found_version =
+            Lazy::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+                .decode(self);
+        if rustc_version() != found_version {
+            return Err(found_version);
+        }
+
+        Ok(())
     }
 
     crate fn get_root(&self) -> CrateRoot<'tcx> {
