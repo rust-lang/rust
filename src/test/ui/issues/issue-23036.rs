@@ -1,4 +1,5 @@
 // run-pass
+// ignore-wasm32-bare FIXME(#93923) llvm miscompilation
 
 use std::collections::HashMap;
 use std::path::Path;
