@@ -126,29 +126,36 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 }
             }
 
-            let mut pre_order = FxHashMap::default();
-
-            visitor.graph.iter().for_each(|(_, next)| {
-                next.iter().for_each(|i| {
-                    *pre_order.entry(*i).or_insert(0) += 1;
-                });
-            });
-
             for (id, span, ident) in param_span {
                 // if the variable is not used in recursion, it would be marked as unused
-                if !visitor.has_side_effect.contains(&id)
-                    && *pre_order.get(&id).unwrap_or(&0) > 0
-                    && visitor.graph.contains_key(&id)
-                {
-                    span_lint_and_sugg(
-                        cx,
-                        ONLY_USED_IN_RECURSION,
-                        span,
-                        "parameter is only used in recursion with no side-effects",
-                        "if this is intentional, prefix with an underscore",
-                        format!("_{}", ident.name.as_str()),
-                        Applicability::MaybeIncorrect,
-                    );
+                if !visitor.has_side_effect.contains(&id) {
+                    let mut queue = VecDeque::new();
+                    let mut visited = FxHashSet::default();
+
+                    queue.push_back(id);
+
+                    while let Some(id) = queue.pop_front() {
+                        if let Some(next) = visitor.graph.get(&id) {
+                            for i in next {
+                                if !visited.contains(i) {
+                                    visited.insert(id);
+                                    queue.push_back(*i);
+                                }
+                            }
+                        }
+                    }
+
+                    if visited.contains(&id) {
+                        span_lint_and_sugg(
+                            cx,
+                            ONLY_USED_IN_RECURSION,
+                            span,
+                            "parameter is only used in recursion with no side-effects",
+                            "if this is intentional, prefix with an underscore",
+                            format!("_{}", ident.name.as_str()),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
             }
         }
@@ -200,7 +207,7 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
             StmtKind::Local(Local {
                 pat, init: Some(init), ..
             }) => {
-                self.visit_pat_expr(pat, init);
+                self.visit_pat_expr(pat, init, false);
             },
             StmtKind::Item(i) => {
                 let item = self.ty_ctx.hir().item(i);
@@ -229,7 +236,7 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
                 self.visit_bin_op(lhs, rhs);
             },
             ExprKind::Unary(op, expr) => self.visit_un_op(op, expr),
-            ExprKind::Let(Let { pat, init, .. }) => self.visit_pat_expr(pat, init),
+            ExprKind::Let(Let { pat, init, .. }) => self.visit_pat_expr(pat, init, false),
             ExprKind::If(bind, then_expr, else_expr) => {
                 self.visit_if(bind, then_expr, else_expr);
             },
@@ -333,7 +340,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
                 let lhs_vars = std::mem::take(&mut self.ret_vars);
                 self.visit_expr(rhs);
                 let rhs_vars = std::mem::take(&mut self.ret_vars);
-                self.connect_assign(&lhs_vars, &rhs_vars);
+                self.connect_assign(&lhs_vars, &rhs_vars, false);
             },
         }
     }
@@ -373,12 +380,12 @@ impl<'tcx> SideEffectVisit<'tcx> {
         }
     }
 
-    fn visit_pat_expr(&mut self, pat: &'tcx Pat<'tcx>, expr: &'tcx Expr<'tcx>) {
+    fn visit_pat_expr(&mut self, pat: &'tcx Pat<'tcx>, expr: &'tcx Expr<'tcx>, connect_self: bool) {
         match (&pat.kind, &expr.kind) {
             (PatKind::Tuple(pats, _), ExprKind::Tup(exprs)) => {
                 self.ret_vars = izip!(*pats, *exprs)
                     .flat_map(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr);
+                        self.visit_pat_expr(pat, expr, connect_self);
                         std::mem::take(&mut self.ret_vars)
                     })
                     .collect();
@@ -386,13 +393,13 @@ impl<'tcx> SideEffectVisit<'tcx> {
             (PatKind::Slice(front_exprs, _, back_exprs), ExprKind::Array(exprs)) => {
                 let mut vars = izip!(*front_exprs, *exprs)
                     .flat_map(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr);
+                        self.visit_pat_expr(pat, expr, connect_self);
                         std::mem::take(&mut self.ret_vars)
                     })
                     .collect();
                 self.ret_vars = izip!(back_exprs.iter().rev(), exprs.iter().rev())
                     .flat_map(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr);
+                        self.visit_pat_expr(pat, expr, connect_self);
                         std::mem::take(&mut self.ret_vars)
                     })
                     .collect();
@@ -403,7 +410,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
                 pat.each_binding(|_, id, _, _| lhs_vars.push((id, false)));
                 self.visit_expr(expr);
                 let rhs_vars = std::mem::take(&mut self.ret_vars);
-                self.connect_assign(&lhs_vars, &rhs_vars);
+                self.connect_assign(&lhs_vars, &rhs_vars, connect_self);
                 self.ret_vars = rhs_vars;
             },
         }
@@ -424,7 +431,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
             then {
                 izip!(self.params.clone(), args)
                     .for_each(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr);
+                        self.visit_pat_expr(pat, expr, true);
                         self.ret_vars.clear();
                     });
             } else {
@@ -463,7 +470,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
             then {
                 izip!(self.params.clone(), args.iter())
                     .for_each(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr);
+                        self.visit_pat_expr(pat, expr, true);
                         self.ret_vars.clear();
                     });
             } else {
@@ -511,7 +518,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
                 self.contains_side_effect = false;
                 // this would visit `expr` multiple times
                 // but couldn't think of a better way
-                self.visit_pat_expr(arm.pat, expr);
+                self.visit_pat_expr(arm.pat, expr, false);
                 let mut vars = std::mem::take(&mut self.ret_vars);
                 let _ = arm.guard.as_ref().map(|guard| {
                     self.visit_expr(match guard {
@@ -532,7 +539,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
         self.ret_vars.append(&mut expr_vars);
     }
 
-    fn connect_assign(&mut self, lhs: &[(HirId, bool)], rhs: &[(HirId, bool)]) {
+    fn connect_assign(&mut self, lhs: &[(HirId, bool)], rhs: &[(HirId, bool)], connect_self: bool) {
         // if mutable dereference is on assignment it can have side-effect
         // (this can lead to parameter mutable dereference and change the original value)
         // too hard to detect whether this value is from parameter, so this would all
@@ -554,15 +561,19 @@ impl<'tcx> SideEffectVisit<'tcx> {
         // unwrap is possible since rhs is not empty
         let rhs_first = rhs.first().unwrap();
         for (id, _) in lhs.iter() {
-            self.graph
-                .entry(*id)
-                .or_insert_with(FxHashSet::default)
-                .insert(rhs_first.0);
+            if connect_self || *id != rhs_first.0 {
+                self.graph
+                    .entry(*id)
+                    .or_insert_with(FxHashSet::default)
+                    .insert(rhs_first.0);
+            }
         }
 
         let rhs = rhs.iter();
         izip!(rhs.clone().cycle().skip(1), rhs).for_each(|(from, to)| {
-            self.graph.entry(from.0).or_insert_with(FxHashSet::default).insert(to.0);
+            if connect_self || from.0 != to.0 {
+                self.graph.entry(from.0).or_insert_with(FxHashSet::default).insert(to.0);
+            }
         });
     }
 
