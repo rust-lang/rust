@@ -5,6 +5,8 @@ use std::hash::Hash;
 use parser::{SyntaxKind, T};
 use syntax::{TextRange, TextSize};
 
+use crate::syntax_bridge::SyntheticTokenId;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 enum TokenTextRange {
     Token(TextRange),
@@ -31,6 +33,7 @@ impl TokenTextRange {
 pub struct TokenMap {
     /// Maps `tt::TokenId` to the *relative* source range.
     entries: Vec<(tt::TokenId, TokenTextRange)>,
+    pub synthetic_entries: Vec<(tt::TokenId, SyntheticTokenId)>,
 }
 
 impl TokenMap {
@@ -57,6 +60,10 @@ impl TokenMap {
             .filter_map(move |(_, range)| range.by_kind(kind))
     }
 
+    pub fn synthetic_token_id(&self, token_id: tt::TokenId) -> Option<SyntheticTokenId> {
+        self.synthetic_entries.iter().find(|(tid, _)| *tid == token_id).map(|(_, id)| *id)
+    }
+
     pub fn first_range_by_token(
         &self,
         token_id: tt::TokenId,
@@ -67,10 +74,15 @@ impl TokenMap {
 
     pub(crate) fn shrink_to_fit(&mut self) {
         self.entries.shrink_to_fit();
+        self.synthetic_entries.shrink_to_fit();
     }
 
     pub(crate) fn insert(&mut self, token_id: tt::TokenId, relative_range: TextRange) {
         self.entries.push((token_id, TokenTextRange::Token(relative_range)));
+    }
+
+    pub(crate) fn insert_synthetic(&mut self, token_id: tt::TokenId, id: SyntheticTokenId) {
+        self.synthetic_entries.push((token_id, id));
     }
 
     pub(crate) fn insert_delim(

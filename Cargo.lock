@@ -539,6 +539,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
+ "expect-test",
  "hashbrown 0.12.0",
  "itertools",
  "la-arena",

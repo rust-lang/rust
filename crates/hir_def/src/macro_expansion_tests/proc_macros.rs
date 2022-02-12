@@ -52,3 +52,43 @@ struct S;
 #[attr2] struct S;"##]],
     );
 }
+
+#[test]
+fn attribute_macro_syntax_completion_1() {
+    // this is just the case where the input is actually valid
+    check(
+        r#"
+//- proc_macros: identity_when_valid
+#[proc_macros::identity_when_valid]
+fn foo() { bar.baz(); blub }
+"#,
+        expect![[r##"
+#[proc_macros::identity_when_valid]
+fn foo() { bar.baz(); blub }
+
+fn foo() {
+    bar.baz();
+    blub
+}"##]],
+    );
+}
+
+#[test]
+fn attribute_macro_syntax_completion_2() {
+    // common case of dot completion while typing
+    check(
+        r#"
+//- proc_macros: identity_when_valid
+#[proc_macros::identity_when_valid]
+fn foo() { bar.; blub }
+"#,
+        expect![[r##"
+#[proc_macros::identity_when_valid]
+fn foo() { bar.; blub }
+
+fn foo() {
+    bar. ;
+    blub
+}"##]],
+    );
+}

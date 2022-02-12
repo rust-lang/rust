@@ -30,7 +30,8 @@ pub use tt::{Delimiter, DelimiterKind, Punct};
 pub use crate::{
     syntax_bridge::{
         parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
-        syntax_node_to_token_tree_censored, token_tree_to_syntax_node,
+        syntax_node_to_token_tree_with_modifications, token_tree_to_syntax_node, SyntheticToken,
+        SyntheticTokenId,
     },
     token_map::TokenMap,
 };
