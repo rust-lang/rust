@@ -419,7 +419,7 @@ pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_e
             InlayKind::TypeHint => Some(lsp_ext::InlayHintKind::TYPE),
             InlayKind::ChainingHint => None,
         },
-        tooltip: Some("test description".to_string()),
+        tooltip: None,
         padding_left: Some(true),
         padding_right: Some(true),
     }
