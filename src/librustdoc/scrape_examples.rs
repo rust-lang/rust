@@ -34,6 +34,7 @@ use std::path::PathBuf;
 crate struct ScrapeExamplesOptions {
     output_path: PathBuf,
     target_crates: Vec<String>,
+    crate scrape_tests: bool,
 }
 
 impl ScrapeExamplesOptions {
@@ -43,16 +44,22 @@ impl ScrapeExamplesOptions {
     ) -> Result<Option<Self>, i32> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
-        match (output_path, !target_crates.is_empty()) {
-            (Some(output_path), true) => Ok(Some(ScrapeExamplesOptions {
+        let scrape_tests = matches.opt_present("scrape-tests");
+        match (output_path, !target_crates.is_empty(), scrape_tests) {
+            (Some(output_path), true, _) => Ok(Some(ScrapeExamplesOptions {
                 output_path: PathBuf::from(output_path),
                 target_crates,
+                scrape_tests,
             })),
-            (Some(_), false) | (None, true) => {
+            (Some(_), false, _) | (None, true, _) => {
                 diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
                 Err(1)
             }
-            (None, false) => Ok(None),
+            (None, false, true) => {
+                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
+                Err(1)
+            }
+            (None, false, false) => Ok(None),
         }
     }
 }
