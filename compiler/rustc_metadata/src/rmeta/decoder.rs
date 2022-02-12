@@ -647,10 +647,7 @@ impl<'tcx> MetadataBlob {
     crate fn get_root(&self) -> CrateRoot<'tcx> {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
-        let pos = (((slice[offset + 0] as u32) << 24)
-            | ((slice[offset + 1] as u32) << 16)
-            | ((slice[offset + 2] as u32) << 8)
-            | ((slice[offset + 3] as u32) << 0)) as usize;
+        let pos = (u32::from_le_bytes(slice[offset..offset + 4].try_into().unwrap())) as usize;
         Lazy::<CrateRoot<'tcx>>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 

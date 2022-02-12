@@ -2214,10 +2214,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Encode the root position.
     let header = METADATA_HEADER.len();
     let pos = root.position.get();
-    result[header + 0] = (pos >> 24) as u8;
-    result[header + 1] = (pos >> 16) as u8;
-    result[header + 2] = (pos >> 8) as u8;
-    result[header + 3] = (pos >> 0) as u8;
+    result[header..header + 4].copy_from_slice(&pos.to_le_bytes());
 
     // Record metadata size for self-profiling
     tcx.prof.artifact_size("crate_metadata", "crate_metadata", result.len() as u64);
