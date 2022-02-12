@@ -4949,8 +4949,8 @@ public:
   }
 
   void handleMPI(llvm::CallInst &call, Function *called, StringRef funcName) {
-    assert(Mode != DerivativeMode::ForwardMode);
     assert(called);
+    assert(gutils->getWidth() == 1);
 
     IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&call));
     BuilderZ.setFastMathFlags(getFast());
@@ -5293,6 +5293,50 @@ public:
             }
           } else
             assert(0 && "illegal mpi");
+        } else if (Mode == DerivativeMode::ForwardMode) {
+          IRBuilder<> Builder2(&call);
+          getForwardBuilder(Builder2);
+
+          assert(!gutils->isConstantValue(call.getOperand(0)));
+          assert(!gutils->isConstantValue(call.getOperand(6)));
+
+          Value *buf = gutils->invertPointerM(call.getOperand(0), Builder2);
+          Value *count = gutils->getNewFromOriginal(call.getOperand(1));
+          Value *datatype = gutils->getNewFromOriginal(call.getOperand(2));
+          Value *source = gutils->getNewFromOriginal(call.getOperand(3));
+          Value *tag = gutils->getNewFromOriginal(call.getOperand(4));
+          Value *comm = gutils->getNewFromOriginal(call.getOperand(5));
+          Value *request = gutils->invertPointerM(call.getOperand(6), Builder2);
+
+          Value *args[] = {
+              /*buf*/ buf,
+              /*count*/ count,
+              /*datatype*/ datatype,
+              /*source*/ source,
+              /*tag*/ tag,
+              /*comm*/ comm,
+              /*request*/ request,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal, ValueType::Primal,
+               ValueType::Shadow},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+          return;
         }
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
@@ -5407,6 +5451,45 @@ public:
         Builder2.CreateBr(endBlock);
 
         Builder2.SetInsertPoint(endBlock);
+      } else if (Mode == DerivativeMode::ForwardMode) {
+        IRBuilder<> Builder2(&call);
+        getForwardBuilder(Builder2);
+
+        assert(!gutils->isConstantValue(call.getOperand(0)));
+
+        Value *request =
+            gutils->invertPointerM(call.getArgOperand(0), Builder2);
+        Value *status = gutils->invertPointerM(call.getArgOperand(1), Builder2);
+
+        if (request->getType()->isIntegerTy()) {
+          request = Builder2.CreateIntToPtr(
+              request,
+              PointerType::getUnqual(Type::getInt8PtrTy(call.getContext())));
+        }
+
+        Value *args[] = {/*request*/ request,
+                         /*status*/ status};
+
+        auto Defs = gutils->getInvertedBundles(
+            &call, {ValueType::Shadow, ValueType::Shadow}, Builder2,
+            /*lookup*/ false);
+
+        Type *types[sizeof(args) / sizeof(*args)];
+        for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++)
+          types[i] = args[i]->getType();
+
+#if LLVM_VERSION_MAJOR >= 11
+        auto callval = call.getCalledOperand();
+#else
+        auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+        Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+        Builder2.CreateCall(callval, args, Defs);
+#endif
+        return;
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
         eraseIfUnused(call, /*erase*/ true, /*check*/ false);
@@ -5552,6 +5635,43 @@ public:
         Builder2.CreateCondBr(Builder2.CreateICmpEQ(inc, count), endBlock,
                               loopBlock);
         Builder2.SetInsertPoint(endBlock);
+      } else if (Mode == DerivativeMode::ForwardMode) {
+        IRBuilder<> Builder2(&call);
+
+        assert(!gutils->isConstantValue(call.getOperand(1)));
+
+        Value *count = gutils->getNewFromOriginal(call.getOperand(0));
+        Value *array_of_requests = gutils->invertPointerM(
+            gutils->getNewFromOriginal(call.getOperand(1)), Builder2);
+        if (array_of_requests->getType()->isIntegerTy()) {
+          array_of_requests = Builder2.CreateIntToPtr(
+              array_of_requests,
+              PointerType::getUnqual(Type::getInt8PtrTy(call.getContext())));
+        }
+
+        Value *args[] = {
+            /*count*/ count,
+            /*array_of_requests*/ array_of_requests,
+        };
+
+        auto Defs = gutils->getInvertedBundles(
+            &call,
+            {ValueType::None, ValueType::None, ValueType::None, ValueType::None,
+             ValueType::None, ValueType::None, ValueType::Shadow},
+            Builder2, /*lookup*/ true);
+
+#if LLVM_VERSION_MAJOR >= 11
+        auto callval = call.getCalledOperand();
+#else
+        auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+        Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+        Builder2.CreateCall(callval, args, Defs);
+#endif
+        return;
       }
       if (Mode == DerivativeMode::ReverseModeGradient)
         eraseIfUnused(call, /*erase*/ true, /*check*/ false);
@@ -5560,18 +5680,26 @@ public:
 
     if (funcName == "MPI_Send" || funcName == "MPI_Ssend") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
-        Value *shadow = lookup(
-            gutils->invertPointerM(call.getOperand(0), Builder2), Builder2);
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
 
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
+
+        Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
+        if (!forwardMode)
+          shadow = lookup(shadow, Builder2);
         if (shadow->getType()->isIntegerTy())
           shadow = Builder2.CreateIntToPtr(
               shadow, Type::getInt8PtrTy(call.getContext()));
 
         Type *statusType = nullptr;
-
         if (Function *recvfn = called->getParent()->getFunction("MPI_Recv")) {
           auto statusArg = recvfn->arg_end();
           statusArg--;
@@ -5584,20 +5712,63 @@ public:
                           "status type, assuming [24 x i8]\n";
         }
 
-        Value *datatype =
-            lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
+        Value *count = gutils->getNewFromOriginal(call.getOperand(1));
+        if (!forwardMode)
+          count = lookup(count, Builder2);
+
+        Value *datatype = gutils->getNewFromOriginal(call.getOperand(2));
+        if (!forwardMode)
+          datatype = lookup(datatype, Builder2);
+
+        Value *src = gutils->getNewFromOriginal(call.getOperand(3));
+        if (!forwardMode)
+          src = lookup(src, Builder2);
+
+        Value *tag = gutils->getNewFromOriginal(call.getOperand(4));
+        if (!forwardMode)
+          tag = lookup(tag, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(call.getOperand(5));
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
+
+        if (forwardMode) {
+          Value *args[] = {
+              /*buf*/ shadow,
+              /*count*/ count,
+              /*datatype*/ datatype,
+              /*dest*/ src,
+              /*tag*/ tag,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal, ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+          return;
+        }
 
         Value *args[] = {
             /*buf*/ NULL,
-            /*count*/
-            lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
+            /*count*/ count,
             /*datatype*/ datatype,
-            /*src*/
-            lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2),
-            /*tag*/
-            lookup(gutils->getNewFromOriginal(call.getOperand(4)), Builder2),
-            /*comm*/
-            lookup(gutils->getNewFromOriginal(call.getOperand(5)), Builder2),
+            /*src*/ src,
+            /*tag*/ tag,
+            /*comm*/ comm,
             /*status*/
             IRBuilder<>(gutils->inversionAllocs).CreateAlloca(statusType)};
 
@@ -5664,36 +5835,74 @@ public:
     if (funcName == "MPI_Recv" || funcName == "PMPI_Recv") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
 
-        Value *shadow = lookup(
-            gutils->invertPointerM(call.getOperand(0), Builder2), Builder2);
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
+
+        Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
+        if (!forwardMode)
+          shadow = lookup(shadow, Builder2);
         if (shadow->getType()->isIntegerTy())
           shadow = Builder2.CreateIntToPtr(
               shadow, Type::getInt8PtrTy(call.getContext()));
-        Value *datatype =
-            lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
+
+        Value *count = gutils->getNewFromOriginal(call.getOperand(1));
+        if (!forwardMode)
+          count = lookup(count, Builder2);
+
+        Value *datatype = gutils->getNewFromOriginal(call.getOperand(2));
+        if (!forwardMode)
+          datatype = lookup(datatype, Builder2);
+
+        Value *source = gutils->getNewFromOriginal(call.getOperand(3));
+        if (!forwardMode)
+          source = lookup(source, Builder2);
+
+        Value *tag = gutils->getNewFromOriginal(call.getOperand(4));
+        if (!forwardMode)
+          tag = lookup(tag, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(call.getOperand(5));
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
 
         Value *args[] = {
-            shadow,
-            lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2),
-            datatype,
-            lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2),
-            lookup(gutils->getNewFromOriginal(call.getOperand(4)), Builder2),
-            lookup(gutils->getNewFromOriginal(call.getOperand(5)), Builder2),
+            shadow, count, datatype, source, tag, comm,
         };
-        Type *types[sizeof(args) / sizeof(*args)];
-        for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++)
-          types[i] = args[i]->getType();
-        FunctionType *FT = FunctionType::get(call.getType(), types, false);
 
         auto Defs = gutils->getInvertedBundles(
             &call,
             {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
              ValueType::Primal, ValueType::Primal, ValueType::Primal,
              ValueType::None},
-            Builder2, /*lookup*/ true);
+            Builder2, /*lookup*/ !forwardMode);
+
+        if (forwardMode) {
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+          return;
+        }
+
+        Type *types[sizeof(args) / sizeof(*args)];
+        for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++)
+          types[i] = args[i]->getType();
+        FunctionType *FT = FunctionType::get(call.getType(), types, false);
+
         auto fcall = Builder2.CreateCall(
             called->getParent()->getOrInsertFunction("MPI_Send", FT), args,
             Defs);
@@ -5747,12 +5956,21 @@ public:
     // 3-e. else, set shadow(buffer) = 0 [memset]
     if (funcName == "MPI_Bcast") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
 
-        Value *shadow = lookup(
-            gutils->invertPointerM(call.getOperand(0), Builder2), Builder2);
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
+
+        Value *shadow = gutils->invertPointerM(call.getOperand(0), Builder2);
+        if (!forwardMode)
+          shadow = lookup(shadow, Builder2);
         if (shadow->getType()->isIntegerTy())
           shadow = Builder2.CreateIntToPtr(
               shadow, Type::getInt8PtrTy(call.getContext()));
@@ -5761,14 +5979,48 @@ public:
         Type *MPI_OP_Ptr_type =
             PointerType::getUnqual(Type::getInt8PtrTy(call.getContext()));
 
-        Value *count =
-            lookup(gutils->getNewFromOriginal(call.getOperand(1)), Builder2);
-        Value *datatype =
-            lookup(gutils->getNewFromOriginal(call.getOperand(2)), Builder2);
-        Value *root =
-            lookup(gutils->getNewFromOriginal(call.getOperand(3)), Builder2);
-        Value *comm =
-            lookup(gutils->getNewFromOriginal(call.getOperand(4)), Builder2);
+        Value *count = gutils->getNewFromOriginal(call.getOperand(1));
+        if (!forwardMode)
+          count = lookup(count, Builder2);
+        Value *datatype = gutils->getNewFromOriginal(call.getOperand(2));
+        if (!forwardMode)
+          datatype = lookup(datatype, Builder2);
+        Value *root = gutils->getNewFromOriginal(call.getOperand(3));
+        if (!forwardMode)
+          root = lookup(root, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(call.getOperand(4));
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
+
+        if (forwardMode) {
+          Value *args[] = {
+              /*buffer*/ shadow,
+              /*count*/ count,
+              /*datatype*/ datatype,
+              /*root*/ root,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+          return;
+        }
 
         Value *rank = MPI_COMM_RANK(comm, Builder2, root->getType());
         Value *tysize = MPI_TYPE_SIZE(datatype, Builder2, call.getType());
@@ -5929,11 +6181,19 @@ public:
 
     if (funcName == "MPI_Reduce" || funcName == "PMPI_Reduce") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
         // TODO insert a check for sum
 
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
+
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
 
         // Get the operations from MPI_Receive
         Value *orig_sendbuf = call.getOperand(0);
@@ -5969,13 +6229,16 @@ public:
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
-        Value *shadow_recvbuf =
-            lookup(gutils->invertPointerM(orig_recvbuf, Builder2), Builder2);
+        Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (!forwardMode)
+          shadow_recvbuf = lookup(shadow_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
           shadow_recvbuf = Builder2.CreateIntToPtr(
               shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
-        Value *shadow_sendbuf =
-            lookup(gutils->invertPointerM(orig_sendbuf, Builder2), Builder2);
+
+        Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (!forwardMode)
+          shadow_sendbuf = lookup(shadow_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
           shadow_sendbuf = Builder2.CreateIntToPtr(
               shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
@@ -5988,13 +6251,59 @@ public:
              ValueType::Primal},
             Builder2, /*lookup*/ true);
 
-        Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
-        Value *datatype =
-            lookup(gutils->getNewFromOriginal(orig_datatype), Builder2);
-        Value *root = lookup(gutils->getNewFromOriginal(orig_root), Builder2);
+        Value *count = gutils->getNewFromOriginal(orig_count);
+        if (!forwardMode)
+          count = lookup(count, Builder2);
+
+        Value *datatype = gutils->getNewFromOriginal(orig_datatype);
+        if (!forwardMode)
+          datatype = lookup(datatype, Builder2);
+
+        Value *op = lookup(gutils->getNewFromOriginal(orig_op), Builder2);
+        if (!forwardMode)
+          op = lookup(op, Builder2);
+
+        Value *root = gutils->getNewFromOriginal(orig_root);
+        if (!forwardMode)
+          root = lookup(root, Builder2);
+
         Value *comm = lookup(gutils->getNewFromOriginal(orig_comm), Builder2);
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
 
         Value *rank = MPI_COMM_RANK(comm, Builder2, root->getType());
+
+        if (forwardMode) {
+          Value *args[] = {
+              /*sendbuf*/ shadow_sendbuf,
+              /*recvbuf*/ shadow_recvbuf,
+              /*count*/ count,
+              /*datatype*/ datatype,
+              /*op*/ op,
+              /*root*/ root,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Shadow, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+          return;
+        }
 
         Value *tysize = MPI_TYPE_SIZE(datatype, Builder2, call.getType());
 
@@ -6136,11 +6445,19 @@ public:
 
     if (funcName == "MPI_Allreduce") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
         // TODO insert a check for sum
 
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
+
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
 
         // Get the operations from MPI_Receive
         Value *orig_sendbuf = call.getOperand(0);
@@ -6175,13 +6492,16 @@ public:
           report_fatal_error("unhandled mpi_allreduce op");
         }
 
-        Value *shadow_recvbuf =
-            lookup(gutils->invertPointerM(orig_recvbuf, Builder2), Builder2);
+        Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (!forwardMode)
+          shadow_recvbuf = lookup(shadow_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
           shadow_recvbuf = Builder2.CreateIntToPtr(
               shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
-        Value *shadow_sendbuf =
-            lookup(gutils->invertPointerM(orig_sendbuf, Builder2), Builder2);
+
+        Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (!forwardMode)
+          shadow_sendbuf = lookup(shadow_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
           shadow_sendbuf = Builder2.CreateIntToPtr(
               shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
@@ -6191,14 +6511,49 @@ public:
             &call,
             {ValueType::Shadow, ValueType::Shadow, ValueType::Primal,
              ValueType::Primal, ValueType::Primal, ValueType::Primal},
-            Builder2, /*lookup*/ true);
+            Builder2, /*lookup*/ !forwardMode);
 
-        Value *count = lookup(gutils->getNewFromOriginal(orig_count), Builder2);
-        Value *datatype =
-            lookup(gutils->getNewFromOriginal(orig_datatype), Builder2);
-        Value *comm = lookup(gutils->getNewFromOriginal(orig_comm), Builder2);
+        Value *count = gutils->getNewFromOriginal(orig_count);
+        if (!forwardMode)
+          count = lookup(count, Builder2);
 
-        Value *op = lookup(gutils->getNewFromOriginal(orig_op), Builder2);
+        Value *datatype = gutils->getNewFromOriginal(orig_datatype);
+        if (!forwardMode)
+          datatype = lookup(datatype, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(orig_comm);
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
+
+        Value *op = gutils->getNewFromOriginal(orig_op);
+        if (!forwardMode)
+          op = lookup(op, Builder2);
+
+        if (forwardMode) {
+          Value *args[] = {
+              /*sendbuf*/ shadow_sendbuf,
+              /*recvbuf*/ shadow_recvbuf,
+              /*count*/ count,
+              /*datatype*/ datatype,
+              /*op*/ op,
+              /*comm*/ comm,
+          };
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args,
+                              BufferDefs);
+#else
+          Builder2.CreateCall(callval, args, BufferDefs);
+#endif
+
+          return;
+        }
 
         Value *tysize = MPI_TYPE_SIZE(datatype, Builder2, call.getType());
 
@@ -6291,9 +6646,17 @@ public:
 
     if (funcName == "MPI_Gather") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
+
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
 
         Value *orig_sendbuf = call.getOperand(0);
         Value *orig_sendcount = call.getOperand(1);
@@ -6304,32 +6667,80 @@ public:
         Value *orig_root = call.getOperand(6);
         Value *orig_comm = call.getOperand(7);
 
-        Value *shadow_recvbuf =
-            lookup(gutils->invertPointerM(orig_recvbuf, Builder2), Builder2);
+        Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (!forwardMode)
+          shadow_recvbuf = lookup(shadow_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
           shadow_recvbuf = Builder2.CreateIntToPtr(
               shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
-        Value *shadow_sendbuf =
-            lookup(gutils->invertPointerM(orig_sendbuf, Builder2), Builder2);
+
+        Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (!forwardMode)
+          shadow_sendbuf = lookup(shadow_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
           shadow_sendbuf = Builder2.CreateIntToPtr(
               shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
-        Value *recvcount =
-            lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
-        Value *recvtype =
-            lookup(gutils->getNewFromOriginal(orig_recvtype), Builder2);
+        Value *recvcount = gutils->getNewFromOriginal(orig_recvcount);
+        if (!forwardMode)
+          recvcount = lookup(recvcount, Builder2);
 
-        Value *sendcount =
-            lookup(gutils->getNewFromOriginal(orig_sendcount), Builder2);
-        Value *sendtype =
-            lookup(gutils->getNewFromOriginal(orig_sendtype), Builder2);
+        Value *recvtype = gutils->getNewFromOriginal(orig_recvtype);
+        if (!forwardMode)
+          recvtype = lookup(recvtype, Builder2);
 
-        Value *root = lookup(gutils->getNewFromOriginal(orig_root), Builder2);
-        Value *comm = lookup(gutils->getNewFromOriginal(orig_comm), Builder2);
+        Value *sendcount = gutils->getNewFromOriginal(orig_sendcount);
+        if (!sendcount)
+          sendcount = lookup(sendcount, Builder2);
+
+        Value *sendtype = gutils->getNewFromOriginal(orig_sendtype);
+        if (!forwardMode)
+          sendtype = lookup(sendtype, Builder2);
+
+        Value *root = gutils->getNewFromOriginal(orig_root);
+        if (!forwardMode)
+          root = lookup(root, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(orig_comm);
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
 
         Value *rank = MPI_COMM_RANK(comm, Builder2, root->getType());
         Value *tysize = MPI_TYPE_SIZE(sendtype, Builder2, call.getType());
+
+        if (forwardMode) {
+          Value *args[] = {
+              /*sendbuf*/ shadow_sendbuf,
+              /*sendcount*/ sendcount,
+              /*sendtype*/ sendtype,
+              /*recvbuf*/ shadow_recvbuf,
+              /*recvcount*/ recvcount,
+              /*recvtype*/ recvtype,
+              /*root*/ root,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+
+          return;
+        }
 
         // Get the length for the allocation of the intermediate buffer
         auto sendlen_arg = Builder2.CreateZExtOrTrunc(
@@ -6463,9 +6874,17 @@ public:
     //           MPI_Comm comm)
     if (funcName == "MPI_Scatter") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
+
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
 
         Value *orig_sendbuf = call.getOperand(0);
         Value *orig_sendcount = call.getOperand(1);
@@ -6476,33 +6895,80 @@ public:
         Value *orig_root = call.getOperand(6);
         Value *orig_comm = call.getOperand(7);
 
-        Value *shadow_recvbuf =
-            lookup(gutils->invertPointerM(orig_recvbuf, Builder2), Builder2);
+        Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (!forwardMode)
+          shadow_recvbuf = lookup(shadow_recvbuf, Builder2);
         if (shadow_recvbuf->getType()->isIntegerTy())
           shadow_recvbuf = Builder2.CreateIntToPtr(
               shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
-        Value *shadow_sendbuf =
-            lookup(gutils->invertPointerM(orig_sendbuf, Builder2), Builder2);
+
+        Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (!forwardMode)
+          shadow_sendbuf = lookup(shadow_sendbuf, Builder2);
         if (shadow_sendbuf->getType()->isIntegerTy())
           shadow_sendbuf = Builder2.CreateIntToPtr(
               shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
-        Value *recvcount =
-            lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
-        Value *recvtype =
-            lookup(gutils->getNewFromOriginal(orig_recvtype), Builder2);
+        Value *recvcount = gutils->getNewFromOriginal(orig_recvcount);
+        if (!forwardMode)
+          recvcount = lookup(recvcount, Builder2);
 
-        Value *sendcount =
-            lookup(gutils->getNewFromOriginal(orig_sendcount), Builder2);
-        Value *sendtype =
-            lookup(gutils->getNewFromOriginal(orig_sendtype), Builder2);
+        Value *recvtype = gutils->getNewFromOriginal(orig_recvtype);
+        if (!forwardMode)
+          recvtype = lookup(recvtype, Builder2);
 
-        Value *root = lookup(gutils->getNewFromOriginal(orig_root), Builder2);
-        Value *comm = lookup(gutils->getNewFromOriginal(orig_comm), Builder2);
+        Value *sendcount = gutils->getNewFromOriginal(orig_sendcount);
+        if (!forwardMode)
+          sendcount = lookup(sendcount, Builder2);
+
+        Value *sendtype = gutils->getNewFromOriginal(orig_sendtype);
+        if (!forwardMode)
+          sendtype = lookup(sendtype, Builder2);
+
+        Value *root = gutils->getNewFromOriginal(orig_root);
+        if (!forwardMode)
+          root = lookup(root, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(orig_comm);
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
 
         Value *rank = MPI_COMM_RANK(comm, Builder2, root->getType());
         Value *tysize = MPI_TYPE_SIZE(sendtype, Builder2, call.getType());
 
+        if (forwardMode) {
+          Value *args[] = {
+              /*sendbuf*/ shadow_sendbuf,
+              /*sendcount*/ sendcount,
+              /*sendtype*/ sendtype,
+              /*recvbuf*/ shadow_recvbuf,
+              /*recvcount*/ recvcount,
+              /*recvtype*/ recvtype,
+              /*root*/ root,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal, ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+
+          return;
+        }
         // Get the length for the allocation of the intermediate buffer
         auto recvlen_arg = Builder2.CreateZExtOrTrunc(
             recvcount, Type::getInt64Ty(call.getContext()));
@@ -6671,40 +7137,96 @@ public:
 
     if (funcName == "MPI_Allgather") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
-          Mode == DerivativeMode::ReverseModeCombined) {
-        IRBuilder<> Builder2(call.getParent());
-        getReverseBuilder(Builder2);
+          Mode == DerivativeMode::ReverseModeCombined ||
+          Mode == DerivativeMode::ForwardMode) {
+        bool forwardMode = Mode == DerivativeMode::ForwardMode;
+
+        IRBuilder<> Builder2 =
+            forwardMode ? IRBuilder<>(&call) : IRBuilder<>(call.getParent());
+        if (forwardMode) {
+          getForwardBuilder(Builder2);
+        } else {
+          getReverseBuilder(Builder2);
+        }
 
         Value *orig_sendbuf = call.getOperand(0);
         Value *orig_sendcount = call.getOperand(1);
         Value *orig_sendtype = call.getOperand(2);
         Value *orig_recvbuf = call.getOperand(3);
         Value *orig_recvcount = call.getOperand(4);
+        Value *orig_recvtype = call.getOperand(5);
         Value *orig_comm = call.getOperand(6);
 
-        Value *shadow_recvbuf =
-            lookup(gutils->invertPointerM(orig_recvbuf, Builder2), Builder2);
+        Value *shadow_recvbuf = gutils->invertPointerM(orig_recvbuf, Builder2);
+        if (!forwardMode)
+          shadow_recvbuf = lookup(shadow_recvbuf, Builder2);
+
         if (shadow_recvbuf->getType()->isIntegerTy())
           shadow_recvbuf = Builder2.CreateIntToPtr(
               shadow_recvbuf, Type::getInt8PtrTy(call.getContext()));
-        Value *shadow_sendbuf =
-            lookup(gutils->invertPointerM(orig_sendbuf, Builder2), Builder2);
+
+        Value *shadow_sendbuf = gutils->invertPointerM(orig_sendbuf, Builder2);
+        if (!forwardMode)
+          shadow_sendbuf = lookup(shadow_sendbuf, Builder2);
+
         if (shadow_sendbuf->getType()->isIntegerTy())
           shadow_sendbuf = Builder2.CreateIntToPtr(
               shadow_sendbuf, Type::getInt8PtrTy(call.getContext()));
 
-        Value *recvcount =
-            lookup(gutils->getNewFromOriginal(orig_recvcount), Builder2);
+        Value *recvcount = gutils->getNewFromOriginal(orig_recvcount);
+        if (!forwardMode)
+          recvcount = lookup(recvcount, Builder2);
 
-        Value *sendcount =
-            lookup(gutils->getNewFromOriginal(orig_sendcount), Builder2);
-        Value *sendtype =
-            lookup(gutils->getNewFromOriginal(orig_sendtype), Builder2);
+        Value *recvtype = gutils->getNewFromOriginal(orig_recvtype);
+        if (!forwardMode)
+          recvtype = lookup(recvtype, Builder2);
 
-        Value *comm = lookup(gutils->getNewFromOriginal(orig_comm), Builder2);
+        Value *sendcount = gutils->getNewFromOriginal(orig_sendcount);
+        if (!forwardMode)
+          sendcount = lookup(sendcount, Builder2);
+
+        Value *sendtype = gutils->getNewFromOriginal(orig_sendtype);
+        if (!forwardMode)
+          sendtype = lookup(sendtype, Builder2);
+
+        Value *comm = gutils->getNewFromOriginal(orig_comm);
+        if (!forwardMode)
+          comm = lookup(comm, Builder2);
 
         Value *tysize = MPI_TYPE_SIZE(sendtype, Builder2, call.getType());
 
+        if (forwardMode) {
+          Value *args[] = {
+              /*sendbuf*/ shadow_sendbuf,
+              /*sendcount*/ sendcount,
+              /*sendtype*/ sendtype,
+              /*recvbuf*/ shadow_recvbuf,
+              /*recvcount*/ recvcount,
+              /*recvtype*/ recvtype,
+              /*comm*/ comm,
+          };
+
+          auto Defs = gutils->getInvertedBundles(
+              &call,
+              {ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Shadow, ValueType::Primal, ValueType::Primal,
+               ValueType::Primal},
+              Builder2, /*lookup*/ false);
+
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = call.getCalledOperand();
+#else
+          auto callval = call.getCalledValue();
+#endif
+
+#if LLVM_VERSION_MAJOR > 7
+          Builder2.CreateCall(call.getFunctionType(), callval, args, Defs);
+#else
+          Builder2.CreateCall(callval, args, Defs);
+#endif
+
+          return;
+        }
         // Get the length for the allocation of the intermediate buffer
         auto sendlen_arg = Builder2.CreateZExtOrTrunc(
             sendcount, Type::getInt64Ty(call.getContext()));

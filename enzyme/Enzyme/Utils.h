@@ -250,7 +250,7 @@ enum class DerivativeMode {
 /// and to describe argument bundles.
 enum class ValueType {
   // A value that is neither a value in the original
-  // prigram, nor the derivative.
+  // program, nor the derivative.
   None = 0,
   // The original program value
   Primal = 1,
