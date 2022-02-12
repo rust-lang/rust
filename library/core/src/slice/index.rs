@@ -48,7 +48,7 @@ const fn slice_start_index_len_fail(index: usize, len: usize) -> ! {
 
 // FIXME const-hack
 fn slice_start_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range start index {} out of range for slice of length {}", index, len);
+    panic!("range start index {index} out of range for slice of length {len}");
 }
 
 const fn slice_start_index_len_fail_ct(_: usize, _: usize) -> ! {
@@ -69,7 +69,7 @@ const fn slice_end_index_len_fail(index: usize, len: usize) -> ! {
 
 // FIXME const-hack
 fn slice_end_index_len_fail_rt(index: usize, len: usize) -> ! {
-    panic!("range end index {} out of range for slice of length {}", index, len);
+    panic!("range end index {index} out of range for slice of length {len}");
 }
 
 const fn slice_end_index_len_fail_ct(_: usize, _: usize) -> ! {
@@ -88,7 +88,7 @@ const fn slice_index_order_fail(index: usize, end: usize) -> ! {
 
 // FIXME const-hack
 fn slice_index_order_fail_rt(index: usize, end: usize) -> ! {
-    panic!("slice index starts at {} but ends at {}", index, end);
+    panic!("slice index starts at {index} but ends at {end}");
 }
 
 const fn slice_index_order_fail_ct(_: usize, _: usize) -> ! {

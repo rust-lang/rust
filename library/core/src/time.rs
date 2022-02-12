@@ -1214,7 +1214,7 @@ impl fmt::Debug for Duration {
 /// use std::time::Duration;
 ///
 /// if let Err(e) = Duration::try_from_secs_f32(-1.0) {
-///     println!("Failed conversion to Duration: {}", e);
+///     println!("Failed conversion to Duration: {e}");
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]

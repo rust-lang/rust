@@ -349,10 +349,10 @@ impl Stdin {
     /// let mut input = String::new();
     /// match io::stdin().read_line(&mut input) {
     ///     Ok(n) => {
-    ///         println!("{} bytes read", n);
-    ///         println!("{}", input);
+    ///         println!("{n} bytes read");
+    ///         println!("{input}");
     ///     }
-    ///     Err(error) => println!("error: {}", error),
+    ///     Err(error) => println!("error: {error}"),
     /// }
     /// ```
     ///
@@ -953,7 +953,7 @@ where
     }
 
     if let Err(e) = global_s().write_fmt(args) {
-        panic!("failed printing to {}: {}", label, e);
+        panic!("failed printing to {label}: {e}");
     }
 }
 

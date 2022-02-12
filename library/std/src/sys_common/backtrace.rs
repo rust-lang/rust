@@ -174,7 +174,7 @@ pub fn output_filename(
         if let Some(cwd) = cwd {
             if let Ok(stripped) = file.strip_prefix(&cwd) {
                 if let Some(s) = stripped.to_str() {
-                    return write!(fmt, ".{}{}", path::MAIN_SEPARATOR, s);
+                    return write!(fmt, ".{}{s}", path::MAIN_SEPARATOR);
                 }
             }
         }

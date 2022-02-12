@@ -314,7 +314,7 @@ impl<T: ?Sized> NonNull<T> {
     /// let ptr = NonNull::new(&mut x as *mut _).expect("ptr is null!");
     ///
     /// let ref_x = unsafe { ptr.as_ref() };
-    /// println!("{}", ref_x);
+    /// println!("{ref_x}");
     /// ```
     ///
     /// [the module documentation]: crate::ptr#safety

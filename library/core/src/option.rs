@@ -34,7 +34,7 @@
 //! // Pattern match to retrieve the value
 //! match result {
 //!     // The division was valid
-//!     Some(x) => println!("Result: {}", x),
+//!     Some(x) => println!("Result: {x}"),
 //!     // The division was invalid
 //!     None    => println!("Cannot divide by 0"),
 //! }
@@ -66,7 +66,7 @@
 //!
 //! fn check_optional(optional: Option<Box<i32>>) {
 //!     match optional {
-//!         Some(p) => println!("has value {}", p),
+//!         Some(p) => println!("has value {p}"),
 //!         None => println!("has no value"),
 //!     }
 //! }
@@ -493,7 +493,7 @@
 //! }
 //!
 //! match name_of_biggest_animal {
-//!     Some(name) => println!("the biggest animal is {}", name),
+//!     Some(name) => println!("the biggest animal is {name}"),
 //!     None => println!("there are no animals :("),
 //! }
 //! ```
@@ -615,7 +615,7 @@ impl<T> Option<T> {
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `text` on the stack.
     /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
-    /// println!("still can print text: {:?}", text);
+    /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
@@ -918,10 +918,10 @@ impl<T> Option<T> {
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {}", x));
+    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {x}"));
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {}", x));
+    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
     #[unstable(feature = "result_option_inspect", issue = "91345")]
@@ -1976,7 +1976,7 @@ impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
     /// let o: Option<usize> = Option::from(&s).map(|ss: &String| ss.len());
     ///
-    /// println!("Can still print s: {:?}", s);
+    /// println!("Can still print s: {s:?}");
     ///
     /// assert_eq!(o, Some(18));
     /// ```

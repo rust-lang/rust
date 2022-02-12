@@ -39,7 +39,7 @@ use crate::panic::{Location, PanicInfo};
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub const fn panic(expr: &'static str) -> ! {
-    // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
+    // Use Arguments::new_v1 instead of format_args!("{expr}") to potentially
     // reduce size overhead. The format_args! macro uses str's Display trait to
     // write expr, which calls Formatter::pad, which must accommodate string
     // truncation and padding (even though none is used here). Using
@@ -81,7 +81,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
         super::intrinsics::abort()
     }
 
-    panic!("index out of bounds: the len is {} but the index is {}", len, index)
+    panic!("index out of bounds: the len is {len} but the index is {index}")
 }
 
 // This function is called directly by the codegen backend, and must not have

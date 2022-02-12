@@ -130,7 +130,7 @@ Stack backtrace:
     error.backtrace = Some(trace);
     let report = Report::new(error).pretty(true).show_backtrace(true);
 
-    println!("Error: {}", report);
+    println!("Error: {report}");
     assert_eq!(expected.trim_end(), report.to_string());
 }
 
@@ -155,7 +155,7 @@ Stack backtrace:
     let error = GenericError::new_with_source("Error with two sources", error);
     let report = Report::new(error).pretty(true).show_backtrace(true);
 
-    println!("Error: {}", report);
+    println!("Error: {report}");
     assert_eq!(expected.trim_end(), report.to_string());
 }
 
@@ -355,7 +355,7 @@ Caused by:
    1: The message goes on and on.";
 
     let actual = report.to_string();
-    println!("{}", actual);
+    println!("{actual}");
     assert_eq!(expected, actual);
 }
 

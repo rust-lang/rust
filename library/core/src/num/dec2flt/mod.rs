@@ -163,7 +163,7 @@ from_str_float_impl!(f64);
 /// use std::str::FromStr;
 ///
 /// if let Err(e) = f64::from_str("a.12") {
-///     println!("Failed conversion to f64: {}", e);
+///     println!("Failed conversion to f64: {e}");
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]

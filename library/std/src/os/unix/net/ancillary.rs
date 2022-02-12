@@ -396,7 +396,7 @@ impl<'a> Iterator for Messages<'a> {
 ///     for ancillary_result in ancillary.messages() {
 ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
 ///             for fd in scm_rights {
-///                 println!("receive file descriptor: {}", fd);
+///                 println!("receive file descriptor: {fd}");
 ///             }
 ///         }
 ///     }
@@ -568,7 +568,7 @@ impl<'a> SocketAncillary<'a> {
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
-    ///                 println!("receive file descriptor: {}", fd);
+    ///                 println!("receive file descriptor: {fd}");
     ///             }
     ///         }
     ///     }
@@ -579,7 +579,7 @@ impl<'a> SocketAncillary<'a> {
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
-    ///                 println!("receive file descriptor: {}", fd);
+    ///                 println!("receive file descriptor: {fd}");
     ///             }
     ///         }
     ///     }

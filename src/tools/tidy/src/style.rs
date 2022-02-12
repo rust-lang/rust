@@ -153,9 +153,9 @@ fn contains_ignore_directive(can_contain: bool, contents: &str, check: &str) -> 
         return Directive::Deny;
     }
     // Update `can_contain` when changing this
-    if contents.contains(&format!("// ignore-tidy-{}", check))
-        || contents.contains(&format!("# ignore-tidy-{}", check))
-        || contents.contains(&format!("/* ignore-tidy-{} */", check))
+    if contents.contains(&format!("// ignore-tidy-{check}"))
+        || contents.contains(&format!("# ignore-tidy-{check}"))
+        || contents.contains(&format!("/* ignore-tidy-{check} */"))
     {
         Directive::Ignore(false)
     } else {
@@ -294,7 +294,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 suppressible_tidy_err!(
                     err,
                     skip_line_length,
-                    &format!("line longer than {} chars", max_columns)
+                    &format!("line longer than {max_columns} chars")
                 );
             }
             if !is_style_file && line.contains('\t') {
@@ -381,7 +381,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             n => suppressible_tidy_err!(
                 err,
                 skip_trailing_newlines,
-                &format!("too many trailing newlines ({})", n)
+                &format!("too many trailing newlines ({n})")
             ),
         };
         if lines > LINES {

@@ -82,7 +82,7 @@ mod imp {
                 } else if err == libc::EAGAIN {
                     return false;
                 } else {
-                    panic!("unexpected getrandom error: {}", err);
+                    panic!("unexpected getrandom error: {err}");
                 }
             } else {
                 read += result as usize;

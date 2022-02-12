@@ -33,7 +33,7 @@ fn test_debug_error() {
          }}",
         code, kind, msg
     );
-    assert_eq!(format!("{:?}", err), expected);
+    assert_eq!(format!("{err:?}"), expected);
 }
 
 #[test]
@@ -65,8 +65,8 @@ fn test_const() {
 
     assert_eq!(E.kind(), ErrorKind::NotFound);
     assert_eq!(E.to_string(), "hello");
-    assert!(format!("{:?}", E).contains("\"hello\""));
-    assert!(format!("{:?}", E).contains("NotFound"));
+    assert!(format!("{E:?}").contains("\"hello\""));
+    assert!(format!("{E:?}").contains("NotFound"));
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn test_simple_message_packing() {
             let e = &$err;
             // Check that the public api is right.
             assert_eq!(e.kind(), $kind);
-            assert!(format!("{:?}", e).contains($msg));
+            assert!(format!("{e:?}").contains($msg));
             // and we got what we expected
             assert_matches!(
                 e.repr.data(),

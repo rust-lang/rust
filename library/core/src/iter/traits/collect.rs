@@ -214,7 +214,7 @@ pub trait FromIterator<A>: Sized {
 /// {
 ///     collection
 ///         .into_iter()
-///         .map(|item| format!("{:?}", item))
+///         .map(|item| format!("{item:?}"))
 ///         .collect()
 /// }
 /// ```
@@ -332,7 +332,7 @@ impl<I: Iterator> IntoIterator for I {
 /// c.extend(vec![1, 2, 3]);
 ///
 /// // we've added these elements onto the end
-/// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{:?}", c));
+/// assert_eq!("MyCollection([5, 6, 7, 1, 2, 3])", format!("{c:?}"));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {

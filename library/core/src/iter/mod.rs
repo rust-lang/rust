@@ -144,7 +144,7 @@
 //! let values = vec![1, 2, 3, 4, 5];
 //!
 //! for x in values {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -164,7 +164,7 @@
 //! let values = vec![1, 2, 3, 4, 5];
 //!
 //! for x in values {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -181,7 +181,7 @@
 //!                 None => break,
 //!             };
 //!             let x = next;
-//!             let () = { println!("{}", x); };
+//!             let () = { println!("{x}"); };
 //!         },
 //!     };
 //!     result
@@ -280,7 +280,7 @@
 //! ```
 //! # #![allow(unused_must_use)]
 //! let v = vec![1, 2, 3, 4, 5];
-//! v.iter().map(|x| println!("{}", x));
+//! v.iter().map(|x| println!("{x}"));
 //! ```
 //!
 //! This will not print any values, as we only created an iterator, rather than
@@ -297,10 +297,10 @@
 //! ```
 //! let v = vec![1, 2, 3, 4, 5];
 //!
-//! v.iter().for_each(|x| println!("{}", x));
+//! v.iter().for_each(|x| println!("{x}"));
 //! // or
 //! for x in &v {
-//!     println!("{}", x);
+//!     println!("{x}");
 //! }
 //! ```
 //!
@@ -329,7 +329,7 @@
 //! let five_numbers = numbers.take(5);
 //!
 //! for number in five_numbers {
-//!     println!("{}", number);
+//!     println!("{number}");
 //! }
 //! ```
 //!
@@ -345,7 +345,7 @@
 //! let ones = std::iter::repeat(1);
 //! let least = ones.min().unwrap(); // Oh no! An infinite loop!
 //! // `ones.min()` causes an infinite loop, so we won't reach this point!
-//! println!("The smallest number one is {}.", least);
+//! println!("The smallest number one is {least}.");
 //! ```
 //!
 //! [`take`]: Iterator::take

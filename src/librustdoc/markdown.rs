@@ -51,7 +51,7 @@ crate fn render<P: AsRef<Path>>(
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
+        let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{name}\">\n");
         css.push_str(&s)
     }
 

@@ -86,7 +86,7 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// let socket = match UnixListener::bind("/tmp/sock") {
 ///     Ok(sock) => sock,
 ///     Err(e) => {
-///         println!("Couldn't bind: {:?}", e);
+///         println!("Couldn't bind: {e:?}");
 ///         return
 ///     }
 /// };
@@ -307,7 +307,7 @@ impl SocketAddr {
     ///     let listener = match UnixListener::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
-    ///             println!("Couldn't bind: {:?}", err);
+    ///             println!("Couldn't bind: {err:?}");
     ///             return Err(err);
     ///         }
     ///     };
@@ -346,7 +346,7 @@ impl fmt::Debug for SocketAddr {
         match self.address() {
             AddressKind::Unnamed => write!(fmt, "(unnamed)"),
             AddressKind::Abstract(name) => write!(fmt, "{} (abstract)", AsciiEscaped(name)),
-            AddressKind::Pathname(path) => write!(fmt, "{:?} (pathname)", path),
+            AddressKind::Pathname(path) => write!(fmt, "{path:?} (pathname)"),
         }
     }
 }

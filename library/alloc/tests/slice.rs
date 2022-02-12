@@ -1045,10 +1045,10 @@ fn test_split_iterators_size_hint() {
             a(v.rsplit_mut(p), b, "rsplit_mut");
 
             for n in 0..=3 {
-                a(v.splitn(n, p), b, f!("splitn, n = {}", n));
-                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {}", n));
-                a(v.rsplitn(n, p), b, f!("rsplitn, n = {}", n));
-                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {}", n));
+                a(v.splitn(n, p), b, f!("splitn, n = {n}"));
+                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {n}"));
+                a(v.rsplitn(n, p), b, f!("rsplitn, n = {n}"));
+                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {n}"));
             }
         }
     }
@@ -1184,8 +1184,8 @@ fn test_show() {
     macro_rules! test_show_vec {
         ($x:expr, $x_str:expr) => {{
             let (x, x_str) = ($x, $x_str);
-            assert_eq!(format!("{:?}", x), x_str);
-            assert_eq!(format!("{:?}", x), x_str);
+            assert_eq!(format!("{x:?}"), x_str);
+            assert_eq!(format!("{x:?}"), x_str);
         }};
     }
     let empty = Vec::<i32>::new();

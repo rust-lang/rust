@@ -239,10 +239,10 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
+            write!(f, "exit code: {code}")
         } else {
             let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "signal: {signal}")
         }
     }
 }

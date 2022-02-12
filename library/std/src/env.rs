@@ -118,7 +118,7 @@ pub struct VarsOs {
 /// // We will iterate through the references to the element returned by
 /// // env::vars();
 /// for (key, value) in env::vars() {
-///     println!("{}: {}", key, value);
+///     println!("{key}: {value}");
 /// }
 /// ```
 ///
@@ -148,7 +148,7 @@ pub fn vars() -> Vars {
 /// // We will iterate through the references to the element returned by
 /// // env::vars_os();
 /// for (key, value) in env::vars_os() {
-///     println!("{:?}: {:?}", key, value);
+///     println!("{key:?}: {value:?}");
 /// }
 /// ```
 #[must_use]
@@ -212,8 +212,8 @@ impl fmt::Debug for VarsOs {
 ///
 /// let key = "HOME";
 /// match env::var(key) {
-///     Ok(val) => println!("{}: {:?}", key, val),
-///     Err(e) => println!("couldn't interpret {}: {}", key, e),
+///     Ok(val) => println!("{key}: {val:?}"),
+///     Err(e) => println!("couldn't interpret {key}: {e}"),
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -252,8 +252,8 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 ///
 /// let key = "HOME";
 /// match env::var_os(key) {
-///     Some(val) => println!("{}: {:?}", key, val),
-///     None => println!("{} is not defined in the environment.", key)
+///     Some(val) => println!("{key}: {val:?}"),
+///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
 #[must_use]
@@ -343,7 +343,7 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 
 fn _set_var(key: &OsStr, value: &OsStr) {
     os_imp::setenv(key, value).unwrap_or_else(|e| {
-        panic!("failed to set environment variable `{:?}` to `{:?}`: {}", key, value, e)
+        panic!("failed to set environment variable `{key:?}` to `{value:?}`: {e}")
     })
 }
 
@@ -385,7 +385,7 @@ pub fn remove_var<K: AsRef<OsStr>>(key: K) {
 
 fn _remove_var(key: &OsStr) {
     os_imp::unsetenv(key)
-        .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
+        .unwrap_or_else(|e| panic!("failed to remove environment variable `{key:?}`: {e}"))
 }
 
 /// An iterator that splits an environment variable into paths according to
@@ -421,7 +421,7 @@ pub struct SplitPaths<'a> {
 ///             println!("'{}'", path.display());
 ///         }
 ///     }
-///     None => println!("{} is not defined in the environment.", key)
+///     None => println!("{key} is not defined in the environment.")
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -684,7 +684,7 @@ pub fn temp_dir() -> PathBuf {
 /// match env::current_exe() {
 ///     Ok(exe_path) => println!("Path of this executable is: {}",
 ///                              exe_path.display()),
-///     Err(e) => println!("failed to get current exe path: {}", e),
+///     Err(e) => println!("failed to get current exe path: {e}"),
 /// };
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -755,7 +755,7 @@ pub struct ArgsOs {
 ///
 /// // Prints each argument on a separate line
 /// for argument in env::args() {
-///     println!("{}", argument);
+///     println!("{argument}");
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
@@ -790,7 +790,7 @@ pub fn args() -> Args {
 ///
 /// // Prints each argument on a separate line
 /// for argument in env::args_os() {
-///     println!("{:?}", argument);
+///     println!("{argument:?}");
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]

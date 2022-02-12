@@ -55,7 +55,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 ///
 /// // Then, we iterate over it:
 /// for element in slice.iter() {
-///     println!("{}", element);
+///     println!("{element}");
 /// }
 /// ```
 ///
@@ -176,7 +176,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// }
 ///
 /// // We now have "[2, 3, 4]":
-/// println!("{:?}", slice);
+/// println!("{slice:?}");
 /// ```
 ///
 /// [`iter_mut`]: slice::iter_mut
@@ -266,7 +266,7 @@ impl<'a, T> IterMut<'a, T> {
     ///     *iter.next().unwrap() += 1;
     /// }
     /// // Now slice is "[2, 2, 3]":
-    /// println!("{:?}", slice);
+    /// println!("{slice:?}");
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "iter_to_slice", since = "1.4.0")]

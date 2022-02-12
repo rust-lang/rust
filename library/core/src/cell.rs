@@ -85,7 +85,7 @@
 //!     // of scope then the subsequent borrow would cause a dynamic thread panic.
 //!     // This is the major hazard of using `RefCell`.
 //!     let total: i32 = shared_map.borrow().values().sum();
-//!     println!("{}", total);
+//!     println!("{total}");
 //! }
 //! ```
 //!
