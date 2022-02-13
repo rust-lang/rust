@@ -82,6 +82,7 @@ enum LLVMRustAttribute {
   StackProtectReq = 30,
   StackProtectStrong = 31,
   StackProtect = 32,
+  NoUndef = 33,
 };
 
 typedef struct OpaqueRustString *RustStringRef;

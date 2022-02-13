@@ -1,15 +1,21 @@
-//
-// compile-flags: -C no-prepopulate-passes
-// only-riscv64
-// only-linux
+// compile-flags: --target riscv64gc-unknown-linux-gnu -C no-prepopulate-passes
+// needs-llvm-components: riscv
+
 #![crate_type = "lib"]
+#![no_core]
+#![feature(no_core, lang_items)]
 #![allow(improper_ctypes)]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
 
 // CHECK: define void @f_void()
 #[no_mangle]
 pub extern "C" fn f_void() {}
 
-// CHECK: define zeroext i1 @f_scalar_0(i1 zeroext %a)
+// CHECK: define noundef zeroext i1 @f_scalar_0(i1 noundef zeroext %a)
 #[no_mangle]
 pub extern "C" fn f_scalar_0(a: bool) -> bool {
     a
@@ -70,8 +76,6 @@ pub struct Tiny {
 // CHECK: define void @f_agg_tiny(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_tiny(mut e: Tiny) {
-    e.a += e.b;
-    e.c += e.d;
 }
 
 // CHECK: define i64 @f_agg_tiny_ret()
@@ -89,14 +93,12 @@ pub struct Small {
 // CHECK: define void @f_agg_small([2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small(mut x: Small) {
-    x.a += unsafe { *x.b };
-    x.b = &mut x.a;
 }
 
 // CHECK: define [2 x i64] @f_agg_small_ret()
 #[no_mangle]
 pub extern "C" fn f_agg_small_ret() -> Small {
-    Small { a: 1, b: core::ptr::null_mut() }
+    Small { a: 1, b: 0 as *mut _ }
 }
 
 #[repr(C)]
@@ -107,7 +109,6 @@ pub struct SmallAligned {
 // CHECK: define void @f_agg_small_aligned(i128 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small_aligned(mut x: SmallAligned) {
-    x.a += x.a;
 }
 
 #[repr(C)]
@@ -121,7 +122,6 @@ pub struct Large {
 // CHECK: define void @f_agg_large(%Large* {{.*}}%x)
 #[no_mangle]
 pub extern "C" fn f_agg_large(mut x: Large) {
-    x.a = x.b + x.c + x.d;
 }
 
 // CHECK: define void @f_agg_large_ret(%Large* {{.*}}sret{{.*}}, i32 signext %i, i8 signext %j)
@@ -172,7 +172,7 @@ pub unsafe extern "C" fn f_va_caller() {
         4.0f64,
         5.0f64,
         Tiny { a: 1, b: 2, c: 3, d: 4 },
-        Small { a: 10, b: core::ptr::null_mut() },
+        Small { a: 10, b: 0 as *mut _ },
         SmallAligned { a: 11 },
         Large { a: 12, b: 13, c: 14, d: 15 },
     );

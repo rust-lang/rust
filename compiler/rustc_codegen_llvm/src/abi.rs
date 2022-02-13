@@ -37,7 +37,7 @@ impl ArgAttributeExt for ArgAttribute {
     where
         F: FnMut(llvm::Attribute),
     {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg)
+        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg, NoUndef)
     }
 }
 
