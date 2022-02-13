@@ -18,7 +18,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::DiagnosticId;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
+use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS, ResImpl};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_middle::{bug, span_bug};
@@ -911,9 +911,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                 let item_def_id = this.r.local_def_id(item.id).to_def_id();
-                this.with_self_rib(Res::SelfTy(None, Some((item_def_id, false))), |this| {
-                    visit::walk_item(this, item);
-                });
+                this.with_self_rib(
+                    Res::SelfTy(
+                        None,
+                        Some(ResImpl {
+                            def_id: item_def_id,
+                            generics_allowed: true,
+                            in_trait_ref: false,
+                        }),
+                    ),
+                    |this| {
+                        visit::walk_item(this, item);
+                    },
+                );
             });
         });
     }
@@ -1211,6 +1221,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         result
     }
 
+    fn with_no_self_type<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        // Handle nested impls (inside fn bodies)
+        let previous_value = replace(&mut self.diagnostic_metadata.current_self_type, None);
+        let result = f(self);
+        self.diagnostic_metadata.current_self_type = previous_value;
+        result
+    }
+
     fn with_current_self_item<T>(&mut self, self_item: &Item, f: impl FnOnce(&mut Self) -> T) -> T {
         let previous_value =
             replace(&mut self.diagnostic_metadata.current_self_item, Some(self_item.id));
@@ -1295,30 +1313,52 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         debug!("resolve_implementation");
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-            // Dummy self type for better errors if `Self` is used in the trait path.
             this.with_self_rib(Res::SelfTy(None, None), |this| {
+                // FIXME(compiler-errors): `Self` may still exist in the value namespace,
+                // so we might be able to resolve an outer `Self` in, e.g., a const generic default.
+                this.with_no_self_type(|this| {
+                    // Resolve the self type.
+                    this.visit_ty(self_type);
+                });
+                let item_def_id = this.r.local_def_id(item_id);
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
-                    let item_def_id = this.r.local_def_id(item_id);
-
                     // Register the trait definitions from here.
                     if let Some(trait_id) = trait_id {
                         this.r.trait_impls.entry(trait_id).or_default().push(item_def_id);
                     }
-
                     let item_def_id = item_def_id.to_def_id();
-                    this.with_self_rib(Res::SelfTy(trait_id, Some((item_def_id, false))), |this| {
-                        if let Some(trait_ref) = opt_trait_reference.as_ref() {
-                            // Resolve type arguments in the trait path.
-                            visit::walk_trait_ref(this, trait_ref);
-                        }
-                        // Resolve the self type.
-                        this.visit_ty(self_type);
-                        // Resolve the generic parameters.
-                        this.visit_generics(generics);
-                        // Resolve the items within the impl.
-                        this.with_current_self_type(self_type, |this| {
-                            this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
+                    if let Some(trait_ref) = opt_trait_reference.as_ref() {
+                        this.with_self_rib(
+                            Res::SelfTy(
+                                trait_id,
+                                Some(ResImpl {
+                                    def_id: item_def_id,
+                                    generics_allowed: true,
+                                    in_trait_ref: true,
+                                }),
+                            ),
+                            |this| {
+                                // Resolve type arguments in the trait path.
+                                visit::walk_trait_ref(this, trait_ref);
+                            },
+                        );
+                    }
+                    this.with_self_rib(
+                        Res::SelfTy(
+                            trait_id,
+                            Some(ResImpl {
+                                def_id: item_def_id,
+                                generics_allowed: true,
+                                in_trait_ref: false,
+                            }),
+                        ),
+                        |this| {
+                            // Resolve the generic parameters.
+                            this.visit_generics(generics);
+                            // Resolve the items within the impl.
+                            this.with_current_self_type(self_type, |this| {
+                                this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
                                 debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                 for item in impl_items {
                                     use crate::ResolutionError::*;
@@ -1414,8 +1454,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                     }
                                 }
                             });
-                        });
-                    });
+                            });
+                        },
+                    );
                 });
             });
         });

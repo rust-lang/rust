@@ -13,6 +13,7 @@ use crate::errors::{
 };
 use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
+use hir::def::ResImpl;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{struct_span_err, Applicability, ErrorReported, FatalError};
@@ -1805,7 +1806,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Find the type of the associated item, and the trait where the associated
         // item is declared.
         let bound = match (&qself_ty.kind(), qself_res) {
-            (_, Res::SelfTy(Some(_), Some((impl_def_id, _)))) => {
+            (
+                _,
+                Res::SelfTy(
+                    Some(_),
+                    Some(ResImpl { def_id: impl_def_id, in_trait_ref: false, .. }),
+                ),
+            ) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
                 let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
@@ -2276,7 +2283,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments);
                 tcx.types.self_param
             }
-            Res::SelfTy(_, Some((def_id, forbid_generic))) => {
+            Res::SelfTy(_, Some(ResImpl { def_id, generics_allowed, .. })) => {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(path.segments);
@@ -2301,7 +2308,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the anon const, which is empty. This is why the
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
-                if forbid_generic && ty.needs_subst() {
+                if !generics_allowed && ty.needs_subst() {
                     let mut err = tcx.sess.struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
@@ -2318,6 +2325,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else {
                     self.normalize_ty(span, ty)
                 }
+            }
+            Res::SelfTy(None, None) => {
+                let mut err = tcx.sess.struct_span_err(
+                    path.span,
+                    "`Self` is not allowed in the self type of an `impl` block",
+                );
+                err.note("referencing `Self` in this position would produce an infinitely recursive type");
+                err.emit();
+                self.tcx().ty_error()
             }
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);

@@ -11,10 +11,15 @@ impl Tr for S where Self: Copy {} // OK
 impl Tr for S where S<Self>: Copy {} // OK
 impl Tr for S where Self::A: Copy {} // OK
 
-impl Tr for Self {} //~ ERROR cycle detected
-impl Tr for S<Self> {} //~ ERROR cycle detected
-impl Self {} //~ ERROR cycle detected
-impl S<Self> {} //~ ERROR cycle detected
-impl Tr<Self::A> for S {} //~ ERROR cycle detected
+impl Tr for Self {}
+//~^ ERROR `Self` is not allowed in the self type of an `impl` block
+impl Tr for S<Self> {}
+//~^ ERROR `Self` is not allowed in the self type of an `impl` block
+impl Self {}
+//~^ ERROR `Self` is not allowed in the self type of an `impl` block
+impl S<Self> {}
+//~^ ERROR `Self` is not allowed in the self type of an `impl` block
+impl Tr<Self::A> for S {}
+//~^ ERROR ambiguous associated type
 
 fn main() {}

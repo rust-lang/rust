@@ -9,6 +9,7 @@ use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 use crate::visit_lib::LibEmbargoVisitor;
 
+use hir::def::ResImpl;
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -400,8 +401,8 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         // This is part of a trait definition; document the trait.
         Res::SelfTy(Some(trait_def_id), _) => (trait_def_id, ItemType::Trait),
         // This is an inherent impl; it doesn't have its own page.
-        Res::SelfTy(None, Some((impl_def_id, _))) => return impl_def_id,
-        Res::SelfTy(None, None)
+        Res::SelfTy(None, Some(ResImpl { def_id: impl_def_id, .. })) => return impl_def_id,
+        Res::SelfTy(None, _)
         | Res::PrimTy(_)
         | Res::ToolMod
         | Res::SelfCtor(_)

@@ -108,8 +108,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if let Some(t) = t {
                     self.check_def_id(t);
                 }
-                if let Some((i, _)) = i {
-                    self.check_def_id(i);
+                if let Some(res_impl) = i {
+                    self.check_def_id(res_impl.def_id);
                 }
             }
             Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}

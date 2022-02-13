@@ -317,7 +317,7 @@ pub enum Res<Id = hir::HirId> {
         /// Optionally, the trait associated with this `Self` type.
         Option<DefId>,
         /// Optionally, the impl associated with this `Self` type.
-        Option<(DefId, bool)>,
+        Option<ResImpl>,
     ),
     /// A tool attribute module; e.g., the `rustfmt` in `#[rustfmt::skip]`.
     ///
@@ -351,6 +351,14 @@ pub enum Res<Id = hir::HirId> {
     ///
     /// **Not bound to a specific namespace.**
     Err,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
+#[derive(HashStable_Generic)]
+pub struct ResImpl {
+    pub def_id: DefId,
+    pub generics_allowed: bool,
+    pub in_trait_ref: bool,
 }
 
 /// The result of resolving a path before lowering to HIR,

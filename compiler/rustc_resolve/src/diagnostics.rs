@@ -123,16 +123,16 @@ impl<'a> Resolver<'a> {
 
                 let sm = self.session.source_map();
                 match outer_res {
-                    Res::SelfTy(maybe_trait_defid, maybe_impl_defid) => {
+                    Res::SelfTy(maybe_trait_defid, maybe_res_impl) => {
                         if let Some(impl_span) =
-                            maybe_impl_defid.and_then(|(def_id, _)| self.opt_span(def_id))
+                            maybe_res_impl.and_then(|res_impl| self.opt_span(res_impl.def_id))
                         {
                             err.span_label(
                                 reduce_impl_span_to_impl_keyword(sm, impl_span),
                                 "`Self` type implicitly declared here, by this `impl`",
                             );
                         }
-                        match (maybe_trait_defid, maybe_impl_defid) {
+                        match (maybe_trait_defid, maybe_res_impl) {
                             (Some(_), None) => {
                                 err.span_label(span, "can't use `Self` here");
                             }
