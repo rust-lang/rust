@@ -8,4 +8,6 @@ fn foo() {
     async move || {};
     static || {};
     static move || {};
+    static async || {};
+    static async move || {};
 }
