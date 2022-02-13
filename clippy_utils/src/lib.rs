@@ -2042,24 +2042,6 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
     expr
 }
 
-#[macro_export]
-macro_rules! unwrap_cargo_metadata {
-    ($cx: ident, $lint: ident, $deps: expr) => {{
-        let mut command = cargo_metadata::MetadataCommand::new();
-        if !$deps {
-            command.no_deps();
-        }
-
-        match command.exec() {
-            Ok(metadata) => metadata,
-            Err(err) => {
-                span_lint($cx, $lint, DUMMY_SP, &format!("could not read cargo metadata: {}", err));
-                return;
-            },
-        }
-    }};
-}
-
 pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
         if let Res::Def(_, def_id) = path.res {

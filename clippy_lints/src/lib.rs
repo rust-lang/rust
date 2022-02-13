@@ -178,7 +178,7 @@ mod bool_assert_comparison;
 mod booleans;
 mod borrow_as_ptr;
 mod bytecount;
-mod cargo_common_metadata;
+mod cargo;
 mod case_sensitive_file_extension_comparisons;
 mod casts;
 mod checked_conversions;
@@ -220,7 +220,6 @@ mod exhaustive_items;
 mod exit;
 mod explicit_write;
 mod fallible_impl_from;
-mod feature_name;
 mod float_equality_without_abs;
 mod float_literal;
 mod floating_point_arithmetic;
@@ -290,7 +289,6 @@ mod missing_enforced_import_rename;
 mod missing_inline;
 mod module_style;
 mod modulo_arithmetic;
-mod multiple_crate_versions;
 mod mut_key;
 mod mut_mut;
 mod mut_mutex_lock;
@@ -399,7 +397,6 @@ mod vec;
 mod vec_init_then_push;
 mod vec_resize_to_zero;
 mod verbose_file_reads;
-mod wildcard_dependencies;
 mod wildcard_imports;
 mod write;
 mod zero_div_zero;
@@ -724,10 +721,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(redundant_else::RedundantElse));
     store.register_late_pass(|| Box::new(create_dir::CreateDir));
     store.register_early_pass(|| Box::new(needless_arbitrary_self_type::NeedlessArbitrarySelfType));
-    let cargo_ignore_publish = conf.cargo_ignore_publish;
-    store.register_late_pass(move || Box::new(cargo_common_metadata::CargoCommonMetadata::new(cargo_ignore_publish)));
-    store.register_late_pass(|| Box::new(multiple_crate_versions::MultipleCrateVersions));
-    store.register_late_pass(|| Box::new(wildcard_dependencies::WildcardDependencies));
     let literal_representation_lint_fraction_readability = conf.unreadable_literal_lint_fractions;
     store.register_early_pass(move || {
         Box::new(literal_representation::LiteralDigitGrouping::new(
@@ -842,7 +835,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(move || Box::new(disallowed_script_idents::DisallowedScriptIdents::new(&scripts)));
     store.register_late_pass(|| Box::new(strlen_on_c_strings::StrlenOnCStrings));
     store.register_late_pass(move || Box::new(self_named_constructors::SelfNamedConstructors));
-    store.register_late_pass(move || Box::new(feature_name::FeatureName));
     store.register_late_pass(move || Box::new(iter_not_returning_iterator::IterNotReturningIterator));
     store.register_late_pass(move || Box::new(manual_assert::ManualAssert));
     let enable_raw_pointer_heuristic_for_send = conf.enable_raw_pointer_heuristic_for_send;
@@ -864,6 +856,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(manual_bits::ManualBits::new(msrv)));
     store.register_late_pass(|| Box::new(default_union_representation::DefaultUnionRepresentation));
     store.register_late_pass(|| Box::new(dbg_macro::DbgMacro));
+    let cargo_ignore_publish = conf.cargo_ignore_publish;
+    store.register_late_pass(move || {
+        Box::new(cargo::Cargo {
+            ignore_publish: cargo_ignore_publish,
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
