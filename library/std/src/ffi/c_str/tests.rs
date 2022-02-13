@@ -33,14 +33,6 @@ fn build_with_zero2() {
 }
 
 #[test]
-fn build_with_zero3() {
-    unsafe {
-        let s = CString::from_vec_unchecked(vec![0]);
-        assert_eq!(s.as_bytes(), b"\0");
-    }
-}
-
-#[test]
 fn formatted() {
     let s = CString::new(&b"abc\x01\x02\n\xE2\x80\xA6\xFF"[..]).unwrap();
     assert_eq!(format!("{:?}", s), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
