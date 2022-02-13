@@ -113,15 +113,18 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         ),
         moniker_provider: None,
         experimental: Some(json!({
-            "joinLines": true,
-            "openCargoToml": true,
-            "ssr": true,
-            "onEnter": true,
-            "parentModule": true,
+            "externalDocs": true,
             "hoverRange": true,
+            "joinLines": true,
+            "matchingBrace": true,
+            "moveItems": true,
+            "onEnter": true,
+            "openCargoToml": true,
+            "parentModule": true,
             "runnables": {
                 "kinds": [ "cargo" ],
             },
+            "ssr": true,
             "workspaceSymbolScopeKindFiltering": true,
         })),
     }
