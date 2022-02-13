@@ -21,9 +21,10 @@ use std::lazy::SyncLazy;
 
 pub enum LangItemGroup {
     Op,
+    Fn,
 }
 
-const NUM_GROUPS: usize = 1;
+const NUM_GROUPS: usize = 2;
 
 macro_rules! expand_group {
     () => {
@@ -98,11 +99,12 @@ macro_rules! language_item_table {
             /// Construct an empty collection of lang items and no missing ones.
             pub fn new() -> Self {
                 fn init_none(_: LangItem) -> Option<DefId> { None }
+                const EMPTY: Vec<DefId> = Vec::new();
 
                 Self {
                     items: vec![$(init_none(LangItem::$variant)),*],
                     missing: Vec::new(),
-                    groups: [vec![]; NUM_GROUPS],
+                    groups: [EMPTY; NUM_GROUPS],
                 }
             }
 
@@ -251,9 +253,9 @@ language_item_table! {
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
-    Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    Fn(Fn),                  kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    FnMut(Fn),               sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
+    FnOnce(Fn),              sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
@@ -264,8 +266,8 @@ language_item_table! {
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
-    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
+    PartialEq(Op),           sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    PartialOrd(Op),          sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.

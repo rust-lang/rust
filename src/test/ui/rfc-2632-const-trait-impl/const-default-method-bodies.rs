@@ -23,7 +23,8 @@ impl const ConstDefaultFn for ConstImpl {
 
 const fn test() {
     NonConstImpl.a();
-    //~^ ERROR calls in constant functions are limited to constant functions, tuple structs and tuple variants
+    //~^ ERROR the trait bound
+    //~| ERROR cannot call non-const fn
     ConstImpl.a();
 }
 

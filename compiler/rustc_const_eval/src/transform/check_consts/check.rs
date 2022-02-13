@@ -14,6 +14,7 @@ use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty,
 use rustc_middle::ty::{Binder, TraitPredicate, TraitRef};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
 use rustc_trait_selection::traits::SelectionContext;
 
 use std::mem;
@@ -293,13 +294,13 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp) {
+    pub fn check_op(&mut self, op: impl NonConstOp<'tcx>) {
         self.check_op_spanned(op, self.span);
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context.
-    pub fn check_op_spanned<O: NonConstOp>(&mut self, op: O, span: Span) {
+    pub fn check_op_spanned<O: NonConstOp<'tcx>>(&mut self, op: O, span: Span) {
         let gate = match op.status_in_item(self.ccx) {
             Status::Allowed => return,
 
@@ -773,7 +774,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, .. } => {
+            TerminatorKind::Call { func, args, fn_span, from_hir_call, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id().to_def_id();
 
@@ -797,20 +798,24 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if let Some(trait_id) = tcx.trait_of_item(callee) {
                     trace!("attempting to call a trait method");
                     if !self.tcx.features().const_trait_impl {
-                        self.check_op(ops::FnCallNonConst(Some((callee, substs))));
+                        self.check_op(ops::FnCallNonConst {
+                            caller,
+                            callee,
+                            substs,
+                            span: *fn_span,
+                            from_hir_call: *from_hir_call,
+                        });
                         return;
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let obligation = Obligation::new(
-                        ObligationCause::dummy(),
-                        param_env,
-                        Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: ty::BoundConstness::NotConst,
-                            polarity: ty::ImplPolarity::Positive,
-                        }),
-                    );
+                    let poly_trait_pred = Binder::dummy(TraitPredicate {
+                        trait_ref,
+                        constness: ty::BoundConstness::ConstIfConst,
+                        polarity: ty::ImplPolarity::Positive,
+                    });
+                    let obligation =
+                        Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
 
                     let implsrc = tcx.infer_ctxt().enter(|infcx| {
                         let mut selcx = SelectionContext::new(&infcx);
@@ -826,10 +831,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             return;
                         }
                         Ok(Some(ImplSource::UserDefined(data))) => {
-                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
-                                self.check_op(ops::FnCallNonConst(None));
-                                return;
-                            }
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
                                 .associated_item_def_ids(data.impl_def_id)
@@ -841,22 +842,61 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                 substs = InternalSubsts::identity_for_item(tcx, did);
                                 callee = did;
                             }
+
+                            if let hir::Constness::NotConst = tcx.impl_constness(data.impl_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                });
+                                return;
+                            }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
                             // At this point, it is only legal when the caller is marked with
                             // #[default_method_body_is_const], and the callee is in the same
                             // trait.
                             let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some() {
-                                if tcx.has_attr(caller, sym::default_method_body_is_const) {
-                                    if tcx.trait_of_item(caller) == callee_trait {
-                                        nonconst_call_permission = true;
-                                    }
-                                }
+                            if callee_trait.is_some()
+                                && tcx.has_attr(caller, sym::default_method_body_is_const)
+                                && callee_trait == tcx.trait_of_item(caller)
+                                // Can only call methods when it's `<Self as TheTrait>::f`.
+                                && tcx.types.self_param == substs.type_at(0)
+                            {
+                                nonconst_call_permission = true;
                             }
 
                             if !nonconst_call_permission {
-                                self.check_op(ops::FnCallNonConst(None));
+                                let obligation = Obligation::new(
+                                    ObligationCause::dummy_with_span(*fn_span),
+                                    param_env,
+                                    tcx.mk_predicate(
+                                        poly_trait_pred.map_bound(ty::PredicateKind::Trait),
+                                    ),
+                                );
+
+                                // improve diagnostics by showing what failed. Our requirements are stricter this time
+                                // as we are going to error again anyways.
+                                tcx.infer_ctxt().enter(|infcx| {
+                                    if let Err(e) = implsrc {
+                                        infcx.report_selection_error(
+                                            obligation.clone(),
+                                            &obligation,
+                                            &e,
+                                            false,
+                                        );
+                                    }
+                                });
+
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                });
                                 return;
                             }
                         }
@@ -925,7 +965,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     if !nonconst_call_permission {
-                        self.check_op(ops::FnCallNonConst(None));
+                        self.check_op(ops::FnCallNonConst {
+                            caller,
+                            callee,
+                            substs,
+                            span: *fn_span,
+                            from_hir_call: *from_hir_call,
+                        });
                         return;
                     }
                 }
