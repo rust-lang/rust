@@ -98,7 +98,6 @@ impl<'a> State<'a> {
                 self.print_block(&a)
             }
             Node::Lifetime(a) => self.print_lifetime(&a),
-            Node::Visibility(a) => self.print_visibility(&a),
             Node::GenericParam(_) => panic!("cannot print Node::GenericParam"),
             Node::Field(_) => panic!("cannot print Node::Field"),
             // These cases do not carry enough information in the

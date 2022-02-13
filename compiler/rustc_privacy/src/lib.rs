@@ -296,28 +296,6 @@ fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visib
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Visitor used to determine if pub(restricted) is used anywhere in the crate.
-///
-/// This is done so that `private_in_public` warnings can be turned into hard errors
-/// in crates that have been updated to use pub(restricted).
-////////////////////////////////////////////////////////////////////////////////
-struct PubRestrictedVisitor<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    has_pub_restricted: bool,
-}
-
-impl<'tcx> Visitor<'tcx> for PubRestrictedVisitor<'tcx> {
-    type NestedFilter = nested_filter::All;
-
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
-    }
-    fn visit_vis(&mut self, vis: &'tcx hir::Visibility<'tcx>) {
-        self.has_pub_restricted = self.has_pub_restricted || vis.node.is_pub_restricted();
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine impl visibility and reachability.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2083,11 +2061,12 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
     };
     tcx.hir().walk_toplevel_module(&mut visitor);
 
-    let has_pub_restricted = {
-        let mut pub_restricted_visitor = PubRestrictedVisitor { tcx, has_pub_restricted: false };
-        tcx.hir().walk_toplevel_module(&mut pub_restricted_visitor);
-        pub_restricted_visitor.has_pub_restricted
-    };
+    let has_pub_restricted = tcx.resolutions(()).visibilities.iter().any(|(&def_id, &v)| match v {
+        ty::Visibility::Public | ty::Visibility::Invisible => false,
+        ty::Visibility::Restricted(module) => {
+            module != tcx.parent_module_from_def_id(def_id).to_def_id()
+        }
+    });
 
     let mut old_error_set_ancestry = HirIdSet::default();
     for mut id in visitor.old_error_set.iter().copied() {

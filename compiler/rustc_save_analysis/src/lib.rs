@@ -27,7 +27,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::cstore::ExternCrate;
 use rustc_session::output::{filename_for_metadata, out_filename};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::*;
 
@@ -595,11 +594,6 @@ impl<'tcx> SaveContext<'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
-            Node::Visibility(&Spanned {
-                node: hir::VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.res,
-
             Node::PathSegment(seg) => match seg.res {
                 Some(res) if res != Res::Err => res,
                 _ => {

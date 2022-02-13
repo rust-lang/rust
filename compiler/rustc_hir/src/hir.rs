@@ -3210,7 +3210,6 @@ pub enum Node<'hir> {
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam<'hir>),
-    Visibility(&'hir Visibility<'hir>),
 
     Crate(&'hir Mod<'hir>),
 
@@ -3253,7 +3252,6 @@ impl<'hir> Node<'hir> {
             | Node::Binding(..)
             | Node::Arm(..)
             | Node::Local(..)
-            | Node::Visibility(..)
             | Node::Crate(..)
             | Node::Ty(..)
             | Node::TraitRef(..)
@@ -3318,18 +3316,18 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(i) => match i.kind {
                 ItemKind::Fn(ref sig, ref generics, _) => {
-                    Some(FnKind::ItemFn(i.ident, generics, sig.header, &i.vis))
+                    Some(FnKind::ItemFn(i.ident, generics, sig.header))
                 }
                 _ => None,
             },
             Node::TraitItem(ti) => match ti.kind {
                 TraitItemKind::Fn(ref sig, TraitFn::Provided(_)) => {
-                    Some(FnKind::Method(ti.ident, sig, None))
+                    Some(FnKind::Method(ti.ident, sig))
                 }
                 _ => None,
             },
             Node::ImplItem(ii) => match ii.kind {
-                ImplItemKind::Fn(ref sig, _) => Some(FnKind::Method(ii.ident, sig, Some(&ii.vis))),
+                ImplItemKind::Fn(ref sig, _) => Some(FnKind::Method(ii.ident, sig)),
                 _ => None,
             },
             Node::Expr(e) => match e.kind {

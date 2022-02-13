@@ -14,7 +14,6 @@ use rustc_hir::*;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -304,7 +303,6 @@ impl<'hir> Map<'hir> {
             | Node::Param(_)
             | Node::Arm(_)
             | Node::Lifetime(_)
-            | Node::Visibility(_)
             | Node::Block(_) => return None,
         };
         Some(def_kind)
@@ -1000,12 +998,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Lifetime(lifetime) => lifetime.span,
             Node::GenericParam(param) => param.span,
-            Node::Visibility(&Spanned {
-                node: VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.span,
             Node::Infer(i) => i.span,
-            Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
         };
@@ -1232,7 +1225,6 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         Some(Node::Ctor(..)) => format!("ctor {}{}", path_str(), id_str),
         Some(Node::Lifetime(_)) => node_str("lifetime"),
         Some(Node::GenericParam(ref param)) => format!("generic_param {:?}{}", param, id_str),
-        Some(Node::Visibility(ref vis)) => format!("visibility {:?}{}", vis, id_str),
         Some(Node::Crate(..)) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
