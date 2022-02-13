@@ -805,6 +805,115 @@ fn foo() {
     }
 
     #[test]
+    fn test_hl_break_for_but_not_continue() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in () {
+ // ^^^^^^^^^^^
+        break;
+     // ^^^^^
+        continue;
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+                break 'outer;
+             // ^^^^^^^^^^^^
+                continue 'inner;
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            continue 'outer;
+            break;
+            continue;
+        }
+        break;
+     // ^^^^^
+        continue;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_continue_for_but_not_break() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in () {
+ // ^^^^^^^^^^^
+        break;
+        continue;
+     // ^^^^^^^^
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+             // ^^^^^^^^^^^^^^^
+                break 'outer;
+                continue 'inner;
+                break 'inner;
+            }
+            break 'outer;
+            continue$0 'outer;
+         // ^^^^^^^^^^^^^^^
+            break;
+            continue;
+        }
+        break;
+        continue;
+     // ^^^^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_and_continue() {
+        check(
+            r#"
+fn foo() {
+    'outer$0: for _ in () {
+ // ^^^^^^^^^^^
+        break;
+     // ^^^^^
+        continue;
+     // ^^^^^^^^
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+             // ^^^^^^^^^^^^^^^
+                break 'outer;
+             // ^^^^^^^^^^^^
+                continue 'inner;
+                break 'inner;
+            }
+            break 'outer;
+         // ^^^^^^^^^^^^
+            continue 'outer;
+         // ^^^^^^^^^^^^^^^
+            break;
+            continue;
+        }
+        break;
+     // ^^^^^
+        continue;
+     // ^^^^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_hl_break_while() {
         check(
             r#"
