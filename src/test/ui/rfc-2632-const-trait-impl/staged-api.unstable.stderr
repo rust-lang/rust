@@ -1,0 +1,12 @@
+error: implementation has missing const stability attribute
+  --> $DIR/staged-api.rs:18:1
+   |
+LL | / impl const MyTrait for Stable {
+LL | |
+LL | |
+LL | |     fn func() {}
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

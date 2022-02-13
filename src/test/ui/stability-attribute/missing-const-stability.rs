@@ -18,9 +18,15 @@ impl Foo {
     pub const fn bar() {} // ok because function is unstable
 }
 
-// FIXME Once #![feature(const_trait_impl)] is allowed to be stable, add a test
-// for const trait impls. Right now, a "trait methods cannot be stable const fn"
-// error is emitted. This occurs prior to the lint being tested here, such that
-// the lint cannot currently be tested on this use case.
+#[stable(feature = "stable", since = "1.0.0")]
+pub trait Bar {
+    #[stable(feature = "stable", since = "1.0.0")]
+    fn fun();
+}
+#[stable(feature = "stable", since = "1.0.0")]
+impl const Bar for Foo {
+    //~^ ERROR implementation has missing const stability attribute
+    fn fun() {}
+}
 
 fn main() {}

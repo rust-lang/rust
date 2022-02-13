@@ -84,8 +84,6 @@ pub fn rustc_allow_const_fn_unstable(
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    use attr::{ConstStability, StabilityLevel};
-
     // A default body marked const is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
     // restrict default bodies to only call const-stable functions.
@@ -96,9 +94,39 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Const-stability is only relevant for `const fn`.
     assert!(tcx.is_const_fn_raw(def_id));
 
-    // A function is only const-stable if it has `#[rustc_const_stable]`.
-    matches!(
-        tcx.lookup_const_stability(def_id),
-        Some(ConstStability { level: StabilityLevel::Stable { .. }, .. })
-    )
+    // A function is only const-stable if it has `#[rustc_const_stable]` or it the trait it belongs
+    // to is const-stable.
+    match tcx.lookup_const_stability(def_id) {
+        Some(stab) => stab.is_const_stable(),
+        None if is_parent_const_stable_trait(tcx, def_id) => {
+            // Remove this when `#![feature(const_trait_impl)]` is stabilized,
+            // returning `true` unconditionally.
+            tcx.sess.delay_span_bug(
+                tcx.def_span(def_id),
+                "trait implementations cannot be const stable yet",
+            );
+            true
+        }
+        None => false, // By default, items are not const stable.
+    }
+}
+
+fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    let local_def_id = def_id.expect_local();
+    let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
+
+    let Some(parent) = tcx.hir().find_parent_node(hir_id) else { return false };
+    let parent_def = tcx.hir().get(parent);
+
+    if !matches!(
+        parent_def,
+        hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Impl(hir::Impl { constness: hir::Constness::Const, .. }),
+            ..
+        })
+    ) {
+        return false;
+    }
+
+    tcx.lookup_const_stability(parent.owner).map_or(false, |stab| stab.is_const_stable())
 }

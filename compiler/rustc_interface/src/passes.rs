@@ -970,6 +970,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("layout_testing", || layout_test::test_layout(tcx));
 
+    sess.time("stable_impl_const_trait_checking", || {
+        rustc_passes::stability::check_const_impl_trait(tcx)
+    });
+
     // Avoid overwhelming user with errors if borrow checking failed.
     // I'm not sure how helpful this is, to be honest, but it avoids a
     // lot of annoying errors in the ui tests (basically,

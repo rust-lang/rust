@@ -9,6 +9,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -530,7 +531,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             return;
         }
 
-        let is_const = self.tcx.is_const_fn(def_id.to_def_id());
+        let is_const = self.tcx.is_const_fn(def_id.to_def_id())
+            || self.tcx.is_const_trait_impl_raw(def_id.to_def_id());
         let is_stable = self
             .tcx
             .lookup_stability(def_id)
@@ -602,6 +604,44 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // Note that we don't need to `check_missing_stability` for default generic parameters,
     // as we assume that any default generic parameters without attributes are automatically
     // stable (assuming they have not inherited instability from their parent).
+}
+
+struct CheckStableConstImplTrait<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> ItemLikeVisitor<'tcx> for CheckStableConstImplTrait<'tcx> {
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
+        if !matches!(
+            item.kind,
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(_),
+                constness: hir::Constness::Const,
+                ..
+            })
+        ) {
+            return;
+        }
+
+        if self.tcx.lookup_const_stability(item.def_id).map_or(false, |stab| stab.is_const_stable())
+        {
+            self.tcx
+                .sess
+                .struct_span_err(item.span, "trait implementations cannot be const stable yet")
+                .note("see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information")
+                .emit();
+        }
+    }
+
+    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {
+        // Nothing to do here.
+    }
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {
+        // Nothing to do here.
+    }
+    fn visit_foreign_item(&mut self, _foreign_item: &'tcx hir::ForeignItem<'tcx>) {
+        // Nothing to do here.
+    }
 }
 
 fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
@@ -822,6 +862,17 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         }
         intravisit::walk_ty(self, t)
     }
+}
+
+pub fn check_const_impl_trait(tcx: TyCtxt<'_>) {
+    let features = tcx.features(); // FIXME How cheap is this call?
+    // Both feature gates have to be enabled for this check to have any effect.
+    if !features.staged_api || !features.const_trait_impl {
+        return;
+    }
+
+    let mut visitor = CheckStableConstImplTrait { tcx };
+    tcx.hir().visit_all_item_likes(&mut visitor);
 }
 
 /// Given the list of enabled features that were not language features (i.e., that
