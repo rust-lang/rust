@@ -168,11 +168,10 @@ fn build_clif_sysroot_for_triple(
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
     if !super::config::get_bool("keep_sysroot") {
-        // Cleanup the target dir with the exception of build scripts and the incremental cache
-        for dir in ["build", "deps", "examples", "native"] {
-            if build_dir.join(dir).exists() {
-                fs::remove_dir_all(build_dir.join(dir)).unwrap();
-            }
+        // Cleanup the deps dir, but keep build scripts and the incremental cache for faster
+        // recompilation as they are not affected by changes in cg_clif.
+        if build_dir.join("deps").exists() {
+            fs::remove_dir_all(build_dir.join("deps")).unwrap();
         }
     }
 
