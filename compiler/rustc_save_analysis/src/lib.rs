@@ -164,7 +164,6 @@ impl<'tcx> SaveContext<'tcx> {
                         },
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         arg_names,
                         None,
                     ),
@@ -220,7 +219,6 @@ impl<'tcx> SaveContext<'tcx> {
                         sig.header,
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         &[],
                         None,
                     ),
@@ -309,7 +307,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
                 let value =
-                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
+                    enum_def_to_string(def, generics, item.ident.name, item.span);
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),

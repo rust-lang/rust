@@ -272,7 +272,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 v.process_generic_params(&generics, &method_data.qualname, hir_id);
 
                 method_data.value =
-                    fn_to_string(sig.decl, sig.header, Some(ident.name), generics, vis, &[], None);
+                    fn_to_string(sig.decl, sig.header, Some(ident.name), generics, &[], None);
                 method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
 
                 v.dumper.dump_def(&access_from_vis!(v.save_ctxt, vis, def_id), method_data);
