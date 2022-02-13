@@ -271,7 +271,6 @@ fn closure_expr(p: &mut Parser) -> CompletedMarker {
         // fn main() { || -> i32 { 92 }(); }
         block_expr(p);
     } else if p.at_ts(EXPR_FIRST) {
-        println!("gg");
         expr(p);
     } else {
         p.error("expected expression");
