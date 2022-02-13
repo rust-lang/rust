@@ -184,7 +184,6 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "scoped-tls",
     "scopeguard",
     "semver",
-    "semver-parser",
     "serde",
     "serde_derive",
     "serde_json",
