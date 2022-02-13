@@ -515,36 +515,29 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             return None;
         }
 
-        let self_id = match item_id.as_def_id() {
-            None => None,
-            Some(did)
-                if (matches!(self.cx.tcx.def_kind(did), DefKind::Field)
-                    && matches!(
-                        self.cx.tcx.def_kind(self.cx.tcx.parent(did).unwrap()),
-                        DefKind::Variant
-                    )) =>
-            {
-                self.cx.tcx.parent(did).and_then(|item_id| self.cx.tcx.parent(item_id))
-            }
-            Some(did)
-                if matches!(
-                    self.cx.tcx.def_kind(did),
-                    DefKind::AssocConst
-                        | DefKind::AssocFn
-                        | DefKind::AssocTy
-                        | DefKind::Variant
-                        | DefKind::Field
-                ) =>
-            {
-                self.cx.tcx.parent(did)
-            }
-            Some(did) => Some(did),
-        };
-
-        self_id.and_then(|self_id| match self.cx.tcx.def_kind(self_id) {
-            DefKind::Impl => self.def_id_to_res(self_id),
-            def_kind => Some(Res::Def(def_kind, self_id)),
-        })
+        let tcx = self.cx.tcx;
+        item_id
+            .as_def_id()
+            .map(|def_id| match tcx.def_kind(def_id) {
+                def_kind @ (DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::AssocTy
+                | DefKind::Variant
+                | DefKind::Field) => {
+                    let parent_def_id = tcx.parent(def_id).expect("nested item has no parent");
+                    if def_kind == DefKind::Field && tcx.def_kind(parent_def_id) == DefKind::Variant
+                    {
+                        tcx.parent(parent_def_id).expect("variant has no parent")
+                    } else {
+                        parent_def_id
+                    }
+                }
+                _ => def_id,
+            })
+            .and_then(|self_id| match tcx.def_kind(self_id) {
+                DefKind::Impl => self.def_id_to_res(self_id),
+                def_kind => Some(Res::Def(def_kind, self_id)),
+            })
     }
 
     /// Convenience wrapper around `resolve_str_path_error`.
