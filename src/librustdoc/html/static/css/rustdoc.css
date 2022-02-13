@@ -1041,7 +1041,7 @@ body.blur > :not(#help) {
 }
 
 .item-info .stab {
-	display: table;
+	display: inline-block;
 }
 .stab {
 	padding: 3px;
@@ -2018,7 +2018,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 }
 
 .method-toggle summary,
-.implementors-toggle summary {
+.implementors-toggle summary,
+.impl {
 	margin-bottom: 0.75em;
 }
 
