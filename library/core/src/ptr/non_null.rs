@@ -4,6 +4,7 @@ use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
+use crate::num::NonZeroUsize;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
@@ -400,6 +401,66 @@ impl<T: ?Sized> NonNull<T> {
     pub const fn cast<U>(self) -> NonNull<U> {
         // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
+    }
+
+    /// Casts a pointer to its raw (non-zero) bits.
+    ///
+    /// This is basically the same as `as` casting the underlying pointer, but
+    /// stays in non-null and non-zero land to avoid losing information.
+    ///
+    /// The inverse method is [`from_bits`](#method.from_bits).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_to_from_bits)]
+    /// use std::num::NonZeroUsize;
+    /// use std::ptr::NonNull;
+    ///
+    /// let dangling: NonNull<u8> = NonNull::dangling();
+    /// assert_eq!(dangling.to_bits(), NonZeroUsize::new(1).unwrap());
+    ///
+    /// let misaligned: NonNull<u64> = NonNull::new(12345 as _).unwrap();
+    /// assert_eq!(misaligned.to_bits(), NonZeroUsize::new(12345).unwrap());
+    /// ```
+    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    pub fn to_bits(self) -> NonZeroUsize
+    where
+        T: Sized,
+    {
+        // SAFETY: `self` is a `NonNull` pointer which is necessarily non-null
+        unsafe { NonZeroUsize::new_unchecked(self.as_ptr().to_bits()) }
+    }
+
+    /// Creates a pointer from its raw (non-zero) bits.
+    ///
+    /// This is basically the same as `as` casting to get the pointer, but
+    /// stays in non-null and non-zero land to avoid losing information.
+    ///
+    /// The inverse method is [`to_bits`](#method.to_bits).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_to_from_bits)]
+    /// use std::num::NonZeroUsize;
+    /// use std::ptr::NonNull;
+    ///
+    /// let dangling: NonNull<u8> = NonNull::dangling();
+    /// assert_eq!(dangling, NonNull::from_bits(NonZeroUsize::new(1).unwrap()));
+    ///
+    /// assert_eq!(
+    ///     NonNull::<i64>::from_bits(NonZeroUsize::new(12345).unwrap()),
+    ///     NonNull::<i64>::new(12345 as _).unwrap(),
+    /// );
+    /// ```
+    #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
+    pub fn from_bits(bits: NonZeroUsize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: `bits` is `NonZeroUsize`, so this always makes a non-null pointer
+        unsafe { Self::new_unchecked(<*mut T>::from_bits(bits.get())) }
     }
 }
 
