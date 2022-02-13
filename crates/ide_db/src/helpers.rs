@@ -121,7 +121,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
 
                 Some(ast::BlockModifier::Label(label)) => {
                     for_each_break_expr(Some(label), b.stmt_list(), &mut |b| {
-                        cb(&ast::Expr::BreakExpr(b))
+                        cb(&b)
                     });
                 }
                 Some(ast::BlockModifier::Unsafe(_)) => (),
@@ -151,12 +151,14 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         }
         ast::Expr::LoopExpr(l) => {
             for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
-                cb(&ast::Expr::BreakExpr(b))
+                cb(&b)
             })
         }
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
-                arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, cb));
+                arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, &mut |b| {
+                    cb(&b)
+                }));
             }
         }
         ast::Expr::ArrayExpr(_)
@@ -194,7 +196,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
 pub fn for_each_break_expr(
     label: Option<ast::Label>,
     body: Option<ast::StmtList>,
-    cb: &mut dyn FnMut(ast::BreakExpr),
+    cb: &mut dyn FnMut(ast::Expr),
 ) {
     let label = label.and_then(|lbl| lbl.lifetime());
     let mut depth = 0;
@@ -217,7 +219,7 @@ pub fn for_each_break_expr(
                     ast::Expr::BreakExpr(b)
                         if (depth == 0 && b.lifetime().is_none()) || eq_label(b.lifetime()) =>
                     {
-                        cb(b);
+                        cb(ast::Expr::BreakExpr(b));
                     }
                     _ => (),
                 },

@@ -197,11 +197,14 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
             label.as_ref().map(|it| it.syntax().text_range()),
         );
         highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
-        for_each_break_expr(label, body, &mut |break_| {
-            let range = cover_range(
-                break_.break_token().map(|it| it.text_range()),
-                break_.lifetime().map(|it| it.syntax().text_range()),
-            );
+        for_each_break_expr(label, body, &mut |expr| {
+            let range: Option<TextRange> = match expr {
+                ast::Expr::BreakExpr(break_) => cover_range(
+                    break_.break_token().map(|it| it.text_range()),
+                    break_.lifetime().map(|it| it.syntax().text_range()),
+                ),
+                _ => None,
+            };
             highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
         });
         Some(highlights)
