@@ -851,7 +851,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME(jseyfried): positional field hygiene.
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
-            vis: self.lower_visibility(&f.vis),
+            vis_span: self.lower_span(f.vis.span),
             ty,
         }
     }

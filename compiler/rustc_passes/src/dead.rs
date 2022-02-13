@@ -354,14 +354,24 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         _: hir::HirId,
         _: rustc_span::Span,
     ) {
+        let tcx = self.tcx;
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
         let pub_visibility = self.pub_visibility;
-        let live_fields = def.fields().iter().filter(|f| {
-            has_repr_c || (pub_visibility && (inherited_pub_visibility || f.vis.node.is_pub()))
+        let live_fields = def.fields().iter().filter_map(|f| {
+            let def_id = tcx.hir().local_def_id(f.hir_id);
+            if has_repr_c {
+                return Some(def_id);
+            }
+            if !pub_visibility {
+                return None;
+            }
+            if inherited_pub_visibility {
+                return Some(def_id);
+            }
+            if tcx.visibility(def_id).is_public() { Some(def_id) } else { None }
         });
-        let hir = self.tcx.hir();
-        self.live_symbols.extend(live_fields.map(|f| hir.local_def_id(f.hir_id)));
+        self.live_symbols.extend(live_fields);
 
         intravisit::walk_struct_def(self, def);
     }

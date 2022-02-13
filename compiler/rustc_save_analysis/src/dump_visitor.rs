@@ -57,9 +57,9 @@ macro_rules! down_cast_data {
 }
 
 macro_rules! access_from {
-    ($save_ctxt:expr, $item:expr, $id:expr) => {
+    ($save_ctxt:expr, $id:expr) => {
         Access {
-            public: $item.vis.node.is_pub(),
+            public: $save_ctxt.tcx.visibility($id).is_public(),
             reachable: $save_ctxt.access_levels.is_reachable($id),
         }
     };
@@ -302,7 +302,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, field, self.tcx.hir().local_def_id(field.hir_id)),
+                &access_from!(self.save_ctxt, self.tcx.hir().local_def_id(field.hir_id)),
                 field_data,
             );
         }
@@ -369,7 +369,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 v.process_formals(body.params, &fn_data.qualname);
                 v.process_generic_params(ty_params, &fn_data.qualname, item.hir_id());
 
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.def_id), fn_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item.def_id), fn_data);
             }
 
             for arg in decl.inputs {
@@ -393,7 +393,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.nest_typeck_results(item.def_id, |v| {
             if let Some(var_data) = v.save_ctxt.get_item_data(item) {
                 down_cast_data!(var_data, DefData, item.span);
-                v.dumper.dump_def(&access_from!(v.save_ctxt, item, item.def_id), var_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, item.def_id), var_data);
             }
             v.visit_ty(&typ);
             v.visit_expr(expr);
@@ -469,7 +469,11 @@ impl<'tcx> DumpVisitor<'tcx> {
                 let fields_str = fields
                     .iter()
                     .filter_map(|f| {
-                        if include_priv_fields || f.vis.node.is_pub() {
+                        if include_priv_fields {
+                            return Some(f.ident.to_string());
+                        }
+                        let def_id = self.save_ctxt.tcx.hir().local_def_id(f.hir_id);
+                        if self.save_ctxt.tcx.visibility(def_id).is_public() {
                             Some(f.ident.to_string())
                         } else {
                             None
@@ -487,7 +491,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let span = self.span_from_span(item.ident.span);
             let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item, item.def_id),
+                &access_from!(self.save_ctxt, item.def_id),
                 Def {
                     kind,
                     id: id_from_def_id(item.def_id.to_def_id()),
@@ -527,7 +531,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         };
         down_cast_data!(enum_data, DefData, item.span);
 
-        let access = access_from!(self.save_ctxt, item, item.def_id);
+        let access = access_from!(self.save_ctxt, item.def_id);
 
         for variant in enum_definition.variants {
             let name = variant.ident.name.to_string();
@@ -662,7 +666,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 methods.iter().map(|i| id_from_def_id(i.id.def_id.to_def_id())).collect();
             let attrs = self.tcx.hir().attrs(item.hir_id());
             self.dumper.dump_def(
-                &access_from!(self.save_ctxt, item, item.def_id),
+                &access_from!(self.save_ctxt, item.def_id),
                 Def {
                     kind: DefKind::Trait,
                     id,
@@ -724,7 +728,7 @@ impl<'tcx> DumpVisitor<'tcx> {
     fn process_mod(&mut self, item: &'tcx hir::Item<'tcx>) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(mod_data, DefData, item.span);
-            self.dumper.dump_def(&access_from!(self.save_ctxt, item, item.def_id), mod_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, item.def_id), mod_data);
         }
     }
 
@@ -1147,7 +1151,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
             hir::ItemKind::Use(path, hir::UseKind::Single) => {
                 let sub_span = path.segments.last().unwrap().ident.span;
                 if !self.span.filter_generated(sub_span) {
-                    let access = access_from!(self.save_ctxt, item, item.def_id);
+                    let access = access_from!(self.save_ctxt, item.def_id);
                     let ref_id = self.lookup_def_id(item.hir_id()).map(id_from_def_id);
                     let span = self.span_from_span(sub_span);
                     let parent =
@@ -1176,7 +1180,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                 // we don't want to track anyway, since it's probably macro-internal `use`
                 if let Some(sub_span) = self.span.sub_span_of_star(item.span) {
                     if !self.span.filter_generated(item.span) {
-                        let access = access_from!(self.save_ctxt, item, item.def_id);
+                        let access = access_from!(self.save_ctxt, item.def_id);
                         let span = self.span_from_span(sub_span);
                         let parent =
                             self.save_ctxt.tcx.parent(item.def_id.to_def_id()).map(id_from_def_id);
@@ -1249,7 +1253,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
                     let attrs = self.tcx.hir().attrs(item.hir_id());
 
                     self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item, item.def_id),
+                        &access_from!(self.save_ctxt, item.def_id),
                         Def {
                             kind: DefKind::Type,
                             id,
@@ -1443,7 +1447,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
-        let access = access_from!(self.save_ctxt, item, item.def_id);
+        let access = access_from!(self.save_ctxt, item.def_id);
 
         match item.kind {
             hir::ForeignItemKind::Fn(decl, _, ref generics) => {

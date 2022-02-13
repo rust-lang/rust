@@ -2671,8 +2671,8 @@ impl VisibilityKind<'_> {
 #[derive(Debug, HashStable_Generic)]
 pub struct FieldDef<'hir> {
     pub span: Span,
+    pub vis_span: Span,
     pub ident: Ident,
-    pub vis: Visibility<'hir>,
     pub hir_id: HirId,
     pub ty: &'hir Ty<'hir>,
 }

@@ -1384,66 +1384,63 @@ impl UnreachablePub {
         cx: &LateContext<'_>,
         what: &str,
         def_id: LocalDefId,
-        vis: &hir::Visibility<'_>,
-        span: Span,
+        vis_span: Span,
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        match vis.node {
-            hir::VisibilityKind::Public if !cx.access_levels.is_reachable(def_id) => {
-                if span.from_expansion() {
-                    applicability = Applicability::MaybeIncorrect;
-                }
-                let def_span = cx.tcx.sess.source_map().guess_head_span(span);
-                cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
-                    let mut err = lint.build(&format!("unreachable `pub` {}", what));
-                    let replacement = if cx.tcx.features().crate_visibility_modifier {
-                        "crate"
-                    } else {
-                        "pub(crate)"
-                    }
-                    .to_owned();
-
-                    err.span_suggestion(
-                        vis.span,
-                        "consider restricting its visibility",
-                        replacement,
-                        applicability,
-                    );
-                    if exportable {
-                        err.help("or consider exporting it for use by other crates");
-                    }
-                    err.emit();
-                });
+        if !cx.access_levels.is_reachable(def_id) {
+            if vis_span.from_expansion() {
+                applicability = Applicability::MaybeIncorrect;
             }
-            _ => {}
+            let def_span = cx.tcx.def_span(def_id);
+            cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
+                let mut err = lint.build(&format!("unreachable `pub` {}", what));
+                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                    "crate"
+                } else {
+                    "pub(crate)"
+                }
+                .to_owned();
+
+                err.span_suggestion(
+                    vis_span,
+                    "consider restricting its visibility",
+                    replacement,
+                    applicability,
+                );
+                if exportable {
+                    err.help("or consider exporting it for use by other crates");
+                }
+                err.emit();
+            });
         }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        self.perform_lint(cx, "item", item.def_id, &item.vis, item.span, true);
+        if cx.tcx.visibility(item.def_id).is_public() {
+            self.perform_lint(cx, "item", item.def_id, item.vis.span, true);
+        }
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(
-            cx,
-            "item",
-            foreign_item.def_id,
-            &foreign_item.vis,
-            foreign_item.span,
-            true,
-        );
+        if cx.tcx.visibility(foreign_item.def_id).is_public() {
+            self.perform_lint(cx, "item", foreign_item.def_id, foreign_item.vis.span, true);
+        }
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let def_id = cx.tcx.hir().local_def_id(field.hir_id);
-        self.perform_lint(cx, "field", def_id, &field.vis, field.span, false);
+        if cx.tcx.visibility(def_id).is_public() {
+            self.perform_lint(cx, "field", def_id, field.vis_span, false);
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
-        self.perform_lint(cx, "item", impl_item.def_id, &impl_item.vis, impl_item.span, false);
+        if cx.tcx.visibility(impl_item.def_id).is_public() {
+            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis.span, false);
+        }
     }
 }
 

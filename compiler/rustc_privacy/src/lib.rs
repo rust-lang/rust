@@ -660,7 +660,9 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.update_with_hir_id(ctor_hir_id, item_level);
                 }
                 for field in def.fields() {
-                    if field.vis.node.is_pub() {
+                    let def_id = self.tcx.hir().local_def_id(field.hir_id);
+                    let vis = self.tcx.visibility(def_id);
+                    if vis.is_public() {
                         self.update_with_hir_id(field.hir_id, item_level);
                     }
                 }
@@ -1633,7 +1635,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_field_def(&mut self, s: &'tcx hir::FieldDef<'tcx>) {
-        if s.vis.node.is_pub() || self.in_variant {
+        let def_id = self.tcx.hir().local_def_id(s.hir_id);
+        let vis = self.tcx.visibility(def_id);
+        if vis.is_public() || self.in_variant {
             intravisit::walk_field_def(self, s);
         }
     }
