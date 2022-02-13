@@ -21,7 +21,7 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for arguments that is only used in recursion with no side-effects.
+    /// Checks for arguments that are only used in recursion with no side-effects.
     /// The arguments can be involved in calculations and assignments but as long as
     /// the calculations have no side-effects (function calls or mutating dereference)
     /// and the assigned variables are also only in recursion, it is useless.
@@ -30,7 +30,21 @@ declare_clippy_lint! {
     /// The could contain a useless calculation and can make function simpler.
     ///
     /// ### Known problems
-    /// It could not catch the variable that has no side effects but only used in recursion.
+    /// In some cases, this would not catch all useless arguments.
+    ///
+    /// ```rust
+    /// fn foo(a: usize, b: usize) -> usize {
+    ///     let f = |x| x + 1;
+    ///
+    ///     if a == 0 {
+    ///         1
+    ///     } else {
+    ///         foo(a - 1, f(b))
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// For example, the argument `b` is only used in recursion, but the lint would not catch it.
     ///
     /// ### Example
     /// ```rust
@@ -111,10 +125,12 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
 
             visitor.visit_expr(&body.value);
             let vars = std::mem::take(&mut visitor.ret_vars);
+            // this would set the return variables to side effect
             visitor.add_side_effect(vars);
 
             let mut queue = visitor.has_side_effect.iter().copied().collect::<VecDeque<_>>();
 
+            // a simple BFS to check all the variables that have side effect
             while let Some(id) = queue.pop_front() {
                 if let Some(next) = visitor.graph.get(&id) {
                     for i in next {
@@ -134,6 +150,8 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
 
                     queue.push_back(id);
 
+                    // a simple BFS to check the graph can reach to itself
+                    // if it can't, it means the variable is never used in recursion
                     while let Some(id) = queue.pop_front() {
                         if let Some(next) = visitor.graph.get(&id) {
                             for i in next {
@@ -150,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                             cx,
                             ONLY_USED_IN_RECURSION,
                             span,
-                            "parameter is only used in recursion with no side-effects",
+                            "parameter is only used in recursion",
                             "if this is intentional, prefix with an underscore",
                             format!("_{}", ident.name.as_str()),
                             Applicability::MaybeIncorrect,
@@ -178,6 +196,21 @@ pub fn is_array(ty: Ty<'_>) -> bool {
     }
 }
 
+/// This builds the graph of side effect.
+/// The edge `a -> b` means if `a` has side effect, `b` will have side effect.
+///
+/// There are some exmaple in following code:
+/// ```rust, ignore
+/// let b = 1;
+/// let a = b; // a -> b
+/// let (c, d) = (a, b); // c -> b, d -> b
+///
+/// let e = if a == 0 { // e -> a
+///     c // e -> c
+/// } else {
+///     d // e -> d
+/// };
+/// ```
 pub struct SideEffectVisit<'tcx> {
     graph: FxHashMap<HirId, FxHashSet<HirId>>,
     has_side_effect: FxHashSet<HirId>,
@@ -241,6 +274,7 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
                 self.visit_if(bind, then_expr, else_expr);
             },
             ExprKind::Match(expr, arms, _) => self.visit_match(expr, arms),
+            // since analysing the closure is not easy, just set all variables in it to side-effect
             ExprKind::Closure(_, _, body_id, _, _) => {
                 let body = self.ty_ctx.hir().body(body_id);
                 self.visit_body(body);
@@ -359,6 +393,9 @@ impl<'tcx> SideEffectVisit<'tcx> {
         let mut ret_vars = std::mem::take(&mut self.ret_vars);
         self.visit_expr(rhs);
         self.ret_vars.append(&mut ret_vars);
+
+        // the binary operation between non primitive values are overloaded operators
+        // so they can have side-effects
         if !is_primitive(self.ty_res.expr_ty(lhs)) || !is_primitive(self.ty_res.expr_ty(rhs)) {
             self.ret_vars.iter().for_each(|id| {
                 self.has_side_effect.insert(id.0);
