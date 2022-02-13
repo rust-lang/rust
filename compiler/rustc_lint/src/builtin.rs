@@ -36,8 +36,7 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, PatKind};
-use rustc_hir::{HirId, Node};
+use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -600,7 +599,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         match it.kind {
             hir::ItemKind::Trait(.., trait_item_refs) => {
                 // Issue #11592: traits are always considered exported, even when private.
-                if let hir::VisibilityKind::Inherited = it.vis.node {
+                if cx.tcx.visibility(it.def_id)
+                    == ty::Visibility::Restricted(
+                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                    )
+                {
                     self.private_traits.insert(it.hir_id());
                     for trait_item_ref in trait_item_refs {
                         self.private_traits.insert(trait_item_ref.id.hir_id());
@@ -613,15 +616,17 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
                 // reported for missing docs.
                 let real_trait = trait_ref.path.res.def_id();
                 let Some(def_id) = real_trait.as_local() else { return };
-                let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(def_id) else { return };
-                if let hir::VisibilityKind::Inherited = item.vis.node {
+                if cx.tcx.visibility(def_id)
+                    == ty::Visibility::Restricted(
+                        cx.tcx.parent_module_from_def_id(it.def_id).to_def_id(),
+                    )
+                {
                     for impl_item_ref in items {
                         self.private_traits.insert(impl_item_ref.id.hir_id());
                     }
                 }
                 return;
             }
-
             hir::ItemKind::TyAlias(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Macro(..)
@@ -1420,7 +1425,7 @@ impl UnreachablePub {
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if cx.tcx.visibility(item.def_id).is_public() {
-            self.perform_lint(cx, "item", item.def_id, item.vis.span, true);
+            self.perform_lint(cx, "item", item.def_id, item.vis_span, true);
         }
     }
 

@@ -61,7 +61,7 @@ use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnId, MacroKind};
-use rustc_span::source_map::{respan, DesugaringKind};
+use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -1530,7 +1530,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             def_id: opaque_ty_id,
             ident: Ident::empty(),
             kind: opaque_ty_item_kind,
-            vis: respan(self.lower_span(span.shrink_to_lo()), hir::VisibilityKind::Inherited),
+            vis_span: self.lower_span(span.shrink_to_lo()),
             span: self.lower_span(opaque_ty_span),
         };
         hir::OwnerNode::Item(self.arena.alloc(opaque_ty_item))

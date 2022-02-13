@@ -291,7 +291,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         self.pub_visibility = false;
         match node {
             Node::Item(item) => {
-                self.pub_visibility = item.vis.node.is_pub();
+                self.pub_visibility = self.tcx.visibility(item.def_id).is_public();
 
                 match item.kind {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {

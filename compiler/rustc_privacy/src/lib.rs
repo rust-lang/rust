@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // .. and it corresponds to a private type in the AST (this returns
             // `None` for type parameters).
             match self.tcx.hir().find(self.tcx.hir().local_def_id_to_hir_id(did)) {
-                Some(Node::Item(item)) => !item.vis.node.is_pub(),
+                Some(Node::Item(_)) => !self.tcx.visibility(did).is_public(),
                 Some(_) | None => false,
             }
         } else {
@@ -1975,19 +1975,16 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
             match tcx.hir().get(hir_id) {
                 // Unique types created for closures participate in type privacy checking.
                 // They have visibilities inherited from the module they are defined in.
-                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. }) => {
-                    ty::Visibility::Restricted(tcx.parent_module(hir_id).to_def_id())
-                }
-                // - AST lowering may clone `use` items and the clones don't
+                Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(..), .. })
+                // - AST lowering creates dummy `use` items which don't
                 //   get their entries in the resolver's visibility table.
                 // - AST lowering also creates opaque type items with inherited visibilities.
                 //   Visibility on them should have no effect, but to avoid the visibility
                 //   query failing on some items, we provide it for opaque types as well.
-                Node::Item(hir::Item {
-                    vis,
+                | Node::Item(hir::Item {
                     kind: hir::ItemKind::Use(..) | hir::ItemKind::OpaqueTy(..),
                     ..
-                }) => ty::Visibility::from_hir(vis, hir_id, tcx),
+                }) => ty::Visibility::Restricted(tcx.parent_module(hir_id).to_def_id()),
                 // Visibilities of trait impl items are inherited from their traits
                 // and are not filled in resolve.
                 Node::ImplItem(impl_item) => {

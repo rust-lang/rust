@@ -564,6 +564,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     additional_ids: (id1, id2),
                 };
 
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(
                     module_path,
                     kind,
@@ -580,6 +581,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     is_prelude: self.r.session.contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(prefix, kind, use_tree.span, id, item, root_span, item.id, vis);
             }
             ast::UseTreeKind::Nested(ref items) => {

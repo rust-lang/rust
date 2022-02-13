@@ -4,8 +4,8 @@ crate use crate::hir_id::{HirId, ItemLocalId};
 use crate::intravisit::FnKind;
 use crate::LangItem;
 
+use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_ast::{self as ast, CrateSugar};
 use rustc_ast::{Attribute, FloatTy, IntTy, Label, LitKind, TraitObjectSyntax, UintTy};
 pub use rustc_ast::{BorrowKind, ImplPolarity, IsAuto};
 pub use rustc_ast::{CaptureBy, Movability, Mutability};
@@ -2645,29 +2645,6 @@ pub struct PolyTraitRef<'hir> {
     pub span: Span,
 }
 
-pub type Visibility<'hir> = Spanned<VisibilityKind<'hir>>;
-
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum VisibilityKind<'hir> {
-    Public,
-    Crate(CrateSugar),
-    Restricted { path: &'hir Path<'hir>, hir_id: HirId },
-    Inherited,
-}
-
-impl VisibilityKind<'_> {
-    pub fn is_pub(&self) -> bool {
-        matches!(*self, VisibilityKind::Public)
-    }
-
-    pub fn is_pub_restricted(&self) -> bool {
-        match *self {
-            VisibilityKind::Public | VisibilityKind::Inherited => false,
-            VisibilityKind::Crate(..) | VisibilityKind::Restricted { .. } => true,
-        }
-    }
-}
-
 #[derive(Debug, HashStable_Generic)]
 pub struct FieldDef<'hir> {
     pub span: Span,
@@ -2744,8 +2721,8 @@ pub struct Item<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
     pub kind: ItemKind<'hir>,
-    pub vis: Visibility<'hir>,
     pub span: Span,
+    pub vis_span: Span,
 }
 
 impl Item<'_> {
@@ -3348,7 +3325,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
     rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
-    rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
+    rustc_data_structures::static_assert_size!(super::Item<'static>, 160);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 120);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
