@@ -1,4 +1,3 @@
-#![feature(const_ptr_offset)]
 use std::ptr;
 
 // normalize-stderr-test "alloc\d+" -> "allocN"

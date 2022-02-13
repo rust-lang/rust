@@ -126,7 +126,6 @@
 #![feature(const_pin)]
 #![feature(const_replace)]
 #![feature(const_ptr_is_null)]
-#![feature(const_ptr_offset)]
 #![feature(const_ptr_offset_from)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]

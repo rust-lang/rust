@@ -1,4 +1,4 @@
-#![feature(const_ptr_offset_from, const_ptr_offset)]
+#![feature(const_ptr_offset_from)]
 #![feature(core_intrinsics)]
 
 use std::intrinsics::ptr_offset_from;
