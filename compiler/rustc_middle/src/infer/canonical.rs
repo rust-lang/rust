@@ -64,9 +64,9 @@ pub struct CanonicalVarValues<'tcx> {
 /// result.
 #[derive(Clone, Debug)]
 pub struct OriginalQueryValues<'tcx> {
-    /// Map from the universes that appear in the query to the
-    /// universes in the caller context. For the time being, we only
-    /// ever put ROOT values into the query, so this map is very
+    /// Map from the universes that appear in the query to the universes in the
+    /// caller context. For all queries except `evaluate_goal` (used by Chalk),
+    /// we only ever put ROOT values into the query, so this map is very
     /// simple.
     pub universe_map: SmallVec<[ty::UniverseIndex; 4]>,
 

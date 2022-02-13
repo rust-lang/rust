@@ -1,8 +1,6 @@
 // run-pass
 // Test references to the trait `Stream` in the bounds for associated
 // types defined on `Stream`. Issue #20551.
-// ignore-compare-mode-chalk
-
 
 trait Stream {
     type Car;

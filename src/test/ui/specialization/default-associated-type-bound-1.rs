@@ -1,6 +1,5 @@
 // Check that we check that default associated types satisfy the required
 // bounds on them.
-// ignore-compare-mode-chalk
 
 #![feature(specialization)]
 //~^ WARNING `specialization` is incomplete

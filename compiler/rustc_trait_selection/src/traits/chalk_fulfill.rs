@@ -8,7 +8,7 @@ use crate::traits::{
     PredicateObligation, SelectionError, TraitEngine,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeFoldable};
 
 pub struct FulfillmentContext<'tcx> {
     obligations: FxIndexSet<PredicateObligation<'tcx>>,
@@ -91,7 +91,12 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
                 let environment = obligation.param_env.caller_bounds();
                 let goal = ChalkEnvironmentAndGoal { environment, goal: obligation.predicate };
                 let mut orig_values = OriginalQueryValues::default();
-                let canonical_goal = infcx.canonicalize_query(goal, &mut orig_values);
+                if goal.references_error() {
+                    continue;
+                }
+
+                let canonical_goal =
+                    infcx.canonicalize_query_preserving_universes(goal, &mut orig_values);
 
                 match infcx.tcx.evaluate_goal(canonical_goal) {
                     Ok(response) => {

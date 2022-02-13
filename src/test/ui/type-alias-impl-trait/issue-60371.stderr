@@ -1,5 +1,5 @@
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/issue-60371.rs:10:17
+  --> $DIR/issue-60371.rs:8:17
    |
 LL |     type Item = impl Bug;
    |                 ^^^^^^^^
@@ -8,7 +8,7 @@ LL |     type Item = impl Bug;
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0277]: the trait bound `(): Bug` is not satisfied
-  --> $DIR/issue-60371.rs:12:40
+  --> $DIR/issue-60371.rs:10:40
    |
 LL |     const FUN: fn() -> Self::Item = || ();
    |                                        ^ the trait `Bug` is not implemented for `()`
@@ -17,7 +17,7 @@ LL |     const FUN: fn() -> Self::Item = || ();
              <&() as Bug>
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/issue-60371.rs:12:37
+  --> $DIR/issue-60371.rs:10:37
    |
 LL | impl Bug for &() {
    |              - cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
