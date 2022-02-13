@@ -31,7 +31,6 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
-mod monotonic;
 #[cfg(test)]
 mod tests;
 
@@ -50,8 +49,8 @@ pub use core::time::FromFloatSecsError;
 /// A measurement of a monotonically nondecreasing clock.
 /// Opaque and useful only with [`Duration`].
 ///
-/// Instants are always guaranteed to be no less than any previously measured
-/// instant when created, and are often useful for tasks such as measuring
+/// Instants are always guaranteed, barring [platform bugs], to be no less than any previously
+/// measured instant when created, and are often useful for tasks such as measuring
 /// benchmarks or timing how long an operation takes.
 ///
 /// Note, however, that instants are **not** guaranteed to be **steady**. In other
@@ -83,6 +82,8 @@ pub use core::time::FromFloatSecsError;
 ///    println!("{}", now.elapsed().as_secs());
 /// }
 /// ```
+///
+/// [platform bugs]: Instant#monotonicity
 ///
 /// # OS-specific behaviors
 ///
@@ -125,6 +126,26 @@ pub use core::time::FromFloatSecsError;
 /// > structure cannot represent the new point in time.
 ///
 /// [`add`]: Instant::add
+///
+/// ## Monotonicity
+///
+/// On all platforms `Instant` will try to use an OS API that guarantees monotonic behavior
+/// if available, which is the case for all [tier 1] platforms.
+/// In practice such guarantees are – under rare circumstances – broken by hardware, virtualization
+/// or operating system bugs. To work around these bugs and platforms not offering monotonic clocks
+/// [`duration_since`], [`elapsed`] and [`sub`] saturate to zero. In older Rust versions this
+/// lead to a panic instead. [`checked_duration_since`] can be used to detect and handle situations
+/// where monotonicity is violated, or `Instant`s are subtracted in the wrong order.
+///
+/// This workaround obscures programming errors where earlier and later instants are accidentally
+/// swapped. For this reason future rust versions may reintroduce panics.
+///
+/// [tier 1]: https://doc.rust-lang.org/rustc/platform-support.html
+/// [`duration_since`]: Instant::duration_since
+/// [`elapsed`]: Instant::elapsed
+/// [`sub`]: Instant::sub
+/// [`checked_duration_since`]: Instant::checked_duration_since
+///
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -247,59 +268,19 @@ impl Instant {
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn now() -> Instant {
-        let os_now = time::Instant::now();
-
-        // And here we come upon a sad state of affairs. The whole point of
-        // `Instant` is that it's monotonically increasing. We've found in the
-        // wild, however, that it's not actually monotonically increasing for
-        // one reason or another. These appear to be OS and hardware level bugs,
-        // and there's not really a whole lot we can do about them. Here's a
-        // taste of what we've found:
-        //
-        // * #48514 - OpenBSD, x86_64
-        // * #49281 - linux arm64 and s390x
-        // * #51648 - windows, x86
-        // * #56560 - windows, x86_64, AWS
-        // * #56612 - windows, x86, vm (?)
-        // * #56940 - linux, arm64
-        // * https://bugzilla.mozilla.org/show_bug.cgi?id=1487778 - a similar
-        //   Firefox bug
-        //
-        // It seems that this just happens a lot in the wild.
-        // We're seeing panics across various platforms where consecutive calls
-        // to `Instant::now`, such as via the `elapsed` function, are panicking
-        // as they're going backwards. Placed here is a last-ditch effort to try
-        // to fix things up. We keep a global "latest now" instance which is
-        // returned instead of what the OS says if the OS goes backwards.
-        //
-        // To hopefully mitigate the impact of this, a few platforms are
-        // excluded as "these at least haven't gone backwards yet".
-        //
-        // While issues have been seen on arm64 platforms the Arm architecture
-        // requires that the counter monotonically increases and that it must
-        // provide a uniform view of system time (e.g. it must not be possible
-        // for a core to receive a message from another core with a time stamp
-        // and observe time going backwards (ARM DDI 0487G.b D11.1.2). While
-        // there have been a few 64bit SoCs that have bugs which cause time to
-        // not monoticially increase, these have been fixed in the Linux kernel
-        // and we shouldn't penalize all Arm SoCs for those who refuse to
-        // update their kernels:
-        // SUN50I_ERRATUM_UNKNOWN1 - Allwinner A64 / Pine A64 - fixed in 5.1
-        // FSL_ERRATUM_A008585 - Freescale LS2080A/LS1043A - fixed in 4.10
-        // HISILICON_ERRATUM_161010101 - Hisilicon 1610 - fixed in 4.11
-        // ARM64_ERRATUM_858921 - Cortex A73 - fixed in 4.12
-        if time::Instant::actually_monotonic() {
-            return Instant(os_now);
-        }
-
-        Instant(monotonic::monotonize(os_now))
+        Instant(time::Instant::now())
     }
 
-    /// Returns the amount of time elapsed from another instant to this one.
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
     ///
     /// # Panics
     ///
-    /// This function will panic if `earlier` is later than `self`.
+    /// Previous rust versions panicked when `earlier` was later than `self`. Currently this
+    /// method saturates. Future versions may reintroduce the panic in some circumstances.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     ///
     /// # Examples
     ///
@@ -311,15 +292,21 @@ impl Instant {
     /// sleep(Duration::new(1, 0));
     /// let new_now = Instant::now();
     /// println!("{:?}", new_now.duration_since(now));
+    /// println!("{:?}", now.duration_since(new_now)); // 0ns
     /// ```
     #[must_use]
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: Instant) -> Duration {
-        self.0.checked_sub_instant(&earlier.0).expect("supplied instant is later than self")
+        self.checked_duration_since(earlier).unwrap_or_default()
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
     /// or None if that instant is later than this one.
+    ///
+    /// Due to [monotonicity bugs], even under correct logical ordering of the passed `Instant`s,
+    /// this method can return `None`.
+    ///
+    /// [monotonicity bugs]: Instant#monotonicity
     ///
     /// # Examples
     ///
@@ -364,9 +351,11 @@ impl Instant {
     ///
     /// # Panics
     ///
-    /// This function may panic if the current time is earlier than this
-    /// instant, which is something that can happen if an `Instant` is
-    /// produced synthetically.
+    /// Previous rust versions panicked when self was earlier than the current time. Currently this
+    /// method returns a Duration of zero in that case. Future versions may reintroduce the panic.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     ///
     /// # Examples
     ///
@@ -442,6 +431,16 @@ impl SubAssign<Duration> for Instant {
 impl Sub<Instant> for Instant {
     type Output = Duration;
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
+    ///
+    /// # Panics
+    ///
+    /// Previous rust versions panicked when `other` was later than `self`. Currently this
+    /// method saturates. Future versions may reintroduce the panic in some circumstances.
+    /// See [Monotonicity].
+    ///
+    /// [Monotonicity]: Instant#monotonicity
     fn sub(self, other: Instant) -> Duration {
         self.duration_since(other)
     }

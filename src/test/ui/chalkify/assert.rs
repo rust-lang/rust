@@ -1,6 +1,6 @@
-// check-pass
+// run-pass
 // compile-flags: -Z chalk
 
 fn main() {
-    println!("hello");
+    assert_eq!(1, 1);
 }

@@ -15,6 +15,7 @@ mod proc_macro_decls;
 mod queries;
 pub mod util;
 
+pub use callbacks::setup_callbacks;
 pub use interface::{run_compiler, Config};
 pub use passes::{DEFAULT_EXTERN_QUERY_PROVIDERS, DEFAULT_QUERY_PROVIDERS};
 pub use queries::Queries;

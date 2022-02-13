@@ -1,9 +1,24 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0277]: the trait bound `T: ~const A` is not satisfied
+  --> $DIR/issue-88155.rs:9:5
+   |
+LL |     T::assoc()
+   |     ^^^^^^^^^^ the trait `~const A` is not implemented for `T`
+   |
+note: the trait `A` is implemented for `T`, but that implementation is not `const`
   --> $DIR/issue-88155.rs:9:5
    |
 LL |     T::assoc()
    |     ^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `<T as A>::assoc` in constant functions
+  --> $DIR/issue-88155.rs:9:5
+   |
+LL |     T::assoc()
+   |     ^^^^^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

@@ -1281,16 +1281,28 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
+    /// ```
+    /// fn sq_then_to_string(x: u32) -> Result<String, &'static str> {
+    ///     x.checked_mul(x).map(|sq| sq.to_string()).ok_or("overflowed")
+    /// }
+    ///
+    /// assert_eq!(Ok(2).and_then(sq_then_to_string), Ok(4.to_string()));
+    /// assert_eq!(Ok(1_000_000).and_then(sq_then_to_string), Err("overflowed"));
+    /// assert_eq!(Err("not a number").and_then(sq_then_to_string), Err("not a number"));
+    /// ```
+    ///
+    /// Often used to chain fallible operations that may return [`Err`].
     ///
     /// ```
-    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
-    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
+    /// use std::{io::ErrorKind, path::Path};
     ///
-    /// assert_eq!(Ok(2).and_then(sq).and_then(sq), Ok(16));
-    /// assert_eq!(Ok(2).and_then(sq).and_then(err), Err(4));
-    /// assert_eq!(Ok(2).and_then(err).and_then(sq), Err(2));
-    /// assert_eq!(Err(3).and_then(sq).and_then(sq), Err(3));
+    /// // Note: on Windows "/" maps to "C:\"
+    /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());
+    /// assert!(root_modified_time.is_ok());
+    ///
+    /// let should_fail = Path::new("/bad/path").metadata().and_then(|md| md.modified());
+    /// assert!(should_fail.is_err());
+    /// assert_eq!(should_fail.unwrap_err().kind(), ErrorKind::NotFound);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
