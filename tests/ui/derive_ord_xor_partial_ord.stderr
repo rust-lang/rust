@@ -8,12 +8,8 @@ LL | #[derive(Ord, PartialEq, Eq)]
 note: `PartialOrd` implemented here
   --> $DIR/derive_ord_xor_partial_ord.rs:24:1
    |
-LL | / impl PartialOrd for DeriveOrd {
-LL | |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-LL | |         Some(other.cmp(self))
-LL | |     }
-LL | | }
-   | |_^
+LL | impl PartialOrd for DeriveOrd {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
@@ -25,12 +21,8 @@ LL | #[derive(Ord, PartialEq, Eq)]
 note: `PartialOrd` implemented here
   --> $DIR/derive_ord_xor_partial_ord.rs:33:1
    |
-LL | / impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
-LL | |     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-LL | |         Some(other.cmp(self))
-LL | |     }
-LL | | }
-   | |_^
+LL | impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
