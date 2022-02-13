@@ -33,19 +33,16 @@ pub(crate) fn build_sysroot(
         .join(&cg_clif_dylib);
     try_hard_link(cg_clif_build_dir.join(cg_clif_dylib), &cg_clif_dylib_path);
 
-    try_hard_link(
-        cg_clif_build_dir.join(get_file_name("cg_clif", "bin")),
-        target_dir.join("bin").join(get_file_name("cg_clif", "bin")),
-    );
-
-    // Build and copy cargo wrapper
-    let mut build_cargo_wrapper_cmd = Command::new("rustc");
-    build_cargo_wrapper_cmd
-        .arg("scripts/cargo-clif.rs")
-        .arg("-o")
-        .arg(target_dir.join("cargo-clif"))
-        .arg("-g");
-    spawn_and_wait(build_cargo_wrapper_cmd);
+    // Build and copy rustc and cargo wrappers
+    for wrapper in ["rustc-clif", "cargo-clif"] {
+        let mut build_cargo_wrapper_cmd = Command::new("rustc");
+        build_cargo_wrapper_cmd
+            .arg(PathBuf::from("scripts").join(format!("{wrapper}.rs")))
+            .arg("-o")
+            .arg(target_dir.join(wrapper))
+            .arg("-g");
+        spawn_and_wait(build_cargo_wrapper_cmd);
+    }
 
     let default_sysroot = super::rustc_info::get_default_sysroot();
 

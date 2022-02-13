@@ -2,7 +2,6 @@
 set -e
 
 ./y.rs build --no-unstable-features
-source scripts/config.sh
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true
@@ -52,7 +51,7 @@ changelog-seen = 2
 ninja = false
 
 [build]
-rustc = "$(pwd)/../build/bin/cg_clif"
+rustc = "$(pwd)/../build/rustc-clif"
 cargo = "$(rustup which cargo)"
 full-bootstrap = true
 local-rebuild = true

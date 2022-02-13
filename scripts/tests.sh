@@ -2,8 +2,6 @@
 
 set -e
 
-source scripts/config.sh
-
 export CG_CLIF_DISPLAY_CG_TIME=1
 export CG_CLIF_DISABLE_INCR_CACHE=1
 
@@ -31,8 +29,7 @@ if [[ "$(uname)" == 'Darwin' ]]; then
    export RUSTFLAGS="$RUSTFLAGS -Clink-arg=-undefined -Clink-arg=dynamic_lookup"
 fi
 
-export RUSTC=false # ensure that cg_llvm isn't accidentally used
-MY_RUSTC="$(pwd)/build/bin/cg_clif $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
+MY_RUSTC="$(pwd)/build/rustc-clif $RUSTFLAGS -L crate=target/out --out-dir target/out -Cdebuginfo=2"
 
 function no_sysroot_tests() {
     echo "[BUILD] mini_core"
@@ -124,7 +121,7 @@ function extended_sysroot_tests() {
     if [[ "$HOST_TRIPLE" = "$TARGET_TRIPLE" ]]; then
         echo "[BENCH COMPILE] ebobby/simple-raytracer"
         hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "../build/cargo-clif clean" \
-        "RUSTC=rustc RUSTFLAGS='' cargo build" \
+        "RUSTFLAGS='' cargo build" \
         "../build/cargo-clif build"
 
         echo "[BENCH RUN] ebobby/simple-raytracer"
