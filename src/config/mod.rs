@@ -106,6 +106,8 @@ create_config! {
     // Misc.
     remove_nested_parens: bool, true, true, "Remove nested parens";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls";
+    short_array_element_width_threshold: usize, 10, true,
+        "Width threshold for an array element to be considered short";
     overflow_delimited_expr: bool, false, false,
         "Allow trailing bracket/brace delimited expressions to overflow";
     struct_field_align_threshold: usize, 0, false,
@@ -591,6 +593,7 @@ spaces_around_ranges = false
 binop_separator = "Front"
 remove_nested_parens = true
 combine_control_expr = true
+short_array_element_width_threshold = 10
 overflow_delimited_expr = false
 struct_field_align_threshold = 0
 enum_discrim_align_threshold = 0
