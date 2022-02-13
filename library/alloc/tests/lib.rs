@@ -10,7 +10,6 @@
 #![feature(const_intrinsic_copy)]
 #![feature(const_mut_refs)]
 #![feature(const_nonnull_slice_from_raw_parts)]
-#![feature(const_ptr_offset)]
 #![feature(const_ptr_write)]
 #![feature(const_try)]
 #![feature(core_intrinsics)]

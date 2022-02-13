@@ -1168,7 +1168,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`pointer::offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.60.0")]
     pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Calculates the offset from a pointer, potentially wrapping.
@@ -1185,7 +1185,7 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is [`pointer::wrapping_offset`].
     #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[rustc_const_unstable(feature = "const_ptr_offset", issue = "71499")]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.60.0")]
     pub fn arith_offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
