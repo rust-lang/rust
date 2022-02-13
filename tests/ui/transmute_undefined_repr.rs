@@ -40,5 +40,9 @@ fn main() {
 
         let _: Ty<[u8; 8]> = core::mem::transmute(value::<Ty2<u32, i32>>()); // Ok, transmute to byte array
         let _: Ty2<u32, i32> = core::mem::transmute(value::<Ty<[u8; 8]>>()); // Ok, transmute from byte array
+
+        // issue #8417
+        let _: Ty2C<Ty2<u32, i32>, ()> = core::mem::transmute(value::<Ty2<u32, i32>>()); // Ok, Ty2 types are the same
+        let _: Ty2<u32, i32> = core::mem::transmute(value::<Ty2C<Ty2<u32, i32>, ()>>()); // Ok, Ty2 types are the same
     }
 }

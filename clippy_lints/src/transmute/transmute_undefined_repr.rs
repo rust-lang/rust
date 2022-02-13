@@ -255,9 +255,6 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                 ReducedTy::UnorderedFields(ty)
             },
             ty::Adt(def, substs) if def.is_struct() => {
-                if def.repr.inhibit_struct_field_reordering_opt() {
-                    return ReducedTy::OrderedFields(ty);
-                }
                 let mut iter = def
                     .non_enum_variant()
                     .fields
@@ -270,7 +267,11 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ty = sized_ty;
                     continue;
                 }
-                ReducedTy::UnorderedFields(ty)
+                if def.repr.inhibit_struct_field_reordering_opt() {
+                    ReducedTy::OrderedFields(ty)
+                } else {
+                    ReducedTy::UnorderedFields(ty)
+                }
             },
             ty::Ref(..) | ty::RawPtr(_) => ReducedTy::Ref(ty),
             _ => ReducedTy::Other(ty),
