@@ -872,7 +872,7 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    /// Same as `format_args`, but can be used in some const contexts.
+    /// Same as [`format_args`], but can be used in some const contexts.
     ///
     /// This macro is used by the panic macros for the `const_panic` feature.
     ///
@@ -886,7 +886,7 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    /// Same as `format_args`, but adds a newline in the end.
+    /// Same as [`format_args`], but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",
         issue = "none",
