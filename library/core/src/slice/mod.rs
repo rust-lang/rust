@@ -500,6 +500,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.60.0")]
+    #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
@@ -579,6 +580,7 @@ impl<T> [T] {
     /// [`as_mut_ptr`]: slice::as_mut_ptr
     #[stable(feature = "slice_ptr_range", since = "1.48.0")]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.60.0")]
+    #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[inline]
     #[must_use]
     pub const fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
