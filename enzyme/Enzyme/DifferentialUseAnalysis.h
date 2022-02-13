@@ -74,8 +74,7 @@ static inline bool is_use_directly_needed_in_reverse(
       // backwards creation shadow.
       if (!TR.query(const_cast<Value *>(SI->getValueOperand()))[{-1}].isFloat())
         for (auto pair : gutils->backwardsOnlyShadows)
-          if (pair.second.first.count(SI) &&
-              !gutils->isConstantValue(pair.first)) {
+          if (pair.second.stores.count(SI)) {
             return true;
           }
     }
@@ -84,16 +83,22 @@ static inline bool is_use_directly_needed_in_reverse(
 
   // If memtransfer, only the size may need preservation for the reverse pass
   if (auto MTI = dyn_cast<MemTransferInst>(user)) {
+    // Unless we're storing into a backwards only shadow store
+    if (MTI->getArgOperand(1) == val || MTI->getArgOperand(2) == val) {
+      for (auto pair : gutils->backwardsOnlyShadows)
+        if (pair.second.stores.count(MTI)) {
+          return true;
+        }
+    }
     if (MTI->getArgOperand(2) != val)
       return false;
   }
 
   // Preserve the length of memsets of backward creation shadows
   if (auto MS = dyn_cast<MemSetInst>(user)) {
-    if (MS->getArgOperand(2) == val) {
+    if (MS->getArgOperand(1) == val || MS->getArgOperand(2) == val) {
       for (auto pair : gutils->backwardsOnlyShadows)
-        if (pair.second.first.count(MS) &&
-            !gutils->isConstantValue(pair.first)) {
+        if (pair.second.stores.count(MS)) {
           return true;
         }
     }
@@ -266,7 +271,7 @@ static inline bool is_value_needed_in_reverse(
           // a possible pointer.
           bool rematerialized = false;
           for (auto pair : gutils->backwardsOnlyShadows)
-            if (pair.second.first.count(SI)) {
+            if (pair.second.stores.count(SI)) {
               rematerialized = true;
               break;
             }
@@ -357,14 +362,15 @@ static inline bool is_value_needed_in_reverse(
     // Anything we may try to rematerialize requires its store opreands for
     // the reverse pass.
     if (!OneLevel) {
-      if (auto SI = dyn_cast<StoreInst>(user)) {
+      if (isa<StoreInst>(user) || isa<MemTransferInst>(user) ||
+          isa<MemSetInst>(user)) {
         for (auto pair : gutils->rematerializableAllocations) {
           // Directly consider all the load uses to avoid an illegal inductive
           // recurrence. Specifically if we're asking if the alloca is used,
           // we'll set it to unused, then check the gep, then here we'll
           // directly say unused by induction instead of checking the final
           // loads.
-          if (pair.second.stores.count(SI))
+          if (pair.second.stores.count(user))
             for (LoadInst *L : pair.second.loads)
               if (is_value_needed_in_reverse<VT>(TR, gutils, L, mode, seen,
                                                  oldUnreachable)) {
@@ -475,7 +481,12 @@ struct Node {
       return true;
     return !(N.V < V) && outgoing < N.outgoing;
   }
-  void dump() { llvm::errs() << "[" << *V << ", " << (int)outgoing << "]\n"; }
+  void dump() {
+    if (V)
+      llvm::errs() << "[" << *V << ", " << (int)outgoing << "]\n";
+    else
+      llvm::errs() << "[" << V << ", " << (int)outgoing << "]\n";
+  }
 };
 
 typedef std::map<Node, std::set<Node>> Graph;
@@ -596,8 +607,8 @@ static inline void minCut(const DataLayout &DL, LoopInfo &OrigLI,
       Node u = parent.find(v)->second;
       assert(u.V != nullptr);
       assert(G[u].count(v) == 1);
-      G[u].erase(v);
       assert(G[v].count(u) == 0);
+      G[u].erase(v);
       G[v].insert(u);
       if (Recomputes.count(u.V) && u.outgoing == false)
         break;

@@ -1819,22 +1819,19 @@ public:
       I->eraseFromParent();
       changed = true;
     }
+    Logic.clear();
 
     if (changed && Logic.PostOpt) {
-      auto &MAM = Logic.PPC.MAM;
-      auto &FAM = Logic.PPC.FAM;
       PassBuilder PB;
-      PB.registerModuleAnalyses(MAM);
-      CGSCCAnalysisManager CGAM;
       LoopAnalysisManager LAM;
+      FunctionAnalysisManager FAM;
+      CGSCCAnalysisManager CGAM;
+      ModuleAnalysisManager MAM;
+      PB.registerModuleAnalyses(MAM);
       PB.registerFunctionAnalyses(FAM);
       PB.registerLoopAnalyses(LAM);
       PB.registerCGSCCAnalyses(CGAM);
-      FAM.registerPass([&] { return CGSCCAnalysisManagerFunctionProxy(CGAM); });
-      FAM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-      LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(FAM); });
-      MAM.registerPass([&] { return CGSCCAnalysisManagerModuleProxy(CGAM); });
-      CGAM.registerPass([&] { return ModuleAnalysisManagerCGSCCProxy(MAM); });
+      PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 #if LLVM_VERSION_MAJOR >= 14
       auto PM = PB.buildModuleSimplificationPipeline(OptimizationLevel::O2,
                                                      ThinOrFullLTOPhase::None);
@@ -1857,7 +1854,6 @@ public:
       }
 #endif
     }
-    Logic.clear();
     return changed;
   }
 };

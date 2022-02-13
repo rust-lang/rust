@@ -97,6 +97,7 @@ extern std::map<
 extern "C" {
 extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 extern llvm::cl::opt<bool> EnzymeFreeInternalAllocations;
+extern llvm::cl::opt<bool> EnzymeRematerialize;
 }
 
 struct InvertedPointerConfig : ValueMapConfig<const llvm::Value *> {
@@ -533,26 +534,58 @@ public:
     // the value.
     SmallPtrSet<Instruction *, 1> stores;
 
+    // Operations which deallocate the value.
+    SmallPtrSet<Instruction *, 1> frees;
+
     // Loop scope (null if not loop scoped).
     Loop *LI;
 
-    Rematerializer() : loads(), stores(), LI(nullptr) {}
+    Rematerializer() : loads(), stores(), frees(), LI(nullptr) {}
     Rematerializer(const SmallPtrSetImpl<LoadInst *> &loads,
-                   const SmallPtrSetImpl<Instruction *> &stores, Loop *LI)
+                   const SmallPtrSetImpl<Instruction *> &stores,
+                   const SmallPtrSetImpl<Instruction *> &frees, Loop *LI)
         : loads(loads.begin(), loads.end()),
-          stores(stores.begin(), stores.end()), LI(LI) {}
+          stores(stores.begin(), stores.end()),
+          frees(frees.begin(), frees.end()), LI(LI) {}
   };
+
+  struct ShadowRematerializer {
+    // Operations which must be rerun to rematerialize
+    // the original value.
+    SmallPtrSet<Instruction *, 1> stores;
+
+    // Operations which deallocate the value.
+    SmallPtrSet<Instruction *, 1> frees;
+
+    // Whether the shadow must be initialized in the primal.
+    bool primalInitialize;
+
+    // Loop scope (null if not loop scoped).
+    Loop *LI;
+
+    ShadowRematerializer()
+        : stores(), frees(), primalInitialize(), LI(nullptr) {}
+    ShadowRematerializer(const SmallPtrSetImpl<Instruction *> &stores,
+                         const SmallPtrSetImpl<Instruction *> &frees,
+                         bool primalInitialize, Loop *LI)
+        : stores(stores.begin(), stores.end()),
+          frees(frees.begin(), frees.end()), primalInitialize(primalInitialize),
+          LI(LI) {}
+  };
+
   ValueMap<Value *, Rematerializer> rematerializableAllocations;
 
   // Only loaded from and stored to (not captured), mapped to the stores (and
   // memset). Boolean denotes whether the primal initializes the shadow as well
   // (for use) as a structure which carries data.
-  ValueMap<Value *, std::pair<SmallPtrSet<Instruction *, 1>, bool>>
-      backwardsOnlyShadows;
+  ValueMap<Value *, ShadowRematerializer> backwardsOnlyShadows;
 
   void computeForwardingProperties(Instruction *V, TypeResults &TR) {
+    if (!EnzymeRematerialize)
+      return;
     SmallPtrSet<LoadInst *, 1> loads;
     SmallPtrSet<Instruction *, 1> stores;
+    SmallPtrSet<Instruction *, 1> frees;
     SmallPtrSet<IntrinsicInst *, 1> LifetimeStarts;
     bool promotable = true;
     bool shadowpromotable = true;
@@ -578,7 +611,11 @@ public:
       } else if (auto load = dyn_cast<LoadInst>(cur)) {
         loads.insert(load);
       } else if (auto store = dyn_cast<StoreInst>(cur)) {
+        // TODO only add store to shadow iff non float type
         if (store->getValueOperand() == prev) {
+          EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                      cur->getParent(), " Could not promote allocation ", *V,
+                      " due to capturing store ", *cur);
           promotable = false;
           shadowpromotable = false;
           break;
@@ -612,6 +649,9 @@ public:
             if (arg == prev) {
               promotable = false;
               shadowpromotable = false;
+              EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                          cur->getParent(), " Could not promote allocation ",
+                          *V, " due to memset use ", *cur);
               break;
             }
             break;
@@ -619,15 +659,21 @@ public:
           stores.insert(II);
           break;
         }
+        // TODO memtransfer(cpy/move)
+        case Intrinsic::memcpy:
+        case Intrinsic::memmove:
         default:
           promotable = false;
           shadowpromotable = false;
+          EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                      cur->getParent(), " Could not promote allocation ", *V,
+                      " due to unknown intrinsic ", *cur);
           break;
         }
       } else if (auto CI = dyn_cast<CallInst>(cur)) {
         Function *called = getFunctionFromCall(CI);
         if (called && isDeallocationFunction(*called, TLI)) {
-          stores.insert(CI);
+          frees.insert(CI);
           continue;
         }
         if (called && called->getName() == "julia.write_barrier") {
@@ -636,6 +682,10 @@ public:
         }
 
         promotable = false;
+
+        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                    cur->getParent(), " Could not promote allocation ", *V,
+                    " due to unknown call ", *cur);
         size_t idx = 0;
 #if LLVM_VERSION_MAJOR >= 14
         for (auto &arg : CI->args())
@@ -702,18 +752,11 @@ public:
       } else {
         promotable = false;
         shadowpromotable = false;
+        EmitWarning("NotPromotable", cur->getDebugLoc(), oldFunc,
+                    cur->getParent(), " Could not promote allocation ", *V,
+                    " due to unknown instruction ", *cur);
       }
     }
-
-    if (!shadowpromotable)
-      return;
-    backwardsOnlyShadows[V] =
-        std::make_pair(stores, primalInitializationOfShadow);
-
-    if (!promotable)
-      return;
-
-    SmallPtrSet<LoadInst *, 1> rematerializable;
 
     // Find the outermost loop of all stores, and the allocation/lifetime
     Loop *outer = OrigLI.getLoopFor(V->getParent());
@@ -722,34 +765,45 @@ public:
     }
 
     for (auto S : stores) {
-      Loop *L = OrigLI.getLoopFor(S->getParent());
-      if (outer == nullptr || L == nullptr) {
-        outer = nullptr;
-      } else {
-        Loop *anc = nullptr;
-        for (Loop *L1 = L; L1; L1 = L1->getParentLoop())
-          for (Loop *L2 = outer; L2; L2 = L2->getParentLoop()) {
-            if (L1 == L2) {
-              anc = L1;
-              goto found;
-            }
-          }
-      found:;
-        outer = anc;
-      }
+      outer = getAncestor(outer, OrigLI.getLoopFor(S->getParent()));
     }
 
+    if (!shadowpromotable)
+      return;
+
+    if (!isConstantValue(V)) {
+      backwardsOnlyShadows[V] = ShadowRematerializer(
+          stores, frees, primalInitializationOfShadow, outer);
+    }
+
+    if (!promotable)
+      return;
+
+    SmallPtrSet<LoadInst *, 1> rematerializable;
+
+    // We currently require a rematerializable allocation to have
+    // all of its loads be able to be performed again. Thus if
+    // there is an overwriting store after a load in context,
+    // it may no longer be rematerializable.
     for (auto LI : loads) {
       // Is there a store which could occur after the load.
       // In other words
-      if (mayExecuteAfter(LI, stores, outer)) {
-        continue;
+      SmallVector<Instruction *, 2> results;
+      mayExecuteAfter(results, LI, stores, outer);
+      for (auto res : results) {
+        if (overwritesToMemoryReadBy(OrigAA, SE, OrigLI, OrigDT, LI, res,
+                                     outer)) {
+          EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
+                      LI->getParent(), " Could not promote allocation ", *V,
+                      " due to load ", *LI,
+                      " which does not postdominates store ");
+          return;
+        }
       }
       rematerializable.insert(LI);
     }
-    if (rematerializable.size() == loads.size()) {
-      rematerializableAllocations[V] = Rematerializer(loads, stores, outer);
-    }
+    rematerializableAllocations[V] =
+        Rematerializer(loads, stores, frees, outer);
   }
 
   void computeGuaranteedFrees(
@@ -949,258 +1003,6 @@ public:
                    << "\n";
     }
     llvm::errs() << "end invertedPointers\n";
-  }
-
-  Value *createAntiMalloc(CallInst *orig, unsigned idx) {
-    assert(orig->getParent()->getParent() == oldFunc);
-    auto found = invertedPointers.find(orig);
-    PHINode *placeholder = cast<PHINode>(&*found->second);
-
-    // If rematerializable allocations and split mode, we can
-    // simply elect to build the entire piece in the reverse
-    // since it should be possible to perform any shadow stores
-    // of pointers (from rematerializable property) and it does
-    // not escape the function scope (lest it not be
-    // rematerializable) so all input derivatives remain zero.
-    bool backwardsShadow = false;
-    bool forwardsShadow = true;
-    {
-      auto found = backwardsOnlyShadows.find(orig);
-      if (found != backwardsOnlyShadows.end()) {
-        backwardsShadow = true;
-        forwardsShadow = found->second.second;
-      }
-    }
-
-    if (!forwardsShadow && mode == DerivativeMode::ReverseModePrimal) {
-      // Needs a stronger replacement check/assertion.
-      Value *replacement = UndefValue::get(placeholder->getType());
-      replaceAWithB(placeholder, replacement);
-      invertedPointers.erase(found);
-      invertedPointers.insert(
-          std::make_pair(orig, InvertedPointerVH(this, replacement)));
-      erase(placeholder);
-      return replacement;
-    }
-    assert(placeholder->getParent()->getParent() == newFunc);
-    placeholder->setName("");
-    IRBuilder<> bb(placeholder);
-
-    Function *Fn = orig->getCalledFunction();
-
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledOperand()))
-#else
-    if (auto castinst = dyn_cast<ConstantExpr>(orig->getCalledValue()))
-#endif
-    {
-      if (castinst->isCast())
-        if (auto fn = dyn_cast<Function>(castinst->getOperand(0)))
-          Fn = fn;
-    }
-    assert(Fn);
-
-    SmallVector<Value *, 8> args;
-#if LLVM_VERSION_MAJOR >= 14
-    for (auto &arg : orig->args())
-#else
-    for (auto &arg : orig->arg_operands())
-#endif
-    {
-      args.push_back(getNewFromOriginal(arg));
-    }
-
-    if (shadowHandlers.find(Fn->getName().str()) != shadowHandlers.end()) {
-      bb.SetInsertPoint(placeholder);
-      Value *anti = placeholder;
-
-      if (mode == DerivativeMode::ReverseModeCombined ||
-          (mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
-          (mode == DerivativeMode::ReverseModeGradient && backwardsShadow)) {
-        anti = shadowHandlers[Fn->getName().str()](bb, orig, args);
-
-        invertedPointers.erase(found);
-        bb.SetInsertPoint(placeholder);
-
-        replaceAWithB(placeholder, anti);
-        erase(placeholder);
-      }
-
-      if (auto inst = dyn_cast<Instruction>(anti))
-        bb.SetInsertPoint(inst);
-
-      if (!backwardsShadow)
-        anti = cacheForReverse(bb, anti, idx);
-      invertedPointers.insert(
-          std::make_pair(orig, InvertedPointerVH(this, anti)));
-      return anti;
-    }
-
-#if LLVM_VERSION_MAJOR >= 11
-    Value *anti =
-        bb.CreateCall(orig->getFunctionType(), orig->getCalledOperand(), args,
-                      orig->getName() + "'mi");
-#else
-    Value *anti =
-        bb.CreateCall(orig->getCalledValue(), args, orig->getName() + "'mi");
-#endif
-    cast<CallInst>(anti)->setAttributes(orig->getAttributes());
-    cast<CallInst>(anti)->setCallingConv(orig->getCallingConv());
-    cast<CallInst>(anti)->setTailCallKind(orig->getTailCallKind());
-    cast<CallInst>(anti)->setDebugLoc(getNewFromOriginal(orig->getDebugLoc()));
-
-#if LLVM_VERSION_MAJOR >= 14
-    cast<CallInst>(anti)->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                              Attribute::NoAlias);
-    cast<CallInst>(anti)->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                              Attribute::NonNull);
-#else
-    cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
-                                       Attribute::NoAlias);
-    cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex,
-                                       Attribute::NonNull);
-#endif
-    unsigned derefBytes = 0;
-    if (Fn->getName() == "malloc" || Fn->getName() == "_Znwm") {
-      if (auto ci = dyn_cast<ConstantInt>(args[0])) {
-        derefBytes = ci->getLimitedValue();
-        CallInst *cal = cast<CallInst>(getNewFromOriginal(orig));
-#if LLVM_VERSION_MAJOR >= 14
-        cast<CallInst>(anti)->addDereferenceableRetAttr(ci->getLimitedValue());
-        cal->addDereferenceableRetAttr(ci->getLimitedValue());
-#ifndef FLANG
-        AttrBuilder B(Fn->getContext());
-#else
-        AttrBuilder B;
-#endif
-        B.addDereferenceableOrNullAttr(ci->getLimitedValue());
-        cast<CallInst>(anti)->setAttributes(
-            cast<CallInst>(anti)->getAttributes().addRetAttributes(
-                orig->getContext(), B));
-        cal->setAttributes(
-            cal->getAttributes().addRetAttributes(orig->getContext(), B));
-        cal->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                 Attribute::NoAlias);
-        cal->addAttributeAtIndex(AttributeList::ReturnIndex,
-                                 Attribute::NonNull);
-#else
-        cast<CallInst>(anti)->addDereferenceableAttr(
-            llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
-        cal->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
-                                    ci->getLimitedValue());
-        cast<CallInst>(anti)->addDereferenceableOrNullAttr(
-            llvm::AttributeList::ReturnIndex, ci->getLimitedValue());
-        cal->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
-                                          ci->getLimitedValue());
-        cal->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-        cal->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
-#endif
-      }
-    }
-
-    invertedPointers.erase(found);
-    bb.SetInsertPoint(placeholder->getNextNode());
-    replaceAWithB(placeholder, anti);
-    erase(placeholder);
-
-    if (!backwardsShadow)
-      anti = cacheForReverse(bb, anti, idx);
-    else {
-      if (auto MD = hasMetadata(orig, "enzyme_fromstack")) {
-        AllocaInst *replacement =
-            bb.CreateAlloca(Type::getInt8Ty(orig->getContext()),
-                            getNewFromOriginal(orig->getArgOperand(0)));
-        replacement->takeName(anti);
-        auto Alignment =
-            cast<ConstantInt>(
-                cast<ConstantAsMetadata>(MD->getOperand(0))->getValue())
-                ->getLimitedValue();
-#if LLVM_VERSION_MAJOR >= 10
-        replacement->setAlignment(Align(Alignment));
-#else
-        replacement->setAlignment(Alignment);
-#endif
-        replaceAWithB(cast<Instruction>(anti), replacement);
-        erase(cast<Instruction>(anti));
-        anti = replacement;
-      }
-    }
-    invertedPointers.insert(
-        std::make_pair((const Value *)orig, InvertedPointerVH(this, anti)));
-
-    if (mode == DerivativeMode::ReverseModeCombined ||
-        (mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
-        (mode == DerivativeMode::ReverseModeGradient && backwardsShadow)) {
-      if (Fn->getName() == "julia.gc_alloc_obj") {
-        Type *tys[] = {
-            PointerType::get(StructType::get(orig->getContext()), 10)};
-        FunctionType *FT =
-            FunctionType::get(Type::getVoidTy(orig->getContext()), tys, true);
-        bb.CreateCall(oldFunc->getParent()->getOrInsertFunction(
-                          "julia.write_barrier", FT),
-                      anti);
-      }
-
-      if (Fn->getName() == "swift_allocObject") {
-        EmitFailure(
-            "SwiftShadowAllocation", orig->getDebugLoc(), orig,
-            "Haven't implemented shadow allocator for `swift_allocObject`",
-            *orig);
-        return anti;
-      }
-
-      Value *dst_arg = anti;
-
-      dst_arg = bb.CreateBitCast(
-          dst_arg,
-          Type::getInt8PtrTy(orig->getContext(),
-                             anti->getType()->getPointerAddressSpace()));
-
-      auto val_arg = ConstantInt::get(Type::getInt8Ty(orig->getContext()), 0);
-      Value *size;
-      // todo check if this memset is legal and if a write barrier is needed
-      if (Fn->getName() == "julia.gc_alloc_obj") {
-        size = args[1];
-      } else {
-        size = args[0];
-      }
-      auto len_arg =
-          bb.CreateZExtOrTrunc(size, Type::getInt64Ty(orig->getContext()));
-      auto volatile_arg = ConstantInt::getFalse(orig->getContext());
-
-#if LLVM_VERSION_MAJOR == 6
-      auto align_arg =
-          ConstantInt::get(Type::getInt32Ty(orig->getContext()), 1);
-      Value *nargs[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
-#else
-      Value *nargs[] = {dst_arg, val_arg, len_arg, volatile_arg};
-#endif
-
-      Type *tys[] = {dst_arg->getType(), len_arg->getType()};
-
-      auto memset = cast<CallInst>(
-          bb.CreateCall(Intrinsic::getDeclaration(newFunc->getParent(),
-                                                  Intrinsic::memset, tys),
-                        nargs));
-      // memset->addParamAttr(0, Attribute::getWithAlignment(Context,
-      // inst->getAlignment()));
-      memset->addParamAttr(0, Attribute::NonNull);
-      if (derefBytes) {
-#if LLVM_VERSION_MAJOR >= 14
-        memset->addDereferenceableParamAttr(0, derefBytes);
-        memset->setAttributes(
-            memset->getAttributes().addDereferenceableOrNullParamAttr(
-                memset->getContext(), 0, derefBytes));
-#else
-        memset->addDereferenceableAttr(llvm::AttributeList::FirstArgIndex,
-                                       derefBytes);
-        memset->addDereferenceableOrNullAttr(llvm::AttributeList::FirstArgIndex,
-                                             derefBytes);
-#endif
-      }
-    }
-
-    return anti;
   }
 
   int getIndex(std::pair<Instruction *, CacheType> idx,
@@ -1436,7 +1238,30 @@ public:
     return false;
   }
 
+  SmallVector<PHINode *, 1> rematerializedShadowPHIs;
+
   void eraseFictiousPHIs() {
+    {
+      SetVector<Instruction *> seen;
+      SmallVector<Instruction *, 1> todo;
+      for (auto P : rematerializedShadowPHIs)
+        todo.push_back(P);
+      while (todo.size()) {
+        auto P = todo.back();
+        todo.pop_back();
+        if (seen.count(P))
+          continue;
+        seen.insert(P);
+        for (auto U : P->users())
+          if (auto I = dyn_cast<Instruction>(U))
+            todo.push_back(I);
+      }
+      for (auto v : llvm::reverse(seen)) {
+        assert(v->getNumUses() == 0);
+        v->replaceAllUsesWith(UndefValue::get(v->getType()));
+        erase(v);
+      }
+    }
     std::vector<std::pair<PHINode *, Value *>> phis;
     for (auto pair : fictiousPHIs)
       phis.emplace_back(pair.first, pair.second);
@@ -1454,7 +1279,6 @@ public:
       pp->replaceAllUsesWith(UndefValue::get(pp->getType()));
       erase(pp);
     }
-    fictiousPHIs.clear();
   }
 
   TypeResults *my_TR;
@@ -1619,14 +1443,18 @@ public:
                  BasicBlock *scope = nullptr,
                  bool permitCache = true) override final;
 
-  void ensureLookupCached(Instruction *inst, bool shouldFree = true) {
+  void ensureLookupCached(Instruction *inst, bool shouldFree = true,
+                          BasicBlock *scope = nullptr) {
     assert(inst);
     if (scopeMap.find(inst) != scopeMap.end())
       return;
     if (shouldFree)
       assert(reverseBlocks.size());
-    LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
-                      inst->getParent());
+
+    if (scope == nullptr)
+      scope = inst->getParent();
+
+    LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0, scope);
 
     AllocaInst *cache =
         createCacheForScope(lctx, inst->getType(), inst->getName(), shouldFree);
@@ -2607,5 +2435,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode Mode,
                        bool dstConstant, Value *shadow_dst, bool srcConstant,
                        Value *shadow_src, Value *length, Value *isVolatile,
                        llvm::CallInst *MTI, bool allowForward = true,
-                       bool shadowsLookedUp = false);
+                       bool shadowsLookedUp = false,
+                       bool backwardsShadow = false);
 #endif

@@ -288,10 +288,6 @@ struct CacheAnalysis {
         if (unnecessaryInstructions.count(inst2)) {
           return false;
         }
-
-        if (!writesToMemoryReadBy(AA, &li, inst2)) {
-          return false;
-        }
         if (auto CI = dyn_cast<CallInst>(inst2)) {
           if (auto F = CI->getCalledFunction()) {
             if (F->getName() == "__kmpc_for_static_fini") {
@@ -300,154 +296,9 @@ struct CacheAnalysis {
           }
         }
 
-        if (auto LI = dyn_cast<LoadInst>(&li))
-          if (auto SI = dyn_cast<StoreInst>(inst2)) {
-
-            const SCEV *LS = SE.getSCEV(LI->getPointerOperand());
-            const SCEV *SS = SE.getSCEV(SI->getPointerOperand());
-            if (SS != SE.getCouldNotCompute()) {
-
-              // llvm::errs() << *inst2 << " - " << li << "\n";
-              // llvm::errs() << *SS << " - " << *LS << "\n";
-              const auto &DL = li.getModule()->getDataLayout();
-
-#if LLVM_VERSION_MAJOR >= 10
-              auto TS = SE.getConstant(
-                  APInt(64, DL.getTypeStoreSize(li.getType()).getFixedSize()));
-#else
-            auto TS = SE.getConstant(
-                APInt(64, DL.getTypeStoreSize(li.getType())));
-#endif
-              for (auto lim = LS; lim != SE.getCouldNotCompute();) {
-                // [start load, L+Size] [S, S+Size]
-                for (auto slim = SS; slim != SE.getCouldNotCompute();) {
-                  bool check = true;
-                  if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
-                    auto SH = SExpr->getLoop()->getHeader();
-                    if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
-                      auto LH = LExpr->getLoop()->getHeader();
-                      if (SH != LH && !OrigDT.dominates(SH, LH) &&
-                          !OrigDT.dominates(LH, SH)) {
-                        check = false;
-                      }
-                    }
-                  }
-
-                  if (check) {
-                    auto lsub = SE.getMinusSCEV(slim, SE.getAddExpr(lim, TS));
-                    if (lsub != SE.getCouldNotCompute() &&
-                        SE.isKnownNonNegative(lsub)) {
-                      return false;
-                    }
-                  }
-
-                  if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
-                    if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-                      slim = arL->getStart();
-                      continue;
-                    } else if (SE.isKnownNonPositive(
-                                   arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                      auto bd =
-                          SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                      auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                      if (bd == SE.getCouldNotCompute())
-                        break;
-                      slim = arL->evaluateAtIteration(bd, SE);
-                      continue;
-                    }
-                  }
-                  break;
-                }
-
-                if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
-                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                    auto bd =
-                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                    if (bd == SE.getCouldNotCompute())
-                      break;
-                    lim = arL->evaluateAtIteration(bd, SE);
-                    continue;
-                  } else if (SE.isKnownNonPositive(
-                                 arL->getStepRecurrence(SE))) {
-                    lim = arL->getStart();
-                    continue;
-                  }
-                }
-                break;
-              }
-              for (auto lim = LS; lim != SE.getCouldNotCompute();) {
-                // [S, S+Size][start load, L+Size]
-                for (auto slim = SS; slim != SE.getCouldNotCompute();) {
-                  bool check = true;
-                  if (auto SExpr = dyn_cast<SCEVAddRecExpr>(slim)) {
-                    auto SH = SExpr->getLoop()->getHeader();
-                    if (auto LExpr = dyn_cast<SCEVAddRecExpr>(lim)) {
-                      auto LH = LExpr->getLoop()->getHeader();
-                      if (SH != LH && !OrigDT.dominates(SH, LH) &&
-                          !OrigDT.dominates(LH, SH)) {
-                        check = false;
-                      }
-                    }
-                  }
-
-                  if (check) {
-                    auto lsub = SE.getMinusSCEV(lim, SE.getAddExpr(slim, TS));
-                    if (lsub != SE.getCouldNotCompute() &&
-                        SE.isKnownNonNegative(lsub)) {
-                      return false;
-                    }
-                  }
-
-                  if (auto arL = dyn_cast<SCEVAddRecExpr>(slim)) {
-                    if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                      auto bd =
-                          SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                    auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                      if (bd == SE.getCouldNotCompute())
-                        break;
-                      slim = arL->evaluateAtIteration(bd, SE);
-                      continue;
-                    } else if (SE.isKnownNonPositive(
-                                   arL->getStepRecurrence(SE))) {
-                      slim = arL->getStart();
-                      continue;
-                    }
-                  }
-                  break;
-                }
-
-                if (auto arL = dyn_cast<SCEVAddRecExpr>(lim)) {
-                  if (SE.isKnownNonNegative(arL->getStepRecurrence(SE))) {
-                    lim = arL->getStart();
-                    continue;
-                  } else if (SE.isKnownNonPositive(
-                                 arL->getStepRecurrence(SE))) {
-#if LLVM_VERSION_MAJOR >= 12
-                    auto bd =
-                        SE.getSymbolicMaxBackedgeTakenCount(arL->getLoop());
-#else
-                  auto bd = SE.getBackedgeTakenCount(arL->getLoop());
-#endif
-                    if (bd == SE.getCouldNotCompute())
-                      break;
-                    lim = arL->evaluateAtIteration(bd, SE);
-                    continue;
-                  }
-                }
-                break;
-              }
-            }
-          }
+        if (!overwritesToMemoryReadBy(AA, SE, OrigLI, OrigDT, &li, inst2)) {
+          return false;
+        }
 
         if (auto II = dyn_cast<IntrinsicInst>(inst2)) {
           if (II->getIntrinsicID() == Intrinsic::nvvm_barrier0 ||
@@ -748,13 +599,15 @@ void calculateUnusedValuesInFunction(
     GradientUtils *gutils, TargetLibraryInfo &TLI,
     const std::vector<DIFFE_TYPE> &constant_args,
     const llvm::SmallPtrSetImpl<BasicBlock *> &oldUnreachable) {
+  std::map<UsageKey, bool> CacheResults;
+  for (auto pair : gutils->knownRecomputeHeuristic) {
+    if (!pair.second) {
+      CacheResults[UsageKey(pair.first, ValueType::Primal)] = false;
+    }
+  }
   std::map<UsageKey, bool> PrimalSeen;
   if (mode == DerivativeMode::ReverseModeGradient) {
-    for (auto pair : gutils->knownRecomputeHeuristic) {
-      if (!pair.second) {
-        PrimalSeen[UsageKey(pair.first, ValueType::Primal)] = false;
-      }
-    }
+    PrimalSeen = CacheResults;
   }
 
   for (const auto &pair : gutils->allocationsWithGuaranteedFree) {
@@ -762,7 +615,13 @@ void calculateUnusedValuesInFunction(
       continue;
 
     bool primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
-        TR, gutils, pair.first, mode, PrimalSeen, oldUnreachable);
+        TR, gutils, pair.first, mode, CacheResults, oldUnreachable);
+
+    if (gutils->knownRecomputeHeuristic.count(pair.first)) {
+      if (!gutils->knownRecomputeHeuristic[pair.first]) {
+        primalNeededInReverse = true;
+      }
+    }
 
     for (auto freeCall : pair.second) {
       if (!primalNeededInReverse)
@@ -937,9 +796,26 @@ void calculateUnusedValuesInFunction(
             inst->mayWriteToMemory() && !isLibMFn) {
           return UseReq::Need;
         }
-        if (isa<MemTransferInst>(inst) &&
-            mode == DerivativeMode::ReverseModeGradient)
-          return UseReq::Recur;
+        // Don't erase any store that needs to be preserved for a
+        // rematerialization. However, if not used in a rematerialization, the
+        // store should be eliminated in the reverse pass
+        if (mode == DerivativeMode::ReverseModeGradient) {
+          auto CI = dyn_cast<CallInst>(const_cast<Instruction *>(inst));
+          Function *CF = CI ? getFunctionFromCall(CI) : nullptr;
+          StringRef funcName = CF ? CF->getName() : "";
+          if (isa<MemTransferInst>(inst) || isa<StoreInst>(inst) ||
+              isa<MemSetInst>(inst) || funcName == "julia.write_barrier") {
+            for (auto pair : gutils->rematerializableAllocations) {
+              if (pair.second.stores.count(inst)) {
+                if (is_value_needed_in_reverse<ValueType::Primal>(
+                        TR, gutils, pair.first, mode, PrimalSeen,
+                        oldUnreachable))
+                  return UseReq::Need;
+              }
+            }
+            return UseReq::Recur;
+          }
+        }
         bool ivn = is_value_needed_in_reverse<ValueType::Primal>(
             TR, gutils, inst, mode, PrimalSeen, oldUnreachable);
         if (ivn) {

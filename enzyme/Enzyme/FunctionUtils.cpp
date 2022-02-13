@@ -2133,5 +2133,6 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
 
 void PreProcessCache::clear() {
   FAM.clear();
+  MAM.clear();
   cache.clear();
 }

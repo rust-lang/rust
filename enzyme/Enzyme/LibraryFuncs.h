@@ -196,6 +196,68 @@ static inline bool isDeallocationFunction(const llvm::Function &F,
   }
 }
 
+static inline void zeroKnownAllocation(llvm::IRBuilder<> &bb,
+                                       llvm::Value *toZero,
+                                       llvm::ArrayRef<llvm::Value *> argValues,
+                                       llvm::Function &allocatefn,
+                                       const llvm::TargetLibraryInfo &TLI) {
+  using namespace llvm;
+  assert(isAllocationFunction(allocatefn, TLI));
+  StringRef funcName = allocatefn.getName();
+  // Don't re-zero an already-zero buffer
+  if (funcName == "calloc" || funcName == "__rust_alloc_zeroed")
+    return;
+
+  Value *allocSize = argValues[0];
+  if (funcName == "julia.gc_alloc_obj") {
+    Type *tys[] = {PointerType::get(StructType::get(toZero->getContext()), 10)};
+    FunctionType *FT =
+        FunctionType::get(Type::getVoidTy(toZero->getContext()), tys, true);
+    bb.CreateCall(
+        allocatefn.getParent()->getOrInsertFunction("julia.write_barrier", FT),
+        toZero);
+    allocSize = argValues[1];
+  }
+  Value *dst_arg = toZero;
+
+  dst_arg = bb.CreateBitCast(
+      dst_arg, Type::getInt8PtrTy(toZero->getContext(),
+                                  toZero->getType()->getPointerAddressSpace()));
+
+  auto val_arg = ConstantInt::get(Type::getInt8Ty(toZero->getContext()), 0);
+  auto len_arg =
+      bb.CreateZExtOrTrunc(allocSize, Type::getInt64Ty(toZero->getContext()));
+  auto volatile_arg = ConstantInt::getFalse(toZero->getContext());
+
+#if LLVM_VERSION_MAJOR == 6
+  auto align_arg = ConstantInt::get(Type::getInt32Ty(toZero->getContext()), 1);
+  Value *nargs[] = {dst_arg, val_arg, len_arg, align_arg, volatile_arg};
+#else
+  Value *nargs[] = {dst_arg, val_arg, len_arg, volatile_arg};
+#endif
+
+  Type *tys[] = {dst_arg->getType(), len_arg->getType()};
+
+  auto memset = cast<CallInst>(bb.CreateCall(
+      Intrinsic::getDeclaration(allocatefn.getParent(), Intrinsic::memset, tys),
+      nargs));
+  memset->addParamAttr(0, Attribute::NonNull);
+  if (auto CI = dyn_cast<ConstantInt>(allocSize)) {
+    auto derefBytes = CI->getLimitedValue();
+#if LLVM_VERSION_MAJOR >= 14
+    memset->addDereferenceableParamAttr(0, derefBytes);
+    memset->setAttributes(
+        memset->getAttributes().addDereferenceableOrNullParamAttr(
+            memset->getContext(), 0, derefBytes));
+#else
+    memset->addDereferenceableAttr(llvm::AttributeList::FirstArgIndex,
+                                   derefBytes);
+    memset->addDereferenceableOrNullAttr(llvm::AttributeList::FirstArgIndex,
+                                         derefBytes);
+#endif
+  }
+}
+
 /// Perform the corresponding deallocation of tofree, given it was allocated by
 /// allocationfn
 // For updating below one should read MemoryBuiltins.cpp, TargetLibraryInfo.cpp
@@ -384,139 +446,6 @@ freeKnownAllocation(llvm::IRBuilder<> &builder, llvm::Value *tofree,
   if (freecall->getParent() == nullptr)
     builder.Insert(freecall);
   return freecall;
-}
-
-/// Return whether maybeReader can read from memory written to by maybeWriter
-static inline bool writesToMemoryReadBy(llvm::AAResults &AA,
-                                        llvm::Instruction *maybeReader,
-                                        llvm::Instruction *maybeWriter) {
-  assert(maybeReader->getParent()->getParent() ==
-         maybeWriter->getParent()->getParent());
-  using namespace llvm;
-  if (auto call = dyn_cast<CallInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainPrintMallocOrFree(called)) {
-      return false;
-    }
-    if (called && isMemFreeLibMFunction(called->getName())) {
-      return false;
-    }
-    if (called && called->getName() == "jl_array_copy")
-      return false;
-    if (auto II = dyn_cast<IntrinsicInst>(call)) {
-      if (II->getIntrinsicID() == Intrinsic::stacksave)
-        return false;
-      if (II->getIntrinsicID() == Intrinsic::stackrestore)
-        return false;
-      if (II->getIntrinsicID() == Intrinsic::trap)
-        return false;
-#if LLVM_VERSION_MAJOR >= 13
-      if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)
-        return false;
-#endif
-    }
-
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand()))
-#else
-    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue()))
-#endif
-    {
-      if (StringRef(iasm->getAsmString()).contains("exit"))
-        return false;
-    }
-  }
-  if (auto call = dyn_cast<CallInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
-      return false;
-    }
-    if (called && isMemFreeLibMFunction(called->getName())) {
-      return false;
-    }
-    if (auto II = dyn_cast<IntrinsicInst>(call)) {
-      if (II->getIntrinsicID() == Intrinsic::stacksave)
-        return false;
-      if (II->getIntrinsicID() == Intrinsic::stackrestore)
-        return false;
-      if (II->getIntrinsicID() == Intrinsic::trap)
-        return false;
-#if LLVM_VERSION_MAJOR >= 13
-      if (II->getIntrinsicID() == Intrinsic::experimental_noalias_scope_decl)
-        return false;
-#endif
-    }
-  }
-  if (auto call = dyn_cast<InvokeInst>(maybeWriter)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
-      return false;
-    }
-    if (called && isMemFreeLibMFunction(called->getName())) {
-      return false;
-    }
-    if (called && called->getName() == "jl_array_copy")
-      return false;
-
-#if LLVM_VERSION_MAJOR >= 11
-    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledOperand()))
-#else
-    if (auto iasm = dyn_cast<InlineAsm>(call->getCalledValue()))
-#endif
-    {
-      if (StringRef(iasm->getAsmString()).contains("exit"))
-        return false;
-    }
-  }
-  if (auto call = dyn_cast<InvokeInst>(maybeReader)) {
-    Function *called = getFunctionFromCall(call);
-    if (called && isCertainMallocOrFree(called)) {
-      return false;
-    }
-    if (called && isMemFreeLibMFunction(called->getName())) {
-      return false;
-    }
-  }
-  assert(maybeWriter->mayWriteToMemory());
-  assert(maybeReader->mayReadFromMemory());
-
-  if (auto li = dyn_cast<LoadInst>(maybeReader)) {
-    return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(li)));
-  }
-  if (auto rmw = dyn_cast<AtomicRMWInst>(maybeReader)) {
-    return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(rmw)));
-  }
-  if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeReader)) {
-    return isModSet(AA.getModRefInfo(maybeWriter, MemoryLocation::get(xch)));
-  }
-  if (auto mti = dyn_cast<MemTransferInst>(maybeReader)) {
-    return isModSet(
-        AA.getModRefInfo(maybeWriter, MemoryLocation::getForSource(mti)));
-  }
-
-  if (auto si = dyn_cast<StoreInst>(maybeWriter)) {
-    return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(si)));
-  }
-  if (auto rmw = dyn_cast<AtomicRMWInst>(maybeWriter)) {
-    return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(rmw)));
-  }
-  if (auto xch = dyn_cast<AtomicCmpXchgInst>(maybeWriter)) {
-    return isRefSet(AA.getModRefInfo(maybeReader, MemoryLocation::get(xch)));
-  }
-  if (auto mti = dyn_cast<MemIntrinsic>(maybeWriter)) {
-    return isRefSet(
-        AA.getModRefInfo(maybeReader, MemoryLocation::getForDest(mti)));
-  }
-
-  if (auto cb = dyn_cast<CallInst>(maybeReader)) {
-    return isModOrRefSet(AA.getModRefInfo(maybeWriter, cb));
-  }
-  if (auto cb = dyn_cast<InvokeInst>(maybeReader)) {
-    return isModOrRefSet(AA.getModRefInfo(maybeWriter, cb));
-  }
-  llvm::errs() << " maybeReader: " << *maybeReader
-               << " maybeWriter: " << *maybeWriter << "\n";
-  llvm_unreachable("unknown inst2");
 }
 
 #endif

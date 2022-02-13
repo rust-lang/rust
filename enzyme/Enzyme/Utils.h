@@ -27,6 +27,7 @@
 
 #include "llvm/ADT/SmallPtrSet.h"
 
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/IntrinsicInst.h"
@@ -58,6 +59,10 @@
 #include "llvm/Analysis/OptimizationRemarkEmitter.h"
 
 #include "TypeAnalysis/ConcreteType.h"
+
+namespace llvm {
+class ScalarEvolution;
+}
 
 extern "C" {
 /// Print additional debug info relevant to performance
@@ -789,62 +794,45 @@ allUnsyncdPredecessorsOf(llvm::Instruction *inst,
 
 #include "llvm/Analysis/LoopInfo.h"
 
-// Return true if any of the maybe instructions may execute after inst.
-template <typename T>
-static inline bool mayExecuteAfter(llvm::Instruction *inst,
-                                   const llvm::SmallPtrSetImpl<T> &maybe,
-                                   const llvm::Loop *region) {
-  using namespace llvm;
-  llvm::SmallPtrSet<BasicBlock *, 2> maybeBlocks;
-  BasicBlock *instBlk = inst->getParent();
-  for (auto I : maybe) {
-    BasicBlock *blkI = I->getParent();
-    if (instBlk == blkI) {
-      // if store doesn't come before, exit.
-
-      BasicBlock::const_iterator It = blkI->begin();
-      for (; &*It != I && &*It != inst; ++It)
-        /*empty*/;
-      // if inst comes first (e.g. before I) in the
-      // block, return true
-      if (&*It == inst) {
-        return true;
+static inline llvm::Loop *getAncestor(llvm::Loop *R1, llvm::Loop *R2) {
+  if (!R1 || !R2)
+    return nullptr;
+  for (llvm::Loop *L1 = R1; L1; L1 = L1->getParentLoop())
+    for (llvm::Loop *L2 = R2; L2; L2 = L2->getParentLoop()) {
+      if (L1 == L2) {
+        return L1;
       }
-    } else {
-      maybeBlocks.insert(blkI);
     }
-  }
-  if (maybeBlocks.size() == 0)
-    return false;
-
-  llvm::SmallVector<BasicBlock *, 2> todo;
-  for (auto B : successors(instBlk)) {
-    if (region && region->getHeader() == B) {
-      continue;
-    }
-    todo.push_back(B);
-  }
-
-  SmallPtrSet<BasicBlock *, 2> seen;
-  while (todo.size()) {
-    auto cur = todo.back();
-    todo.pop_back();
-    if (seen.count(cur))
-      continue;
-    seen.insert(cur);
-    if (maybeBlocks.count(cur)) {
-      return true;
-    }
-    for (auto B : successors(cur)) {
-      if (region && region->getHeader() == B) {
-        continue;
-      }
-      todo.push_back(B);
-    }
-  }
-  return false;
+  return nullptr;
 }
 
+// Add all of the stores which may execute after the instruction `inst`
+// into the resutls vector.
+void mayExecuteAfter(llvm::SmallVectorImpl<llvm::Instruction *> &results,
+                     llvm::Instruction *inst,
+                     const llvm::SmallPtrSetImpl<llvm::Instruction *> &stores,
+                     const llvm::Loop *region);
+
+/// Return whether maybeReader can read from memory written to by maybeWriter
+bool writesToMemoryReadBy(llvm::AAResults &AA, llvm::Instruction *maybeReader,
+                          llvm::Instruction *maybeWriter);
+
+// A more advanced version of writesToMemoryReadBy, where the writing
+// instruction comes after the reading function. Specifically, even if the two
+// instructions may access the same location, this variant checks whether
+// also checks whether ScalarEvolution ensures that a subsequent write will not
+// overwrite the value read by the load.
+//   A simple example: the load/store might write/read from the same
+//   location. However, no store will overwrite a previous load.
+//   for(int i=0; i<N; i++) {
+//      load A[i-1]
+//      store A[i] = ...
+//   }
+bool overwritesToMemoryReadBy(llvm::AAResults &AA, llvm::ScalarEvolution &SE,
+                              llvm::LoopInfo &LI, llvm::DominatorTree &DT,
+                              llvm::Instruction *maybeReader,
+                              llvm::Instruction *maybeWriter,
+                              llvm::Loop *scope = nullptr);
 static inline void
 /// Call the function f for all instructions that happen between inst1 and inst2
 /// If the function returns true, the iteration will early exit
