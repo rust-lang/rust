@@ -458,6 +458,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
+                self.r.visibilities.insert(self.r.local_def_id(id), vis);
+                if id1 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id1), vis);
+                }
+                if id2 != ast::DUMMY_NODE_ID {
+                    self.r.visibilities.insert(self.r.local_def_id(id2), vis);
+                }
+
                 if nested {
                     // Correctly handle `self`
                     if source.ident.name == kw::SelfLower {
@@ -564,7 +572,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     additional_ids: (id1, id2),
                 };
 
-                self.r.visibilities.insert(self.r.local_def_id(id), vis);
                 self.add_import(
                     module_path,
                     kind,
