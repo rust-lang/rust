@@ -219,6 +219,13 @@ unsafe impl Sync for Waker {}
 
 impl Waker {
     /// Wake up the task associated with this `Waker`.
+    ///
+    /// Multiple wake-ups (through clones of this `Waker` or `wake_by_ref`) may be
+    /// coalesced into a single `poll` invocation by the runtime, and as long as
+    /// the runtime keeps running and the task is not finished it is expected that
+    /// each wake-up is followed by an invocation of `poll`, even in the absence of
+    /// other events. This makes it possible to yield to other tasks when running
+    /// potentially unbounded processing loops in order to maintain fairness.
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake(self) {
