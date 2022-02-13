@@ -3002,7 +3002,7 @@ pub struct ForeignItem<'hir> {
     pub kind: ForeignItemKind<'hir>,
     pub def_id: LocalDefId,
     pub span: Span,
-    pub vis: Visibility<'hir>,
+    pub vis_span: Span,
 }
 
 impl ForeignItem<'_> {
@@ -3351,5 +3351,5 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
     rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 144);
-    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 136);
+    rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
 }

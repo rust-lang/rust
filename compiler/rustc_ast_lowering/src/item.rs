@@ -773,7 +773,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ForeignItemKind::TyAlias(..) => hir::ForeignItemKind::Type,
                 ForeignItemKind::MacCall(_) => panic!("macro shouldn't exist here"),
             },
-            vis: self.lower_visibility(&i.vis),
+            vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
         };
         self.arena.alloc(item)
