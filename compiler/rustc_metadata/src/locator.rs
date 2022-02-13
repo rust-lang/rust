@@ -619,6 +619,7 @@ impl<'a> CrateLocator<'a> {
                     return None;
                 }
             }
+            return Some(hash);
         }
 
         let root = metadata.get_root();
