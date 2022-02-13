@@ -357,14 +357,10 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
 fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     let did = item.def_id;
     println!("item `{}`", item.ident.name);
-    match item.vis.node {
-        hir::VisibilityKind::Public => println!("public"),
-        hir::VisibilityKind::Crate(_) => println!("visible crate wide"),
-        hir::VisibilityKind::Restricted { path, .. } => println!(
-            "visible in module `{}`",
-            rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| s.print_path(path, false))
-        ),
-        hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
+    match cx.tcx.visibility(item.def_id) {
+        ty::Visibility::Public => println!("public"),
+        ty::Visibility::Restricted(def_id) => println!("visible in module `{}`", cx.tcx.def_path_str(def_id)),
+        ty::Visibility::Invisible => println!("invisible"),
     }
     match item.kind {
         hir::ItemKind::ExternCrate(ref _renamed_from) => {
