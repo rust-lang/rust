@@ -8,7 +8,7 @@ LL | struct Bar<T: Foo> {
    | doesn't satisfy `Bar<NotClone>: Clone`
 ...
 LL | struct NotClone;
-   | ---------------- doesn't satisfy `NotClone: Clone`
+   | --------------- doesn't satisfy `NotClone: Clone`
 ...
 LL |     Bar::<NotClone> { x: 1 }.clone();
    |                              ^^^^^ method cannot be called on `Bar<NotClone>` due to unsatisfied trait bounds

@@ -10,7 +10,7 @@ LL |     let e1 = Empty1;
   ::: $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
-   | ------------------- similarly named unit struct `XEmpty2` defined here
+   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
 help: use struct literal syntax instead
    |
@@ -33,7 +33,7 @@ LL |     let e1 = Empty1();
   ::: $DIR/auxiliary/empty-struct.rs:2:1
    |
 LL | pub struct XEmpty2;
-   | ------------------- similarly named unit struct `XEmpty2` defined here
+   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
 help: use struct literal syntax instead
    |
@@ -73,7 +73,7 @@ LL |     let xe1 = XEmpty1;
 LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
 LL | pub struct XEmpty2;
-   | ------------------- similarly named unit struct `XEmpty2` defined here
+   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
 help: use struct literal syntax instead
    |
@@ -95,7 +95,7 @@ LL |     let xe1 = XEmpty1();
 LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
 LL | pub struct XEmpty2;
-   | ------------------- similarly named unit struct `XEmpty2` defined here
+   | ------------------ similarly named unit struct `XEmpty2` defined here
    |
 help: use struct literal syntax instead
    |

@@ -8,7 +8,7 @@ note: the static `j` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:47:1
    |
 LL | static j: isize = 0;
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^
 
 error[E0603]: function `k` is private
   --> $DIR/xcrate-private-by-default.rs:25:29
@@ -32,7 +32,7 @@ note: the unit struct `l` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:49:1
    |
 LL | struct l;
-   | ^^^^^^^^^
+   | ^^^^^^^^
 
 error[E0603]: enum `m` is private
   --> $DIR/xcrate-private-by-default.rs:29:35
@@ -56,7 +56,7 @@ note: the type alias `n` is defined here
   --> $DIR/auxiliary/static_priv_by_default.rs:51:1
    |
 LL | type n = isize;
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^
 
 error[E0603]: module `foo` is private
   --> $DIR/xcrate-private-by-default.rs:35:29

@@ -14,10 +14,8 @@ LL | #![deny(improper_ctypes)]
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
-LL | / struct A {
-LL | |     x: i32
-LL | | }
-   | |_^
+LL | struct A {
+   | ^^^^^^^^
 
 error: `extern` block uses type `A`, which is not FFI-safe
   --> $DIR/issue-14309.rs:31:15
@@ -30,10 +28,8 @@ LL |     fn bar(x: B);
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
-LL | / struct A {
-LL | |     x: i32
-LL | | }
-   | |_^
+LL | struct A {
+   | ^^^^^^^^
 
 error: `extern` block uses type `A`, which is not FFI-safe
   --> $DIR/issue-14309.rs:33:15
@@ -46,10 +42,8 @@ LL |     fn qux(x: A2);
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
-LL | / struct A {
-LL | |     x: i32
-LL | | }
-   | |_^
+LL | struct A {
+   | ^^^^^^^^
 
 error: `extern` block uses type `A`, which is not FFI-safe
   --> $DIR/issue-14309.rs:34:16
@@ -62,10 +56,8 @@ LL |     fn quux(x: B2);
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
-LL | / struct A {
-LL | |     x: i32
-LL | | }
-   | |_^
+LL | struct A {
+   | ^^^^^^^^
 
 error: `extern` block uses type `A`, which is not FFI-safe
   --> $DIR/issue-14309.rs:36:16
@@ -78,10 +70,8 @@ LL |     fn fred(x: D);
 note: the type is defined here
   --> $DIR/issue-14309.rs:4:1
    |
-LL | / struct A {
-LL | |     x: i32
-LL | | }
-   | |_^
+LL | struct A {
+   | ^^^^^^^^
 
 error: aborting due to 5 previous errors
 

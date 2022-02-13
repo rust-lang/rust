@@ -1,11 +1,8 @@
 error: cannot specialize on trait `Default`
   --> $DIR/specialization_super_trait.rs:13:1
    |
-LL | / impl<T: Default> SpecMarker for T {
-LL | |
-LL | |     fn f() {}
-LL | | }
-   | |_^
+LL | impl<T: Default> SpecMarker for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

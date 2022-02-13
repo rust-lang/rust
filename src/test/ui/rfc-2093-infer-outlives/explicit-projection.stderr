@@ -1,11 +1,8 @@
 error: rustc_outlives
   --> $DIR/explicit-projection.rs:8:1
    |
-LL | / struct Foo<'a, A, B> where A: Trait<'a, B>
-LL | | {
-LL | |     foo: <A as Trait<'a, B>>::Type
-LL | | }
-   | |_^
+LL | struct Foo<'a, A, B> where A: Trait<'a, B>
+   | ^^^^^^^^^^^^^^^^^^^^
    |
    = note: B: 'a
 

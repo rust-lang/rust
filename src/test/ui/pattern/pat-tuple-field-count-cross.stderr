@@ -16,9 +16,9 @@ LL |         Z0() => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:1:1
    |
 LL | pub struct Z0;
-   | -------------- `Z0` defined here
+   | ------------- `Z0` defined here
 LL | pub struct Z1();
-   | ---------------- similarly named tuple struct `Z1` defined here
+   | ------------- similarly named tuple struct `Z1` defined here
    |
 help: use this syntax instead
    |
@@ -38,9 +38,9 @@ LL |         Z0(x) => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:1:1
    |
 LL | pub struct Z0;
-   | -------------- `Z0` defined here
+   | ------------- `Z0` defined here
 LL | pub struct Z1();
-   | ---------------- similarly named tuple struct `Z1` defined here
+   | ------------- similarly named tuple struct `Z1` defined here
    |
 help: use this syntax instead
    |
@@ -126,7 +126,7 @@ LL |         Z1(x) => {}
   ::: $DIR/auxiliary/declarations-for-tuple-field-count-errors.rs:2:1
    |
 LL | pub struct Z1();
-   | ---------------- tuple struct has 0 fields
+   | ------------- tuple struct has 0 fields
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 3 fields
   --> $DIR/pat-tuple-field-count-cross.rs:18:9

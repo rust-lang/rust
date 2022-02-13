@@ -14,10 +14,8 @@ LL | #![deny(improper_ctypes)]
 note: the type is defined here
   --> $DIR/union-repr-c.rs:9:1
    |
-LL | / union W {
-LL | |     a: u8,
-LL | | }
-   | |_^
+LL | union W {
+   | ^^^^^^^
 
 error: aborting due to previous error
 

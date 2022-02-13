@@ -9,7 +9,7 @@ note: deref defined here
   --> $DIR/issue-25901.rs:10:5
    |
 LL |     type Target = B;
-   |     ^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
 note: impl defined here, but it is not `const`
   --> $DIR/issue-25901.rs:9:1
    |

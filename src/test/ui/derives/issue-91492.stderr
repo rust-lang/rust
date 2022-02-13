@@ -2,7 +2,7 @@ error[E0599]: the method `extend_from_slice` exists for mutable reference `&mut 
   --> $DIR/issue-91492.rs:4:9
    |
 LL | pub struct NoDerives;
-   | --------------------- doesn't satisfy `NoDerives: Clone`
+   | -------------------- doesn't satisfy `NoDerives: Clone`
 LL | fn fun1(foo: &mut Vec<NoDerives>, bar: &[NoDerives]) {
 LL |     foo.extend_from_slice(bar);
    |         ^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ error[E0599]: the method `extend_from_slice` exists for mutable reference `&mut 
   --> $DIR/issue-91492.rs:12:9
    |
 LL | pub struct SomeDerives;
-   | ----------------------- doesn't satisfy `SomeDerives: Clone`
+   | ---------------------- doesn't satisfy `SomeDerives: Clone`
 LL | fn fun2(foo: &mut Vec<SomeDerives>, bar: &[SomeDerives]) {
 LL |     foo.extend_from_slice(bar);
    |         ^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ error[E0599]: the method `use_clone` exists for struct `Object<NoDerives, SomeDe
   --> $DIR/issue-91492.rs:22:9
    |
 LL | pub struct NoDerives;
-   | --------------------- doesn't satisfy `NoDerives: Clone`
+   | -------------------- doesn't satisfy `NoDerives: Clone`
 ...
 LL | struct Object<T, A>(T, A);
    |        ------ method `use_clone` not found for this struct

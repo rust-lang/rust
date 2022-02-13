@@ -18,7 +18,7 @@ LL |     WrongImpl::<()>::foo(0i32);
    |                      ^^^ function or associated item cannot be called on `SafeImpl<(), RawImpl<()>>` due to unsatisfied trait bounds
 ...
 LL | pub struct RawImpl<T>(PhantomData<T>);
-   | -------------------------------------- doesn't satisfy `RawImpl<()>: Raw<()>`
+   | --------------------- doesn't satisfy `RawImpl<()>: Raw<()>`
 ...
 LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    |            -------- function or associated item `foo` not found for this struct
@@ -28,10 +28,8 @@ LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
 note: the following trait must be implemented
   --> $DIR/issue-62742.rs:12:1
    |
-LL | / pub trait Raw<T: ?Sized> {
-LL | |     type Value;
-LL | | }
-   | |_^
+LL | pub trait Raw<T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: the trait bound `RawImpl<()>: Raw<()>` is not satisfied
   --> $DIR/issue-62742.rs:6:5

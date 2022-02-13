@@ -13,9 +13,8 @@ LL |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:34:1
    |
-LL | / const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
-LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
-   | |_____________________________________________________________________________________________^ constructing invalid value at .0: encountered invalid vtable: alignment `1000` is not a power of 2
+LL | const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered invalid vtable: alignment `1000` is not a power of 2
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {
@@ -25,9 +24,8 @@ LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1us
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-incorrect-vtable.rs:39:1
    |
-LL | / const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
-LL | |     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
-   | |______________________________________________________________________________________________^ constructing invalid value at .0: encountered invalid vtable: size is bigger than largest supported object
+LL | const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .0: encountered invalid vtable: size is bigger than largest supported object
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 16, align: 8) {

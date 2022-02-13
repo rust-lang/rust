@@ -14,7 +14,7 @@ note: the module `sys` is defined here
   --> $SRC_DIR/std/src/lib.rs:LL:COL
    |
 LL | mod sys;
-   | ^^^^^^^^
+   | ^^^^^^^
 
 error: aborting due to 2 previous errors
 

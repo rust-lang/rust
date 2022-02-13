@@ -1,10 +1,8 @@
 error: rustc_outlives
   --> $DIR/explicit-union.rs:5:1
    |
-LL | / union Foo<'b, U: Copy> {
-LL | |     bar: Bar<'b, U>
-LL | | }
-   | |_^
+LL | union Foo<'b, U: Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: U: 'b
 

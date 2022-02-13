@@ -2,9 +2,7 @@ warning: any use of this value will cause an error
   --> $DIR/const-err.rs:11:17
    |
 LL | const FOO: u8 = [5u8][1];
-   | ----------------^^^^^^^^-
-   |                 |
-   |                 index out of bounds: the length is 1 but the index is 1
+   | -------------   ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
 note: the lint level is defined here
   --> $DIR/const-err.rs:5:9
@@ -34,9 +32,7 @@ warning: any use of this value will cause an error
   --> $DIR/const-err.rs:11:17
    |
 LL | const FOO: u8 = [5u8][1];
-   | ----------------^^^^^^^^-
-   |                 |
-   |                 index out of bounds: the length is 1 but the index is 1
+   | -------------   ^^^^^^^^ index out of bounds: the length is 1 but the index is 1
    |
 note: the lint level is defined here
   --> $DIR/const-err.rs:5:9

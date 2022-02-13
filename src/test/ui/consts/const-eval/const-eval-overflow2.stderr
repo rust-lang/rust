@@ -1,12 +1,11 @@
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:14:6
    |
-LL | / const VALS_I8: (i8,) =
-LL | |     (
-LL | |      i8::MIN - 1,
-   | |      ^^^^^^^^^^^ attempt to compute `i8::MIN - 1_i8`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I8: (i8,) =
+   | --------------------
+LL |     (
+LL |      i8::MIN - 1,
+   |      ^^^^^^^^^^^ attempt to compute `i8::MIN - 1_i8`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -19,12 +18,11 @@ LL | #![deny(const_err)]
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:21:6
    |
-LL | / const VALS_I16: (i16,) =
-LL | |     (
-LL | |      i16::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i16::MIN - 1_i16`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I16: (i16,) =
+   | ----------------------
+LL |     (
+LL |      i16::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i16::MIN - 1_i16`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -32,12 +30,11 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:28:6
    |
-LL | / const VALS_I32: (i32,) =
-LL | |     (
-LL | |      i32::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i32::MIN - 1_i32`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I32: (i32,) =
+   | ----------------------
+LL |     (
+LL |      i32::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i32::MIN - 1_i32`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -45,12 +42,11 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:35:6
    |
-LL | / const VALS_I64: (i64,) =
-LL | |     (
-LL | |      i64::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i64::MIN - 1_i64`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I64: (i64,) =
+   | ----------------------
+LL |     (
+LL |      i64::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i64::MIN - 1_i64`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -58,12 +54,11 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:42:6
    |
-LL | / const VALS_U8: (u8,) =
-LL | |     (
-LL | |      u8::MIN - 1,
-   | |      ^^^^^^^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U8: (u8,) =
+   | --------------------
+LL |     (
+LL |      u8::MIN - 1,
+   |      ^^^^^^^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -71,11 +66,10 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:48:6
    |
-LL | / const VALS_U16: (u16,) = (
-LL | |      u16::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u16 - 1_u16`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U16: (u16,) = (
+   | ----------------------
+LL |      u16::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u16 - 1_u16`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -83,11 +77,10 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:54:6
    |
-LL | / const VALS_U32: (u32,) = (
-LL | |      u32::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U32: (u32,) = (
+   | ----------------------
+LL |      u32::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -95,12 +88,11 @@ LL | |      );
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:61:6
    |
-LL | / const VALS_U64: (u64,) =
-LL | |     (
-LL | |      u64::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u64 - 1_u64`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U64: (u64,) =
+   | ----------------------
+LL |     (
+LL |      u64::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u64 - 1_u64`, which would overflow
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
@@ -111,12 +103,11 @@ Future incompatibility report: Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:14:6
    |
-LL | / const VALS_I8: (i8,) =
-LL | |     (
-LL | |      i8::MIN - 1,
-   | |      ^^^^^^^^^^^ attempt to compute `i8::MIN - 1_i8`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I8: (i8,) =
+   | --------------------
+LL |     (
+LL |      i8::MIN - 1,
+   |      ^^^^^^^^^^^ attempt to compute `i8::MIN - 1_i8`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -130,12 +121,11 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:21:6
    |
-LL | / const VALS_I16: (i16,) =
-LL | |     (
-LL | |      i16::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i16::MIN - 1_i16`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I16: (i16,) =
+   | ----------------------
+LL |     (
+LL |      i16::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i16::MIN - 1_i16`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -149,12 +139,11 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:28:6
    |
-LL | / const VALS_I32: (i32,) =
-LL | |     (
-LL | |      i32::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i32::MIN - 1_i32`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I32: (i32,) =
+   | ----------------------
+LL |     (
+LL |      i32::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i32::MIN - 1_i32`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -168,12 +157,11 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:35:6
    |
-LL | / const VALS_I64: (i64,) =
-LL | |     (
-LL | |      i64::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `i64::MIN - 1_i64`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_I64: (i64,) =
+   | ----------------------
+LL |     (
+LL |      i64::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `i64::MIN - 1_i64`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -187,12 +175,11 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:42:6
    |
-LL | / const VALS_U8: (u8,) =
-LL | |     (
-LL | |      u8::MIN - 1,
-   | |      ^^^^^^^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U8: (u8,) =
+   | --------------------
+LL |     (
+LL |      u8::MIN - 1,
+   |      ^^^^^^^^^^^ attempt to compute `0_u8 - 1_u8`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -206,11 +193,10 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:48:6
    |
-LL | / const VALS_U16: (u16,) = (
-LL | |      u16::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u16 - 1_u16`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U16: (u16,) = (
+   | ----------------------
+LL |      u16::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u16 - 1_u16`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -224,11 +210,10 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:54:6
    |
-LL | / const VALS_U32: (u32,) = (
-LL | |      u32::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U32: (u32,) = (
+   | ----------------------
+LL |      u32::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u32 - 1_u32`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9
@@ -242,12 +227,11 @@ Future breakage diagnostic:
 error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2.rs:61:6
    |
-LL | / const VALS_U64: (u64,) =
-LL | |     (
-LL | |      u64::MIN - 1,
-   | |      ^^^^^^^^^^^^ attempt to compute `0_u64 - 1_u64`, which would overflow
-LL | |      );
-   | |_______-
+LL | const VALS_U64: (u64,) =
+   | ----------------------
+LL |     (
+LL |      u64::MIN - 1,
+   |      ^^^^^^^^^^^^ attempt to compute `0_u64 - 1_u64`, which would overflow
    |
 note: the lint level is defined here
   --> $DIR/const-eval-overflow2.rs:8:9

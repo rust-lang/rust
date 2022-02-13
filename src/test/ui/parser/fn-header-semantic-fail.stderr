@@ -234,30 +234,30 @@ LL |         const async unsafe extern "C" fn ft5();
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `(): Future`
 
-error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 40:6>::ft5::{opaque#0}`
+error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5::{opaque#0}`
   --> $DIR/fn-header-semantic-fail.rs:34:48
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |                                                ^
    |
-note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 40:6>::ft5`...
+note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 40:6>::ft5`...
+note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 40:6>::ft5`...
+note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5`...
   --> $DIR/fn-header-semantic-fail.rs:34:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing whether `impl core::future::future::Future<Output = ()>` is freeze...
    = note: ...which requires evaluating trait selection obligation `impl core::future::future::Future<Output = ()>: core::marker::Freeze`...
-   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 40:6>::ft5::{opaque#0}`, completing the cycle
+   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:28:5: 28:17>::ft5::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/fn-header-semantic-fail.rs:5:1
    |
@@ -270,30 +270,30 @@ LL | |     }
 LL | | }
    | |_^
 
-error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 50:6>::fi5::{opaque#0}`
+error[E0391]: cycle detected when computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5::{opaque#0}`
   --> $DIR/fn-header-semantic-fail.rs:47:48
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |                                                ^
    |
-note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 50:6>::fi5`...
+note: ...which requires borrow-checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
   --> $DIR/fn-header-semantic-fail.rs:47:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 50:6>::fi5`...
+note: ...which requires processing `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
   --> $DIR/fn-header-semantic-fail.rs:47:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 50:6>::fi5`...
+note: ...which requires const checking `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5`...
   --> $DIR/fn-header-semantic-fail.rs:47:9
    |
 LL |         const async unsafe extern "C" fn fi5() {}
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires computing whether `impl core::future::future::Future<Output = ()>` is freeze...
    = note: ...which requires evaluating trait selection obligation `impl core::future::future::Future<Output = ()>: core::marker::Freeze`...
-   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 50:6>::fi5::{opaque#0}`, completing the cycle
+   = note: ...which again requires computing type of `main::<impl at $DIR/fn-header-semantic-fail.rs:42:5: 42:11>::fi5::{opaque#0}`, completing the cycle
 note: cycle used when checking item types in top-level module
   --> $DIR/fn-header-semantic-fail.rs:5:1
    |

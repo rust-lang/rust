@@ -12,7 +12,7 @@ error[E0618]: expected function, found `Bar`
   --> $DIR/issue-21701.rs:9:13
    |
 LL | struct Bar;
-   | ----------- `Bar` defined here
+   | ---------- `Bar` defined here
 ...
 LL |     let f = Bar();
    |             ^^^--

@@ -50,7 +50,7 @@ error[E0599]: `Foo` is not an iterator
   --> $DIR/method-call-err-msg.rs:19:7
    |
 LL | pub struct Foo;
-   | ---------------
+   | --------------
    | |          |
    | |          method `take` not found for this struct
    | doesn't satisfy `Foo: Iterator`
@@ -64,14 +64,8 @@ LL |      .take()
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
-LL | / pub trait Iterator {
-LL | |     /// The type of the elements being iterated over.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Item;
-...  |
-LL | |     }
-LL | | }
-   | |_^
+LL | pub trait Iterator {
+   | ^^^^^^^^^^^^^^^^^^
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following trait defines an item `take`, perhaps you need to implement it:
            candidate #1: `Iterator`

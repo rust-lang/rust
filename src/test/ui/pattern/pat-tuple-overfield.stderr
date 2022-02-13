@@ -271,7 +271,7 @@ error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 0
   --> $DIR/pat-tuple-overfield.rs:59:12
    |
 LL | struct Z1();
-   | ------------ tuple struct has 0 fields
+   | --------- tuple struct has 0 fields
 ...
 LL |         Z1(_) => {}
    |            ^ expected 0 fields, found 1
@@ -280,7 +280,7 @@ error[E0023]: this pattern has 2 fields, but the corresponding tuple struct has 
   --> $DIR/pat-tuple-overfield.rs:60:12
    |
 LL | struct Z1();
-   | ------------ tuple struct has 0 fields
+   | --------- tuple struct has 0 fields
 ...
 LL |         Z1(_, _) => {}
    |            ^  ^ expected 0 fields, found 2

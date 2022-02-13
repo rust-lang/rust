@@ -14,10 +14,10 @@ extern crate source_code;
 #[path = "auxiliary/source-code-bar.rs"]
 pub mod bar;
 
-// @count - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#5-7"]' 4
+// @count - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#5"]' 4
 use bar::Bar;
-// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#13-17"]' 'self'
-// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
+// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#13"]' 'self'
+// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14"]' 'Trait'
 use bar::sub::{self, Trait};
 
 pub struct Foo;
@@ -42,8 +42,8 @@ pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::Sour
     y.hello();
 }
 
-// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'bar::sub::Trait'
-// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14-16"]' 'Trait'
+// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14"]' 'bar::sub::Trait'
+// @has - '//a[@href="../../src/foo/auxiliary/source-code-bar.rs.html#14"]' 'Trait'
 pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {}
 
 pub trait AnotherTrait {}

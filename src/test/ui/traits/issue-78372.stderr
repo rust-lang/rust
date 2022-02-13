@@ -54,7 +54,7 @@ error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion
   --> $DIR/issue-78372.rs:3:1
    |
 LL | impl<T> DispatchFromDyn<Smaht<U, MISC>> for T {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

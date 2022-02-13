@@ -2,7 +2,7 @@ error[E0599]: the method `f` exists for struct `S`, but its trait bounds were no
   --> $DIR/method-unsatified-assoc-type-predicate.rs:30:7
    |
 LL | struct S;
-   | ---------
+   | --------
    | |      |
    | |      method `f` not found for this struct
    | doesn't satisfy `<S as X>::Y<i32> = i32`

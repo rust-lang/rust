@@ -3,12 +3,10 @@ error[E0072]: recursive type `ListNode` has infinite size
    |
 LL | / struct
 LL | | ListNode
-LL | | {
-LL | |     head: u8,
-LL | |     tail: Option<ListNode>,
-   | |           ---------------- recursive without indirection
-LL | | }
-   | |_^ recursive type has infinite size
+   | |________^ recursive type has infinite size
+...
+LL |       tail: Option<ListNode>,
+   |             ---------------- recursive without indirection
    |
 help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
    |

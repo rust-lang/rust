@@ -2,7 +2,7 @@ error[E0191]: the value of the associated type `A` (from trait `Foo`) must be sp
   --> $DIR/issue-19482.rs:10:16
    |
 LL |     type A;
-   |     ------- `A` defined here
+   |     ------ `A` defined here
 ...
 LL | fn bar(x: &dyn Foo) {}
    |                ^^^ help: specify the associated type: `Foo<A = Type>`

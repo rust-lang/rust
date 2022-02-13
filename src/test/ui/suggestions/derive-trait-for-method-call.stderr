@@ -23,14 +23,8 @@ LL |     let y = x.test();
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/default.rs:LL:COL
    |
-LL | / pub trait Default: Sized {
-LL | |     /// Returns the "default value" for a type.
-LL | |     ///
-LL | |     /// Default values are often some kind of initial value, identity value, or anything else that
-...  |
-LL | |     fn default() -> Self;
-LL | | }
-   | |_^
+LL | pub trait Default: Sized {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider annotating `Enum` with `#[derive(Clone)]`
    |
 LL | #[derive(Clone)]
@@ -79,7 +73,7 @@ LL |     let y = x.test();
   ::: $SRC_DIR/std/src/time.rs:LL:COL
    |
 LL | pub struct Instant(time::Instant);
-   | ---------------------------------- doesn't satisfy `Instant: Default`
+   | ------------------ doesn't satisfy `Instant: Default`
    |
   ::: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
    |

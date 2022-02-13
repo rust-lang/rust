@@ -31,11 +31,8 @@ error: vtable entries for `<S as O>`: [
        ]
   --> $DIR/vtable-multi-level.rs:95:1
    |
-LL | / trait O: G + N {
-LL | |
-LL | |     fn foo_o(&self) {}
-LL | | }
-   | |_^
+LL | trait O: G + N {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as B>`: [
            MetadataDropInPlace,
@@ -45,11 +42,8 @@ error: vtable entries for `<S as B>`: [
        ]
   --> $DIR/vtable-multi-level.rs:19:1
    |
-LL | / trait B {
-LL | |
-LL | |     fn foo_b(&self) {}
-LL | | }
-   | |_^
+LL | trait B {
+   | ^^^^^^^
 
 error: vtable entries for `<S as D>`: [
            MetadataDropInPlace,
@@ -59,11 +53,8 @@ error: vtable entries for `<S as D>`: [
        ]
   --> $DIR/vtable-multi-level.rs:30:1
    |
-LL | / trait D {
-LL | |
-LL | |     fn foo_d(&self) {}
-LL | | }
-   | |_^
+LL | trait D {
+   | ^^^^^^^
 
 error: vtable entries for `<S as E>`: [
            MetadataDropInPlace,
@@ -73,11 +64,8 @@ error: vtable entries for `<S as E>`: [
        ]
   --> $DIR/vtable-multi-level.rs:36:1
    |
-LL | / trait E {
-LL | |
-LL | |     fn foo_e(&self) {}
-LL | | }
-   | |_^
+LL | trait E {
+   | ^^^^^^^
 
 error: vtable entries for `<S as F>`: [
            MetadataDropInPlace,
@@ -90,11 +78,8 @@ error: vtable entries for `<S as F>`: [
        ]
   --> $DIR/vtable-multi-level.rs:42:1
    |
-LL | / trait F: D + E {
-LL | |
-LL | |     fn foo_f(&self) {}
-LL | | }
-   | |_^
+LL | trait F: D + E {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as H>`: [
            MetadataDropInPlace,
@@ -104,11 +89,8 @@ error: vtable entries for `<S as H>`: [
        ]
   --> $DIR/vtable-multi-level.rs:53:1
    |
-LL | / trait H {
-LL | |
-LL | |     fn foo_h(&self) {}
-LL | | }
-   | |_^
+LL | trait H {
+   | ^^^^^^^
 
 error: vtable entries for `<S as I>`: [
            MetadataDropInPlace,
@@ -118,11 +100,8 @@ error: vtable entries for `<S as I>`: [
        ]
   --> $DIR/vtable-multi-level.rs:59:1
    |
-LL | / trait I {
-LL | |
-LL | |     fn foo_i(&self) {}
-LL | | }
-   | |_^
+LL | trait I {
+   | ^^^^^^^
 
 error: vtable entries for `<S as J>`: [
            MetadataDropInPlace,
@@ -135,11 +114,8 @@ error: vtable entries for `<S as J>`: [
        ]
   --> $DIR/vtable-multi-level.rs:65:1
    |
-LL | / trait J: H + I {
-LL | |
-LL | |     fn foo_j(&self) {}
-LL | | }
-   | |_^
+LL | trait J: H + I {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as K>`: [
            MetadataDropInPlace,
@@ -149,11 +125,8 @@ error: vtable entries for `<S as K>`: [
        ]
   --> $DIR/vtable-multi-level.rs:71:1
    |
-LL | / trait K {
-LL | |
-LL | |     fn foo_k(&self) {}
-LL | | }
-   | |_^
+LL | trait K {
+   | ^^^^^^^
 
 error: vtable entries for `<S as L>`: [
            MetadataDropInPlace,
@@ -163,11 +136,8 @@ error: vtable entries for `<S as L>`: [
        ]
   --> $DIR/vtable-multi-level.rs:77:1
    |
-LL | / trait L {
-LL | |
-LL | |     fn foo_l(&self) {}
-LL | | }
-   | |_^
+LL | trait L {
+   | ^^^^^^^
 
 error: vtable entries for `<S as M>`: [
            MetadataDropInPlace,
@@ -180,11 +150,8 @@ error: vtable entries for `<S as M>`: [
        ]
   --> $DIR/vtable-multi-level.rs:83:1
    |
-LL | / trait M: K + L {
-LL | |
-LL | |     fn foo_m(&self) {}
-LL | | }
-   | |_^
+LL | trait M: K + L {
+   | ^^^^^^^^^^^^^^
 
 error: vtable entries for `<S as N>`: [
            MetadataDropInPlace,
@@ -204,11 +171,8 @@ error: vtable entries for `<S as N>`: [
        ]
   --> $DIR/vtable-multi-level.rs:89:1
    |
-LL | / trait N: J + M {
-LL | |
-LL | |     fn foo_n(&self) {}
-LL | | }
-   | |_^
+LL | trait N: J + M {
+   | ^^^^^^^^^^^^^^
 
 error: aborting due to 12 previous errors
 

@@ -114,7 +114,7 @@ note: the tuple struct constructor `S` is defined here
   --> $DIR/auxiliary/privacy-struct-ctor.rs:2:5
    |
 LL |     pub struct S(u8);
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `Z` is private
   --> $DIR/privacy-struct-ctor.rs:45:19
@@ -131,7 +131,7 @@ note: the tuple struct constructor `Z` is defined here
   --> $DIR/auxiliary/privacy-struct-ctor.rs:5:9
    |
 LL |         pub(in m) struct Z(pub(in m::n) u8);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 10 previous errors
 

@@ -2,7 +2,7 @@ error[E0599]: the method `insert` exists for struct `HashSet<Value>`, but its tr
   --> $DIR/issue-91550.rs:8:8
    |
 LL | struct Value(u32);
-   | ------------------
+   | ------------
    | |
    | doesn't satisfy `Value: Eq`
    | doesn't satisfy `Value: Hash`
@@ -22,7 +22,7 @@ error[E0599]: the method `use_eq` exists for struct `Object<NoDerives>`, but its
   --> $DIR/issue-91550.rs:26:9
    |
 LL | pub struct NoDerives;
-   | --------------------- doesn't satisfy `NoDerives: Eq`
+   | -------------------- doesn't satisfy `NoDerives: Eq`
 LL |
 LL | struct Object<T>(T);
    |        ------ method `use_eq` not found for this struct
@@ -41,7 +41,7 @@ error[E0599]: the method `use_ord` exists for struct `Object<NoDerives>`, but it
   --> $DIR/issue-91550.rs:27:9
    |
 LL | pub struct NoDerives;
-   | --------------------- doesn't satisfy `NoDerives: Ord`
+   | -------------------- doesn't satisfy `NoDerives: Ord`
 LL |
 LL | struct Object<T>(T);
    |        ------ method `use_ord` not found for this struct
@@ -60,7 +60,7 @@ error[E0599]: the method `use_ord_and_partial_ord` exists for struct `Object<NoD
   --> $DIR/issue-91550.rs:28:9
    |
 LL | pub struct NoDerives;
-   | ---------------------
+   | --------------------
    | |
    | doesn't satisfy `NoDerives: Ord`
    | doesn't satisfy `NoDerives: PartialOrd`

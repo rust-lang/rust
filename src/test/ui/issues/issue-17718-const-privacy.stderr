@@ -20,7 +20,7 @@ note: the constant `BAR` is defined here
   --> $DIR/auxiliary/issue-17718-const-privacy.rs:4:1
    |
 LL | const BAR: usize = 3;
-   | ^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

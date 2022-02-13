@@ -10,6 +10,6 @@ struct C(Box<A>);
 
 #[cfg(cfail)]
 struct C(A);
-//[cfail]~^ ERROR 12:1: 12:13: recursive type `C` has infinite size [E0072]
+//[cfail]~^ ERROR 12:1: 12:9: recursive type `C` has infinite size [E0072]
 
 fn main() {}

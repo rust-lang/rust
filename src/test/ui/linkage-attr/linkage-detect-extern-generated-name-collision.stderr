@@ -2,7 +2,7 @@ error: symbol `collision` is already defined
   --> $DIR/auxiliary/def_colliding_external.rs:6:5
    |
 LL |     pub static collision: *const i32;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

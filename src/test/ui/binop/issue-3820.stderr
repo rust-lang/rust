@@ -14,14 +14,8 @@ LL | struct Thing {
 note: the following trait must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
    |
-LL | / pub trait Mul<Rhs = Self> {
-LL | |     /// The resulting type after applying the `*` operator.
-LL | |     #[stable(feature = "rust1", since = "1.0.0")]
-LL | |     type Output;
-...  |
-LL | |     fn mul(self, rhs: Rhs) -> Self::Output;
-LL | | }
-   | |_^
+LL | pub trait Mul<Rhs = Self> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

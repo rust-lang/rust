@@ -2,7 +2,7 @@ error[E0391]: cycle detected when resolving instance `<LazyUpdim<T, { T::DIM }, 
   --> $DIR/issue-83765.rs:5:5
    |
 LL |     const DIM: usize;
-   |     ^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
    |
 note: ...which requires checking if `TensorDimension` fulfills its obligations...
   --> $DIR/issue-83765.rs:4:1

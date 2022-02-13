@@ -934,28 +934,105 @@ impl<'hir> Map<'hir> {
     }
 
     /// Gets the span of the definition of the specified HIR node.
-    /// This is used by `tcx.get_span`
+    /// This is used by `tcx.def_span`.
     pub fn span(self, hir_id: HirId) -> Span {
         self.opt_span(hir_id)
             .unwrap_or_else(|| bug!("hir::map::Map::span: id not in map: {:?}", hir_id))
     }
 
     pub fn opt_span(self, hir_id: HirId) -> Option<Span> {
+        fn until_within(outer: Span, end: Span) -> Span {
+            if let Some(end) = end.find_ancestor_inside(outer) {
+                outer.with_hi(end.hi())
+            } else {
+                outer
+            }
+        }
+
+        fn named_span(item_span: Span, ident: Ident, generics: Option<&Generics<'_>>) -> Span {
+            if ident.name != kw::Empty {
+                let mut span = until_within(item_span, ident.span);
+                if let Some(g) = generics
+                    && !g.span.is_dummy()
+                    && let Some(g_span) = g.span.find_ancestor_inside(item_span)
+                {
+                    span = span.to(g_span);
+                }
+                span
+            } else {
+                item_span
+            }
+        }
+
         let span = match self.find(hir_id)? {
-            Node::Param(param) => param.span,
+            // Function-like.
+            Node::Item(Item { kind: ItemKind::Fn(sig, ..), .. })
+            | Node::TraitItem(TraitItem { kind: TraitItemKind::Fn(sig, ..), .. })
+            | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(sig, ..), .. }) => sig.span,
+            // Constants and Statics.
+            Node::Item(Item {
+                kind:
+                    ItemKind::Const(ty, ..)
+                    | ItemKind::Static(ty, ..)
+                    | ItemKind::Impl(Impl { self_ty: ty, .. }),
+                span: outer_span,
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Const(ty, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ImplItem(ImplItem {
+                kind: ImplItemKind::Const(ty, ..),
+                span: outer_span,
+                ..
+            })
+            | Node::ForeignItem(ForeignItem {
+                kind: ForeignItemKind::Static(ty, ..),
+                span: outer_span,
+                ..
+            }) => until_within(*outer_span, ty.span),
+            // With generics and bounds.
+            Node::Item(Item {
+                kind: ItemKind::Trait(_, _, generics, bounds, _),
+                span: outer_span,
+                ..
+            })
+            | Node::TraitItem(TraitItem {
+                kind: TraitItemKind::Type(bounds, _),
+                generics,
+                span: outer_span,
+                ..
+            }) => {
+                let end = if let Some(b) = bounds.last() { b.span() } else { generics.span };
+                until_within(*outer_span, end)
+            }
+            // Other cases.
             Node::Item(item) => match &item.kind {
-                ItemKind::Fn(sig, _, _) => sig.span,
-                _ => item.span,
+                ItemKind::Use(path, _) => path.span,
+                _ => named_span(item.span, item.ident, item.kind.generics()),
             },
+            Node::ImplItem(item) => named_span(item.span, item.ident, Some(item.generics)),
+            Node::ForeignItem(item) => match item.kind {
+                ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
+                _ => named_span(item.span, item.ident, None),
+            },
+            Node::Ctor(..) => return self.opt_span(self.get_parent_node(hir_id)),
+            _ => self.span_with_body(hir_id),
+        };
+        Some(span)
+    }
+
+    /// Like `hir.span()`, but includes the body of items
+    /// (instead of just the item header)
+    pub fn span_with_body(self, hir_id: HirId) -> Span {
+        match self.get(hir_id) {
+            Node::Param(param) => param.span,
+            Node::Item(item) => item.span,
             Node::ForeignItem(foreign_item) => foreign_item.span,
-            Node::TraitItem(trait_item) => match &trait_item.kind {
-                TraitItemKind::Fn(sig, _) => sig.span,
-                _ => trait_item.span,
-            },
-            Node::ImplItem(impl_item) => match &impl_item.kind {
-                ImplItemKind::Fn(sig, _) => sig.span,
-                _ => impl_item.span,
-            },
+            Node::TraitItem(trait_item) => trait_item.span,
+            Node::ImplItem(impl_item) => impl_item.span,
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => self.body(constant.body).value.span,
@@ -973,29 +1050,12 @@ impl<'hir> Map<'hir> {
             Node::Pat(pat) => pat.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
-            Node::Ctor(..) => match self.find(self.get_parent_node(hir_id))? {
-                Node::Item(item) => item.span,
-                Node::Variant(variant) => variant.span,
-                _ => unreachable!(),
-            },
+            Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
             Node::Lifetime(lifetime) => lifetime.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
             Node::Local(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
-        };
-        Some(span)
-    }
-
-    /// Like `hir.span()`, but includes the body of function items
-    /// (instead of just the function header)
-    pub fn span_with_body(self, hir_id: HirId) -> Span {
-        match self.find(hir_id) {
-            Some(Node::TraitItem(item)) => item.span,
-            Some(Node::ImplItem(impl_item)) => impl_item.span,
-            Some(Node::Item(item)) => item.span,
-            Some(_) => self.span(hir_id),
-            _ => bug!("hir::map::Map::span_with_body: id not in map: {:?}", hir_id),
         }
     }
 

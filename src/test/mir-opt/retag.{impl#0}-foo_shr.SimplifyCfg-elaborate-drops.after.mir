@@ -1,6 +1,6 @@
-// MIR for `<impl at $DIR/retag.rs:11:1: 19:2>::foo_shr` after SimplifyCfg-elaborate-drops
+// MIR for `<impl at $DIR/retag.rs:11:1: 11:10>::foo_shr` after SimplifyCfg-elaborate-drops
 
-fn <impl at $DIR/retag.rs:11:1: 19:2>::foo_shr(_1: &Test, _2: &i32) -> &i32 {
+fn <impl at $DIR/retag.rs:11:1: 11:10>::foo_shr(_1: &Test, _2: &i32) -> &i32 {
     debug self => _1;                    // in scope 0 at $DIR/retag.rs:16:20: 16:25
     debug x => _2;                       // in scope 0 at $DIR/retag.rs:16:27: 16:28
     let mut _0: &i32;                    // return place in scope 0 at $DIR/retag.rs:16:42: 16:49
