@@ -12,6 +12,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,65,0 { LET_ELSE }
     1,62,0 { BOOL_THEN_SOME }
     1,58,0 { FORMAT_ARGS_CAPTURE }
     1,53,0 { OR_PATTERNS, MANUAL_BITS, BTREE_MAP_RETAIN, BTREE_SET_RETAIN, ARRAY_INTO_ITERATOR }

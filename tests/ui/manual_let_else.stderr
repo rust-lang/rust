@@ -1,0 +1,104 @@
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:17:5
+   |
+LL |     let v = if let Some(v_some) = g() { v_some } else { return };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:18:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:24:5
+   |
+LL | /     let v = if let Some(v) = g() {
+LL | |         // Blocks around the identity should have no impact
+LL | |         {
+LL | |             { v }
+...  |
+LL | |         return;
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:37:9
+   |
+LL |         let v = if let Some(v_some) = g() { v_some } else { continue };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:38:9
+   |
+LL |         let v = if let Some(v_some) = g() { v_some } else { break };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:42:5
+   |
+LL |     let v = if let Some(v_some) = g() { v_some } else { panic!() };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:45:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else {
+LL | |         std::process::abort()
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:52:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else {
+LL | |         if true { return } else { panic!() }
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:59:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else if true {
+LL | |         return;
+LL | |     } else {
+LL | |         panic!("diverge");
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:68:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else {
+LL | |         match (g(), g()) {
+...  |
+LL | |         }
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:85:5
+   |
+LL | /     let (v, w) = if let Some(v_some) = g().map(|v| (v, 42)) {
+LL | |         v_some
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+
+error: aborting due to 11 previous errors
+

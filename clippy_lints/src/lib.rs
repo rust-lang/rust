@@ -170,6 +170,7 @@ mod manual_async_fn;
 mod manual_bits;
 mod manual_clamp;
 mod manual_instant_elapsed;
+mod manual_let_else;
 mod manual_non_exhaustive;
 mod manual_rem_euclid;
 mod manual_retain;
@@ -603,6 +604,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     store.register_late_pass(move |_| Box::new(matches::Matches::new(msrv)));
+    store.register_late_pass(move |_| Box::new(manual_let_else::ManualLetElse::new(msrv)));
     store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(msrv)));
     store.register_late_pass(move |_| Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(msrv)));
     store.register_late_pass(move |_| Box::new(manual_strip::ManualStrip::new(msrv)));
