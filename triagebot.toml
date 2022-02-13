@@ -113,6 +113,9 @@ trigger_files = [
     "src/tools/rustdoc-js",
     "src/tools/rustdoc-themes",
 ]
+exclude_labels = [
+    "T-*",
+]
 
 [autolabel."T-compiler"]
 trigger_files = [
@@ -121,6 +124,9 @@ trigger_files = [
 
     # Tests
     "src/test/ui",
+]
+exclude_labels = [
+    "T-*",
 ]
 
 [notify-zulip."I-prioritize"]
