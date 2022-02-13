@@ -46,6 +46,12 @@ declare_clippy_lint! {
     ///
     /// For example, the argument `b` is only used in recursion, but the lint would not catch it.
     ///
+    /// List of some examples that can not be caught:
+    /// - binary operation of non-primitive types
+    /// - closure usage
+    /// - some `break` relative operations
+    /// - struct pattern binding
+    ///
     /// ### Example
     /// ```rust
     /// fn f(a: usize, b: usize) -> usize {
