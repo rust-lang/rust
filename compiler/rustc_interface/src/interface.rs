@@ -186,6 +186,8 @@ pub struct Config {
 }
 
 pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
+    crate::callbacks::setup_callbacks();
+
     let registry = &config.registry;
     let (mut sess, codegen_backend) = util::create_session(
         config.opts,
@@ -238,7 +240,7 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
 pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     tracing::trace!("run_compiler");
     let stderr = config.stderr.take();
-    util::setup_callbacks_and_run_in_thread_pool_with_globals(
+    util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.debugging_opts.threads,
         &stderr,
