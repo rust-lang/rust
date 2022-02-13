@@ -227,7 +227,6 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
- "time",
  "toml",
  "winapi",
 ]

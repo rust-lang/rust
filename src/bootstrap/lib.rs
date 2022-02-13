@@ -106,8 +106,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::str;
@@ -1333,23 +1332,6 @@ impl Build {
             let mtime = FileTime::from_last_modification_time(&metadata);
             t!(filetime::set_file_times(dst, atime, mtime));
         }
-    }
-
-    /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
-    /// new string for each replacement.)
-    pub fn replace_in_file(&self, path: &Path, replacements: &[(&str, &str)]) {
-        if self.config.dry_run {
-            return;
-        }
-        let mut contents = String::new();
-        let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
-        t!(file.read_to_string(&mut contents));
-        for &(target, replacement) in replacements {
-            contents = contents.replace(target, replacement);
-        }
-        t!(file.seek(SeekFrom::Start(0)));
-        t!(file.set_len(0));
-        t!(file.write_all(contents.as_bytes()));
     }
 
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
