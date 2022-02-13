@@ -31,9 +31,9 @@
 trait TraitVisibility { }
 
 #[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail2")]
+#[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
-#[rustc_clean(except="hir_owner,hir_owner_nodes", cfg="cfail5")]
+#[rustc_clean(cfg="cfail5", except="hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg="cfail6")]
 pub trait TraitVisibility { }
 
