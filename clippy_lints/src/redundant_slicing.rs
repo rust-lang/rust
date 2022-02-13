@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::subst::GenericArg;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -44,7 +44,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for slicing expression which are equivalent to dereferencing the
+    /// Checks for slicing expressions which are equivalent to dereferencing the
     /// value.
     ///
     /// ### Why is this bad?
@@ -68,6 +68,9 @@ declare_clippy_lint! {
 
 declare_lint_pass!(RedundantSlicing => [REDUNDANT_SLICING, DEREF_BY_SLICING]);
 
+static REDUNDANT_SLICING_LINT: (&Lint, &str) = (REDUNDANT_SLICING, "redundant slicing of the whole range");
+static DEREF_BY_SLICING_LINT: (&Lint, &str) = (DEREF_BY_SLICING, "slicing when dereferencing would work");
+
 impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
@@ -89,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                 });
                 let mut app = Applicability::MachineApplicable;
 
-                let (lint, msg, help, sugg) = if expr_ty == indexed_ty {
+                let ((lint, msg), help, sugg) = if expr_ty == indexed_ty {
                     if expr_ref_count > indexed_ref_count {
                         // Indexing takes self by reference and can't return a reference to that
                         // reference as it's a local variable. The only way this could happen is if
@@ -100,9 +103,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                     }
                     let deref_count = indexed_ref_count - expr_ref_count;
 
-                    let (reborrow_str, help_str) = if mutability == Mutability::Mut {
+                    let (lint, reborrow_str, help_str) = if mutability == Mutability::Mut {
                         // The slice was used to reborrow the mutable reference.
-                        ("&mut *", "reborrow the original value instead")
+                        (DEREF_BY_SLICING_LINT, "&mut *", "reborrow the original value instead")
                     } else if matches!(
                         parent_expr,
                         Some(Expr {
@@ -113,11 +116,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         matches!(a.kind, Adjust::Borrow(AutoBorrow::Ref(_, AutoBorrowMutability::Mut { .. })))
                     }) {
                         // The slice was used to make a temporary reference.
-                        ("&*", "reborrow the original value instead")
+                        (DEREF_BY_SLICING_LINT, "&*", "reborrow the original value instead")
                     } else if deref_count != 0 {
-                        ("", "dereference the original value instead")
+                        (DEREF_BY_SLICING_LINT, "", "dereference the original value instead")
                     } else {
-                        ("", "use the original value instead")
+                        (REDUNDANT_SLICING_LINT, "", "use the original value instead")
                     };
 
                     let snip = snippet_with_context(cx, indexed.span, ctxt, "..", &mut app).0;
@@ -127,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                         format!("{}{}{}", reborrow_str, "*".repeat(deref_count), snip)
                     };
 
-                    (REDUNDANT_SLICING, "redundant slicing of the whole range", help_str, sugg)
+                    (lint, help_str, sugg)
                 } else if let Some(target_id) = cx.tcx.lang_items().deref_target() {
                     if let Ok(deref_ty) = cx.tcx.try_normalize_erasing_regions(
                         cx.param_env,
@@ -140,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantSlicing {
                             } else {
                                 format!("&{}{}*{}", mutability.prefix_str(), "*".repeat(indexed_ref_count), snip)
                             };
-                            (DEREF_BY_SLICING, "slicing when dereferencing would work", "dereference the original value instead", sugg)
+                            (DEREF_BY_SLICING_LINT, "dereference the original value instead", sugg)
                         } else {
                             return;
                         }

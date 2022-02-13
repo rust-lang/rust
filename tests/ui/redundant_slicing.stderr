@@ -13,34 +13,10 @@ LL |     let _ = &(&*v)[..]; // Outer borrow is redundant
    |             ^^^^^^^^^^ help: use the original value instead: `(&*v)`
 
 error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:17:20
-   |
-LL |     let err = &mut &S[..]; // Should reborrow instead of slice
-   |                    ^^^^^^ help: reborrow the original value instead: `&*S`
-
-error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:21:13
-   |
-LL |     let _ = &mut mut_slice[..]; // Should reborrow instead of slice
-   |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
-
-error: redundant slicing of the whole range
   --> $DIR/redundant_slicing.rs:31:13
    |
 LL |     let _ = &m!(slice)[..];
    |             ^^^^^^^^^^^^^^ help: use the original value instead: `slice`
 
-error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:41:13
-   |
-LL |     let _ = &slice_ref[..]; // Deref instead of slice
-   |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
-
-error: redundant slicing of the whole range
-  --> $DIR/redundant_slicing.rs:45:13
-   |
-LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap();
-   |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
-
-error: aborting due to 7 previous errors
+error: aborting due to 3 previous errors
 
