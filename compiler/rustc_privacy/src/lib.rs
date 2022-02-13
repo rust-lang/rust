@@ -1363,8 +1363,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn item_is_public(&self, def_id: LocalDefId, vis: &hir::Visibility<'_>) -> bool {
-        self.access_levels.is_reachable(def_id) || vis.node.is_pub()
+    fn item_is_public(&self, def_id: LocalDefId) -> bool {
+        self.access_levels.is_reachable(def_id) || self.tcx.visibility(def_id).is_public()
     }
 }
 
@@ -1499,8 +1499,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                                 let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                                 match impl_item.kind {
                                     hir::ImplItemKind::Const(..) | hir::ImplItemKind::Fn(..)
-                                        if self
-                                            .item_is_public(impl_item.def_id, &impl_item.vis) =>
+                                        if self.item_is_public(impl_item.def_id) =>
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
@@ -1571,7 +1570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             hir::ItemKind::TyAlias(..) => return,
 
             // Not at all public, so we don't care.
-            _ if !self.item_is_public(item.def_id, &item.vis) => {
+            _ if !self.item_is_public(item.def_id) => {
                 return;
             }
 

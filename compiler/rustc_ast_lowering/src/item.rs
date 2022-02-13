@@ -1016,8 +1016,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             def_id: hir_id.expect_owner(),
             ident: self.lower_ident(i.ident),
             generics,
-            vis: self.lower_visibility(&i.vis),
             kind,
+            vis_span: self.lower_span(i.vis.span),
             span: self.lower_span(i.span),
         };
         self.arena.alloc(item)

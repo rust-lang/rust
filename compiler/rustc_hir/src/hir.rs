@@ -2140,10 +2140,10 @@ impl ImplItemId {
 pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub def_id: LocalDefId,
-    pub vis: Visibility<'hir>,
     pub generics: Generics<'hir>,
     pub kind: ImplItemKind<'hir>,
     pub span: Span,
+    pub vis_span: Span,
 }
 
 impl ImplItem<'_> {
@@ -3350,6 +3350,6 @@ mod size_asserts {
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
-    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 144);
+    rustc_data_structures::static_assert_size!(super::ImplItem<'static>, 120);
     rustc_data_structures::static_assert_size!(super::ForeignItem<'static>, 112);
 }

@@ -25,7 +25,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::Input;
-use rustc_span::source_map::respan;
 use rustc_span::symbol::Ident;
 use rustc_span::*;
 
@@ -62,12 +61,6 @@ macro_rules! access_from {
             public: $save_ctxt.tcx.visibility($id).is_public(),
             reachable: $save_ctxt.access_levels.is_reachable($id),
         }
-    };
-}
-
-macro_rules! access_from_vis {
-    ($save_ctxt:expr, $vis:expr, $id:expr) => {
-        Access { public: $vis.node.is_pub(), reachable: $save_ctxt.access_levels.is_reachable($id) }
     };
 }
 
@@ -257,7 +250,6 @@ impl<'tcx> DumpVisitor<'tcx> {
         def_id: LocalDefId,
         ident: Ident,
         generics: &'tcx hir::Generics<'tcx>,
-        vis: &hir::Visibility<'tcx>,
         span: Span,
     ) {
         debug!("process_method: {:?}:{}", def_id, ident);
@@ -275,7 +267,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     fn_to_string(sig.decl, sig.header, Some(ident.name), generics, &[], None);
                 method_data.sig = sig::method_signature(hir_id, ident, generics, sig, &v.save_ctxt);
 
-                v.dumper.dump_def(&access_from_vis!(v.save_ctxt, vis, def_id), method_data);
+                v.dumper.dump_def(&access_from!(v.save_ctxt, def_id), method_data);
             }
 
             // walk arg and return types
@@ -407,7 +399,6 @@ impl<'tcx> DumpVisitor<'tcx> {
         typ: &'tcx hir::Ty<'tcx>,
         expr: Option<&'tcx hir::Expr<'tcx>>,
         parent_id: DefId,
-        vis: &hir::Visibility<'tcx>,
         attrs: &'tcx [ast::Attribute],
     ) {
         let qualname = format!("::{}", self.tcx.def_path_str(def_id.to_def_id()));
@@ -418,7 +409,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             let span = self.span_from_span(ident.span);
 
             self.dumper.dump_def(
-                &access_from_vis!(self.save_ctxt, vis, def_id),
+                &access_from!(self.save_ctxt, def_id),
                 Def {
                     kind: DefKind::Const,
                     id: id_from_hir_id(hir_id, &self.save_ctxt),
@@ -983,11 +974,9 @@ impl<'tcx> DumpVisitor<'tcx> {
 
     fn process_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
-        let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.kind {
             hir::TraitItemKind::Const(ref ty, body) => {
                 let body = body.map(|b| &self.tcx.hir().body(b).value);
-                let respan = respan(vis_span, hir::VisibilityKind::Public);
                 let attrs = self.tcx.hir().attrs(trait_item.hir_id());
                 self.process_assoc_const(
                     trait_item.def_id,
@@ -995,21 +984,18 @@ impl<'tcx> DumpVisitor<'tcx> {
                     &ty,
                     body,
                     trait_id,
-                    &respan,
                     attrs,
                 );
             }
             hir::TraitItemKind::Fn(ref sig, ref trait_fn) => {
                 let body =
                     if let hir::TraitFn::Provided(body) = trait_fn { Some(*body) } else { None };
-                let respan = respan(vis_span, hir::VisibilityKind::Public);
                 self.process_method(
                     sig,
                     body,
                     trait_item.def_id,
                     trait_item.ident,
                     &trait_item.generics,
-                    &respan,
                     trait_item.span,
                 );
             }
@@ -1068,7 +1054,6 @@ impl<'tcx> DumpVisitor<'tcx> {
                     &ty,
                     Some(&body.value),
                     impl_id,
-                    &impl_item.vis,
                     attrs,
                 );
             }
@@ -1079,7 +1064,6 @@ impl<'tcx> DumpVisitor<'tcx> {
                     impl_item.def_id,
                     impl_item.ident,
                     &impl_item.generics,
-                    &impl_item.vis,
                     impl_item.span,
                 );
             }

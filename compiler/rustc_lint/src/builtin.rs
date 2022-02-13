@@ -1439,7 +1439,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         if cx.tcx.visibility(impl_item.def_id).is_public() {
-            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis.span, false);
+            self.perform_lint(cx, "item", impl_item.def_id, impl_item.vis_span, false);
         }
     }
 }
