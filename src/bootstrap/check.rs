@@ -90,14 +90,7 @@ impl Step for Std {
             "Checking stage{} std artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(
-            builder,
-            cargo,
-            args(builder),
-            &libstd_stamp(builder, compiler, target),
-            vec![],
-            true,
-        );
+        run_cargo(builder, cargo, args(builder), &libstd_stamp(builder, compiler, target), vec![]);
 
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
@@ -146,7 +139,6 @@ impl Step for Std {
             args(builder),
             &libstd_test_stamp(builder, compiler, target),
             vec![],
-            true,
         );
     }
 }
@@ -222,7 +214,6 @@ impl Step for Rustc {
             args(builder),
             &librustc_stamp(builder, compiler, target),
             vec![],
-            true,
         );
 
         let libdir = builder.sysroot_libdir(compiler, target);
@@ -287,7 +278,6 @@ impl Step for CodegenBackend {
             args(builder),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
-            true,
         );
     }
 }
@@ -354,7 +344,6 @@ macro_rules! tool_check_step {
                     args(builder),
                     &stamp(builder, compiler, target),
                     vec![],
-                    true,
                 );
 
                 /// Cargo's output path in a given stage, compiled by a particular

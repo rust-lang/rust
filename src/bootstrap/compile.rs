@@ -112,14 +112,7 @@ impl Step for Std {
             "Building stage{} std artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
         ));
-        run_cargo(
-            builder,
-            cargo,
-            vec![],
-            &libstd_stamp(builder, compiler, target),
-            target_deps,
-            false,
-        );
+        run_cargo(builder, cargo, vec![], &libstd_stamp(builder, compiler, target), target_deps);
 
         builder.ensure(StdLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
@@ -629,14 +622,7 @@ impl Step for Rustc {
             "Building stage{} compiler artifacts ({} -> {})",
             compiler.stage, &compiler.host, target
         ));
-        run_cargo(
-            builder,
-            cargo,
-            vec![],
-            &librustc_stamp(builder, compiler, target),
-            vec![],
-            false,
-        );
+        run_cargo(builder, cargo, vec![], &librustc_stamp(builder, compiler, target), vec![]);
 
         builder.ensure(RustcLink {
             compiler: builder.compiler(compiler.stage, builder.config.build),
@@ -839,7 +825,7 @@ impl Step for CodegenBackend {
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
         ));
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
+        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![]);
         if builder.config.dry_run {
             return;
         }
@@ -1232,7 +1218,6 @@ pub fn run_cargo(
     tail_args: Vec<String>,
     stamp: &Path,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
-    is_check: bool,
 ) -> Vec<PathBuf> {
     if builder.config.dry_run {
         return Vec::new();
@@ -1271,7 +1256,7 @@ pub fn run_cargo(
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(&filename)
-                || (is_check && filename.ends_with(".rmeta")))
+                || filename.ends_with(".rmeta"))
             {
                 continue;
             }
