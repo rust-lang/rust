@@ -1399,6 +1399,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
                 let tail = selcx.tcx().struct_tail_with_normalize(self_ty, |ty| {
+                    // We throw away any obligations we get from this, since we normalize
+                    // and confirm these obligations once again during confirmation
                     normalize_with_depth(
                         selcx,
                         obligation.param_env,
@@ -1415,7 +1417,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Int(_)
                     | ty::Uint(_)
                     | ty::Float(_)
-                    | ty::Foreign(_)
                     | ty::Str
                     | ty::Array(..)
                     | ty::Slice(_)
@@ -1428,6 +1429,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     | ty::Generator(..)
                     | ty::GeneratorWitness(..)
                     | ty::Never
+                    // Extern types have unit metadata, according to RFC 2850
+                    | ty::Foreign(_)
                     // If returned by `struct_tail_without_normalization` this is a unit struct
                     // without any fields, or not a struct, and therefore is Sized.
                     | ty::Adt(..)
@@ -1436,9 +1439,10 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // Integers and floats are always Sized, and so have unit type metadata.
                     | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                    ty::Projection(..)
-                    | ty::Opaque(..)
-                    | ty::Param(..)
+                    // type parameters and unnormalized projections have pointer metadata if they're still known to be sized
+                    ty::Param(_) | ty::Projection(..) => tail.is_sized(selcx.tcx().at(obligation.cause.span), obligation.param_env),
+
+                    ty::Opaque(..)
                     | ty::Bound(..)
                     | ty::Placeholder(..)
                     | ty::Infer(..)
@@ -1657,7 +1661,7 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
     let self_ty = selcx.infcx().shallow_resolve(obligation.predicate.self_ty());
 
     let mut obligations = vec![];
-    let metadata_ty = self_ty.ptr_metadata_ty(tcx, |ty| {
+    let (metadata_ty, check_is_sized) = self_ty.ptr_metadata_ty(tcx, |ty| {
         normalize_with_depth_to(
             selcx,
             obligation.param_env,
@@ -1667,6 +1671,19 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
             &mut obligations,
         )
     });
+    if check_is_sized {
+        let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
+            tcx.require_lang_item(LangItem::Sized, None),
+            tcx.mk_substs_trait(self_ty, &[]),
+        ))
+        .without_const()
+        .to_predicate(tcx);
+        obligations.push(Obligation::new(
+            obligation.cause.clone(),
+            obligation.param_env,
+            sized_predicate,
+        ));
+    }
 
     let substs = tcx.mk_substs([self_ty.into()].iter());
     let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
