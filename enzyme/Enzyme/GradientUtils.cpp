@@ -1398,7 +1398,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           unwrap_cache.erase(blocks[j]);
           lookup_cache.erase(blocks[j]);
           SmallVector<Instruction *, 4> toErase;
-          for (auto &I : *blocks[j]) {
+          for (auto &I : llvm::reverse(*blocks[j])) {
             toErase.push_back(&I);
           }
           for (auto I : toErase) {
@@ -2016,6 +2016,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
     llvm::errs() << "branchingBlock: " << *branchingBlock << "\n";
   }
   assert(reverseBlocks.find(BB) != reverseBlocks.end());
+  assert(reverseBlocks.find(branchingBlock) != reverseBlocks.end());
   LoopContext lc;
   bool inLoop = getContext(BB, lc);
 
@@ -2099,7 +2100,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
         } else {
           BasicBlock *enterB = BasicBlock::Create(
               BB->getContext(), "remat_enter", BB->getParent());
-          BasicBlock *exitB = resumeblock;
+          rematerializedLoops_cache[L] = enterB;
           std::map<BasicBlock *, BasicBlock *> origToNewForward;
           for (auto B : origLI->getBlocks()) {
             BasicBlock *newB = BasicBlock::Create(
@@ -2115,12 +2116,6 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
           {
             IRBuilder<> NB(enterB);
             NB.CreateBr(origToNewForward[origLI->getHeader()]);
-          }
-          {
-            llvm::SmallPtrSet<llvm::BasicBlock *, 8> origExitBlocks;
-            getExitBlocks(origLI, origExitBlocks);
-            for (auto EB : origExitBlocks)
-              origToNewForward[EB] = exitB;
           }
 
           std::function<void(Loop *, bool)> handleLoop = [&](Loop *OL,
@@ -2503,10 +2498,20 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
               }
             }
 
-            // Remap a branch to the header to continue to the block.
+            llvm::SmallPtrSet<llvm::BasicBlock *, 8> origExitBlocks;
+            getExitBlocks(origLI, origExitBlocks);
+            // Remap a branch to the header to enter the incremented
+            // reverse of that block.
             auto remap = [&](BasicBlock *rB) {
+              // Remap of an exit branch is to go to the reverse
+              // exiting block.
+              if (origExitBlocks.count(rB)) {
+                return reverseBlocks[getNewFromOriginal(B)].front();
+              }
+              // Reverse of an incrementing branch is go to the
+              // reverse of the branching block.
               if (rB == origLI->getHeader())
-                return exitB;
+                return reverseBlocks[getNewFromOriginal(B)].front();
               return origToNewForward[rB];
             };
 
@@ -2553,7 +2558,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
               }
             }
           }
-          rematerializedLoops_cache[L] = resumeblock = enterB;
+          resumeblock = enterB;
         }
       }
 
@@ -5250,8 +5255,19 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   if (auto origInst = isOriginal(inst)) {
     auto found = rematerializableAllocations.find(origInst);
     if (found != rematerializableAllocations.end())
-      if (found->second.LI)
-        scope = &newFunc->getEntryBlock();
+      if (found->second.LI && found->second.LI->contains(origInst)) {
+        bool cacheWholeAllocation = false;
+        if (knownRecomputeHeuristic.count(origInst)) {
+          if (!knownRecomputeHeuristic[origInst]) {
+            cacheWholeAllocation = true;
+          }
+        }
+        // If not caching whole allocation and rematerializing the allocation
+        // within the loop, force an entry-level scope so there is no need
+        // to cache.
+        if (!cacheWholeAllocation)
+          scope = &newFunc->getEntryBlock();
+      }
   } else {
     for (auto pair : backwardsOnlyShadows) {
       if (auto pinst = dyn_cast<Instruction>(pair.first))

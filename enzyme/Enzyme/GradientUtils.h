@@ -796,7 +796,7 @@ public:
           EmitWarning("NotPromotable", LI->getDebugLoc(), oldFunc,
                       LI->getParent(), " Could not promote allocation ", *V,
                       " due to load ", *LI,
-                      " which does not postdominates store ");
+                      " which does not postdominates store ", *res);
           return;
         }
       }

@@ -113,69 +113,67 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   call void @free(i8* %call)
 ; CHECK-NEXT:   br label %for.cond, !llvm.loop !6
 
-; CHECK: invertentry:                                      ; preds = %invertfor.body
+; CHECK: invertentry: 
 ; CHECK-NEXT:   %0 = insertvalue { double } undef, double %"rho0'de.0", 0
 ; CHECK-NEXT:   ret { double } %0
 
-; CHECK: incinvertfor.cond:                                ; preds = %invertfor.body
-; CHECK-NEXT:   %1 = add nsw i64 %"iv'ac.0", -1
+; CHECK: invertfor.cond:                                   ; preds = %invertfor.body, %remat_enter
+; CHECK-NEXT:   %"mul'de.0" = phi double [ %"mul'de.1", %invertfor.body ], [ %"mul'de.2", %remat_enter ]
+; CHECK-NEXT:   %"i10'de.0" = phi double [ %"i10'de.1", %invertfor.body ], [ %"i10'de.2", %remat_enter ]
+; CHECK-NEXT:   %"rho0'de.0" = phi double [ %"rho0'de.1", %invertfor.body ], [ %"rho0'de.2", %remat_enter ]
+; CHECK-NEXT:   %1 = icmp eq i64 %"iv'ac.0", 0
+; CHECK-NEXT:   br i1 %1, label %invertentry, label %incinvertfor.cond
+
+; CHECK: incinvertfor.cond:
+; CHECK-NEXT:   %2 = add nsw i64 %"iv'ac.0", -1
 ; CHECK-NEXT:   br label %remat_enter
 
 ; CHECK: invertfor.body:                                   ; preds = %invertfor.cond1
-; CHECK-NEXT:   %"i4'ipc_unwrap" = bitcast i8* %"call'mi_cache.0" to double*
+; CHECK-NEXT:   %"i4'ipc_unwrap" = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"i4'ipc_unwrap", align 8
-; CHECK-NEXT:   tail call void @free(i8* nonnull %"call'mi_cache.0")
-; CHECK-NEXT:   tail call void @free(i8* %call_cache.0)
-; CHECK-NEXT:   %2 = icmp eq i64 %"iv'ac.0", 0
-; CHECK-NEXT:   br i1 %2, label %invertentry, label %incinvertfor.cond
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"call'mi")
+; CHECK-NEXT:   tail call void @free(i8* %remat_call)
+; CHECK-NEXT:   br label %invertfor.cond
 
-; CHECK: invertfor.cond1:                                  ; preds = %invertfor.end, %incinvertfor.cond1
-; CHECK-NEXT:   %"i10'de.0" = phi double [ %"i10'de.1", %invertfor.end ], [ 0.000000e+00, %incinvertfor.cond1 ]
-; CHECK-NEXT:   %"mul'de.0" = phi double [ %"mul'de.1", %invertfor.end ], [ 0.000000e+00, %incinvertfor.cond1 ]
-; CHECK-NEXT:   %"rho0'de.0" = phi double [ %"rho0'de.1", %invertfor.end ], [ %8, %incinvertfor.cond1 ]
-; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 999999, %invertfor.end ], [ %4, %incinvertfor.cond1 ]
+; CHECK: invertfor.cond1:                                  ; preds = %remat_for.cond_for.cond1, %incinvertfor.cond1
+; CHECK-NEXT:   %"mul'de.1" = phi double [ 0.000000e+00, %incinvertfor.cond1 ], [ %"mul'de.2", %remat_for.cond_for.cond1 ]
+; CHECK-NEXT:   %"i10'de.1" = phi double [ 0.000000e+00, %incinvertfor.cond1 ], [ %"i10'de.2", %remat_for.cond_for.cond1 ]
+; CHECK-NEXT:   %"rho0'de.1" = phi double [ %8, %incinvertfor.cond1 ], [ %"rho0'de.2", %remat_for.cond_for.cond1 ]
+; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ %4, %incinvertfor.cond1 ], [ 999999, %remat_for.cond_for.cond1 ]
 ; CHECK-NEXT:   %3 = icmp eq i64 %"iv1'ac.0", 0
 ; CHECK-NEXT:   br i1 %3, label %invertfor.body, label %incinvertfor.cond1
 
 ; CHECK: incinvertfor.cond1:                               ; preds = %invertfor.cond1
 ; CHECK-NEXT:   %4 = add nsw i64 %"iv1'ac.0", -1
-; CHECK-NEXT:   %"i4'ipc_unwrap2" = bitcast i8* %"call'mi_cache.0" to double*
+; CHECK-NEXT:   %"i4'ipc_unwrap2" = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   %"arrayidx5'ipg_unwrap" = getelementptr inbounds double, double* %"i4'ipc_unwrap2", i64 %"iv1'ac.0"
 ; CHECK-NEXT:   %5 = load double, double* %"arrayidx5'ipg_unwrap", align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx5'ipg_unwrap", align 8
-; CHECK-NEXT:   %6 = fadd fast double %"mul'de.0", %5
+; CHECK-NEXT:   %6 = fadd fast double %"mul'de.1", %5
 ; CHECK-NEXT:   %m0diffei10 = fmul fast double %6, %rho0
-; CHECK-NEXT:   %i4_unwrap3 = bitcast i8* %call_cache.0 to double*
 ; CHECK-NEXT:   %sub_unwrap4 = sub i64 %"iv1'ac.0", 1
-; CHECK-NEXT:   %arrayidx4_unwrap5 = getelementptr inbounds double, double* %i4_unwrap3, i64 %sub_unwrap4
+; CHECK-NEXT:   %arrayidx4_unwrap5 = getelementptr inbounds double, double* %i4_unwrap, i64 %sub_unwrap4
 ; CHECK-NEXT:   %i10_unwrap6 = load double, double* %arrayidx4_unwrap5, align 8, !invariant.group !7
 ; CHECK-NEXT:   %m1differho0 = fmul fast double %6, %i10_unwrap6
-; CHECK-NEXT:   %7 = fadd fast double %"i10'de.0", %m0diffei10
-; CHECK-NEXT:   %8 = fadd fast double %"rho0'de.0", %m1differho0
+; CHECK-NEXT:   %7 = fadd fast double %"i10'de.1", %m0diffei10
+; CHECK-NEXT:   %8 = fadd fast double %"rho0'de.1", %m1differho0
 ; CHECK-NEXT:   %"arrayidx4'ipg_unwrap" = getelementptr inbounds double, double* %"i4'ipc_unwrap2", i64 %sub_unwrap4
 ; CHECK-NEXT:   %9 = load double, double* %"arrayidx4'ipg_unwrap", align 8
 ; CHECK-NEXT:   %10 = fadd fast double %9, %7
 ; CHECK-NEXT:   store double %10, double* %"arrayidx4'ipg_unwrap", align 8
 ; CHECK-NEXT:   br label %invertfor.cond1
 
-; CHECK: invertfor.end:                                    ; preds = %remat_for.cond_for.cond1, %remat_enter
-; CHECK-NEXT:   %"call'mi_cache.0" = phi i8* [ %"call'mi_cache.1", %remat_enter ], [ %"call'mi", %remat_for.cond_for.cond1 ]
-; CHECK-NEXT:   %call_cache.0 = phi i8* [ %call_cache.1, %remat_enter ], [ %remat_call, %remat_for.cond_for.cond1 ]
-; CHECK-NEXT:   br label %invertfor.cond1
-
 ; CHECK: remat_enter:                                      ; preds = %for.cond, %incinvertfor.cond
-; CHECK-NEXT:   %"i10'de.1" = phi double [ %"i10'de.0", %incinvertfor.cond ], [ 0.000000e+00, %for.cond ]
-; CHECK-NEXT:   %"mul'de.1" = phi double [ %"mul'de.0", %incinvertfor.cond ], [ 0.000000e+00, %for.cond ]
-; CHECK-NEXT:   %"call'mi_cache.1" = phi i8* [ %"call'mi_cache.0", %incinvertfor.cond ], [ undef, %for.cond ]
-; CHECK-NEXT:   %call_cache.1 = phi i8* [ %call_cache.0, %incinvertfor.cond ], [ undef, %for.cond ]
-; CHECK-NEXT:   %"rho0'de.1" = phi double [ %"rho0'de.0", %incinvertfor.cond ], [ %differeturn, %for.cond ]
-; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %1, %incinvertfor.cond ], [ %numReg, %for.cond ]
+; CHECK-NEXT:   %"mul'de.2" = phi double [ %"mul'de.0", %incinvertfor.cond ], [ 0.000000e+00, %for.cond ]
+; CHECK-NEXT:   %"i10'de.2" = phi double [ %"i10'de.0", %incinvertfor.cond ], [ 0.000000e+00, %for.cond ]
+; CHECK-NEXT:   %"rho0'de.2" = phi double [ %"rho0'de.0", %incinvertfor.cond ], [ %differeturn, %for.cond ]
+; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %2, %incinvertfor.cond ], [ %numReg, %for.cond ]
 ; CHECK-NEXT:   %cmp_unwrap = icmp ne i64 %"iv'ac.0", %numReg
-; CHECK-NEXT:   br i1 %cmp_unwrap, label %remat_for.cond_for.body, label %invertfor.end
+; CHECK-NEXT:   br i1 %cmp_unwrap, label %remat_for.cond_for.body, label %invertfor.cond
 
 ; CHECK: remat_for.cond_for.body:                          ; preds = %remat_enter
-; CHECK-NEXT:   %remat_call = call noalias align 16 i8* @calloc(i64 8, i64 1000000)
-; CHECK-NEXT:   %"call'mi" = call noalias nonnull align 16 i8* @calloc(i64 8, i64 1000000)
+; CHECK-NEXT:   %remat_call = call noalias align 16 i8* @calloc(i64 8, i64 1000000) 
+; CHECK-NEXT:   %"call'mi" = call noalias nonnull align 16 i8* @calloc(i64 8, i64 1000000) 
 ; CHECK-NEXT:   %i4_unwrap = bitcast i8* %remat_call to double*
 ; CHECK-NEXT:   store double 1.000000e+00, double* %i4_unwrap, align 8
 ; CHECK-NEXT:   br label %remat_for.cond_for.cond1
@@ -185,7 +183,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %fiv = phi i64 [ %11, %remat_for.cond_for.body3 ], [ 0, %remat_for.cond_for.body ]
 ; CHECK-NEXT:   %11 = add i64 %fiv, 1
 ; CHECK-NEXT:   %cmp2_unwrap = icmp ne i64 %11, 1000000
-; CHECK-NEXT:   br i1 %cmp2_unwrap, label %remat_for.cond_for.body3, label %invertfor.end
+; CHECK-NEXT:   br i1 %cmp2_unwrap, label %remat_for.cond_for.body3, label %invertfor.cond1
 
 ; CHECK: remat_for.cond_for.body3:                         ; preds = %remat_for.cond_for.cond1
 ; CHECK-NEXT:   %arrayidx5_unwrap = getelementptr inbounds double, double* %i4_unwrap, i64 %11

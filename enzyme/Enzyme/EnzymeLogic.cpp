@@ -616,10 +616,25 @@ void calculateUnusedValuesInFunction(
 
     bool primalNeededInReverse = is_value_needed_in_reverse<ValueType::Primal>(
         TR, gutils, pair.first, mode, CacheResults, oldUnreachable);
+    bool cacheWholeAllocation = false;
 
     if (gutils->knownRecomputeHeuristic.count(pair.first)) {
       if (!gutils->knownRecomputeHeuristic[pair.first]) {
         primalNeededInReverse = true;
+        cacheWholeAllocation = true;
+      }
+    }
+    // If rematerializing a loop-level allocation, the primal allocation
+    // is not needed in the reverse.
+    if (!cacheWholeAllocation && primalNeededInReverse) {
+      auto found = gutils->rematerializableAllocations.find(
+          const_cast<CallInst *>(pair.first));
+      if (found != gutils->rematerializableAllocations.end()) {
+        if (auto inst = dyn_cast<Instruction>(pair.first))
+          if (found->second.LI &&
+              found->second.LI->contains(inst->getParent())) {
+            primalNeededInReverse = false;
+          }
       }
     }
 

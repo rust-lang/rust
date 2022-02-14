@@ -9024,9 +9024,9 @@ public:
 #endif
                 }
               }
-
               gutils->invertedPointers.erase(found);
-              bb.SetInsertPoint(placeholder->getNextNode());
+              if (&*bb.GetInsertPoint() == placeholder)
+                bb.SetInsertPoint(placeholder->getNextNode());
               gutils->replaceAWithB(placeholder, anti);
               gutils->erase(placeholder);
 
@@ -9058,7 +9058,8 @@ public:
                    forwardsShadow) ||
                   (Mode == DerivativeMode::ReverseModeGradient &&
                    backwardsShadow)) {
-                zeroKnownAllocation(bb, anti, args, *called, gutils->TLI);
+                if (!inLoop)
+                  zeroKnownAllocation(bb, anti, args, *called, gutils->TLI);
               }
             }
             gutils->invertedPointers.insert(
@@ -9515,15 +9516,6 @@ public:
             return;
           } else {
             assert(Mode == DerivativeMode::ReverseModeCombined);
-            // If in a loop context, maintain the same free behavior.
-            if (auto inst = dyn_cast<Instruction>(rmat.first))
-              if (rmat.second.LI &&
-                  rmat.second.LI->contains(inst->getParent())) {
-                return;
-              }
-            // In combined mode, if we don't need this allocation
-            // in the reverse, we can use the original deallocation
-            // behavior.
             std::map<UsageKey, bool> Seen;
             for (auto pair : gutils->knownRecomputeHeuristic)
               if (!pair.second)
@@ -9531,10 +9523,24 @@ public:
             bool primalNeededInReverse =
                 is_value_needed_in_reverse<ValueType::Primal>(
                     TR, gutils, rmat.first, Mode, Seen, oldUnreachable);
+            bool cacheWholeAllocation = false;
             if (gutils->knownRecomputeHeuristic.count(rmat.first)) {
-              if (!gutils->knownRecomputeHeuristic[rmat.first])
+              if (!gutils->knownRecomputeHeuristic[rmat.first]) {
+                cacheWholeAllocation = true;
                 primalNeededInReverse = true;
+              }
             }
+            // If in a loop context, maintain the same free behavior, unless
+            // caching whole allocation.
+            if (!cacheWholeAllocation)
+              if (auto inst = dyn_cast<Instruction>(rmat.first))
+                if (rmat.second.LI &&
+                    rmat.second.LI->contains(inst->getParent())) {
+                  return;
+                }
+            // In combined mode, if we don't need this allocation
+            // in the reverse, we can use the original deallocation
+            // behavior.
             if (!primalNeededInReverse)
               return;
           }
