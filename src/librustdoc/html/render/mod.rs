@@ -794,6 +794,94 @@ fn assoc_type(
     }
 }
 
+fn assoc_method(
+    w: &mut Buffer,
+    meth: &clean::Item,
+    header: hir::FnHeader,
+    g: &clean::Generics,
+    d: &clean::FnDecl,
+    link: AssocItemLink<'_>,
+    parent: ItemType,
+    cx: &Context<'_>,
+    render_mode: RenderMode,
+) {
+    let name = meth.name.as_ref().unwrap();
+    let href = match link {
+        AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
+        AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
+        AssocItemLink::GotoSource(did, provided_methods) => {
+            // We're creating a link from an impl-item to the corresponding
+            // trait-item and need to map the anchored type accordingly.
+            let ty = if provided_methods.contains(name) {
+                ItemType::Method
+            } else {
+                ItemType::TyMethod
+            };
+
+            match (href(did.expect_def_id(), cx), ty) {
+                (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
+                (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
+                (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
+            }
+        }
+    };
+    let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
+    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // this condition.
+    let constness = match render_mode {
+        RenderMode::Normal => {
+            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
+        }
+        RenderMode::ForDeref { .. } => "",
+    };
+    let asyncness = header.asyncness.print_with_space();
+    let unsafety = header.unsafety.print_with_space();
+    let defaultness = print_default_space(meth.is_default());
+    let abi = print_abi_with_space(header.abi).to_string();
+
+    // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
+    let generics_len = format!("{:#}", g.print(cx)).len();
+    let mut header_len = "fn ".len()
+        + vis.len()
+        + constness.len()
+        + asyncness.len()
+        + unsafety.len()
+        + defaultness.len()
+        + abi.len()
+        + name.as_str().len()
+        + generics_len;
+
+    let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
+        header_len += 4;
+        let indent_str = "    ";
+        render_attributes_in_pre(w, meth, indent_str);
+        (4, indent_str, false)
+    } else {
+        render_attributes_in_code(w, meth);
+        (0, "", true)
+    };
+    w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
+    write!(
+        w,
+        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
+         {generics}{decl}{notable_traits}{where_clause}",
+        indent = indent_str,
+        vis = vis,
+        constness = constness,
+        asyncness = asyncness,
+        unsafety = unsafety,
+        defaultness = defaultness,
+        abi = abi,
+        // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
+        href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
+        name = name,
+        generics = g.print(cx),
+        decl = d.full_print(header_len, indent, header.asyncness, cx),
+        notable_traits = notable_traits_decl(d, cx),
+        where_clause = print_where_clause(g, cx, indent, end_newline),
+    )
+}
+
 /// Writes a span containing the versions at which an item became stable and/or const-stable. For
 /// example, if the item became stable at 1.0.0, and const-stable at 1.45.0, this function would
 /// write a span containing "1.0.0 (const: 1.45.0)".
@@ -875,100 +963,13 @@ fn render_assoc_item(
     cx: &Context<'_>,
     render_mode: RenderMode,
 ) {
-    fn method(
-        w: &mut Buffer,
-        meth: &clean::Item,
-        header: hir::FnHeader,
-        g: &clean::Generics,
-        d: &clean::FnDecl,
-        link: AssocItemLink<'_>,
-        parent: ItemType,
-        cx: &Context<'_>,
-        render_mode: RenderMode,
-    ) {
-        let name = meth.name.as_ref().unwrap();
-        let href = match link {
-            AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
-            AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
-            AssocItemLink::GotoSource(did, provided_methods) => {
-                // We're creating a link from an impl-item to the corresponding
-                // trait-item and need to map the anchored type accordingly.
-                let ty = if provided_methods.contains(name) {
-                    ItemType::Method
-                } else {
-                    ItemType::TyMethod
-                };
-
-                match (href(did.expect_def_id(), cx), ty) {
-                    (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
-                    (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
-                    (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
-                }
-            }
-        };
-        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
-        // this condition.
-        let constness = match render_mode {
-            RenderMode::Normal => {
-                print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
-            }
-            RenderMode::ForDeref { .. } => "",
-        };
-        let asyncness = header.asyncness.print_with_space();
-        let unsafety = header.unsafety.print_with_space();
-        let defaultness = print_default_space(meth.is_default());
-        let abi = print_abi_with_space(header.abi).to_string();
-
-        // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", g.print(cx)).len();
-        let mut header_len = "fn ".len()
-            + vis.len()
-            + constness.len()
-            + asyncness.len()
-            + unsafety.len()
-            + defaultness.len()
-            + abi.len()
-            + name.as_str().len()
-            + generics_len;
-
-        let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
-            header_len += 4;
-            let indent_str = "    ";
-            render_attributes_in_pre(w, meth, indent_str);
-            (4, indent_str, false)
-        } else {
-            render_attributes_in_code(w, meth);
-            (0, "", true)
-        };
-        w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
-        write!(
-            w,
-            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
-             {generics}{decl}{notable_traits}{where_clause}",
-            indent = indent_str,
-            vis = vis,
-            constness = constness,
-            asyncness = asyncness,
-            unsafety = unsafety,
-            defaultness = defaultness,
-            abi = abi,
-            // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
-            href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
-            name = name,
-            generics = g.print(cx),
-            decl = d.full_print(header_len, indent, header.asyncness, cx),
-            notable_traits = notable_traits_decl(d, cx),
-            where_clause = print_where_clause(g, cx, indent, end_newline),
-        )
-    }
     match *item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
+            assoc_method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(ref m, _) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
+            assoc_method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::AssocConstItem(ref ty, _) => {
             assoc_const(w, item, ty, link, if parent == ItemType::Trait { "    " } else { "" }, cx)
