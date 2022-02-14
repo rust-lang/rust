@@ -74,6 +74,7 @@ fn create_jit_module<'tcx>(
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbols(imported_symbols);
+    jit_builder.symbol("__clif_jit_fn", clif_jit_fn as *const u8);
     let mut jit_module = JITModule::new(jit_builder);
 
     let mut cx = crate::CodegenCx::new(
@@ -210,8 +211,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     }
 }
 
-#[no_mangle]
-extern "C" fn __clif_jit_fn(
+extern "C" fn clif_jit_fn(
     instance_ptr: *const Instance<'static>,
     trampoline_ptr: *const u8,
 ) -> *const u8 {
