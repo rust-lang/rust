@@ -342,7 +342,6 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             param_env,
                             required_bounds_by_item.get(&item_def_id),
                         );
-                        // FIXME(compiler-errors): Do we want to add a assoc ty default to the wf_tys?
                         gather_gat_bounds(
                             tcx,
                             param_env,
