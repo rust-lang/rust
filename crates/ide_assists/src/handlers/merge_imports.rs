@@ -253,6 +253,75 @@ use std::{fmt::{Display, Debug}};
     }
 
     #[test]
+    fn test_merge_with_nested_self_item() {
+        check_assist(
+            merge_imports,
+            r"
+use std$0::{fmt::{Write, Display}};
+use std::{fmt::{self, Debug}};
+",
+            r"
+use std::{fmt::{Write, Display, self, Debug}};
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_with_nested_self_item2() {
+        check_assist(
+            merge_imports,
+            r"
+use std$0::{fmt::{self, Debug}};
+use std::{fmt::{Write, Display}};
+",
+            r"
+use std::{fmt::{self, Debug, Write, Display}};
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_self_with_nested_self_item() {
+        check_assist(
+            merge_imports,
+            r"
+use std::{fmt$0::{self, Debug}, fmt::{Write, Display}};
+",
+            r"
+use std::{fmt::{self, Debug, Write, Display}};
+",
+        );
+    }
+
+    #[test]
+    fn test_merge_nested_self_and_empty() {
+        check_assist(
+            merge_imports,
+            r"
+use foo::$0{bar::{self}};
+use foo::{bar};
+",
+            r"
+use foo::{bar::{self}};
+",
+        )
+    }
+
+    #[test]
+    fn test_merge_nested_empty_and_self() {
+        check_assist(
+            merge_imports,
+            r"
+use foo::$0{bar};
+use foo::{bar::{self}};
+",
+            r"
+use foo::{bar::{self}};
+",
+        )
+    }
+
+    #[test]
     fn test_merge_single_wildcard_diff_prefixes() {
         check_assist(
             merge_imports,
