@@ -240,11 +240,9 @@ pub(super) fn keyword(
     let parent = token.parent()?;
     let famous_defs = FamousDefs(sema, sema.scope(&parent).krate());
 
-    // some keywords get fancy type tooltips if they are apart of an expression, which require some extra work
-    // panic safety: we just checked that token is a keyword, and we have it's parent in scope, so it must have a parent
-    let KeywordHint { description, documentation, actions } = keyword_hints(sema, token);
+    let KeywordHint { description, keyword_mod, actions } = keyword_hints(sema, token, parent);
 
-    let doc_owner = find_std_module(&famous_defs, &documentation)?;
+    let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
     let docs = doc_owner.attrs(sema.db).docs()?;
     let markup = process_markup(
         sema.db,
@@ -501,29 +499,28 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
 
 struct KeywordHint {
     description: String,
-    documentation: String,
+    keyword_mod: String,
     actions: Vec<HoverAction>,
 }
 
 impl KeywordHint {
-    fn new(description: String, documentation: String) -> Self {
-        Self { description, documentation, actions: Vec::default() }
+    fn new(description: String, keyword_mod: String) -> Self {
+        Self { description, keyword_mod, actions: Vec::default() }
     }
 }
 
-/// Panics
-/// ------
-/// `token` is assumed to:
-/// - have a parent, and
-/// - be a keyword
-fn keyword_hints<'t>(sema: &Semantics<RootDatabase>, token: &'t SyntaxToken) -> KeywordHint {
-    let parent = token.parent().expect("token was assumed to have a parent, but had none");
+fn keyword_hints(
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
+    parent: syntax::SyntaxNode,
+) -> KeywordHint {
+    match token.kind() {
+        T![await] | T![loop] | T![match] | T![unsafe] | T![as] | T![try] | T![if] | T![else] => {
+            let keyword_mod = format!("{}_keyword", token.text());
 
-    macro_rules! create_hint {
-        ($ty_info:expr, $doc:expr) => {{
-            let documentation = $doc;
-            match $ty_info {
-                Some(ty) => {
+            match ast::Expr::cast(parent).and_then(|site| sema.type_of_expr(&site)) {
+                // ignore the unit type ()
+                Some(ty) if !ty.adjusted.as_ref().unwrap_or(&ty.original).is_unit() => {
                     let mut targets: Vec<hir::ModuleDef> = Vec::new();
                     let mut push_new_def = |item: hir::ModuleDef| {
                         if !targets.contains(&item) {
@@ -537,40 +534,16 @@ fn keyword_hints<'t>(sema: &Semantics<RootDatabase>, token: &'t SyntaxToken) -> 
 
                     KeywordHint {
                         description,
-                        documentation,
+                        keyword_mod,
                         actions: vec![HoverAction::goto_type_from_targets(sema.db, targets)],
                     }
                 }
-                None => KeywordHint {
+                _ => KeywordHint {
                     description: token.text().to_string(),
-                    documentation,
+                    keyword_mod,
                     actions: Vec::new(),
                 },
             }
-        }};
-    }
-
-    match token.kind() {
-        T![await] | T![loop] | T![match] | T![unsafe] => {
-            let ty = ast::Expr::cast(parent).and_then(|site| sema.type_of_expr(&site));
-            create_hint!(ty, format!("{}_keyword", token.text()))
-        }
-
-        T![if] | T![else] => {
-            fn if_has_else(site: &ast::IfExpr) -> bool {
-                match site.else_branch() {
-                    Some(ast::ElseBranch::IfExpr(inner)) => if_has_else(&inner),
-                    Some(ast::ElseBranch::Block(_)) => true,
-                    None => false,
-                }
-            }
-
-            // only include the type if there is an else branch; it isn't worth annotating
-            // an expression that always returns `()`, is it?
-            let ty = ast::IfExpr::cast(parent)
-                .and_then(|site| if_has_else(&site).then(|| site))
-                .and_then(|site| sema.type_of_expr(&ast::Expr::IfExpr(site)));
-            create_hint!(ty, format!("{}_keyword", token.text()))
         }
 
         T![fn] => {
@@ -582,10 +555,6 @@ fn keyword_hints<'t>(sema: &Semantics<RootDatabase>, token: &'t SyntaxToken) -> 
             KeywordHint::new(token.text().to_string(), module)
         }
 
-        kind if kind.is_keyword() => {
-            KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text()))
-        }
-
-        _ => panic!("{} was assumed to be a keyword, but it wasn't", token),
+        _ => KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text())),
     }
 }
