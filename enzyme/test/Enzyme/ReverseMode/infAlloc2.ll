@@ -186,8 +186,8 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   br i1 %cmp2_unwrap, label %remat_for.cond_for.body3, label %invertfor.cond1
 
 ; CHECK: remat_for.cond_for.body3:                         ; preds = %remat_for.cond_for.cond1
-; CHECK-NEXT:   %arrayidx5_unwrap = getelementptr inbounds double, double* %i4_unwrap, i64 %11
-; CHECK-NEXT:   %mul_unwrap = fmul double %i10_unwrap, %rho0
+; CHECK-DAG:    %arrayidx5_unwrap = getelementptr inbounds double, double* %i4_unwrap, i64 %11
+; CHECK-DAG:    %mul_unwrap = fmul double %i10_unwrap, %rho0
 ; CHECK-NEXT:   store double %mul_unwrap, double* %arrayidx5_unwrap, align 8
 ; CHECK-NEXT:   br label %remat_for.cond_for.cond1
 ; CHECK-NEXT: }

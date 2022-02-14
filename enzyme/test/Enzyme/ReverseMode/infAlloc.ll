@@ -172,8 +172,8 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %i10_unwrap = phi double [ %mul_unwrap, %remat_for.body_for.body3 ], [ 1.000000e+00, %remat_enter ]
 ; CHECK-NEXT:   %fiv = phi i64 [ %9, %remat_for.body_for.body3 ], [ 0, %remat_enter ]
 ; CHECK-NEXT:   %9 = add i64 %fiv, 1
-; CHECK-NEXT:   %arrayidx5_unwrap = getelementptr inbounds double, double* %i4_unwrap, i64 %9
-; CHECK-NEXT:   %mul_unwrap = fmul double %i10_unwrap, %rho0
+; CHECK-DAG:    %arrayidx5_unwrap = getelementptr inbounds double, double* %i4_unwrap, i64 %9
+; CHECK-DAG:    %mul_unwrap = fmul double %i10_unwrap, %rho0
 ; CHECK-NEXT:   store double %mul_unwrap, double* %arrayidx5_unwrap, align 8
 ; CHECK-NEXT:   %inc_unwrap = add i64 %9, 1
 ; CHECK-NEXT:   %cmp2_unwrap = icmp ult i64 %inc_unwrap, 1000000
@@ -182,4 +182,3 @@ attributes #3 = { nounwind }
 ; CHECK: remat_for.body_for.end:                           ; preds = %remat_for.body_for.body3
 ; CHECK-NEXT:   %"i4'ipc_unwrap2.phi.trans.insert" = bitcast i8* %"call'mi" to double*
 ; CHECK-NEXT:   br label %invertfor.body3
-; CHECK-NEXT: }
