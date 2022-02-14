@@ -31,6 +31,10 @@ impl LLVMRustResult {
     }
 }
 
+pub fn EmitUWTableAttr(llfn: &Value, async_: bool) {
+    unsafe { LLVMRustEmitUWTableAttr(llfn, async_) }
+}
+
 pub fn AddFunctionAttrStringValue(llfn: &Value, idx: AttributePlace, attr: &CStr, value: &CStr) {
     unsafe {
         LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), value.as_ptr())

@@ -1182,6 +1182,7 @@ extern "C" {
     pub fn LLVMRustAddByValAttr(Fn: &Value, index: c_uint, ty: &Type);
     pub fn LLVMRustAddStructRetAttr(Fn: &Value, index: c_uint, ty: &Type);
     pub fn LLVMRustAddFunctionAttribute(Fn: &Value, index: c_uint, attr: Attribute);
+    pub fn LLVMRustEmitUWTableAttr(Fn: &Value, async_: bool);
     pub fn LLVMRustAddFunctionAttrStringValue(
         Fn: &Value,
         index: c_uint,

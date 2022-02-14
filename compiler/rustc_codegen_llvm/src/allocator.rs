@@ -64,7 +64,7 @@ pub(crate) unsafe fn codegen(
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
-            attributes::emit_uwtable(llfn, true);
+            attributes::emit_uwtable(llfn);
         }
 
         let callee = kind.fn_name(method.name);
@@ -111,7 +111,7 @@ pub(crate) unsafe fn codegen(
         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
     }
     if tcx.sess.must_emit_unwind_tables() {
-        attributes::emit_uwtable(llfn, true);
+        attributes::emit_uwtable(llfn);
     }
 
     let kind = if has_alloc_error_handler { AllocatorKind::Global } else { AllocatorKind::Default };
