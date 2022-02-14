@@ -1417,6 +1417,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert!(!base::wants_msvc_seh(self.cx.sess()));
 
             let mut bx = self.new_block("abort");
+            self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
+
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
             bx.cleanup_landing_pad(llretty, llpersonality);
