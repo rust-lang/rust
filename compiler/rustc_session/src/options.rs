@@ -170,6 +170,7 @@ top_level_options!(
 
         test: bool [TRACKED],
         error_format: ErrorOutputType [UNTRACKED],
+        terminal_width: Option<usize> [UNTRACKED],
 
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
