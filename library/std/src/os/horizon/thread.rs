@@ -32,13 +32,14 @@ pub trait BuilderExt: Sized {
     /// usually has a priority of 0x30, but not always.
     fn priority(self, priority: i32) -> Self;
 
-    /// Sets the ID of the processor the thread should be run on. Threads on the 3DS are only
-    /// preemptive if they are on the system core. Otherwise they are cooperative (must yield to let
-    /// other threads run).
+    /// Sets the ID of the processor the thread should be run on. Threads on the
+    /// 3DS are only preemptive if they are on the system core. Otherwise they
+    /// are cooperative (must yield to let other threads run).
     ///
     /// Processor IDs are labeled starting from 0. On Old3DS it must be <2, and
     /// on New3DS it must be <4. Pass -1 to execute the thread on all CPUs and
-    /// -2 to execute the thread on the default CPU (set in the application's Exheader).
+    /// -2 to execute the thread on the default CPU (set in the application's
+    /// Exheader).
     ///
     /// * Processor #0 is the application core. It is always possible to create
     ///   a thread on this core.
@@ -74,4 +75,14 @@ pub fn current_priority() -> i32 {
     assert_eq!(result, 0);
 
     sched_param.sched_priority
+}
+
+/// Get the current thread's processor ID.
+///
+/// * Processor #0 is the application core.
+/// * Processor #1 is the system core.
+/// * Processor #2 is New3DS exclusive.
+/// * Processor #3 is New3DS exclusive.
+pub fn current_processor() -> i32 {
+    unsafe { libc::pthread_getprocessorid_np() }
 }
