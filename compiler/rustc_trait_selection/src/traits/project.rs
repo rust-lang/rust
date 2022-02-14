@@ -1439,10 +1439,18 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // Integers and floats are always Sized, and so have unit type metadata.
                     | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
 
-                    // type parameters and unnormalized projections have pointer metadata if they're still known to be sized
-                    ty::Param(_) | ty::Projection(..) => tail.is_sized(selcx.tcx().at(obligation.cause.span), obligation.param_env),
+                    // type parameters, opaques, and unnormalized projections have pointer
+                    // metadata if they're known (e.g. by the param_env) to be sized
+                    ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
+                        if tail.is_sized(selcx.tcx().at(obligation.cause.span), obligation.param_env) =>
+                    {
+                        true
+                    }
 
-                    ty::Opaque(..)
+                    // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
+                    ty::Param(_)
+                    | ty::Projection(..)
+                    | ty::Opaque(..)
                     | ty::Bound(..)
                     | ty::Placeholder(..)
                     | ty::Infer(..)
@@ -1451,7 +1459,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             candidate_set.mark_ambiguous();
                         }
                         false
-                    },
+                    }
                 }
             }
             super::ImplSource::Param(..) => {
