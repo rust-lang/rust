@@ -90,6 +90,22 @@ impl Private {
     } // We don't lint private items
 }
 
+struct PrivateStruct;
+
+impl PrivateStruct {
+    pub fn new() -> PrivateStruct {
+        unimplemented!()
+    } // We don't lint public items on private structs
+}
+
+pub struct PrivateItem;
+
+impl PrivateItem {
+    fn new() -> PrivateItem {
+        unimplemented!()
+    } // We don't lint private items on public structs
+}
+
 struct Const;
 
 impl Const {
