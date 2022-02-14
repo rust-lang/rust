@@ -2530,9 +2530,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body,
         );
         let category = if let Some(field) = field {
-            let var_hir_id = self.borrowck_context.upvars[field.index()].place.get_root_variable();
-            // FIXME(project-rfc-2229#8): Use Place for better diagnostics
-            ConstraintCategory::ClosureUpvar(var_hir_id)
+            ConstraintCategory::ClosureUpvar(field)
         } else {
             ConstraintCategory::Boring
         };

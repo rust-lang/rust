@@ -341,7 +341,7 @@ pub enum ConstraintCategory {
     /// like `Foo { field: my_val }`)
     Usage,
     OpaqueType,
-    ClosureUpvar(hir::HirId),
+    ClosureUpvar(Field),
 
     /// A constraint from a user-written predicate
     /// with the provided span, written on the item
@@ -363,7 +363,7 @@ pub enum ConstraintCategory {
 #[derive(TyEncodable, TyDecodable, HashStable)]
 pub enum ReturnConstraint {
     Normal,
-    ClosureUpvar(hir::HirId),
+    ClosureUpvar(Field),
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing

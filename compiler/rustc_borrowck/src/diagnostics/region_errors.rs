@@ -5,6 +5,7 @@ use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
 };
+use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, RegionVid, Ty};
@@ -421,17 +422,26 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         diag.span_label(*span, message);
 
-        // FIXME(project-rfc-2229#48): This should store a captured_place not a hir id
-        if let ReturnConstraint::ClosureUpvar(upvar) = kind {
+        if let ReturnConstraint::ClosureUpvar(upvar_field) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
                 DefiningTy::Closure(def_id, _) => def_id,
                 ty => bug!("unexpected DefiningTy {:?}", ty),
             };
 
-            let upvar_def_span = self.infcx.tcx.hir().span(upvar);
-            let upvar_span = self.infcx.tcx.upvars_mentioned(def_id).unwrap()[&upvar].span;
-            diag.span_label(upvar_def_span, "variable defined here");
-            diag.span_label(upvar_span, "variable captured here");
+            let captured_place = &self.upvars[upvar_field.index()].place;
+            let defined_hir = match captured_place.place.base {
+                PlaceBase::Local(hirid) => Some(hirid),
+                PlaceBase::Upvar(upvar) => Some(upvar.var_path.hir_id),
+                _ => None,
+            };
+
+            if defined_hir.is_some() {
+                let upvars_map = self.infcx.tcx.upvars_mentioned(def_id).unwrap();
+                let upvar_def_span = self.infcx.tcx.hir().span(defined_hir.unwrap());
+                let upvar_span = upvars_map.get(&defined_hir.unwrap()).unwrap().span;
+                diag.span_label(upvar_def_span, "variable defined here");
+                diag.span_label(upvar_span, "variable captured here");
+            }
         }
 
         if let Some(fr_span) = self.give_region_a_name(*outlived_fr).unwrap().span() {
