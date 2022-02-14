@@ -36,7 +36,7 @@ use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
+use rustc_middle::ty::fast_reject::{self, SimplifyParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
@@ -2172,14 +2172,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self.tcx(),
                             obligation_ty,
                             SimplifyParams::Yes,
-                            StripReferences::No,
                         );
-                        let simplified_impl_ty = fast_reject::simplify_type(
-                            self.tcx(),
-                            impl_ty,
-                            SimplifyParams::No,
-                            StripReferences::No,
-                        );
+                        let simplified_impl_ty =
+                            fast_reject::simplify_type(self.tcx(), impl_ty, SimplifyParams::No);
 
                         simplified_obligation_ty.is_some()
                             && simplified_impl_ty.is_some()

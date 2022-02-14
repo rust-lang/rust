@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
+use crate::ty::fast_reject::{self, SimplifiedType, SimplifyParams};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ident, Ty, TyCtxt};
 use rustc_hir as hir;
@@ -150,9 +150,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
         let impls = self.trait_impls_of(def_id);
-        if let Some(simp) =
-            fast_reject::simplify_type(self, self_ty, SimplifyParams::No, StripReferences::No)
-        {
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, SimplifyParams::No) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
             }
@@ -189,9 +187,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        if let Some(simp) =
-            fast_reject::simplify_type(self, self_ty, SimplifyParams::Yes, StripReferences::No)
-        {
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, SimplifyParams::Yes) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
@@ -251,7 +247,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
 
         if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, SimplifyParams::No, StripReferences::No)
+            fast_reject::simplify_type(tcx, impl_self_ty, SimplifyParams::No)
         {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {

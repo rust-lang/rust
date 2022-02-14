@@ -21,10 +21,9 @@ use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::ExpectedFound;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams, StripReferences};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
-    self, AdtKind, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
+    self, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
@@ -39,6 +38,22 @@ use on_unimplemented::InferCtxtExt as _;
 use suggestions::InferCtxtExt as _;
 
 pub use rustc_infer::traits::error_reporting::*;
+
+// When outputting impl candidates, prefer showing those that are more similar.
+//
+// We also compare candidates after skipping lifetimes, which has a lower
+// priority than exact matches.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CandidateSimilarity {
+    Exact { ignoring_lifetimes: bool },
+    Fuzzy { ignoring_lifetimes: bool },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ImplCandidate<'tcx> {
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub similarity: CandidateSimilarity,
+}
 
 pub trait InferCtxtExt<'tcx> {
     fn report_fulfillment_errors(
@@ -1143,18 +1158,23 @@ trait InferCtxtPrivExt<'hir, 'tcx> {
         error: &MismatchedProjectionTypes<'tcx>,
     );
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool;
+    fn fuzzy_match_tys(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        ignoring_lifetimes: bool,
+    ) -> Option<CandidateSimilarity>;
 
     fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str>;
 
     fn find_similar_impl_candidates(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Vec<ty::TraitRef<'tcx>>;
+    ) -> Vec<ImplCandidate<'tcx>>;
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ty::TraitRef<'tcx>>,
+        impl_candidates: Vec<ImplCandidate<'tcx>>,
         err: &mut DiagnosticBuilder<'_>,
     );
 
@@ -1446,45 +1466,80 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         });
     }
 
-    fn fuzzy_match_tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
+    fn fuzzy_match_tys(
+        &self,
+        mut a: Ty<'tcx>,
+        mut b: Ty<'tcx>,
+        ignoring_lifetimes: bool,
+    ) -> Option<CandidateSimilarity> {
         /// returns the fuzzy category of a given type, or None
         /// if the type can be equated to any type.
-        fn type_category(t: Ty<'_>) -> Option<u32> {
+        fn type_category(tcx: TyCtxt<'_>, t: Ty<'_>) -> Option<u32> {
             match t.kind() {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Int(..) | ty::Uint(..) | ty::Infer(ty::IntVar(..)) => Some(3),
-                ty::Float(..) | ty::Infer(ty::FloatVar(..)) => Some(4),
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did) => Some(2),
+                ty::Int(..)
+                | ty::Uint(..)
+                | ty::Float(..)
+                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..)) => Some(4),
                 ty::Ref(..) | ty::RawPtr(..) => Some(5),
                 ty::Array(..) | ty::Slice(..) => Some(6),
                 ty::FnDef(..) | ty::FnPtr(..) => Some(7),
                 ty::Dynamic(..) => Some(8),
                 ty::Closure(..) => Some(9),
                 ty::Tuple(..) => Some(10),
-                ty::Projection(..) => Some(11),
-                ty::Param(..) => Some(12),
+                ty::Param(..) => Some(11),
+                ty::Projection(..) => Some(12),
                 ty::Opaque(..) => Some(13),
                 ty::Never => Some(14),
-                ty::Adt(adt, ..) => match adt.adt_kind() {
-                    AdtKind::Struct => Some(15),
-                    AdtKind::Union => Some(16),
-                    AdtKind::Enum => Some(17),
-                },
-                ty::Generator(..) => Some(18),
-                ty::Foreign(..) => Some(19),
-                ty::GeneratorWitness(..) => Some(20),
+                ty::Adt(..) => Some(15),
+                ty::Generator(..) => Some(16),
+                ty::Foreign(..) => Some(17),
+                ty::GeneratorWitness(..) => Some(18),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
 
-        match (type_category(a), type_category(b)) {
-            (Some(cat_a), Some(cat_b)) => match (a.kind(), b.kind()) {
-                (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => def_a == def_b,
-                _ => cat_a == cat_b,
-            },
-            // infer and error can be equated to all types
-            _ => true,
+        let strip_references = |mut t: Ty<'tcx>| -> Ty<'tcx> {
+            loop {
+                match t.kind() {
+                    ty::Ref(_, inner, _) | ty::RawPtr(ty::TypeAndMut { ty: inner, .. }) => {
+                        t = inner
+                    }
+                    _ => break t,
+                }
+            }
+        };
+
+        if !ignoring_lifetimes {
+            a = strip_references(a);
+            b = strip_references(b);
+        }
+
+        let cat_a = type_category(self.tcx, a)?;
+        let cat_b = type_category(self.tcx, b)?;
+        if a == b {
+            Some(CandidateSimilarity::Exact { ignoring_lifetimes })
+        } else if cat_a == cat_b {
+            match (a.kind(), b.kind()) {
+                (ty::Adt(def_a, _), ty::Adt(def_b, _)) => def_a == def_b,
+                // Matching on references results in a lot of unhelpful
+                // suggestions, so let's just not do that for now.
+                //
+                // We still upgrade successful matches to `ignoring_lifetimes: true`
+                // to prioritize that impl.
+                (ty::Ref(..) | ty::RawPtr(..), ty::Ref(..) | ty::RawPtr(..)) => {
+                    self.fuzzy_match_tys(a, b, true).is_some()
+                }
+                _ => true,
+            }
+            .then_some(CandidateSimilarity::Fuzzy { ignoring_lifetimes })
+        } else if ignoring_lifetimes {
+            None
+        } else {
+            self.fuzzy_match_tys(a, b, true)
         }
     }
 
@@ -1500,58 +1555,25 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     fn find_similar_impl_candidates(
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Vec<ty::TraitRef<'tcx>> {
-        // We simplify params and strip references here.
-        //
-        // This both removes a lot of unhelpful suggestions, e.g.
-        // when searching for `&Foo: Trait` it doesn't suggestion `impl Trait for &Bar`,
-        // while also suggesting impls for `&Foo` when we're looking for `Foo: Trait`.
-        //
-        // The second thing isn't necessarily always a good thing, but
-        // any other simple setup results in a far worse output, so 🤷
-        let simp = fast_reject::simplify_type(
-            self.tcx,
-            trait_ref.skip_binder().self_ty(),
-            SimplifyParams::Yes,
-            StripReferences::Yes,
-        );
-        let all_impls = self.tcx.all_impls(trait_ref.def_id());
+    ) -> Vec<ImplCandidate<'tcx>> {
+        self.tcx
+            .all_impls(trait_ref.def_id())
+            .filter_map(|def_id| {
+                if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
+                    return None;
+                }
 
-        match simp {
-            Some(simp) => all_impls
-                .filter_map(|def_id| {
-                    let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                    let imp_simp = fast_reject::simplify_type(
-                        self.tcx,
-                        imp.self_ty(),
-                        SimplifyParams::Yes,
-                        StripReferences::Yes,
-                    );
-                    if let Some(imp_simp) = imp_simp {
-                        if simp != imp_simp {
-                            return None;
-                        }
-                    }
-                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
-                        return None;
-                    }
-                    Some(imp)
-                })
-                .collect(),
-            None => all_impls
-                .filter_map(|def_id| {
-                    if self.tcx.impl_polarity(def_id) == ty::ImplPolarity::Negative {
-                        return None;
-                    }
-                    self.tcx.impl_trait_ref(def_id)
-                })
-                .collect(),
-        }
+                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
+
+                self.fuzzy_match_tys(trait_ref.skip_binder().self_ty(), imp.self_ty(), false)
+                    .map(|similarity| ImplCandidate { trait_ref: imp, similarity })
+            })
+            .collect()
     }
 
     fn report_similar_impl_candidates(
         &self,
-        impl_candidates: Vec<ty::TraitRef<'tcx>>,
+        impl_candidates: Vec<ImplCandidate<'tcx>>,
         err: &mut DiagnosticBuilder<'_>,
     ) {
         if impl_candidates.is_empty() {
@@ -1575,13 +1597,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         };
 
         // Sort impl candidates so that ordering is consistent for UI tests.
-        let mut normalized_impl_candidates =
-            impl_candidates.iter().copied().map(normalize).collect::<Vec<String>>();
-
-        // Sort before taking the `..end` range,
         // because the ordering of `impl_candidates` may not be deterministic:
         // https://github.com/rust-lang/rust/pull/57475#issuecomment-455519507
-        normalized_impl_candidates.sort();
+        //
+        // Prefer more similar candidates first, then sort lexicographically
+        // by their normalized string representation.
+        let mut normalized_impl_candidates_and_similarities = impl_candidates
+            .into_iter()
+            .map(|ImplCandidate { trait_ref, similarity }| {
+                let normalized = normalize(trait_ref);
+                (similarity, normalized)
+            })
+            .collect::<Vec<_>>();
+        normalized_impl_candidates_and_similarities.sort();
+
+        let normalized_impl_candidates = normalized_impl_candidates_and_similarities
+            .into_iter()
+            .map(|(_, normalized)| normalized)
+            .collect::<Vec<_>>();
 
         err.help(&format!(
             "the following implementations were found:{}{}",
@@ -1744,7 +1777,11 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                let impl_candidates = self
+                    .find_similar_impl_candidates(trait_ref)
+                    .into_iter()
+                    .map(|candidate| candidate.trait_ref)
+                    .collect();
                 let mut err = self.emit_inference_failure_err(
                     body_id,
                     span,
