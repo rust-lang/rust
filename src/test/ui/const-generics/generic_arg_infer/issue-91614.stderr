@@ -1,4 +1,4 @@
-error[E0283]: type annotations needed for `Mask<_, {_: usize}>`
+error[E0283]: type annotations needed for `Mask<_, LANES>`
   --> $DIR/issue-91614.rs:6:13
    |
 LL |     let y = Mask::<_, _>::splat(false);

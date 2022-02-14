@@ -497,16 +497,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty_to_string = |ty: Ty<'tcx>| -> String {
             let mut s = String::new();
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
-            let mut inner = self.inner.borrow_mut();
-            let ty_vars = inner.type_variables();
-            let getter = move |ty_vid| {
-                let var_origin = ty_vars.var_origin(ty_vid);
-                if let TypeVariableOriginKind::TypeParameterDefinition(name, _) = var_origin.kind {
-                    return Some(name.to_string());
+            let ty_getter = move |ty_vid| {
+                if let TypeVariableOriginKind::TypeParameterDefinition(name, _) =
+                    self.inner.borrow_mut().type_variables().var_origin(ty_vid).kind
+                {
+                    Some(name.to_string())
+                } else {
+                    None
                 }
-                None
             };
-            printer.name_resolver = Some(Box::new(&getter));
+            printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
+            let const_getter = move |ct_vid| {
+                if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = self
+                    .inner
+                    .borrow_mut()
+                    .const_unification_table()
+                    .probe_value(ct_vid)
+                    .origin
+                    .kind
+                {
+                    return Some(name.to_string());
+                } else {
+                    None
+                }
+            };
+            printer.const_infer_name_resolver = Some(Box::new(const_getter));
+
             let _ = if let ty::FnDef(..) = ty.kind() {
                 // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseudo-syntax, we want the `fn`-pointer output instead.
