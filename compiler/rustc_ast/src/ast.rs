@@ -2666,6 +2666,18 @@ pub struct Trait {
 /// a `where` keyword (`bool`). This is split out from `WhereClause`, since there
 /// are two locations for where clause on type aliases, but their predicates
 /// are concatenated together.
+///
+/// Take this example:
+/// ```rust, ignore
+/// trait Foo {
+///   type Assoc<'a, 'b> where Self: 'a, Self: 'b;
+/// }
+/// impl Foo for () {
+///   type Assoc<'a, 'b> where Self: 'a = () where Self: 'b;
+///   //                 ^^^^^^^^^^^^^^ first where clause
+///   //                                     ^^^^^^^^^^^^^^ second where clause
+/// }
+/// ```
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
 pub struct TyAliasWhereClause(pub bool, pub Span);
 

@@ -819,11 +819,13 @@ pub trait LintContext: Sized {
                     }
                 },
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {
-                    db.span_suggestion(
-                        new_span,
-                        "move it here",
-                        suggestion,
+                    db.multipart_suggestion(
+                        "move it to the end of the type declaration",
+                        vec![(db.span.primary_span().unwrap(), "".to_string()), (new_span, suggestion)],
                         Applicability::MachineApplicable,
+                    );
+                    db.note(
+                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
                     );
                 },
             }

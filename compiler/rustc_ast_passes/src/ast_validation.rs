@@ -1275,10 +1275,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
                 if where_clauses.1.0 {
-                    self.err_handler().span_err(
+                    let mut err = self.err_handler().struct_span_err(
                         where_clauses.1.1,
                         "where clauses are not allowed after the type for type aliases",
-                    )
+                    );
+                    err.note(
+                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
+                    );
+                    err.emit();
                 }
             }
             _ => {}

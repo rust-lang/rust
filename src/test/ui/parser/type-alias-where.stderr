@@ -3,32 +3,16 @@ error: where clauses are not allowed after the type for type aliases
    |
 LL | type Bar = () where u32: Copy;
    |               ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
 error: where clauses are not allowed after the type for type aliases
   --> $DIR/type-alias-where.rs:10:15
    |
 LL | type Baz = () where;
    |               ^^^^^
-
-warning: where clause not allowed here
-  --> $DIR/type-alias-where.rs:22:16
    |
-LL |     type Assoc where u32: Copy = ();
-   |                ^^^^^^^^^^^^^^^     - help: move it here: `where u32: Copy`
-   |
-   = note: `#[warn(deprecated_where_clause_location)]` on by default
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
 
-warning: where clause not allowed here
-  --> $DIR/type-alias-where.rs:25:17
-   |
-LL |     type Assoc2 where u32: Copy = () where i32: Copy;
-   |                 ^^^^^^^^^^^^^^^                     - help: move it here: `, u32: Copy`
-
-warning: where clause not allowed here
-  --> $DIR/type-alias-where.rs:33:17
-   |
-LL |     type Assoc2 where u32: Copy, i32: Copy = ();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^     - help: move it here: `where u32: Copy, i32: Copy`
-
-error: aborting due to 2 previous errors; 3 warnings emitted
+error: aborting due to 2 previous errors
 
