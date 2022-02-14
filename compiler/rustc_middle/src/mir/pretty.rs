@@ -686,15 +686,15 @@ pub fn write_allocations<'tcx>(
     struct CollectAllocIds(BTreeSet<AllocId>);
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: &&'tcx ty::Const<'tcx>, _loc: Location) {
-            if let ty::ConstKind::Value(val) = c.val {
+        fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
+            if let ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
         }
 
         fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
             match c.literal {
-                ConstantKind::Ty(c) => self.visit_const(&c, loc),
+                ConstantKind::Ty(c) => self.visit_const(c, loc),
                 ConstantKind::Val(val, _) => {
                     self.0.extend(alloc_ids_from_const(val));
                 }

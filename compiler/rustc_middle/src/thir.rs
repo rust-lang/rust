@@ -717,11 +717,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => self.ty.ty_adt_def().and_then(|adt| {
-                        if !adt.is_enum() {
-                            Some(adt.non_enum_variant())
-                        } else {
-                            None
-                        }
+                        if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }
                     }),
                 };
 
