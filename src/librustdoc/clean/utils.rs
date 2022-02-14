@@ -151,9 +151,52 @@ crate fn strip_path_generics(mut path: Path) -> Path {
     path
 }
 
+// Used to delay allocation of String's as much as possible
 enum SymbolOrString {
     Symbol(Symbol),
     String(String),
+}
+
+impl SymbolOrString {
+    // can't do this, so this fn exist: impl Join<&str> for [SymbolOrString]
+    fn join_to_string(slice: &[SymbolOrString], sep: &str) -> String {
+        let mut out = String::with_capacity(slice.len() * sep.len());
+
+        for (idx, piece) in slice.iter().enumerate() {
+            if idx > 0 {
+                out.push_str(sep)
+            }
+            match piece {
+                SymbolOrString::Symbol(s) => out.push_str(s.as_str()),
+                SymbolOrString::String(s) => out.push_str(&s),
+            }
+        }
+
+        out
+    }
+}
+
+impl From<Symbol> for SymbolOrString {
+    #[inline]
+    fn from(s: Symbol) -> Self {
+        SymbolOrString::Symbol(s)
+    }
+}
+
+impl From<String> for SymbolOrString {
+    #[inline]
+    fn from(s: String) -> Self {
+        SymbolOrString::String(s)
+    }
+}
+
+impl AsRef<str> for SymbolOrString {
+    fn as_ref(&self) -> &str {
+        match self {
+            SymbolOrString::Symbol(s) => s.as_str(),
+            SymbolOrString::String(s) => s.as_str(),
+        }
+    }
 }
 
 fn qpath_to_string(p: &hir::QPath<'_>) -> SymbolOrString {
@@ -201,38 +244,54 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
 
 crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     use rustc_hir::*;
+    use SymbolOrString as SS;
     debug!("trying to get a name from pattern: {:?}", p);
 
-    Symbol::intern(&match p.kind {
-        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
-        PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => match qpath_to_string(p) {
-            SymbolOrString::Symbol(s) => return s,
-            SymbolOrString::String(s) => s,
-        },
-        PatKind::Or(pats) => {
-            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+    fn _name_from_pat(p: &hir::Pat<'_>) -> SS {
+        match p.kind {
+            PatKind::Wild | PatKind::Struct(..) => SS::from(kw::Underscore),
+            PatKind::Binding(_, _, ident, _) => SS::from(ident.name),
+            PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
+            PatKind::Or(pats) => SS::from(SS::join_to_string(
+                &pats.iter().map(|p| _name_from_pat(p)).collect::<Vec<_>>(),
+                " | ",
+            )),
+            PatKind::Tuple(elts, _) => SS::from(format!(
+                "({})",
+                SS::join_to_string(
+                    &elts.iter().map(|p| _name_from_pat(p)).collect::<Vec<_>>(),
+                    ", "
+                )
+            )),
+            PatKind::Box(p) => _name_from_pat(&*p),
+            PatKind::Ref(p, _) => _name_from_pat(&*p),
+            PatKind::Lit(..) => {
+                warn!(
+                    "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                );
+                SS::from(Symbol::intern("()"))
+            }
+            PatKind::Range(..) => SS::from(kw::Underscore),
+            PatKind::Slice(begin, ref mid, end) => {
+                let begin = begin.iter().map(|p| _name_from_pat(p));
+                let mid = mid
+                    .as_ref()
+                    .map(|p| format!("..{}", _name_from_pat(&**p).as_ref()))
+                    .map(|s| SS::from(s))
+                    .into_iter();
+                let end = end.iter().map(|p| _name_from_pat(p));
+                SS::from(format!(
+                    "[{}]",
+                    SS::join_to_string(&begin.chain(mid).chain(end).collect::<Vec<_>>(), ", ")
+                ))
+            }
         }
-        PatKind::Tuple(elts, _) => format!(
-            "({})",
-            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
-        ),
-        PatKind::Box(p) => return name_from_pat(&*p),
-        PatKind::Ref(p, _) => return name_from_pat(&*p),
-        PatKind::Lit(..) => {
-            warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
-            );
-            return Symbol::intern("()");
-        }
-        PatKind::Range(..) => return kw::Underscore,
-        PatKind::Slice(begin, ref mid, end) => {
-            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(&**p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(p).to_string());
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
-        }
-    })
+    }
+
+    match _name_from_pat(p) {
+        SS::Symbol(s) => s,
+        SS::String(s) => Symbol::intern(&s),
+    }
 }
 
 crate fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
