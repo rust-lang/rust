@@ -163,7 +163,7 @@ declare_features! (
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
     /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
     /// Marked `incomplete` since perma-unstable and unsound.
-    (incomplete, unsafe_pin_internals, "1.61.0", None, None),
+    (incomplete, unsafe_pin_internals, "1.60.0", None, None),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (active, with_negative_coherence, "1.60.0", None, None),
