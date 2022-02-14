@@ -239,22 +239,18 @@ pub(super) fn keyword(
     }
     let parent = token.parent()?;
     let famous_defs = FamousDefs(sema, sema.scope(&parent).krate());
-    let keyword_mod = if token.kind() == T![fn] && ast::FnPtrType::cast(parent).is_some() {
-        // treat fn keyword inside function pointer type as primitive
-        format!("prim_{}", token.text())
-    } else {
-        // std exposes {}_keyword modules with docstrings on the root to document keywords
-        format!("{}_keyword", token.text())
-    };
+
+    let KeywordHint { description, keyword_mod, actions } = keyword_hints(sema, token, parent);
+
     let doc_owner = find_std_module(&famous_defs, &keyword_mod)?;
     let docs = doc_owner.attrs(sema.db).docs()?;
     let markup = process_markup(
         sema.db,
         Definition::Module(doc_owner),
-        &markup(Some(docs.into()), token.text().into(), None)?,
+        &markup(Some(docs.into()), description, None)?,
         config,
     );
-    Some(HoverResult { markup, actions: Default::default() })
+    Some(HoverResult { markup, actions })
 }
 
 pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<HoverResult> {
@@ -499,4 +495,66 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
         Either::Right(_) => format!("{}self: {}", is_mut, ty),
     };
     markup(None, desc, None)
+}
+
+struct KeywordHint {
+    description: String,
+    keyword_mod: String,
+    actions: Vec<HoverAction>,
+}
+
+impl KeywordHint {
+    fn new(description: String, keyword_mod: String) -> Self {
+        Self { description, keyword_mod, actions: Vec::default() }
+    }
+}
+
+fn keyword_hints(
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
+    parent: syntax::SyntaxNode,
+) -> KeywordHint {
+    match token.kind() {
+        T![await] | T![loop] | T![match] | T![unsafe] | T![as] | T![try] | T![if] | T![else] => {
+            let keyword_mod = format!("{}_keyword", token.text());
+
+            match ast::Expr::cast(parent).and_then(|site| sema.type_of_expr(&site)) {
+                // ignore the unit type ()
+                Some(ty) if !ty.adjusted.as_ref().unwrap_or(&ty.original).is_unit() => {
+                    let mut targets: Vec<hir::ModuleDef> = Vec::new();
+                    let mut push_new_def = |item: hir::ModuleDef| {
+                        if !targets.contains(&item) {
+                            targets.push(item);
+                        }
+                    };
+                    walk_and_push_ty(sema.db, &ty.original, &mut push_new_def);
+
+                    let ty = ty.adjusted();
+                    let description = format!("{}: {}", token.text(), ty.display(sema.db));
+
+                    KeywordHint {
+                        description,
+                        keyword_mod,
+                        actions: vec![HoverAction::goto_type_from_targets(sema.db, targets)],
+                    }
+                }
+                _ => KeywordHint {
+                    description: token.text().to_string(),
+                    keyword_mod,
+                    actions: Vec::new(),
+                },
+            }
+        }
+
+        T![fn] => {
+            let module = match ast::FnPtrType::cast(parent) {
+                // treat fn keyword inside function pointer type as primitive
+                Some(_) => format!("prim_{}", token.text()),
+                None => format!("{}_keyword", token.text()),
+            };
+            KeywordHint::new(token.text().to_string(), module)
+        }
+
+        _ => KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text())),
+    }
 }
