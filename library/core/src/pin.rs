@@ -406,6 +406,11 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct Pin<P> {
+    // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
+    //   - deter downstream users from accessing it (which would be unsound!),
+    //   - let the `pin!` macro access it (such a macro requires using struct
+    //     literal syntax in order to benefit from lifetime extension).
+    // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
     pub pointer: P,
