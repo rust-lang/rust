@@ -2,25 +2,19 @@ error[E0282]: type annotations needed
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
    |
 LL |     a.method();
-   |     --^^^^^^--
-   |     | |
-   |     | cannot infer type for type parameter `U` declared on the trait `V`
-   |     this method call resolves to `U`
+   |       ^^^^^^
+   |
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <A<B> as V<U>>::method(a);
+   |     +++++++++++++++++++++++ ~
 
 error[E0283]: type annotations needed
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:21:7
    |
 LL |     a.method();
-   |     --^^^^^^--
-   |     | |
-   |     | cannot infer type for type parameter `U`
-   |     this method call resolves to `U`
+   |       ^^^^^^
    |
-help: type parameter declared here
-  --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:12:9
-   |
-LL | impl<T, U> V<U> for A<T>
-   |         ^
 note: multiple `impl`s satisfying `B: I<_>` found
   --> $DIR/not-suggest-non-existing-fully-qualified-path.rs:5:1
    |
@@ -33,6 +27,10 @@ note: required because of the requirements on the impl of `V<_>` for `A<B>`
    |
 LL | impl<T, U> V<U> for A<T>
    |            ^^^^     ^^^^
+help: try using a fully qualified path to specify the expected types
+   |
+LL |     <A<B> as V<U>>::method(a);
+   |     +++++++++++++++++++++++ ~
 
 error: aborting due to 2 previous errors
 

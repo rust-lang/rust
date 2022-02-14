@@ -2,9 +2,13 @@ error[E0282]: type annotations needed
   --> $DIR/infer_array_len.rs:19:9
    |
 LL |     let [_, _] = a.into();
-   |         ^^^^^^ consider giving this pattern a type
+   |         ^^^^^^
    |
    = note: type must be known at this point
+help: consider giving this pattern a type
+   |
+LL |     let [_, _]: _ = a.into();
+   |               +++
 
 error: aborting due to previous error
 

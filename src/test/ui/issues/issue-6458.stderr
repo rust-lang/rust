@@ -1,14 +1,13 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-6458.rs:9:4
+  --> $DIR/issue-6458.rs:9:22
    |
 LL |    foo(TypeWithState(marker::PhantomData));
-   |    ^^^ cannot infer type for type parameter `State` declared on the function `foo`
+   |                      ^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
    |
-help: type parameter declared here
-  --> $DIR/issue-6458.rs:6:12
+help: consider specifying the generic argument
    |
-LL | pub fn foo<State>(_: TypeWithState<State>) {}
-   |            ^^^^^
+LL |    foo(TypeWithState(marker::PhantomData::<T>));
+   |                                         +++++
 
 error: aborting due to previous error
 

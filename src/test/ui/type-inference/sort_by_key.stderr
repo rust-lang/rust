@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/sort_by_key.rs:3:9
+  --> $DIR/sort_by_key.rs:3:40
    |
 LL |     lst.sort_by_key(|&(v, _)| v.iter().sum());
-   |         ^^^^^^^^^^^ cannot infer type for type parameter `K` declared on the associated function `sort_by_key`
+   |                                        ^^^ cannot infer type of the type parameter `S` declared on the associated function `sum`
    |
-help: consider specifying the type argument in the method call
+help: consider specifying the generic argument
    |
 LL |     lst.sort_by_key(|&(v, _)| v.iter().sum::<S>());
    |                                           +++++

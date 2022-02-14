@@ -5,9 +5,10 @@ use std::marker::PhantomData;
 struct Foo<T> {foo: PhantomData<T>}
 
 fn main() {
-    let (tx, rx) = channel();
-
+    let (tx, rx) = //~ ERROR type annotations needed
+        channel();
+    // FIXME(#89862): Suggest adding a generic argument to `channel` instead
     spawn(move || {
-        tx.send(Foo{ foo: PhantomData }); //~ ERROR E0282
+        tx.send(Foo{ foo: PhantomData });
     });
 }

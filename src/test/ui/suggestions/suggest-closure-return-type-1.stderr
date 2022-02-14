@@ -1,13 +1,10 @@
-error[E0282]: type annotations needed for the closure `fn() -> [_; 0]`
-  --> $DIR/suggest-closure-return-type-1.rs:2:24
+error[E0282]: type annotations needed for `[_; 0]`
+  --> $DIR/suggest-closure-return-type-1.rs:4:18
    |
-LL |     let _v = || -> _ { [] };
-   |                        ^^ cannot infer type
-   |
-help: give this closure an explicit return type without `_` placeholders
-   |
-LL |     let _v = || -> [_; 0] { [] };
-   |                    ~~~~~~
+LL |     unbound_drop(|| -> _ { [] });
+   |                  ^^^^^^-
+   |                        |
+   |                        help: try giving this closure an explicit return type: `[_; 0]`
 
 error: aborting due to previous error
 

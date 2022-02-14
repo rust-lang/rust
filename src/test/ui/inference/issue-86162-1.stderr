@@ -1,20 +1,19 @@
 error[E0283]: type annotations needed
-  --> $DIR/issue-86162-1.rs:7:5
+  --> $DIR/issue-86162-1.rs:7:9
    |
 LL |     foo(gen()); //<- Do not suggest `foo::<impl Clone>()`!
-   |     ^^^ cannot infer type for type parameter `impl Clone` declared on the function `foo`
+   |         ^^^ cannot infer type of the type parameter `T` declared on the function `gen`
    |
-help: type parameter declared here
-  --> $DIR/issue-86162-1.rs:3:11
-   |
-LL | fn foo(x: impl Clone) {}
-   |           ^^^^^^^^^^
    = note: cannot satisfy `_: Clone`
 note: required by a bound in `foo`
   --> $DIR/issue-86162-1.rs:3:16
    |
 LL | fn foo(x: impl Clone) {}
    |                ^^^^^ required by this bound in `foo`
+help: consider specifying the generic argument
+   |
+LL |     foo(gen::<T>()); //<- Do not suggest `foo::<impl Clone>()`!
+   |            +++++
 
 error: aborting due to previous error
 

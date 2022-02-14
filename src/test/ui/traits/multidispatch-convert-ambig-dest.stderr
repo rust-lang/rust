@@ -2,25 +2,19 @@ error[E0282]: type annotations needed
   --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
    |
 LL |     test(22, std::default::Default::default());
-   |     ^^^^ cannot infer type for type parameter `U` declared on the function `test`
+   |     ^^^^ cannot infer type of the type parameter `U` declared on the function `test`
    |
-help: type parameter declared here
-  --> $DIR/multidispatch-convert-ambig-dest.rs:20:11
+help: consider specifying the generic arguments
    |
-LL | fn test<T,U>(_: T, _: U)
-   |           ^
+LL |     test::<i32, U>(22, std::default::Default::default());
+   |         ++++++++++
 
 error[E0283]: type annotations needed
   --> $DIR/multidispatch-convert-ambig-dest.rs:26:5
    |
 LL |     test(22, std::default::Default::default());
-   |     ^^^^ cannot infer type for type parameter `U` declared on the function `test`
+   |     ^^^^ cannot infer type of the type parameter `U` declared on the function `test`
    |
-help: type parameter declared here
-  --> $DIR/multidispatch-convert-ambig-dest.rs:20:11
-   |
-LL | fn test<T,U>(_: T, _: U)
-   |           ^
 note: multiple `impl`s satisfying `i32: Convert<_>` found
   --> $DIR/multidispatch-convert-ambig-dest.rs:8:1
    |
@@ -36,6 +30,10 @@ LL | fn test<T,U>(_: T, _: U)
    |    ---- required by a bound in this
 LL | where T : Convert<U>
    |           ^^^^^^^^^^ required by this bound in `test`
+help: consider specifying the generic arguments
+   |
+LL |     test::<i32, U>(22, std::default::Default::default());
+   |         ++++++++++
 help: consider specifying the type arguments in the function call
    |
 LL |     test::<T, U>(22, std::default::Default::default());

@@ -116,7 +116,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-67377-invalid-syntax-in-enum-discriminant.rs:26:14
    |
 LL |         V = [Vec::new; { [0].len() ].len() as isize,
-   |              ^^^^^^^^ cannot infer type for type parameter `T`
+   |              ^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `Vec`
+   |
+help: consider specifying the generic argument
+   |
+LL |         V = [Vec::<T>::new; { [0].len() ].len() as isize,
+   |                 +++++
 
 error: aborting due to 14 previous errors
 
