@@ -48,7 +48,13 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
         println!("impl item `{}`", item.ident.name);
         match cx.tcx.visibility(item.def_id) {
             ty::Visibility::Public => println!("public"),
-            ty::Visibility::Restricted(def_id) => println!("visible in module `{}`", cx.tcx.def_path_str(def_id)),
+            ty::Visibility::Restricted(def_id) => {
+                if def_id.is_top_level_module() {
+                    println!("visible crate wide")
+                } else {
+                    println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+                }
+            },
             ty::Visibility::Invisible => println!("invisible"),
         }
         match item.kind {
@@ -359,7 +365,13 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
     println!("item `{}`", item.ident.name);
     match cx.tcx.visibility(item.def_id) {
         ty::Visibility::Public => println!("public"),
-        ty::Visibility::Restricted(def_id) => println!("visible in module `{}`", cx.tcx.def_path_str(def_id)),
+        ty::Visibility::Restricted(def_id) => {
+            if def_id.is_top_level_module() {
+                println!("visible crate wide")
+            } else {
+                println!("visible in module `{}`", cx.tcx.def_path_str(def_id))
+            }
+        },
         ty::Visibility::Invisible => println!("invisible"),
     }
     match item.kind {
