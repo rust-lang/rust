@@ -13,7 +13,7 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for types with a `fn new() -> Self` method and no
+    /// Checks for public types with a `pub fn new() -> Self` method and no
     /// implementation of
     /// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html).
     ///
@@ -24,10 +24,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```ignore
-    /// struct Foo(Bar);
+    /// pub struct Foo(Bar);
     ///
     /// impl Foo {
-    ///     fn new() -> Self {
+    ///     pub fn new() -> Self {
     ///         Foo(Bar::new())
     ///     }
     /// }
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// To fix the lint, add a `Default` implementation that delegates to `new`:
     ///
     /// ```ignore
-    /// struct Foo(Bar);
+    /// pub struct Foo(Bar);
     ///
     /// impl Default for Foo {
     ///     fn default() -> Self {
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub NEW_WITHOUT_DEFAULT,
     style,
-    "`fn new() -> Self` method without `Default` implementation"
+    "`pub fn new() -> Self` method without `Default` implementation"
 }
 
 #[derive(Clone, Default)]
