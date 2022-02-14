@@ -797,6 +797,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"
                     ),
+
+                    ty::PredicateKind::OpaqueType(..) => {
+                        todo!("{:#?}", obligation);
+                    }
                 }
             }
 

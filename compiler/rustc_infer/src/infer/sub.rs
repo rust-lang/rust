@@ -2,6 +2,7 @@ use super::combine::{CombineFields, RelationDir};
 use super::SubregionOrigin;
 
 use crate::infer::combine::ConstEquateRelation;
+use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::traits::Obligation;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
@@ -74,9 +75,8 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
-
         if a == b {
             return Ok(a);
         }
@@ -84,6 +84,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
         let infcx = self.fields.infcx;
         let a = infcx.inner.borrow_mut().type_variables().replace_if_possible(a);
         let b = infcx.inner.borrow_mut().type_variables().replace_if_possible(b);
+
         match (a.kind(), b.kind()) {
             (&ty::Infer(TyVar(_)), &ty::Infer(TyVar(_))) => {
                 // Shouldn't have any LBR here, so we can safely put
@@ -119,6 +120,40 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             (&ty::Error(_), _) | (_, &ty::Error(_)) => {
                 infcx.set_tainted_by_errors();
                 Ok(self.tcx().ty_error())
+            }
+
+            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+                self.fields.infcx.super_combine_tys(self, a, b)?;
+                Ok(a)
+            }
+            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
+                if self.fields.define_opaque_types && did.is_local() =>
+            {
+                let mut generalize = |ty, ty_is_expected| {
+                    let var = infcx.next_ty_var_id_in_universe(
+                        TypeVariableOrigin {
+                            kind: TypeVariableOriginKind::MiscVariable,
+                            span: self.fields.trace.cause.span,
+                        },
+                        ty::UniverseIndex::ROOT,
+                    );
+                    self.fields.instantiate(ty, RelationDir::SubtypeOf, var, ty_is_expected)?;
+                    Ok(infcx.tcx.mk_ty_var(var))
+                };
+                let (a, b) = if self.a_is_expected { (a, b) } else { (b, a) };
+                let (a, b) = match (a.kind(), b.kind()) {
+                    (&ty::Opaque(..), _) => (a, generalize(b, true)?),
+                    (_, &ty::Opaque(..)) => (generalize(a, false)?, b),
+                    _ => unreachable!(),
+                };
+                self.fields.obligations.push(infcx.opaque_ty_obligation(
+                    a,
+                    b,
+                    true,
+                    self.param_env(),
+                    self.fields.trace.cause.clone(),
+                ));
+                Ok(a)
             }
 
             _ => {

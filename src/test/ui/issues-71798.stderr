@@ -1,14 +1,14 @@
 error[E0425]: cannot find value `u` in this scope
-  --> $DIR/issues-71798.rs:6:24
+  --> $DIR/issues-71798.rs:7:24
    |
 LL |     let _ = test_ref & u;
    |                        ^ not found in this scope
 
 error[E0277]: `u32` is not a future
-  --> $DIR/issues-71798.rs:1:25
+  --> $DIR/issues-71798.rs:2:5
    |
-LL | fn test_ref(x: &u32) -> impl std::future::Future<Output = u32> + '_ {
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `u32` is not a future
+LL |     *x
+   |     ^^ `u32` is not a future
    |
    = help: the trait `Future` is not implemented for `u32`
    = note: u32 must be a future or must implement `IntoFuture` to be awaited

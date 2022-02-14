@@ -1,11 +1,19 @@
-error[E0606]: casting `*mut impl Debug + ?Sized` as `*mut impl Debug + ?Sized` is invalid
+error[E0308]: mismatched types
   --> $DIR/casts-differing-anon.rs:21:13
    |
+LL | fn foo() -> Box<impl fmt::Debug+?Sized> {
+   |                 ---------------------- the found opaque type
+...
+LL | fn bar() -> Box<impl fmt::Debug+?Sized> {
+   |                 ---------------------- the expected opaque type
+...
 LL |     b_raw = f_raw as *mut _;
-   |             ^^^^^^^^^^^^^^^
+   |             ^^^^^ expected opaque type, found a different opaque type
    |
-   = note: vtable kinds may not match
+   = note: expected opaque type `impl Debug + ?Sized` (opaque type at <$DIR/casts-differing-anon.rs:7:17>)
+              found opaque type `impl Debug + ?Sized` (opaque type at <$DIR/casts-differing-anon.rs:3:17>)
+   = note: distinct uses of `impl Trait` result in different opaque types
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0606`.
+For more information about this error, try `rustc --explain E0308`.

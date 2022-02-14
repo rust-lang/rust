@@ -1,11 +1,11 @@
 error: future cannot be sent between threads safely
-  --> $DIR/issue-70818.rs:4:38
+  --> $DIR/issue-70818.rs:5:5
    |
-LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
+LL |     async { (ty, ty1) }
+   |     ^^^^^ future created by async block is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/issue-70818.rs:6:18
+  --> $DIR/issue-70818.rs:5:18
    |
 LL |     async { (ty, ty1) }
    |                  ^^^ has type `U` which is not `Send`

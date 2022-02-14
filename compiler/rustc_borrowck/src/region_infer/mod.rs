@@ -45,6 +45,7 @@ mod reverse_sccs;
 pub mod values;
 
 pub struct RegionInferenceContext<'tcx> {
+    pub var_infos: VarInfos,
     /// Contains the definition for every region variable. Region
     /// variables are identified by their index (`RegionVid`). The
     /// definition contains information about where the region came
@@ -267,7 +268,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Self {
         // Create a RegionDefinition for each inference variable.
         let definitions: IndexVec<_, _> = var_infos
-            .into_iter()
+            .iter()
             .map(|info| RegionDefinition::new(info.universe, info.origin))
             .collect();
 
@@ -292,6 +293,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             Rc::new(member_constraints_in.into_mapped(|r| constraint_sccs.scc(r)));
 
         let mut result = Self {
+            var_infos,
             definitions,
             liveness_constraints,
             constraints,

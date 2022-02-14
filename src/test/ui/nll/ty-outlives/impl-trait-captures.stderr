@@ -1,10 +1,10 @@
 error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/impl-trait-captures.rs:10:25
+  --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-   |                  --     ^^^^^^^^^^^^
-   |                  |
-   |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0)) T` captures the anonymous lifetime defined here
+   |                  -- hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0)) T` captures the anonymous lifetime defined here
+LL |     x
+   |     ^
    |
 help: to declare that the `impl Trait` captures `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[1afc]::foo), BrAnon(0))` lifetime bound
    |

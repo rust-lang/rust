@@ -7,13 +7,18 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is used here...
+   |                        ...is used and required to live as long as `'static` here
    |
-note: ...and is required to live as long as `'static` here
+note: `'static` lifetime requirement introduced by the return type
   --> $DIR/trait-object-nested-in-impl-trait.rs:27:23
    |
-LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________- because of this returned expression
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
@@ -32,13 +37,18 @@ LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is used here...
+   |                        ...is used and required to live as long as `'static` here
    |
-note: ...and is required to live as long as `'static` here
+note: `'static` lifetime requirement introduced by the return type
   --> $DIR/trait-object-nested-in-impl-trait.rs:38:23
    |
-LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       fn iter(&self) -> impl Iterator<Item = Box<dyn Foo>> + '_ {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________- because of this returned expression
 help: to declare that the trait object captures data from argument `self`, you can add an explicit `'_` lifetime bound
    |
 LL |     fn iter(&self) -> impl Iterator<Item = Box<dyn Foo + '_>> + '_ {
@@ -53,13 +63,18 @@ LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is used here...
+   |                        ...is used and required to live as long as `'static` here
    |
-note: ...and is required to live as long as `'static` here
+note: `'static` lifetime requirement introduced by the return type
   --> $DIR/trait-object-nested-in-impl-trait.rs:49:30
    |
-LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________- because of this returned expression
 help: to declare that the trait object captures data from argument `self`, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo + 'a>> + 'a {
@@ -74,13 +89,18 @@ LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
 LL |             remaining: self.0.iter(),
    |                        ------ ^^^^
    |                        |
-   |                        ...is used here...
+   |                        ...is used and required to live as long as `'static` here
    |
-note: ...and is required to live as long as `'static` here
+note: `'static` lifetime requirement introduced by the return type
   --> $DIR/trait-object-nested-in-impl-trait.rs:60:30
    |
-LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |       fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> {
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requirement introduced by this return type
+LL | /         Iter {
+LL | |             current: None,
+LL | |             remaining: self.0.iter(),
+LL | |         }
+   | |_________- because of this returned expression
 help: to declare that the `impl Trait` captures data from argument `self`, you can add an explicit `'a` lifetime bound
    |
 LL |     fn iter<'a>(&'a self) -> impl Iterator<Item = Box<dyn Foo>> + 'a {
