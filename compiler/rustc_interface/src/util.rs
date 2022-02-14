@@ -27,7 +27,6 @@ use rustc_span::symbol::{sym, Symbol};
 use smallvec::SmallVec;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
-use std::io;
 use std::lazy::SyncOnceCell;
 use std::mem;
 use std::ops::DerefMut;
@@ -35,7 +34,6 @@ use std::ops::DerefMut;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
 use std::thread;
 use tracing::info;
 
@@ -131,7 +129,6 @@ fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -
 pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
-    stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
     let mut cfg = thread::Builder::new().name("rustc".to_string());
@@ -140,12 +137,7 @@ pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         cfg = cfg.stack_size(size);
     }
 
-    let main_handler = move || {
-        rustc_span::create_session_globals_then(edition, || {
-            io::set_output_capture(stderr.clone());
-            f()
-        })
-    };
+    let main_handler = move || rustc_span::create_session_globals_then(edition, f);
 
     scoped_thread(cfg, main_handler)
 }
@@ -177,7 +169,6 @@ unsafe fn handle_deadlock() {
 pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
-    stderr: &Option<Arc<Mutex<Vec<u8>>>>,
     f: F,
 ) -> R {
     let mut config = rayon::ThreadPoolBuilder::new()
@@ -199,10 +190,7 @@ pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
             // the thread local rustc uses. `session_globals` is captured and set
             // on the new threads.
             let main_handler = move |thread: rayon::ThreadBuilder| {
-                rustc_span::set_session_globals_then(session_globals, || {
-                    io::set_output_capture(stderr.clone());
-                    thread.run()
-                })
+                rustc_span::set_session_globals_then(session_globals, || thread.run())
             };
 
             config.build_scoped(main_handler, with_pool).unwrap()
@@ -339,6 +327,7 @@ fn sysroot_candidates() -> Vec<PathBuf> {
     #[cfg(windows)]
     fn current_dll_path() -> Option<PathBuf> {
         use std::ffi::OsString;
+        use std::io;
         use std::os::windows::prelude::*;
         use std::ptr;
 

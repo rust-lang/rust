@@ -21,7 +21,6 @@ use rustc_session::{DiagnosticOutput, Session};
 use rustc_span::source_map::{FileLoader, FileName};
 use std::path::PathBuf;
 use std::result;
-use std::sync::{Arc, Mutex};
 
 pub type Result<T> = result::Result<T, ErrorReported>;
 
@@ -155,9 +154,6 @@ pub struct Config {
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub diagnostic_output: DiagnosticOutput,
 
-    /// Set to capture stderr output during compiler execution
-    pub stderr: Option<Arc<Mutex<Vec<u8>>>>,
-
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// This is a callback from the driver that is called when [`ParseSess`] is created.
@@ -237,13 +233,11 @@ pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R
     })
 }
 
-pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
+pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     tracing::trace!("run_compiler");
-    let stderr = config.stderr.take();
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.debugging_opts.threads,
-        &stderr,
         || create_compiler_and_run(config, f),
     )
 }
