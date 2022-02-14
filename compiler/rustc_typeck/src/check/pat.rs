@@ -2029,34 +2029,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help("the semantics of slice patterns changed recently; see issue #62254");
             }
         } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
-            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..)))
+            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
         {
             if let (Some(span), true) = (ti.span, ti.origin_expr) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    let applicability = match self.resolve_vars_if_possible(ti.expected).kind() {
-                        ty::Adt(adt_def, _)
-                            if self.tcx.is_diagnostic_item(sym::Option, adt_def.did)
-                                || self.tcx.is_diagnostic_item(sym::Result, adt_def.did) =>
-                        {
-                            // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                            err.span_suggestion(
-                                span,
-                                "consider using `as_deref` here",
-                                format!("{}.as_deref()", snippet),
-                                Applicability::MaybeIncorrect,
-                            );
-                            None
+                    let applicability = Autoderef::new(
+                        &self.infcx,
+                        self.param_env,
+                        self.body_id,
+                        span,
+                        self.resolve_vars_if_possible(ti.expected),
+                        span,
+                    )
+                    .find_map(|(ty, _)| {
+                        match ty.kind() {
+                            ty::Adt(adt_def, _)
+                                if self.tcx.is_diagnostic_item(sym::Option, adt_def.did)
+                                    || self.tcx.is_diagnostic_item(sym::Result, adt_def.did) =>
+                            {
+                                // Slicing won't work here, but `.as_deref()` might (issue #91328).
+                                err.span_suggestion(
+                                    span,
+                                    "consider using `as_deref` here",
+                                    format!("{}.as_deref()", snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                Some(None)
+                            }
+
+                            ty::Slice(..) | ty::Array(..) => {
+                                Some(Some(Applicability::MachineApplicable))
+                            }
+
+                            _ => None,
                         }
-                        // FIXME: instead of checking for Vec only, we could check whether the
-                        // type implements `Deref<Target=X>`; see
-                        // https://github.com/rust-lang/rust/pull/91343#discussion_r761466979
-                        ty::Adt(adt_def, _)
-                            if self.tcx.is_diagnostic_item(sym::Vec, adt_def.did) =>
-                        {
-                            Some(Applicability::MachineApplicable)
-                        }
-                        _ => Some(Applicability::MaybeIncorrect),
-                    };
+                    })
+                    .unwrap_or(Some(Applicability::MaybeIncorrect));
 
                     if let Some(applicability) = applicability {
                         err.span_suggestion(
