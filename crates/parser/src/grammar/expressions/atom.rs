@@ -72,14 +72,10 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
         T![|] => closure_expr(p),
-        T![move] if la == T![|] => closure_expr(p),
-        T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => closure_expr(p),
-        T![static]
-            if la == T![|]
-                || (la == T![move] && p.nth(2) == T![|])
-                || (la == T![async] && p.nth(2) == T![|])
-                || (la == T![async] && p.nth(2) == T![move] && p.nth(3) == T![|]) =>
-        {
+        T![static] | T![async] | T![move] if la == T![|] => closure_expr(p),
+        T![static] | T![async] if la == T![move] && p.nth(2) == T![|] => closure_expr(p),
+        T![static] if la == T![async] && p.nth(2) == T![|] => closure_expr(p),
+        T![static] if la == T![async] && p.nth(2) == T![move] && p.nth(3) == T![|] => {
             closure_expr(p)
         }
         T![if] => if_expr(p),
