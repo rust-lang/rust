@@ -726,6 +726,7 @@ impl Default for Options {
             prints: Vec::new(),
             cg: Default::default(),
             error_format: ErrorOutputType::default(),
+            terminal_width: None,
             externs: Externs(BTreeMap::new()),
             crate_name: None,
             libs: Vec::new(),
@@ -1426,6 +1427,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                                  always = always colorize output;
                                  never  = never colorize output",
             "auto|always|never",
+        ),
+        opt::opt_s(
+            "",
+            "terminal-width",
+            "Inform rustc of the width of the terminal so that errors can be truncated",
+            "WIDTH",
         ),
         opt::multi_s(
             "",
@@ -2202,6 +2209,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let error_format = parse_error_format(matches, color, json_rendered);
 
+    let terminal_width = matches.opt_get("terminal-width").unwrap_or_else(|_| {
+        early_error(error_format, "`--terminal-width` must be an positive integer");
+    });
+
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(error_format, &e));
@@ -2474,6 +2485,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         prints,
         cg,
         error_format,
+        terminal_width,
         externs,
         unstable_features: UnstableFeatures::from_environment(crate_name.as_deref()),
         crate_name,

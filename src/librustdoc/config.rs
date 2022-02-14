@@ -73,6 +73,8 @@ pub(crate) struct Options {
     pub(crate) proc_macro_crate: bool,
     /// How to format errors and warnings.
     pub(crate) error_format: ErrorOutputType,
+    /// Width of terminal to truncate errors appropriately.
+    pub(crate) terminal_width: Option<usize>,
     /// Library search paths to hand to the compiler.
     pub(crate) libs: Vec<SearchPath>,
     /// Library search paths strings to hand to the compiler.
@@ -334,11 +336,12 @@ impl Options {
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
             config::parse_json(matches);
         let error_format = config::parse_error_format(matches, color, json_rendered);
+        let terminal_width = matches.opt_get("terminal-width").unwrap_or_default();
 
         let codegen_options = CodegenOptions::build(matches, error_format);
         let debugging_opts = DebuggingOptions::build(matches, error_format);
 
-        let diag = new_handler(error_format, None, &debugging_opts);
+        let diag = new_handler(error_format, None, terminal_width, &debugging_opts);
 
         // check for deprecated options
         check_deprecated_options(matches, &diag);
@@ -702,6 +705,7 @@ impl Options {
             input,
             proc_macro_crate,
             error_format,
+            terminal_width,
             libs,
             lib_strs,
             externs,

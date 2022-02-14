@@ -462,6 +462,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 "human|json|short",
             )
         }),
+        unstable("terminal-width", |o| {
+            o.optopt(
+                "",
+                "terminal-width",
+                "Provide width of the terminal for truncated error messages",
+                "WIDTH",
+            )
+        }),
         stable("json", |o| {
             o.optopt("", "json", "Configure the structure of JSON diagnostics", "CONFIG")
         }),
@@ -733,7 +741,12 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_options(options: config::Options) -> MainResult {
-    let diag = core::new_handler(options.error_format, None, &options.debugging_opts);
+    let diag = core::new_handler(
+        options.error_format,
+        None,
+        options.terminal_width,
+        &options.debugging_opts,
+    );
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),

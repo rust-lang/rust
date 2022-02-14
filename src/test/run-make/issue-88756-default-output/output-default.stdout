@@ -110,6 +110,9 @@ Options:
                         never = never colorize output
         --error-format human|json|short
                         How errors and other messages are produced
+        --terminal-width WIDTH
+                        Provide width of the terminal for truncated error
+                        messages
         --json CONFIG   Configure the structure of JSON diagnostics
         --disable-minification 
                         Disable minification applied on JS files
