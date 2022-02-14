@@ -135,6 +135,70 @@ SOURCE_FILE
                 L_CURLY "{"
                 R_CURLY "}"
           SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            ASYNC_KW "async"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            STATIC_KW "static"
+            WHITESPACE " "
+            ASYNC_KW "async"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"

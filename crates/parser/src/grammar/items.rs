@@ -230,7 +230,7 @@ fn opt_item_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         IDENT if p.at_contextual_kw(T![macro_rules]) && p.nth(1) == BANG => macro_rules(p, m),
 
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
-        T![static] => consts::static_(p, m),
+        T![static] if (la == IDENT || la == T![_] || la == T![mut]) => consts::static_(p, m),
 
         _ => return Err(m),
     };

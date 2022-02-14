@@ -72,8 +72,12 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
         T![|] => closure_expr(p),
-        T![move] if la == T![|] => closure_expr(p),
-        T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => closure_expr(p),
+        T![static] | T![async] | T![move] if la == T![|] => closure_expr(p),
+        T![static] | T![async] if la == T![move] && p.nth(2) == T![|] => closure_expr(p),
+        T![static] if la == T![async] && p.nth(2) == T![|] => closure_expr(p),
+        T![static] if la == T![async] && p.nth(2) == T![move] && p.nth(3) == T![|] => {
+            closure_expr(p)
+        }
         T![if] => if_expr(p),
 
         T![loop] => loop_expr(p, None),
@@ -234,6 +238,10 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 //     async || {};
 //     move || {};
 //     async move || {};
+//     static || {};
+//     static move || {};
+//     static async || {};
+//     static async move || {};
 // }
 fn closure_expr(p: &mut Parser) -> CompletedMarker {
     assert!(
@@ -241,8 +249,16 @@ fn closure_expr(p: &mut Parser) -> CompletedMarker {
             || (p.at(T![move]) && p.nth(1) == T![|])
             || (p.at(T![async]) && p.nth(1) == T![|])
             || (p.at(T![async]) && p.nth(1) == T![move] && p.nth(2) == T![|])
+            || (p.at(T![static]) && p.nth(1) == T![|])
+            || (p.at(T![static]) && p.nth(1) == T![move] && p.nth(2) == T![|])
+            || (p.at(T![static]) && p.nth(1) == T![async] && p.nth(2) == T![|])
+            || (p.at(T![static])
+                && p.nth(1) == T![async]
+                && p.nth(2) == T![move]
+                && p.nth(3) == T![|])
     );
     let m = p.start();
+    p.eat(T![static]);
     p.eat(T![async]);
     p.eat(T![move]);
     params::param_list_closure(p);
