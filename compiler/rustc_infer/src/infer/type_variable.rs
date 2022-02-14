@@ -14,6 +14,7 @@ use std::ops::Range;
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 
 /// Represents a single undo-able action that affects a type inference variable.
+#[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
     EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
     SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
@@ -58,6 +59,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub struct TypeVariableStorage<'tcx> {
     values: sv::SnapshotVecStorage<Delegate>,
 
@@ -137,6 +139,7 @@ pub enum TypeVariableOriginKind {
     LatticeVariable,
 }
 
+#[derive(Clone)]
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
 }
@@ -165,6 +168,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct Instantiate;
 
 pub(crate) struct Delegate;

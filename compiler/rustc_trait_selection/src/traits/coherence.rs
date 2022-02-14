@@ -4,8 +4,8 @@
 //! [trait-resolution]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html
 //! [trait-specialization]: https://rustc-dev-guide.rust-lang.org/traits/specialization.html
 
-use crate::infer::{CombinedSnapshot, InferOk, TyCtxtInferExt};
-use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::infer::outlives::env::OutlivesEnvironment;
+use crate::infer::{CombinedSnapshot, InferOk, RegionckMode};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::util::impl_trait_ref_and_oblig;
 use crate::traits::SkipLeakCheck;
@@ -13,7 +13,11 @@ use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
     PredicateObligations, SelectionContext,
 };
+//use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::CRATE_HIR_ID;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -150,7 +154,10 @@ fn overlap<'cx, 'tcx>(
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
 ) -> Option<OverlapResult<'tcx>> {
-    debug!("overlap(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
+    debug!(
+        "overlap(impl1_def_id={:?}, impl2_def_id={:?}, overlap_mode={:?})",
+        impl1_def_id, impl2_def_id, overlap_mode
+    );
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
         overlap_within_probe(
@@ -191,9 +198,6 @@ fn overlap_within_probe<'cx, 'tcx>(
     let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
     let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
 
-    debug!("overlap: impl1_header={:?}", impl1_header);
-    debug!("overlap: impl2_header={:?}", impl2_header);
-
     let obligations = equate_impl_headers(selcx, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
@@ -226,6 +230,7 @@ fn equate_impl_headers<'cx, 'tcx>(
     impl2_header: &ty::ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
     // Do `a` and `b` unify? If not, no overlap.
+    debug!("equate_impl_headers(impl1_header={:?}, impl2_header={:?}", impl1_header, impl2_header);
     selcx
         .infcx()
         .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
@@ -264,8 +269,11 @@ fn implicit_negative<'cx, 'tcx>(
     // If the obligation `&'?a str: Error` holds, it means that there's overlap. If that doesn't
     // hold we need to check if `&'?a str: !Error` holds, if doesn't hold there's overlap because
     // at some point an impl for `&'?a str: Error` could be added.
+    debug!(
+        "implicit_negative(impl1_header={:?}, impl2_header={:?}, obligations={:?})",
+        impl1_header, impl2_header, obligations
+    );
     let infcx = selcx.infcx();
-    let tcx = infcx.tcx;
     let opt_failing_obligation = impl1_header
         .predicates
         .iter()
@@ -279,12 +287,7 @@ fn implicit_negative<'cx, 'tcx>(
             predicate: p,
         })
         .chain(obligations)
-        .find(|o| {
-            loose_check(selcx, o) || tcx.features().negative_impls && negative_impl_exists(selcx, o)
-        });
-    // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
-    // to the canonical trait query form, `infcx.predicate_may_hold`, once
-    // the new system supports intercrate mode (which coherence needs).
+        .find(|o| !selcx.predicate_may_hold_fatal(o));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -301,6 +304,7 @@ fn negative_impl<'cx, 'tcx>(
     impl1_def_id: DefId,
     impl2_def_id: DefId,
 ) -> bool {
+    debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
     let tcx = selcx.infcx().tcx;
 
     // create a parameter environment corresponding to a (placeholder) instantiation of impl1
@@ -348,7 +352,7 @@ fn negative_impl<'cx, 'tcx>(
         let opt_failing_obligation = obligations
             .into_iter()
             .chain(more_obligations)
-            .find(|o| negative_impl_exists(selcx, o));
+            .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
 
         if let Some(failing_obligation) = opt_failing_obligation {
             debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
@@ -359,24 +363,47 @@ fn negative_impl<'cx, 'tcx>(
     })
 }
 
-fn loose_check<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    o: &PredicateObligation<'tcx>,
-) -> bool {
-    !selcx.predicate_may_hold_fatal(o)
-}
-
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    region_context: DefId,
     o: &PredicateObligation<'tcx>,
 ) -> bool {
-    let infcx = selcx.infcx();
+    let infcx = &selcx.infcx().fork();
     let tcx = infcx.tcx;
     o.flip_polarity(tcx)
-        .as_ref()
         .map(|o| {
-            // FIXME This isn't quite correct, regions should be included
-            selcx.infcx().predicate_must_hold_modulo_regions(o)
+            let mut fulfillment_cx = FulfillmentContext::new();
+            fulfillment_cx.register_predicate_obligation(infcx, o);
+
+            let errors = fulfillment_cx.select_all_or_error(infcx);
+            if !errors.is_empty() {
+                return false;
+            }
+
+            let mut outlives_env = OutlivesEnvironment::new(param_env);
+            // FIXME -- add "assumed to be well formed" types into the `outlives_env`
+
+            // "Save" the accumulated implied bounds into the outlives environment
+            // (due to the FIXME above, there aren't any, but this step is still needed).
+            // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
+            // by the "dummy" causes elsewhere (body-id is only relevant when checking
+            // function bodies with closures).
+            outlives_env.save_implied_bounds(CRATE_HIR_ID);
+
+            infcx.process_registered_region_obligations(
+                outlives_env.region_bound_pairs_map(),
+                Some(tcx.lifetimes.re_root_empty),
+                param_env,
+            );
+
+            let errors =
+                infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+            if !errors.is_empty() {
+                return false;
+            }
+
+            true
         })
         .unwrap_or(false)
 }

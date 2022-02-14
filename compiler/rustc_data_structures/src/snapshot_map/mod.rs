@@ -13,6 +13,7 @@ mod tests;
 pub type SnapshotMapStorage<K, V> = SnapshotMap<K, V, FxHashMap<K, V>, ()>;
 pub type SnapshotMapRef<'a, K, V, L> = SnapshotMap<K, V, &'a mut FxHashMap<K, V>, &'a mut L>;
 
+#[derive(Clone)]
 pub struct SnapshotMap<K, V, M = FxHashMap<K, V>, L = VecLog<UndoLog<K, V>>> {
     map: M,
     undo_log: L,
@@ -30,6 +31,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub enum UndoLog<K, V> {
     Inserted(K),
     Overwrite(K, V),

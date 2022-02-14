@@ -70,7 +70,7 @@ pub struct ProjectionCache<'a, 'tcx> {
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ProjectionCacheStorage<'tcx> {
     map: SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
 }

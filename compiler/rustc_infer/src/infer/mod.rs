@@ -130,6 +130,7 @@ impl RegionckMode {
 /// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
 /// operations are hot enough that we want only one call to `borrow_mut` per
 /// call to `start_snapshot` and `rollback_to`.
+#[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
     /// Cache for projections. This cache is snapshotted along with the infcx.
     ///
