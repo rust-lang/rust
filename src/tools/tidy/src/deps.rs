@@ -190,6 +190,7 @@ const PERMITTED_DEPENDENCIES: &[&str] = &[
     "serde_json",
     "sha-1",
     "sha2",
+    "sha2-asm",
     "sharded-slab",
     "smallvec",
     "snap",

@@ -17,5 +17,5 @@ unicode-width = "0.1.4"
 cfg-if = "0.1.2"
 tracing = "0.1"
 sha1 = { package = "sha-1", version = "0.10.0" }
-sha2 = "0.10.1"
+sha2 = { version = "0.10.1", features = ["sha2-asm"] }
 md5 = { package = "md-5", version = "0.10.0" }
