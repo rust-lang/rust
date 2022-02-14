@@ -151,23 +151,29 @@ crate fn strip_path_generics(mut path: Path) -> Path {
     path
 }
 
-crate fn qpath_to_string(p: &hir::QPath<'_>) -> String {
+enum SymbolOrString {
+    Symbol(Symbol),
+    String(String),
+}
+
+fn qpath_to_string(p: &hir::QPath<'_>) -> SymbolOrString {
     let segments = match *p {
         hir::QPath::Resolved(_, path) => &path.segments,
-        hir::QPath::TypeRelative(_, segment) => return segment.ident.to_string(),
-        hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
+        hir::QPath::TypeRelative(_, segment) => return SymbolOrString::Symbol(segment.ident.name),
+        hir::QPath::LangItem(lang_item, ..) => return SymbolOrString::Symbol(lang_item.name()),
     };
 
-    let mut s = String::new();
+    const DELIM: &str = "::";
+    let mut s = String::with_capacity(DELIM.len() * segments.len());
     for (i, seg) in segments.iter().enumerate() {
         if i > 0 {
-            s.push_str("::");
+            s.push_str(DELIM);
         }
         if seg.ident.name != kw::PathRoot {
             s.push_str(seg.ident.as_str());
         }
     }
-    s
+    SymbolOrString::String(s)
 }
 
 crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: &mut Vec<Item>) {
@@ -200,7 +206,10 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     Symbol::intern(&match p.kind {
         PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
+        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => match qpath_to_string(p) {
+            SymbolOrString::Symbol(s) => return s,
+            SymbolOrString::String(s) => s,
+        },
         PatKind::Or(pats) => {
             pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
         }
