@@ -46,7 +46,7 @@ pub(crate) type ReqQueue = lsp_server::ReqQueue<(String, Instant), ReqHandler>;
 /// snapshot of the file systems, and `analysis_host`, which stores our
 /// incremental salsa database.
 ///
-/// Note that this struct has more than on impl in various modules!
+/// Note that this struct has more than one impl in various modules!
 pub(crate) struct GlobalState {
     sender: Sender<lsp_server::Message>,
     req_queue: ReqQueue,
