@@ -203,7 +203,8 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
                         .map(|res| {
                             matches!(
                                 res,
-                                Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _)
+                                Res::SelfTy { trait_: _, alias_to: _ }
+                                    | Res::Def(hir::def::DefKind::TyParam, _)
                             )
                         })
                         .unwrap_or(false) =>

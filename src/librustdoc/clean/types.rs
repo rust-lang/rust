@@ -1972,7 +1972,7 @@ impl Path {
     /// Checks if this is a `T::Name` path for an associated type.
     crate fn is_assoc_ty(&self) -> bool {
         match self.res {
-            Res::SelfTy(..) if self.segments.len() != 1 => true,
+            Res::SelfTy { .. } if self.segments.len() != 1 => true,
             Res::Def(DefKind::TyParam, _) if self.segments.len() != 1 => true,
             Res::Def(DefKind::AssocTy, _) => true,
             _ => false,

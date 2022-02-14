@@ -640,9 +640,8 @@ impl<'hir> WhereBoundPredicate<'hir> {
             _ => return false,
         };
         match path.res {
-            Res::Def(DefKind::TyParam, def_id) | Res::SelfTy(Some(def_id), None) => {
-                def_id == param_def_id
-            }
+            Res::Def(DefKind::TyParam, def_id)
+            | Res::SelfTy { trait_: Some(def_id), alias_to: None } => def_id == param_def_id,
             _ => false,
         }
     }

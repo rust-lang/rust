@@ -355,7 +355,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
-        Res::SelfTy(..) if path.segments.len() == 1 => Generic(kw::SelfUpper),
+        Res::SelfTy { .. } if path.segments.len() == 1 => Generic(kw::SelfUpper),
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
             let _ = register_res(cx, path.res);
@@ -397,11 +397,11 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
-        // This is part of a trait definition; document the trait.
-        Res::SelfTy(Some(trait_def_id), _) => (trait_def_id, ItemType::Trait),
-        // This is an inherent impl; it doesn't have its own page.
-        Res::SelfTy(None, Some((impl_def_id, _))) => return impl_def_id,
-        Res::SelfTy(None, None)
+        // This is part of a trait definition or trait impl; document the trait.
+        Res::SelfTy { trait_: Some(trait_def_id), alias_to: _ } => (trait_def_id, ItemType::Trait),
+        // This is an inherent impl or a type definition; it doesn't have its own page.
+        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, _)) } => return item_def_id,
+        Res::SelfTy { trait_: None, alias_to: None }
         | Res::PrimTy(_)
         | Res::ToolMod
         | Res::SelfCtor(_)

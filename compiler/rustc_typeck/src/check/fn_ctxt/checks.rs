@@ -578,7 +578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => bug!("unexpected type: {:?}", ty),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
-            | Res::SelfTy(..) => match ty.kind() {
+            | Res::SelfTy { .. } => match ty.kind() {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
                     Some((adt.non_enum_variant(), adt.did, substs))
                 }

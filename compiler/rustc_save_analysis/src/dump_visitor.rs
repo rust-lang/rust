@@ -921,7 +921,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                     | HirDefKind::AssocTy,
                     _,
                 )
-                | Res::SelfTy(..) => {
+                | Res::SelfTy { .. } => {
                     self.dump_path_segment_ref(id, &hir::PathSegment::from_ident(ident));
                 }
                 def => {

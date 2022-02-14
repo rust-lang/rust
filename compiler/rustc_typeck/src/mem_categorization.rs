@@ -562,7 +562,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
             | Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfCtor(..)
-            | Res::SelfTy(..) => {
+            | Res::SelfTy { .. } => {
                 // Structs and Unions have only have one variant.
                 Ok(VariantIdx::new(0))
             }

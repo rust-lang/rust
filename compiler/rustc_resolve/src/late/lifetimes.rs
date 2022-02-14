@@ -2811,7 +2811,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // Look for `self: &'a Self` - also desugared from `&'a self`,
                 // and if that matches, use it for elision and return early.
                 fn is_self_ty(&self, res: Res) -> bool {
-                    if let Res::SelfTy(..) = res {
+                    if let Res::SelfTy { .. } = res {
                         return true;
                     }
 

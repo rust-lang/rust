@@ -1350,7 +1350,7 @@ struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
 impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path: &hir::Path<'_>) -> bool {
         let did = match path.res {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => return false,
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::Err => return false,
             res => res.def_id(),
         };
 
