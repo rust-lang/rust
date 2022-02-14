@@ -93,6 +93,18 @@ fn test_is_null() {
 
     let nmi: *mut dyn ToString = null_mut::<isize>();
     assert!(nmi.is_null());
+
+    #[cfg(not(bootstrap))]
+    {
+        extern "C" {
+            type Extern;
+        }
+        let ec: *const Extern = null::<Extern>();
+        assert!(ec.is_null());
+
+        let em: *mut Extern = null_mut::<Extern>();
+        assert!(em.is_null());
+    }
 }
 
 #[test]

@@ -507,8 +507,31 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
+#[cfg(bootstrap)]
 pub const fn null<T>() -> *const T {
     invalid(0)
+}
+
+/// Creates a null raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *const i32 = ptr::null();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null"]
+#[cfg(not(bootstrap))]
+pub const fn null<T: ?Sized + Thin>() -> *const T {
+    from_raw_parts(0 as *const (), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -527,6 +550,7 @@ pub const fn null<T>() -> *const T {
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(bootstrap)]
 pub const fn null_mut<T>() -> *mut T {
     invalid_mut(0)
 }
@@ -655,6 +679,28 @@ where
 {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
     addr as *mut T
+}
+
+/// Creates a null mutable raw pointer.
+///
+/// # Examples
+///
+/// ```
+/// use std::ptr;
+///
+/// let p: *mut i32 = ptr::null_mut();
+/// assert!(p.is_null());
+/// ```
+#[inline(always)]
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_promotable]
+#[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
+#[rustc_allow_const_fn_unstable(ptr_metadata)]
+#[rustc_diagnostic_item = "ptr_null_mut"]
+#[cfg(not(bootstrap))]
+pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
+    from_raw_parts_mut(0 as *mut (), ())
 }
 
 /// Forms a raw slice from a pointer and a length.
