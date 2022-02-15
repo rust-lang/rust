@@ -1347,6 +1347,24 @@ fn test_hover_function_pointer_show_types() {
 }
 
 #[test]
+fn test_hover_function_pointer_no_identifier_show_types() {
+    check(
+        r#"type foo$0 = fn(i32, _: i32) -> i32;"#,
+        expect![[r#"
+                *foo*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                type foo = fn(i32, i32) -> i32
+                ```
+            "#]],
+    );
+}
+
+#[test]
 fn test_hover_trait_show_qualifiers() {
     check_actions(
         r"unsafe trait foo$0() {}",
