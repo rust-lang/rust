@@ -1459,10 +1459,18 @@ pub trait PrettyPrinter<'tcx>:
             // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
             // correct `ty::ParamEnv` to allow printing *all* constant values.
             (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
-                let contents =
-                    self.tcx().destructure_const(ty::ParamEnv::reveal_all().and(
-                        self.tcx().mk_const(ty::ConstS { val: ty::ConstKind::Value(ct), ty }),
-                    ));
+                let Some(contents) = self.tcx().try_destructure_const(
+                    ty::ParamEnv::reveal_all()
+                        .and(self.tcx().mk_const(ty::ConstS { val: ty::ConstKind::Value(ct), ty })),
+                ) else {
+                    // Fall back to debug pretty printing for invalid constants.
+                    p!(write("{:?}", ct));
+                    if print_ty {
+                        p!(": ", print(ty));
+                    }
+                    return Ok(self);
+                };
+
                 let fields = contents.fields.iter().copied();
 
                 match *ty.kind() {
