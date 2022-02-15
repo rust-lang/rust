@@ -188,11 +188,18 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params().map(|p| (p.pat(), p.ty())).map(|it| {
-                        let type_ref = TypeRef::from_ast_opt(ctx, it.1);
-                        let name = if it.0.is_some() { Some(it.0.unwrap().syntax().text().to_string()) } else { None };
-                        (name, type_ref)
-                    }).collect()
+                    pl.params()
+                        .map(|p| (p.pat(), p.ty()))
+                        .map(|it| {
+                            let type_ref = TypeRef::from_ast_opt(ctx, it.1);
+                            let name = if it.0.is_some() {
+                                Some(it.0.unwrap().syntax().text().to_string())
+                            } else {
+                                None
+                            };
+                            (name, type_ref)
+                        })
+                        .collect()
                 } else {
                     Vec::new()
                 };
@@ -234,12 +241,8 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types, _) => {
-                    types.iter().for_each(|t| go(&t.1, f))
-                }
-                TypeRef::Tuple(types) => {
-                    types.iter().for_each(|t| go(t, f))
-                }
+                TypeRef::Fn(types, _) => types.iter().for_each(|t| go(&t.1, f)),
+                TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, ..)
                 | TypeRef::Array(type_ref, _)

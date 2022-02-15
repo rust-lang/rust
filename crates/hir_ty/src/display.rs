@@ -340,7 +340,7 @@ impl HirDisplay for Ty {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
-        
+
         match self.kind(Interner) {
             TyKind::Never => write!(f, "!")?,
             TyKind::Str => write!(f, "str")?,
@@ -1097,12 +1097,12 @@ impl HirDisplay for TypeRef {
             TypeRef::Fn(parameters, is_varargs) => {
                 write!(f, "fn(")?;
                 for index in 0..parameters.len() - 1 {
-                    let (param_name,param_type) = &parameters[index];
+                    let (param_name, param_type) = &parameters[index];
                     match param_name {
                         Some(name) => {
                             write!(f, "{}: ", name)?;
                             param_type.hir_fmt(f)?;
-                        },
+                        }
                         None => write!(f, " : {:?}", param_type)?,
                     };
 
