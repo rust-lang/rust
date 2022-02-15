@@ -21,7 +21,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::{BranchProtection, CFGuard, CrateType, DebugInfo, PAuthKey, PacRet};
+use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
+use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -285,6 +286,24 @@ pub unsafe fn create_module<'ll>(
             "sign-return-address-with-bkey\0".as_ptr().cast(),
             is_bkey.into(),
         );
+    }
+
+    // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
+    if let CFProtection::Branch | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            "cf-protection-branch\0".as_ptr().cast(),
+            1,
+        )
+    }
+    if let CFProtection::Return | CFProtection::Full = sess.opts.debugging_opts.cf_protection {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Override,
+            "cf-protection-return\0".as_ptr().cast(),
+            1,
+        )
     }
 
     llmod
