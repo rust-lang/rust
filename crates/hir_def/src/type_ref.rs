@@ -1,9 +1,12 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use hir_expand::{name::Name, AstId, InFile};
+use hir_expand::{
+    name::{AsName, Name},
+    AstId, InFile,
+};
 use std::convert::TryInto;
-use syntax::{ast, AstNode};
+use syntax::ast::{self, HasName};
 
 use crate::{body::LowerCtx, intern::Interned, path::Path};
 
@@ -89,7 +92,7 @@ pub enum TypeRef {
     Array(Box<TypeRef>, ConstScalar),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<(Option<String>, TypeRef)>, bool /*varargs*/),
+    Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/),
     // For
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
@@ -192,10 +195,11 @@ impl TypeRef {
                         .map(|p| (p.pat(), p.ty()))
                         .map(|it| {
                             let type_ref = TypeRef::from_ast_opt(ctx, it.1);
-                            let name = if it.0.is_some() {
-                                Some(it.0.unwrap().syntax().text().to_string())
-                            } else {
-                                None
+                            let name = match it.0 {
+                                Some(ast::Pat::IdentPat(it)) => Some(
+                                    it.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing),
+                                ),
+                                _ => None,
                             };
                             (name, type_ref)
                         })
