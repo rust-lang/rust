@@ -322,6 +322,18 @@ use foo::{bar::{self}};
     }
 
     #[test]
+    fn test_merge_nested_list_self_and_glob() {
+        check_assist(
+            merge_imports,
+            r"
+use std$0::{fmt::*};
+use std::{fmt::{self, Display}};
+",
+            r"use std::{fmt::{self, *, Display}};",
+        )
+    }
+
+    #[test]
     fn test_merge_single_wildcard_diff_prefixes() {
         check_assist(
             merge_imports,
