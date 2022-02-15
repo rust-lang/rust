@@ -194,9 +194,9 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.9.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4152116fd6e9dadb291ae18fc1ec3575ed6d84c29642d97890f4b4a3417297e4"
+checksum = "0bf7fe51849ea569fd452f37822f606a5cabb684dc918707a0193fd4664ff324"
 dependencies = [
  "generic-array 0.14.4",
 ]
@@ -821,10 +821,13 @@ name = "coverage_test_macros"
 version = "0.0.0"
 
 [[package]]
-name = "cpuid-bool"
-version = "0.1.2"
+name = "cpufeatures"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
+checksum = "95059428f66df56b63431fdb4e1947ed2190586af5c5a8a8b71122bdf5a7f469"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "crates-io"
@@ -889,6 +892,15 @@ checksum = "cfcae03edb34f947e64acdb1c33ec169824e20657e9ecb61cef6c8c74dcb8120"
 dependencies = [
  "cfg-if 1.0.0",
  "lazy_static",
+]
+
+[[package]]
+name = "crypto-common"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4600d695eb3f6ce1cd44e6e291adceb2cc3ab12f20a33777ecd0bf6eba34e06"
+dependencies = [
+ "generic-array 0.14.4",
 ]
 
 [[package]]
@@ -1005,11 +1017,12 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.9.0"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3dd60d1080a57a05ab032377049e0591415d2b31afd7028356dbf3cc6dcb066"
+checksum = "8cb780dce4f9a8f5c087362b3a4595936b2019e7c8b30f2c3e9a7e94e6ae9837"
 dependencies = [
- "generic-array 0.14.4",
+ "block-buffer 0.10.2",
+ "crypto-common",
 ]
 
 [[package]]
@@ -2173,13 +2186,11 @@ checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 
 [[package]]
 name = "md-5"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5a279bb9607f9f53c22d496eade00d138d1bdcccd07d74650387cf94942a15"
+checksum = "e6a38fc55c8bbc10058782919516f88826e70320db6d206aebc49611d24216ae"
 dependencies = [
- "block-buffer 0.9.0",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "digest 0.10.2",
 ]
 
 [[package]]
@@ -2434,12 +2445,6 @@ name = "opaque-debug"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2839e79665f131bdb5782e51f2c6c9599c133c6098982a54c794358bf432529c"
-
-[[package]]
-name = "opaque-debug"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "opener"
@@ -4253,7 +4258,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "scoped-tls",
- "sha-1 0.9.1",
+ "sha-1 0.10.0",
  "sha2",
  "tracing",
  "unicode-width",
@@ -4647,33 +4652,29 @@ dependencies = [
  "block-buffer 0.7.3",
  "digest 0.8.1",
  "fake-simd",
- "opaque-debug 0.2.3",
+ "opaque-debug",
 ]
 
 [[package]]
 name = "sha-1"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "170a36ea86c864a3f16dd2687712dd6646f7019f301e57537c7f4dc9f5916770"
+checksum = "028f48d513f9678cda28f6e4064755b3fbb2af6acd672f2c209b62323f7aea0f"
 dependencies = [
- "block-buffer 0.9.0",
- "cfg-if 0.1.10",
- "cpuid-bool",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.2",
 ]
 
 [[package]]
 name = "sha2"
-version = "0.9.1"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2933378ddfeda7ea26f48c555bdad8bb446bf8a3d17832dc83e380d444cfb8c1"
+checksum = "99c3bd8169c58782adad9290a9af5939994036b76187f7b4f0e6de91dbbfc0ec"
 dependencies = [
- "block-buffer 0.9.0",
- "cfg-if 0.1.10",
- "cpuid-bool",
- "digest 0.9.0",
- "opaque-debug 0.3.0",
+ "cfg-if 1.0.0",
+ "cpufeatures",
+ "digest 0.10.2",
 ]
 
 [[package]]

@@ -68,8 +68,8 @@ use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use md5::Digest;
 use md5::Md5;
-use sha1::Digest;
 use sha1::Sha1;
 use sha2::Sha256;
 
