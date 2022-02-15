@@ -22,9 +22,7 @@ use crate::{
 
 impl HirDisplay for Function {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        println!("Formatting for Function");
         let data = f.db.function_data(self.id);
-        println!("data: {:?}", &data);
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         if data.is_default() {
             write!(f, "default ")?;
@@ -463,7 +461,6 @@ impl HirDisplay for Trait {
 
 impl HirDisplay for TypeAlias {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
-        println!("Formatting for TypeAlias");
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
         let data = f.db.type_alias_data(self.id);
         write!(f, "type {}", data.name)?;
@@ -471,7 +468,6 @@ impl HirDisplay for TypeAlias {
             write!(f, ": ")?;
             f.write_joined(&data.bounds, " + ")?;
         }
-        println!("type_ref: {:?}", &data.type_ref);
         if let Some(ty) = &data.type_ref {
             write!(f, " = ")?;
             ty.hir_fmt(f)?;

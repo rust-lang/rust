@@ -411,7 +411,6 @@ where
     D: HasAttrs + HirDisplay,
 {
     let label = def.display(db).to_string();
-    println!("label: {label:?}");
     let docs = def.attrs(db).docs();
     (label, docs)
 }

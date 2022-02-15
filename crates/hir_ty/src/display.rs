@@ -239,7 +239,6 @@ where
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        println!("formatting..");
         match self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
@@ -341,10 +340,7 @@ impl HirDisplay for Ty {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
-
-        let interner_kind = self.kind(Interner);
-        println!("interner kind: {interner_kind:?}");
-
+        
         match self.kind(Interner) {
             TyKind::Never => write!(f, "!")?,
             TyKind::Str => write!(f, "str")?,

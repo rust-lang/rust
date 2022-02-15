@@ -189,10 +189,9 @@ impl TypeRef {
                     }
 
                     pl.params().map(|p| (p.pat(), p.ty())).map(|it| {
-                        println!("{it:?}");
                         let type_ref = TypeRef::from_ast_opt(ctx, it.1);
-                        let name = it.0.unwrap().syntax().text().to_string();
-                        (Some(name), type_ref)
+                        let name = if it.0.is_some() { Some(it.0.unwrap().syntax().text().to_string()) } else { None };
+                        (name, type_ref)
                     }).collect()
                 } else {
                     Vec::new()
