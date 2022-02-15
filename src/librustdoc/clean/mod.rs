@@ -985,9 +985,10 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(bounds, ref default) => {
+                    let generics = self.generics.clean(cx);
                     let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
                     let default = default.map(|t| t.clean(cx));
-                    AssocTypeItem(bounds, default)
+                    AssocTypeItem(Box::new(generics), bounds, default)
                 }
             };
             let what_rustc_thinks =
@@ -1138,32 +1139,55 @@ impl Clean<Item> for ty::AssocItem {
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = tcx.explicit_item_bounds(self.def_id);
                     let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                    let generics = clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
+                    let mut generics =
+                        clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
+                    // Filter out the bounds that are (likely?) directly attached to the associated type,
+                    // as opposed to being located in the where clause.
                     let mut bounds = generics
                         .where_predicates
-                        .iter()
-                        .filter_map(|pred| {
-                            let (name, self_type, trait_, bounds) = match *pred {
-                                WherePredicate::BoundPredicate {
-                                    ty: QPath { ref name, ref self_type, ref trait_, .. },
-                                    ref bounds,
-                                    ..
-                                } => (name, self_type, trait_, bounds),
-                                _ => return None,
-                            };
-                            if *name != my_name {
-                                return None;
+                        .drain_filter(|pred| match *pred {
+                            WherePredicate::BoundPredicate {
+                                ty: QPath { name, ref self_type, ref trait_, .. },
+                                ..
+                            } => {
+                                if name != my_name {
+                                    return false;
+                                }
+                                if trait_.def_id() != self.container.id() {
+                                    return false;
+                                }
+                                match **self_type {
+                                    Generic(ref s) if *s == kw::SelfUpper => {}
+                                    _ => return false,
+                                }
+                                match &assoc.args {
+                                    GenericArgs::AngleBracketed { args, bindings } => {
+                                        if !bindings.is_empty()
+                                            || generics
+                                                .params
+                                                .iter()
+                                                .zip(args)
+                                                .any(|(param, arg)| !param_eq_arg(param, arg))
+                                        {
+                                            return false;
+                                        }
+                                    }
+                                    GenericArgs::Parenthesized { .. } => {
+                                        // The only time this happens is if we're inside the rustdoc for Fn(),
+                                        // which only has one associated type, which is not a GAT, so whatever.
+                                    }
+                                }
+                                true
                             }
-                            if trait_.def_id() != self.container.id() {
-                                return None;
-                            }
-                            match **self_type {
-                                Generic(ref s) if *s == kw::SelfUpper => {}
-                                _ => return None,
-                            }
-                            Some(bounds)
+                            _ => false,
                         })
-                        .flat_map(|i| i.iter().cloned())
+                        .flat_map(|pred| {
+                            if let WherePredicate::BoundPredicate { bounds, .. } = pred {
+                                bounds
+                            } else {
+                                unreachable!()
+                            }
+                        })
                         .collect::<Vec<_>>();
                     // Our Sized/?Sized bound didn't get handled when creating the generics
                     // because we didn't actually get our whole set of bounds until just now
@@ -1183,7 +1207,7 @@ impl Clean<Item> for ty::AssocItem {
                         None
                     };
 
-                    AssocTypeItem(bounds, ty.map(|t| t.clean(cx)))
+                    AssocTypeItem(Box::new(generics), bounds, ty.map(|t| t.clean(cx)))
                 } else {
                     // FIXME: when could this happen? Associated items in inherent impls?
                     let type_ = tcx.type_of(self.def_id).clean(cx);

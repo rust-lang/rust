@@ -222,8 +222,9 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         AssocConstItem(ty, default) => {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: default.map(|c| c.expr(tcx)) }
         }
-        AssocTypeItem(g, t) => ItemEnum::AssocType {
-            bounds: g.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+        AssocTypeItem(g, b, t) => ItemEnum::AssocType {
+            generics: (*g).into_tcx(tcx),
+            bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             default: t.map(|x| x.into_tcx(tcx)),
         },
         // `convert_item` early returns `None` for striped items

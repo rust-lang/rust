@@ -773,22 +773,25 @@ fn assoc_const(
 fn assoc_type(
     w: &mut Buffer,
     it: &clean::Item,
+    generics: &clean::Generics,
     bounds: &[clean::GenericBound],
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
-    extra: &str,
+    indent: usize,
     cx: &Context<'_>,
 ) {
     write!(
         w,
-        "{}type <a href=\"{}\" class=\"associatedtype\">{}</a>",
-        extra,
-        naive_assoc_href(it, link, cx),
-        it.name.as_ref().unwrap()
+        "{indent}type <a href=\"{href}\" class=\"associatedtype\">{name}</a>{generics}",
+        indent = " ".repeat(indent),
+        href = naive_assoc_href(it, link, cx),
+        name = it.name.as_ref().unwrap(),
+        generics = generics.print(cx),
     );
     if !bounds.is_empty() {
         write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
+    write!(w, "{}", print_where_clause(generics, cx, indent, false));
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
@@ -812,11 +815,8 @@ fn assoc_method(
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from an impl-item to the corresponding
             // trait-item and need to map the anchored type accordingly.
-            let ty = if provided_methods.contains(name) {
-                ItemType::Method
-            } else {
-                ItemType::TyMethod
-            };
+            let ty =
+                if provided_methods.contains(name) { ItemType::Method } else { ItemType::TyMethod };
 
             match (href(did.expect_def_id(), cx), ty) {
                 (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
@@ -974,13 +974,14 @@ fn render_assoc_item(
         clean::AssocConstItem(ref ty, _) => {
             assoc_const(w, item, ty, link, if parent == ItemType::Trait { "    " } else { "" }, cx)
         }
-        clean::AssocTypeItem(ref bounds, ref default) => assoc_type(
+        clean::AssocTypeItem(ref generics, ref bounds, ref default) => assoc_type(
             w,
             item,
+            generics,
             bounds,
             default.as_ref(),
             link,
-            if parent == ItemType::Trait { "    " } else { "" },
+            if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
         _ => panic!("render_assoc_item called on non-associated-item"),
@@ -1284,7 +1285,16 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                                 let empty_set = FxHashSet::default();
                                 let src_link =
                                     AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", cx);
+                                assoc_type(
+                                    &mut out,
+                                    it,
+                                    &tydef.generics,
+                                    &[],
+                                    Some(&tydef.type_),
+                                    src_link,
+                                    0,
+                                    cx,
+                                );
                                 out.push_str(";</span>");
                             }
                         }
@@ -1463,10 +1473,11 @@ fn render_impl(
                 assoc_type(
                     w,
                     item,
-                    &Vec::new(),
+                    &tydef.generics,
+                    &[],
                     Some(&tydef.type_),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    "",
+                    0,
                     cx,
                 );
                 w.write_str("</h4>");
@@ -1494,7 +1505,7 @@ fn render_impl(
                 w.write_str("</h4>");
                 w.write_str("</section>");
             }
-            clean::AssocTypeItem(ref bounds, ref default) => {
+            clean::AssocTypeItem(ref generics, ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
@@ -1503,10 +1514,11 @@ fn render_impl(
                 assoc_type(
                     w,
                     item,
+                    generics,
                     bounds,
                     default.as_ref(),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    "",
+                    0,
                     cx,
                 );
                 w.write_str("</h4>");
@@ -1727,7 +1739,16 @@ pub(crate) fn render_impl_summary(
             for it in &i.inner_impl().items {
                 if let clean::TypedefItem(ref tydef, _) = *it.kind {
                     w.write_str("<span class=\"where fmt-newline\">  ");
-                    assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "", cx);
+                    assoc_type(
+                        w,
+                        it,
+                        &tydef.generics,
+                        &[],
+                        Some(&tydef.type_),
+                        AssocItemLink::Anchor(None),
+                        0,
+                        cx,
+                    );
                     w.write_str(";</span>");
                 }
             }

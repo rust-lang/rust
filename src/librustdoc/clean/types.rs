@@ -683,7 +683,7 @@ crate enum ItemKind {
     ///
     /// The bounds may be non-empty if there is a `where` clause.
     /// The `Option<Type>` is the default concrete type (e.g. `trait Trait { type Target = usize; }`)
-    AssocTypeItem(Vec<GenericBound>, Option<Type>),
+    AssocTypeItem(Box<Generics>, Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem(Symbol),
@@ -721,7 +721,7 @@ impl ItemKind {
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | AssocConstItem(_, _)
-            | AssocTypeItem(_, _)
+            | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem(_) => [].iter(),
         }

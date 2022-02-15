@@ -9,6 +9,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
+#![feature(drain_filter)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]

@@ -233,6 +233,9 @@ pub enum ItemEnum {
         default: Option<String>,
     },
     AssocType {
+        /// generics and `where` clause
+        generics: Generics,
+        /// e.g. `: Sized`
         bounds: Vec<GenericBound>,
         /// e.g. `type X = usize;`
         default: Option<Type>,
