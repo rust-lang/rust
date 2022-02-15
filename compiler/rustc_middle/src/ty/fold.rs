@@ -38,6 +38,17 @@
 //!   might provide custom handling only for some types of interest, or only
 //!   for some variants of each type of interest, and then use default
 //!   traversal for the remaining cases.
+//!
+//! For example, if you have `struct S(Ty, U)` where `S: TypeFoldable` and `U:
+//! TypeFoldable`, and an instance `S(ty, u)`, it would be visited like so:
+//! ```
+//! s.visit_with(visitor) calls
+//! - s.super_visit_with(visitor) calls
+//!   - ty.visit_with(visitor) calls
+//!     - visitor.visit_ty(ty) may call
+//!       - ty.super_visit_with(visitor)
+//!   - u.visit_with(visitor)
+//! ```
 use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
 use rustc_hir::def_id::DefId;
@@ -96,7 +107,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// For types of interest (such as `Ty`), this default is overridden with a
     /// method that calls a visitor method specifically for that type (such as
     /// `V::visit_ty`). This is where control transfers from `TypeFoldable` to
-    /// `TypeFolder`.
+    /// `TypeVisitor`.
     ///
     /// For other types, this default is used.
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -349,7 +360,7 @@ where
 
 /// This trait is implemented for every visiting traversal. There is a visit
 /// method defined for every type of interest. Each such method has a default
-/// that does a non-custom visit.
+/// that recurses into the type's fields in a non-custom fashion.
 pub trait TypeVisitor<'tcx>: Sized {
     type BreakTy = !;
 
