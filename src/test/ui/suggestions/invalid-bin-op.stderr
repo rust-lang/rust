@@ -11,11 +11,14 @@ note: an implementation of `PartialEq<_>` might be missing for `S<T>`
    |
 LL | struct S<T>(T);
    | ^^^^^^^^^^^^^^^ must implement `PartialEq<_>`
-   = note: the trait `std::cmp::PartialEq` is not implemented for `S<T>`
 help: consider annotating `S<T>` with `#[derive(PartialEq)]`
    |
 LL | #[derive(PartialEq)]
    |
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
+   |
+LL | pub fn foo<T>(s: S<T>, t: S<T>) where S<T>: PartialEq {
+   |                                 +++++++++++++++++++++
 
 error: aborting due to previous error
 

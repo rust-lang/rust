@@ -6,10 +6,10 @@ LL |     a * b
    |     |
    |     &T
    |
-help: consider further restricting this bound
+help: consider introducing a `where` bound, but there might be an alternative better way to express this requirement
    |
-LL | fn foo<T: MyMul<f64, f64> + std::ops::Mul<Output = f64>>(a: &T, b: f64) -> f64 {
-   |                           +++++++++++++++++++++++++++++
+LL | fn foo<T: MyMul<f64, f64>>(a: &T, b: f64) -> f64 where &T: Mul<f64> {
+   |                                                  ++++++++++++++++++
 
 error: aborting due to previous error
 
