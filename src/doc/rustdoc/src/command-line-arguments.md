@@ -381,7 +381,7 @@ the same CSS rules as the official `light` theme.
 `--check-theme` flag, it discards all other flags and only performs the CSS rule
 comparison operation.
 
-### `--crate-version`: control the crate version
+## `--crate-version`: control the crate version
 
 Using this flag looks like this:
 
@@ -417,6 +417,8 @@ This flag is **deprecated** and **has no effect**.
 Rustdoc only supports Rust source code and Markdown input formats. If the
 file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
 Otherwise, it assumes that the input file is Rust.
+
+# Unstable command line arguments
 
 ## `--nocapture`
 
