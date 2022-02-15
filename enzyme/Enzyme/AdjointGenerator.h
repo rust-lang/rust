@@ -2521,17 +2521,21 @@ public:
   void visitMemSetInst(llvm::MemSetInst &MS) {
     eraseIfUnused(MS);
 
-    if (gutils->isConstantInstruction(&MS))
-      return;
-
     Value *orig_op0 = MS.getOperand(0);
     Value *orig_op1 = MS.getOperand(1);
-    Value *op1 = gutils->getNewFromOriginal(orig_op1);
-    Value *op2 = gutils->getNewFromOriginal(MS.getOperand(2));
-    Value *op3 = gutils->getNewFromOriginal(MS.getOperand(3));
 
     // TODO this should 1) assert that the value being meset is constant
     //                 2) duplicate the memset for the inverted pointer
+
+    if (gutils->isConstantInstruction(&MS) &&
+        Mode != DerivativeMode::ForwardMode) {
+      return;
+    }
+
+    // If constant destination then no operation needs doing
+    if (gutils->isConstantValue(orig_op0)) {
+      return;
+    }
 
     if (!gutils->isConstantValue(orig_op1)) {
       llvm::errs() << "couldn't handle non constant inst in memset to "
@@ -2539,10 +2543,6 @@ public:
                    << MS;
       report_fatal_error("non constant in memset");
     }
-
-    // If constant destination then no operation needs doing
-    if (gutils->isConstantValue(orig_op0))
-      return;
 
     bool backwardsShadow = false;
     bool forwardsShadow = true;
@@ -2560,23 +2560,31 @@ public:
     if ((Mode == DerivativeMode::ReverseModePrimal && forwardsShadow) ||
         (Mode == DerivativeMode::ReverseModeGradient && backwardsShadow) ||
         (Mode == DerivativeMode::ReverseModeCombined &&
-         (forwardsShadow && backwardsShadow))) {
-      IRBuilder<> BuilderZ(gutils->getNewFromOriginal(&MS));
+         (forwardsShadow && backwardsShadow)) ||
+        Mode == DerivativeMode::ForwardMode) {
+      IRBuilder<> BuilderZ(&MS);
+      getForwardBuilder(BuilderZ);
 
-      SmallVector<Value *, 4> args;
-      args.push_back(gutils->invertPointerM(orig_op0, BuilderZ));
-      args.push_back(gutils->lookupM(op1, BuilderZ));
-      args.push_back(gutils->lookupM(op2, BuilderZ));
-      args.push_back(gutils->lookupM(op3, BuilderZ));
+      bool forwardMode = Mode == DerivativeMode::ForwardMode;
 
-      Type *tys[] = {args[0]->getType(), args[2]->getType()};
+      Value *op0 = gutils->invertPointerM(orig_op0, BuilderZ);
+      Value *op1 = gutils->getNewFromOriginal(MS.getOperand(1));
+      if (!forwardMode)
+        op1 = gutils->lookupM(op1, BuilderZ);
+      Value *op2 = gutils->getNewFromOriginal(MS.getOperand(2));
+      if (!forwardMode)
+        op2 = gutils->lookupM(op2, BuilderZ);
+      Value *op3 = gutils->getNewFromOriginal(MS.getOperand(3));
+      if (!forwardMode)
+        op3 = gutils->lookupM(op3, BuilderZ);
 
+      Type *tys[] = {op0->getType(), op2->getType()};
+      Value *args[] = {op0, op1, op2, op3};
       auto Defs =
           gutils->getInvertedBundles(&MS,
                                      {ValueType::Shadow, ValueType::Primal,
                                       ValueType::Primal, ValueType::Primal},
                                      BuilderZ, /*lookup*/ false);
-
       auto cal = BuilderZ.CreateCall(
           Intrinsic::getDeclaration(MS.getParent()->getParent()->getParent(),
                                     Intrinsic::memset, tys),
