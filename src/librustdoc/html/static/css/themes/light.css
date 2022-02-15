@@ -463,11 +463,11 @@ div.files > .selected {
 	border-bottom-color: #D5D5D5;
 }
 
-.scraped-example-list .section-header .scrape-help {
+.scraped-example-list .scrape-help {
 	border-color: #555;
 	color: #333;
 }
-.scraped-example-list .section-header .scrape-help:hover {
+.scraped-example-list .scrape-help:hover {
 	border-color: black;
 	color: black;
 }

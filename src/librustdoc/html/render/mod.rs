@@ -62,7 +62,6 @@ use rustc_span::{
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
-use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
@@ -77,6 +76,7 @@ use crate::html::format::{
 use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
+use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
 
@@ -460,6 +460,29 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
         root_path = root_path,
         suffix = suffix
     ))
+}
+
+fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
+    let content = SCRAPE_EXAMPLES_HELP_MD;
+    let mut ids = IdMap::default();
+    format!(
+        "<div class=\"main-heading\">
+            <h1 class=\"fqn\">\
+                <span class=\"in-band\">About scraped examples</span>\
+            </h1>\
+        </div>\
+        <div>{}</div>",
+        Markdown {
+            content,
+            links: &[],
+            ids: &mut ids,
+            error_codes: shared.codes,
+            edition: shared.edition(),
+            playground: &shared.playground,
+            heading_offset: HeadingOffset::H1
+        }
+        .into_string()
+    )
 }
 
 fn document(
@@ -2672,9 +2695,9 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
           <span></span>\
           <h5 id=\"{id}\">\
              <a href=\"#{id}\">Examples found in repository</a>\
-             <a class=\"scrape-help\" href=\"{doc_prefix}/rustdoc/scraped-examples.html\" target=\"_blank\">?</a>\
+             <a class=\"scrape-help\" href=\"{root_path}scrape-examples-help.html\">?</a>\
           </h5>",
-        doc_prefix = DOC_RUST_LANG_ORG_CHANNEL,
+        root_path = cx.root_path(),
         id = id
     );
 
