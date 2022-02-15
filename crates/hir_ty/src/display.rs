@@ -1098,13 +1098,11 @@ impl HirDisplay for TypeRef {
                 write!(f, "fn(")?;
                 for index in 0..parameters.len() - 1 {
                     let (param_name, param_type) = &parameters[index];
-                    match param_name {
-                        Some(name) => {
-                            write!(f, "{}: ", name)?;
-                            param_type.hir_fmt(f)?;
-                        }
-                        None => param_type.hir_fmt(f)?,
-                    };
+                    if let Some(name) = param_name {
+                        write!(f, "{}: ", name)?;
+                    }
+
+                    param_type.hir_fmt(f)?;
 
                     // Last index contains the return type so we stop writing commas on the second-to-last index
                     if index != parameters.len() - 2 {
