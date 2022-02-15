@@ -553,8 +553,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let ty_msg = match (local_visitor.found_node_ty, local_visitor.found_exact_method_call) {
             (_, Some(_)) => String::new(),
             (Some(ty), _) if ty.is_closure() => {
-                let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                let ty::Closure(_, substs) = *ty.kind() else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let args = closure_args(&fn_sig);
                 let ret = fn_sig.output().skip_binder().to_string();
@@ -597,8 +596,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let param_type = arg_data.kind.descr();
         let suffix = match local_visitor.found_node_ty {
             Some(ty) if ty.is_closure() => {
-                let substs =
-                    if let ty::Closure(_, substs) = *ty.kind() { substs } else { unreachable!() };
+                let ty::Closure(_, substs) = *ty.kind() else { unreachable!() };
                 let fn_sig = substs.as_closure().sig();
                 let ret = fn_sig.output().skip_binder().to_string();
 

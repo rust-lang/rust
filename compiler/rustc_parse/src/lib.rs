@@ -4,6 +4,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(box_patterns)]
+#![feature(let_else)]
 #![recursion_limit = "256"]
 
 #[macro_use]

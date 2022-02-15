@@ -8,13 +8,11 @@ use std::io::prelude::*;
 /// During the same compile all closures dump the information in the same file
 /// "closure_profile_XXXXX.csv", which is created in the directory where the compiler is invoked.
 crate fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: Instance<'tcx>) {
-    let mut file = if let Ok(file) = OpenOptions::new()
+    let Ok(mut file) = OpenOptions::new()
         .create(true)
         .append(true)
         .open(&format!("closure_profile_{}.csv", std::process::id()))
-    {
-        file
-    } else {
+    else {
         eprintln!("Cound't open file for writing closure profile");
         return;
     };

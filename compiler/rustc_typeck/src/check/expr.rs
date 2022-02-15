@@ -1318,10 +1318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
-        let (variant, adt_ty) = if let Some(variant_ty) = self.check_struct_path(qpath, expr.hir_id)
-        {
-            variant_ty
-        } else {
+        let Some((variant, adt_ty)) = self.check_struct_path(qpath, expr.hir_id) else {
             self.check_struct_fields_on_error(fields, base_expr);
             return self.tcx.ty_error();
         };

@@ -704,7 +704,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         ) = &bounded_ty.kind
         {
             // use this to verify that ident is a type param.
-            let partial_res = if let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
+            let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
                 bounded_ty.id,
                 None,
                 &Segment::from_path(path),
@@ -712,9 +712,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 span,
                 true,
                 CrateLint::No,
-            ) {
-                partial_res
-            } else {
+            ) else {
                 return false;
             };
             if !(matches!(
@@ -731,7 +729,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         if let ast::TyKind::Path(None, type_param_path) = &ty.peel_refs().kind {
             // Confirm that the `SelfTy` is a type parameter.
-            let partial_res = if let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
+            let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
                 bounded_ty.id,
                 None,
                 &Segment::from_path(type_param_path),
@@ -739,9 +737,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 span,
                 true,
                 CrateLint::No,
-            ) {
-                partial_res
-            } else {
+            ) else {
                 return false;
             };
             if !(matches!(

@@ -9,6 +9,7 @@
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(nll)]
+#![feature(let_else)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![recursion_limit = "256"]

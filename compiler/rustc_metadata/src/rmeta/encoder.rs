@@ -982,7 +982,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         for local_id in hir.iter_local_def_id() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
-            let def_kind = if let Some(def_kind) = def_kind { def_kind } else { continue };
+            let Some(def_kind) = def_kind else { continue };
             record!(self.tables.def_kind[def_id] <- match def_kind {
                 // Replace Ctor by the enclosing object to avoid leaking details in children crates.
                 DefKind::Ctor(CtorOf::Struct, _) => DefKind::Struct,
