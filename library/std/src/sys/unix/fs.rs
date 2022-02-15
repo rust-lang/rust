@@ -429,9 +429,14 @@ impl FileAttr {
         Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
     }
 
-    #[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
+    #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::new(self.stat.st_atime as i64, 0))
+    }
+
+    #[cfg(target_os = "horizon")]
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(self.stat.st_atim))
     }
 
     #[cfg(any(
