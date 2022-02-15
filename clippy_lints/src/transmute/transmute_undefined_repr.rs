@@ -1,5 +1,6 @@
 use super::TRANSMUTE_UNDEFINED_REPR;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::{GenericArg, Subst};
@@ -100,7 +101,8 @@ pub(super) fn check<'tcx>(
                 from_ty: from_sub_ty,
                 to_ty: to_sub_ty,
             } => match (reduce_ty(cx, from_sub_ty), reduce_ty(cx, to_sub_ty)) {
-                (ReducedTy::IntArray, _) | (_, ReducedTy::IntArray) => return false,
+                (ReducedTy::IntArray | ReducedTy::TypeErasure, _)
+                | (_, ReducedTy::IntArray | ReducedTy::TypeErasure) => return false,
                 (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
                     span_lint_and_then(
                         cx,
@@ -228,8 +230,10 @@ fn reduce_refs<'tcx>(
 }
 
 enum ReducedTy<'tcx> {
-    /// The type is a struct containing either zero sized fields, or multiple sized fields with a
-    /// defined order.
+    /// The type can be used for type erasure.
+    TypeErasure,
+    /// The type is a struct containing either zero non-zero sized fields, or multiple non-zero
+    /// sized fields with a defined order.
     OrderedFields(Ty<'tcx>),
     /// The type is a struct containing multiple non-zero sized fields with no defined order.
     UnorderedFields(Ty<'tcx>),
@@ -252,6 +256,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                 ty = sub_ty;
                 continue;
             },
+            ty::Tuple(args) if args.is_empty() => ReducedTy::TypeErasure,
             ty::Tuple(args) => {
                 let mut iter = args.iter().map(GenericArg::expect_ty);
                 let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
@@ -270,7 +275,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .iter()
                     .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
                 let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
-                    return ReducedTy::OrderedFields(ty);
+                    return ReducedTy::TypeErasure;
                 };
                 if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
@@ -282,6 +287,10 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ReducedTy::UnorderedFields(ty)
                 }
             },
+            ty::Adt(def, _) if def.is_enum() && (def.variants.is_empty() || is_c_void(cx, ty)) => {
+                ReducedTy::TypeErasure
+            },
+            ty::Foreign(_) => ReducedTy::TypeErasure,
             ty::Ref(_, ty, _) => ReducedTy::Ref(ty),
             ty::RawPtr(ty) => ReducedTy::Ref(ty.ty),
             _ => ReducedTy::Other(ty),

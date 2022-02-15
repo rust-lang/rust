@@ -1,6 +1,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(let_else)]
+#![feature(let_chains)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![recursion_limit = "512"]
