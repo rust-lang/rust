@@ -1115,12 +1115,13 @@ impl HirDisplay for TypeRef {
                     write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
                 }
                 write!(f, ")")?;
-                let ret_ty = &parameters.last().unwrap().1;
-                match ret_ty {
-                    TypeRef::Tuple(tup) if tup.is_empty() => {}
-                    _ => {
-                        write!(f, " -> ")?;
-                        ret_ty.hir_fmt(f)?;
+                if let Some((_, ret_ty)) = &parameters.last() {
+                    match ret_ty {
+                        TypeRef::Tuple(tup) if tup.is_empty() => {}
+                        _ => {
+                            write!(f, " -> ")?;
+                            ret_ty.hir_fmt(f)?;
+                        }
                     }
                 }
             }
