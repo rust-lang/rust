@@ -1329,7 +1329,7 @@ fn test_hover_function_show_types() {
 }
 
 #[test]
-fn test_hover_function_pointer_show_types() {
+fn test_hover_function_pointer_show_identifiers() {
     check(
         r#"type foo$0 = fn(a: i32, b: i32) -> i32;"#,
         expect![[r#"
@@ -1347,7 +1347,7 @@ fn test_hover_function_pointer_show_types() {
 }
 
 #[test]
-fn test_hover_function_pointer_no_identifier_show_types() {
+fn test_hover_function_pointer_no_identifier() {
     check(
         r#"type foo$0 = fn(i32, _: i32) -> i32;"#,
         expect![[r#"
