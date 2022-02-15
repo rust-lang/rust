@@ -1042,15 +1042,9 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 }
                 hir::ImplItemKind::TyAlias(ref hir_ty) => {
                     let type_ = hir_ty.clean(cx);
+                    let generics = self.generics.clean(cx);
                     let item_type = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
-                    TypedefItem(
-                        Typedef {
-                            type_,
-                            generics: Generics::default(),
-                            item_type: Some(item_type),
-                        },
-                        true,
-                    )
+                    TypedefItem(Typedef { type_, generics, item_type: Some(item_type) }, true)
                 }
             };
 
