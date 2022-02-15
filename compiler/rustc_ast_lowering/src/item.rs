@@ -340,7 +340,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_def_id = self.lower_node_id(id).expect_owner();
+                let lowered_trait_def_id = hir_id.expect_owner();
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
                     lowered_trait_def_id,
