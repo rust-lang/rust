@@ -3,7 +3,7 @@
 
 use hir_expand::{name::Name, AstId, InFile};
 use std::convert::TryInto;
-use syntax::ast;
+use syntax::{ast, AstNode};
 
 use crate::{body::LowerCtx, intern::Interned, path::Path};
 
@@ -89,7 +89,7 @@ pub enum TypeRef {
     Array(Box<TypeRef>, ConstScalar),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<TypeRef>, bool /*varargs*/),
+    Fn(Vec<(Option<String>, TypeRef)>, bool /*varargs*/),
     // For
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
@@ -188,11 +188,16 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(ctx, it)).collect()
+                    pl.params().map(|p| (p.pat(), p.ty())).map(|it| {
+                        println!("{it:?}");
+                        let type_ref = TypeRef::from_ast_opt(ctx, it.1);
+                        let name = it.0.unwrap().syntax().text().to_string();
+                        (Some(name), type_ref)
+                    }).collect()
                 } else {
                     Vec::new()
                 };
-                params.push(ret_ty);
+                params.push((None, ret_ty));
                 TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
@@ -230,7 +235,10 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types, _) | TypeRef::Tuple(types) => {
+                TypeRef::Fn(types, _) => {
+                    types.iter().for_each(|t| go(&t.1, f))
+                }
+                TypeRef::Tuple(types) => {
                     types.iter().for_each(|t| go(t, f))
                 }
                 TypeRef::RawPtr(type_ref, _)

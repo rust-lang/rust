@@ -172,6 +172,7 @@ pub(crate) fn hover_for_definition(
         Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node).krate())),
         _ => None,
     };
+    println!("definition: {definition:?}");
     if let Some(markup) = render::definition(sema.db, definition, famous_defs.as_ref(), config) {
         let mut res = HoverResult::default();
         res.markup = render::process_markup(sema.db, definition, &markup, config);

@@ -5,7 +5,7 @@ exclude = ["crates/proc_macro_test/imp"]
 [profile.dev]
 # Disabling debug info speeds up builds a bunch,
 # and we don't rely on it for debugging that much.
-debug = 0
+debug = 2
 
 [profile.dev.package]
 # These speed up local tests.

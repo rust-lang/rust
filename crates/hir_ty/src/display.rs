@@ -239,6 +239,7 @@ where
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        println!("formatting..");
         match self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
@@ -340,6 +341,9 @@ impl HirDisplay for Ty {
         if f.should_truncate() {
             return write!(f, "{}", TYPE_HINT_TRUNCATION);
         }
+
+        let interner_kind = self.kind(Interner);
+        println!("interner kind: {interner_kind:?}");
 
         match self.kind(Interner) {
             TyKind::Never => write!(f, "!")?,
@@ -1094,15 +1098,27 @@ impl HirDisplay for TypeRef {
                 inner.hir_fmt(f)?;
                 write!(f, "]")?;
             }
-            TypeRef::Fn(tys, is_varargs) => {
-                // FIXME: Function pointer qualifiers.
+            TypeRef::Fn(parameters, is_varargs) => {
                 write!(f, "fn(")?;
-                f.write_joined(&tys[..tys.len() - 1], ", ")?;
+                for index in 0..parameters.len() - 1 {
+                    let (param_name,param_type) = &parameters[index];
+                    match param_name {
+                        Some(name) => {
+                            write!(f, "{}: ", name)?;
+                            param_type.hir_fmt(f)?;
+                        },
+                        None => write!(f, " : {:?}", param_type)?,
+                    };
+
+                    if index != parameters.len() - 2 {
+                        write!(f, ", ")?;
+                    }
+                }
                 if *is_varargs {
-                    write!(f, "{}...", if tys.len() == 1 { "" } else { ", " })?;
+                    write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
                 }
                 write!(f, ")")?;
-                let ret_ty = tys.last().unwrap();
+                let ret_ty = &parameters.last().unwrap().1;
                 match ret_ty {
                     TypeRef::Tuple(tup) if tup.is_empty() => {}
                     _ => {
