@@ -241,7 +241,9 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types, _) => types.iter().for_each(|t| go(&t.1, f)),
+                TypeRef::Fn(params, _) => {
+                    params.iter().for_each(|(_, param_type)| go(&param_type, f))
+                }
                 TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, ..)

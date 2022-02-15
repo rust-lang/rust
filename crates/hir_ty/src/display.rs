@@ -1103,9 +1103,10 @@ impl HirDisplay for TypeRef {
                             write!(f, "{}: ", name)?;
                             param_type.hir_fmt(f)?;
                         }
-                        None => write!(f, " : {:?}", param_type)?,
+                        None => param_type.hir_fmt(f)?,
                     };
 
+                    // Last index contains the return type so we stop writing commas on the second-to-last index
                     if index != parameters.len() - 2 {
                         write!(f, ", ")?;
                     }
