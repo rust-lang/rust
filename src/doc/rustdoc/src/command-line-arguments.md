@@ -426,3 +426,14 @@ When this flag is used with `--test`, the output (stdout and stderr) of your tes
 captured by rustdoc. Instead, the output will be directed to your terminal,
 as if you had run the test executable manually. This is especially useful
 for debugging your tests!
+
+## `--check`
+
+When this flag is supplied, rustdoc will type check and lint your code, but will not generate any
+documentation or run your doctests.
+
+Using this flag looks like:
+
+```bash
+rustdoc -Z unstable-options --check src/lib.rs
+```
