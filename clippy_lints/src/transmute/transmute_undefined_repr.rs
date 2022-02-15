@@ -273,7 +273,8 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ReducedTy::UnorderedFields(ty)
                 }
             },
-            ty::Ref(..) | ty::RawPtr(_) => ReducedTy::Ref(ty),
+            ty::Ref(_, ty, _) => ReducedTy::Ref(ty),
+            ty::RawPtr(ty) => ReducedTy::Ref(ty.ty),
             _ => ReducedTy::Other(ty),
         };
     }

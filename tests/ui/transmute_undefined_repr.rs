@@ -44,5 +44,19 @@ fn main() {
         // issue #8417
         let _: Ty2C<Ty2<u32, i32>, ()> = core::mem::transmute(value::<Ty2<u32, i32>>()); // Ok, Ty2 types are the same
         let _: Ty2<u32, i32> = core::mem::transmute(value::<Ty2C<Ty2<u32, i32>, ()>>()); // Ok, Ty2 types are the same
+
+        // Ty2 types are the same
+        let _: &'static mut Ty2<u32, u32> = core::mem::transmute(value::<Box<Ty2<u32, u32>>>()); // Ok
+        // Ty2 types are the same
+        let _: Box<Ty2<u32, u32>> = core::mem::transmute(value::<&'static mut Ty2<u32, u32>>()); // Ok
+        let _: *mut Ty2<u32, u32> = core::mem::transmute(value::<Box<Ty2<u32, u32>>>()); // Ok, Ty2 types are the same
+        let _: Box<Ty2<u32, u32>> = core::mem::transmute(value::<*mut Ty2<u32, u32>>()); // Ok, Ty2 types are the same
+
+        // Different Ty2 instances
+        let _: &'static mut Ty2<u32, f32> = core::mem::transmute(value::<Box<Ty2<u32, u32>>>()); // Lint
+        // Different Ty2 instances
+        let _: Box<Ty2<u32, u32>> = core::mem::transmute(value::<&'static mut Ty2<u32, f32>>()); // Lint
+
+
     }
 }
