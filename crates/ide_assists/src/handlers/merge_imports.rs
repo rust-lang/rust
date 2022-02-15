@@ -329,7 +329,9 @@ use foo::{bar::{self}};
 use std$0::{fmt::*};
 use std::{fmt::{self, Display}};
 ",
-            r"use std::{fmt::{self, *, Display}};",
+            r"
+use std::{fmt::{self, *, Display}};
+",
         )
     }
 
