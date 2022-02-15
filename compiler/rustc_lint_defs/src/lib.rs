@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate rustc_macros;
 
+use std::cmp::Ordering;
+
 pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
@@ -80,7 +82,7 @@ pub enum Applicability {
 /// The index values have a type of `u16` to reduce the size of the `LintExpectationId`.
 /// It's reasonable to assume that no user will define 2^16 attributes on one node or
 /// have that amount of lints listed. `u16` values should therefore suffice.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
     /// hash stable and should not be cached.
@@ -134,13 +136,14 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
 }
 
 impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
-    type KeyType = (HirId, u16, u16);
+    type KeyType = (rustc_hir::def_id::DefPathHash, rustc_hir::hir_id::ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
-                (*hir_id, *attr_index, *lint_index)
+                let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
+                (def_path_hash, lint_idx, *attr_index, *lint_index)
             }
             _ => {
                 unreachable!("HashStable should only be called for a filled `LintExpectationId`")
@@ -152,7 +155,7 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -185,6 +188,14 @@ pub enum Level {
     /// levels.
     Forbid,
 }
+
+impl PartialOrd for Level {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        std::mem::discriminant(self).partial_cmp(std::mem::discriminant(other))
+    }
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(Level);
 
 impl Level {
     /// Converts a level to a lower-case string.

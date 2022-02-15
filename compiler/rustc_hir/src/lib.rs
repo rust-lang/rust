@@ -8,6 +8,7 @@
 #![feature(let_else)]
 #![feature(once_cell)]
 #![feature(min_specialization)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
