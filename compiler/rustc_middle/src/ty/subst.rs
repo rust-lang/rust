@@ -48,6 +48,7 @@ pub enum GenericArgKind<'tcx> {
 }
 
 impl<'tcx> GenericArgKind<'tcx> {
+    #[inline]
     fn pack(self) -> GenericArg<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
@@ -94,18 +95,21 @@ impl<'tcx> PartialOrd for GenericArg<'tcx> {
 }
 
 impl<'tcx> From<ty::Region<'tcx>> for GenericArg<'tcx> {
+    #[inline]
     fn from(r: ty::Region<'tcx>) -> GenericArg<'tcx> {
         GenericArgKind::Lifetime(r).pack()
     }
 }
 
 impl<'tcx> From<Ty<'tcx>> for GenericArg<'tcx> {
+    #[inline]
     fn from(ty: Ty<'tcx>) -> GenericArg<'tcx> {
         GenericArgKind::Type(ty).pack()
     }
 }
 
 impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
+    #[inline]
     fn from(c: ty::Const<'tcx>) -> GenericArg<'tcx> {
         GenericArgKind::Const(c).pack()
     }

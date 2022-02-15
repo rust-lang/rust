@@ -222,9 +222,11 @@ impl From<Local> for UnifyLocal {
 
 impl UnifyKey for UnifyLocal {
     type Value = ();
+    #[inline]
     fn index(&self) -> u32 {
         self.0.as_u32()
     }
+    #[inline]
     fn from_index(u: u32) -> Self {
         Self(Local::from_u32(u))
     }

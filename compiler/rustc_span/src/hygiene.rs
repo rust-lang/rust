@@ -172,10 +172,12 @@ impl LocalExpnId {
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
     pub const ROOT: LocalExpnId = LocalExpnId::from_u32(0);
 
+    #[inline]
     pub fn from_raw(idx: ExpnIndex) -> LocalExpnId {
         LocalExpnId::from_u32(idx.as_u32())
     }
 
+    #[inline]
     pub fn as_raw(self) -> ExpnIndex {
         ExpnIndex::from_u32(self.as_u32())
     }

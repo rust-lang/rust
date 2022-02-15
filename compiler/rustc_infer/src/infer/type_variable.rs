@@ -416,6 +416,7 @@ impl<'tcx> ut::UnifyKey for TyVidEqKey<'tcx> {
     fn index(&self) -> u32 {
         self.vid.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         TyVidEqKey::from(ty::TyVid::from_u32(i))
     }

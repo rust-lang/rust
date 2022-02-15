@@ -1541,11 +1541,13 @@ impl Default for TargetOptions {
 impl Deref for Target {
     type Target = TargetOptions;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.options
     }
 }
 impl DerefMut for Target {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.options
     }
