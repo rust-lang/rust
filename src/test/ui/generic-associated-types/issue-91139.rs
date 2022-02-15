@@ -15,7 +15,7 @@ impl<T> Foo<T> for () {
     = ();
 }
 
-fn foo<T>() {
+fn foo<T: 'static>() {
     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
 }
 
