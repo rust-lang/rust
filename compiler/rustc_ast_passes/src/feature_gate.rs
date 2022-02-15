@@ -438,6 +438,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 .emit();
             }
         } else {
+            // FIXME(jhpratt) remove this after the two attributes are merged
             if attr.has_name(sym::deprecated) {
                 self.sess
                     .struct_span_err(attr.span, "`#[deprecated]` cannot be used in staged API")

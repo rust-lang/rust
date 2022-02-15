@@ -729,11 +729,13 @@ where
                                     continue 'outer;
                                 }
                             }
-                            sym::note if attr.has_name(sym::deprecated) => {
+                            sym::note => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
                             }
+                            // FIXME(jhpratt) remove this after a bootstrap occurs. Emitting an
+                            // error specific to the renaming would be a good idea as well.
                             sym::reason if attr.has_name(sym::rustc_deprecated) => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
@@ -753,7 +755,7 @@ where
                                         if attr.has_name(sym::deprecated) {
                                             &["since", "note"]
                                         } else {
-                                            &["since", "reason", "suggestion"]
+                                            &["since", "note", "suggestion"]
                                         },
                                     ),
                                 );
@@ -787,7 +789,7 @@ where
             }
 
             if note.is_none() {
-                struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'").emit();
+                struct_span_err!(diagnostic, attr.span, E0543, "missing 'note'").emit();
                 continue;
             }
         }

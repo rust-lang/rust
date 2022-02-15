@@ -26,13 +26,13 @@ error: malformed `rustc_deprecated` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:21:5
    |
 LL |     #[rustc_deprecated]
-   |     ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
+   |     ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", note = "...")]`
 
 error: malformed `rustc_deprecated` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:26:5
    |
 LL |     #[rustc_deprecated = "a"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", note = "...")]`
 
 error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity-4.rs:21:5

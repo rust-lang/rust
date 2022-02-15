@@ -461,7 +461,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // DuplicatesOk since it has its own validation
     ungated!(
         rustc_deprecated, Normal,
-        template!(List: r#"since = "version", reason = "...""#), DuplicatesOk // See E0550
+        template!(List: r#"since = "version", note = "...""#), DuplicatesOk // See E0550
     ),
     // DuplicatesOk since it has its own validation
     ungated!(
