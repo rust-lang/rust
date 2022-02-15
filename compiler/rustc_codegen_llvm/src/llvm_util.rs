@@ -217,24 +217,32 @@ pub fn check_tied_features(
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    supported_target_features(sess)
-        .iter()
-        .filter_map(
-            |&(feature, gate)| {
+    let mut features: Vec<Symbol> =
+        supported_target_features(sess)
+            .iter()
+            .filter_map(|&(feature, gate)| {
                 if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
-            },
-        )
-        .filter(|feature| {
-            for llvm_feature in to_llvm_feature(sess, feature) {
-                let cstr = CString::new(llvm_feature).unwrap();
-                if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
-                    return true;
+            })
+            .filter(|feature| {
+                for llvm_feature in to_llvm_feature(sess, feature) {
+                    let cstr = CString::new(llvm_feature).unwrap();
+                    if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                        return true;
+                    }
                 }
-            }
-            false
-        })
-        .map(|feature| Symbol::intern(feature))
-        .collect()
+                false
+            })
+            .map(|feature| Symbol::intern(feature))
+            .collect();
+
+    // LLVM 14 changed the ABI for i128 arguments to __float/__fix builtins on Win64
+    // (see https://reviews.llvm.org/D110413). This unstable target feature is intended for use
+    // by compiler-builtins, to export the builtins with the expected, LLVM-version-dependent ABI.
+    // The target feature can be dropped once we no longer support older LLVM versions.
+    if sess.is_nightly_build() && get_version() >= (14, 0, 0) {
+        features.push(Symbol::intern("llvm14-builtins-abi"));
+    }
+    features
 }
 
 pub fn print_version() {
