@@ -189,6 +189,7 @@ enum ReducedTys<'tcx> {
     Other { from_ty: Ty<'tcx>, to_ty: Ty<'tcx> },
 }
 
+/// Remove references so long as both types are references.
 fn reduce_refs<'tcx>(
     cx: &LateContext<'tcx>,
     span: Span,
@@ -227,13 +228,21 @@ fn reduce_refs<'tcx>(
 }
 
 enum ReducedTy<'tcx> {
+    /// The type is a struct containing either zero sized fields, or multiple sized fields with a
+    /// defined order.
     OrderedFields(Ty<'tcx>),
+    /// The type is a struct containing multiple non-zero sized fields with no defined order.
     UnorderedFields(Ty<'tcx>),
+    /// The type is a reference to the contained type.
     Ref(Ty<'tcx>),
-    Other(Ty<'tcx>),
+    /// The type is an array of a primitive integer type. These can be used as storage for a value
+    /// of another type.
     IntArray,
+    /// Any other type.
+    Other(Ty<'tcx>),
 }
 
+/// Reduce structs containing a single non-zero sized field to it's contained type.
 fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> {
     loop {
         ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
