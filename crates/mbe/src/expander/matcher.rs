@@ -437,11 +437,12 @@ fn match_loop_inner<'t>(
                     let mut new_item = item.clone();
                     new_item.bindings = bindings_builder.copy(&new_item.bindings);
                     new_item.dot.next();
-                    let mut vars = Vec::new();
-                    collect_vars(&mut vars, tokens);
-                    for var in vars {
-                        bindings_builder.push_empty(&mut new_item.bindings, &var);
-                    }
+                    collect_vars(
+                        &mut |s| {
+                            bindings_builder.push_empty(&mut new_item.bindings, &s);
+                        },
+                        tokens,
+                    );
                     cur_items.push(new_item);
                 }
                 cur_items.push(MatchState {
@@ -729,17 +730,16 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
     input.expect_fragment(fragment).map(|it| it.map(Fragment::Tokens))
 }
 
-fn collect_vars(buf: &mut Vec<SmolStr>, pattern: &MetaTemplate) {
+fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate) {
     for op in pattern.iter() {
         match op {
-            Op::Var { name, .. } => buf.push(name.clone()),
+            Op::Var { name, .. } => collector_fun(name.clone()),
             Op::Leaf(_) => (),
-            Op::Subtree { tokens, .. } => collect_vars(buf, tokens),
-            Op::Repeat { tokens, .. } => collect_vars(buf, tokens),
+            Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
+            Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
         }
     }
 }
-
 impl MetaTemplate {
     fn iter_delimited<'a>(&'a self, delimited: Option<&'a tt::Delimiter>) -> OpDelimitedIter<'a> {
         OpDelimitedIter { inner: &self.0, idx: 0, delimited }
