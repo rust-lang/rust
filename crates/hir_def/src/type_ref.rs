@@ -192,10 +192,9 @@ impl TypeRef {
                     }
 
                     pl.params()
-                        .map(|p| (p.pat(), p.ty()))
                         .map(|it| {
-                            let type_ref = TypeRef::from_ast_opt(ctx, it.1);
-                            let name = match it.0 {
+                            let type_ref = TypeRef::from_ast_opt(ctx, it.ty());
+                            let name = match it.pat() {
                                 Some(ast::Pat::IdentPat(it)) => Some(
                                     it.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing),
                                 ),
