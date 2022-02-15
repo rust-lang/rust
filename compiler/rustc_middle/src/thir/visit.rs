@@ -26,7 +26,7 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
         walk_pat(self, pat);
     }
 
-    fn visit_const(&mut self, _cnst: &'tcx Const<'tcx>) {}
+    fn visit_const(&mut self, _cnst: Const<'tcx>) {}
 }
 
 pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {
@@ -209,7 +209,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
                 visitor.visit_pat(&subpattern.pattern);
             }
         }
-        Constant { value } => visitor.visit_const(value),
+        Constant { value } => visitor.visit_const(*value),
         Range(range) => {
             visitor.visit_const(range.lo);
             visitor.visit_const(range.hi);

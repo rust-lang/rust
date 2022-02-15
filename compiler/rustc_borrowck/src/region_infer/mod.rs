@@ -1169,7 +1169,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         match verify_bound {
             VerifyBound::IfEq(test_ty, verify_bound1) => {
-                self.eval_if_eq(tcx, body, generic_ty, lower_bound, test_ty, verify_bound1)
+                self.eval_if_eq(tcx, body, generic_ty, lower_bound, *test_ty, verify_bound1)
             }
 
             VerifyBound::IsEmpty => {
@@ -1178,7 +1178,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                let r_vid = self.to_region_vid(r);
+                let r_vid = self.to_region_vid(*r);
                 self.eval_outlives(r_vid, lower_bound)
             }
 

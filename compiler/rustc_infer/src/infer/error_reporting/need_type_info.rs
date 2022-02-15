@@ -369,7 +369,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn extract_inference_diagnostics_data(
         &self,
         arg: GenericArg<'tcx>,
-        highlight: Option<ty::print::RegionHighlightMode>,
+        highlight: Option<ty::print::RegionHighlightMode<'tcx>>,
     ) -> InferenceDiagnosticsData {
         match arg.unpack() {
             GenericArgKind::Type(ty) => {
@@ -409,7 +409,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             GenericArgKind::Const(ct) => {
-                match ct.val {
+                match ct.val() {
                     ty::ConstKind::Infer(InferConst::Var(vid)) => {
                         let origin = self
                             .inner
@@ -459,7 +459,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     }
                                     _ => {}
                                 },
-                                GenericArgKind::Const(c) => match c.val {
+                                GenericArgKind::Const(c) => match c.val() {
                                     ty::ConstKind::Infer(InferConst::Var(_)) => {
                                         return self.extract_inference_diagnostics_data(s, None);
                                     }
@@ -935,9 +935,9 @@ impl<'tcx> ResolvedTypeParamEraser<'tcx> {
     }
 
     /// Replace not yet inferred const params with their def name.
-    fn replace_infers(&self, c: &'tcx Const<'tcx>, index: u32, name: Symbol) -> &'tcx Const<'tcx> {
-        match c.val {
-            ty::ConstKind::Infer(..) => self.tcx().mk_const_param(index, name, c.ty),
+    fn replace_infers(&self, c: Const<'tcx>, index: u32, name: Symbol) -> Const<'tcx> {
+        match c.val() {
+            ty::ConstKind::Infer(..) => self.tcx().mk_const_param(index, name, c.ty()),
             _ => c,
         }
     }
@@ -962,7 +962,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                     .map(|(subst, param)| match &(subst.unpack(), &param.kind) {
                         (_, ty::GenericParamDefKind::Type { has_default: true, .. }) => subst,
                         (crate::infer::GenericArgKind::Const(c), _) => {
-                            self.replace_infers(c, param.index, param.name).into()
+                            self.replace_infers(*c, param.index, param.name).into()
                         }
                         _ => subst.super_fold_with(self),
                     })
@@ -985,7 +985,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 }
             }
             ty::Ref(_, ty, _) => {
-                let ty = self.fold_ty(ty);
+                let ty = self.fold_ty(*ty);
                 match ty.kind() {
                     // Avoid `&_`, these can be safely presented as `_`.
                     ty::Error(_) => self.tcx().ty_error(),
@@ -1002,7 +1002,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
             | ty::Projection(_)
             | ty::Never => t.super_fold_with(self),
             ty::Array(ty, c) => {
-                self.tcx().mk_ty(ty::Array(self.fold_ty(ty), self.replace_infers(c, 0, sym::N)))
+                self.tcx().mk_ty(ty::Array(self.fold_ty(*ty), self.replace_infers(*c, 0, sym::N)))
             }
             // We don't want to hide type params that haven't been resolved yet.
             // This would be the type that will be written out with the type param

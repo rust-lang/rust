@@ -59,8 +59,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             },
 
             PatKind::Range(range) => {
-                assert_eq!(range.lo.ty, match_pair.pattern.ty);
-                assert_eq!(range.hi.ty, match_pair.pattern.ty);
+                assert_eq!(range.lo.ty(), match_pair.pattern.ty);
+                assert_eq!(range.hi.ty(), match_pair.pattern.ty);
                 Test { span: match_pair.pattern.span, kind: TestKind::Range(range) }
             }
 
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
+        options: &mut FxIndexMap<ty::Const<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
             return false;
@@ -266,7 +266,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         ty,
                     );
                 } else if let [success, fail] = *make_target_blocks(self) {
-                    assert_eq!(value.ty, ty);
+                    assert_eq!(value.ty(), ty);
                     let expect = self.literal_operand(test.span, value);
                     let val = Operand::Copy(place);
                     self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
@@ -275,7 +275,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            TestKind::Range(PatRange { ref lo, ref hi, ref end }) => {
+            TestKind::Range(PatRange { lo, hi, ref end }) => {
                 let lower_bound_success = self.cfg.start_new_block();
                 let target_blocks = make_target_blocks(self);
 
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
@@ -390,14 +390,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             _ => None,
         };
         let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(value.ty);
+        let opt_ref_test_ty = unsize(value.ty());
         match (opt_ref_ty, opt_ref_test_ty) {
             // nothing to do, neither is an array
             (None, None) => {}
             (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
                 let tcx = self.tcx;
                 // make both a slice
-                ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
+                ty = tcx.mk_imm_ref(*region, tcx.mk_slice(*elem_ty));
                 if opt_ref_ty.is_some() {
                     let temp = self.temp(ty, source_info.span);
                     self.cfg.push_assign(
@@ -646,7 +646,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let tcx = self.tcx;
 
-                    let test_ty = test.lo.ty;
+                    let test_ty = test.lo.ty();
                     let lo = compare_const_vals(tcx, test.lo, pat.hi, self.param_env, test_ty)?;
                     let hi = compare_const_vals(tcx, test.hi, pat.lo, self.param_env, test_ty)?;
 
@@ -764,17 +764,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
     }
 
-    fn const_range_contains(
-        &self,
-        range: PatRange<'tcx>,
-        value: &'tcx ty::Const<'tcx>,
-    ) -> Option<bool> {
+    fn const_range_contains(&self, range: PatRange<'tcx>, value: ty::Const<'tcx>) -> Option<bool> {
         use std::cmp::Ordering::*;
 
         let tcx = self.tcx;
 
-        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty)?;
-        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty)?;
+        let a = compare_const_vals(tcx, range.lo, value, self.param_env, range.lo.ty())?;
+        let b = compare_const_vals(tcx, value, range.hi, self.param_env, range.lo.ty())?;
 
         match (b, range.end) {
             (Less, _) | (Equal, RangeEnd::Included) if a != Greater => Some(true),
@@ -785,7 +781,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        options: &FxIndexMap<&'tcx ty::Const<'tcx>, u128>,
+        options: &FxIndexMap<ty::Const<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {
@@ -831,7 +827,7 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
-) -> &'tcx ty::Const<'tcx> {
+) -> ty::Const<'tcx> {
     let substs = tcx.mk_substs_trait(self_ty, params);
 
     // The unhygienic comparison here is acceptable because this is only

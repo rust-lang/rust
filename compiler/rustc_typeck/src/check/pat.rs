@@ -1935,7 +1935,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element_ty: Ty<'tcx>,
         arr_ty: Ty<'tcx>,
         slice: Option<&'tcx Pat<'tcx>>,
-        len: &ty::Const<'tcx>,
+        len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
         if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {

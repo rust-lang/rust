@@ -389,13 +389,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         self.tcx().ty_error_with_message(span, "bad placeholder type")
     }
 
-    fn ct_infer(
-        &self,
-        ty: Ty<'tcx>,
-        _: Option<&ty::GenericParamDef>,
-        span: Span,
-    ) -> &'tcx Const<'tcx> {
-        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match r {
+    fn ct_infer(&self, ty: Ty<'tcx>, _: Option<&ty::GenericParamDef>, span: Span) -> Const<'tcx> {
+        let ty = self.tcx.fold_regions(ty, &mut false, |r, _| match *r {
             ty::ReErased => self.tcx.lifetimes.re_static,
             _ => r,
         });
@@ -1878,7 +1873,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: DefId) -> ty::PolyFnSig<'_> {
                 Some(ty) => {
                     let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
                     // Typeck doesn't expect erased regions to be returned from `type_of`.
-                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match r {
+                    let fn_sig = tcx.fold_regions(fn_sig, &mut false, |r, _| match *r {
                         ty::ReErased => tcx.lifetimes.re_static,
                         _ => r,
                     });
@@ -2394,7 +2389,7 @@ fn const_evaluatable_predicates_of<'tcx>(
         fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
             let def_id = self.tcx.hir().local_def_id(c.hir_id);
             let ct = ty::Const::from_anon_const(self.tcx, def_id);
-            if let ty::ConstKind::Unevaluated(uv) = ct.val {
+            if let ty::ConstKind::Unevaluated(uv) = ct.val() {
                 assert_eq!(uv.promoted, None);
                 let span = self.tcx.hir().span(c.hir_id);
                 self.preds.insert((
@@ -2591,7 +2586,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {
-            check(input, ty)
+            check(input, *ty)
         }
         if let hir::FnRetTy::Return(ref ty) = decl.output {
             check(ty, fty.output().skip_binder())

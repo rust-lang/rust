@@ -6,7 +6,7 @@ use std::slice;
 pub struct FlagComputation {
     pub flags: TypeFlags,
 
-    // see `TyS::outer_exclusive_binder` for details
+    // see `Ty::outer_exclusive_binder` for details
     pub outer_exclusive_binder: ty::DebruijnIndex,
 }
 
@@ -28,7 +28,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_const(c: &ty::Const<'_>) -> TypeFlags {
+    pub fn for_const(c: ty::Const<'_>) -> TypeFlags {
         let mut result = FlagComputation::new();
         result.add_const(c);
         result.flags
@@ -270,7 +270,7 @@ impl FlagComputation {
 
     fn add_ty(&mut self, ty: Ty<'_>) {
         self.add_flags(ty.flags());
-        self.add_exclusive_binder(ty.outer_exclusive_binder);
+        self.add_exclusive_binder(ty.outer_exclusive_binder());
     }
 
     fn add_tys(&mut self, tys: &[Ty<'_>]) {
@@ -286,9 +286,9 @@ impl FlagComputation {
         }
     }
 
-    fn add_const(&mut self, c: &ty::Const<'_>) {
-        self.add_ty(c.ty);
-        match c.val {
+    fn add_const(&mut self, c: ty::Const<'_>) {
+        self.add_ty(c.ty());
+        match c.val() {
             ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);

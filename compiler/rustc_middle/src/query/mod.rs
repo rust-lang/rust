@@ -113,7 +113,7 @@ rustc_queries! {
 
     /// Given the def_id of a const-generic parameter, computes the associated default const
     /// parameter. e.g. `fn example<const N: usize=3>` called on `N` would return `3`.
-    query const_param_default(param: DefId) -> &'tcx ty::Const<'tcx> {
+    query const_param_default(param: DefId) -> ty::Const<'tcx> {
         desc { |tcx| "compute const default for a given parameter `{}`", tcx.def_path_str(param)  }
         separate_provide_extern
     }
@@ -926,7 +926,7 @@ rustc_queries! {
     /// Destructure a constant ADT or array into its variant index and its
     /// field values.
     query destructure_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
+        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
     ) -> mir::DestructuredConst<'tcx> {
         desc { "destructure constant" }
         remap_env_constness
@@ -935,8 +935,8 @@ rustc_queries! {
     /// Dereference a constant reference or raw pointer and turn the result into a constant
     /// again.
     query deref_const(
-        key: ty::ParamEnvAnd<'tcx, &'tcx ty::Const<'tcx>>
-    ) -> &'tcx ty::Const<'tcx> {
+        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
+    ) -> ty::Const<'tcx> {
         desc { "deref constant" }
         remap_env_constness
     }
@@ -947,7 +947,7 @@ rustc_queries! {
 
     query lit_to_const(
         key: LitToConstInput<'tcx>
-    ) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+    ) -> Result<ty::Const<'tcx>, LitToConstError> {
         desc { "converting literal to const" }
     }
 
@@ -1146,33 +1146,33 @@ rustc_queries! {
         desc { "computing whether `{}` is `Copy`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_sized`.
+    /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_freeze`.
+    /// Query backing `Ty::is_freeze`.
     query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::is_unpin`.
+    /// Query backing `Ty::is_unpin`.
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::needs_drop`.
+    /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
         remap_env_constness
     }
-    /// Query backing `TyS::has_significant_drop_raw`.
+    /// Query backing `Ty::has_significant_drop_raw`.
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
         remap_env_constness
     }
 
-    /// Query backing `TyS::is_structural_eq_shallow`.
+    /// Query backing `Ty::is_structural_eq_shallow`.
     ///
     /// This is only correct for ADTs. Call `is_structural_eq_shallow` to handle all types
     /// correctly.

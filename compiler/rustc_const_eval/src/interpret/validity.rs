@@ -553,7 +553,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 {
                     // A mutable reference inside a const? That does not seem right (except if it is
                     // a ZST).
-                    let layout = self.ecx.layout_of(ty)?;
+                    let layout = self.ecx.layout_of(*ty)?;
                     if !layout.is_zst() {
                         throw_validation_failure!(self.path, { "mutable reference in a `const`" });
                     }
@@ -837,7 +837,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
                 // This is the element type size.
-                let layout = self.ecx.layout_of(tys)?;
+                let layout = self.ecx.layout_of(*tys)?;
                 // This is the size in bytes of the whole array. (This checks for overflow.)
                 let size = layout.size * len;
 
@@ -896,7 +896,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             // Fast path for arrays and slices of ZSTs. We only need to check a single ZST element
             // of an array and not all of them, because there's only a single value of a specific
             // ZST type, so either validation fails for all elements or none.
-            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(tys)?.is_zst() => {
+            ty::Array(tys, ..) | ty::Slice(tys) if self.ecx.layout_of(*tys)?.is_zst() => {
                 // Validate just the first element (if any).
                 self.walk_aggregate(op, fields.take(1))?
             }

@@ -243,10 +243,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         Ok(self)
     }
 
-    fn print_const(self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // only print integers
-        if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int { .. })) = ct.val {
-            if ct.ty.is_integral() {
+        if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int { .. })) = ct.val() {
+            if ct.ty().is_integral() {
                 return self.pretty_print_const(ct, true);
             }
         }

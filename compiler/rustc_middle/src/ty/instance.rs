@@ -101,7 +101,7 @@ impl<'tcx> Instance<'tcx> {
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, &ty)
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -642,7 +642,7 @@ fn polymorphize<'tcx>(
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             debug!("fold_ty: ty={:?}", ty);
-            match ty.kind {
+            match *ty.kind() {
                 ty::Closure(def_id, substs) => {
                     let polymorphized_substs = polymorphize(
                         self.tcx,

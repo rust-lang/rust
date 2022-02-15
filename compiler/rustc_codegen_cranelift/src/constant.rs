@@ -46,7 +46,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
             ConstantKind::Ty(ct) => ct,
             ConstantKind::Val(..) => continue,
         };
-        match const_.val {
+        match const_.val() {
             ConstKind::Value(_) => {}
             ConstKind::Unevaluated(unevaluated) => {
                 if let Err(err) =
@@ -127,7 +127,7 @@ pub(crate) fn codegen_constant<'tcx>(
         ConstantKind::Ty(ct) => ct,
         ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
-    let const_val = match const_.val {
+    let const_val = match const_.val() {
         ConstKind::Value(const_val) => const_val,
         ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
             if fx.tcx.is_static(def.did) =>
@@ -135,7 +135,7 @@ pub(crate) fn codegen_constant<'tcx>(
             assert!(substs.is_empty());
             assert!(promoted.is_none());
 
-            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty)).to_cvalue(fx);
+            return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
         }
         ConstKind::Unevaluated(unevaluated) => {
             match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
@@ -152,7 +152,7 @@ pub(crate) fn codegen_constant<'tcx>(
         | ConstKind::Error(_) => unreachable!("{:?}", const_),
     };
 
-    codegen_const_value(fx, const_val, const_.ty)
+    codegen_const_value(fx, const_val, const_.ty())
 }
 
 pub(crate) fn codegen_const_value<'tcx>(
@@ -465,7 +465,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
     match operand {
         Operand::Constant(const_) => match const_.literal {
             ConstantKind::Ty(const_) => {
-                fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val.try_to_value()
+                fx.monomorphize(const_).eval(fx.tcx, ParamEnv::reveal_all()).val().try_to_value()
             }
             ConstantKind::Val(val, _) => Some(val),
         },
@@ -490,7 +490,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                         return None;
                                     }
                                     let const_val = mir_operand_get_const_val(fx, operand)?;
-                                    if fx.layout_of(ty).size
+                                    if fx.layout_of(*ty).size
                                         != const_val.try_to_scalar_int()?.size()
                                     {
                                         return None;

@@ -216,7 +216,7 @@ pub trait TypeFolder<'tcx>: Sized {
         r.super_fold_with(self)
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx>
     where
         Self: TypeFolder<'tcx, Error = !>,
     {
@@ -263,10 +263,7 @@ pub trait FallibleTypeFolder<'tcx>: TypeFolder<'tcx> {
         r.try_super_fold_with(self)
     }
 
-    fn try_fold_const(
-        &mut self,
-        c: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         c.try_super_fold_with(self)
     }
 
@@ -306,10 +303,7 @@ where
         Ok(self.fold_region(r))
     }
 
-    fn try_fold_const(
-        &mut self,
-        c: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         Ok(self.fold_const(c))
     }
 
@@ -346,7 +340,7 @@ pub trait TypeVisitor<'tcx>: Sized {
         r.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         c.super_visit_with(self)
     }
 
@@ -366,7 +360,7 @@ pub struct BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
-    H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
+    H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
 {
     pub tcx: TyCtxt<'tcx>,
     pub ty_op: F,
@@ -378,7 +372,7 @@ impl<'tcx, F, G, H> TypeFolder<'tcx> for BottomUpFolder<'tcx, F, G, H>
 where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
     G: FnMut(ty::Region<'tcx>) -> ty::Region<'tcx>,
-    H: FnMut(&'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx>,
+    H: FnMut(ty::Const<'tcx>) -> ty::Const<'tcx>,
 {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
@@ -394,7 +388,7 @@ where
         (self.lt_op)(r)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let ct = ct.super_fold_with(self);
         (self.ct_op)(ct)
     }
@@ -593,7 +587,7 @@ struct BoundVarReplacer<'a, 'tcx> {
 
     fld_r: Option<&'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a)>,
     fld_t: Option<&'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a)>,
-    fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx> + 'a)>,
+    fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a)>,
 }
 
 impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
@@ -601,7 +595,7 @@ impl<'a, 'tcx> BoundVarReplacer<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         fld_r: Option<&'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a)>,
         fld_t: Option<&'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a)>,
-        fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx> + 'a)>,
+        fld_c: Option<&'a mut (dyn FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx> + 'a)>,
     ) -> Self {
         BoundVarReplacer { tcx, current_index: ty::INNERMOST, fld_r, fld_t, fld_c }
     }
@@ -627,7 +621,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 if let Some(fld_t) = self.fld_t.as_mut() {
                     let ty = fld_t(bound_ty);
-                    return ty::fold::shift_vars(self.tcx, &ty, self.current_index.as_u32());
+                    return ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32());
                 }
             }
             _ if t.has_vars_bound_at_or_above(self.current_index) => {
@@ -660,14 +654,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
         r
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        match *ct {
-            ty::Const { val: ty::ConstKind::Bound(debruijn, bound_const), ty }
-                if debruijn == self.current_index =>
-            {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match ct.val() {
+            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
                 if let Some(fld_c) = self.fld_c.as_mut() {
-                    let ct = fld_c(bound_const, ty);
-                    return ty::fold::shift_vars(self.tcx, &ct, self.current_index.as_u32());
+                    let ct = fld_c(bound_const, ct.ty());
+                    return ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32());
                 }
             }
             _ if ct.has_vars_bound_at_or_above(self.current_index) => {
@@ -726,7 +718,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-        H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
+        H: FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
         if !value.has_escaping_bound_vars() {
@@ -751,7 +743,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
         G: FnMut(ty::BoundTy) -> Ty<'tcx>,
-        H: FnMut(ty::BoundVar, Ty<'tcx>) -> &'tcx ty::Const<'tcx>,
+        H: FnMut(ty::BoundVar, Ty<'tcx>) -> ty::Const<'tcx>,
         T: TypeFoldable<'tcx>,
     {
         let mut region_map = BTreeMap::new();
@@ -804,7 +796,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ))
             },
             |c, ty| {
-                self.mk_const(ty::Const {
+                self.mk_const(ty::ConstS {
                     val: ty::ConstKind::Bound(
                         ty::INNERMOST,
                         ty::BoundVar::from_usize(c.as_usize() + bound_vars),
@@ -926,7 +918,7 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if t.outer_exclusive_binder < self.binder_index
+        if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
             return ControlFlow::BREAK;
@@ -960,10 +952,10 @@ impl<'tcx> TypeVisitor<'tcx> for ValidateBoundVars<'tcx> {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => {
                 if self.bound_vars.len() <= br.var.as_usize() {
-                    bug!("Not enough bound vars: {:?} not found in {:?}", *br, self.bound_vars);
+                    bug!("Not enough bound vars: {:?} not found in {:?}", br, self.bound_vars);
                 }
                 let list_var = self.bound_vars[br.var.as_usize()];
                 match list_var {
@@ -1057,13 +1049,16 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty } = *ct {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.val() {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
                 let debruijn = debruijn.shifted_in(self.amount);
-                self.tcx.mk_const(ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty })
+                self.tcx.mk_const(ty::ConstS {
+                    val: ty::ConstKind::Bound(debruijn, bound_ct),
+                    ty: ct.ty(),
+                })
             }
         } else {
             ct.super_fold_with(self)
@@ -1076,9 +1071,9 @@ pub fn shift_region<'tcx>(
     region: ty::Region<'tcx>,
     amount: u32,
 ) -> ty::Region<'tcx> {
-    match region {
+    match *region {
         ty::ReLateBound(debruijn, br) if amount > 0 => {
-            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), *br))
+            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), br))
         }
         _ => region,
     }
@@ -1146,7 +1141,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // bound at `outer_index` or above (because
         // `outer_exclusive_binder` is always 1 higher than the
         // content in `t`). Therefore, `t` has some escaping vars.
-        if t.outer_exclusive_binder > self.outer_index {
+        if t.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
@@ -1165,13 +1160,13 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         }
     }
 
-    fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         // we don't have a `visit_infer_const` callback, so we have to
         // hook in here to catch this case (annoying...), but
         // otherwise we do want to remember to visit the rest of the
         // const, as it has types/regions embedded in a lot of other
         // places.
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 ControlFlow::Break(FoundEscapingVars)
             }
@@ -1181,7 +1176,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
 
     #[inline]
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if predicate.inner.outer_exclusive_binder > self.outer_index {
+        if predicate.outer_exclusive_binder() > self.outer_index {
             ControlFlow::Break(FoundEscapingVars)
         } else {
             ControlFlow::CONTINUE
@@ -1236,7 +1231,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 
     #[inline]
     #[instrument(level = "trace")]
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         let flags = FlagComputation::for_const(c);
         trace!(r.flags=?flags);
         if flags.intersects(self.flags) {
@@ -1263,9 +1258,11 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
     fn visit_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ControlFlow<Self::BreakTy> {
         debug!(
             "HasTypeFlagsVisitor: predicate={:?} predicate.flags={:?} self.flags={:?}",
-            predicate, predicate.inner.flags, self.flags
+            predicate,
+            predicate.flags(),
+            self.flags
         );
-        if predicate.inner.flags.intersects(self.flags) {
+        if predicate.flags().intersects(self.flags) {
             ControlFlow::Break(FoundFlags)
         } else {
             ControlFlow::CONTINUE
@@ -1323,12 +1320,12 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
         t.super_visit_with(self)
     }
 
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         // if we are only looking for "constrained" region, we have to
         // ignore the inputs of an unevaluated const, as they may not appear
         // in the normalized form
         if self.just_constrained {
-            if let ty::ConstKind::Unevaluated(..) = c.val {
+            if let ty::ConstKind::Unevaluated(..) = c.val() {
                 return ControlFlow::CONTINUE;
             }
         }

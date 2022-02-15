@@ -711,11 +711,11 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(substs.len() as u32),
             };
-            tcx.mk_region(ty::RegionKind::ReLateBound(ty::INNERMOST, br)).into()
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
-            .mk_const(ty::Const {
+            .mk_const(ty::ConstS {
                 val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                 ty: tcx.type_of(param.def_id),
             })
@@ -735,7 +735,7 @@ fn binders_for<'tcx>(
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
             ty::subst::GenericArgKind::Const(c) => {
-                chalk_ir::VariableKind::Const(c.ty.lower_into(interner))
+                chalk_ir::VariableKind::Const(c.ty().lower_into(interner))
             }
         }),
     )

@@ -83,7 +83,7 @@ pub trait AstConv<'tcx> {
         ty: Ty<'tcx>,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    ) -> &'tcx Const<'tcx>;
+    ) -> Const<'tcx>;
 
     /// Projecting an associated type from a (potentially)
     /// higher-ranked trait reference is more complicated, because of
@@ -1428,7 +1428,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // `trait_object_dummy_self`, so check for that.
                         let references_self = match pred.skip_binder().term {
                             ty::Term::Ty(ty) => ty.walk().any(|arg| arg == dummy_self.into()),
-                            ty::Term::Const(c) => c.ty.walk().any(|arg| arg == dummy_self.into()),
+                            ty::Term::Const(c) => c.ty().walk().any(|arg| arg == dummy_self.into()),
                         };
 
                         // If the projection output contains `Self`, force the user to
@@ -2669,7 +2669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
-        if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
+        if derived_region_bounds.iter().any(|r| r.is_static()) {
             return Some(tcx.lifetimes.re_static);
         }
 

@@ -105,8 +105,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 // create new region variables, which can't be done later when
                 // verifying these bounds.
                 if t1.has_placeholders() {
-                    t1 = tcx.fold_regions(&t1, &mut false, |r, _| match *r {
-                        ty::RegionKind::RePlaceholder(placeholder) => {
+                    t1 = tcx.fold_regions(t1, &mut false, |r, _| match *r {
+                        ty::RePlaceholder(placeholder) => {
                             self.constraints.placeholder_region(self.infcx, placeholder)
                         }
                         _ => r,
@@ -142,8 +142,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     }
 
     fn to_region_vid(&mut self, r: ty::Region<'tcx>) -> ty::RegionVid {
-        if let ty::RePlaceholder(placeholder) = r {
-            self.constraints.placeholder_region(self.infcx, *placeholder).to_region_vid()
+        if let ty::RePlaceholder(placeholder) = *r {
+            self.constraints.placeholder_region(self.infcx, placeholder).to_region_vid()
         } else {
             self.universal_regions.to_region_vid(r)
         }

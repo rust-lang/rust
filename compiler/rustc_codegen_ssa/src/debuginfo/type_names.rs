@@ -146,7 +146,7 @@ fn push_debuginfo_type_name<'tcx>(
             if cpp_like_debuginfo {
                 output.push_str("array$<");
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.val {
+                match len.val() {
                     ty::ConstKind::Param(param) => write!(output, ",{}>", param.name).unwrap(),
                     _ => write!(output, ",{}>", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -154,7 +154,7 @@ fn push_debuginfo_type_name<'tcx>(
             } else {
                 output.push('[');
                 push_debuginfo_type_name(tcx, inner_type, true, output, visited);
-                match len.val {
+                match len.val() {
                     ty::ConstKind::Param(param) => write!(output, "; {}]", param.name).unwrap(),
                     _ => write!(output, "; {}]", len.eval_usize(tcx, ty::ParamEnv::reveal_all()))
                         .unwrap(),
@@ -343,7 +343,7 @@ fn push_debuginfo_type_name<'tcx>(
             // We only care about avoiding recursing
             // directly back to the type we're currently
             // processing
-            visited.remove(t);
+            visited.remove(&t);
         }
         ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
@@ -645,19 +645,19 @@ fn push_generic_params_internal<'tcx>(
     true
 }
 
-fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: &mut String) {
-    match ct.val {
+fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut String) {
+    match ct.val() {
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        _ => match ct.ty.kind() {
+        _ => match ct.ty().kind() {
             ty::Int(ity) => {
-                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                let bits = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
                 let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                 write!(output, "{}", val)
             }
             ty::Uint(_) => {
-                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                let val = ct.eval_bits(tcx, ty::ParamEnv::reveal_all(), ct.ty());
                 write!(output, "{}", val)
             }
             ty::Bool => {
@@ -672,7 +672,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: &'tcx ty::Const<'tcx>, output: 
                 let mut hasher = StableHasher::new();
                 hcx.while_hashing_spans(false, |hcx| {
                     hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                        ct.val.hash_stable(hcx, &mut hasher);
+                        ct.val().hash_stable(hcx, &mut hasher);
                     });
                 });
                 // Let's only emit 64 bits of the hash value. That should be plenty for

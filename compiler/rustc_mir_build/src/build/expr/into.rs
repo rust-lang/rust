@@ -348,7 +348,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 let place_builder = place_builder.clone();
                                 this.consume_by_copy_or_move(
                                     place_builder
-                                        .field(n, ty)
+                                        .field(n, *ty)
                                         .into_place(this.tcx, this.typeck_results),
                                 )
                             }

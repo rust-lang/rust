@@ -29,6 +29,7 @@ use crate::ty::util::Discr;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -42,10 +43,9 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
-use std::cmp::Ordering;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::ControlFlow;
-use std::{fmt, ptr, str};
+use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
 pub use rustc_type_ir::InferTy::*;
@@ -59,7 +59,9 @@ pub use self::closure::{
     RootVariableMinCaptureList, UpvarCapture, UpvarCaptureMap, UpvarId, UpvarListMap, UpvarPath,
     CAPTURE_STRUCT_LOCAL,
 };
-pub use self::consts::{Const, ConstInt, ConstKind, InferConst, ScalarInt, Unevaluated, ValTree};
+pub use self::consts::{
+    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, Unevaluated, ValTree,
+};
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
     CtxtInterners, DelaySpanBugEmitted, FreeRegionInfo, GeneratorInteriorTypeCause, GlobalCtxt,
@@ -380,21 +382,25 @@ pub struct CReaderCacheKey {
 
 /// Represents a type.
 ///
-/// IMPORTANT: Every `TyS` is *required* to have unique contents. The type's
-/// correctness relies on this, *but it does not enforce it*. Therefore, any
-/// code that creates a `TyS` must ensure uniqueness itself. In practice this
-/// is achieved by interning.
+/// IMPORTANT:
+/// - This is a very "dumb" struct (with no derives and no `impls`).
+/// - Values of this type are always interned and thus unique, and are stored
+///   as an `Interned<TyS>`.
+/// - `Ty` (which contains a reference to a `Interned<TyS>`) or `Interned<TyS>`
+///   should be used everywhere instead of `TyS`. In particular, `Ty` has most
+///   of the relevant methods.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[allow(rustc::usage_of_ty_tykind)]
-pub struct TyS<'tcx> {
+crate struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
-    /// Use `TyS::kind()` instead.
+    /// Use `Ty::kind()` instead.
     kind: TyKind<'tcx>,
 
     /// This field provides fast access to information that is also contained
     /// in `kind`.
     ///
     /// This field shouldn't be used directly and may be removed in the future.
-    /// Use `TyS::flags()` instead.
+    /// Use `Ty::flags()` instead.
     flags: TypeFlags,
 
     /// This field provides fast access to information that is also contained
@@ -420,55 +426,27 @@ pub struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
-impl<'tcx> TyS<'tcx> {
-    /// A constructor used only for internal testing.
-    #[allow(rustc::usage_of_ty_tykind)]
-    pub fn make_for_test(
-        kind: TyKind<'tcx>,
-        flags: TypeFlags,
-        outer_exclusive_binder: ty::DebruijnIndex,
-    ) -> TyS<'tcx> {
-        TyS { kind, flags, outer_exclusive_binder }
-    }
-}
-
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(TyS<'_>, 40);
 
-impl<'tcx> Ord for TyS<'tcx> {
-    fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
-        self.kind().cmp(other.kind())
-    }
-}
+/// Use this rather than `TyS`, whenever possible.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[rustc_diagnostic_item = "Ty"]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct Ty<'tcx>(Interned<'tcx, TyS<'tcx>>);
 
-impl<'tcx> PartialOrd for TyS<'tcx> {
-    fn partial_cmp(&self, other: &TyS<'tcx>) -> Option<Ordering> {
-        Some(self.kind().cmp(other.kind()))
-    }
-}
+// Statics only used for internal testing.
+pub static BOOL_TY: Ty<'static> = Ty(Interned::new_unchecked(&BOOL_TYS));
+static BOOL_TYS: TyS<'static> = TyS {
+    kind: ty::Bool,
+    flags: TypeFlags::empty(),
+    outer_exclusive_binder: DebruijnIndex::from_usize(0),
+};
 
-impl<'tcx> PartialEq for TyS<'tcx> {
-    #[inline]
-    fn eq(&self, other: &TyS<'tcx>) -> bool {
-        // Pointer equality implies equality (due to the unique contents
-        // assumption).
-        ptr::eq(self, other)
-    }
-}
-impl<'tcx> Eq for TyS<'tcx> {}
-
-impl<'tcx> Hash for TyS<'tcx> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        // Pointer hashing is sufficient (due to the unique contents
-        // assumption).
-        (self as *const TyS<'_>).hash(s)
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let ty::TyS {
+        let TyS {
             ref kind,
 
             // The other fields just provide fast access to information that is
@@ -476,15 +454,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
             flags: _,
 
             outer_exclusive_binder: _,
-        } = *self;
+        } = self.0.0;
 
         kind.hash_stable(hcx, hasher);
     }
 }
-
-#[rustc_diagnostic_item = "Ty"]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
-pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
@@ -494,51 +468,50 @@ impl ty::EarlyBoundRegion {
     }
 }
 
+/// Represents a predicate.
+///
+/// See comments on `TyS`, which apply here too (albeit for
+/// `PredicateS`/`Predicate` rather than `TyS`/`Ty`).
 #[derive(Debug)]
-crate struct PredicateInner<'tcx> {
+crate struct PredicateS<'tcx> {
     kind: Binder<'tcx, PredicateKind<'tcx>>,
     flags: TypeFlags,
     /// See the comment for the corresponding field of [TyS].
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
+// This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(PredicateInner<'_>, 56);
+static_assert_size!(PredicateS<'_>, 56);
 
-#[derive(Clone, Copy, Lift)]
-pub struct Predicate<'tcx> {
-    inner: &'tcx PredicateInner<'tcx>,
-}
-
-impl<'tcx> PartialEq for Predicate<'tcx> {
-    fn eq(&self, other: &Self) -> bool {
-        // `self.kind` is always interned.
-        ptr::eq(self.inner, other.inner)
-    }
-}
-
-impl Hash for Predicate<'_> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        (self.inner as *const PredicateInner<'_>).hash(s)
-    }
-}
-
-impl<'tcx> Eq for Predicate<'tcx> {}
+/// Use this rather than `PredicateS`, whenever possible.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct Predicate<'tcx>(Interned<'tcx, PredicateS<'tcx>>);
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
     #[inline]
     pub fn kind(self) -> Binder<'tcx, PredicateKind<'tcx>> {
-        self.inner.kind
+        self.0.kind
+    }
+
+    #[inline(always)]
+    pub fn flags(self) -> TypeFlags {
+        self.0.flags
+    }
+
+    #[inline(always)]
+    pub fn outer_exclusive_binder(self) -> DebruijnIndex {
+        self.0.outer_exclusive_binder
     }
 
     /// Flips the polarity of a Predicate.
     ///
     /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
-    pub fn flip_polarity(&self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
+    pub fn flip_polarity(self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
         let kind = self
-            .inner
-            .kind
+            .kind()
             .map_bound(|kind| match kind {
                 PredicateKind::Trait(TraitPredicate { trait_ref, constness, polarity }) => {
                     Some(PredicateKind::Trait(TraitPredicate {
@@ -558,14 +531,14 @@ impl<'tcx> Predicate<'tcx> {
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let PredicateInner {
+        let PredicateS {
             ref kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
             flags: _,
             outer_exclusive_binder: _,
-        } = self.inner;
+        } = self.0.0;
 
         kind.hash_stable(hcx, hasher);
     }
@@ -621,7 +594,7 @@ pub enum PredicateKind<'tcx> {
     ConstEvaluatable(ty::Unevaluated<'tcx, ()>),
 
     /// Constants must be equal. The first component is the const that is expected.
-    ConstEquate(&'tcx Const<'tcx>, &'tcx Const<'tcx>),
+    ConstEquate(Const<'tcx>, Const<'tcx>),
 
     /// Represents a type found in the environment that we can use for implied bounds.
     ///
@@ -847,7 +820,7 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 #[derive(HashStable, TypeFoldable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
-    Const(&'tcx Const<'tcx>),
+    Const(Const<'tcx>),
 }
 
 impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
@@ -856,18 +829,18 @@ impl<'tcx> From<Ty<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx Const<'tcx>> for Term<'tcx> {
-    fn from(c: &'tcx Const<'tcx>) -> Self {
+impl<'tcx> From<Const<'tcx>> for Term<'tcx> {
+    fn from(c: Const<'tcx>) -> Self {
         Term::Const(c)
     }
 }
 
 impl<'tcx> Term<'tcx> {
     pub fn ty(&self) -> Option<Ty<'tcx>> {
-        if let Term::Ty(ty) = self { Some(ty) } else { None }
+        if let Term::Ty(ty) = self { Some(*ty) } else { None }
     }
-    pub fn ct(&self) -> Option<&'tcx Const<'tcx>> {
-        if let Term::Const(c) = self { Some(c) } else { None }
+    pub fn ct(&self) -> Option<Const<'tcx>> {
+        if let Term::Const(c) = self { Some(*c) } else { None }
     }
 }
 

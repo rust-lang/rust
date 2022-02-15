@@ -10,7 +10,7 @@ use rustc_target::abi::Size;
 crate fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
-) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+) -> Result<ty::Const<'tcx>, LitToConstError> {
     let LitToConstInput { lit, ty, neg } = lit_input;
 
     let trunc = |n| {

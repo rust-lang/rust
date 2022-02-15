@@ -153,7 +153,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             // create temp to store inequality comparison between the two discriminants, `_t` in
             // example above
             let nequal = BinOp::Ne;
-            let comp_res_type = nequal.ty(tcx, parent_ty, opt_data.child_ty);
+            let comp_res_type = nequal.ty(tcx, *parent_ty, opt_data.child_ty);
             let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
             patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
 
@@ -343,7 +343,7 @@ fn evaluate_candidate<'tcx>(
     Some(OptimizationData {
         destination,
         child_place: *child_place,
-        child_ty,
+        child_ty: *child_ty,
         child_source: child_terminator.source_info,
     })
 }

@@ -356,8 +356,8 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     })?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
-    let nice_error = match (error_region, sub_region) {
-        (Some(error_region), &ty::ReVar(vid)) => NiceRegionError::new(
+    let nice_error = match (error_region, *sub_region) {
+        (Some(error_region), ty::ReVar(vid)) => NiceRegionError::new(
             infcx,
             RegionResolutionError::SubSupConflict(
                 vid,
@@ -374,7 +374,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
             RegionResolutionError::ConcreteFailure(cause.clone(), error_region, placeholder_region),
         ),
         // Note universe here is wrong...
-        (None, &ty::ReVar(vid)) => NiceRegionError::new(
+        (None, ty::ReVar(vid)) => NiceRegionError::new(
             infcx,
             RegionResolutionError::UpperBoundUniverseConflict(
                 vid,

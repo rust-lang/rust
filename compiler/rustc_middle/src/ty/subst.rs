@@ -6,6 +6,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor}
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
+use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -25,10 +26,13 @@ use std::ops::ControlFlow;
 /// To reduce memory usage, a `GenericArg` is an interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
 /// indicate the type (`Ty`, `Region`, or `Const`) it points to.
+///
+/// Note: the `PartialEq`, `Eq` and `Hash` derives are only valid because `Ty`,
+/// `Region` and `Const` are all interned.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
-    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, &'tcx ty::Const<'tcx>)>,
+    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
 }
 
 const TAG_MASK: usize = 0b11;
@@ -40,7 +44,7 @@ const CONST_TAG: usize = 0b10;
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
-    Const(&'tcx ty::Const<'tcx>),
+    Const(ty::Const<'tcx>),
 }
 
 impl<'tcx> GenericArgKind<'tcx> {
@@ -48,18 +52,18 @@ impl<'tcx> GenericArgKind<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(lt) & TAG_MASK, 0);
-                (REGION_TAG, lt as *const _ as usize)
+                assert_eq!(mem::align_of_val(lt.0.0) & TAG_MASK, 0);
+                (REGION_TAG, lt.0.0 as *const ty::RegionKind as usize)
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(ty) & TAG_MASK, 0);
-                (TYPE_TAG, ty as *const _ as usize)
+                assert_eq!(mem::align_of_val(ty.0.0) & TAG_MASK, 0);
+                (TYPE_TAG, ty.0.0 as *const ty::TyS<'tcx> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(ct) & TAG_MASK, 0);
-                (CONST_TAG, ct as *const _ as usize)
+                assert_eq!(mem::align_of_val(ct.0.0) & TAG_MASK, 0);
+                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
             }
         };
 
@@ -101,8 +105,8 @@ impl<'tcx> From<Ty<'tcx>> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx ty::Const<'tcx>> for GenericArg<'tcx> {
-    fn from(c: &'tcx ty::Const<'tcx>) -> GenericArg<'tcx> {
+impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
+    fn from(c: ty::Const<'tcx>) -> GenericArg<'tcx> {
         GenericArgKind::Const(c).pack()
     }
 }
@@ -111,11 +115,20 @@ impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
         let ptr = self.ptr.get();
+        // SAFETY: use of `Interned::new_unchecked` here is ok because these
+        // pointers were originally created from `Interned` types in `pack()`,
+        // and this is just going in the other direction.
         unsafe {
             match ptr & TAG_MASK {
-                REGION_TAG => GenericArgKind::Lifetime(&*((ptr & !TAG_MASK) as *const _)),
-                TYPE_TAG => GenericArgKind::Type(&*((ptr & !TAG_MASK) as *const _)),
-                CONST_TAG => GenericArgKind::Const(&*((ptr & !TAG_MASK) as *const _)),
+                REGION_TAG => GenericArgKind::Lifetime(ty::Region(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::RegionKind),
+                ))),
+                TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::TyS<'tcx>),
+                ))),
+                CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
+                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                ))),
                 _ => intrinsics::unreachable(),
             }
         }
@@ -132,7 +145,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 
     /// Unpack the `GenericArg` as a const when it is known certainly to be a const.
-    pub fn expect_const(self) -> &'tcx ty::Const<'tcx> {
+    pub fn expect_const(self) -> ty::Const<'tcx> {
         match self.unpack() {
             GenericArgKind::Const(c) => c,
             _ => bug!("expected a const, but found another kind"),
@@ -289,7 +302,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn consts(&'a self) -> impl DoubleEndedIterator<Item = &'tcx ty::Const<'tcx>> + 'a {
+    pub fn consts(&'a self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> + 'a {
         self.iter().filter_map(|k| {
             if let GenericArgKind::Const(ct) = k.unpack() { Some(ct) } else { None }
         })
@@ -324,7 +337,7 @@ impl<'a, 'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
-    pub fn const_at(&self, i: usize) -> &'tcx ty::Const<'tcx> {
+    pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
         if let GenericArgKind::Const(ct) = self[i].unpack() {
             ct
         } else {
@@ -503,8 +516,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
         }
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::ConstKind::Param(p) = c.val {
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Param(p) = c.val() {
             self.const_for_param(p, c)
         } else {
             c.super_fold_with(self)
@@ -553,11 +566,7 @@ impl<'a, 'tcx> SubstFolder<'a, 'tcx> {
         self.shift_vars_through_binders(ty)
     }
 
-    fn const_for_param(
-        &self,
-        p: ParamConst,
-        source_ct: &'tcx ty::Const<'tcx>,
-    ) -> &'tcx ty::Const<'tcx> {
+    fn const_for_param(&self, p: ParamConst, source_ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         // Look up the const in the substitutions. It really should be in there.
         let opt_ct = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ct = match opt_ct {

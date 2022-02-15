@@ -484,7 +484,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let err = ConstEvalErr::new(&self.ecx, error, Some(c.span));
                 if let Some(lint_root) = self.lint_root(source_info) {
                     let lint_only = match c.literal {
-                        ConstantKind::Ty(ct) => match ct.val {
+                        ConstantKind::Ty(ct) => match ct.val() {
                             // Promoteds must lint and not error as the user didn't ask for them
                             ConstKind::Unevaluated(ty::Unevaluated {
                                 def: _,
@@ -801,7 +801,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) {
         if let Rvalue::Use(Operand::Constant(c)) = rval {
             match c.literal {
-                ConstantKind::Ty(c) if matches!(c.val, ConstKind::Unevaluated(..)) => {}
+                ConstantKind::Ty(c) if matches!(c.val(), ConstKind::Unevaluated(..)) => {}
                 _ => {
                     trace!("skipping replace of Rvalue::Use({:?} because it is already a const", c);
                     return;
@@ -841,7 +841,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // Found a value represented as a pair. For now only do const-prop if the type
                     // of `rvalue` is also a tuple with two scalars.
                     // FIXME: enable the general case stated above ^.
-                    let ty = &value.layout.ty;
+                    let ty = value.layout.ty;
                     // Only do it for tuples
                     if let ty::Tuple(substs) = ty.kind() {
                         // Only do it if tuple is also a pair with two scalars
@@ -875,7 +875,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                                     literal: self
                                         .ecx
                                         .tcx
-                                        .mk_const(ty::Const {
+                                        .mk_const(ty::ConstS {
                                             ty,
                                             val: ty::ConstKind::Value(ConstValue::ByRef {
                                                 alloc,

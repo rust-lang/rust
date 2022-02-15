@@ -1,10 +1,10 @@
-//! Diagnostics related methods for `TyS`.
+//! Diagnostics related methods for `Ty`.
 
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::TyKind::*;
 use crate::ty::{
     ConstKind, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, InferTy,
-    ProjectionTy, Term, TyCtxt, TyS, TypeAndMut,
+    ProjectionTy, Term, Ty, TyCtxt, TypeAndMut,
 };
 
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -13,9 +13,9 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_span::Span;
 
-impl<'tcx> TyS<'tcx> {
-    /// Similar to `TyS::is_primitive`, but also considers inferred numeric values to be primitive.
-    pub fn is_primitive_ty(&self) -> bool {
+impl<'tcx> Ty<'tcx> {
+    /// Similar to `Ty::is_primitive`, but also considers inferred numeric values to be primitive.
+    pub fn is_primitive_ty(self) -> bool {
         matches!(
             self.kind(),
             Bool | Char
@@ -34,7 +34,7 @@ impl<'tcx> TyS<'tcx> {
 
     /// Whether the type is succinctly representable as a type instead of just referred to with a
     /// description in error messages. This is used in the main error message.
-    pub fn is_simple_ty(&self) -> bool {
+    pub fn is_simple_ty(self) -> bool {
         match self.kind() {
             Bool
             | Char
@@ -58,7 +58,7 @@ impl<'tcx> TyS<'tcx> {
     /// description in error messages. This is used in the primary span label. Beyond what
     /// `is_simple_ty` includes, it also accepts ADTs with no type arguments and references to
     /// ADTs with no type arguments.
-    pub fn is_simple_text(&self) -> bool {
+    pub fn is_simple_text(self) -> bool {
         match self.kind() {
             Adt(_, substs) => substs.non_erasable_generics().next().is_none(),
             Ref(_, ty, _) => ty.is_simple_text(),
@@ -67,11 +67,11 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// Whether the type can be safely suggested during error recovery.
-    pub fn is_suggestable(&self) -> bool {
+    pub fn is_suggestable(self) -> bool {
         fn generic_arg_is_suggestible(arg: GenericArg<'_>) -> bool {
             match arg.unpack() {
                 GenericArgKind::Type(ty) => ty.is_suggestable(),
-                GenericArgKind::Const(c) => const_is_suggestable(c.val),
+                GenericArgKind::Const(c) => const_is_suggestable(c.val()),
                 _ => true,
             }
         }
@@ -110,7 +110,7 @@ impl<'tcx> TyS<'tcx> {
                 }) => {
                     let term_is_suggestable = match term {
                         Term::Ty(ty) => ty.is_suggestable(),
-                        Term::Const(c) => const_is_suggestable(c.val),
+                        Term::Const(c) => const_is_suggestable(c.val()),
                     };
                     term_is_suggestable && substs.iter().all(generic_arg_is_suggestible)
                 }
@@ -120,7 +120,7 @@ impl<'tcx> TyS<'tcx> {
                 args.iter().all(generic_arg_is_suggestible)
             }
             Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(),
-            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val),
+            Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val()),
             _ => true,
         }
     }

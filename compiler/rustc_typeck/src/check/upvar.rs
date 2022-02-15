@@ -966,7 +966,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(&ty::ReErased),
+                    Some(self.tcx.lifetimes.re_erased),
                 )
             }
         };
@@ -997,7 +997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(&ty::ReErased),
+                Some(self.tcx.lifetimes.re_erased),
             );
 
             // Checks if a capture implements any of the auto traits
@@ -1499,7 +1499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
-            hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
+            hir::CaptureBy::Value if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref => ty::UpvarCapture::ByRef(ty::ImmBorrow),
@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         );
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
         }
 

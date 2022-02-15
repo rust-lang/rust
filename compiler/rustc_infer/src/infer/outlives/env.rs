@@ -2,8 +2,9 @@ use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
 use super::explicit_outlives_bounds;
 
@@ -66,7 +67,7 @@ pub struct OutlivesEnvironment<'tcx> {
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
+pub type RegionBoundPairs<'tcx> = Vec<(Region<'tcx>, GenericKind<'tcx>)>;
 
 impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
@@ -164,10 +165,10 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
                 OutlivesBound::RegionSubRegion(
-                    r_a @ (&ty::ReEarlyBound(_) | &ty::ReFree(_)),
-                    &ty::ReVar(vid_b),
+                    r_a @ (Region(Interned(ReEarlyBound(_), _)) | Region(Interned(ReFree(_), _))),
+                    Region(Interned(ReVar(vid_b), _)),
                 ) => {
-                    infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
+                    infcx.expect("no infcx provided but region vars found").add_given(r_a, *vid_b);
                 }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
                     self.region_bound_pairs_accum.push((r_a, GenericKind::Param(param_b)));

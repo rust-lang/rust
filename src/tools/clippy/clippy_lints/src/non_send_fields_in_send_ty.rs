@@ -205,7 +205,7 @@ fn ty_allowed_with_raw_pointer_heuristic<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
         ty::Tuple(_) => ty
             .tuple_fields()
             .all(|ty| ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait)),
-        ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, ty, send_trait),
+        ty::Array(ty, _) | ty::Slice(ty) => ty_allowed_with_raw_pointer_heuristic(cx, *ty, send_trait),
         ty::Adt(_, substs) => {
             if contains_pointer_like(cx, ty) {
                 // descends only if ADT contains any raw pointers

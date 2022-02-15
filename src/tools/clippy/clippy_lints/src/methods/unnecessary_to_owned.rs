@@ -105,7 +105,7 @@ fn check_addr_of_expr(
         if is_copy(cx, receiver_ty) || is_cow_into_owned(cx, method_name, method_def_id);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            let (target_ty, n_target_refs) = peel_mid_ty_refs(target_ty);
+            let (target_ty, n_target_refs) = peel_mid_ty_refs(*target_ty);
             let (receiver_ty, n_receiver_refs) = peel_mid_ty_refs(receiver_ty);
             if receiver_ty == target_ty && n_target_refs >= n_receiver_refs {
                 span_lint_and_sugg(
@@ -228,7 +228,7 @@ fn check_other_call_arg<'tcx>(
         let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
         if let Some(i) = call_args.iter().position(|arg| arg.hir_id == maybe_arg.hir_id);
         if let Some(input) = fn_sig.inputs().get(i);
-        let (input, n_refs) = peel_mid_ty_refs(input);
+        let (input, n_refs) = peel_mid_ty_refs(*input);
         if let (trait_predicates, projection_predicates) = get_input_traits_and_projections(cx, callee_def_id, input);
         if let Some(sized_def_id) = cx.tcx.lang_items().sized_trait();
         if let [trait_predicate] = trait_predicates

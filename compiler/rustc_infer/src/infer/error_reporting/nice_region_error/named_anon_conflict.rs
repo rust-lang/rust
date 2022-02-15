@@ -48,7 +48,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Suggesting to add a `'static` lifetime to a parameter is nearly always incorrect,
         // and can steer users down the wrong path.
-        if *named == ty::ReStatic {
+        if named.is_static() {
             return None;
         }
 

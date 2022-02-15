@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         let rty_and_mut = ty::TypeAndMut {
-                            ty: rty,
+                            ty: *rty,
                             mutbl: *rty_mutbl,
                         };
 

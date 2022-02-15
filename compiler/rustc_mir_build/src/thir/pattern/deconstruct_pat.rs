@@ -136,12 +136,12 @@ impl IntRange {
     fn from_const<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: &Const<'tcx>,
+        value: Const<'tcx>,
     ) -> Option<IntRange> {
-        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
-            let ty = value.ty;
+        let ty = value.ty();
+        if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, ty) {
             let val = (|| {
-                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val {
+                if let ty::ConstKind::Value(ConstValue::Scalar(scalar)) = value.val() {
                     // For this specific pattern we can skip a lot of effort and go
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
@@ -630,9 +630,9 @@ pub(super) enum Constructor<'tcx> {
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
-    FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
+    FloatRange(ty::Const<'tcx>, ty::Const<'tcx>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(&'tcx ty::Const<'tcx>),
+    Str(ty::Const<'tcx>),
     /// Array and slice patterns.
     Slice(Slice),
     /// Constants that must not be matched structurally. They are treated as black
@@ -815,8 +815,14 @@ impl<'tcx> Constructor<'tcx> {
                 FloatRange(other_from, other_to, other_end),
             ) => {
                 match (
-                    compare_const_vals(pcx.cx.tcx, self_to, other_to, pcx.cx.param_env, pcx.ty),
-                    compare_const_vals(pcx.cx.tcx, self_from, other_from, pcx.cx.param_env, pcx.ty),
+                    compare_const_vals(pcx.cx.tcx, *self_to, *other_to, pcx.cx.param_env, pcx.ty),
+                    compare_const_vals(
+                        pcx.cx.tcx,
+                        *self_from,
+                        *other_from,
+                        pcx.cx.param_env,
+                        pcx.ty,
+                    ),
                 ) {
                     (Some(to), Some(from)) => {
                         (from == Ordering::Greater || from == Ordering::Equal)
@@ -828,8 +834,13 @@ impl<'tcx> Constructor<'tcx> {
             }
             (Str(self_val), Str(other_val)) => {
                 // FIXME: there's probably a more direct way of comparing for equality
-                match compare_const_vals(pcx.cx.tcx, self_val, other_val, pcx.cx.param_env, pcx.ty)
-                {
+                match compare_const_vals(
+                    pcx.cx.tcx,
+                    *self_val,
+                    *other_val,
+                    pcx.cx.param_env,
+                    pcx.ty,
+                ) {
                     Some(comparison) => comparison == Ordering::Equal,
                     None => false,
                 }
@@ -929,7 +940,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             ty::Bool => smallvec![make_range(0, 1)],
             ty::Array(sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_usize(cx.tcx, cx.param_env) as usize;
-                if len != 0 && cx.is_uninhabited(sub_ty) {
+                if len != 0 && cx.is_uninhabited(*sub_ty) {
                     smallvec![]
                 } else {
                     smallvec![Slice(Slice::new(Some(len), VarLen(0, 0)))]
@@ -937,7 +948,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             }
             // Treat arrays of a constant but unknown length like slices.
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
-                let kind = if cx.is_uninhabited(sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
+                let kind = if cx.is_uninhabited(*sub_ty) { FixedLen(0) } else { VarLen(0, 0) };
                 smallvec![Slice(Slice::new(None, kind))]
             }
             ty::Adt(def, substs) if def.is_enum() => {
@@ -1368,13 +1379,13 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             PatKind::Constant { value } => {
-                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, value) {
+                if let Some(int_range) = IntRange::from_const(cx.tcx, cx.param_env, *value) {
                     ctor = IntRange(int_range);
                     fields = Fields::empty();
                 } else {
                     match pat.ty.kind() {
                         ty::Float(_) => {
-                            ctor = FloatRange(value, value, RangeEnd::Included);
+                            ctor = FloatRange(*value, *value, RangeEnd::Included);
                             fields = Fields::empty();
                         }
                         ty::Ref(_, t, _) if t.is_str() => {
@@ -1386,7 +1397,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             // fields.
                             // Note: `t` is `str`, not `&str`.
                             let subpattern =
-                                DeconstructedPat::new(Str(value), Fields::empty(), t, pat.span);
+                                DeconstructedPat::new(Str(*value), Fields::empty(), *t, pat.span);
                             ctor = Single;
                             fields = Fields::singleton(cx, subpattern)
                         }
@@ -1401,11 +1412,11 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 }
             }
             &PatKind::Range(PatRange { lo, hi, end }) => {
-                let ty = lo.ty;
+                let ty = lo.ty();
                 ctor = if let Some(int_range) = IntRange::from_range(
                     cx.tcx,
-                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty),
-                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty),
+                    lo.eval_bits(cx.tcx, cx.param_env, lo.ty()),
+                    hi.eval_bits(cx.tcx, cx.param_env, hi.ty()),
                     ty,
                     &end,
                 ) {

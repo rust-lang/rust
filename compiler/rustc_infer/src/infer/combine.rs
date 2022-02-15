@@ -123,9 +123,9 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
     pub fn super_combine_consts<R>(
         &self,
         relation: &mut R,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>>
     where
         R: ConstEquateRelation<'tcx>,
     {
@@ -139,7 +139,7 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
 
         let a_is_expected = relation.a_is_expected();
 
-        match (a.val, b.val) {
+        match (a.val(), b.val()) {
             (
                 ty::ConstKind::Infer(InferConst::Var(a_vid)),
                 ty::ConstKind::Infer(InferConst::Var(b_vid)),
@@ -226,9 +226,9 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         target_vid: ty::ConstVid<'tcx>,
-        ct: &'tcx ty::Const<'tcx>,
+        ct: ty::Const<'tcx>,
         vid_is_expected: bool,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let (for_universe, span) = {
             let mut inner = self.inner.borrow_mut();
             let variable_table = &mut inner.const_unification_table();
@@ -451,8 +451,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
     pub fn add_const_equate_obligation(
         &mut self,
         a_is_expected: bool,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
     ) {
         let predicate = if a_is_expected {
             ty::PredicateKind::ConstEquate(a, b)
@@ -716,12 +716,12 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
 
     fn consts(
         &mut self,
-        c: &'tcx ty::Const<'tcx>,
-        c2: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        c: ty::Const<'tcx>,
+        c2: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
-        match c.val {
+        match c.val() {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
@@ -739,7 +739,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
                         }
                     }
                 }
@@ -754,8 +754,8 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     substs,
                     substs,
                 )?;
-                Ok(self.tcx().mk_const(ty::Const {
-                    ty: c.ty,
+                Ok(self.tcx().mk_const(ty::ConstS {
+                    ty: c.ty(),
                     val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
                 }))
             }
@@ -768,7 +768,7 @@ pub trait ConstEquateRelation<'tcx>: TypeRelation<'tcx> {
     /// Register an obligation that both constants must be equal to each other.
     ///
     /// If they aren't equal then the relation doesn't hold.
-    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
+    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
 }
 
 pub trait RelateResultCompare<'tcx, T> {
@@ -788,7 +788,7 @@ impl<'tcx, T: Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'
 
 pub fn const_unification_error<'tcx>(
     a_is_expected: bool,
-    (a, b): (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>),
+    (a, b): (ty::Const<'tcx>, ty::Const<'tcx>),
 ) -> TypeError<'tcx> {
     TypeError::ConstMismatch(ExpectedFound::new(a_is_expected, a, b))
 }
@@ -915,7 +915,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         debug_assert_eq!(r, _r);
         debug!("ConstInferUnifier: r={:?}", r);
 
-        match r {
+        match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
             ty::ReLateBound(..) | ty::ReErased => {
@@ -945,13 +945,13 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self))]
     fn consts(
         &mut self,
-        c: &'tcx ty::Const<'tcx>,
-        _c: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        c: ty::Const<'tcx>,
+        _c: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         debug_assert_eq!(c, _c);
         debug!("ConstInferUnifier: c={:?}", c);
 
-        match c.val {
+        match c.val() {
             ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 // Check if the current unification would end up
                 // unifying `target_vid` with a const which contains
@@ -985,7 +985,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                                         },
                                     },
                                 );
-                            Ok(self.tcx().mk_const_var(new_var_id, c.ty))
+                            Ok(self.tcx().mk_const_var(new_var_id, c.ty()))
                         }
                     }
                 }
@@ -1000,8 +1000,8 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     substs,
                     substs,
                 )?;
-                Ok(self.tcx().mk_const(ty::Const {
-                    ty: c.ty,
+                Ok(self.tcx().mk_const(ty::ConstS {
+                    ty: c.ty(),
                     val: ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted }),
                 }))
             }

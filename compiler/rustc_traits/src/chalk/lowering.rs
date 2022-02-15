@@ -35,7 +35,7 @@ use rustc_ast::ast;
 use rustc_middle::traits::{ChalkEnvironmentAndGoal, ChalkRustInterner as RustInterner};
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, Binder, Region, RegionKind, Ty, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, Binder, Region, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_span::def_id::DefId;
 
 use chalk_ir::{FnSig, ForeignDefId};
@@ -389,7 +389,7 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::Array(ty, c) => {
                 let ty = ty.lower_into(interner);
                 let c = c.lower_into(interner);
-                ty::Array(ty, interner.tcx.mk_const(c))
+                ty::Array(ty, c)
             }
             TyKind::FnDef(id, substitution) => ty::FnDef(id.0, substitution.lower_into(interner)),
             TyKind::Closure(closure, substitution) => {
@@ -449,32 +449,30 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'tcx> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::Lifetime<RustInterner<'tcx>> {
-        use rustc_middle::ty::RegionKind::*;
-
-        match self {
-            ReEarlyBound(_) => {
+        match *self {
+            ty::ReEarlyBound(_) => {
                 panic!("Should have already been substituted.");
             }
-            ReLateBound(db, br) => chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
+            ty::ReLateBound(db, br) => chalk_ir::LifetimeData::BoundVar(chalk_ir::BoundVar::new(
                 chalk_ir::DebruijnIndex::new(db.as_u32()),
                 br.var.as_usize(),
             ))
             .intern(interner),
-            ReFree(_) => unimplemented!(),
-            ReStatic => chalk_ir::LifetimeData::Static.intern(interner),
-            ReVar(_) => unimplemented!(),
-            RePlaceholder(placeholder_region) => {
+            ty::ReFree(_) => unimplemented!(),
+            ty::ReStatic => chalk_ir::LifetimeData::Static.intern(interner),
+            ty::ReVar(_) => unimplemented!(),
+            ty::RePlaceholder(placeholder_region) => {
                 chalk_ir::LifetimeData::Placeholder(chalk_ir::PlaceholderIndex {
                     ui: chalk_ir::UniverseIndex { counter: placeholder_region.universe.index() },
                     idx: 0,
                 })
                 .intern(interner)
             }
-            ReEmpty(ui) => {
+            ty::ReEmpty(ui) => {
                 chalk_ir::LifetimeData::Empty(chalk_ir::UniverseIndex { counter: ui.index() })
                     .intern(interner)
             }
-            ReErased => chalk_ir::LifetimeData::Erased.intern(interner),
+            ty::ReErased => chalk_ir::LifetimeData::Erased.intern(interner),
         }
     }
 }
@@ -482,7 +480,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Lifetime<RustInterner<'tcx>>> for Region<'t
 impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'tcx>> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> Region<'tcx> {
         let kind = match self.data(interner) {
-            chalk_ir::LifetimeData::BoundVar(var) => ty::RegionKind::ReLateBound(
+            chalk_ir::LifetimeData::BoundVar(var) => ty::ReLateBound(
                 ty::DebruijnIndex::from_u32(var.debruijn.depth()),
                 ty::BoundRegion {
                     var: ty::BoundVar::from_usize(var.index),
@@ -490,12 +488,10 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
                 },
             ),
             chalk_ir::LifetimeData::InferenceVar(_var) => unimplemented!(),
-            chalk_ir::LifetimeData::Placeholder(p) => {
-                ty::RegionKind::RePlaceholder(ty::Placeholder {
-                    universe: ty::UniverseIndex::from_usize(p.ui.counter),
-                    name: ty::BoundRegionKind::BrAnon(p.idx as u32),
-                })
-            }
+            chalk_ir::LifetimeData::Placeholder(p) => ty::RePlaceholder(ty::Placeholder {
+                universe: ty::UniverseIndex::from_usize(p.ui.counter),
+                name: ty::BoundRegionKind::BrAnon(p.idx as u32),
+            }),
             chalk_ir::LifetimeData::Static => return interner.tcx.lifetimes.re_static,
             chalk_ir::LifetimeData::Empty(ui) => {
                 ty::ReEmpty(ty::UniverseIndex::from_usize(ui.counter))
@@ -509,8 +505,8 @@ impl<'tcx> LowerInto<'tcx, Region<'tcx>> for &chalk_ir::Lifetime<RustInterner<'t
 
 impl<'tcx> LowerInto<'tcx, chalk_ir::Const<RustInterner<'tcx>>> for ty::Const<'tcx> {
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::Const<RustInterner<'tcx>> {
-        let ty = self.ty.lower_into(interner);
-        let value = match self.val {
+        let ty = self.ty().lower_into(interner);
+        let value = match self.val() {
             ty::ConstKind::Value(val) => {
                 chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
             }
@@ -536,7 +532,7 @@ impl<'tcx> LowerInto<'tcx, ty::Const<'tcx>> for &chalk_ir::Const<RustInterner<'t
             chalk_ir::ConstValue::Placeholder(_p) => unimplemented!(),
             chalk_ir::ConstValue::Concrete(c) => ty::ConstKind::Value(c.interned),
         };
-        ty::Const { ty, val }
+        interner.tcx.mk_const(ty::ConstS { ty, val })
     }
 }
 
@@ -572,7 +568,7 @@ impl<'tcx> LowerInto<'tcx, ty::subst::GenericArg<'tcx>>
             }
             chalk_ir::GenericArgData::Const(c) => {
                 let c: ty::Const<'tcx> = c.lower_into(interner);
-                interner.tcx.mk_const(c).into()
+                c.into()
             }
         }
     }
@@ -915,8 +911,8 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BoundRegionKind::BrNamed(def_id, _name) => {
                     if !self.named_parameters.iter().any(|d| *d == def_id) {
                         self.named_parameters.push(def_id);
@@ -977,12 +973,12 @@ impl<'a, 'tcx> TypeFolder<'tcx> for NamedBoundVarSubstitutor<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match r {
-            ty::ReLateBound(index, br) if *index == self.binder_index => match br.kind {
+        match *r {
+            ty::ReLateBound(index, br) if index == self.binder_index => match br.kind {
                 ty::BrNamed(def_id, _name) => match self.named_parameters.get(&def_id) {
                     Some(idx) => {
                         let new_br = ty::BoundRegion { var: br.var, kind: ty::BrAnon(*idx) };
-                        return self.tcx.mk_region(RegionKind::ReLateBound(*index, new_br));
+                        return self.tcx.mk_region(ty::ReLateBound(index, new_br));
                     }
                     None => panic!("Missing `BrNamed`."),
                 },
@@ -1054,7 +1050,7 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
     }
 
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
-        match r {
+        match *r {
             // FIXME(chalk) - jackh726 - this currently isn't hit in any tests,
             // since canonicalization will already change these to canonical
             // variables (ty::ReLateBound).
@@ -1064,14 +1060,14 @@ impl<'tcx> TypeFolder<'tcx> for ParamsSubstitutor<'tcx> {
                         var: ty::BoundVar::from_u32(*idx),
                         kind: ty::BrAnon(*idx),
                     };
-                    self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
+                    self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
                 None => {
                     let idx = self.named_regions.len() as u32;
                     let br =
                         ty::BoundRegion { var: ty::BoundVar::from_u32(idx), kind: ty::BrAnon(idx) };
                     self.named_regions.insert(_re.def_id, idx);
-                    self.tcx.mk_region(RegionKind::ReLateBound(self.binder_index, br))
+                    self.tcx.mk_region(ty::ReLateBound(self.binder_index, br))
                 }
             },
 
@@ -1144,7 +1140,7 @@ impl<'tcx> TypeVisitor<'tcx> for PlaceholdersCollector {
     }
 
     fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
+        match *r {
             ty::RePlaceholder(p) if p.universe == self.universe_index => {
                 if let ty::BoundRegionKind::BrAnon(anon) = p.name {
                     self.next_anon_region_placeholder = self.next_anon_region_placeholder.max(anon);

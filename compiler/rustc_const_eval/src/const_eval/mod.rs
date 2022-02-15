@@ -139,14 +139,14 @@ fn const_to_valtree_inner<'tcx>(
 pub(crate) fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
+    val: ty::Const<'tcx>,
 ) -> mir::DestructuredConst<'tcx> {
     trace!("destructure_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.const_to_op(val, None).unwrap();
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
-    let (field_count, variant, down) = match val.ty.kind() {
+    let (field_count, variant, down) = match val.ty().kind() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
         ty::Adt(def, _) if def.variants.is_empty() => {
             return mir::DestructuredConst { variant: None, fields: &[] };
@@ -173,8 +173,8 @@ pub(crate) fn destructure_const<'tcx>(
 pub(crate) fn deref_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx> {
+    val: ty::Const<'tcx>,
+) -> ty::Const<'tcx> {
     trace!("deref_const: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
     let op = ecx.const_to_op(val, None).unwrap();
@@ -194,7 +194,7 @@ pub(crate) fn deref_const<'tcx>(
         // In case of unsized types, figure out the real type behind.
         MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
             ty::Str => bug!("there's no sized equivalent of a `str`"),
-            ty::Slice(elem_ty) => tcx.mk_array(elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
+            ty::Slice(elem_ty) => tcx.mk_array(*elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
             _ => bug!(
                 "type {} should not have metadata, but had {:?}",
                 mplace.layout.ty,
@@ -203,5 +203,5 @@ pub(crate) fn deref_const<'tcx>(
         },
     };
 
-    tcx.mk_const(ty::Const { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
+    tcx.mk_const(ty::ConstS { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
 }

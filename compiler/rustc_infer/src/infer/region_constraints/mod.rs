@@ -8,6 +8,7 @@ use super::{
 };
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
@@ -502,14 +503,15 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             self.make_subregion(origin, sup, sub);
 
             match (sub, sup) {
-                (&ty::ReVar(sub), &ty::ReVar(sup)) => {
+                (Region(Interned(ReVar(sub), _)), Region(Interned(ReVar(sup), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", sub, sup);
-                    self.unification_table().union(sub, sup);
+                    self.unification_table().union(*sub, *sup);
                     self.any_unifications = true;
                 }
-                (&ty::ReVar(vid), value) | (value, &ty::ReVar(vid)) => {
+                (Region(Interned(ReVar(vid), _)), value)
+                | (value, Region(Interned(ReVar(vid), _))) => {
                     debug!("make_eqregion: unifying {:?} with {:?}", vid, value);
-                    self.unification_table().union_value(vid, UnifiedRegion(Some(value)));
+                    self.unification_table().union_value(*vid, UnifiedRegion(Some(value)));
                     self.any_unifications = true;
                 }
                 (_, _) => {}
@@ -550,20 +552,20 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("origin = {:#?}", origin);
 
-        match (sub, sup) {
-            (&ReLateBound(..), _) | (_, &ReLateBound(..)) => {
+        match (*sub, *sup) {
+            (ReLateBound(..), _) | (_, ReLateBound(..)) => {
                 span_bug!(origin.span(), "cannot relate bound region: {:?} <= {:?}", sub, sup);
             }
-            (_, &ReStatic) => {
+            (_, ReStatic) => {
                 // all regions are subregions of static, so we can ignore this
             }
-            (&ReVar(sub_id), &ReVar(sup_id)) => {
+            (ReVar(sub_id), ReVar(sup_id)) => {
                 self.add_constraint(Constraint::VarSubVar(sub_id, sup_id), origin);
             }
-            (_, &ReVar(sup_id)) => {
+            (_, ReVar(sup_id)) => {
                 self.add_constraint(Constraint::RegSubVar(sub, sup_id), origin);
             }
-            (&ReVar(sub_id), _) => {
+            (ReVar(sub_id), _) => {
                 self.add_constraint(Constraint::VarSubReg(sub_id, sup), origin);
             }
             _ => {
@@ -591,16 +593,12 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: lub_regions({:?}, {:?})", a, b);
-        match (a, b) {
-            (r @ &ReStatic, _) | (_, r @ &ReStatic) => {
-                r // nothing lives longer than static
-            }
-
-            _ if a == b => {
-                a // LUB(a,a) = a
-            }
-
-            _ => self.combine_vars(tcx, Lub, a, b, origin),
+        if a.is_static() || b.is_static() {
+            a // nothing lives longer than static
+        } else if a == b {
+            a // LUB(a,a) = a
+        } else {
+            self.combine_vars(tcx, Lub, a, b, origin)
         }
     }
 
@@ -613,16 +611,14 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     ) -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: glb_regions({:?}, {:?})", a, b);
-        match (a, b) {
-            (&ReStatic, r) | (r, &ReStatic) => {
-                r // static lives longer than everything else
-            }
-
-            _ if a == b => {
-                a // GLB(a,a) = a
-            }
-
-            _ => self.combine_vars(tcx, Glb, a, b, origin),
+        if a.is_static() {
+            b // static lives longer than everything else
+        } else if b.is_static() {
+            a // static lives longer than everything else
+        } else if a == b {
+            a // GLB(a,a) = a
+        } else {
+            self.combine_vars(tcx, Glb, a, b, origin)
         }
     }
 
@@ -639,11 +635,11 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         region: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        match region {
+        match *region {
             ty::ReVar(rid) => {
-                let unified_region = self.unification_table().probe_value(*rid);
+                let unified_region = self.unification_table().probe_value(rid);
                 unified_region.0.unwrap_or_else(|| {
-                    let root = self.unification_table().find(*rid).vid;
+                    let root = self.unification_table().find(rid).vid;
                     tcx.reuse_or_mk_region(region, ty::ReVar(root))
                 })
             }
@@ -767,8 +763,7 @@ impl<'tcx> VerifyBound<'tcx> {
     pub fn must_hold(&self) -> bool {
         match self {
             VerifyBound::IfEq(..) => false,
-            VerifyBound::OutlivedBy(ty::ReStatic) => true,
-            VerifyBound::OutlivedBy(_) => false,
+            VerifyBound::OutlivedBy(re) => re.is_static(),
             VerifyBound::IsEmpty => false,
             VerifyBound::AnyBound(bs) => bs.iter().any(|b| b.must_hold()),
             VerifyBound::AllBounds(bs) => bs.iter().all(|b| b.must_hold()),

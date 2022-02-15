@@ -709,7 +709,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         let literal = self.monomorphize(constant.literal);
         let val = match literal {
             mir::ConstantKind::Val(val, _) => val,
-            mir::ConstantKind::Ty(ct) => match ct.val {
+            mir::ConstantKind::Ty(ct) => match ct.val() {
                 ty::ConstKind::Value(val) => val,
                 ty::ConstKind::Unevaluated(ct) => {
                     let param_env = ty::ParamEnv::reveal_all();
@@ -731,13 +731,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.visit_ty(literal.ty(), TyContext::Location(location));
     }
 
-    fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
-        debug!("visiting const {:?} @ {:?}", *constant, location);
+    fn visit_const(&mut self, constant: ty::Const<'tcx>, location: Location) {
+        debug!("visiting const {:?} @ {:?}", constant, location);
 
-        let substituted_constant = self.monomorphize(*constant);
+        let substituted_constant = self.monomorphize(constant);
         let param_env = ty::ParamEnv::reveal_all();
 
-        match substituted_constant.val {
+        match substituted_constant.val() {
             ty::ConstKind::Value(val) => collect_const_value(self.tcx, val, self.output),
             ty::ConstKind::Unevaluated(unevaluated) => {
                 match self.tcx.const_eval_resolve(param_env, unevaluated, None) {
@@ -1042,7 +1042,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
     match (&source_ty.kind(), &target_ty.kind()) {
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            ptr_vtable(a, b)
+            ptr_vtable(*a, *b)
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             ptr_vtable(source_ty.boxed_ty(), target_ty.boxed_ty())

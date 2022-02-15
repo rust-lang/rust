@@ -167,7 +167,7 @@ pub trait InferCtxtExt<'tcx> {
         predicate: &T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
-        obligated_types: &mut Vec<&ty::TyS<'tcx>>,
+        obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
         T: fmt::Display;
@@ -839,7 +839,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
                     break;
                 };
-                suggested_ty = inner_ty;
+                suggested_ty = *inner_ty;
 
                 let new_obligation = self.mk_trait_obligation_with_new_self_ty(
                     obligation.param_env,
@@ -1597,7 +1597,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             if let Some(cause) =
                 typeck_results.generator_interior_types.as_ref().skip_binder().iter().find(
                     |ty::GeneratorInteriorTypeCause { ty, .. }| {
-                        ty_matches(typeck_results.generator_interior_types.rebind(ty))
+                        ty_matches(typeck_results.generator_interior_types.rebind(*ty))
                     },
                 )
             {
@@ -1904,7 +1904,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         predicate: &T,
         param_env: ty::ParamEnv<'tcx>,
         cause_code: &ObligationCauseCode<'tcx>,
-        obligated_types: &mut Vec<&ty::TyS<'tcx>>,
+        obligated_types: &mut Vec<Ty<'tcx>>,
         seen_requirements: &mut FxHashSet<DefId>,
     ) where
         T: fmt::Display,

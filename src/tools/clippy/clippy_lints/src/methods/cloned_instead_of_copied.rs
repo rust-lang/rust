@@ -30,7 +30,7 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span,
     };
     match inner_ty.kind() {
         // &T where T: Copy
-        ty::Ref(_, ty, _) if is_copy(cx, ty) => {},
+        ty::Ref(_, ty, _) if is_copy(cx, *ty) => {},
         _ => return,
     };
     span_lint_and_sugg(

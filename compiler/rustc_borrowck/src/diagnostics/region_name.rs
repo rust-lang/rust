@@ -264,7 +264,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let tcx = self.infcx.tcx;
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
-        match error_region {
+        match *error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
                     let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
@@ -433,7 +433,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         span: Span,
         counter: usize,
     ) -> RegionNameHighlight {
-        let mut highlight = RegionHighlightMode::default();
+        let mut highlight = RegionHighlightMode::new(self.infcx.tcx);
         highlight.highlighting_region_vid(needle_fr, counter);
         let type_name =
             self.infcx.extract_inference_diagnostics_data(ty.into(), Some(highlight)).name;
@@ -500,7 +500,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
 
                     // Otherwise, let's descend into the referent types.
-                    search_stack.push((referent_ty, &referent_hir_ty.ty));
+                    search_stack.push((*referent_ty, &referent_hir_ty.ty));
                 }
 
                 // Match up something like `Foo<'1>`
@@ -539,7 +539,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))
                 | (ty::Array(elem_ty, _), hir::TyKind::Array(elem_hir_ty, _)) => {
-                    search_stack.push((elem_ty, elem_hir_ty));
+                    search_stack.push((*elem_ty, elem_hir_ty));
                 }
 
                 (ty::RawPtr(mut_ty), hir::TyKind::Ptr(mut_hir_ty)) => {
@@ -818,7 +818,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             return None;
         }
 
-        let mut highlight = RegionHighlightMode::default();
+        let mut highlight = RegionHighlightMode::new(tcx);
         highlight.highlighting_region_vid(fr, *self.next_region_name.try_borrow().unwrap());
         let type_name =
             self.infcx.extract_inference_diagnostics_data(yield_ty.into(), Some(highlight)).name;

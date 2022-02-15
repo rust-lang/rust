@@ -1,8 +1,8 @@
 //! An iterator over the type substructure.
 //! WARNING: this does not keep track of the region depth.
 
-use crate::ty;
 use crate::ty::subst::{GenericArg, GenericArgKind};
+use crate::ty::{self, Ty};
 use rustc_data_structures::sso::SsoHashSet;
 use smallvec::{self, SmallVec};
 
@@ -96,7 +96,7 @@ impl<'tcx> GenericArg<'tcx> {
     }
 }
 
-impl<'tcx> super::TyS<'tcx> {
+impl<'tcx> Ty<'tcx> {
     /// Iterator that walks `self` and any types reachable from
     /// `self`, in depth-first order. Note that just walks the types
     /// that appear in `self`, it does not descend into the fields of
@@ -107,7 +107,7 @@ impl<'tcx> super::TyS<'tcx> {
     /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
     /// [isize] => { [isize], isize }
     /// ```
-    pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
+    pub fn walk(self) -> TypeWalker<'tcx> {
         TypeWalker::new(self.into())
     }
 }
@@ -189,8 +189,8 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
         },
         GenericArgKind::Lifetime(_) => {}
         GenericArgKind::Const(parent_ct) => {
-            stack.push(parent_ct.ty.into());
-            match parent_ct.val {
+            stack.push(parent_ct.ty().into());
+            match parent_ct.val() {
                 ty::ConstKind::Infer(_)
                 | ty::ConstKind::Param(_)
                 | ty::ConstKind::Placeholder(_)

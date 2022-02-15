@@ -368,12 +368,12 @@ pub enum ExprKind<'tcx> {
     },
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
-        value: &'tcx Const<'tcx>,
+        value: Const<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: ExprId,
-        count: &'tcx Const<'tcx>,
+        count: Const<'tcx>,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
@@ -407,7 +407,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A literal.
     Literal {
-        literal: &'tcx Const<'tcx>,
+        literal: Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
         /// The `DefId` of the `const` item this literal
         /// was produced from, if this is not a user-written
@@ -419,7 +419,7 @@ pub enum ExprKind<'tcx> {
     /// This is only distinguished from `Literal` so that we can register some
     /// info for diagnostics.
     StaticRef {
-        literal: &'tcx Const<'tcx>,
+        literal: Const<'tcx>,
         def_id: DefId,
     },
     /// Inline assembly, i.e. `asm!()`.
@@ -501,7 +501,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: &'tcx Const<'tcx>,
+        value: Const<'tcx>,
         span: Span,
     },
     SymFn {
@@ -640,7 +640,7 @@ pub enum PatKind<'tcx> {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: &'tcx ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
     },
 
     Range(PatRange<'tcx>),
@@ -670,8 +670,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: &'tcx ty::Const<'tcx>,
-    pub hi: &'tcx ty::Const<'tcx>,
+    pub lo: ty::Const<'tcx>,
+    pub hi: ty::Const<'tcx>,
     pub end: RangeEnd,
 }
 

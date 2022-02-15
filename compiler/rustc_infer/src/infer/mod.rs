@@ -382,7 +382,7 @@ impl<'tcx> ValuePairs<'tcx> {
             found: ty::Term::Ty(found),
         }) = self
         {
-            Some((expected, found))
+            Some((*expected, *found))
         } else {
             None
         }
@@ -1079,11 +1079,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.mk_ty_var(vid)
     }
 
-    pub fn next_const_var(
-        &self,
-        ty: Ty<'tcx>,
-        origin: ConstVariableOrigin,
-    ) -> &'tcx ty::Const<'tcx> {
+    pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
         self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
     }
 
@@ -1092,7 +1088,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         origin: ConstVariableOrigin,
         universe: ty::UniverseIndex,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         let vid = self
             .inner
             .borrow_mut()
@@ -1435,7 +1431,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn probe_const_var(
         &self,
         vid: ty::ConstVid<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
+    ) -> Result<ty::Const<'tcx>, ty::UniverseIndex> {
         match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
@@ -1501,8 +1497,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_mismatched_consts(
         &self,
         cause: &ObligationCause<'tcx>,
-        expected: &'tcx ty::Const<'tcx>,
-        actual: &'tcx ty::Const<'tcx>,
+        expected: ty::Const<'tcx>,
+        actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> DiagnosticBuilder<'tcx> {
         let trace = TypeTrace::consts(cause, true, expected, actual);
@@ -1756,8 +1752,8 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_const(ct: &'tcx ty::Const<'tcx>) -> Option<Self> {
-        match ct.val {
+    pub fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
+        match ct.val() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
         }
@@ -1777,13 +1773,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
         self.infcx.shallow_resolve_ty(ty)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val() {
             self.infcx
                 .inner
                 .borrow_mut()
                 .const_unification_table()
-                .probe_value(*vid)
+                .probe_value(vid)
                 .val
                 .known()
                 .unwrap_or(ct)
@@ -1813,8 +1809,8 @@ impl<'tcx> TypeTrace<'tcx> {
     pub fn consts(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),

@@ -239,7 +239,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    ) -> &'tcx Const<'tcx> {
+    ) -> Const<'tcx> {
         if let Some(param) = param {
             if let GenericArgKind::Const(ct) = self.var_for_def(span, param).unpack() {
                 return ct;
@@ -282,7 +282,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
-            self.normalize_associated_types_in(span, &ty)
+            self.normalize_associated_types_in(span, ty)
         }
     }
 

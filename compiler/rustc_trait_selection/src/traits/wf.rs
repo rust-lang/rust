@@ -41,7 +41,7 @@ pub fn obligations<'a, 'tcx>(
             .into()
         }
         GenericArgKind::Const(ct) => {
-            match ct.val {
+            match ct.val() {
                 ty::ConstKind::Infer(infer) => {
                     let resolved = infcx.shallow_resolve(infer);
                     if resolved == infer {
@@ -49,7 +49,9 @@ pub fn obligations<'a, 'tcx>(
                         return None;
                     }
 
-                    infcx.tcx.mk_const(ty::Const { val: ty::ConstKind::Infer(resolved), ty: ct.ty })
+                    infcx
+                        .tcx
+                        .mk_const(ty::ConstS { val: ty::ConstKind::Infer(resolved), ty: ct.ty() })
                 }
                 _ => ct,
             }
@@ -198,7 +200,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     trait_ref: &ty::TraitRef<'tcx>,
     item: Option<&hir::Item<'tcx>>,
     cause: &mut traits::ObligationCause<'tcx>,
-    pred: &ty::Predicate<'tcx>,
+    pred: ty::Predicate<'tcx>,
 ) {
     debug!(
         "extended_cause_with_original_assoc_item_obligation {:?} {:?} {:?} {:?}",
@@ -319,7 +321,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 trait_ref,
                 item,
                 &mut cause,
-                &obligation.predicate,
+                obligation.predicate,
             );
             traits::Obligation::with_depth(cause, depth, param_env, obligation.predicate)
         };
@@ -442,7 +444,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 GenericArgKind::Lifetime(_) => continue,
 
                 GenericArgKind::Const(constant) => {
-                    match constant.val {
+                    match constant.val() {
                         ty::ConstKind::Unevaluated(uv) => {
                             let obligations = self.nominal_obligations(uv.def.did, uv.substs);
                             self.out.extend(obligations);
@@ -464,9 +466,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                             if resolved != infer {
                                 let cause = self.cause(traits::MiscObligation);
 
-                                let resolved_constant = self.infcx.tcx.mk_const(ty::Const {
+                                let resolved_constant = self.infcx.tcx.mk_const(ty::ConstS {
                                     val: ty::ConstKind::Infer(resolved),
-                                    ..*constant
+                                    ty: constant.ty(),
                                 });
                                 self.out.push(traits::Obligation::with_depth(
                                     cause,

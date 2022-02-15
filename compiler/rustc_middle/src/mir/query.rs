@@ -387,7 +387,7 @@ pub enum ClosureOutlivesSubject<'tcx> {
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [&'tcx ty::Const<'tcx>],
+    pub fields: &'tcx [ty::Const<'tcx>],
 }
 
 /// Coverage information summarized from a MIR if instrumented for source code coverage (see

@@ -139,7 +139,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     /// Returns `true` if a closure is inferred to be an `FnMut` closure.
     fn is_closure_fn_mut(&self, fr: RegionVid) -> bool {
-        if let Some(ty::ReFree(free_region)) = self.to_error_region(fr) {
+        if let Some(ty::ReFree(free_region)) = self.to_error_region(fr).as_deref() {
             if let ty::BoundRegionKind::BrEnv = free_region.bound_region {
                 if let DefiningTy::Closure(_, substs) =
                     self.regioncx.universal_regions().defining_ty
@@ -628,8 +628,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         fr_name: RegionName,
         outlived_fr: RegionVid,
     ) {
-        if let (Some(f), Some(ty::RegionKind::ReStatic)) =
-            (self.to_error_region(fr), self.to_error_region(outlived_fr))
+        if let (Some(f), Some(ty::ReStatic)) =
+            (self.to_error_region(fr), self.to_error_region(outlived_fr).as_deref())
         {
             if let Some(&ty::Opaque(did, substs)) = self
                 .infcx
@@ -652,7 +652,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             bound.kind().skip_binder()
                         {
                             let r = r.subst(self.infcx.tcx, substs);
-                            if let ty::RegionKind::ReStatic = r {
+                            if r.is_static() {
                                 found = true;
                                 break;
                             } else {

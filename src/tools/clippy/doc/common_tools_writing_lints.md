@@ -26,7 +26,7 @@ Sometimes you may want to retrieve the type `Ty` of an expression `Expr`, for ex
 - does it implement a trait?
 
 This operation is performed using the [`expr_ty()`][expr_ty] method from the [`TypeckResults`][TypeckResults] struct,
-that gives you access to the underlying structure [`TyS`][TyS].
+that gives you access to the underlying structure [`Ty`][Ty].
 
 Example of use:
 ```rust
@@ -259,7 +259,7 @@ expression with a different context from `a`.
    assert_eq!(x_is_some_span.ctxt(), x_unwrap_span.ctxt());
    ```
 
-[TyS]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 [TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
 [expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty

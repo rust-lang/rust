@@ -369,7 +369,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .try_coerce(
                                 self.expr,
                                 fcx.tcx.mk_ref(
-                                    &ty::RegionKind::ReErased,
+                                    fcx.tcx.lifetimes.re_erased,
                                     TypeAndMut { ty: expr_ty, mutbl },
                                 ),
                                 self.cast_ty,
@@ -419,7 +419,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         .try_coerce(
                             self.expr,
                             fcx.tcx.mk_ref(
-                                &ty::RegionKind::ReErased,
+                                fcx.tcx.lifetimes.re_erased,
                                 TypeAndMut { ty: self.expr_ty, mutbl },
                             ),
                             self.cast_ty,
@@ -885,7 +885,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     });
 
                 // this will report a type mismatch if needed
-                fcx.demand_eqtype(self.span, ety, m_cast.ty);
+                fcx.demand_eqtype(self.span, *ety, m_cast.ty);
                 return Ok(CastKind::ArrayPtrCast);
             }
         }

@@ -703,7 +703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut bound_spans = vec![];
 
                     let mut collect_type_param_suggestions =
-                        |self_ty: Ty<'tcx>, parent_pred: &ty::Predicate<'tcx>, obligation: &str| {
+                        |self_ty: Ty<'tcx>, parent_pred: ty::Predicate<'tcx>, obligation: &str| {
                             // We don't care about regions here, so it's fine to skip the binder here.
                             if let (ty::Param(_), ty::PredicateKind::Trait(p)) =
                                 (self_ty.kind(), parent_pred.kind().skip_binder())
@@ -892,7 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .filter(|(pred, _, _parent_pred)| !skip_list.contains(&pred))
                         .filter_map(|(pred, parent_pred, _cause)| {
                             format_pred(*pred).map(|(p, self_ty)| {
-                                collect_type_param_suggestions(self_ty, pred, &p);
+                                collect_type_param_suggestions(self_ty, *pred, &p);
                                 match parent_pred {
                                     None => format!("`{}`", &p),
                                     Some(parent_pred) => match format_pred(*parent_pred) {
@@ -900,7 +900,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Some((parent_p, _)) => {
                                             collect_type_param_suggestions(
                                                 self_ty,
-                                                parent_pred,
+                                                *parent_pred,
                                                 &p,
                                             );
                                             format!("`{}`\nwhich is required by `{}`", p, parent_p)
@@ -1086,8 +1086,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, t_type, mutability) = rcvr_ty.kind() {
                     if needs_mut {
                         let trait_type = self.tcx.mk_ref(
-                            region,
-                            ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() },
+                            *region,
+                            ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
                         err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
                     }
@@ -1462,13 +1462,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // just this list.
             for (rcvr_ty, post) in &[
                 (rcvr_ty, ""),
-                (self.tcx.mk_mut_ref(&ty::ReErased, rcvr_ty), "&mut "),
-                (self.tcx.mk_imm_ref(&ty::ReErased, rcvr_ty), "&"),
+                (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
+                (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
                 if let Ok(pick) = self.lookup_probe(
                     span,
                     item_name,
-                    rcvr_ty,
+                    *rcvr_ty,
                     rcvr,
                     crate::check::method::probe::ProbeScope::AllTraits,
                 ) {
@@ -1487,10 +1487,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     break;
                 }
                 for (rcvr_ty, pre) in &[
-                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::OwnedBox), "Box::new"),
-                    (self.tcx.mk_lang_item(rcvr_ty, LangItem::Pin), "Pin::new"),
-                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Arc), "Arc::new"),
-                    (self.tcx.mk_diagnostic_item(rcvr_ty, sym::Rc), "Rc::new"),
+                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
+                    (self.tcx.mk_lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
+                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
+                    (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty {
                         if let Ok(pick) = self.lookup_probe(

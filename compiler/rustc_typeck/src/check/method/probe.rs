@@ -515,7 +515,7 @@ fn method_autoderef_steps<'tcx>(
                 steps.push(CandidateStep {
                     self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars,
-                        infcx.tcx.mk_slice(elem_ty),
+                        infcx.tcx.mk_slice(*elem_ty),
                     ),
                     autoderefs: dereferences,
                     // this could be from an unsafe deref if we had
@@ -1247,7 +1247,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         let ty = match self_ty.kind() {
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) => ty,
+            &ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) => ty,
             _ => return None,
         };
 

@@ -92,7 +92,7 @@ fn are_inner_types_recursive<'tcx>(
             seen,
             shadow_seen,
             representable_cache,
-            ty,
+            *ty,
             force_result,
         ),
         ty::Adt(def, substs) => {
@@ -255,7 +255,7 @@ fn is_type_structurally_recursive<'tcx>(
     force_result: &mut bool,
 ) -> Representability {
     debug!("is_type_structurally_recursive: {:?} {:?}", ty, sp);
-    if let Some(representability) = representable_cache.get(ty) {
+    if let Some(representability) = representable_cache.get(&ty) {
         debug!(
             "is_type_structurally_recursive: {:?} {:?} - (cached) {:?}",
             ty, sp, representability

@@ -140,8 +140,8 @@ impl<'tcx> TypeVisitor<'tcx> for MaxEscapingBoundVarVisitor {
         ControlFlow::CONTINUE
     }
 
-    fn visit_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.val {
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match ct.val() {
             ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
@@ -188,7 +188,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         }
 
         if let Some(ty) = self.cache.get(&ty) {
-            return Ok(ty);
+            return Ok(*ty);
         }
 
         // See note in `rustc_trait_selection::traits::project` about why we
@@ -324,8 +324,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
     fn try_fold_const(
         &mut self,
-        constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+        constant: ty::Const<'tcx>,
+    ) -> Result<ty::Const<'tcx>, Self::Error> {
         let constant = constant.try_super_fold_with(self)?;
         Ok(constant.eval(self.infcx.tcx, self.param_env))
     }

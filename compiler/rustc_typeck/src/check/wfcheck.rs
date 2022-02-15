@@ -336,7 +336,7 @@ fn check_gat_where_clauses(
             // Ignore `'static` lifetimes for the purpose of this lint: it's
             // because we know it outlives everything and so doesn't give meaninful
             // clues
-            if let ty::ReStatic = region {
+            if region.is_static() {
                 continue;
             }
             for (ty, ty_idx) in &types {
@@ -355,12 +355,11 @@ fn check_gat_where_clauses(
                     // Same for the region. In our example, 'a corresponds
                     // to the 'me parameter.
                     let region_param = generics.param_at(*region_idx, tcx);
-                    let region_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_param.def_id,
-                            index: region_param.index,
-                            name: region_param.name,
-                        }));
+                    let region_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_param.def_id,
+                        index: region_param.index,
+                        name: region_param.name,
+                    }));
                     // The predicate we expect to see. (In our example,
                     // `Self: 'me`.)
                     let clause = ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
@@ -381,14 +380,14 @@ fn check_gat_where_clauses(
             // Ignore `'static` lifetimes for the purpose of this lint: it's
             // because we know it outlives everything and so doesn't give meaninful
             // clues
-            if let ty::ReStatic = region_a {
+            if region_a.is_static() {
                 continue;
             }
             for (region_b, region_b_idx) in &regions {
                 if region_a == region_b {
                     continue;
                 }
-                if let ty::ReStatic = region_b {
+                if region_b.is_static() {
                     continue;
                 }
 
@@ -397,20 +396,18 @@ fn check_gat_where_clauses(
                     debug!("required clause: {} must outlive {}", region_a, region_b);
                     // Translate into the generic parameters of the GAT.
                     let region_a_param = generics.param_at(*region_a_idx, tcx);
-                    let region_a_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_a_param.def_id,
-                            index: region_a_param.index,
-                            name: region_a_param.name,
-                        }));
+                    let region_a_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_a_param.def_id,
+                        index: region_a_param.index,
+                        name: region_a_param.name,
+                    }));
                     // Same for the region.
                     let region_b_param = generics.param_at(*region_b_idx, tcx);
-                    let region_b_param =
-                        tcx.mk_region(ty::RegionKind::ReEarlyBound(ty::EarlyBoundRegion {
-                            def_id: region_b_param.def_id,
-                            index: region_b_param.index,
-                            name: region_b_param.name,
-                        }));
+                    let region_b_param = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: region_b_param.def_id,
+                        index: region_b_param.index,
+                        name: region_b_param.name,
+                    }));
                     // The predicate we expect to see.
                     let clause = ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
                         region_a_param,
@@ -569,7 +566,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     wf_tys: &FxHashSet<Ty<'tcx>>,
     add_constraints: impl for<'a> FnOnce(
         &'a InferCtxt<'a, 'tcx>,
-        &'a Vec<(&'tcx ty::RegionKind, GenericKind<'tcx>)>,
+        &'a Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
     ),
 ) -> bool {
     // Unfortunately, we have to use a new `InferCtxt` each call, because
@@ -1298,8 +1295,8 @@ fn check_where_clauses<'tcx, 'fcx>(
                     ControlFlow::BREAK
                 }
 
-                fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-                    if let ty::ConstKind::Param(param) = c.val {
+                fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+                    if let ty::ConstKind::Param(param) = c.val() {
                         self.params.insert(param.index);
                     }
                     c.super_visit_with(self)

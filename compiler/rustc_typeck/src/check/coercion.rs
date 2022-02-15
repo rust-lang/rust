@@ -142,7 +142,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     where
         F: FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>>,
     {
-        self.unify(&a, &b)
+        self.unify(a, b)
             .and_then(|InferOk { value: ty, obligations }| success(f(ty), ty, obligations))
     }
 
@@ -472,7 +472,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
         adjustments.push(Adjustment {
-            kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
+            kind: Adjust::Borrow(AutoBorrow::Ref(*r_borrow, mutbl)),
             target: ty,
         });
 

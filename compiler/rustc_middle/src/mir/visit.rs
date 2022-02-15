@@ -194,13 +194,13 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_region(&mut self,
-                            region: & $($mutability)? ty::Region<'tcx>,
+                            region: $(& $mutability)? ty::Region<'tcx>,
                             _: Location) {
                 self.super_region(region);
             }
 
             fn visit_const(&mut self,
-                           constant: & $($mutability)? &'tcx ty::Const<'tcx>,
+                           constant: $(& $mutability)? ty::Const<'tcx>,
                            _: Location) {
                 self.super_const(constant);
             }
@@ -242,7 +242,7 @@ macro_rules! make_mir_visitor {
             ) {
                 let span = body.span;
                 if let Some(gen) = &$($mutability)? body.generator {
-                    if let Some(yield_ty) = &$($mutability)? gen.yield_ty {
+                    if let Some(yield_ty) = $(& $mutability)? gen.yield_ty {
                         self.visit_ty(
                             yield_ty,
                             TyContext::YieldTy(SourceInfo::outermost(span))
@@ -266,7 +266,7 @@ macro_rules! make_mir_visitor {
                 }
 
                 self.visit_ty(
-                    &$($mutability)? body.return_ty(),
+                    $(& $mutability)? body.return_ty(),
                     TyContext::ReturnTy(SourceInfo::outermost(body.span))
                 );
 
@@ -355,7 +355,7 @@ macro_rules! make_mir_visitor {
                         ty::InstanceDef::DropGlue(_def_id, Some(ty)) |
                         ty::InstanceDef::CloneShim(_def_id, ty) => {
                             // FIXME(eddyb) use a better `TyContext` here.
-                            self.visit_ty(ty, TyContext::Location(location));
+                            self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
                     }
                     self.visit_substs(callee_substs, location);
@@ -487,7 +487,7 @@ macro_rules! make_mir_visitor {
                         targets: _
                     } => {
                         self.visit_operand(discr, location);
-                        self.visit_ty(switch_ty, TyContext::Location(location));
+                        self.visit_ty($(& $mutability)? *switch_ty, TyContext::Location(location));
                     }
 
                     TerminatorKind::Drop {
@@ -641,7 +641,7 @@ macro_rules! make_mir_visitor {
                     Rvalue::ThreadLocalRef(_) => {}
 
                     Rvalue::Ref(r, bk, path) => {
-                        self.visit_region(r, location);
+                        self.visit_region($(& $mutability)? *r, location);
                         let ctx = match bk {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
@@ -680,7 +680,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::Cast(_cast_kind, operand, ty) => {
                         self.visit_operand(operand, location);
-                        self.visit_ty(ty, TyContext::Location(location));
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
                     Rvalue::BinaryOp(_bin_op, box(lhs, rhs))
@@ -702,14 +702,14 @@ macro_rules! make_mir_visitor {
                     }
 
                     Rvalue::NullaryOp(_op, ty) => {
-                        self.visit_ty(ty, TyContext::Location(location));
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
 
                     Rvalue::Aggregate(kind, operands) => {
                         let kind = &$($mutability)? **kind;
                         match kind {
                             AggregateKind::Array(ty) => {
-                                self.visit_ty(ty, TyContext::Location(location));
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                             }
                             AggregateKind::Tuple => {
                             }
@@ -744,7 +744,7 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::ShallowInitBox(operand, ty) => {
                         self.visit_operand(operand, location);
-                        self.visit_ty(ty, TyContext::Location(location));
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     }
                 }
             }
@@ -815,7 +815,7 @@ macro_rules! make_mir_visitor {
                     is_block_tail: _,
                 } = local_decl;
 
-                self.visit_ty(ty, TyContext::LocalDecl {
+                self.visit_ty($(& $mutability)? *ty, TyContext::LocalDecl {
                     local,
                     source_info: *source_info,
                 });
@@ -864,8 +864,8 @@ macro_rules! make_mir_visitor {
                 self.visit_span(span);
                 drop(user_ty); // no visit method for this
                 match literal {
-                    ConstantKind::Ty(ct) => self.visit_const(ct, location),
-                    ConstantKind::Val(_, t) => self.visit_ty(t, TyContext::Location(location)),
+                    ConstantKind::Ty(ct) => self.visit_const($(& $mutability)? *ct, location),
+                    ConstantKind::Val(_, ty) => self.visit_ty($(& $mutability)? *ty, TyContext::Location(location)),
                 }
             }
 
@@ -894,16 +894,16 @@ macro_rules! make_mir_visitor {
                 ty: & $($mutability)? CanonicalUserTypeAnnotation<'tcx>,
             ) {
                 self.visit_span(& $($mutability)? ty.span);
-                self.visit_ty(& $($mutability)? ty.inferred_ty, TyContext::UserTy(ty.span));
+                self.visit_ty($(& $mutability)? ty.inferred_ty, TyContext::UserTy(ty.span));
             }
 
             fn super_ty(&mut self, _ty: $(& $mutability)? Ty<'tcx>) {
             }
 
-            fn super_region(&mut self, _region: & $($mutability)? ty::Region<'tcx>) {
+            fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_const(&mut self, _const: & $($mutability)? &'tcx ty::Const<'tcx>) {
+            fn super_const(&mut self, _const: $(& $mutability)? ty::Const<'tcx>) {
             }
 
             fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {

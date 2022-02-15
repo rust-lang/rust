@@ -94,7 +94,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         let fld_c = |bound_var: ty::BoundVar, ty| {
-            self.tcx.mk_const(ty::Const {
+            self.tcx.mk_const(ty::ConstS {
                 val: ty::ConstKind::Placeholder(ty::PlaceholderConst {
                     universe: next_universe,
                     name: ty::BoundConst { var: bound_var, ty },

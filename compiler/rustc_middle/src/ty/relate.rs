@@ -89,9 +89,9 @@ pub trait TypeRelation<'tcx>: Sized {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>;
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>>;
 
     fn binders<T>(
         &mut self,
@@ -149,8 +149,8 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
             Some((ty_def_id, variances)) => {
                 let variance = variances[i];
                 let variance_info = if variance == ty::Invariant {
-                    let ty =
-                        cached_ty.get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
+                    let ty = *cached_ty
+                        .get_or_insert_with(|| tcx.type_of(ty_def_id).subst(tcx, a_subst));
                     ty::VarianceDiagInfo::Invariant { ty, param_index: i.try_into().unwrap() }
                 } else {
                     ty::VarianceDiagInfo::default()
@@ -545,16 +545,16 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 /// it.
 pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     relation: &mut R,
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
-) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
+) -> RelateResult<'tcx, ty::Const<'tcx>> {
     debug!("{}.super_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
     // FIXME(oli-obk): once const generics can have generic types, this assertion
     // will likely get triggered. Move to `normalize_erasing_regions` at that point.
-    let a_ty = tcx.erase_regions(a.ty);
-    let b_ty = tcx.erase_regions(b.ty);
+    let a_ty = tcx.erase_regions(a.ty());
+    let b_ty = tcx.erase_regions(b.ty());
     if a_ty != b_ty {
         relation.tcx().sess.delay_span_bug(
             DUMMY_SP,
@@ -562,14 +562,14 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
         );
     }
 
-    let eagerly_eval = |x: &'tcx ty::Const<'tcx>| x.eval(tcx, relation.param_env());
+    let eagerly_eval = |x: ty::Const<'tcx>| x.eval(tcx, relation.param_env());
     let a = eagerly_eval(a);
     let b = eagerly_eval(b);
 
     // Currently, the values that can be unified are primitive types,
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to structural-match types.
-    let is_match = match (a.val, b.val) {
+    let is_match = match (a.val(), b.val()) {
         (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
@@ -602,13 +602,13 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
                 au.substs,
                 bu.substs,
             )?;
-            return Ok(tcx.mk_const(ty::Const {
+            return Ok(tcx.mk_const(ty::ConstS {
                 val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                     def: au.def,
                     substs,
                     promoted: au.promoted,
                 }),
-                ty: a.ty,
+                ty: a.ty(),
             }));
         }
         _ => false,
@@ -621,8 +621,8 @@ fn check_const_value_eq<'tcx, R: TypeRelation<'tcx>>(
     a_val: ConstValue<'tcx>,
     b_val: ConstValue<'tcx>,
     // FIXME(oli-obk): these arguments should go away with valtrees
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
     // FIXME(oli-obk): this should just be `bool` with valtrees
 ) -> RelateResult<'tcx, bool> {
     let tcx = relation.tcx();
@@ -648,9 +648,9 @@ fn check_const_value_eq<'tcx, R: TypeRelation<'tcx>>(
         }
 
         (ConstValue::ByRef { alloc: alloc_a, .. }, ConstValue::ByRef { alloc: alloc_b, .. })
-            if a.ty.is_ref() || b.ty.is_ref() =>
+            if a.ty().is_ref() || b.ty().is_ref() =>
         {
-            if a.ty.is_ref() && b.ty.is_ref() {
+            if a.ty().is_ref() && b.ty().is_ref() {
                 alloc_a == alloc_b
             } else {
                 false
@@ -663,7 +663,7 @@ fn check_const_value_eq<'tcx, R: TypeRelation<'tcx>>(
             // Both the variant and each field have to be equal.
             if a_destructured.variant == b_destructured.variant {
                 for (a_field, b_field) in iter::zip(a_destructured.fields, b_destructured.fields) {
-                    relation.consts(a_field, b_field)?;
+                    relation.consts(*a_field, *b_field)?;
                 }
 
                 true
@@ -756,12 +756,12 @@ impl<'tcx> Relate<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::Const<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::Const<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         relation.consts(a, b)
     }
 }

@@ -2185,7 +2185,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, &'tcx ty::Const<'tcx>),
+    Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
@@ -2335,7 +2335,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
         match *self {
             Use(ref place) => write!(fmt, "{:?}", place),
-            Repeat(ref a, ref b) => {
+            Repeat(ref a, b) => {
                 write!(fmt, "[{:?}; ", a)?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
@@ -2514,7 +2514,7 @@ pub struct Constant<'tcx> {
 #[derive(Lift)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
-    Ty(&'tcx ty::Const<'tcx>),
+    Ty(ty::Const<'tcx>),
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
     Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
@@ -2522,7 +2522,7 @@ pub enum ConstantKind<'tcx> {
 
 impl<'tcx> Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.const_for_ty()?.val.try_to_scalar() {
+        match self.literal.const_for_ty()?.val().try_to_scalar() {
             Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2539,33 +2539,33 @@ impl<'tcx> Constant<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
-    fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
+    fn from(ct: ty::Const<'tcx>) -> Self {
         Self::Ty(ct)
     }
 }
 
 impl<'tcx> ConstantKind<'tcx> {
     /// Returns `None` if the constant is not trivially safe for use in the type system.
-    pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
+    pub fn const_for_ty(&self) -> Option<ty::Const<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => Some(c),
+            ConstantKind::Ty(c) => Some(*c),
             ConstantKind::Val(..) => None,
         }
     }
 
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty,
-            ConstantKind::Val(_, ty) => ty,
+            ConstantKind::Ty(c) => c.ty(),
+            ConstantKind::Val(_, ty) => *ty,
         }
     }
 
     #[inline]
     pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Ty(c) => c.val().try_to_value(),
             ConstantKind::Val(val, _) => Some(val),
         }
     }
@@ -2829,7 +2829,7 @@ impl<'tcx> Display for ConstantKind<'tcx> {
 }
 
 fn pretty_print_const<'tcx>(
-    c: &ty::Const<'tcx>,
+    c: ty::Const<'tcx>,
     fmt: &mut Formatter<'_>,
     print_types: bool,
 ) -> fmt::Result {

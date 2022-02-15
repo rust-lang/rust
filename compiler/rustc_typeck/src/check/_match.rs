@@ -4,7 +4,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::traits::Obligation;
-use rustc_middle::ty::{self, ToPredicate, Ty, TyS};
+use rustc_middle::ty::{self, ToPredicate, Ty};
 use rustc_span::{MultiSpan, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
@@ -505,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn opt_suggest_box_span(
         &self,
         span: Span,
-        outer_ty: &'tcx TyS<'tcx>,
+        outer_ty: Ty<'tcx>,
         orig_expected: Expectation<'tcx>,
     ) -> Option<Span> {
         match (orig_expected, self.ret_coercion_impl_trait.map(|ty| (self.body_id.owner, ty))) {

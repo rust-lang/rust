@@ -450,7 +450,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .skip_binder()
             .inputs()
             .iter()
-            .map(|ty| ArgKind::from_expected_ty(ty, None))
+            .map(|ty| ArgKind::from_expected_ty(*ty, None))
             .collect();
         let (closure_span, found_args) = match self.get_fn_like_arguments(expr_map_node) {
             Some((sp, args)) => (Some(sp), args),

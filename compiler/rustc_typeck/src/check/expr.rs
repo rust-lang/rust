@@ -421,9 +421,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
                         // the last field of a struct can be unsized.
-                        ExpectHasType(ty)
+                        ExpectHasType(*ty)
                     } else {
-                        Expectation::rvalue_hint(self, ty)
+                        Expectation::rvalue_hint(self, *ty)
                     }
                 }
                 _ => NoExpectation,
@@ -2181,7 +2181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
-        len: &ty::Const<'tcx>,
+        len: ty::Const<'tcx>,
     ) {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
@@ -2216,7 +2216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn no_such_field_err(
         &self,
         field: Ident,
-        expr_t: &'tcx ty::TyS<'tcx>,
+        expr_t: Ty<'tcx>,
         id: HirId,
     ) -> DiagnosticBuilder<'_> {
         let span = field.span;
@@ -2233,7 +2233,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        if let Some((fields, substs)) = self.get_field_candidates(span, &expr_t) {
+        if let Some((fields, substs)) = self.get_field_candidates(span, expr_t) {
             for candidate_field in fields.iter() {
                 if let Some(field_path) = self.check_for_nested_field(
                     span,
@@ -2312,7 +2312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             field_path.push(candidate_field.ident(self.tcx).normalize_to_macros_2_0());
             let field_ty = candidate_field.ty(self.tcx, subst);
-            if let Some((nested_fields, subst)) = self.get_field_candidates(span, &field_ty) {
+            if let Some((nested_fields, subst)) = self.get_field_candidates(span, field_ty) {
                 for field in nested_fields.iter() {
                     let accessible = field.vis.is_accessible_from(id, self.tcx);
                     if accessible {
@@ -2449,7 +2449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // allows them to be inferred based on how they are used later in the
         // function.
         if is_input {
-            let ty = self.structurally_resolved_type(expr.span, &ty);
+            let ty = self.structurally_resolved_type(expr.span, ty);
             match *ty.kind() {
                 ty::FnDef(..) => {
                     let fnptr_ty = self.tcx.mk_fn_ptr(ty.fn_sig(self.tcx));

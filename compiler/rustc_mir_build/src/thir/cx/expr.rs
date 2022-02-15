@@ -583,7 +583,7 @@ impl<'tcx> Cx<'tcx> {
                     _ => span_bug!(expr.span, "unexpected repeat expr ty: {:?}", ty),
                 };
 
-                ExprKind::Repeat { value: self.mirror_expr(v), count }
+                ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
             }
             hir::ExprKind::Ret(ref v) => {
                 ExprKind::Return { value: v.as_ref().map(|v| self.mirror_expr(v)) }
@@ -708,7 +708,7 @@ impl<'tcx> Cx<'tcx> {
                                 // in case we are offsetting from a computed discriminant
                                 // and not the beginning of discriminants (which is always `0`)
                                 let substs = InternalSubsts::identity_for_item(self.tcx(), did);
-                                let lhs = ty::Const {
+                                let lhs = ty::ConstS {
                                     val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
                                         ty::WithOptConstParam::unknown(did),
                                         substs,
@@ -890,7 +890,7 @@ impl<'tcx> Cx<'tcx> {
                 let name = self.tcx.hir().name(hir_id);
                 let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
                 ExprKind::Literal {
-                    literal: self.tcx.mk_const(ty::Const {
+                    literal: self.tcx.mk_const(ty::ConstS {
                         val,
                         ty: self.typeck_results().node_type(expr.hir_id),
                     }),
@@ -903,7 +903,7 @@ impl<'tcx> Cx<'tcx> {
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, res);
                 debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
                 ExprKind::Literal {
-                    literal: self.tcx.mk_const(ty::Const {
+                    literal: self.tcx.mk_const(ty::ConstS {
                         val: ty::ConstKind::Unevaluated(ty::Unevaluated::new(
                             ty::WithOptConstParam::unknown(def_id),
                             substs,

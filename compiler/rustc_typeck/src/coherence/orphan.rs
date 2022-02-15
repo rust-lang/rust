@@ -301,7 +301,7 @@ impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
         }
     }
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match r {
+        match *r {
             ty::ReEarlyBound(p) => {
                 if self.seen.insert(p.index) {
                     ControlFlow::CONTINUE
@@ -312,8 +312,8 @@ impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
             _ => ControlFlow::Break(NotUniqueParam::NotParam(r.into())),
         }
     }
-    fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match c.val {
+    fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match c.val() {
             ty::ConstKind::Param(p) => {
                 if self.seen.insert(p.index) {
                     ControlFlow::CONTINUE

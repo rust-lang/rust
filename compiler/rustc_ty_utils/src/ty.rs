@@ -410,7 +410,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
+        ty::Dynamic(ref data, re) if re.is_static() => data.principal().is_none(),
         _ => false,
     };
 
@@ -474,7 +474,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
                 Some(0) | None => false,
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(*ty)),
             }
         }
         ty::Ref(..) => {

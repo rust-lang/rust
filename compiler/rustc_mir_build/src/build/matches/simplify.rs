@@ -210,7 +210,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Range(PatRange { lo, hi, end }) => {
-                let (range, bias) = match *lo.ty.kind() {
+                let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
@@ -228,7 +228,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
+                    if let (Some(lo), Some(hi)) =
+                        (lo.val().try_to_bits(sz), hi.val().try_to_bits(sz))
+                    {
                         // We want to compare ranges numerically, but the order of the bitwise
                         // representation of signed integers does not match their numeric order.
                         // Thus, to correct the ordering, we need to shift the range of signed
