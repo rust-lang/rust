@@ -105,6 +105,9 @@ const UNWIND_DATA_REG: (i32, i32) = (0, 1); // RAX, RDX
 #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
 const UNWIND_DATA_REG: (i32, i32) = (0, 1); // R0, R1 / X0, X1
 
+#[cfg(target_arch = "m68k")]
+const UNWIND_DATA_REG: (i32, i32) = (0, 1); // D0, D1
+
 #[cfg(any(target_arch = "mips", target_arch = "mips64"))]
 const UNWIND_DATA_REG: (i32, i32) = (4, 5); // A0, A1
 
