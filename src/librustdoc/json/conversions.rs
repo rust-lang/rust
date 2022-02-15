@@ -154,7 +154,11 @@ impl FromWithTcx<clean::Constant> for Constant {
 
 impl FromWithTcx<clean::TypeBinding> for TypeBinding {
     fn from_tcx(binding: clean::TypeBinding, tcx: TyCtxt<'_>) -> Self {
-        TypeBinding { name: binding.name.to_string(), binding: binding.kind.into_tcx(tcx) }
+        TypeBinding {
+            name: binding.assoc.name.to_string(),
+            args: binding.assoc.args.into_tcx(tcx),
+            binding: binding.kind.into_tcx(tcx),
+        }
     }
 }
 
@@ -445,11 +449,12 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { name, self_type, trait_, .. } => {
+            QPath { assoc, self_type, trait_, .. } => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
                 let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 Type::QualifiedPath {
-                    name: name.to_string(),
+                    name: assoc.name.to_string(),
+                    args: Box::new(assoc.args.clone().into_tcx(tcx)),
                     self_type: Box::new((*self_type).into_tcx(tcx)),
                     trait_: Box::new(trait_),
                 }
