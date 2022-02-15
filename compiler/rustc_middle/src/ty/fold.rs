@@ -166,6 +166,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }
+
+    // Indicates that this value has projection types which capture late-bound variables,
+    // which is a sign that the projection types within need further normalization. This
+    // is because we do not replace projections with inference variables when they capture
+    // late-bound variables.
+    fn has_late_bound_vars_in_projection(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_IN_PROJECTION)
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for hir::Constness {

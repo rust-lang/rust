@@ -357,7 +357,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
-        if obligation.predicate.has_projections() {
+        if obligation.predicate.has_late_bound_vars_in_projection() {
             let mut obligations = Vec::new();
             let predicate = crate::traits::project::try_normalize_with_depth_to(
                 self.selcx,

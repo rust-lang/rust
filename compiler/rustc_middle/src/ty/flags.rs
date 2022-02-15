@@ -327,7 +327,13 @@ impl FlagComputation {
     }
 
     fn add_projection_ty(&mut self, projection_ty: ty::ProjectionTy<'_>) {
+        let old_outer_exclusive_binder =
+            std::mem::replace(&mut self.outer_exclusive_binder, ty::INNERMOST);
         self.add_substs(projection_ty.substs);
+        if self.outer_exclusive_binder > ty::INNERMOST {
+            self.add_flags(TypeFlags::HAS_LATE_IN_PROJECTION);
+        }
+        self.outer_exclusive_binder = self.outer_exclusive_binder.max(old_outer_exclusive_binder);
     }
 
     fn add_substs(&mut self, substs: &[GenericArg<'_>]) {
