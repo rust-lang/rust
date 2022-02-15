@@ -68,7 +68,7 @@ impl<C: QueryCache> QueryCacheStore<C> {
 }
 
 struct QueryStateShard<K> {
-    active: FxHashMap<K, QueryResult>,
+    active: FxHashMap<HashStableKey<K>, QueryResult>,
 }
 
 #[derive(Copy, Clone, Hash)]

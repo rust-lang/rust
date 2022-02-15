@@ -29,7 +29,7 @@ use crate::ty::util::Discr;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{HashStable, HashStableEq, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -43,7 +43,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::ops::ControlFlow;
 use std::{fmt, str};
 
@@ -444,31 +444,23 @@ static BOOL_TYS: TyS<'static> = TyS {
     outer_exclusive_binder: DebruijnIndex::from_usize(0),
 };
 
-impl<'tcx> PartialEq for TyS<'tcx> {
-    #[inline]
-    fn eq(&self, other: &TyS<'tcx>) -> bool {
-        // Pointer equality implies equality (due to the unique contents
-        // assumption).
-        ptr::eq(self, other)
-    }
-}
-impl<'tcx> Eq for TyS<'tcx> {}
-
-impl<'tcx> HashStableEq for TyS<'tcx> {
+impl<'tcx> HashStableEq for Ty<'tcx> {
     fn hash_stable_eq(&self, other: &Self) -> bool {
-        self == other
+        let TyS {
+            ref kind,
+
+            // The other fields just provide fast access to information that is
+            // also contained in `kind`, so no need to compare them.
+            flags: _,
+
+            outer_exclusive_binder: _,
+        } = self.0.0;
+
+        kind.hash_stable_eq(other.kind())
     }
 }
 
-impl<'tcx> Hash for TyS<'tcx> {
-    fn hash<H: Hasher>(&self, s: &mut H) {
-        // Pointer hashing is sufficient (due to the unique contents
-        // assumption).
-        (self as *const TyS<'_>).hash(s)
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TyS {
             ref kind,
