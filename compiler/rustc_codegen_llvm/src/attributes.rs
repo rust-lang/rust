@@ -59,8 +59,11 @@ pub fn sanitize<'ll>(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn emit_uwtable(val: &Value, emit: bool) {
-    Attribute::UWTable.toggle_llfn(Function, val, emit);
+pub fn emit_uwtable(val: &Value) {
+    // NOTE: We should determine if we even need async unwind tables, as they
+    // take have more overhead and if we can use sync unwind tables we
+    // probably should.
+    llvm::EmitUWTableAttr(val, true);
 }
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
@@ -275,7 +278,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     // You can also find more info on why Windows always requires uwtables here:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if cx.sess().must_emit_unwind_tables() {
-        attributes::emit_uwtable(llfn, true);
+        attributes::emit_uwtable(llfn);
     }
 
     if cx.sess().opts.debugging_opts.profile_sample_use.is_some() {

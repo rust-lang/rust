@@ -334,6 +334,17 @@ extern "C" void LLVMRustAddStructRetAttr(LLVMValueRef Fn, unsigned Index,
   AddAttribute(F, Index, Attr);
 }
 
+extern "C" void LLVMRustEmitUWTableAttr(LLVMValueRef Fn, bool Async) {
+  Function *F = unwrap<Function>(Fn);
+#if LLVM_VERSION_LT(15, 0)
+  Attribute Attr = Attribute::get(F->getContext(), Attribute::UWTable);
+#else
+  Attribute Attr = Attribute::getWithUWTableKind(
+      F->getContext(), Async ? UWTableKind::Async : UWTableKind::Sync);
+#endif
+  AddAttribute(F, AttributeList::AttrIndex::FunctionIndex, Attr);
+}
+
 extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
                                                    unsigned Index,
                                                    const char *Name,
