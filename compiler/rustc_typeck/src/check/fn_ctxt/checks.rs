@@ -1137,6 +1137,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else if error.obligation.cause.span == call_sp {
                 // Make function calls point at the callee, not the whole thing.
                 if let hir::ExprKind::Call(callee, _) = expr.kind {
+                    let parent_code = error.obligation.cause.clone_code();
+                    *error.obligation.cause.make_mut_code() =
+                        ObligationCauseCode::FunctionCallObligation {
+                            call_hir_id: expr.hir_id,
+                            parent_code,
+                        };
                     error.obligation.cause.span = callee.span;
                 }
             }

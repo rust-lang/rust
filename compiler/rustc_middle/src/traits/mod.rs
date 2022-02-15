@@ -270,6 +270,13 @@ pub enum ObligationCauseCode<'tcx> {
         parent_code: Lrc<ObligationCauseCode<'tcx>>,
     },
 
+    FunctionCallObligation {
+        /// The node of the function call.
+        call_hir_id: hir::HirId,
+        /// The obligation introduced by this argument.
+        parent_code: Lrc<ObligationCauseCode<'tcx>>,
+    },
+
     /// Error derived when matching traits/impls; see ObligationCause for more details
     CompareImplConstObligation,
 

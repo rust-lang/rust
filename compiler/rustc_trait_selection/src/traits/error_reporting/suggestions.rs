@@ -2294,6 +2294,18 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     )
                 });
             }
+            ObligationCauseCode::FunctionCallObligation { ref parent_code, .. } => {
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        err,
+                        predicate,
+                        param_env,
+                        &parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    )
+                });
+            }
             ObligationCauseCode::FunctionArgumentObligation {
                 arg_hir_id,
                 call_hir_id,
