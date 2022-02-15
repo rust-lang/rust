@@ -115,11 +115,13 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                     let tree_contains_self = |tree: &ast::UseTree| {
                         tree.use_tree_list()
                             .map(|tree_list| tree_list.use_trees().any(|it| tree_is_self(&it)))
-                            .unwrap_or(false)
+                            // Glob imports aren't part of the use-tree lists,
+                            // so they need to be handled explicitly
+                            .or_else(|| tree.star_token().map(|_| false))
                     };
                     match (tree_contains_self(lhs_t), tree_contains_self(&rhs_t)) {
-                        (true, false) => continue,
-                        (false, true) => {
+                        (Some(true), None) => continue,
+                        (None, Some(true)) => {
                             ted::replace(lhs_t.syntax(), rhs_t.syntax());
                             *lhs_t = rhs_t;
                             continue;
