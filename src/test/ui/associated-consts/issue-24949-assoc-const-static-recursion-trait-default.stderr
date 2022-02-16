@@ -1,30 +1,9 @@
-error[E0391]: cycle detected when simplifying constant for the type system `DEFAULT_REF_BAR`
+error[E0391]: cycle detected when const-evaluating + checking `DEFAULT_REF_BAR`
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
    |
 LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: ...which requires simplifying constant for the type system `DEFAULT_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
-   |
-LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires const-evaluating + checking `DEFAULT_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
-   |
-LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires normalizing `<GlobalDefaultRef as FooDefault>::BAR`...
-note: ...which requires simplifying constant for the type system `FooDefault::BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
-   |
-LL |     const BAR: u32 = DEFAULT_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires simplifying constant for the type system `FooDefault::BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
-   |
-LL |     const BAR: u32 = DEFAULT_REF_BAR;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires const-evaluating + checking `FooDefault::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:8:5
    |
@@ -35,9 +14,17 @@ note: ...which requires caching mir of `FooDefault::BAR` for CTFE...
    |
 LL |     const BAR: u32 = DEFAULT_REF_BAR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which requires normalizing `DEFAULT_REF_BAR`...
-   = note: ...which again requires simplifying constant for the type system `DEFAULT_REF_BAR`, completing the cycle
-   = note: cycle used when running analysis passes on this crate
+note: ...which requires const-evaluating + checking `DEFAULT_REF_BAR`...
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
+   |
+LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which again requires const-evaluating + checking `DEFAULT_REF_BAR`, completing the cycle
+note: cycle used when simplifying constant for the type system `DEFAULT_REF_BAR`
+  --> $DIR/issue-24949-assoc-const-static-recursion-trait-default.rs:11:1
+   |
+LL | const DEFAULT_REF_BAR: u32 = <GlobalDefaultRef>::BAR;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

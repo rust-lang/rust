@@ -39,7 +39,7 @@
                                            // mir::Constant
 -                                          // + span: $DIR/inline-diverging.rs:16:9: 16:14
 -                                          // + literal: Const { ty: fn() -> ! {panic}, val: Value(Scalar(<ZST>)) }
-+                                          // + span: $SRC_DIR/std/src/panic.rs:LL:COL
++                                          // + span: $DIR/inline-diverging.rs:16:9: 16:16
 +                                          // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
 +                                          // mir::Constant
 +                                          // + span: $SRC_DIR/std/src/panic.rs:LL:COL
