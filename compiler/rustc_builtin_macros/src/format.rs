@@ -11,7 +11,7 @@ use rustc_errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::{InnerSpan, MultiSpan, Span};
 use smallvec::SmallVec;
 
 use std::borrow::Cow;
@@ -26,7 +26,7 @@ enum ArgumentType {
 enum Position {
     Exact(usize),
     Capture(usize),
-    Named(Symbol),
+    Named(Symbol, InnerSpan),
 }
 
 struct Context<'a, 'b> {
@@ -247,13 +247,13 @@ impl<'a, 'b> Context<'a, 'b> {
         match *p {
             parse::String(_) => {}
             parse::NextArgument(ref mut arg) => {
-                if let parse::ArgumentNamed(s) = arg.position {
+                if let parse::ArgumentNamed(s, _) = arg.position {
                     arg.position = parse::ArgumentIs(lookup(s));
                 }
-                if let parse::CountIsName(s) = arg.format.width {
+                if let parse::CountIsName(s, _) = arg.format.width {
                     arg.format.width = parse::CountIsParam(lookup(s));
                 }
-                if let parse::CountIsName(s) = arg.format.precision {
+                if let parse::CountIsName(s, _) = arg.format.precision {
                     arg.format.precision = parse::CountIsParam(lookup(s));
                 }
             }
@@ -276,7 +276,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 // it's written second, so it should come after width/precision.
                 let pos = match arg.position {
                     parse::ArgumentIs(i) | parse::ArgumentImplicitlyIs(i) => Exact(i),
-                    parse::ArgumentNamed(s) => Named(s),
+                    parse::ArgumentNamed(s, span) => Named(s, span),
                 };
 
                 let ty = Placeholder(match arg.format.ty {
@@ -346,8 +346,8 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::CountIsParam(i) => {
                 self.verify_arg_type(Exact(i), Count);
             }
-            parse::CountIsName(s) => {
-                self.verify_arg_type(Named(s), Count);
+            parse::CountIsName(s, span) => {
+                self.verify_arg_type(Named(s, span), Count);
             }
         }
     }
@@ -533,7 +533,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
             }
 
-            Named(name) => {
+            Named(name, span) => {
                 match self.names.get(&name) {
                     Some(&idx) => {
                         // Treat as positional arg.
@@ -548,7 +548,7 @@ impl<'a, 'b> Context<'a, 'b> {
                             self.arg_types.push(Vec::new());
                             self.arg_unique_types.push(Vec::new());
                             let span = if self.is_literal {
-                                *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                                self.fmtsp.from_inner(span)
                             } else {
                                 self.fmtsp
                             };
@@ -559,7 +559,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         } else {
                             let msg = format!("there is no argument named `{}`", name);
                             let sp = if self.is_literal {
-                                *self.arg_spans.get(self.curpiece).unwrap_or(&self.fmtsp)
+                                self.fmtsp.from_inner(span)
                             } else {
                                 self.fmtsp
                             };
@@ -629,7 +629,7 @@ impl<'a, 'b> Context<'a, 'b> {
             }
             parse::CountImplied => count(sym::Implied, None),
             // should never be the case, names are already resolved
-            parse::CountIsName(_) => panic!("should never happen"),
+            parse::CountIsName(..) => panic!("should never happen"),
         }
     }
 
@@ -676,7 +676,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
                         // should never be the case, because names are already
                         // resolved.
-                        parse::ArgumentNamed(_) => panic!("should never happen"),
+                        parse::ArgumentNamed(..) => panic!("should never happen"),
                     }
                 };
 
