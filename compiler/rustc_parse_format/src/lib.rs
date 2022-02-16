@@ -95,7 +95,7 @@ pub enum Position {
     /// The argument is located at a specific index given in the format
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(Symbol),
+    ArgumentNamed(Symbol, InnerSpan),
 }
 
 impl Position {
@@ -147,7 +147,7 @@ pub enum Count {
     /// The count is specified explicitly.
     CountIs(usize),
     /// The count is specified by the argument with the given name.
-    CountIsName(Symbol),
+    CountIsName(Symbol, InnerSpan),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
     /// The count is implied and cannot be explicitly specified.
@@ -494,8 +494,11 @@ impl<'a> Parser<'a> {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if rustc_lexer::is_id_start(c) => {
-                    Some(ArgumentNamed(Symbol::intern(self.word())))
+                Some(&(start, c)) if rustc_lexer::is_id_start(c) => {
+                    let word = self.word();
+                    let end = start + word.len();
+                    let span = self.to_span_index(start).to(self.to_span_index(end));
+                    Some(ArgumentNamed(Symbol::intern(word), span))
                 }
 
                 // This is an `ArgumentNext`.
@@ -662,8 +665,9 @@ impl<'a> Parser<'a> {
             if word.is_empty() {
                 self.cur = tmp;
                 (CountImplied, None)
-            } else if self.consume('$') {
-                (CountIsName(Symbol::intern(word)), None)
+            } else if let Some(end) = self.consume_pos('$') {
+                let span = self.to_span_index(start + 1).to(self.to_span_index(end));
+                (CountIsName(Symbol::intern(word), span), None)
             } else {
                 self.cur = tmp;
                 (CountImplied, None)
