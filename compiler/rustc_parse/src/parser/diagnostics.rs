@@ -1294,8 +1294,8 @@ impl<'a> Parser<'a> {
 
     fn prefix_inc_dec_suggest_and_recover(
         &mut self,
-        base: P<Expr>,
-        mut err: DiagnosticBuilder<'_>,
+        _base: P<Expr>,
+        mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         ident: Ident,
         (pre_span, post_span): (Span, Span),
@@ -1308,15 +1308,13 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MachineApplicable,
         );
-        err.emit();
-        // TODO: recover
-        Ok(base)
+        Err(err)
     }
 
     fn postfix_inc_dec_suggest_and_recover(
         &mut self,
-        base: P<Expr>,
-        mut err: DiagnosticBuilder<'_>,
+        _base: P<Expr>,
+        mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         ident: Ident,
         (pre_span, post_span): (Span, Span),
@@ -1329,15 +1327,13 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MachineApplicable,
         );
-        err.emit();
-        // TODO: recover
-        Ok(base)
+        Err(err)
     }
 
     fn inc_dec_standalone_recovery(
         &mut self,
-        base: P<Expr>,
-        mut err: DiagnosticBuilder<'_>,
+        _base: P<Expr>,
+        mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         _ident: Ident,
         (pre_span, post_span): (Span, Span),
@@ -1347,9 +1343,7 @@ impl<'a> Parser<'a> {
             vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
             Applicability::MachineApplicable,
         );
-        err.emit();
-        // TODO: recover
-        Ok(base)
+        Err(err)
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
