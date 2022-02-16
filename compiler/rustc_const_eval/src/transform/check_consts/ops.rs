@@ -108,9 +108,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                         .as_ref()
                         .and_then(|node| node.generics())
                     {
-                        let constraint = with_no_trimmed_paths(|| {
-                            format!("~const {}", trait_ref.print_only_trait_path())
-                        });
+                        let constraint = with_no_trimmed_paths!(format!(
+                            "~const {}",
+                            trait_ref.print_only_trait_path()
+                        ));
                         suggest_constraining_type_param(
                             tcx,
                             generics,

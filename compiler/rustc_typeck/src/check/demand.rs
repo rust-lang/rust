@@ -324,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
                         let variant_path =
-                            with_no_trimmed_paths(|| self.tcx.def_path_str(variant.def_id));
+                            with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
                         // FIXME #56861: DRYer prelude filtering
                         if let Some(path) = variant_path.strip_prefix("std::prelude::") {
                             if let Some((_, path)) = path.split_once("::") {

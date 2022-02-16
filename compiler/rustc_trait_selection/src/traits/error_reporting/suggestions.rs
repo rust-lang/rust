@@ -443,9 +443,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
-                    let constraint = with_no_trimmed_paths(|| {
+                    let constraint = with_no_trimmed_paths!(
                         trait_pred.print_modifiers_and_trait_path().to_string()
-                    });
+                    );
                     if suggest_constraining_type_param(
                         self.tcx,
                         generics,

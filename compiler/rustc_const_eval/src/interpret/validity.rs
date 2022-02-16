@@ -33,7 +33,7 @@ macro_rules! throw_validation_failure {
             msg.push_str(", but expected ");
             write!(&mut msg, $($expected_fmt),+).unwrap();
         )?
-        let path = rustc_middle::ty::print::with_no_trimmed_paths(|| {
+        let path = rustc_middle::ty::print::with_no_trimmed_paths!({
             let where_ = &$where;
             if !where_.is_empty() {
                 let mut path = String::new();

@@ -367,7 +367,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let is_in_effect = deprecation_in_effect(depr_attr);
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        let def_path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
+                        let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
                         let def_kind = self.def_kind(def_id).descr(def_id);
 
                         late_report_deprecation(
@@ -377,7 +377,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                 depr_attr.since,
                                 depr_attr.note,
                                 def_kind,
-                                def_path,
+                                &def_path,
                             ),
                             depr_attr.suggestion,
                             lint,

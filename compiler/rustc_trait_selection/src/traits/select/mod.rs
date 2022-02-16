@@ -922,7 +922,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if !candidate_set.ambiguous && candidate_set.vec.is_empty() {
                             let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                             let self_ty = trait_ref.self_ty();
-                            let cause = with_no_trimmed_paths(|| {
+                            let cause = with_no_trimmed_paths!({
                                 IntercrateAmbiguityCause::DownstreamCrate {
                                     trait_desc: trait_ref.print_only_trait_path().to_string(),
                                     self_desc: if self_ty.has_concrete_skeleton() {

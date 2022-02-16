@@ -779,29 +779,35 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
         assert_inhabited | assert_zero_valid | assert_uninit_valid, <T> () {
             let layout = fx.layout_of(T);
             if layout.abi.is_uninhabited() {
-                with_no_trimmed_paths(|| crate::base::codegen_panic(
-                    fx,
-                    &format!("attempted to instantiate uninhabited type `{}`", T),
-                    span,
-                ));
+                with_no_trimmed_paths!({
+                    crate::base::codegen_panic(
+                        fx,
+                        &format!("attempted to instantiate uninhabited type `{}`", T),
+                        span,
+                    )
+                });
                 return;
             }
 
             if intrinsic == sym::assert_zero_valid && !layout.might_permit_raw_init(fx, /*zero:*/ true) {
-                with_no_trimmed_paths(|| crate::base::codegen_panic(
-                    fx,
-                    &format!("attempted to zero-initialize type `{}`, which is invalid", T),
-                    span,
-                ));
+                with_no_trimmed_paths!({
+                    crate::base::codegen_panic(
+                        fx,
+                        &format!("attempted to zero-initialize type `{}`, which is invalid", T),
+                        span,
+                    );
+                });
                 return;
             }
 
             if intrinsic == sym::assert_uninit_valid && !layout.might_permit_raw_init(fx, /*zero:*/ false) {
-                with_no_trimmed_paths(|| crate::base::codegen_panic(
-                    fx,
-                    &format!("attempted to leave type `{}` uninitialized, which is invalid", T),
-                    span,
-                ));
+                with_no_trimmed_paths!({
+                    crate::base::codegen_panic(
+                        fx,
+                        &format!("attempted to leave type `{}` uninitialized, which is invalid", T),
+                        span,
+                    )
+                });
                 return;
             }
         };

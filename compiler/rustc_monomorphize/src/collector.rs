@@ -454,7 +454,7 @@ fn collect_items_rec<'tcx>(
         && starting_point.node.krate() != LOCAL_CRATE
         && starting_point.node.is_user_defined()
     {
-        let formatted_item = with_no_trimmed_paths(|| starting_point.node.to_string());
+        let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
         tcx.sess.span_note_without_error(
             starting_point.span,
             &format!("the above error was encountered while instantiating `{}`", formatted_item),

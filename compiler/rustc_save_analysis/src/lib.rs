@@ -982,7 +982,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    with_no_trimmed_paths(|| {
+    with_no_trimmed_paths!({
         tcx.dep_graph.with_ignore(|| {
             info!("Dumping crate {}", cratename);
 
