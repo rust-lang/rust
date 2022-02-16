@@ -447,7 +447,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if !ty.references_error() {
             let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
-            self.require_type_meets(ty, span, code, lang_item);
+            self.require_type_meets(
+                self.normalize_associated_types_in(span, ty),
+                span,
+                code,
+                lang_item,
+            );
         }
     }
 
