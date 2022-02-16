@@ -1438,7 +1438,7 @@ Released 2020-11-19
 * [`manual_strip`] [#6038](https://github.com/rust-lang/rust-clippy/pull/6038)
 * [`map_err_ignore`] [#5998](https://github.com/rust-lang/rust-clippy/pull/5998)
 * [`rc_buffer`] [#6044](https://github.com/rust-lang/rust-clippy/pull/6044)
-* [`to_string_in_display`] [#5831](https://github.com/rust-lang/rust-clippy/pull/5831)
+* `to_string_in_display` [#5831](https://github.com/rust-lang/rust-clippy/pull/5831)
 * `single_char_push_str` [#5881](https://github.com/rust-lang/rust-clippy/pull/5881)
 
 ### Moves and Deprecations
@@ -1481,7 +1481,7 @@ Released 2020-11-19
   [#5949](https://github.com/rust-lang/rust-clippy/pull/5949)
 * [`doc_markdown`]: allow using "GraphQL" without backticks
   [#5996](https://github.com/rust-lang/rust-clippy/pull/5996)
-* [`to_string_in_display`]: avoid linting when calling `to_string()` on anything that is not `self`
+* `to_string_in_display`: avoid linting when calling `to_string()` on anything that is not `self`
   [#5971](https://github.com/rust-lang/rust-clippy/pull/5971)
 * [`indexing_slicing`] and [`out_of_bounds_indexing`] treat references to arrays as arrays
   [#6034](https://github.com/rust-lang/rust-clippy/pull/6034)
@@ -3385,6 +3385,7 @@ Released 2018-09-13
 [`range_zip_with_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#range_zip_with_len
 [`rc_buffer`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer
 [`rc_mutex`]: https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex
+[`recursive_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#recursive_format_impl
 [`redundant_allocation`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation
 [`redundant_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone
 [`redundant_closure`]: https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure
@@ -3459,7 +3460,6 @@ Released 2018-09-13
 [`tabs_in_doc_comments`]: https://rust-lang.github.io/rust-clippy/master/index.html#tabs_in_doc_comments
 [`temporary_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_assignment
 [`to_digit_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some
-[`to_string_in_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_display
 [`to_string_in_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_format_args
 [`todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
 [`too_many_arguments`]: https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
