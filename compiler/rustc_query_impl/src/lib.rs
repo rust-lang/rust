@@ -44,8 +44,6 @@ pub use on_disk_cache::OnDiskCache;
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;
 
-mod util;
-
 fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
     if def_id.is_top_level_module() {
         "top-level module".to_string()
