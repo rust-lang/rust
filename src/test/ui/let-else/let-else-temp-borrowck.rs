@@ -12,12 +12,12 @@ fn foo<'a>(x: &'a str) -> Result<impl Debug + 'a, ()> {
 
 fn let_else() {
     let x = String::from("Hey");
-    let Ok(s) = foo(&x) else { return };
+    let Ok(_) = foo(&x) else { return };
 }
 
 fn if_let() {
     let x = String::from("Hey");
-    let s = if let Ok(s) = foo(&x) { s } else { return };
+    let _ = if let Ok(s) = foo(&x) { s } else { return };
 }
 
 fn main() {

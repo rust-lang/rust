@@ -1,6 +1,7 @@
-//
 // popped up in in #94012, where an alternative desugaring was
-// causing unreachable code errors
+// causing unreachable code errors, and also we needed to check
+// that the desugaring's generated lints weren't applying to
+// the whole else block.
 
 #![feature(let_else)]
 #![deny(unused_variables)]
