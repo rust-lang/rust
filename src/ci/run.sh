@@ -43,9 +43,9 @@ else
     PYTHON="python2"
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
+# if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
-fi
+# fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
