@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but has a missed normalization due to HRTB.
 
@@ -27,5 +28,4 @@ impl Trait for Foo {
 
 fn main() {
     test(Foo);
-    //~^ the trait bound
 }

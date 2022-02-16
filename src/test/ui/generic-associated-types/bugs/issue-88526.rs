@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but requires more logic.
 
@@ -23,7 +24,7 @@ struct TestB<Q, F>
     f: F,
 }
 
-impl<'q, Q, I, F> A for TestB<Q, F> //~ the type parameter
+impl<'q, Q, I, F> A for TestB<Q, F>
 where
     Q: A<I<'q> = &'q I>,
     F: Fn(I),

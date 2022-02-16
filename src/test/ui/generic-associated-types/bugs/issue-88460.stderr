@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `for<'a> <_ as Trait>::Assoc<'a>: Marker` is not satisfied
-  --> $DIR/issue-88460.rs:29:5
+  --> $DIR/issue-88460.rs:30:5
    |
 LL |     test(Foo);
    |     ^^^^ the trait `for<'a> Marker` is not implemented for `<_ as Trait>::Assoc<'a>`
    |
 note: required by a bound in `test`
-  --> $DIR/issue-88460.rs:16:27
+  --> $DIR/issue-88460.rs:17:27
    |
 LL | fn test<T>(value: T)
    |    ---- required by a bound in this
