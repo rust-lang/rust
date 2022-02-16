@@ -382,10 +382,15 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     tcx.sess,
                     field_span,
                     E0740,
-                    "unions may not contain fields that need dropping"
+                    "unions cannot contain fields that may need dropping"
+                )
+                .note(
+                    "a type is guaranteed not to need dropping \
+                    when it implements `Copy`, or when it is the special `ManuallyDrop<_>` type",
                 )
                 .multipart_suggestion_verbose(
-                    "wrap the type with `std::mem::ManuallyDrop` and ensure it is manually dropped",
+                    "when the type does not implement `Copy`, \
+                    wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped",
                     vec![
                         (ty_span.shrink_to_lo(), format!("std::mem::ManuallyDrop<")),
                         (ty_span.shrink_to_hi(), ">".into()),
