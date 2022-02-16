@@ -394,7 +394,6 @@ fn test_time_options_threshold() {
 
     let options = TestTimeOptions {
         error_on_excess: false,
-        colored: false,
         unit_threshold: unit.clone(),
         integration_threshold: integration.clone(),
         doctest_threshold: doc.clone(),

@@ -109,12 +109,10 @@ fn optgroups() -> getopts::Options {
             unstable-options = Allow use of experimental features",
             "unstable-options",
         )
-        .optflagopt(
+        .optflag(
             "",
             "report-time",
-            "Show execution time of each test. Available values:
-            plain   = do not colorize the execution time (default);
-            colored = colorize output according to the `color` parameter value;
+            "Show execution time of each test.
 
             Threshold values for colorized output can be configured via
             `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
@@ -125,7 +123,6 @@ fn optgroups() -> getopts::Options {
             is 0.5 seconds, and the critical time is 2 seconds.
 
             Not available for --format=terse",
-            "plain|colored",
         )
         .optflag(
             "",
@@ -319,17 +316,12 @@ fn get_time_options(
     allow_unstable: bool,
 ) -> OptPartRes<Option<TestTimeOptions>> {
     let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
-    let colored_opt_str = matches.opt_str("report-time");
-    let mut report_time_colored = report_time && colored_opt_str == Some("colored".into());
     let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-time");
 
     // If `ensure-test-time` option is provided, time output is enforced,
     // so user won't be confused if any of tests will silently fail.
     let options = if report_time || ensure_test_time {
-        if ensure_test_time && !report_time {
-            report_time_colored = true;
-        }
-        Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
+        Some(TestTimeOptions::new_from_env(ensure_test_time))
     } else {
         None
     };
