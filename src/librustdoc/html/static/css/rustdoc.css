@@ -933,7 +933,7 @@ table,
 	outline: none;
 	border: 1px solid;
 	border-radius: 2px;
-	padding: 5px 8px;
+	padding: 8px;
 	font-size: 1rem;
 	transition: border-color 300ms ease;
 	width: 100%;
