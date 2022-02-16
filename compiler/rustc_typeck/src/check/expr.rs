@@ -225,6 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ExprKind::If(..)
             | ExprKind::Let(..)
             | ExprKind::Loop(..)
+            | ExprKind::DropTemps(..)
             | ExprKind::Match(..) => {}
             // If `expr` is a result of desugaring the try block and is an ok-wrapped
             // diverging expression (e.g. it arose from desugaring of `try { return }`),

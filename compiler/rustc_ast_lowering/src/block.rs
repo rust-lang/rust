@@ -159,6 +159,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             span,
             kind: hir::ExprKind::If(let_expr, then_expr, Some(else_expr)),
         });
+        let drop_temps = self.expr_drop_temps(span, if_expr, AttrVec::new());
         if !self.sess.features_untracked().let_else {
             feature_err(
                 &self.sess.parse_sess,
@@ -168,6 +169,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
             .emit();
         }
-        if_expr
+        drop_temps
     }
 }
