@@ -285,6 +285,12 @@ jobs:
     strategy:
       matrix:
         include:
+          - name: i686-msvc-1
+            env:
+              RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
+              SCRIPT: make ci-subset-1
+            <<: *job-windows-xl
+
           - name: x86_64-msvc-1
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
