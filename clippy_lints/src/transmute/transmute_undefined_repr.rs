@@ -19,33 +19,39 @@ pub(super) fn check<'tcx>(
 
     while from_ty != to_ty {
         match reduce_refs(cx, e.span, from_ty, to_ty) {
-            ReducedTys::FromFatPtr { unsized_ty, .. } => {
-                span_lint_and_then(
-                    cx,
-                    TRANSMUTE_UNDEFINED_REPR,
-                    e.span,
-                    &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
-                    |diag| {
-                        if from_ty_orig.peel_refs() != unsized_ty {
-                            diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
-                        }
-                    },
-                );
-                return true;
+            ReducedTys::FromFatPtr { unsized_ty, to_ty } => match reduce_ty(cx, to_ty) {
+                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                _ => {
+                    span_lint_and_then(
+                        cx,
+                        TRANSMUTE_UNDEFINED_REPR,
+                        e.span,
+                        &format!("transmute from `{}` which has an undefined layout", from_ty_orig),
+                        |diag| {
+                            if from_ty_orig.peel_refs() != unsized_ty {
+                                diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
+                            }
+                        },
+                    );
+                    return true;
+                },
             },
-            ReducedTys::ToFatPtr { unsized_ty, .. } => {
-                span_lint_and_then(
-                    cx,
-                    TRANSMUTE_UNDEFINED_REPR,
-                    e.span,
-                    &format!("transmute to `{}` which has an undefined layout", to_ty_orig),
-                    |diag| {
-                        if to_ty_orig.peel_refs() != unsized_ty {
-                            diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
-                        }
-                    },
-                );
-                return true;
+            ReducedTys::ToFatPtr { unsized_ty, from_ty } => match reduce_ty(cx, from_ty) {
+                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                _ => {
+                    span_lint_and_then(
+                        cx,
+                        TRANSMUTE_UNDEFINED_REPR,
+                        e.span,
+                        &format!("transmute to `{}` which has an undefined layout", to_ty_orig),
+                        |diag| {
+                            if to_ty_orig.peel_refs() != unsized_ty {
+                                diag.note(&format!("the contained type `&{}` has an undefined layout", unsized_ty));
+                            }
+                        },
+                    );
+                    return true;
+                },
             },
             ReducedTys::ToPtr {
                 from_ty: from_sub_ty,
@@ -184,8 +190,8 @@ pub(super) fn check<'tcx>(
 }
 
 enum ReducedTys<'tcx> {
-    FromFatPtr { unsized_ty: Ty<'tcx> },
-    ToFatPtr { unsized_ty: Ty<'tcx> },
+    FromFatPtr { unsized_ty: Ty<'tcx>, to_ty: Ty<'tcx> },
+    ToFatPtr { unsized_ty: Ty<'tcx>, from_ty: Ty<'tcx> },
     ToPtr { from_ty: Ty<'tcx>, to_ty: Ty<'tcx> },
     FromPtr { from_ty: Ty<'tcx>, to_ty: Ty<'tcx> },
     Other { from_ty: Ty<'tcx>, to_ty: Ty<'tcx> },
@@ -211,12 +217,12 @@ fn reduce_refs<'tcx>(
             (ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }), _)
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
-                ReducedTys::FromFatPtr { unsized_ty }
+                ReducedTys::FromFatPtr { unsized_ty, to_ty }
             },
             (_, ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }))
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
-                ReducedTys::ToFatPtr { unsized_ty }
+                ReducedTys::ToFatPtr { unsized_ty, from_ty }
             },
             (ty::Ref(_, from_ty, _) | ty::RawPtr(TypeAndMut { ty: from_ty, .. }), _) => {
                 ReducedTys::FromPtr { from_ty, to_ty }

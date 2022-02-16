@@ -1,8 +1,8 @@
 #![warn(clippy::transmute_undefined_repr)]
-#![allow(clippy::unit_arg)]
+#![allow(clippy::unit_arg, clippy::transmute_ptr_to_ref)]
 
 use core::ffi::c_void;
-use core::mem::transmute;
+use core::mem::{size_of, transmute};
 
 fn value<T>() -> T {
     unimplemented!()
@@ -72,5 +72,17 @@ fn main() {
         );
         let _: *const Erase2 = transmute(value::<Ty<&Ty2<u32, f32>>>()); // Ok, type erasure
         let _: Ty<&Ty2<u32, f32>> = transmute(value::<*const Erase2>()); // Ok, reverse type erasure
+
+        let _: *const () = transmute(value::<&&[u8]>()); // Ok, type erasure
+        let _: &&[u8] = transmute(value::<*const ()>()); // Ok, reverse type erasure
+
+        let _: *mut c_void = transmute(value::<&mut &[u8]>()); // Ok, type erasure
+        let _: &mut &[u8] = transmute(value::<*mut c_void>()); // Ok, reverse type erasure
+
+        let _: [u8; size_of::<&[u8]>()] = transmute(value::<&[u8]>()); // Ok, transmute to byte array
+        let _: &[u8] = transmute(value::<[u8; size_of::<&[u8]>()]>()); // Ok, transmute from byte array
+
+        let _: [usize; 2] = transmute(value::<&[u8]>()); // Ok, transmute to int array
+        let _: &[u8] = transmute(value::<[usize; 2]>()); // Ok, transmute from int array
     }
 }
