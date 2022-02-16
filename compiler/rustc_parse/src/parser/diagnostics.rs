@@ -1255,41 +1255,40 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, &format!("not a valid {} operator", kind.fixity));
 
-        if let ExprKind::Path(_, path) = &base.kind {
-            if let [segment] = path.segments.as_slice() {
-                let ident = segment.ident;
-                // (pre, post)
-                let spans = match kind.fixity {
-                    UnaryFixity::Pre => (op_span, ident.span.shrink_to_hi()),
-                    UnaryFixity::Post => (ident.span.shrink_to_lo(), op_span),
-                };
+        let help_base_case = |mut err: DiagnosticBuilder<'_>, base| {
+            err.help(&format!("use `{}= 1` instead", kind.op.chr()));
+            err.emit();
+            Ok(base)
+        };
 
-                if !ident.is_reserved() {
-                    if kind.standalone {
-                        return self.inc_dec_standalone_recovery(base, err, kind, ident, spans);
-                    } else {
-                        match kind.fixity {
-                            UnaryFixity::Pre => {
-                                return self.prefix_inc_dec_suggest_and_recover(
-                                    base, err, kind, ident, spans,
-                                );
-                            }
-                            UnaryFixity::Post => {
-                                return self.postfix_inc_dec_suggest_and_recover(
-                                    base, err, kind, ident, spans,
-                                );
-                            }
-                        }
-                    }
+        let ExprKind::Path(_, path) = &base.kind
+            else { return help_base_case(err, base) };
+        let [segment] = path.segments.as_slice()
+            else { return help_base_case(err, base) };
+        let ident = segment.ident;
+
+        // (pre, post)
+        let spans = match kind.fixity {
+            UnaryFixity::Pre => (op_span, ident.span.shrink_to_hi()),
+            UnaryFixity::Post => (ident.span.shrink_to_lo(), op_span),
+        };
+
+        if ident.is_reserved() {
+            return help_base_case(err, base);
+        }
+
+        if kind.standalone {
+            self.inc_dec_standalone_recovery(base, err, kind, ident, spans)
+        } else {
+            match kind.fixity {
+                UnaryFixity::Pre => {
+                    self.prefix_inc_dec_suggest_and_recover(base, err, kind, ident, spans)
+                }
+                UnaryFixity::Post => {
+                    self.postfix_inc_dec_suggest_and_recover(base, err, kind, ident, spans)
                 }
             }
         }
-
-        // base case
-        err.help(&format!("use `{}= 1` instead", kind.op.chr()));
-        err.emit();
-
-        Ok(base)
     }
 
     fn prefix_inc_dec_suggest_and_recover(
