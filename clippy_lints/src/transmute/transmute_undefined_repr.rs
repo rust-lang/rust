@@ -19,8 +19,16 @@ pub(super) fn check<'tcx>(
 
     while from_ty != to_ty {
         match reduce_refs(cx, e.span, from_ty, to_ty) {
-            ReducedTys::FromFatPtr { unsized_ty, to_ty } => match reduce_ty(cx, to_ty) {
+            ReducedTys::FromFatPtr {
+                unsized_ty,
+                to_ty: to_sub_ty,
+            } => match reduce_ty(cx, to_sub_ty) {
                 ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::Ref(to_sub_ty) => {
+                    from_ty = unsized_ty;
+                    to_ty = to_sub_ty;
+                    continue;
+                },
                 _ => {
                     span_lint_and_then(
                         cx,
@@ -36,8 +44,16 @@ pub(super) fn check<'tcx>(
                     return true;
                 },
             },
-            ReducedTys::ToFatPtr { unsized_ty, from_ty } => match reduce_ty(cx, from_ty) {
+            ReducedTys::ToFatPtr {
+                unsized_ty,
+                from_ty: from_sub_ty,
+            } => match reduce_ty(cx, from_sub_ty) {
                 ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::Ref(from_sub_ty) => {
+                    from_ty = from_sub_ty;
+                    to_ty = unsized_ty;
+                    continue;
+                },
                 _ => {
                     span_lint_and_then(
                         cx,

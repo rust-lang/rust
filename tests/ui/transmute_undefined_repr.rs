@@ -84,5 +84,8 @@ fn main() {
 
         let _: [usize; 2] = transmute(value::<&[u8]>()); // Ok, transmute to int array
         let _: &[u8] = transmute(value::<[usize; 2]>()); // Ok, transmute from int array
+
+        let _: *const [u8] = transmute(value::<Box<[u8]>>()); // Ok
+        let _: Box<[u8]> = transmute(value::<*mut [u8]>()); // Ok
     }
 }
