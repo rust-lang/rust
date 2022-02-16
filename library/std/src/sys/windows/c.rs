@@ -83,6 +83,7 @@ pub const CSTR_GREATER_THAN: c_int = 3;
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
+pub const INVALID_FILE_ATTRIBUTES: DWORD = DWORD::MAX;
 
 pub const FILE_SHARE_DELETE: DWORD = 0x4;
 pub const FILE_SHARE_READ: DWORD = 0x1;
@@ -1075,6 +1076,7 @@ extern "system" {
         lpBuffer: LPWSTR,
         lpFilePart: *mut LPWSTR,
     ) -> DWORD;
+    pub fn GetFileAttributesW(lpFileName: LPCWSTR) -> DWORD;
 }
 
 #[link(name = "ws2_32")]

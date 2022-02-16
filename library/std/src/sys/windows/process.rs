@@ -394,7 +394,7 @@ fn resolve_exe<'a>(
 
         // Append `.exe` if not already there.
         path = path::append_suffix(path, EXE_SUFFIX.as_ref());
-        if path.try_exists().unwrap_or(false) {
+        if program_exists(&path) {
             return Ok(path);
         } else {
             // It's ok to use `set_extension` here because the intent is to
@@ -415,7 +415,7 @@ fn resolve_exe<'a>(
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }
-            if let Ok(true) = path.try_exists() { Some(path) } else { None }
+            if program_exists(&path) { Some(path) } else { None }
         });
         if let Some(path) = result {
             return Ok(path);
@@ -483,6 +483,21 @@ where
         }
     }
     None
+}
+
+/// Check if a file exists without following symlinks.
+fn program_exists(path: &Path) -> bool {
+    unsafe {
+        to_u16s(path)
+            .map(|path| {
+                // Getting attributes using `GetFileAttributesW` does not follow symlinks
+                // and it will almost always be successful if the link exists.
+                // There are some exceptions for special system files (e.g. the pagefile)
+                // but these are not executable.
+                c::GetFileAttributesW(path.as_ptr()) != c::INVALID_FILE_ATTRIBUTES
+            })
+            .unwrap_or(false)
+    }
 }
 
 impl Stdio {
