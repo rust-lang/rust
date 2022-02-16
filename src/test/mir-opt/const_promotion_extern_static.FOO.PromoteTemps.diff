@@ -1,6 +1,6 @@
 - // MIR for `FOO` before PromoteTemps
 + // MIR for `FOO` after PromoteTemps
-  
+
   static mut FOO: *const &i32 = {
       let mut _0: *const &i32;             // return place in scope 0 at $DIR/const-promotion-extern-static.rs:13:17: 13:28
       let mut _1: &[&i32];                 // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
@@ -11,7 +11,7 @@
 +     let mut _6: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
       scope 1 {
       }
-  
+
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
           StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
@@ -37,18 +37,18 @@
                                            // + span: $DIR/const-promotion-extern-static.rs:13:47: 13:53
                                            // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
       }
-  
+
       bb1: {
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
           StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
           return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
-  
+
       bb2 (cleanup): {
           resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
   }
-- 
+-
 - alloc3 (extern static: X)
-  
+
