@@ -43,7 +43,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{sym, Span};
 use rustc_target::abi::Align;
 
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::ops::ControlFlow;
 use std::{fmt, str};
 

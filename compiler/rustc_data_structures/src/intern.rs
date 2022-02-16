@@ -3,6 +3,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::ptr;
 
+use crate::stable_hasher::HashStableEq;
+
 mod private {
     #[derive(Clone, Copy, Debug)]
     pub struct PrivateZst;
@@ -49,6 +51,14 @@ impl<'a, T> Deref for Interned<'a, T> {
     #[inline]
     fn deref(&self) -> &T {
         self.0
+    }
+}
+
+// FIXME - is this right? Should we try to enforce this somehow?
+impl<'a, T: HashStableEq> HashStableEq for Interned<'a, T> {
+    fn hash_stable_eq(&self, other: &Self) -> bool {
+        // Pointer equality implies equality, due to the uniqueness constraint.
+        ptr::eq(self.0, other.0)
     }
 }
 
