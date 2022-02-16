@@ -1463,7 +1463,8 @@ fn main() {
 
 #[test]
 fn deref_fun_1() {
-    check_types(r#"
+    check_types(
+        r#"
 //- minicore: deref
 
 struct A<T, U>(T, U);
@@ -1497,12 +1498,14 @@ fn test() {
     a2;
   //^^ A<B<isize>, u32>
 }
-"#);
+"#,
+    );
 }
 
 #[test]
 fn deref_fun_2() {
-    check_types(r#"
+    check_types(
+        r#"
 //- minicore: deref
 
 struct A<T, U>(T, U);
@@ -1540,5 +1543,38 @@ fn test() {
     a2;
   //^^ A<C<&str>, i32>
 }
-"#);
+"#,
+    );
+}
+
+#[test]
+fn receiver_adjustment_autoref() {
+    check(
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn test() {
+    Foo.foo();
+  //^^^ adjustments: Borrow(Ref(Not))
+    (&Foo).foo();
+  // ^^^^ adjustments: ,
+}
+"#,
+    );
+}
+
+#[test]
+fn receiver_adjustment_unsize_array() {
+    // FIXME not quite correct
+    check(
+        r#"
+//- minicore: slice
+fn test() {
+    let a = [1, 2, 3];
+    a.len();
+} //^ adjustments: Pointer(Unsize), Borrow(Ref(Not))
+"#,
+    );
 }

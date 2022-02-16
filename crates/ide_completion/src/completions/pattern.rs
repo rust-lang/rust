@@ -134,39 +134,37 @@ fn pattern_path_completion(
                         .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
                 }
                 res @ (hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_)) => {
-                    if let Some(krate) = ctx.krate {
-                        let ty = match res {
-                            hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
-                            hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
-                            _ => return,
-                        };
+                    let ty = match res {
+                        hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
+                        hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
+                        _ => return,
+                    };
 
-                        if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                            e.variants(ctx.db)
-                                .into_iter()
-                                .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
-                        }
-
-                        let traits_in_scope = ctx.scope.visible_traits();
-                        let mut seen = FxHashSet::default();
-                        ty.iterate_path_candidates(
-                            ctx.db,
-                            krate,
-                            &traits_in_scope,
-                            ctx.module,
-                            None,
-                            |_ty, item| {
-                                // Note associated consts cannot be referenced in patterns
-                                if let AssocItem::TypeAlias(ta) = item {
-                                    // We might iterate candidates of a trait multiple times here, so deduplicate them.
-                                    if seen.insert(item) {
-                                        acc.add_type_alias(ctx, ta);
-                                    }
-                                }
-                                None::<()>
-                            },
-                        );
+                    if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
+                        e.variants(ctx.db)
+                            .into_iter()
+                            .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
                     }
+
+                    let traits_in_scope = ctx.scope.visible_traits();
+                    let mut seen = FxHashSet::default();
+                    ty.iterate_path_candidates(
+                        ctx.db,
+                        &ctx.scope,
+                        &traits_in_scope,
+                        ctx.module,
+                        None,
+                        |item| {
+                            // Note associated consts cannot be referenced in patterns
+                            if let AssocItem::TypeAlias(ta) = item {
+                                // We might iterate candidates of a trait multiple times here, so deduplicate them.
+                                if seen.insert(item) {
+                                    acc.add_type_alias(ctx, ta);
+                                }
+                            }
+                            None::<()>
+                        },
+                    );
                 }
                 _ => {}
             }

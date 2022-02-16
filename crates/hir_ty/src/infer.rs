@@ -13,8 +13,8 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
+use std::ops::Index;
 use std::sync::Arc;
-use std::{collections::hash_map::Entry, ops::Index};
 
 use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
@@ -46,7 +46,7 @@ use crate::{
 pub use unify::could_unify;
 pub(crate) use unify::unify;
 
-mod unify;
+pub(crate) mod unify;
 mod path;
 mod expr;
 mod pat;
@@ -228,7 +228,7 @@ pub enum Adjust {
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OverloadedDeref(Mutability);
+pub struct OverloadedDeref(pub Mutability);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AutoBorrow {
@@ -453,16 +453,6 @@ impl<'a> InferenceContext<'a> {
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {
         self.result.method_resolutions.insert(expr, (func, subst));
-    }
-
-    fn write_field_resolution(&mut self, expr: ExprId, field: FieldId) {
-        self.result.field_resolutions.insert(expr, field);
-    }
-
-    fn write_field_resolution_if_empty(&mut self, expr: ExprId, field: FieldId) {
-        if let Entry::Vacant(entry) = self.result.field_resolutions.entry(expr) {
-            entry.insert(field);
-        }
     }
 
     fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantId) {

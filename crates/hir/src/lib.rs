@@ -2440,7 +2440,7 @@ impl Impl {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Type {
-    krate: CrateId,
+    krate: CrateId, // FIXME this is probably redundant with the TraitEnvironment
     env: Arc<TraitEnvironment>,
     ty: Ty,
 }
@@ -2533,12 +2533,9 @@ impl Type {
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
     pub fn impls_future(&self, db: &dyn HirDatabase) -> bool {
-        // No special case for the type of async block, since Chalk can figure it out.
-
-        let krate = self.krate;
-
-        let std_future_trait =
-            db.lang_item(krate, SmolStr::new_inline("future_trait")).and_then(|it| it.as_trait());
+        let std_future_trait = db
+            .lang_item(self.krate, SmolStr::new_inline("future_trait"))
+            .and_then(|it| it.as_trait());
         let std_future_trait = match std_future_trait {
             Some(it) => it,
             None => return false,
@@ -2546,13 +2543,7 @@ impl Type {
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
-        method_resolution::implements_trait(
-            &canonical_ty,
-            db,
-            self.env.clone(),
-            krate,
-            std_future_trait,
-        )
+        method_resolution::implements_trait(&canonical_ty, db, self.env.clone(), std_future_trait)
     }
 
     /// Checks that particular type `ty` implements `std::ops::FnOnce`.
@@ -2560,9 +2551,7 @@ impl Type {
     /// This function can be used to check if a particular type is callable, since FnOnce is a
     /// supertrait of Fn and FnMut, so all callable types implements at least FnOnce.
     pub fn impls_fnonce(&self, db: &dyn HirDatabase) -> bool {
-        let krate = self.krate;
-
-        let fnonce_trait = match FnTrait::FnOnce.get_id(db, krate) {
+        let fnonce_trait = match FnTrait::FnOnce.get_id(db, self.krate) {
             Some(it) => it,
             None => return false,
         };
@@ -2573,7 +2562,6 @@ impl Type {
             &canonical_ty,
             db,
             self.env.clone(),
-            krate,
             fnonce_trait,
         )
     }
@@ -2744,9 +2732,8 @@ impl Type {
     pub fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
-        let environment = self.env.env.clone();
-        let ty = InEnvironment { goal: canonical, environment };
-        autoderef(db, Some(self.krate), ty).map(|canonical| canonical.value)
+        let environment = self.env.clone();
+        autoderef(db, environment, canonical).map(|canonical| canonical.value)
     }
 
     // This would be nicer if it just returned an iterator, but that runs into
@@ -2801,24 +2788,26 @@ impl Type {
     pub fn iterate_method_candidates<T>(
         &self,
         db: &dyn HirDatabase,
-        krate: Crate,
+        scope: &SemanticsScope,
+        // FIXME this can be retrieved from `scope`, except autoimport uses this
+        // to specify a different set, so the method needs to be split
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        mut callback: impl FnMut(Type, Function) -> Option<T>,
+        mut callback: impl FnMut(Function) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_method_candidates");
         let mut slot = None;
 
         self.iterate_method_candidates_dyn(
             db,
-            krate,
+            scope,
             traits_in_scope,
             with_local_impls,
             name,
-            &mut |ty, assoc_item_id| {
+            &mut |assoc_item_id| {
                 if let AssocItemId::FunctionId(func) = assoc_item_id {
-                    if let Some(res) = callback(self.derived(ty.clone()), func.into()) {
+                    if let Some(res) = callback(func.into()) {
                         slot = Some(res);
                         return ControlFlow::Break(());
                     }
@@ -2832,50 +2821,55 @@ impl Type {
     fn iterate_method_candidates_dyn(
         &self,
         db: &dyn HirDatabase,
-        krate: Crate,
+        scope: &SemanticsScope,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+        callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
     ) {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
-        let env = self.env.clone();
-        let krate = krate.id;
+        let krate = match scope.krate() {
+            Some(k) => k,
+            None => return,
+        };
+        let environment = scope.resolver().generic_def().map_or_else(
+            || Arc::new(TraitEnvironment::empty(krate.id)),
+            |d| db.trait_environment(d),
+        );
 
         method_resolution::iterate_method_candidates_dyn(
             &canonical,
             db,
-            env,
-            krate,
+            environment,
             traits_in_scope,
             with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
             method_resolution::LookupMode::MethodCall,
-            &mut |ty, id| callback(&ty.value, id),
+            &mut |_adj, id| callback(id),
         );
     }
 
     pub fn iterate_path_candidates<T>(
         &self,
         db: &dyn HirDatabase,
-        krate: Crate,
+        scope: &SemanticsScope,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        mut callback: impl FnMut(Type, AssocItem) -> Option<T>,
+        mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         let _p = profile::span("iterate_path_candidates");
         let mut slot = None;
         self.iterate_path_candidates_dyn(
             db,
-            krate,
+            scope,
             traits_in_scope,
             with_local_impls,
             name,
-            &mut |ty, assoc_item_id| {
-                if let Some(res) = callback(self.derived(ty.clone()), assoc_item_id.into()) {
+            &mut |assoc_item_id| {
+                if let Some(res) = callback(assoc_item_id.into()) {
                     slot = Some(res);
                     return ControlFlow::Break(());
                 }
@@ -2888,27 +2882,31 @@ impl Type {
     fn iterate_path_candidates_dyn(
         &self,
         db: &dyn HirDatabase,
-        krate: Crate,
+        scope: &SemanticsScope,
         traits_in_scope: &FxHashSet<TraitId>,
         with_local_impls: Option<Module>,
         name: Option<&Name>,
-        callback: &mut dyn FnMut(&Ty, AssocItemId) -> ControlFlow<()>,
+        callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
     ) {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
-        let env = self.env.clone();
-        let krate = krate.id;
+        let krate = match scope.krate() {
+            Some(k) => k,
+            None => return,
+        };
+        let environment = scope.resolver().generic_def().map_or_else(
+            || Arc::new(TraitEnvironment::empty(krate.id)),
+            |d| db.trait_environment(d),
+        );
 
-        method_resolution::iterate_method_candidates_dyn(
+        method_resolution::iterate_path_candidates(
             &canonical,
             db,
-            env,
-            krate,
+            environment,
             traits_in_scope,
             with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
-            method_resolution::LookupMode::Path,
-            &mut |ty, id| callback(&ty.value, id),
+            &mut |id| callback(id),
         );
     }
 

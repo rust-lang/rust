@@ -1230,6 +1230,10 @@ impl<'a> SemanticsScope<'a> {
         Some(Crate { id: self.resolver.krate()? })
     }
 
+    pub(crate) fn resolver(&self) -> &Resolver {
+        &self.resolver
+    }
+
     /// Note: `FxHashSet<TraitId>` should be treated as an opaque type, passed into `Type
     pub fn visible_traits(&self) -> FxHashSet<TraitId> {
         let resolver = &self.resolver;

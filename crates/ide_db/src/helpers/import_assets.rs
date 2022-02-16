@@ -1,7 +1,7 @@
 //! Look up accessible paths for items.
 use hir::{
     AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, Type,
+    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -239,7 +239,6 @@ impl ImportAssets {
         let _p = profile::span("import_assets::search_for");
 
         let scope_definitions = self.scope_definitions(sema);
-        let current_crate = self.module_with_candidate.krate();
         let mod_path = |item| {
             get_mod_path(
                 sema.db,
@@ -249,15 +248,18 @@ impl ImportAssets {
             )
         };
 
+        let krate = self.module_with_candidate.krate();
+        let scope = sema.scope(&self.candidate_node);
+
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => {
-                path_applicable_imports(sema, current_crate, path_candidate, mod_path)
+                path_applicable_imports(sema, krate, path_candidate, mod_path)
             }
             ImportCandidate::TraitAssocItem(trait_candidate) => {
-                trait_applicable_items(sema, current_crate, trait_candidate, true, mod_path)
+                trait_applicable_items(sema, krate, &scope, trait_candidate, true, mod_path)
             }
             ImportCandidate::TraitMethod(trait_candidate) => {
-                trait_applicable_items(sema, current_crate, trait_candidate, false, mod_path)
+                trait_applicable_items(sema, krate, &scope, trait_candidate, false, mod_path)
             }
         }
         .into_iter()
@@ -447,6 +449,7 @@ fn module_with_segment_name(
 fn trait_applicable_items(
     sema: &Semantics<RootDatabase>,
     current_crate: Crate,
+    scope: &SemanticsScope,
     trait_candidate: &TraitImportCandidate,
     trait_assoc_item: bool,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
@@ -484,11 +487,11 @@ fn trait_applicable_items(
     if trait_assoc_item {
         trait_candidate.receiver_ty.iterate_path_candidates(
             db,
-            current_crate,
+            scope,
             &trait_candidates,
             None,
             None,
-            |_, assoc| {
+            |assoc| {
                 if required_assoc_items.contains(&assoc) {
                     if let AssocItem::Function(f) = assoc {
                         if f.self_param(db).is_some() {
@@ -511,11 +514,11 @@ fn trait_applicable_items(
     } else {
         trait_candidate.receiver_ty.iterate_method_candidates(
             db,
-            current_crate,
+            scope,
             &trait_candidates,
             None,
             None,
-            |_, function| {
+            |function| {
                 let assoc = function.as_assoc_item(db)?;
                 if required_assoc_items.contains(&assoc) {
                     let located_trait = assoc.containing_trait(db)?;

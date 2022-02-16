@@ -154,11 +154,11 @@ fn is_ref_and_impls_iter_method(
     let has_wanted_method = ty
         .iterate_method_candidates(
             sema.db,
-            krate,
+            &scope,
             &traits_in_scope,
             None,
             Some(&wanted_method),
-            |_, func| {
+            |func| {
                 if func.ret_type(sema.db).impls_trait(sema.db, iter_trait, &[]) {
                     return Some(());
                 }
