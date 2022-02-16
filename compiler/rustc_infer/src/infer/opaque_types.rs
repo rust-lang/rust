@@ -510,7 +510,7 @@ impl UseKind {
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
-    fn register_hidden_type(
+    pub fn register_hidden_type(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         cause: ObligationCause<'tcx>,

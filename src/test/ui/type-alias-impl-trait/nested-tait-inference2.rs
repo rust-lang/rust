@@ -11,8 +11,9 @@ impl Foo<()> for () {}
 impl Foo<u32> for () {}
 
 fn foo() -> impl Foo<FooX> {
-    ()
     //~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
+    //~| ERROR: the trait bound `(): Foo<FooX>` is not satisfied
+    ()
 }
 
 fn main() {}

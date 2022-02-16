@@ -3,6 +3,7 @@ use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
 use super::*;
 
+use hir::OpaqueTyOrigin;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -12,8 +13,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::fold::TypeFoldable;
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
@@ -95,7 +97,46 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     let declared_ret_ty = fn_sig.output();
 
-    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(declared_ret_ty)));
+    let ret_ty = declared_ret_ty.fold_with(&mut BottomUpFolder {
+        tcx: fcx.tcx,
+        ty_op: |ty| match *ty.kind() {
+            ty::Opaque(def_id, substs) => {
+                let span = tcx.def_span(def_id);
+                if let Some(origin @ OpaqueTyOrigin::FnReturn(_)) =
+                    fcx.infcx.opaque_type_origin(def_id, span)
+                {
+                    let hidden_ty = fcx.infcx.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::MiscVariable,
+                        span: span,
+                    });
+
+                    let cause = ObligationCause::misc(span, body.value.hir_id);
+                    match fcx.infcx.register_hidden_type(
+                        ty::OpaqueTypeKey { def_id, substs },
+                        cause.clone(),
+                        param_env,
+                        hidden_ty,
+                        origin,
+                    ) {
+                        Ok(infer_ok) => {
+                            fcx.register_infer_ok_obligations(infer_ok);
+                            hidden_ty
+                        }
+                        Err(err) => {
+                            fcx.report_mismatched_types(&cause, ty, hidden_ty, err).emit();
+                            tcx.ty_error()
+                        }
+                    }
+                } else {
+                    ty
+                }
+            }
+            _ => ty,
+        },
+        lt_op: |lt| lt,
+        ct_op: |ct| ct,
+    });
+    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fcx.ret_type_span = Some(decl.output.span());
 
     let span = body.value.span;

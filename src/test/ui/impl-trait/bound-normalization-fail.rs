@@ -23,8 +23,9 @@ mod impl_trait {
 
     /// `T::Assoc` can't be normalized any further here.
     fn foo_fail<T: Trait>() -> impl FooLike<Output = T::Assoc> {
-        Foo(())
         //~^ ERROR: type mismatch
+        //~| ERROR: type mismatch
+        Foo(())
     }
 }
 
@@ -40,8 +41,9 @@ mod lifetimes {
     /// Missing bound constraining `Assoc`, `T::Assoc` can't be normalized further.
     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output = T::Assoc> {
         //~^ ERROR `impl Trait` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+        //~| ERROR: type mismatch
+        //~| ERROR: type mismatch
         Foo(())
-        //~^ ERROR: type mismatch
     }
 }
 

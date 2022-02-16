@@ -28,7 +28,7 @@ fn ham() -> Foo {
 fn oof() -> impl std::fmt::Debug {
     let mut bar = ham();
     let func = bar.next().unwrap();
-    return func(&"oof"); //~ ERROR opaque type's hidden type cannot be another opaque type
+    return func(&"oof"); //~^^^ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 fn main() {

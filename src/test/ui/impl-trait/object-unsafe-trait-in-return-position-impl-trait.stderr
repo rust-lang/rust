@@ -2,25 +2,19 @@ error[E0308]: mismatched types
   --> $DIR/object-unsafe-trait-in-return-position-impl-trait.rs:36:5
    |
 LL | fn can() -> impl NotObjectSafe {
-   |             ------------------ the expected opaque type
+   |             ------------------ expected `_` because of return type
 ...
 LL |     B
    |     ^ expected struct `A`, found struct `B`
-   |
-   = note: expected opaque type `impl NotObjectSafe`
-                   found struct `B`
 
 error[E0308]: mismatched types
   --> $DIR/object-unsafe-trait-in-return-position-impl-trait.rs:43:5
    |
 LL | fn cat() -> impl ObjectSafe {
-   |             --------------- the expected opaque type
+   |             --------------- expected `_` because of return type
 ...
 LL |     B
    |     ^ expected struct `A`, found struct `B`
-   |
-   = note: expected opaque type `impl ObjectSafe`
-                   found struct `B`
 
 error: aborting due to 2 previous errors
 

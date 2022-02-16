@@ -20,6 +20,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 use std::mem;
+use std::ops::ControlFlow;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -503,7 +504,28 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for (opaque_type_key, decl) in opaque_types {
             let hidden_type = match decl.origin {
                 hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_) => {
-                    Some(self.resolve(decl.hidden_type.ty, &decl.hidden_type.span))
+                    let ty = self.resolve(decl.hidden_type.ty, &decl.hidden_type.span);
+                    struct RecursionChecker {
+                        def_id: DefId,
+                    }
+                    impl<'tcx> ty::TypeVisitor<'tcx> for RecursionChecker {
+                        type BreakTy = ();
+                        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                            if let ty::Opaque(def_id, _) = *t.kind() {
+                                if def_id == self.def_id {
+                                    return ControlFlow::Break(());
+                                }
+                            }
+                            t.super_visit_with(self)
+                        }
+                    }
+                    if ty
+                        .visit_with(&mut RecursionChecker { def_id: opaque_type_key.def_id })
+                        .is_break()
+                    {
+                        return;
+                    }
+                    Some(ty)
                 }
                 hir::OpaqueTyOrigin::TyAlias => None,
             };
