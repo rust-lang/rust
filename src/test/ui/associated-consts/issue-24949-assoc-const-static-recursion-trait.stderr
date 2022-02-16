@@ -6,10 +6,6 @@ LL |     const BAR: u32 = TRAIT_REF_BAR;
    |
    = note: ...which requires normalizing `TRAIT_REF_BAR`...
 note: ...which requires simplifying constant for the type system `TRAIT_REF_BAR`...
-  --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:7:1
-   |
-LL | const TRAIT_REF_BAR: u32 = <GlobalTraitRef>::BAR;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires simplifying constant for the type system `TRAIT_REF_BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:7:1
    |
@@ -31,6 +27,9 @@ note: ...which requires simplifying constant for the type system `<impl at $DIR/
    |
 LL |     const BAR: u32 = TRAIT_REF_BAR;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+=======
+   |
+>>>>>>> 53eca42efca (bless tests)
 note: ...which requires const-evaluating + checking `<impl at $DIR/issue-24949-assoc-const-static-recursion-trait.rs:11:1: 13:2>::BAR`...
   --> $DIR/issue-24949-assoc-const-static-recursion-trait.rs:12:5
    |
