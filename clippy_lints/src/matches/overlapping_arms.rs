@@ -34,11 +34,11 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                 if let PatKind::Range(ref lhs, ref rhs, range_end) = pat.kind {
                     let lhs_const = match lhs {
                         Some(lhs) => constant(cx, cx.typeck_results(), lhs)?.0,
-                        None => miri_to_const(ty.numeric_min_val(cx.tcx)?)?,
+                        None => miri_to_const(cx.tcx, ty.numeric_min_val(cx.tcx)?)?,
                     };
                     let rhs_const = match rhs {
                         Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
-                        None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
+                        None => miri_to_const(cx.tcx, ty.numeric_max_val(cx.tcx)?)?,
                     };
                     let lhs_val = lhs_const.int_value(cx, ty)?;
                     let rhs_val = rhs_const.int_value(cx, ty)?;
