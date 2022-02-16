@@ -644,7 +644,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
             }
             ty::Adt(def, _) => {
-                self.assemble_inherent_impl_candidates_for_type(def.did());
+                let def_id = def.did();
+                self.assemble_inherent_impl_candidates_for_type(def_id);
+                if Some(def_id) == self.tcx.lang_items().c_str() {
+                    self.assemble_inherent_candidates_for_incoherent_ty(raw_self_ty);
+                }
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did);

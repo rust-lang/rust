@@ -1,10 +1,12 @@
 use super::*;
-use crate::borrow::Cow::{Borrowed, Owned};
-use crate::collections::hash_map::DefaultHasher;
-use crate::hash::{Hash, Hasher};
-use crate::os::raw::c_char;
 use crate::rc::Rc;
 use crate::sync::Arc;
+use core::assert_matches::assert_matches;
+use core::ffi::FromBytesUntilNulError;
+use core::hash::{Hash, Hasher};
+
+#[allow(deprecated)]
+use core::hash::SipHasher13 as DefaultHasher;
 
 #[test]
 fn c_to_rust() {
@@ -48,22 +50,6 @@ fn borrowed() {
 }
 
 #[test]
-fn to_str() {
-    let data = b"123\xE2\x80\xA6\0";
-    let ptr = data.as_ptr() as *const c_char;
-    unsafe {
-        assert_eq!(CStr::from_ptr(ptr).to_str(), Ok("123…"));
-        assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Borrowed("123…"));
-    }
-    let data = b"123\xE2\0";
-    let ptr = data.as_ptr() as *const c_char;
-    unsafe {
-        assert!(CStr::from_ptr(ptr).to_str().is_err());
-        assert_eq!(CStr::from_ptr(ptr).to_string_lossy(), Owned::<str>(format!("123\u{FFFD}")));
-    }
-}
-
-#[test]
 fn to_owned() {
     let data = b"123\0";
     let ptr = data.as_ptr() as *const c_char;
@@ -78,9 +64,11 @@ fn equal_hash() {
     let ptr = data.as_ptr() as *const c_char;
     let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
 
+    #[allow(deprecated)]
     let mut s = DefaultHasher::new();
     cstr.hash(&mut s);
     let cstr_hash = s.finish();
+    #[allow(deprecated)]
     let mut s = DefaultHasher::new();
     CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
     let cstring_hash = s.finish();
@@ -122,11 +110,11 @@ fn cstr_from_bytes_until_nul() {
     // Test an empty slice. This should fail because it
     // does not contain a nul byte.
     let b = b"";
-    assert_eq!(CStr::from_bytes_until_nul(&b[..]), Err(FromBytesUntilNulError(())));
+    assert_matches!(CStr::from_bytes_until_nul(&b[..]), Err(FromBytesUntilNulError { .. }));
 
     // Test a non-empty slice, that does not contain a nul byte.
     let b = b"hello";
-    assert_eq!(CStr::from_bytes_until_nul(&b[..]), Err(FromBytesUntilNulError(())));
+    assert_matches!(CStr::from_bytes_until_nul(&b[..]), Err(FromBytesUntilNulError { .. }));
 
     // Test an empty nul-terminated string
     let b = b"\0";

@@ -55,7 +55,12 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
         let self_ty = self.tcx.type_of(item.def_id);
         match *self_ty.kind() {
             ty::Adt(def, _) => {
-                self.check_def_id(item, def.did());
+                let def_id = def.did();
+                if !def_id.is_local() && Some(def_id) == self.tcx.lang_items().c_str() {
+                    self.check_primitive_impl(item.def_id, self_ty, items, ty.span)
+                } else {
+                    self.check_def_id(item, def_id);
+                }
             }
             ty::Foreign(did) => {
                 self.check_def_id(item, did);

@@ -417,6 +417,7 @@ impl<'a> CrateLoader<'a> {
 
         let crate_metadata = CrateMetadata::new(
             self.sess,
+            &self.cstore,
             metadata,
             crate_root,
             raw_proc_macros,

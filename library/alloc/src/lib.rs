@@ -91,6 +91,7 @@
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
+#![feature(assert_matches)]
 #![feature(async_iterator)]
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
@@ -105,8 +106,10 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
 #![feature(core_intrinsics)]
+#![feature(core_ffi_c)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
+#![feature(cstr_from_bytes_until_nul)]
 #![feature(dispatch_from_dyn)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
@@ -152,6 +155,7 @@
 #![feature(exclusive_range_pattern)]
 #![feature(fundamental)]
 #![cfg_attr(not(test), feature(generator_trait))]
+#![feature(hashmap_internals)]
 #![feature(lang_items)]
 #![feature(let_else)]
 #![feature(min_specialization)]
@@ -160,6 +164,7 @@
 #![feature(nll)] // Not necessary, but here to test the `nll` feature.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
+#![feature(slice_internals)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(test))]
 #![feature(unboxed_closures)]
@@ -205,6 +210,8 @@ mod boxed {
 }
 pub mod borrow;
 pub mod collections;
+#[cfg(not(no_global_oom_handling))]
+pub mod ffi;
 pub mod fmt;
 pub mod rc;
 pub mod slice;

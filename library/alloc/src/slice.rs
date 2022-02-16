@@ -153,7 +153,7 @@ pub use hack::to_vec;
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
-mod hack {
+pub(crate) mod hack {
     use core::alloc::Allocator;
 
     use crate::boxed::Box;
