@@ -741,7 +741,19 @@ where
                                     continue 'outer;
                                 }
                             }
-                            sym::suggestion if attr.has_name(sym::rustc_deprecated) => {
+                            sym::suggestion => {
+                                if !sess.features_untracked().deprecated_suggestion {
+                                    let mut diag = sess.struct_span_err(
+                                        mi.span,
+                                        "suggestions on deprecated items are unstable",
+                                    );
+                                    if sess.is_nightly_build() {
+                                        diag.help("add `#![feature(deprecated_suggestion)]` to the crate root");
+                                    }
+                                    // FIXME(jhpratt) change this to an actual tracking issue
+                                    diag.note("see #XXX for more details").emit();
+                                }
+
                                 if !get(mi, &mut suggestion) {
                                     continue 'outer;
                                 }
@@ -776,10 +788,6 @@ where
                     }
                 }
             }
-        }
-
-        if suggestion.is_some() && attr.has_name(sym::deprecated) {
-            unreachable!("only allowed on rustc_deprecated")
         }
 
         if attr.has_name(sym::rustc_deprecated) {

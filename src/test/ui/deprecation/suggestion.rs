@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![feature(staged_api)]
+#![feature(deprecated_suggestion)]
 
 #![stable(since = "1.0.0", feature = "test")]
 
