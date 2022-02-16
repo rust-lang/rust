@@ -9,8 +9,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifyParams};
 use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -1212,12 +1214,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if can_derive {
                     let self_name = trait_pred.self_ty().to_string();
                     let self_span = self.tcx.def_span(adt.did);
-                    use crate::rustc_middle::ty::ToPolyTraitRef;
                     if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
-                        for super_trait in rustc_middle::traits::util::supertraits(
-                            self.tcx,
-                            poly_trait_ref.to_poly_trait_ref(),
-                        ) {
+                        for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
+                        {
                             if let Some(parent_diagnostic_name) =
                                 self.tcx.get_diagnostic_name(super_trait.def_id())
                             {
