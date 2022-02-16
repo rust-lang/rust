@@ -2,8 +2,8 @@
 #![allow(
     clippy::collapsible_else_if,
     clippy::unused_unit,
-    clippy::never_loop,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::never_loop
 )]
 #![warn(clippy::manual_let_else)]
 
@@ -87,6 +87,14 @@ fn fire() {
     } else {
         return;
     };
+
+    // entirely inside macro lints
+    macro_rules! create_binding_if_some {
+        ($n:ident, $e:expr) => {
+            let $n = if let Some(v) = $e { v } else { return };
+        };
+    }
+    create_binding_if_some!(w, g());
 }
 
 fn not_fire() {
@@ -164,4 +172,20 @@ fn not_fire() {
         };
         Some(v)
     }
+
+    // Macro boundary inside let
+    macro_rules! some_or_return {
+        ($e:expr) => {
+            if let Some(v) = $e { v } else { return }
+        };
+    }
+    let v = some_or_return!(g());
+
+    // Also macro boundary inside let, but inside a macro
+    macro_rules! create_binding_if_some_nf {
+        ($n:ident, $e:expr) => {
+            let $n = some_or_return!($e);
+        };
+    }
+    create_binding_if_some_nf!(v, g());
 }

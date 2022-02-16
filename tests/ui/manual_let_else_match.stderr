@@ -1,0 +1,40 @@
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:28:5
+   |
+LL | /     let v = match g() {
+LL | |         Some(v_some) => v_some,
+LL | |         None => return,
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:33:5
+   |
+LL | /     let v = match g() {
+LL | |         Some(v_some) => v_some,
+LL | |         _ => return,
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:40:9
+   |
+LL | /         let v = match h() {
+LL | |             Variant::Foo => continue,
+LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
+LL | |         };
+   | |__________^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:48:5
+   |
+LL | /     let v = match f() {
+LL | |         Ok(v) => v,
+LL | |         Err(_) => return,
+LL | |     };
+   | |______^
+
+error: aborting due to 4 previous errors
+
