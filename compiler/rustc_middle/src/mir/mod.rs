@@ -1902,6 +1902,43 @@ impl<'tcx> Place<'tcx> {
             (base, proj)
         })
     }
+
+    /// Checks if the places may overlap.
+    ///
+    /// The analysis is conservative. Returning `false` indicates that the places definitely do not
+    /// overlap; returning `true` does not mean they necessarily do.
+    #[inline]
+    pub fn may_overlap(self, other: Place<'tcx>) -> bool {
+        if self.is_indirect() || other.is_indirect() {
+            return true;
+        }
+
+        if self.local != other.local {
+            return false;
+        }
+
+        for (p1, p2) in self.projection.iter().zip(other.projection.iter()) {
+            match (p1, p2) {
+                (ProjectionElem::Field(f1, _), ProjectionElem::Field(f2, _)) if f1 != f2 => {
+                    return false;
+                }
+                (
+                    ProjectionElem::ConstantIndex { offset: o1, from_end: e1, .. },
+                    ProjectionElem::ConstantIndex { offset: o2, from_end: e2, .. },
+                ) => {
+                    if e1 == e2 && o1 != o2 {
+                        return false;
+                    }
+                }
+                // There are other conditions we could check for here with slicing and such, but
+                // those checks are error-prone and its unclear if that would really get us much
+                (a, b) if a != b => return true,
+                (_, _) => (),
+            }
+        }
+
+        return true;
+    }
 }
 
 impl From<Local> for Place<'_> {

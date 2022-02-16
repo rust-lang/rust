@@ -49,6 +49,7 @@ mod const_debuginfo;
 mod const_goto;
 mod const_prop;
 mod coverage;
+mod dead_store_elimination;
 mod deaggregator;
 mod deduplicate_blocks;
 mod dest_prop;
