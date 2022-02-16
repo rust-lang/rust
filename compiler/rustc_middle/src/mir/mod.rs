@@ -2270,11 +2270,13 @@ pub enum BinOp {
     Mul,
     /// The `/` operator (division)
     ///
-    /// Division by zero is UB.
+    /// Division by zero is UB, because the compiler should have inserted checks
+    /// prior to this.
     Div,
     /// The `%` operator (modulus)
     ///
-    /// Using zero as the modulus (second operand) is UB.
+    /// Using zero as the modulus (second operand) is UB, because the compiler
+    /// should have inserted checks prior to this.
     Rem,
     /// The `^` operator (bitwise xor)
     BitXor,
