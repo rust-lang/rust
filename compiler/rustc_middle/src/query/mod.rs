@@ -924,10 +924,12 @@ rustc_queries! {
     }
 
     /// Destructure a constant ADT or array into its variant index and its
-    /// field values.
-    query destructure_const(
+    /// field values or return `None` if constant is invalid.
+    ///
+    /// Use infallible `TyCtxt::destructure_const` when you know that constant is valid.
+    query try_destructure_const(
         key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
-    ) -> mir::DestructuredConst<'tcx> {
+    ) -> Option<mir::DestructuredConst<'tcx>> {
         desc { "destructure constant" }
         remap_env_constness
     }
