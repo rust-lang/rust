@@ -25,7 +25,6 @@ pub(crate) fn provide(p: &mut Providers) {
     };
 }
 
-#[instrument(level = "debug", skip(tcx))]
 fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<'tcx> + PartialEq + Copy>(
     tcx: TyCtxt<'tcx>,
     goal: ParamEnvAnd<'tcx, T>,

@@ -8,7 +8,7 @@ use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_lifetime;
 use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstValue, Scalar};
+use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{
     Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
@@ -991,7 +991,7 @@ impl<'tcx> CommonConsts<'tcx> {
 
         CommonConsts {
             unit: mk_const(ty::ConstS {
-                kind: ty::ConstKind::Value(ConstValue::Scalar(Scalar::ZST)),
+                kind: ty::ConstKind::Value(ty::ValTree::zst()),
                 ty: types.unit,
             }),
         }
@@ -1186,11 +1186,7 @@ impl<'tcx> TyCtxt<'tcx> {
             };
             debug!("layout_scalar_valid_range: attr={:?}", attr);
             if let Some(
-                &[
-                    ast::NestedMetaItem::Literal(ast::Lit {
-                        kind: ast::LitKind::Int(a, _), ..
-                    }),
-                ],
+                &[ast::NestedMetaItem::Literal(ast::Lit { kind: ast::LitKind::Int(a, _), .. })],
             ) = attr.meta_item_list().as_deref()
             {
                 Bound::Included(a)
@@ -1663,7 +1659,7 @@ macro_rules! nop_lift {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
             type Lifted = $lifted;
             fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self.0.0)) {
+                if tcx.interners.$set.contains_pointer_to(&InternedInSet(&*self.0 .0)) {
                     // SAFETY: `self` is interned and therefore valid
                     // for the entire lifetime of the `TyCtxt`.
                     Some(unsafe { mem::transmute(self) })
@@ -2248,7 +2244,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `*r == kind`.
     #[inline]
     pub fn reuse_or_mk_region(self, r: Region<'tcx>, kind: RegionKind) -> Region<'tcx> {
-        if *r == kind { r } else { self.mk_region(kind) }
+        if *r == kind {
+            r
+        } else {
+            self.mk_region(kind)
+        }
     }
 
     #[allow(rustc::usage_of_ty_tykind)]
@@ -2268,7 +2268,11 @@ impl<'tcx> TyCtxt<'tcx> {
         pred: Predicate<'tcx>,
         binder: Binder<'tcx, PredicateKind<'tcx>>,
     ) -> Predicate<'tcx> {
-        if pred.kind() != binder { self.mk_predicate(binder) } else { pred }
+        if pred.kind() != binder {
+            self.mk_predicate(binder)
+        } else {
+            pred
+        }
     }
 
     pub fn mk_mach_int(self, tm: IntTy) -> Ty<'tcx> {
@@ -2413,7 +2417,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type_fallback { self.types.never } else { self.types.unit }
+        if self.features().never_type_fallback {
+            self.types.never
+        } else {
+            self.types.unit
+        }
     }
 
     #[inline]
@@ -2564,11 +2572,9 @@ impl<'tcx> TyCtxt<'tcx> {
         eps: &[ty::Binder<'tcx, ExistentialPredicate<'tcx>>],
     ) -> &'tcx List<ty::Binder<'tcx, ExistentialPredicate<'tcx>>> {
         assert!(!eps.is_empty());
-        assert!(
-            eps.array_windows()
-                .all(|[a, b]| a.skip_binder().stable_cmp(self, &b.skip_binder())
-                    != Ordering::Greater)
-        );
+        assert!(eps
+            .array_windows()
+            .all(|[a, b]| a.skip_binder().stable_cmp(self, &b.skip_binder()) != Ordering::Greater));
         self._intern_poly_existential_predicates(eps)
     }
 
@@ -2601,29 +2607,49 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn intern_substs(self, ts: &[GenericArg<'tcx>]) -> &'tcx List<GenericArg<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_substs(ts) }
+        if ts.is_empty() {
+            List::empty()
+        } else {
+            self._intern_substs(ts)
+        }
     }
 
     pub fn intern_projs(self, ps: &[ProjectionKind]) -> &'tcx List<ProjectionKind> {
-        if ps.is_empty() { List::empty() } else { self._intern_projs(ps) }
+        if ps.is_empty() {
+            List::empty()
+        } else {
+            self._intern_projs(ps)
+        }
     }
 
     pub fn intern_place_elems(self, ts: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
-        if ts.is_empty() { List::empty() } else { self._intern_place_elems(ts) }
+        if ts.is_empty() {
+            List::empty()
+        } else {
+            self._intern_place_elems(ts)
+        }
     }
 
     pub fn intern_canonical_var_infos(
         self,
         ts: &[CanonicalVarInfo<'tcx>],
     ) -> CanonicalVarInfos<'tcx> {
-        if ts.is_empty() { List::empty() } else { self._intern_canonical_var_infos(ts) }
+        if ts.is_empty() {
+            List::empty()
+        } else {
+            self._intern_canonical_var_infos(ts)
+        }
     }
 
     pub fn intern_bound_variable_kinds(
         self,
         ts: &[ty::BoundVariableKind],
     ) -> &'tcx List<ty::BoundVariableKind> {
-        if ts.is_empty() { List::empty() } else { self._intern_bound_variable_kinds(ts) }
+        if ts.is_empty() {
+            List::empty()
+        } else {
+            self._intern_bound_variable_kinds(ts)
+        }
     }
 
     pub fn mk_fn_sig<I>(

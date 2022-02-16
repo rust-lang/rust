@@ -1,5 +1,5 @@
-use crate::mir::interpret::ConstValue;
-use crate::mir::interpret::{LitToConstInput, Scalar};
+use crate::mir::interpret::LitToConstInput;
+use crate::mir::ConstantKind;
 use crate::ty::{
     self, InlineConstSubsts, InlineConstSubstsParts, InternalSubsts, ParamEnv, ParamEnvAnd, Ty,
     TyCtxt, TypeFoldable,
@@ -195,14 +195,13 @@ impl<'tcx> Const<'tcx> {
 
     /// Interns the given value as a constant.
     #[inline]
-    pub fn from_value(tcx: TyCtxt<'tcx>, val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
+    pub fn from_value(tcx: TyCtxt<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> Self {
         tcx.mk_const(ConstS { kind: ConstKind::Value(val), ty })
     }
 
-    #[inline]
-    /// Interns the given scalar as a constant.
-    pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> Self {
-        Self::from_value(tcx, ConstValue::Scalar(val), ty)
+    pub fn from_scalar_int(tcx: TyCtxt<'tcx>, i: ScalarInt, ty: Ty<'tcx>) -> Self {
+        let valtree = ty::ValTree::from_scalar_int(i);
+        Self::from_value(tcx, valtree, ty)
     }
 
     #[inline]
@@ -212,13 +211,14 @@ impl<'tcx> Const<'tcx> {
             .layout_of(ty)
             .unwrap_or_else(|e| panic!("could not compute layout for {:?}: {:?}", ty, e))
             .size;
-        Self::from_scalar(tcx, Scalar::from_uint(bits, size), ty.value)
+        Self::from_scalar_int(tcx, ScalarInt::try_from_uint(bits, size).unwrap(), ty.value)
     }
 
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        Self::from_scalar(tcx, Scalar::ZST, ty)
+        let valtree = ty::ValTree::zst();
+        Self::from_value(tcx, valtree, ty)
     }
 
     #[inline]
@@ -263,13 +263,28 @@ impl<'tcx> Const<'tcx> {
     /// Tries to evaluate the constant if it is `Unevaluated`. If that doesn't succeed, return the
     /// unevaluated constant.
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Const<'tcx> {
-        if let Some(val) = self.kind().try_eval(tcx, param_env) {
+        if let Some(val) = self.kind().try_eval_for_typeck(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
                 Err(ErrorGuaranteed { .. }) => tcx.const_error(self.ty()),
             }
         } else {
+            // Either the constant isn't evaluatable or ValTree creation failed.
             self
+        }
+    }
+
+    #[inline]
+    /// Tries to evaluate the constant if it is `Unevaluated` and creates a ConstValue if the
+    /// evaluation succeeds. If it doesn't succeed, returns the unevaluated constant.
+    pub fn eval_for_mir(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> ConstantKind<'tcx> {
+        if let Some(val) = self.val().try_eval_for_mir(tcx, param_env) {
+            match val {
+                Ok(const_val) => ConstantKind::from_value(const_val, self.ty()),
+                Err(ErrorGuaranteed { .. }) => ConstantKind::Ty(tcx.const_error(self.ty())),
+            }
+        } else {
+            ConstantKind::Ty(self)
         }
     }
 

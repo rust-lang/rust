@@ -31,10 +31,10 @@ fn test() -> Option<Box<u32>> {
         StorageLive(_1);                 // scope 0 at $DIR/issue-62289.rs:9:10: 9:21
         _2 = SizeOf(u32);                // scope 1 at $DIR/issue-62289.rs:9:10: 9:21
         _3 = AlignOf(u32);               // scope 1 at $DIR/issue-62289.rs:9:10: 9:21
-        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 1 at $DIR/issue-62289.rs:9:10: 9:21
+        _4 = : unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}(move _2, move _3) -> bb1; // scope 1 at $DIR/issue-62289.rs:9:10: 9:21
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:10: 9:21
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(ValTree::Branch(..)) }
     }
 
     bb1: {

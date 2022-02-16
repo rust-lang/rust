@@ -765,7 +765,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         let unit = Rvalue::Use(Operand::Constant(Box::new(Constant {
                             span: statement.source_info.span,
                             user_ty: None,
-                            literal: ty::Const::zero_sized(self.tcx, self.tcx.types.unit).into(),
+                            literal: ConstantKind::zero_sized(self.tcx.types.unit),
                         })));
                         mem::replace(rhs, unit)
                     },
@@ -835,26 +835,25 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let mut promoted_operand = |ty, span| {
                 promoted.span = span;
                 promoted.local_decls[RETURN_PLACE] = LocalDecl::new(ty, span);
+                let _const = tcx.mk_const(ty::ConstS {
+                    ty,
+                    kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
+                        def,
+                        substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
+                            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                                tcx.lifetimes.re_erased.into()
+                            } else {
+                                tcx.mk_param_from_def(param)
+                            }
+                        }),
+                        promoted: Some(promoted_id),
+                    }),
+                });
 
                 Operand::Constant(Box::new(Constant {
                     span,
                     user_ty: None,
-                    literal: tcx
-                        .mk_const(ty::ConstS {
-                            ty,
-                            kind: ty::ConstKind::Unevaluated(ty::Unevaluated {
-                                def,
-                                substs: InternalSubsts::for_item(tcx, def.did, |param, _| {
-                                    if let ty::GenericParamDefKind::Lifetime = param.kind {
-                                        tcx.lifetimes.re_erased.into()
-                                    } else {
-                                        tcx.mk_param_from_def(param)
-                                    }
-                                }),
-                                promoted: Some(promoted_id),
-                            }),
-                        })
-                        .into(),
+                    literal: ConstantKind::from_const(_const, tcx),
                 }))
             };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();

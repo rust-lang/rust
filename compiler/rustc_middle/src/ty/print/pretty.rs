@@ -1,4 +1,4 @@
-use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Provenance, Scalar};
+use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{
     self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable,
@@ -607,7 +607,11 @@ pub trait PrettyPrinter<'tcx>:
                         }
                     }
                 } else {
-                    if verbose { p!(write("{:?}", infer_ty)) } else { p!(write("{}", infer_ty)) }
+                    if verbose {
+                        p!(write("{:?}", infer_ty))
+                    } else {
+                        p!(write("{}", infer_ty))
+                    }
                 }
             }
             ty::Error(_) => p!("[type error]"),
@@ -1224,7 +1228,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
-                return self.pretty_print_const_value(value, ct.ty(), print_ty);
+                return self.pretty_print_const_valtree(value, ct.ty(), print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {
@@ -1262,7 +1266,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(_, inner, _) => {
                 if let ty::Array(elem, len) = inner.kind() {
                     if let ty::Uint(ty::UintTy::U8) = elem.kind() {
-                        if let ty::ConstKind::Value(ConstValue::Scalar(int)) = len.kind() {
+                        if let ty::ConstKind::Value(ty::ValTree::Leaf(int)) = len.kind() {
                             match self.tcx().get_global_alloc(alloc_id) {
                                 Some(GlobalAlloc::Memory(alloc)) => {
                                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
@@ -1331,7 +1335,11 @@ pub trait PrettyPrinter<'tcx>:
             ty::Uint(_) | ty::Int(_) => {
                 let int =
                     ConstInt::new(int, matches!(ty.kind(), ty::Int(_)), ty.is_ptr_sized_integral());
-                if print_ty { p!(write("{:#?}", int)) } else { p!(write("{:?}", int)) }
+                if print_ty {
+                    p!(write("{:#?}", int))
+                } else {
+                    p!(write("{:?}", int))
+                }
             }
             // Char
             ty::Char if char::try_from(int).is_ok() => {
@@ -1408,85 +1416,64 @@ pub trait PrettyPrinter<'tcx>:
         Ok(self)
     }
 
-    fn pretty_print_const_value(
+    fn pretty_print_const_valtree(
         mut self,
-        ct: ConstValue<'tcx>,
+        valtree: ty::ValTree<'tcx>,
         ty: Ty<'tcx>,
         print_ty: bool,
     ) -> Result<Self::Const, Self::Error> {
         define_scoped_cx!(self);
 
         if self.tcx().sess.verbose() {
-            p!(write("ConstValue({:?}: ", ct), print(ty), ")");
+            p!(write("ValTree({:?}: ", valtree), print(ty), ")");
             return Ok(self);
         }
 
         let u8_type = self.tcx().types.u8;
-
-        match (ct, ty.kind()) {
-            // Byte/string slices, printed as (byte) string literals.
-            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
-                match inner.kind() {
-                    ty::Slice(t) => {
-                        if *t == u8_type {
-                            // The `inspect` here is okay since we checked the bounds, and there are
-                            // no relocations (we have an active slice reference here). We don't use
-                            // this result to affect interpreter execution.
-                            let byte_str = data
-                                .inner()
-                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                            return self.pretty_print_byte_str(byte_str);
-                        }
-                    }
-                    ty::Str => {
-                        // The `inspect` here is okay since we checked the bounds, and there are no
-                        // relocations (we have an active `str` reference here). We don't use this
-                        // result to affect interpreter execution.
-                        let slice = data
-                            .inner()
-                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                        p!(write("{:?}", String::from_utf8_lossy(slice)));
-                        return Ok(self);
-                    }
-                    _ => {}
+        match (valtree, ty.kind()) {
+            (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
+                ty::Slice(t) if *t == u8_type => {
+                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                        bug!(
+                            "expected to convert valtree {:?} to raw bytes for type {:?}",
+                            valtree,
+                            t
+                        )
+                    });
+                    return self.pretty_print_byte_str(bytes);
                 }
-            }
-            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
-                let n = n.kind().try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
-                // cast is ok because we already checked for pointer size (32 or 64 bit) above
-                let range = AllocRange { start: offset, size: Size::from_bytes(n) };
-
-                let byte_str = alloc.inner().get_bytes(&self.tcx(), range).unwrap();
+                ty::Str => {
+                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                        bug!("expected to convert valtree to raw bytes for type {:?}", ty)
+                    });
+                    p!(write("{:?}", String::from_utf8_lossy(bytes)));
+                    return Ok(self);
+                }
+                _ => {}
+            },
+            (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
+                let bytes = valtree.try_to_raw_bytes(self.tcx(), *t).unwrap_or_else(|| {
+                    bug!("expected to convert valtree to raw bytes for type {:?}", t)
+                });
                 p!("*");
-                p!(pretty_print_byte_str(byte_str));
+                p!(pretty_print_byte_str(bytes));
                 return Ok(self);
             }
-
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            //
-            // NB: the `has_param_types_or_consts` check ensures that we can use
-            // the `destructure_const` query with an empty `ty::ParamEnv` without
-            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
-            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
-            // to be able to destructure the tuple into `(0u8, *mut T)
-            //
-            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
-            // correct `ty::ParamEnv` to allow printing *all* constant values.
-            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..))
+                if !ty.has_param_types_or_consts() =>
+            {
                 let Some(contents) = self.tcx().try_destructure_const(
-                    ty::ParamEnv::reveal_all()
-                        .and(self.tcx().mk_const(ty::ConstS { kind: ty::ConstKind::Value(ct), ty })),
+                    ty::Const::from_value(self.tcx(), valtree, ty)
                 ) else {
                     // Fall back to debug pretty printing for invalid constants.
-                    p!(write("{:?}", ct));
+                    p!(write("{:?}", valtree));
                     if print_ty {
                         p!(": ", print(ty));
                     }
                     return Ok(self);
                 };
-
                 let fields = contents.fields.iter().copied();
-
                 match *ty.kind() {
                     ty::Array(..) => {
                         p!("[", comma_sep(fields), "]");
@@ -1513,7 +1500,6 @@ pub trait PrettyPrinter<'tcx>:
                             contents.variant.expect("destructed const of adt without variant idx");
                         let variant_def = &def.variant(variant_idx);
                         p!(print_value_path(variant_def.def_id, substs));
-
                         match variant_def.ctor_kind {
                             CtorKind::Const => {}
                             CtorKind::Fn => {
@@ -1535,21 +1521,20 @@ pub trait PrettyPrinter<'tcx>:
                     }
                     _ => unreachable!(),
                 }
-
                 return Ok(self);
             }
-
-            (ConstValue::Scalar(scalar), _) => {
-                return self.pretty_print_const_scalar(scalar, ty, print_ty);
+            (ty::ValTree::Leaf(leaf), _) => {
+                return self.pretty_print_const_scalar_int(leaf, ty, print_ty);
             }
-
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
             _ => {}
         }
 
         // fallback
-        p!(write("{:?}", ct));
+        if valtree != ty::ValTree::zst() {
+            p!(write("{:?}", valtree));
+        }
         if print_ty {
             p!(": ", print(ty));
         }
@@ -2296,7 +2281,6 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         Ok(inner)
     }
 
-    #[instrument(skip(self), level = "debug")]
     fn prepare_late_bound_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
         T: TypeFoldable<'tcx>,
@@ -2309,9 +2293,8 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector<'_, 'tcx> {
             type BreakTy = ();
 
-            #[instrument(skip(self), level = "trace")]
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-                trace!("address: {:p}", r.0.0);
+                trace!("address: {:p}", r.0 .0);
                 if let ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) = *r {
                     self.used_region_names.insert(name);
                 } else if let ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2326,7 +2309,6 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
             // We collect types in order to prevent really large types from compiling for
             // a really long time. See issue #83150 for why this is necessary.
-            #[instrument(skip(self), level = "trace")]
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                 let not_previously_inserted = self.type_collector.insert(ty);
                 if not_previously_inserted {
@@ -2353,6 +2335,7 @@ where
 {
     type Output = P;
     type Error = P::Error;
+
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.in_binder(self)
     }

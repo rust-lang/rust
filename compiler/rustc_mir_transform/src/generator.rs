@@ -991,7 +991,7 @@ fn insert_panic_block<'tcx>(
         cond: Operand::Constant(Box::new(Constant {
             span: body.span,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false).into(),
+            literal: ConstantKind::from_bool(tcx, false),
         })),
         expected: true,
         msg: message,

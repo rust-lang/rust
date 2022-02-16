@@ -185,11 +185,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             (Some(PatKind::Constant { value: lo }), None) => {
                 let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, hi.into()))
+                Some((*lo, mir::ConstantKind::from_const(hi, self.tcx)))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
                 let lo = ty.numeric_min_val(self.tcx)?;
-                Some((lo.into(), *hi))
+                Some((mir::ConstantKind::from_const(lo, self.tcx), *hi))
             }
             _ => None,
         }
@@ -798,11 +798,12 @@ pub(crate) fn compare_const_vals<'tcx>(
     if let ty::Str = ty.kind() && let (
         Some(a_val @ ConstValue::Slice { .. }),
         Some(b_val @ ConstValue::Slice { .. }),
-    ) = (a.try_val(), b.try_val())
+    ) = (a.try_val(tcx), b.try_val(tcx))
     {
         let a_bytes = get_slice_bytes(&tcx, a_val);
         let b_bytes = get_slice_bytes(&tcx, b_val);
         return from_bool(a_bytes == b_bytes);
     }
+
     fallback()
 }

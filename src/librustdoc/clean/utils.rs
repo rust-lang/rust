@@ -15,7 +15,6 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -264,13 +263,13 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
 }
 
 pub(crate) fn print_evaluated_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<String> {
-    tcx.const_eval_poly(def_id).ok().and_then(|val| {
+    tcx.const_eval_poly_for_typeck(def_id).ok().and_then(|val| {
         let ty = tcx.type_of(def_id);
         match (val, ty.kind()) {
             (_, &ty::Ref(..)) => None,
-            (ConstValue::Scalar(_), &ty::Adt(_, _)) => None,
-            (ConstValue::Scalar(_), _) => {
-                let const_ = ty::Const::from_value(tcx, val, ty);
+            (Some(ty::ValTree::Branch(_)), &ty::Adt(_, _)) => None,
+            (Some(ty::ValTree::Leaf(_)), _) => {
+                let const_ = ty::Const::from_value(tcx, val.unwrap(), ty);
                 Some(print_const_with_custom_print_scalar(tcx, const_))
             }
             _ => None,
@@ -308,10 +307,10 @@ fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: ty::Const<'_>) -> S
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.kind(), ct.ty().kind()) {
-        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
+        (ty::ConstKind::Value(ty::ValTree::Leaf(int)), ty::Uint(ui)) => {
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
-        (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
+        (ty::ConstKind::Value(ty::ValTree::Leaf(int)), ty::Int(i)) => {
             let ty = tcx.lift(ct.ty()).unwrap();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);

@@ -112,7 +112,6 @@ impl<'tcx> TypeVisitor<'tcx> for BoundVarsCollector<'tcx> {
     }
 }
 
-#[instrument(level = "debug", skip(tcx))]
 fn resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>,
@@ -141,7 +140,6 @@ fn resolve_instance_of_const_arg<'tcx>(
     )
 }
 
-#[instrument(level = "debug", skip(tcx))]
 fn inner_resolve_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, (ty::WithOptConstParam<DefId>, SubstsRef<'tcx>)>,

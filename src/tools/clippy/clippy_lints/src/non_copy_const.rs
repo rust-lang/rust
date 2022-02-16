@@ -13,7 +13,7 @@ use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Const, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -133,7 +133,7 @@ fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 
 fn is_value_unfrozen_raw<'tcx>(
     cx: &LateContext<'tcx>,
-    result: Result<ConstValue<'tcx>, ErrorHandled>,
+    result: Result<Option<ty::ValTree<'tcx>>, ErrorHandled>,
     ty: Ty<'tcx>,
 ) -> bool {
     fn inner<'tcx>(cx: &LateContext<'tcx>, val: Const<'tcx>) -> bool {
@@ -142,7 +142,7 @@ fn is_value_unfrozen_raw<'tcx>(
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if Some(ty_def.did()) == cx.tcx.lang_items().unsafe_cell_type() => true,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
-                let val = cx.tcx.destructure_const(cx.param_env.and(val));
+                let val = cx.tcx.destructure_const(val);
                 val.fields.iter().any(|field| inner(cx, *field))
             },
             _ => false,
@@ -174,19 +174,19 @@ fn is_value_unfrozen_raw<'tcx>(
             // I chose this way because unfrozen enums as assoc consts are rare (or, hopefully, none).
             err == ErrorHandled::TooGeneric
         },
-        |val| inner(cx, Const::from_value(cx.tcx, val, ty)),
+        |val| val.map_or(false, |val| inner(cx, Const::from_value(cx.tcx, val, ty))),
     )
 }
 
 fn is_value_unfrozen_poly<'tcx>(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
-    let result = cx.tcx.const_eval_poly(body_id.hir_id.owner.to_def_id());
+    let result = cx.tcx.const_eval_poly_for_typeck(body_id.hir_id.owner.to_def_id());
     is_value_unfrozen_raw(cx, result, ty)
 }
 
 fn is_value_unfrozen_expr<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
     let substs = cx.typeck_results().node_substs(hir_id);
 
-    let result = cx.tcx.const_eval_resolve(
+    let result = cx.tcx.const_eval_resolve_for_typeck(
         cx.param_env,
         ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs),
         None,

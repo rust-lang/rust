@@ -19,10 +19,10 @@ fn main() -> () {
         StorageLive(_1);                 // scope 0 at $DIR/box_expr.rs:7:9: 7:10
         _2 = SizeOf(S);                  // scope 2 at $DIR/box_expr.rs:7:13: 7:25
         _3 = AlignOf(S);                 // scope 2 at $DIR/box_expr.rs:7:13: 7:25
-        _4 = alloc::alloc::exchange_malloc(move _2, move _3) -> bb1; // scope 2 at $DIR/box_expr.rs:7:13: 7:25
+        _4 = : unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}(move _2, move _3) -> bb1; // scope 2 at $DIR/box_expr.rs:7:13: 7:25
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:7:13: 7:25
-                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(ValTree::Branch(..)) }
     }
 
     bb1: {

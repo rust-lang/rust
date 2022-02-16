@@ -3,7 +3,9 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
-use crate::mir::interpret::{ConstAllocation, ConstValue, GlobalAlloc, LitToConstInput, Scalar};
+use crate::mir::interpret::{
+    AllocRange, ConstAllocation, ConstValue, GlobalAlloc, LitToConstInput, Scalar,
+};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1444,7 +1446,11 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
+        if index < self.statements.len() {
+            &self.statements[index]
+        } else {
+            &self.terminator
+        }
     }
 }
 
@@ -2465,7 +2471,11 @@ impl<'tcx> Operand<'tcx> {
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
         let const_ty = self.constant()?.literal.ty();
-        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
+        if let ty::FnDef(def_id, substs) = *const_ty.kind() {
+            Some((def_id, substs))
+        } else {
+            None
+        }
     }
 }
 
@@ -2953,22 +2963,9 @@ impl<'tcx> Constant<'tcx> {
     }
 }
 
-impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
-    #[inline]
-    fn from(ct: ty::Const<'tcx>) -> Self {
-        match ct.kind() {
-            ty::ConstKind::Value(cv) => {
-                // FIXME Once valtrees are introduced we need to convert those
-                // into `ConstValue` instances here
-                Self::Val(cv, ct.ty())
-            }
-            _ => Self::Ty(ct),
-        }
-    }
-}
-
 impl<'tcx> ConstantKind<'tcx> {
     /// Returns `None` if the constant is not trivially safe for use in the type system.
+    #[inline]
     pub fn const_for_ty(&self) -> Option<ty::Const<'tcx>> {
         match self {
             ConstantKind::Ty(c) => Some(*c),
@@ -2976,6 +2973,7 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
+    #[inline(always)]
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
             ConstantKind::Ty(c) => c.ty(),
@@ -2983,10 +2981,10 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
-    pub fn try_val(&self) -> Option<ConstValue<'tcx>> {
+    pub fn try_val(&self, tcx: TyCtxt<'tcx>) -> Option<ConstValue<'tcx>> {
         match self {
             ConstantKind::Ty(c) => match c.kind() {
-                ty::ConstKind::Value(v) => Some(v),
+                ty::ConstKind::Value(v) => Some(tcx.valtree_to_const_val((c.ty(), v))),
                 _ => None,
             },
             ConstantKind::Val(v, _) => Some(*v),
@@ -2994,21 +2992,33 @@ impl<'tcx> ConstantKind<'tcx> {
     }
 
     #[inline]
-    pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
+    pub fn try_to_value(self, tcx: TyCtxt<'tcx>) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => c.kind().try_to_value(),
+            ConstantKind::Ty(c) => match c.kind() {
+                ty::ConstKind::Value(valtree) => Some(tcx.valtree_to_const_val((c.ty(), valtree))),
+                _ => None,
+            },
             ConstantKind::Val(val, _) => Some(val),
         }
     }
 
     #[inline]
     pub fn try_to_scalar(self) -> Option<Scalar> {
-        self.try_to_value()?.try_to_scalar()
+        match self {
+            ConstantKind::Ty(c) => match c.val() {
+                ty::ConstKind::Value(valtree) => match valtree {
+                    ty::ValTree::Leaf(scalar_int) => Some(Scalar::Int(scalar_int)),
+                    ty::ValTree::Branch(_) => None,
+                },
+                _ => None,
+            },
+            ConstantKind::Val(val, _) => val.try_to_scalar(),
+        }
     }
 
     #[inline]
     pub fn try_to_scalar_int(self) -> Option<ScalarInt> {
-        Some(self.try_to_value()?.try_to_scalar()?.assert_int())
+        Some(self.try_to_scalar()?.assert_int())
     }
 
     #[inline]
@@ -3025,9 +3035,7 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn eval(self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
         match self {
             Self::Ty(c) => {
-                // FIXME Need to use a different evaluation function that directly returns a `ConstValue`
-                // if evaluation succeeds and does not create a ValTree first
-                if let Some(val) = c.kind().try_eval(tcx, param_env) {
+                if let Some(val) = c.kind().try_eval_for_mir(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
                         Err(_) => Self::Ty(tcx.const_error(self.ty())),
@@ -3081,6 +3089,11 @@ impl<'tcx> ConstantKind<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn from_value(val: ConstValue<'tcx>, ty: Ty<'tcx>) -> Self {
+        Self::Val(val, ty)
+    }
+
     pub fn from_bits(
         tcx: TyCtxt<'tcx>,
         bits: u128,
@@ -3097,11 +3110,13 @@ impl<'tcx> ConstantKind<'tcx> {
         Self::Val(cv, param_env_ty.value)
     }
 
+    #[inline]
     pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
         let cv = ConstValue::from_bool(v);
         Self::Val(cv, tcx.types.bool)
     }
 
+    #[inline]
     pub fn zero_sized(ty: Ty<'tcx>) -> Self {
         let cv = ConstValue::Scalar(Scalar::ZST);
         Self::Val(cv, ty)
@@ -3110,6 +3125,12 @@ impl<'tcx> ConstantKind<'tcx> {
     pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
         let ty = tcx.types.usize;
         Self::from_bits(tcx, n as u128, ty::ParamEnv::empty().and(ty))
+    }
+
+    #[inline]
+    pub fn from_scalar(_tcx: TyCtxt<'tcx>, s: Scalar, ty: Ty<'tcx>) -> Self {
+        let val = ConstValue::Scalar(s);
+        Self::Val(val, ty)
     }
 
     /// Literals are converted to `ConstantKindVal`, const generic parameters are eagerly
@@ -3199,8 +3220,10 @@ impl<'tcx> ConstantKind<'tcx> {
             }
             _ => expr,
         };
+        debug!("expr.kind: {:?}", expr.kind);
 
         let ty = tcx.type_of(def.def_id_for_type_of());
+        debug!(?ty);
 
         // FIXME(const_generics): We currently have to special case parameters because `min_const_generics`
         // does not provide the parents generics to anonymous constants. We still allow generic const
@@ -3224,6 +3247,7 @@ impl<'tcx> ConstantKind<'tcx> {
                     kind: ty::ConstKind::Param(ty::ParamConst::new(index, name)),
                     ty,
                 });
+                debug!(?ty_const);
 
                 return Self::Ty(ty_const);
             }
@@ -3253,8 +3277,12 @@ impl<'tcx> ConstantKind<'tcx> {
         debug!(?span, ?param_env);
 
         match tcx.const_eval_resolve(param_env, uneval, Some(span)) {
-            Ok(val) => Self::Val(val, ty),
+            Ok(val) => {
+                debug!("evaluated const value: {:?}", val);
+                Self::Val(val, ty)
+            }
             Err(_) => {
+                debug!("error encountered during evaluation");
                 // Error was handled in `const_eval_resolve`. Here we just create a
                 // new unevaluated const and error hard later in codegen
                 let ty_const = tcx.mk_const(ty::ConstS {
@@ -3265,9 +3293,20 @@ impl<'tcx> ConstantKind<'tcx> {
                     }),
                     ty,
                 });
+                debug!(?ty_const);
 
                 Self::Ty(ty_const)
             }
+        }
+    }
+
+    pub fn from_const(c: ty::Const<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        match c.val() {
+            ty::ConstKind::Value(valtree) => {
+                let const_val = tcx.valtree_to_const_val((c.ty(), valtree));
+                Self::Val(const_val, c.ty())
+            }
+            _ => Self::Ty(c),
         }
     }
 }
@@ -3485,20 +3524,182 @@ fn pretty_print_const<'tcx>(
     })
 }
 
+fn pretty_print_byte_str(fmt: &mut Formatter<'_>, byte_str: &[u8]) -> fmt::Result {
+    fmt.write_str("b\"")?;
+    for &c in byte_str {
+        for e in std::ascii::escape_default(c) {
+            fmt.write_char(e as char)?;
+        }
+    }
+    fmt.write_str("\"")?;
+
+    Ok(())
+}
+
+fn comma_sep<'tcx>(fmt: &mut Formatter<'_>, elems: Vec<ConstantKind<'tcx>>) -> fmt::Result {
+    let mut first = true;
+    for elem in elems {
+        if !first {
+            fmt.write_str(", ")?;
+        }
+        fmt.write_str(&format!("{}", elem))?;
+        first = false;
+    }
+    Ok(())
+}
+
 fn pretty_print_const_value<'tcx>(
-    val: interpret::ConstValue<'tcx>,
+    ct: ConstValue<'tcx>,
     ty: Ty<'tcx>,
     fmt: &mut Formatter<'_>,
-    print_types: bool,
+    print_ty: bool,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
+
     ty::tls::with(|tcx| {
-        let val = tcx.lift(val).unwrap();
+        let ct = tcx.lift(ct).unwrap();
         let ty = tcx.lift(ty).unwrap();
-        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-        cx.print_alloc_ids = true;
-        let cx = cx.pretty_print_const_value(val, ty, print_types)?;
-        fmt.write_str(&cx.into_buffer())?;
+
+        if tcx.sess.verbose() {
+            fmt.write_str(&format!("ConstValue({:?}: {})", ct, ty))?;
+            return Ok(());
+        }
+
+        let u8_type = tcx.types.u8;
+        match (ct, ty.kind()) {
+            // Byte/string slices, printed as (byte) string literals.
+            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
+                match inner.kind() {
+                    ty::Slice(t) => {
+                        if *t == u8_type {
+                            // The `inspect` here is okay since we checked the bounds, and there are
+                            // no relocations (we have an active slice reference here). We don't use
+                            // this result to affect interpreter execution.
+                            let byte_str = data
+                                .inner()
+                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                            pretty_print_byte_str(fmt, byte_str)?;
+                            return Ok(());
+                        }
+                    }
+                    ty::Str => {
+                        // The `inspect` here is okay since we checked the bounds, and there are no
+                        // relocations (we have an active `str` reference here). We don't use this
+                        // result to affect interpreter execution.
+                        let slice = data
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                        fmt.write_str(&format!("{:?}", String::from_utf8_lossy(slice)))?;
+                        return Ok(());
+                    }
+                    _ => {}
+                }
+            }
+            (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
+                let n = n.val().try_to_bits(tcx.data_layout.pointer_size).unwrap();
+                // cast is ok because we already checked for pointer size (32 or 64 bit) above
+                let range = AllocRange { start: offset, size: Size::from_bytes(n) };
+                let byte_str = alloc.inner().get_bytes(&tcx, range).unwrap();
+                fmt.write_str("*")?;
+                pretty_print_byte_str(fmt, byte_str)?;
+                return Ok(());
+            }
+            // Aggregates, printed as array/tuple/struct/variant construction syntax.
+            //
+            // NB: the `has_param_types_or_consts` check ensures that we can use
+            // the `destructure_const` query with an empty `ty::ParamEnv` without
+            // introducing ICEs (e.g. via `layout_of`) from missing bounds.
+            // E.g. `transmute([0usize; 2]): (u8, *mut T)` needs to know `T: Sized`
+            // to be able to destructure the tuple into `(0u8, *mut T)
+            //
+            // FIXME(eddyb) for `--emit=mir`/`-Z dump-mir`, we should provide the
+            // correct `ty::ParamEnv` to allow printing *all* constant values.
+            (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_param_types_or_consts() => {
+                let ct = tcx.lift(ct).unwrap();
+                let ty = tcx.lift(ty).unwrap();
+                if let Some(contents) = tcx.try_destructure_mir_constant(
+                    ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
+                ) {
+                    let fields = contents.fields.iter().copied().collect::<Vec<_>>();
+                    match *ty.kind() {
+                        ty::Array(..) => {
+                            fmt.write_str("[")?;
+                            comma_sep(fmt, fields)?;
+                            fmt.write_str("]")?;
+                        }
+                        ty::Tuple(..) => {
+                            fmt.write_str("(")?;
+                            comma_sep(fmt, fields)?;
+                            if contents.fields.len() == 1 {
+                                fmt.write_str(",")?;
+                            }
+                            fmt.write_str(")")?;
+                        }
+                        ty::Adt(def, _) if def.variants().is_empty() => {
+                            fmt.write_str(&format!("{{unreachable(): {}}}", ty))?;
+                        }
+                        ty::Adt(def, substs) => {
+                            let variant_idx = contents
+                                .variant
+                                .expect("destructed mir constant of adt without variant idx");
+                            let variant_def = &def.variant(variant_idx);
+                            let substs = tcx.lift(substs).unwrap();
+                            let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                            cx.print_alloc_ids = true;
+                            let cx = cx.print_value_path(variant_def.def_id, substs)?;
+                            fmt.write_str(&cx.into_buffer())?;
+
+                            match variant_def.ctor_kind {
+                                CtorKind::Const => {}
+                                CtorKind::Fn => {
+                                    fmt.write_str("(")?;
+                                    comma_sep(fmt, fields)?;
+                                    fmt.write_str(")")?;
+                                }
+                                CtorKind::Fictive => {
+                                    fmt.write_str(" {{ ")?;
+                                    let mut first = true;
+                                    for (field_def, field) in iter::zip(&variant_def.fields, fields)
+                                    {
+                                        if !first {
+                                            fmt.write_str(", ")?;
+                                        }
+                                        fmt.write_str(&format!("{}: {}", field_def.name, field))?;
+                                        first = false;
+                                    }
+                                    fmt.write_str(" }}")?;
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                    return Ok(());
+                } else {
+                    // Fall back to debug pretty printing for invalid constants.
+                    fmt.write_str(&format!("{:?}", ct))?;
+                    if print_ty {
+                        fmt.write_str(&format!(": {}", ty))?;
+                    }
+                    return Ok(());
+                };
+            }
+            (ConstValue::Scalar(scalar), _) => {
+                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                cx.print_alloc_ids = true;
+                let ty = tcx.lift(ty).unwrap();
+                cx = cx.pretty_print_const_scalar(scalar, ty, print_ty)?;
+                fmt.write_str(&cx.into_buffer())?;
+                return Ok(());
+            }
+            // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
+            // their fields instead of just dumping the memory.
+            _ => {}
+        }
+        // fallback
+        fmt.write_str(&format!("{:?}", ct))?;
+        if print_ty {
+            fmt.write_str(&format!(": {}", ty))?;
+        }
         Ok(())
     })
 }

@@ -78,6 +78,7 @@ impl<'tcx> ConstValue<'tcx> {
         Some(self.try_to_scalar()?.assert_int())
     }
 
+    #[inline(always)]
     pub fn try_to_bits(&self, size: Size) -> Option<u128> {
         self.try_to_scalar_int()?.to_bits(size).ok()
     }

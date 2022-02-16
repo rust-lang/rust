@@ -98,7 +98,6 @@ pub trait Printer<'tcx>: Sized {
 
     // Defaults (should not be overridden):
 
-    #[instrument(skip(self), level = "debug")]
     fn default_print_def_path(
         self,
         def_id: DefId,
@@ -302,6 +301,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Region<'_> {
 impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     type Output = P::Type;
     type Error = P::Error;
+
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.print_type(*self)
     }

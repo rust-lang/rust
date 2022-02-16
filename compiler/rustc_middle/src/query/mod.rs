@@ -968,7 +968,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
     ) -> EvalToValTreeResult<'tcx> {
         desc { "evaluate type-level constant" }
-        remap_env_constness
     }
 
     /// Converts a type level constant value into `ConstValue`
@@ -980,7 +979,7 @@ rustc_queries! {
     /// field values or return `None` if constant is invalid.
     ///
     /// Use infallible `TyCtxt::destructure_const` when you know that constant is valid.
-    query try_destructure_const(key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>) -> Option<mir::DestructuredConst<'tcx>> {
+    query try_destructure_const(key: ty::Const<'tcx>) -> Option<mir::DestructuredConst<'tcx>> {
         desc { "destructure type level constant"}
     }
 
@@ -988,15 +987,6 @@ rustc_queries! {
     /// and its field values.
     query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
         desc { "destructure mir constant"}
-        remap_env_constness
-    }
-
-    /// Dereference a constant reference or raw pointer and turn the result into a constant
-    /// again.
-    query deref_const(
-        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
-    ) -> ty::Const<'tcx> {
-        desc { "deref constant" }
         remap_env_constness
     }
 

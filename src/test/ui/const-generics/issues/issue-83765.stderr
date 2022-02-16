@@ -10,7 +10,11 @@ note: ...which requires checking if `TensorDimension` fulfills its obligations..
 LL | trait TensorDimension {
    | ^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires resolving instance `<LazyUpdim<T, { T::DIM }, DIM> as TensorDimension>::DIM`, completing the cycle
-   = note: cycle used when normalizing `<LazyUpdim<T, { T::DIM }, DIM> as TensorDimension>::DIM`
+note: cycle used when checking if `TensorDimension` fulfills its obligations
+  --> $DIR/issue-83765.rs:4:1
+   |
+LL | trait TensorDimension {
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
