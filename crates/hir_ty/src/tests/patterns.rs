@@ -891,6 +891,32 @@ fn main() {
 }
 
 #[test]
+fn slice_pattern_correctly_handles_array_length() {
+    check_infer(
+        r#"
+fn main() {
+    let [head, middle @ .., tail, tail2] = [1, 2, 3, 4, 5];
+}
+    "#,
+        expect![[r#"
+            10..73 '{     ... 5]; }': ()
+            20..52 '[head,...tail2]': [i32; 5]
+            21..25 'head': i32
+            27..38 'middle @ ..': [i32; 2]
+            36..38 '..': [i32; 2]
+            40..44 'tail': i32
+            46..51 'tail2': i32
+            55..70 '[1, 2, 3, 4, 5]': [i32; 5]
+            56..57 '1': i32
+            59..60 '2': i32
+            62..63 '3': i32
+            65..66 '4': i32
+            68..69 '5': i32
+        "#]],
+    );
+}
+
+#[test]
 fn pattern_lookup_in_value_ns() {
     check_types(
         r#"

@@ -6,6 +6,7 @@ use chalk_ir::Mutability;
 use hir_def::{
     expr::{BindingAnnotation, Expr, Literal, Pat, PatId, RecordFieldPat},
     path::Path,
+    type_ref::ConstScalar,
 };
 use hir_expand::name::Name;
 
@@ -14,7 +15,8 @@ use crate::{
         Adjust, Adjustment, AutoBorrow, BindingMode, Expectation, InferenceContext, TypeMismatch,
     },
     lower::lower_to_chalk_mutability,
-    static_lifetime, Interner, Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime, ConcreteConst, ConstValue, Interner, Substitution, Ty, TyBuilder, TyExt,
+    TyKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -232,16 +234,28 @@ impl<'a> InferenceContext<'a> {
                     self.infer_pat(pat_id, &elem_ty, default_bm);
                 }
 
-                let pat_ty = match expected.kind(Interner) {
+                if let &Some(slice_pat_id) = slice {
+                    let rest_pat_ty = match expected.kind(Interner) {
+                        TyKind::Array(_, length) => {
+                            let length = match length.data(Interner).value {
+                                ConstValue::Concrete(ConcreteConst {
+                                    interned: ConstScalar::Usize(length),
+                                }) => length.checked_sub((prefix.len() + suffix.len()) as u64),
+                                _ => None,
+                            };
+                            TyKind::Array(elem_ty.clone(), crate::consteval::usize_const(length))
+                        }
+                        _ => TyKind::Slice(elem_ty.clone()),
+                    }
+                    .intern(Interner);
+                    self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm);
+                }
+
+                match expected.kind(Interner) {
                     TyKind::Array(_, const_) => TyKind::Array(elem_ty, const_.clone()),
                     _ => TyKind::Slice(elem_ty),
                 }
-                .intern(Interner);
-                if let &Some(slice_pat_id) = slice {
-                    self.infer_pat(slice_pat_id, &pat_ty, default_bm);
-                }
-
-                pat_ty
+                .intern(Interner)
             }
             Pat::Wild => expected.clone(),
             Pat::Range { start, end } => {
