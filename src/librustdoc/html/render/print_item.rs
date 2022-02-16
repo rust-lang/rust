@@ -1139,6 +1139,7 @@ fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]
 }
 
 fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) {
+    let count_variants = e.variants().count();
     wrap_into_docblock(w, |w| {
         wrap_item(w, "enum", |w| {
             render_attributes_in_pre(w, it, "");
@@ -1150,16 +1151,16 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                 e.generics.print(cx),
                 print_where_clause(&e.generics, cx, 0, true),
             );
-            if e.variants.is_empty() && !e.variants_stripped {
+            let variants_stripped = e.has_stripped_entries();
+            if count_variants == 0 && !variants_stripped {
                 w.write_str(" {}");
             } else {
                 w.write_str(" {\n");
-                let count_variants = e.variants.len();
                 let toggle = should_hide_fields(count_variants);
                 if toggle {
                     toggle_open(w, format_args!("{} variants", count_variants));
                 }
-                for v in &e.variants {
+                for v in e.variants() {
                     w.write_str("    ");
                     let name = v.name.unwrap();
                     match *v.kind {
@@ -1188,7 +1189,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
                     w.write_str(",\n");
                 }
 
-                if e.variants_stripped {
+                if variants_stripped {
                     w.write_str("    // some variants omitted\n");
                 }
                 if toggle {
@@ -1201,7 +1202,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
 
     document(w, cx, it, None, HeadingOffset::H2);
 
-    if !e.variants.is_empty() {
+    if count_variants != 0 {
         write!(
             w,
             "<h2 id=\"variants\" class=\"variants small-section-header\">\
@@ -1209,7 +1210,7 @@ fn item_enum(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, e: &clean::Enum
             document_non_exhaustive_header(it)
         );
         document_non_exhaustive(w, it);
-        for variant in &e.variants {
+        for variant in e.variants() {
             let id = cx.derive_id(format!("{}.{}", ItemType::Variant, variant.name.unwrap()));
             write!(
                 w,
@@ -1653,7 +1654,7 @@ fn render_union(
         }
     }
 
-    if it.has_stripped_fields().unwrap() {
+    if it.has_stripped_entries().unwrap() {
         write!(w, "    /* private fields */\n{}", tab);
     }
     if toggle {
@@ -1709,11 +1710,11 @@ fn render_struct(
             }
 
             if has_visible_fields {
-                if it.has_stripped_fields().unwrap() {
+                if it.has_stripped_entries().unwrap() {
                     write!(w, "\n{}    /* private fields */", tab);
                 }
                 write!(w, "\n{}", tab);
-            } else if it.has_stripped_fields().unwrap() {
+            } else if it.has_stripped_entries().unwrap() {
                 write!(w, " /* private fields */ ");
             }
             if toggle {

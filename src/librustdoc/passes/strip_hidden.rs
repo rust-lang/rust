@@ -40,7 +40,7 @@ impl<'a> DocFolder for Stripper<'a> {
             debug!("strip_hidden: stripping {:?} {:?}", i.type_(), i.name);
             // use a dedicated hidden item for given item type if any
             match *i.kind {
-                clean::StructFieldItem(..) | clean::ModuleItem(..) => {
+                clean::StructFieldItem(..) | clean::ModuleItem(..) | clean::VariantItem(..) => {
                     // We need to recurse into stripped modules to
                     // strip things like impl methods but when doing so
                     // we must not add any items to the `retained` set.
