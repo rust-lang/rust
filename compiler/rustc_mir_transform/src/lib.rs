@@ -485,6 +485,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &simplify_try::SimplifyArmIdentity,
             &simplify_try::SimplifyBranchSame,
             &dest_prop::DestinationPropagation,
+            &dead_store_elimination::SimpleLocalDse,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::new("final")),

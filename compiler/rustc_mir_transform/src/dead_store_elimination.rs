@@ -4,6 +4,21 @@ use rustc_middle::{
 };
 use smallvec::SmallVec;
 
+/// Loops over basic blocks and calls [`simple_local_dse`] for each, see there for more.
+pub struct SimpleLocalDse;
+
+impl<'tcx> MirPass<'tcx> for SimpleLocalDse {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 2
+    }
+
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        for bb in body.basic_blocks_mut() {
+            simple_local_dse(bb, tcx);
+        }
+    }
+}
+
 /// This performs a very basic form of dead store elimintation on the basic block.
 ///
 /// Essentially, we loop over the statements in reverse order. As we go, we maintain a list of
