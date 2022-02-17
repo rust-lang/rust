@@ -266,7 +266,8 @@ private:
   /// the IRBuilder<>
   llvm::Value *computeIndexOfChunk(
       bool inForwardPass, llvm::IRBuilder<> &v,
-      const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops);
+      const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
+      const llvm::ValueToValueMapTy &available);
 
 private:
   /// Given a cache allocation and an index denoting how many Chunks deep the
@@ -376,15 +377,15 @@ public:
   llvm::Value *getCachePointer(bool inForwardPass, llvm::IRBuilder<> &BuilderM,
                                LimitContext ctx, llvm::Value *cache, bool isi1,
                                bool storeInInstructionsMap,
-                               llvm::Value *extraSize = nullptr);
+                               const llvm::ValueToValueMapTy &available,
+                               llvm::Value *extraSize);
 
   /// Given an allocation specified by the LimitContext ctx and cache, lookup
   /// the underlying cached value.
-  llvm::Value *lookupValueFromCache(bool inForwardPass,
-                                    llvm::IRBuilder<> &BuilderM,
-                                    LimitContext ctx, llvm::Value *cache,
-                                    bool isi1, llvm::Value *extraSize = nullptr,
-                                    llvm::Value *extraOffset = nullptr);
+  llvm::Value *lookupValueFromCache(
+      bool inForwardPass, llvm::IRBuilder<> &BuilderM, LimitContext ctx,
+      llvm::Value *cache, bool isi1, const llvm::ValueToValueMapTy &available,
+      llvm::Value *extraSize = nullptr, llvm::Value *extraOffset = nullptr);
 
 protected:
   // List of values loaded from the cache

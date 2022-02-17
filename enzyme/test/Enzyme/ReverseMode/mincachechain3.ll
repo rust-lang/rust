@@ -71,23 +71,23 @@ entry:
 ; CHECK: define internal i64* @augmented_pb(double* %__x, double* %"__x'", i64* %v)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
-; CHECK-NEXT:   %size.0_malloccache = bitcast i8* %malloccall to i64*
+; CHECK-NEXT:   %a2_malloccache = bitcast i8* %malloccall to i64*
 ; CHECK-NEXT:   br label %for.body
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %size.0 = phi i64 [ 1, %entry ], [ %a2, %for.body ]
-; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %size.0_malloccache, i64 %iv
-; CHECK-NEXT:   store i64 %size.0, i64* %0, align 8, !invariant.group 
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %call3 = call i64* @augmented__ZNKSt5arrayIlLm4EEixEm(i64* %v)
 ; CHECK-NEXT:   %a2 = load i64, i64* %call3, align 8, !tbaa 
+; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %a2_malloccache, i64 %iv
+; CHECK-NEXT:   store i64 %a2, i64* %0, align 8, !invariant.group 
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv.next, 4
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %for.end
 
 ; CHECK: for.end:                                          ; preds = %for.body
 ; CHECK-NEXT:   call void @augmented_usesize(double* %__x, double* %"__x'", i64 %size.0)
-; CHECK-NEXT:   ret i64* %size.0_malloccache
+; CHECK-NEXT:   ret i64* %a2_malloccache
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffepb(double* %__x, double* %"__x'", i64* %v, double %differeturn, i64* %tapeArg)
@@ -96,9 +96,10 @@ entry:
 
 ; CHECK: for.body:                                         ; preds = %for.body, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %for.body ], [ 0, %entry ]
-; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %tapeArg, i64 %iv
-; CHECK-NEXT:   %size.0 = load i64, i64* %0, align 8, !invariant.group !
+; CHECK-NEXT:   %size.0 = phi i64 [ 1, %entry ], [ %a2, %for.body ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
+; CHECK-NEXT:   %0 = getelementptr inbounds i64, i64* %tapeArg, i64 %iv
+; CHECK-NEXT:   %a2 = load i64, i64* %0, align 8, !invariant.group !
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv.next, 4
 ; CHECK-NEXT:   br i1 %cmp, label %for.body, label %invertfor.end
 

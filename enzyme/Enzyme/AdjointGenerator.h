@@ -5463,10 +5463,6 @@ public:
             &call, {ValueType::Shadow, ValueType::Shadow}, Builder2,
             /*lookup*/ false);
 
-        Type *types[sizeof(args) / sizeof(*args)];
-        for (size_t i = 0; i < sizeof(args) / sizeof(*args); i++)
-          types[i] = args[i]->getType();
-
 #if LLVM_VERSION_MAJOR >= 11
         auto callval = call.getCalledOperand();
 #else

@@ -1020,7 +1020,8 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
       IRBuilder<> v(&sublimits[i - 1].second.back().first.preheader->back());
 
       Value *idx = computeIndexOfChunk(
-          /*inForwardPass*/ true, v, containedloops);
+          /*inForwardPass*/ true, v, containedloops,
+          /*available*/ ValueToValueMapTy());
 
 #if LLVM_VERSION_MAJOR > 7
       storeInto = v.CreateLoad(
@@ -1046,16 +1047,13 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
 
 Value *CacheUtility::computeIndexOfChunk(
     bool inForwardPass, IRBuilder<> &v,
-    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops) {
+    const std::vector<std::pair<LoopContext, llvm::Value *>> &containedloops,
+    const ValueToValueMapTy &available) {
   // List of loop indices in chunk from innermost to outermost
   SmallVector<Value *, 3> indices;
   // List of cumulative indices in chunk from innermost to outermost
   // where limit[i] = prod(loop limit[0..i])
   SmallVector<Value *, 3> limits;
-
-  // list of contained loop induction variables available for limit
-  // computation
-  ValueToValueMapTy available;
 
   // Iterate from innermost loop to outermost loop within a chunk
   for (size_t i = 0; i < containedloops.size(); ++i) {
@@ -1066,18 +1064,18 @@ Value *CacheUtility::computeIndexOfChunk(
 
     // In the SingleIteration, var may be null (since there's no legal phinode)
     // In that case the current iteration is simply the constnat Zero
-    if (var == nullptr)
+    if (idx.var == nullptr)
       var = ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 0);
-    else if (!inForwardPass) {
+    else if (available.count(var)) {
+      var = available.find(var)->second;
+    } else if (!inForwardPass) {
 #if LLVM_VERSION_MAJOR > 7
       var = v.CreateLoad(idx.var->getType(), idx.antivaralloc);
 #else
       var = v.CreateLoad(idx.antivaralloc);
 #endif
-      available[idx.var] = var;
     } else {
       var = idx.var;
-      available[idx.var] = var;
     }
     if (idx.offset) {
       var = v.CreateAdd(var, lookupM(idx.offset, v), "", /*NUW*/ true,
@@ -1391,7 +1389,9 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
   bool isi1 = val->getType()->isIntegerTy() &&
               cast<IntegerType>(val->getType())->getBitWidth() == 1;
   Value *loc = getCachePointer(/*inForwardPass*/ true, v, ctx, cache, isi1,
-                               /*storeInInstructionsMap*/ true);
+                               /*storeInInstructionsMap*/ true,
+                               /*available*/ llvm::ValueToValueMapTy(),
+                               /*extraSize*/ nullptr);
 
   Value *tostore = val;
 
@@ -1495,13 +1495,12 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
 Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
                                      LimitContext ctx, Value *cache, bool isi1,
                                      bool storeInInstructionsMap,
+                                     const ValueToValueMapTy &available,
                                      Value *extraSize) {
   assert(ctx.Block);
   assert(cache);
 
   auto sublimits = getSubLimits(inForwardPass, &BuilderM, ctx, extraSize);
-
-  ValueToValueMapTy available;
 
   Value *next = cache;
   assert(next->getType()->isPointerTy());
@@ -1558,7 +1557,8 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
     const auto &containedloops = sublimits[i].second;
 
     if (containedloops.size() > 0) {
-      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops);
+      Value *idx = computeIndexOfChunk(inForwardPass, BuilderM, containedloops,
+                                       available);
       if (EfficientBoolCache && isi1 && i == 0)
         idx = BuilderM.CreateLShr(
             idx, ConstantInt::get(Type::getInt64Ty(newFunc->getContext()), 3));
@@ -1621,14 +1621,15 @@ llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
 
 /// Given an allocation specified by the LimitContext ctx and cache, lookup the
 /// underlying cached value.
-Value *CacheUtility::lookupValueFromCache(bool inForwardPass,
-                                          IRBuilder<> &BuilderM,
-                                          LimitContext ctx, Value *cache,
-                                          bool isi1, Value *extraSize,
-                                          Value *extraOffset) {
+Value *
+CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &BuilderM,
+                                   LimitContext ctx, Value *cache, bool isi1,
+                                   const ValueToValueMapTy &available,
+                                   Value *extraSize, Value *extraOffset) {
   // Get the underlying cache pointer
-  auto cptr = getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
-                              /*storeInInstructionsMap*/ false, extraSize);
+  auto cptr =
+      getCachePointer(inForwardPass, BuilderM, ctx, cache, isi1,
+                      /*storeInInstructionsMap*/ false, available, extraSize);
 
   // Optionally apply the additional offset
   if (extraOffset) {

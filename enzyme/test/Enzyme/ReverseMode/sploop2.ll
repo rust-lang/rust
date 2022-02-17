@@ -47,8 +47,6 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK: define internal void @diffef(double* noalias %x, double* %"x'", double* noalias %z, double* %"z'", i64* %rows)
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %.pre = load i64, i64* %rows
-; CHECK-NEXT:   %[[malloccall3:.+]] = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
-; CHECK-NEXT:   %a17_malloccache = bitcast i8* %[[malloccall3]] to i64*
 ; CHECK-NEXT:   %[[malloccall4:.+]] = tail call noalias nonnull dereferenceable(32) dereferenceable_or_null(32) i8* @malloc(i64 32)
 ; CHECK-NEXT:   %L2_malloccache = bitcast i8* %[[malloccall4]] to double*
 ; CHECK-NEXT:   %[[xptr:.+]] = bitcast double* %x to i8*
@@ -62,8 +60,6 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK: loop1:                                            ; preds = %cleanup, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %cleanup ], [ 0, %entry ]
 ; CHECK-NEXT:   %a17 = phi i64 [ 4, %entry ], [ %.pre, %cleanup ]
-; CHECK-NEXT:   %[[gepiv:.+]] = getelementptr inbounds i64, i64* %a17_malloccache, i64 %iv
-; CHECK-NEXT:   store i64 %a17, i64* %[[gepiv]], align 8, !invariant.group !0
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
 ; CHECK-NEXT:   %X1 = getelementptr inbounds double, double* %x, i64 %iv
 ; CHECK-NEXT:   %L1 = load double, double* %X1
@@ -90,7 +86,6 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK-NEXT:   br label %invertcleanup
 
 ; CHECK: invertentry:                                      ; preds = %invertloop1
-; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall3]])
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall4]])
 ; CHECK-NEXT:   tail call void @free(i8* nonnull %[[malloccall]])
 ; CHECK-NEXT:   ret void
@@ -110,9 +105,9 @@ declare double @__enzyme_autodiff(void (double*, double*, i64*)*, ...)
 ; CHECK: invertloop2:                                      ; preds = %invertcleanup, %incinvertloop2
 ; CHECK-NEXT:   %"L1'de.0" = phi double [ 0.000000e+00, %invertcleanup ], [ %[[a18]], %incinvertloop2 ]
 ; CHECK-NEXT:   %"iv1'ac.0" = phi i64 [ 3, %invertcleanup ], [ %[[a22:.+]], %incinvertloop2 ]
-; CHECK-NEXT:   %[[a9:.+]] = getelementptr inbounds i64, i64* %a17_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a10:.+]] = load i64, i64* %[[a9]], align 8, !invariant.group !0
-; CHECK-NEXT:   %[[tostoreipg:.+]] = getelementptr inbounds double, double* %"z'", i64 %[[a10]]
+; CHECK-NEXT:   %[[pcmp:.+]] = icmp ne i64 %"iv'ac.0", 0
+; CHECK-NEXT:   %[[re_a17:.+]] = select i1 %[[pcmp]], i64 %.pre, i64 4
+; CHECK-NEXT:   %[[tostoreipg:.+]] = getelementptr inbounds double, double* %"z'", i64 %[[re_a17]]
 ; CHECK-NEXT:   %[[a11:.+]] = load double, double* %[[tostoreipg]]
 ; CHECK-NEXT:   store double 0.000000e+00, double* %[[tostoreipg]]
 ; CHECK-NEXT:   %[[rgep:.+]] = getelementptr inbounds double, double* %L2_malloccache, i64 %"iv1'ac.0"
