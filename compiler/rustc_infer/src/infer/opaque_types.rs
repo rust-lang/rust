@@ -1,7 +1,7 @@
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits;
 use hir::def_id::{DefId, LocalDefId};
-use hir::OpaqueTyOrigin;
+use hir::{HirId, OpaqueTyOrigin};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir as hir;
@@ -21,6 +21,7 @@ mod table;
 
 pub use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
+use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferResult;
 
 /// Information about the opaque types whose values we
@@ -38,6 +39,48 @@ pub struct OpaqueTypeDecl<'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn replace_opaque_types_with_inference_vars(
+        &self,
+        ty: Ty<'tcx>,
+        body_id: HirId,
+        span: Span,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> InferOk<'tcx, Ty<'tcx>> {
+        let mut obligations = vec![];
+        let value = ty.fold_with(&mut ty::fold::BottomUpFolder {
+            tcx: self.tcx,
+            lt_op: |lt| lt,
+            ct_op: |ct| ct,
+            ty_op: |ty| match *ty.kind() {
+                // Closures can't create hidden types for opaque types of their parent, as they
+                // do not have all the outlives information available. Also `type_of` looks for
+                // hidden types in the owner (so the closure's parent), so it would not find these
+                // definitions.
+                ty::Opaque(def_id, _substs)
+                    if matches!(
+                        self.opaque_type_origin(def_id, span),
+                        Some(OpaqueTyOrigin::FnReturn(..))
+                    ) =>
+                {
+                    let span = if span.is_dummy() { self.tcx.def_span(def_id) } else { span };
+                    let cause = ObligationCause::misc(span, body_id);
+                    let ty_var = self.next_ty_var(TypeVariableOrigin {
+                        kind: TypeVariableOriginKind::TypeInference,
+                        span: cause.span,
+                    });
+                    obligations.extend(
+                        self.handle_opaque_type(ty, ty_var, true, &cause, param_env)
+                            .unwrap()
+                            .obligations,
+                    );
+                    ty_var
+                }
+                _ => ty,
+            },
+        });
+        InferOk { value, obligations }
+    }
+
     pub fn handle_opaque_type(
         &self,
         a: Ty<'tcx>,

@@ -4,14 +4,12 @@ use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use crate::astconv::AstConv;
 use crate::rustc_middle::ty::subst::Subst;
-use hir::OpaqueTyOrigin;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::infer::{InferOk, InferResult};
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{self, Ty};
@@ -641,37 +639,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn hide_parent_opaque_types(&self, ty: Ty<'tcx>, span: Span, body_id: hir::HirId) -> Ty<'tcx> {
-        ty.fold_with(&mut ty::fold::BottomUpFolder {
-            tcx: self.infcx.tcx,
-            lt_op: |lt| lt,
-            ct_op: |ct| ct,
-            ty_op: |ty| match *ty.kind() {
-                // Closures can't create hidden types for opaque types of their parent, as they
-                // do not have all the outlives information available. Also `type_of` looks for
-                // hidden types in the owner (so the closure's parent), so it would not find these
-                // definitions.
-                ty::Opaque(def_id, _substs)
-                    if matches!(
-                        self.infcx.opaque_type_origin(def_id, DUMMY_SP),
-                        Some(OpaqueTyOrigin::FnReturn(..))
-                    ) =>
-                {
-                    let ty_var = self.next_ty_var(TypeVariableOrigin {
-                        kind: TypeVariableOriginKind::TypeInference,
-                        span,
-                    });
-                    let cause = ObligationCause::misc(span, body_id);
-                    self.register_predicates(
-                        self.infcx
-                            .handle_opaque_type(ty, ty_var, true, &cause, self.param_env)
-                            .unwrap()
-                            .obligations,
-                    );
-                    ty_var
-                }
-                _ => ty,
-            },
-        })
+        let InferOk { value, obligations } =
+            self.replace_opaque_types_with_inference_vars(ty, body_id, span, self.param_env);
+        self.register_predicates(obligations);
+        value
     }
 
     /// Invoked when we are translating the generator that results
