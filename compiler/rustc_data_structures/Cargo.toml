@@ -25,7 +25,7 @@ rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
 measureme = "10.0.0"
 libc = "0.2"
-stacker = "0.1.14"
+stacker = { git = "https://github.com/hkratz/stacker.git", rev = "f2b4078e0c32adffeed3c62ae7e152dbd18fd32b", features = ["fast_path_optimization"] }
 tempfile = "3.2"
 
 [dependencies.parking_lot]
