@@ -528,7 +528,7 @@ fn is_auto_reborrow_position(parent: Option<Node<'_>>) -> bool {
 fn is_auto_borrow_position(parent: Option<Node<'_>>, child_id: HirId) -> bool {
     if let Some(Node::Expr(parent)) = parent {
         match parent.kind {
-            ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
+            // ExprKind::MethodCall(_, [self_arg, ..], _) => self_arg.hir_id == child_id,
             ExprKind::Field(..) => true,
             ExprKind::Call(f, _) => f.hir_id == child_id,
             _ => false,
