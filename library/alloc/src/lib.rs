@@ -91,7 +91,7 @@
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
-#![feature(async_stream)]
+#![feature(async_iterator)]
 #![feature(coerce_unsized)]
 #![cfg_attr(not(no_global_oom_handling), feature(const_alloc_error))]
 #![feature(const_box)]

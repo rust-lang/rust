@@ -1,10 +1,9 @@
 //! Composable asynchronous iteration.
 //!
-//! If futures are asynchronous values, then streams are asynchronous
-//! iterators. If you've found yourself with an asynchronous collection of some kind,
+//! If you've found yourself with an asynchronous collection of some kind,
 //! and needed to perform an operation on the elements of said collection,
-//! you'll quickly run into 'streams'. Streams are heavily used in idiomatic
-//! asynchronous Rust code, so it's worth becoming familiar with them.
+//! you'll quickly run into 'async iterators'. Async Iterators are heavily used in
+//! idiomatic asynchronous Rust code, so it's worth becoming familiar with them.
 //!
 //! Before explaining more, let's talk about how this module is structured:
 //!
@@ -12,71 +11,71 @@
 //!
 //! This module is largely organized by type:
 //!
-//! * [Traits] are the core portion: these traits define what kind of streams
+//! * [Traits] are the core portion: these traits define what kind of async iterators
 //!   exist and what you can do with them. The methods of these traits are worth
 //!   putting some extra study time into.
-//! * Functions provide some helpful ways to create some basic streams.
+//! * Functions provide some helpful ways to create some basic async iterators.
 //! * Structs are often the return types of the various methods on this
 //!   module's traits. You'll usually want to look at the method that creates
 //!   the `struct`, rather than the `struct` itself. For more detail about why,
-//!   see '[Implementing Stream](#implementing-stream)'.
+//!   see '[Implementing Async Iterator](#implementing-async-iterator)'.
 //!
 //! [Traits]: #traits
 //!
-//! That's it! Let's dig into streams.
+//! That's it! Let's dig into async iterators.
 //!
-//! # Stream
+//! # Async Iterators
 //!
-//! The heart and soul of this module is the [`Stream`] trait. The core of
-//! [`Stream`] looks like this:
+//! The heart and soul of this module is the [`AsyncIterator`] trait. The core of
+//! [`AsyncIterator`] looks like this:
 //!
 //! ```
 //! # use core::task::{Context, Poll};
 //! # use core::pin::Pin;
-//! trait Stream {
+//! trait AsyncIterator {
 //!     type Item;
 //!     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
 //! }
 //! ```
 //!
-//! Unlike `Iterator`, `Stream` makes a distinction between the [`poll_next`]
-//! method which is used when implementing a `Stream`, and a (to-be-implemented)
-//! `next` method which is used when consuming a stream. Consumers of `Stream`
+//! Unlike `Iterator`, `AsyncIterator` makes a distinction between the [`poll_next`]
+//! method which is used when implementing an `AsyncIterator`, and a (to-be-implemented)
+//! `next` method which is used when consuming an async iterator. Consumers of `AsyncIterator`
 //! only need to consider `next`, which when called, returns a future which
-//! yields `Option<Stream::Item>`.
+//! yields `Option<AsyncIterator::Item>`.
 //!
 //! The future returned by `next` will yield `Some(Item)` as long as there are
 //! elements, and once they've all been exhausted, will yield `None` to indicate
 //! that iteration is finished. If we're waiting on something asynchronous to
-//! resolve, the future will wait until the stream is ready to yield again.
+//! resolve, the future will wait until the async iterator is ready to yield again.
 //!
-//! Individual streams may choose to resume iteration, and so calling `next`
+//! Individual async iterators may choose to resume iteration, and so calling `next`
 //! again may or may not eventually yield `Some(Item)` again at some point.
 //!
-//! [`Stream`]'s full definition includes a number of other methods as well,
+//! [`AsyncIterator`]'s full definition includes a number of other methods as well,
 //! but they are default methods, built on top of [`poll_next`], and so you get
 //! them for free.
 //!
 //! [`Poll`]: super::task::Poll
-//! [`poll_next`]: Stream::poll_next
+//! [`poll_next`]: AsyncIterator::poll_next
 //!
-//! # Implementing Stream
+//! # Implementing Async Iterator
 //!
-//! Creating a stream of your own involves two steps: creating a `struct` to
-//! hold the stream's state, and then implementing [`Stream`] for that
+//! Creating an async iterator of your own involves two steps: creating a `struct` to
+//! hold the async iterator's state, and then implementing [`AsyncIterator`] for that
 //! `struct`.
 //!
-//! Let's make a stream named `Counter` which counts from `1` to `5`:
+//! Let's make an async iterator named `Counter` which counts from `1` to `5`:
 //!
 //! ```no_run
-//! #![feature(async_stream)]
-//! # use core::stream::Stream;
+//! #![feature(async_iterator)]
+//! # use core::async_iter::AsyncIterator;
 //! # use core::task::{Context, Poll};
 //! # use core::pin::Pin;
 //!
 //! // First, the struct:
 //!
-//! /// A stream which counts from one to five
+//! /// An async iterator which counts from one to five
 //! struct Counter {
 //!     count: usize,
 //! }
@@ -90,9 +89,9 @@
 //!     }
 //! }
 //!
-//! // Then, we implement `Stream` for our `Counter`:
+//! // Then, we implement `AsyncIterator` for our `Counter`:
 //!
-//! impl Stream for Counter {
+//! impl AsyncIterator for Counter {
 //!     // we will be counting with usize
 //!     type Item = usize;
 //!
@@ -113,17 +112,17 @@
 //!
 //! # Laziness
 //!
-//! Streams are *lazy*. This means that just creating a stream doesn't _do_ a
-//! whole lot. Nothing really happens until you call `poll_next`. This is
-//! sometimes a source of confusion when creating a stream solely for its side
+//! Async iterators are *lazy*. This means that just creating an async iterator doesn't
+//! _do_ a whole lot. Nothing really happens until you call `poll_next`. This is
+//! sometimes a source of confusion when creating an async iterator solely for its side
 //! effects. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
-//! warning: unused result that must be used: streams do nothing unless polled
+//! warning: unused result that must be used: async iterators do nothing unless polled
 //! ```
 
+mod async_iter;
 mod from_iter;
-mod stream;
 
+pub use async_iter::AsyncIterator;
 pub use from_iter::{from_iter, FromIter};
-pub use stream::Stream;
