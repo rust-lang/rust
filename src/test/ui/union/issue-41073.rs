@@ -1,7 +1,7 @@
 #![feature(untagged_unions)]
 
 union Test {
-    a: A, //~ ERROR unions may not contain fields that need dropping
+    a: A, //~ ERROR unions cannot contain fields that may need dropping
     b: B
 }
 
