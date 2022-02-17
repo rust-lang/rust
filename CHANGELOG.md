@@ -3370,6 +3370,7 @@ Released 2018-09-13
 [`pattern_type_mismatch`]: https://rust-lang.github.io/rust-clippy/master/index.html#pattern_type_mismatch
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
+[`print_in_format_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_in_format_impl
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal
 [`print_stderr`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stderr
 [`print_stdout`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_stdout

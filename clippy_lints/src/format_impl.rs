@@ -1,26 +1,13 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{is_format_macro, root_macro_call_first_node, FormatArgsArg, FormatArgsExpn};
-use clippy_utils::{is_diag_trait_item, path_to_local, peel_ref_operators};
+use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
 use if_chain::if_chain;
-use rustc_hir::{Expr, ExprKind, Impl, Item, ItemKind, QPath};
+use rustc_errors::Applicability;
+use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, symbol::kw, Symbol};
 
-#[derive(Clone, Copy)]
-enum FormatTrait {
-    Debug,
-    Display,
-}
-
-impl FormatTrait {
-    fn name(self) -> Symbol {
-        match self {
-            FormatTrait::Debug => sym::Debug,
-            FormatTrait::Display => sym::Display,
-        }
-    }
-}
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for format trait implementations (e.g. `Display`) with a recursive call to itself
@@ -60,6 +47,55 @@ declare_clippy_lint! {
     "Format trait method called while implementing the same Format trait"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for use of `println`, `print`, `eprintln` or `eprint` in an
+    /// implementation of a formatting trait.
+    ///
+    /// ### Why is this bad?
+    /// Using a print macro is likely unintentional since formatting traits
+    /// should write to the `Formatter`, not stdout/stderr.
+    ///
+    /// ### Example
+    /// ```rust
+    /// use std::fmt::{Display, Error, Formatter};
+    ///
+    /// struct S;
+    /// impl Display for S {
+    ///     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    ///         println!("S");
+    ///
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// use std::fmt::{Display, Error, Formatter};
+    ///
+    /// struct S;
+    /// impl Display for S {
+    ///     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+    ///         writeln!(f, "S");
+    ///
+    ///         Ok(())
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub PRINT_IN_FORMAT_IMPL,
+    suspicious,
+    "use of a print macro in a formatting trait impl"
+}
+
+#[derive(Clone, Copy)]
+struct FormatTrait {
+    /// e.g. `sym::Display`
+    name: Symbol,
+    /// `f` in `fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}`
+    formatter_name: Option<Symbol>,
+}
+
 #[derive(Default)]
 pub struct FormatImpl {
     // Whether we are inside Display or Debug trait impl - None for neither
@@ -74,33 +110,29 @@ impl FormatImpl {
     }
 }
 
-impl_lint_pass!(FormatImpl => [RECURSIVE_FORMAT_IMPL]);
+impl_lint_pass!(FormatImpl => [RECURSIVE_FORMAT_IMPL, PRINT_IN_FORMAT_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for FormatImpl {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let Some(format_trait_impl) = is_format_trait_impl(cx, item) {
-            self.format_trait_impl = Some(format_trait_impl);
-        }
+    fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
+        self.format_trait_impl = is_format_trait_impl(cx, impl_item);
     }
 
-    fn check_item_post(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
+    fn check_impl_item_post(&mut self, cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         // Assume no nested Impl of Debug and Display within eachother
-        if is_format_trait_impl(cx, item).is_some() {
+        if is_format_trait_impl(cx, impl_item).is_some() {
             self.format_trait_impl = None;
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        match self.format_trait_impl {
-            Some(FormatTrait::Display) => {
-                check_to_string_in_display(cx, expr);
-                check_self_in_format_args(cx, expr, FormatTrait::Display);
-            },
-            Some(FormatTrait::Debug) => {
-                check_self_in_format_args(cx, expr, FormatTrait::Debug);
-            },
-            None => {},
+        let Some(format_trait_impl) = self.format_trait_impl else { return };
+
+        if format_trait_impl.name == sym::Display {
+            check_to_string_in_display(cx, expr);
         }
+
+        check_self_in_format_args(cx, expr, format_trait_impl);
+        check_print_in_format_impl(cx, expr, format_trait_impl);
     }
 }
 
@@ -139,7 +171,7 @@ fn check_self_in_format_args<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>,
         if let Some(args) = format_args.args();
         then {
             for arg in args {
-                if arg.format_trait != impl_trait.name() {
+                if arg.format_trait != impl_trait.name {
                     continue;
                 }
                 check_format_arg_self(cx, expr, &arg, impl_trait);
@@ -155,33 +187,65 @@ fn check_format_arg_self(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &FormatArgs
     let reference = peel_ref_operators(cx, arg.value);
     let map = cx.tcx.hir();
     // Is the reference self?
-    let symbol_ident = impl_trait.name().to_ident_string();
     if path_to_local(reference).map(|x| map.name(x)) == Some(kw::SelfLower) {
+        let FormatTrait { name, .. } = impl_trait;
         span_lint(
             cx,
             RECURSIVE_FORMAT_IMPL,
             expr.span,
-            &format!(
-                "using `self` as `{}` in `impl {}` will cause infinite recursion",
-                &symbol_ident, &symbol_ident
-            ),
+            &format!("using `self` as `{name}` in `impl {name}` will cause infinite recursion"),
         );
     }
 }
 
-fn is_format_trait_impl(cx: &LateContext<'_>, item: &Item<'_>) -> Option<FormatTrait> {
+fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait: FormatTrait) {
     if_chain! {
-        // Are we at an Impl?
-        if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), .. }) = &item.kind;
+        if let Some(macro_call) = root_macro_call_first_node(cx, expr);
+        if let Some(name) = cx.tcx.get_diagnostic_name(macro_call.def_id);
+        then {
+            let replacement = match name {
+                sym::print_macro | sym::eprint_macro => "write",
+                sym::println_macro | sym::eprintln_macro => "writeln",
+                _ => return,
+            };
+
+            let name = name.as_str().strip_suffix("_macro").unwrap();
+
+            span_lint_and_sugg(
+                cx,
+                PRINT_IN_FORMAT_IMPL,
+                macro_call.span,
+                &format!("use of `{}!` in `{}` impl", name, impl_trait.name),
+                "replace with",
+                if let Some(formatter_name) = impl_trait.formatter_name {
+                    format!("{}!({}, ..)", replacement, formatter_name)
+                } else {
+                    format!("{}!(..)", replacement)
+                },
+                Applicability::HasPlaceholders,
+            );
+        }
+    }
+}
+
+fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTrait> {
+    if_chain! {
+        if impl_item.ident.name == sym::fmt;
+        if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
+        if let Some(Impl { of_trait: Some(trait_ref),..}) = get_parent_as_impl(cx.tcx, impl_item.hir_id());
         if let Some(did) = trait_ref.trait_def_id();
         if let Some(name) = cx.tcx.get_diagnostic_name(did);
+        if matches!(name, sym::Debug | sym::Display);
         then {
-            // Is Impl for Debug or Display?
-            match name {
-                sym::Debug => Some(FormatTrait::Debug),
-                sym::Display => Some(FormatTrait::Display),
-                _ => None,
-            }
+            let body = cx.tcx.hir().body(body_id);
+            let formatter_name = body.params.get(1)
+                .and_then(|param| param.pat.simple_ident())
+                .map(|ident| ident.name);
+
+            Some(FormatTrait {
+                name,
+                formatter_name,
+            })
         } else {
             None
         }
