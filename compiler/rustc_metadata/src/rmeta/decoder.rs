@@ -808,8 +808,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         &self.raw_proc_macros.unwrap()[pos]
     }
 
+    fn opt_item_name(self, item_index: DefIndex) -> Option<Symbol> {
+        self.def_key(item_index).disambiguated_data.data.get_opt_name()
+    }
+
+    fn item_name(self, item_index: DefIndex) -> Symbol {
+        self.opt_item_name(item_index).expect("no encoded ident for item")
+    }
+
     fn opt_item_ident(self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
-        let name = self.def_key(item_index).disambiguated_data.data.get_opt_name()?;
+        let name = self.opt_item_name(item_index)?;
         let span = match self.root.tables.def_ident_span.get(self, item_index) {
             Some(lazy_span) => lazy_span.decode((self, sess)),
             None => {
@@ -927,13 +935,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_variant(
-        self,
-        kind: &EntryKind,
-        index: DefIndex,
-        parent_did: DefId,
-        sess: &Session,
-    ) -> ty::VariantDef {
+    fn get_variant(self, kind: &EntryKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
         let data = match kind {
             EntryKind::Variant(data) | EntryKind::Struct(data, _) | EntryKind::Union(data, _) => {
                 data.decode(self)
@@ -953,7 +955,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let ctor_did = data.ctor.map(|index| self.local_def_id(index));
 
         ty::VariantDef::new(
-            self.item_ident(index, sess).name,
+            self.item_name(index),
             variant_did,
             ctor_did,
             data.discr,
@@ -965,7 +967,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .decode(self)
                 .map(|index| ty::FieldDef {
                     did: self.local_def_id(index),
-                    name: self.item_ident(index, sess).name,
+                    name: self.item_name(index),
                     vis: self.get_visibility(index),
                 })
                 .collect(),
@@ -995,10 +997,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 .get(self, item_id)
                 .unwrap_or_else(Lazy::empty)
                 .decode(self)
-                .map(|index| self.get_variant(&self.kind(index), index, did, tcx.sess))
+                .map(|index| self.get_variant(&self.kind(index), index, did))
                 .collect()
         } else {
-            std::iter::once(self.get_variant(&kind, item_id, did, tcx.sess)).collect()
+            std::iter::once(self.get_variant(&kind, item_id, did)).collect()
         };
 
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
@@ -1228,10 +1230,10 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_associated_item(self, id: DefIndex, sess: &Session) -> ty::AssocItem {
+    fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {
         let def_key = self.def_key(id);
         let parent = self.local_def_id(def_key.parent.unwrap());
-        let ident = self.item_ident(id, sess);
+        let name = self.item_name(id);
 
         let (kind, container, has_self) = match self.kind(id) {
             EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
@@ -1244,7 +1246,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         };
 
         ty::AssocItem {
-            name: ident.name,
+            name,
             kind,
             vis: self.get_visibility(id),
             defaultness: container.defaultness(),
@@ -1301,7 +1303,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .get(self, id)
             .unwrap_or_else(Lazy::empty)
             .decode(self)
-            .map(move |index| respan(self.get_span(index, sess), self.item_ident(index, sess).name))
+            .map(move |index| respan(self.get_span(index, sess), self.item_name(index)))
     }
 
     fn get_struct_field_visibilities(self, id: DefIndex) -> impl Iterator<Item = Visibility> + 'a {

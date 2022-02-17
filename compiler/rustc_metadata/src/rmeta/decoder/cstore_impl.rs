@@ -139,7 +139,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         tcx.calculate_dtor(def_id, |_,_| Ok(()))
     }
     associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
-    associated_item => { cdata.get_associated_item(def_id.index, tcx.sess) }
+    associated_item => { cdata.get_associated_item(def_id.index) }
     impl_polarity => { cdata.get_impl_polarity(def_id.index) }
     coerce_unsized_info => {
         cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
