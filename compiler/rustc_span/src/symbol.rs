@@ -423,6 +423,7 @@ symbols! {
         cfg_target_feature,
         cfg_target_has_atomic,
         cfg_target_has_atomic_equal_alignment,
+        cfg_target_has_atomic_load_store,
         cfg_target_thread_local,
         cfg_target_vendor,
         cfg_version,

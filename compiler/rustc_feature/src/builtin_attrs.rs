@@ -31,6 +31,7 @@ const GATED_CFGS: &[GatedCfg] = &[
         sym::cfg_target_has_atomic_equal_alignment,
         cfg_fn!(cfg_target_has_atomic_equal_alignment),
     ),
+    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
     (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
     (sym::panic, sym::cfg_panic, cfg_fn!(cfg_panic)),

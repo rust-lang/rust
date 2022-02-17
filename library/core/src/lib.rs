@@ -155,7 +155,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
-#![cfg_attr(bootstrap, feature(cfg_target_has_atomic))]
+#![feature(cfg_target_has_atomic)]
 #![cfg_attr(not(bootstrap), feature(cfg_target_has_atomic_equal_alignment))]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
