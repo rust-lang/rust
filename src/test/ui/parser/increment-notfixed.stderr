@@ -4,7 +4,10 @@ error: Rust has no postfix increment operator
 LL |     foo.bar.qux++;
    |                ^^ not a valid postfix operator
    |
-   = help: use `+= 1` instead
+help: use `+= 1` instead
+   |
+LL |     { let tmp = foo.bar.qux; foo.bar.qux += 1; tmp };
+   |     +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-notfixed.rs:18:5
@@ -12,7 +15,11 @@ error: Rust has no prefix increment operator
 LL |     ++foo.bar.qux;
    |     ^^ not a valid prefix operator
    |
-   = help: use `+= 1` instead
+help: use `+= 1` instead
+   |
+LL -     ++foo.bar.qux;
+LL +     foo.bar.qux += 1;
+   | 
 
 error: aborting due to 2 previous errors
 

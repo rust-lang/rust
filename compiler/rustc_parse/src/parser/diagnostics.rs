@@ -1266,45 +1266,36 @@ impl<'a> Parser<'a> {
             Ok(base)
         };
 
-        let ExprKind::Path(_, path) = &base.kind
-            else { return help_base_case(err, base) };
-        let [segment] = path.segments.as_slice()
-            else { return help_base_case(err, base) };
-        let ident = segment.ident;
-
         // (pre, post)
         let spans = match kind.fixity {
-            UnaryFixity::Pre => (op_span, ident.span.shrink_to_hi()),
-            UnaryFixity::Post => (ident.span.shrink_to_lo(), op_span),
+            UnaryFixity::Pre => (op_span, base.span.shrink_to_hi()),
+            UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
         };
 
-        if ident.is_reserved() {
-            return help_base_case(err, base);
-        }
-
         if kind.standalone {
-            self.inc_dec_standalone_recovery(base, err, kind, spans)
+            self.inc_dec_standalone_recovery(err, kind, spans)
         } else {
+            let Ok(base_src) = self.span_to_snippet(base.span)
+                else { return help_base_case(err, base) };
             match kind.fixity {
-                UnaryFixity::Pre => self.prefix_inc_dec_suggest(base, err, kind, ident, spans),
-                UnaryFixity::Post => self.postfix_inc_dec_suggest(base, err, kind, ident, spans),
+                UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, err, kind, spans),
+                UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, err, kind, spans),
             }
         }
     }
 
     fn prefix_inc_dec_suggest(
         &mut self,
-        _base: P<Expr>,
+        base_src: String,
         mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
-        ident: Ident,
         (pre_span, post_span): (Span, Span),
     ) -> PResult<'a, P<Expr>> {
         err.multipart_suggestion(
             &format!("use `{}= 1` instead", kind.op.chr()),
             vec![
                 (pre_span, "{ ".to_string()),
-                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), ident)),
+                (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
             ],
             Applicability::MachineApplicable,
         );
@@ -1313,17 +1304,16 @@ impl<'a> Parser<'a> {
 
     fn postfix_inc_dec_suggest(
         &mut self,
-        _base: P<Expr>,
+        base_src: String,
         mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
-        ident: Ident,
         (pre_span, post_span): (Span, Span),
     ) -> PResult<'a, P<Expr>> {
         err.multipart_suggestion(
             &format!("use `{}= 1` instead", kind.op.chr()),
             vec![
                 (pre_span, "{ let tmp = ".to_string()),
-                (post_span, format!("; {} {}= 1; tmp }}", ident, kind.op.chr())),
+                (post_span, format!("; {} {}= 1; tmp }}", base_src, kind.op.chr())),
             ],
             Applicability::MachineApplicable,
         );
@@ -1332,7 +1322,6 @@ impl<'a> Parser<'a> {
 
     fn inc_dec_standalone_recovery(
         &mut self,
-        _base: P<Expr>,
         mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
