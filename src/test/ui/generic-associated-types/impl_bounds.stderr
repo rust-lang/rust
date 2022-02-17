@@ -19,8 +19,13 @@ LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
 error[E0478]: lifetime bound not satisfied
   --> $DIR/impl_bounds.rs:17:35
    |
+LL |     type B<'a, 'b> where 'a: 'b;
+   |     ---------------------------- definition of `B` from trait
+...
 LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |                                   ^^^^^^^^^^^^^^^
+   |                                -  ^^^^^^^^^^^^^^^
+   |                                |
+   |                                help: try copying this clause from the trait: `, 'a: 'b`
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/impl_bounds.rs:17:12
