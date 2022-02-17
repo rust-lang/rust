@@ -224,8 +224,6 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::StackProtectStrong;
   case StackProtect:
     return Attribute::StackProtect;
-  case NoUndef:
-    return Attribute::NoUndef;
   }
   report_fatal_error("bad AttributeKind");
 }

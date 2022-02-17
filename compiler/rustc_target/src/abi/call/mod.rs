@@ -74,7 +74,6 @@ mod attr_impl {
             // or not to actually emit the attribute. It can also be controlled
             // with the `-Zmutable-noalias` debugging option.
             const NoAliasMutRef = 1 << 6;
-            const NoUndef = 1 << 7;
         }
     }
 }
@@ -496,11 +495,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
-        attrs
-            .set(ArgAttribute::NoAlias)
-            .set(ArgAttribute::NoCapture)
-            .set(ArgAttribute::NonNull)
-            .set(ArgAttribute::NoUndef);
+        attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
         attrs.pointee_size = layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
