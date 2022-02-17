@@ -497,6 +497,52 @@ fn test_collect() {
     assert!(a == b);
 }
 
+#[test]
+fn test_try_collect() {
+    use core::ops::ControlFlow::{Break, Continue};
+
+    let u = vec![Some(1), Some(2), Some(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Some(vec![1, 2, 3]));
+
+    let u = vec![Some(1), Some(2), None, Some(3)];
+    let mut it = u.into_iter();
+    let v = it.try_collect::<Vec<i32>>();
+    assert_eq!(v, None);
+    let v = it.try_collect::<Vec<i32>>();
+    assert_eq!(v, Some(vec![3]));
+
+    let u: Vec<Result<i32, ()>> = vec![Ok(1), Ok(2), Ok(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Ok(vec![1, 2, 3]));
+
+    let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    let v = u.into_iter().try_collect::<Vec<i32>>();
+    assert_eq!(v, Err(()));
+
+    let numbers = vec![1, 2, 3, 4, 5];
+    let all_positive = numbers
+        .iter()
+        .cloned()
+        .map(|n| if n > 0 { Some(n) } else { None })
+        .try_collect::<Vec<i32>>();
+    assert_eq!(all_positive, Some(numbers));
+
+    let numbers = vec![-2, -1, 0, 1, 2];
+    let all_positive =
+        numbers.into_iter().map(|n| if n > 0 { Some(n) } else { None }).try_collect::<Vec<i32>>();
+    assert_eq!(all_positive, None);
+
+    let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    let mut it = u.into_iter();
+
+    let v = it.try_collect::<Vec<_>>();
+    assert_eq!(v, Break(3));
+
+    let v = it.try_collect::<Vec<_>>();
+    assert_eq!(v, Continue(vec![4, 5]));
+}
+
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};

@@ -1,6 +1,7 @@
 use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
+use super::super::try_process;
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
@@ -1775,6 +1776,87 @@ pub trait Iterator {
         Self: Sized,
     {
         FromIterator::from_iter(self)
+    }
+
+    /// Fallibly transforms an iterator into a collection, short circuiting if
+    /// a failure is encountered.
+    ///
+    /// `try_collect()` is a variation of [`collect()`][`collect`] that allows fallible
+    /// conversions during collection. Its main use case is simplifying conversions from
+    /// iterators yielding [`Option<T>`][`Option`] into `Option<Collection<T>>`, or similarly for other [`Try`]
+    /// types (e.g. [`Result`]).
+    ///
+    /// Importantly, `try_collect()` doesn't require that the outer [`Try`] type also implements [`FromIterator`];
+    /// only the inner type produced on `Try::Output` must implement it. Concretely,
+    /// this means that collecting into `ControlFlow<_, Vec<i32>>` is valid because `Vec<i32>` implements
+    /// [`FromIterator`], even though [`ControlFlow`] doesn't.
+    ///
+    /// Also, if a failure is encountered during `try_collect()`, the iterator is still valid and
+    /// may continue to be used, in which case it will continue iterating starting after the element that
+    /// triggered the failure. See the last example below for an example of how this works.
+    ///
+    /// # Examples
+    /// Successfully collecting an iterator of `Option<i32>` into `Option<Vec<i32>>`:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u = vec![Some(1), Some(2), Some(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Some(vec![1, 2, 3]));
+    /// ```
+    ///
+    /// Failing to collect in the same way:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u = vec![Some(1), Some(2), None, Some(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, None);
+    /// ```
+    ///
+    /// A similar example, but with `Result`:
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// let u: Vec<Result<i32, ()>> = vec![Ok(1), Ok(2), Ok(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Ok(vec![1, 2, 3]));
+    ///
+    /// let u = vec![Ok(1), Ok(2), Err(()), Ok(3)];
+    /// let v = u.into_iter().try_collect::<Vec<i32>>();
+    /// assert_eq!(v, Err(()));
+    /// ```
+    ///
+    /// Finally, even [`ControlFlow`] works, despite the fact that it
+    /// doesn't implement [`FromIterator`]. Note also that the iterator can
+    /// continue to be used, even if a failure is encountered:
+    ///
+    /// ```
+    /// #![feature(iterator_try_collect)]
+    ///
+    /// use core::ops::ControlFlow::{Break, Continue};
+    ///
+    /// let u = [Continue(1), Continue(2), Break(3), Continue(4), Continue(5)];
+    /// let mut it = u.into_iter();
+    ///
+    /// let v = it.try_collect::<Vec<_>>();
+    /// assert_eq!(v, Break(3));
+    ///
+    /// let v = it.try_collect::<Vec<_>>();
+    /// assert_eq!(v, Continue(vec![4, 5]));
+    /// ```
+    ///
+    /// [`collect`]: Iterator::collect
+    #[inline]
+    #[unstable(feature = "iterator_try_collect", issue = "94047")]
+    fn try_collect<B>(&mut self) -> ChangeOutputType<Self::Item, B>
+    where
+        Self: Sized,
+        <Self as Iterator>::Item: Try,
+        <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
+        B: FromIterator<<Self::Item as Try>::Output>,
+    {
+        try_process(self, |i| i.collect())
     }
 
     /// Consumes an iterator, creating two collections from it.

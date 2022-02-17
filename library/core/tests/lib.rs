@@ -67,6 +67,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
+#![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
