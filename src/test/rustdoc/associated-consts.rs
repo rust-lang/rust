@@ -10,7 +10,7 @@ pub struct Bar;
 
 // @has 'foo/struct.Bar.html'
 // @has - '//h3[@class="sidebar-title"]' 'Associated Constants'
-// @has - '//div[@class="sidebar-elems"]//div[@class="sidebar-links"]/a' 'FOO'
+// @has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Trait for Bar {
     const FOO: u32 = 1;
 
@@ -23,7 +23,7 @@ pub enum Foo {
 
 // @has 'foo/enum.Foo.html'
 // @has - '//h3[@class="sidebar-title"]' 'Associated Constants'
-// @has - '//div[@class="sidebar-elems"]//div[@class="sidebar-links"]/a' 'FOO'
+// @has - '//div[@class="sidebar-elems"]//a' 'FOO'
 impl Trait for Foo {
     const FOO: u32 = 1;
 

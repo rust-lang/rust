@@ -7,10 +7,10 @@
 // @has '-' '//*[@class="impl-items"]//*[@id="method.foo_c"]' 'pub fn foo_c(&self)'
 // @has '-' '//*[@class="impl-items"]//*[@id="method.foo_j"]' 'pub fn foo_j(&self)'
 // @has '-' '//*[@class="sidebar-title"]/a[@href="#deref-methods-FooJ"]' 'Methods from Deref<Target=FooJ>'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.foo_a"]' 'foo_a'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.foo_b"]' 'foo_b'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.foo_c"]' 'foo_c'
-// @has '-' '//*[@class="sidebar-links"]/a[@href="#method.foo_j"]' 'foo_j'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.foo_a"]' 'foo_a'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.foo_b"]' 'foo_b'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.foo_c"]' 'foo_c'
+// @has '-' '//*[@class="sidebar-elems"]//section//a[@href="#method.foo_j"]' 'foo_j'
 
 pub struct FooA;
 pub type FooB = FooA;

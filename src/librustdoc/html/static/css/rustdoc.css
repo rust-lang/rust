@@ -484,10 +484,6 @@ h2.location a {
 	overflow: hidden;
 }
 
-.sidebar-links a {
-	white-space: nowrap;
-}
-
 .sidebar h2 {
 	border-bottom: none;
 	font-weight: 500;
@@ -504,9 +500,12 @@ h2.location a {
 	margin: 0;
 }
 
-.sidebar-links,
-.block {
+.sidebar-elems .block {
 	margin-bottom: 2em;
+}
+
+.sidebar-elems .block li a {
+	white-space: nowrap;
 }
 
 .mobile-topbar {
