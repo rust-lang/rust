@@ -734,6 +734,8 @@ fn copy_src_dirs(
             "llvm-project\\llvm",
             "llvm-project/compiler-rt",
             "llvm-project\\compiler-rt",
+            "llvm-project/cmake",
+            "llvm-project\\cmake",
         ];
         if spath.contains("llvm-project")
             && !spath.ends_with("llvm-project")

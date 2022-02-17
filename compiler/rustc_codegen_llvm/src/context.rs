@@ -135,7 +135,8 @@ pub unsafe fn create_module<'ll>(
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
     let mut target_data_layout = sess.target.data_layout.clone();
-    if llvm_util::get_version() < (13, 0, 0) {
+    let llvm_version = llvm_util::get_version();
+    if llvm_version < (13, 0, 0) {
         if sess.target.arch == "powerpc64" {
             target_data_layout = target_data_layout.replace("-S128", "");
         }
@@ -144,6 +145,18 @@ pub unsafe fn create_module<'ll>(
         }
         if sess.target.arch == "wasm64" {
             target_data_layout = "e-m:e-p:64:64-i64:64-n32:64-S128".to_string();
+        }
+    }
+    if llvm_version < (14, 0, 0) {
+        if sess.target.llvm_target == "i686-pc-windows-msvc"
+            || sess.target.llvm_target == "i586-pc-windows-msvc"
+        {
+            target_data_layout =
+                "e-m:x-p:32:32-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:32-n8:16:32-a:0:32-S32"
+                    .to_string();
+        }
+        if sess.target.arch == "wasm32" {
+            target_data_layout = target_data_layout.replace("-p10:8:8-p20:8:8", "");
         }
     }
 
