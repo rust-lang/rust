@@ -604,33 +604,35 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             return;
         }
 
-        redundant_pattern_match::check(cx, expr);
+        if let ExprKind::Match(ex, arms, source) = expr.kind {
+            if source == MatchSource::Normal {
+                if !(meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO)
+                    && match_like_matches::check_match(cx, expr, ex, arms))
+                {
+                    match_same_arms::check(cx, arms);
+                }
 
-        if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
-            if !match_like_matches::check(cx, expr) {
-                match_same_arms::check(cx, expr);
+                redundant_pattern_match::check_match(cx, expr, ex, arms);
+                single_match::check(cx, ex, arms, expr);
+                match_bool::check(cx, ex, arms, expr);
+                overlapping_arms::check(cx, ex, arms);
+                match_wild_err_arm::check(cx, ex, arms);
+                match_wild_enum::check(cx, ex, arms);
+                match_as_ref::check(cx, ex, arms, expr);
+                wild_in_or_pats::check(cx, arms);
+
+                if self.infallible_destructuring_match_linted {
+                    self.infallible_destructuring_match_linted = false;
+                } else {
+                    match_single_binding::check(cx, ex, arms, expr);
+                }
             }
-        } else {
-            match_same_arms::check(cx, expr);
-        }
-
-        if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
-            single_match::check(cx, ex, arms, expr);
-            match_bool::check(cx, ex, arms, expr);
-            overlapping_arms::check(cx, ex, arms);
-            match_wild_err_arm::check(cx, ex, arms);
-            match_wild_enum::check(cx, ex, arms);
-            match_as_ref::check(cx, ex, arms, expr);
-            wild_in_or_pats::check(cx, arms);
-
-            if self.infallible_destructuring_match_linted {
-                self.infallible_destructuring_match_linted = false;
-            } else {
-                match_single_binding::check(cx, ex, arms, expr);
-            }
-        }
-        if let ExprKind::Match(ex, arms, _) = expr.kind {
             match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
+        } else {
+            if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
+                match_like_matches::check(cx, expr);
+            }
+            redundant_pattern_match::check(cx, expr);
         }
     }
 
