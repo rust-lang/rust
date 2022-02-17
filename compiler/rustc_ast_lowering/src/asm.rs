@@ -66,6 +66,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             for (abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(
                     asm_arch,
+                    self.sess.relocation_model(),
                     &self.sess.target_features,
                     &self.sess.target,
                     *abi_name,
@@ -134,6 +135,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(
                                 asm_arch,
+                                sess.relocation_model(),
                                 &sess.target_features,
                                 &sess.target,
                                 is_clobber,

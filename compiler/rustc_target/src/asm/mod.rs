@@ -1,5 +1,5 @@
-use crate::abi::Size;
 use crate::spec::Target;
+use crate::{abi::Size, spec::RelocModel};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
@@ -81,6 +81,7 @@ macro_rules! def_regs {
 
             pub fn parse(
                 _arch: super::InlineAsmArch,
+                _reloc_model: crate::spec::RelocModel,
                 _target_features: &rustc_data_structures::fx::FxHashSet<Symbol>,
                 _target: &crate::spec::Target,
                 _is_clobber: bool,
@@ -89,7 +90,7 @@ macro_rules! def_regs {
                 match name {
                     $(
                         $($alias)|* | $reg_name => {
-                            $($filter(_arch, _target_features, _target, _is_clobber)?;)?
+                            $($filter(_arch, _reloc_model, _target_features, _target, _is_clobber)?;)?
                             Ok(Self::$reg)
                         }
                     )*
@@ -103,6 +104,7 @@ macro_rules! def_regs {
 
         pub(super) fn fill_reg_map(
             _arch: super::InlineAsmArch,
+            _reloc_model: crate::spec::RelocModel,
             _target_features: &rustc_data_structures::fx::FxHashSet<Symbol>,
             _target: &crate::spec::Target,
             _map: &mut rustc_data_structures::fx::FxHashMap<
@@ -113,7 +115,7 @@ macro_rules! def_regs {
             #[allow(unused_imports)]
             use super::{InlineAsmReg, InlineAsmRegClass};
             $(
-                if $($filter(_arch, _target_features, _target, false).is_ok() &&)? true {
+                if $($filter(_arch, _reloc_model, _target_features, _target, false).is_ok() &&)? true {
                     if let Some(set) = _map.get_mut(&InlineAsmRegClass::$arch($arch_regclass::$class)) {
                         set.insert(InlineAsmReg::$arch($arch_reg::$reg));
                     }
@@ -297,6 +299,7 @@ impl InlineAsmReg {
 
     pub fn parse(
         arch: InlineAsmArch,
+        reloc_model: RelocModel,
         target_features: &FxHashSet<Symbol>,
         target: &Target,
         is_clobber: bool,
@@ -307,75 +310,75 @@ impl InlineAsmReg {
         let name = name.as_str();
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                Self::X86(X86InlineAsmReg::parse(arch, target_features, target, is_clobber, name)?)
+                Self::X86(X86InlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
             }
             InlineAsmArch::Arm => {
-                Self::Arm(ArmInlineAsmReg::parse(arch, target_features, target, is_clobber, name)?)
+                Self::Arm(ArmInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
             }
             InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => Self::RiscV(
-                RiscVInlineAsmReg::parse(arch, target_features, target, is_clobber, name)?,
+                RiscVInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?,
             ),
             InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => Self::PowerPC(
-                PowerPCInlineAsmReg::parse(arch, target_features, target, is_clobber, name)?,
+                PowerPCInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?,
             ),
             InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => Self::Mips(MipsInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => Self::Wasm(WasmInlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
             )?),
             InlineAsmArch::Bpf => {
-                Self::Bpf(BpfInlineAsmReg::parse(arch, target_features, target, is_clobber, name)?)
+                Self::Bpf(BpfInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
             }
             InlineAsmArch::Avr => {
-                Self::Avr(AvrInlineAsmReg::parse(arch, target_features, target, is_clobber, name)?)
+                Self::Avr(AvrInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
             }
             InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmReg::parse(
                 arch,
-                target_features,
+                reloc_model,target_features,
                 target,
                 is_clobber,
                 name,
@@ -749,78 +752,79 @@ impl fmt::Display for InlineAsmType {
 // falling back to an external assembler.
 pub fn allocatable_registers(
     arch: InlineAsmArch,
+    reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &crate::spec::Target,
 ) -> FxHashMap<InlineAsmRegClass, FxHashSet<InlineAsmReg>> {
     match arch {
         InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
             let mut map = x86::regclass_map();
-            x86::fill_reg_map(arch, target_features, target, &mut map);
+            x86::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Arm => {
             let mut map = arm::regclass_map();
-            arm::fill_reg_map(arch, target_features, target, &mut map);
+            arm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::AArch64 => {
             let mut map = aarch64::regclass_map();
-            aarch64::fill_reg_map(arch, target_features, target, &mut map);
+            aarch64::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
             let mut map = riscv::regclass_map();
-            riscv::fill_reg_map(arch, target_features, target, &mut map);
+            riscv::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Nvptx64 => {
             let mut map = nvptx::regclass_map();
-            nvptx::fill_reg_map(arch, target_features, target, &mut map);
+            nvptx::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
             let mut map = powerpc::regclass_map();
-            powerpc::fill_reg_map(arch, target_features, target, &mut map);
+            powerpc::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Hexagon => {
             let mut map = hexagon::regclass_map();
-            hexagon::fill_reg_map(arch, target_features, target, &mut map);
+            hexagon::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
             let mut map = mips::regclass_map();
-            mips::fill_reg_map(arch, target_features, target, &mut map);
+            mips::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::S390x => {
             let mut map = s390x::regclass_map();
-            s390x::fill_reg_map(arch, target_features, target, &mut map);
+            s390x::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::SpirV => {
             let mut map = spirv::regclass_map();
-            spirv::fill_reg_map(arch, target_features, target, &mut map);
+            spirv::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
             let mut map = wasm::regclass_map();
-            wasm::fill_reg_map(arch, target_features, target, &mut map);
+            wasm::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Bpf => {
             let mut map = bpf::regclass_map();
-            bpf::fill_reg_map(arch, target_features, target, &mut map);
+            bpf::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Avr => {
             let mut map = avr::regclass_map();
-            avr::fill_reg_map(arch, target_features, target, &mut map);
+            avr::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
         InlineAsmArch::Msp430 => {
             let mut map = msp430::regclass_map();
-            msp430::fill_reg_map(arch, target_features, target, &mut map);
+            msp430::fill_reg_map(arch, reloc_model, target_features, target, &mut map);
             map
         }
     }
@@ -853,6 +857,7 @@ impl InlineAsmClobberAbi {
     /// clobber ABIs for the target.
     pub fn parse(
         arch: InlineAsmArch,
+        reloc_model: RelocModel,
         target_features: &FxHashSet<Symbol>,
         target: &Target,
         name: Symbol,
@@ -878,7 +883,7 @@ impl InlineAsmClobberAbi {
             },
             InlineAsmArch::AArch64 => match name {
                 "C" | "system" | "efiapi" => {
-                    Ok(if aarch64::reserved_x18(arch, target_features, target, true).is_err() {
+                    Ok(if aarch64::reserved_x18(arch, reloc_model, target_features, target, true).is_err() {
                         InlineAsmClobberAbi::AArch64NoX18
                     } else {
                         InlineAsmClobberAbi::AArch64

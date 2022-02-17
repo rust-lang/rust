@@ -1,5 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{Target, RelocModel};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
@@ -75,6 +75,7 @@ impl AArch64InlineAsmRegClass {
 
 pub fn reserved_x18(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     _target_features: &FxHashSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
