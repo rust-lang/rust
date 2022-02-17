@@ -19,6 +19,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config;
 use rustc_span::Span;
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -578,6 +579,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             // optimization.
             return;
         }
+        if self.sess().opts.optimize == config::OptLevel::No {
+            // range metadata is only useful when optimizing
+            return;
+        }
 
         unsafe {
             let llty = self.cx.val_ty(load);
@@ -595,6 +600,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn nonnull_metadata(&mut self, load: &'ll Value) {
+        if self.sess().opts.optimize == config::OptLevel::No {
+            // nonnull metadata is only useful when optimizing
+            return;
+        }
+
         unsafe {
             llvm::LLVMSetMetadata(
                 load,
