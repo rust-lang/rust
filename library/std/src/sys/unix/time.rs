@@ -149,9 +149,11 @@ mod inner {
     impl Instant {
         pub fn now() -> Instant {
             extern "C" {
-                fn mach_absolute_time() -> u64;
+                //fn mach_absolute_time() -> u64;
+                fn clock_gettime_nsec_np(clock_type: i64) -> u64;
             }
-            Instant { t: unsafe { mach_absolute_time() } }
+            Instant { t: unsafe { clock_gettime_nsec_np(4) } }
+            //Instant { t: unsafe { mach_absolute_time() } }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

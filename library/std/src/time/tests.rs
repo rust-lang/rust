@@ -13,6 +13,16 @@ macro_rules! assert_almost_eq {
 }
 
 #[test]
+#[cfg(all(target_arch = "aarch64", target_os = "macos"))]
+fn wtf() {
+    let t0 = Instant::now();
+    let t1 = t0 + Duration::from_nanos(50);
+    let d = t1 - t0;
+    dbg!(t0, t1, d);
+    assert_eq!(t0 + d, t1);
+}
+
+#[test]
 fn instant_monotonic() {
     let a = Instant::now();
     loop {
