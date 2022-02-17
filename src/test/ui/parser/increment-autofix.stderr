@@ -30,8 +30,40 @@ LL -     while i++ < 5 {
 LL +     while i += 1 < 5 {
    | 
 
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix.rs:19:8
+   |
+LL |     tmp++;
+   |        ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead (rename `tmp` so it doesn't conflict with your variable)
+   |
+LL |     { let tmp = tmp; tmp += 1; tmp };
+   |     +++++++++++    ~~~~~~~~~~~~~~~~~
+help: or, if you don't need to use it as an expression, change it to this
+   |
+LL -     tmp++;
+LL +     tmp += 1;
+   | 
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix.rs:25:14
+   |
+LL |     while tmp++ < 5 {
+   |              ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead (rename `tmp` so it doesn't conflict with your variable)
+   |
+LL |     while { let tmp = tmp; tmp += 1; tmp } < 5 {
+   |           +++++++++++    ~~~~~~~~~~~~~~~~~
+help: or, if you don't need to use it as an expression, change it to this
+   |
+LL -     while tmp++ < 5 {
+LL +     while tmp += 1 < 5 {
+   | 
+
 error: Rust has no prefix increment operator
-  --> $DIR/increment-autofix.rs:19:5
+  --> $DIR/increment-autofix.rs:33:5
    |
 LL |     ++i;
    |     ^^ not a valid prefix operator
@@ -43,7 +75,7 @@ LL +     i += 1;
    | 
 
 error: Rust has no prefix increment operator
-  --> $DIR/increment-autofix.rs:25:11
+  --> $DIR/increment-autofix.rs:39:11
    |
 LL |     while ++i < 5 {
    |           ^^ not a valid prefix operator
@@ -53,5 +85,5 @@ help: use `+= 1` instead
 LL |     while { i += 1; i } < 5 {
    |           ~   +++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
