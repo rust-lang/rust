@@ -1039,7 +1039,7 @@ fn check_matcher_core(
                                 ));
                                 err.span_suggestion(
                                     span,
-                                    &format!("try a `pat_param` fragment specifier instead"),
+                                    "try a `pat_param` fragment specifier instead",
                                     suggestion,
                                     Applicability::MaybeIncorrect,
                                 );

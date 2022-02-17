@@ -2156,7 +2156,7 @@ impl<'a> Parser<'a> {
                             | PatKind::TupleStruct(qself @ None, path, _)
                             | PatKind::Path(qself @ None, path) => match &first_pat.kind {
                                 PatKind::Ident(_, ident, _) => {
-                                    path.segments.insert(0, PathSegment::from_ident(ident.clone()));
+                                    path.segments.insert(0, PathSegment::from_ident(*ident));
                                     path.span = new_span;
                                     show_sugg = true;
                                     first_pat = pat;
@@ -2183,8 +2183,8 @@ impl<'a> Parser<'a> {
                                             Path {
                                                 span: new_span,
                                                 segments: vec![
-                                                    PathSegment::from_ident(old_ident.clone()),
-                                                    PathSegment::from_ident(ident.clone()),
+                                                    PathSegment::from_ident(*old_ident),
+                                                    PathSegment::from_ident(*ident),
                                                 ],
                                                 tokens: None,
                                             },
@@ -2194,7 +2194,7 @@ impl<'a> Parser<'a> {
                                     }
                                     PatKind::Path(old_qself, old_path) => {
                                         let mut segments = old_path.segments.clone();
-                                        segments.push(PathSegment::from_ident(ident.clone()));
+                                        segments.push(PathSegment::from_ident(*ident));
                                         let path = PatKind::Path(
                                             old_qself.clone(),
                                             Path { span: new_span, segments, tokens: None },

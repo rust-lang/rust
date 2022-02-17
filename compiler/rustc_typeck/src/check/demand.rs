@@ -357,7 +357,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
                 Some(ident) => format!("{}: ", ident),
-                None => format!(""),
+                None => String::new(),
             };
 
             match &compatible_variants[..] {
@@ -700,7 +700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
                             Some(ident) => format!("{}: ", ident),
-                            None => format!(""),
+                            None => String::new(),
                         };
 
                         if let Some(hir::Node::Expr(hir::Expr {
@@ -892,7 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             };
                             let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
                                 Some(ident) => format!("{}: ", ident),
-                                None => format!(""),
+                                None => String::new(),
                             };
                             let (span, suggestion) = if self.is_else_if_block(expr) {
                                 // Don't suggest nonsense like `else *if`
