@@ -1,5 +1,5 @@
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::{self, PredicateObligation};
+use crate::traits;
 use hir::def_id::{DefId, LocalDefId};
 use hir::OpaqueTyOrigin;
 use rustc_data_structures::sync::Lrc;
@@ -42,25 +42,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
+        a_is_expected: bool,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferResult<'tcx, ()> {
         if a.references_error() || b.references_error() {
             return Ok(InferOk { value: (), obligations: vec![] });
         }
-        if self.defining_use_anchor.is_some() {
-            let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
-                ty::Opaque(def_id, substs) => {
-                    if let ty::Opaque(did2, _) = *b.kind() {
-                        // We could accept this, but there are various ways to handle this situation, and we don't
-                        // want to make a decision on it right now. Likely this case is so super rare anyway, that
-                        // no one encounters it in practice.
-                        // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
-                        // where it is of no concern, so we only check for TAITs.
-                        if let Some(OpaqueTyOrigin::TyAlias) =
-                            self.opaque_type_origin(did2, cause.span)
-                        {
-                            self.tcx
+        let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
+        let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
+            ty::Opaque(def_id, substs) => {
+                if let ty::Opaque(did2, _) = *b.kind() {
+                    // We could accept this, but there are various ways to handle this situation, and we don't
+                    // want to make a decision on it right now. Likely this case is so super rare anyway, that
+                    // no one encounters it in practice.
+                    // It does occur however in `fn fut() -> impl Future<Output = i32> { async { 42 } }`,
+                    // where it is of no concern, so we only check for TAITs.
+                    if let Some(OpaqueTyOrigin::TyAlias) = self.opaque_type_origin(did2, cause.span)
+                    {
+                        self.tcx
                                 .sess
                                 .struct_span_err(
                                     cause.span,
@@ -76,13 +76,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     "opaque type being used as hidden type",
                                 )
                                 .emit();
-                        }
                     }
-                    Some(self.register_hidden_type(
-                        OpaqueTypeKey { def_id, substs },
-                        cause.clone(),
-                        param_env,
-                        b,
+                }
+                Some(self.register_hidden_type(
+                    OpaqueTypeKey { def_id, substs },
+                    cause.clone(),
+                    param_env,
+                    b,
+                    if self.defining_use_anchor.is_some() {
                         // Check that this is `impl Trait` type is
                         // declared by `parent_def_id` -- i.e., one whose
                         // value we are inferring.  At present, this is
@@ -117,47 +118,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         //     let x = || foo(); // returns the Opaque assoc with `foo`
                         // }
                         // ```
-                        self.opaque_type_origin(def_id, cause.span)?,
-                    ))
-                }
-                _ => None,
-            };
-            if let Some(res) = process(a, b) {
-                res
-            } else if let Some(res) = process(b, a) {
-                res
-            } else {
-                // Rerun equality check, but this time error out due to
-                // different types.
-                match self.at(cause, param_env).define_opaque_types(false).eq(a, b) {
-                    Ok(_) => span_bug!(
-                        cause.span,
-                        "opaque types are never equal to anything but themselves: {:#?}",
-                        (a.kind(), b.kind())
-                    ),
-                    Err(e) => Err(e),
-                }
+                        self.opaque_type_origin(def_id, cause.span)?
+                    } else {
+                        self.opaque_ty_origin_unchecked(def_id, cause.span)
+                    },
+                ))
             }
+            _ => None,
+        };
+        if let Some(res) = process(a, b) {
+            res
+        } else if let Some(res) = process(b, a) {
+            res
         } else {
-            let (opaque_type, hidden_ty) = match (a.kind(), b.kind()) {
-                (ty::Opaque(..), _) => (a, b),
-                (_, ty::Opaque(..)) => (b, a),
-                types => span_bug!(
+            // Rerun equality check, but this time error out due to
+            // different types.
+            match self.at(cause, param_env).define_opaque_types(false).eq(a, b) {
+                Ok(_) => span_bug!(
                     cause.span,
-                    "opaque type obligations only work for opaque types: {:#?}",
-                    types
+                    "opaque types are never equal to anything but themselves: {:#?}",
+                    (a.kind(), b.kind())
                 ),
-            };
-            let key = opaque_type.expect_opaque_type();
-            let origin = self.opaque_ty_origin_unchecked(key.def_id, cause.span);
-            let prev = self.inner.borrow_mut().opaque_types().register(
-                key,
-                OpaqueHiddenType { ty: hidden_ty, span: cause.span },
-                origin,
-            );
-            match prev {
-                Some(prev) => self.at(cause, param_env).eq(prev, hidden_ty),
-                None => Ok(InferOk { value: (), obligations: vec![] }),
+                Err(e) => Err(e),
             }
         }
     }
@@ -361,22 +343,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 )
             },
         });
-    }
-
-    pub fn opaque_ty_obligation(
-        &self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
-        param_env: ty::ParamEnv<'tcx>,
-        cause: ObligationCause<'tcx>,
-    ) -> PredicateObligation<'tcx> {
-        let (a, b) = if a_is_expected { (a, b) } else { (b, a) };
-        PredicateObligation::new(
-            cause,
-            param_env,
-            self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::OpaqueType(a, b))),
-        )
     }
 
     #[instrument(skip(self), level = "trace")]

@@ -16,9 +16,6 @@ fn extra_semicolon() {
 async fn async_dummy() {} //~ NOTE checked the `Output` of this `async fn`, found opaque type
 //~| NOTE while checking the return type of the `async fn`
 //~| NOTE in this expansion of desugaring of `async` block or function
-//~| NOTE while checking the return type of the `async fn`
-//~| NOTE in this expansion of desugaring of `async` block or function
-//~| NOTE checked the `Output` of this `async fn`, expected opaque type
 async fn async_dummy2() {} //~ NOTE checked the `Output` of this `async fn`, found opaque type
 //~| NOTE checked the `Output` of this `async fn`, found opaque type
 //~| NOTE while checking the return type of the `async fn`
@@ -34,7 +31,7 @@ async fn async_extra_semicolon_same() {
         }
         false => async_dummy(), //~ ERROR `match` arms have incompatible types
         //~^ NOTE expected `()`, found opaque type
-        //~| NOTE expected unit type `()`
+        //~| NOTE expected type `()`
         //~| HELP consider `await`ing on the `Future`
     };
 }
@@ -47,7 +44,7 @@ async fn async_extra_semicolon_different() {
         }
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
         //~^ NOTE expected `()`, found opaque type
-        //~| NOTE expected unit type `()`
+        //~| NOTE expected type `()`
         //~| HELP consider `await`ing on the `Future`
     };
 }
@@ -58,7 +55,7 @@ async fn async_different_futures() {
         //~| HELP consider `await`ing on both `Future`s
         false => async_dummy2(), //~ ERROR `match` arms have incompatible types
         //~^ NOTE expected opaque type, found a different opaque type
-        //~| NOTE expected opaque type `impl Future<Output = ()>`
+        //~| NOTE expected type `impl Future<Output = ()>`
         //~| NOTE distinct uses of `impl Trait` result in different opaque types
     };
 }

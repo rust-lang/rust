@@ -22,6 +22,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
@@ -499,7 +500,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.handle_opaque_type(a, b, cause, param_env)?.obligations);
+            obligations.extend(self.handle_opaque_type(a, b, true, cause, param_env)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -718,13 +719,17 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         true
     }
 
-    fn register_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
-        self.obligations.push(self.infcx.opaque_ty_obligation(
-            a,
-            b,
-            a_is_expected,
-            self.param_env,
-            self.cause.clone(),
-        ));
+    fn register_opaque_type(
+        &mut self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+    ) -> Result<(), TypeError<'tcx>> {
+        self.obligations.extend(
+            self.infcx
+                .handle_opaque_type(a, b, a_is_expected, &self.cause, self.param_env)?
+                .obligations,
+        );
+        Ok(())
     }
 }

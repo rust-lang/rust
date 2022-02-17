@@ -146,13 +146,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                     (_, &ty::Opaque(..)) => (generalize(a, false)?, b),
                     _ => unreachable!(),
                 };
-                self.fields.obligations.push(infcx.opaque_ty_obligation(
-                    a,
-                    b,
-                    true,
-                    self.param_env(),
-                    self.fields.trace.cause.clone(),
-                ));
+                self.fields.obligations.extend(
+                    infcx
+                        .handle_opaque_type(a, b, true, &self.fields.trace.cause, self.param_env())?
+                        .obligations,
+                );
                 Ok(a)
             }
 

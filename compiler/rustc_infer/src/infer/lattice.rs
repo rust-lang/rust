@@ -111,13 +111,11 @@ where
         (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
             if this.define_opaque_types() && did.is_local() =>
         {
-            this.add_obligations(vec![infcx.opaque_ty_obligation(
-                a,
-                b,
-                this.a_is_expected(),
-                this.param_env(),
-                this.cause().clone(),
-            )]);
+            this.add_obligations(
+                infcx
+                    .handle_opaque_type(a, b, this.a_is_expected(), this.cause(), this.param_env())?
+                    .obligations,
+            );
             Ok(a)
         }
 

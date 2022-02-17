@@ -2646,7 +2646,7 @@ impl NormalizeLocation for Location {
 pub(super) struct InstantiateOpaqueType<'tcx> {
     pub base_universe: Option<ty::UniverseIndex>,
     pub region_constraints: Option<RegionConstraintData<'tcx>>,
-    pub obligation: PredicateObligation<'tcx>,
+    pub obligations: Vec<PredicateObligation<'tcx>>,
 }
 
 impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
@@ -2660,7 +2660,7 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
 
     fn fully_perform(mut self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         let (mut output, region_constraints) = scrape_region_constraints(infcx, || {
-            Ok(InferOk { value: (), obligations: vec![self.obligation.clone()] })
+            Ok(InferOk { value: (), obligations: self.obligations.clone() })
         })?;
         self.region_constraints = Some(region_constraints);
         output.error_info = Some(self);

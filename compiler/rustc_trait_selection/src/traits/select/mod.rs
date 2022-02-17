@@ -673,19 +673,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for chalk")
                 }
-                ty::PredicateKind::OpaqueType(a, b) => {
-                    match self.infcx().handle_opaque_type(
-                        a,
-                        b,
-                        &obligation.cause,
-                        obligation.param_env,
-                    ) {
-                        Ok(res) => {
-                            self.evaluate_predicates_recursively(previous_stack, res.obligations)
-                        }
-                        Err(_) => Ok(EvaluatedToErr),
-                    }
-                }
             }
         });
 

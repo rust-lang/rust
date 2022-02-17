@@ -1,3 +1,11 @@
+error: unconstrained opaque type
+  --> $DIR/two_tait_defining_each_other2.rs:3:10
+   |
+LL | type A = impl Foo;
+   |          ^^^^^^^^
+   |
+   = note: `A` must be used in combination with a concrete type within the same module
+
 error: opaque type's hidden type cannot be another opaque type from the same scope
   --> $DIR/two_tait_defining_each_other2.rs:9:5
    |
@@ -15,5 +23,5 @@ note: opaque type being used as hidden type
 LL | type A = impl Foo;
    |          ^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 

@@ -2,6 +2,7 @@ use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRe
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::{self, Const, Ty};
 use rustc_span::Span;
@@ -136,7 +137,12 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         true
     }
 
-    fn register_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool) {
+    fn register_opaque_type(
+        &mut self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+    ) -> Result<(), TypeError<'tcx>> {
         let param_env = self.param_env();
         let span = self.span();
         let def_id = self.type_checker.body.source.def_id().expect_local();
@@ -147,18 +153,17 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 self.locations,
                 self.category,
                 InstantiateOpaqueType {
-                    obligation: self.type_checker.infcx.opaque_ty_obligation(
-                        a,
-                        b,
-                        a_is_expected,
-                        param_env,
-                        cause,
-                    ),
+                    obligations: self
+                        .type_checker
+                        .infcx
+                        .handle_opaque_type(a, b, a_is_expected, &cause, param_env)?
+                        .obligations,
                     // These fields are filled in during exectuion of the operation
                     base_universe: None,
                     region_constraints: None,
                 },
             )
             .unwrap();
+        Ok(())
     }
 }

@@ -21,6 +21,7 @@ mod b {
 
     impl PartialEq<(Foo, i32)> for Bar {
         fn eq(&self, _other: &(Bar, i32)) -> bool {
+            //~^ ERROR impl has stricter requirements than trait
             true
         }
     }

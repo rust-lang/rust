@@ -14,6 +14,7 @@ trait B {
 impl B for A {
     async fn associated(); //~ ERROR without body
     //~^ ERROR cannot be declared `async`
+    //~| ERROR impl has stricter requirements than trait
 }
 
 fn main() {}

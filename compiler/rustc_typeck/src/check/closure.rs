@@ -661,13 +661,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         span,
                     });
                     let cause = ObligationCause::misc(span, body_id);
-                    self.register_predicates(vec![self.infcx.opaque_ty_obligation(
-                        ty,
-                        ty_var,
-                        true,
-                        self.param_env,
-                        cause,
-                    )]);
+                    self.register_predicates(
+                        self.infcx
+                            .handle_opaque_type(ty, ty_var, true, &cause, self.param_env)
+                            .unwrap()
+                            .obligations,
+                    );
                     ty_var
                 }
                 _ => ty,

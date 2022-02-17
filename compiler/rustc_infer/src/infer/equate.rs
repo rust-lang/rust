@@ -98,13 +98,17 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
             (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
                 if self.fields.define_opaque_types && did.is_local() =>
             {
-                self.fields.obligations.push(infcx.opaque_ty_obligation(
-                    a,
-                    b,
-                    self.a_is_expected(),
-                    self.param_env(),
-                    self.fields.trace.cause.clone(),
-                ));
+                self.fields.obligations.extend(
+                    infcx
+                        .handle_opaque_type(
+                            a,
+                            b,
+                            self.a_is_expected(),
+                            &self.fields.trace.cause,
+                            self.param_env(),
+                        )?
+                        .obligations,
+                );
             }
 
             _ => {

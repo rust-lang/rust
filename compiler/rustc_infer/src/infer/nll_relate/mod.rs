@@ -91,7 +91,12 @@ pub trait TypeRelatingDelegate<'tcx> {
     );
 
     fn const_equate(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>);
-    fn register_opaque_type(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, a_is_expected: bool);
+    fn register_opaque_type(
+        &mut self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+        a_is_expected: bool,
+    ) -> Result<(), TypeError<'tcx>>;
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -590,7 +595,7 @@ where
                     (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
                     _ => unreachable!(),
                 };
-                self.delegate.register_opaque_type(a, b, true);
+                self.delegate.register_opaque_type(a, b, true)?;
                 trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
                 Ok(a)
             }

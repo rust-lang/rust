@@ -1,6 +1,6 @@
 #![feature(type_alias_impl_trait)]
 
-type A = impl Foo;
+type A = impl Foo; //~ ERROR unconstrained opaque type
 type B = impl Foo;
 
 trait Foo {}
