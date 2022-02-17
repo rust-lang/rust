@@ -146,12 +146,14 @@ mod inner {
     type mach_timebase_info_t = *mut mach_timebase_info;
     type kern_return_t = libc::c_int;
 
+    pub type clockid_t = libc::clockid_t;
+
     impl Instant {
         pub fn now() -> Instant {
             extern "C" {
-                fn clock_gettime_nsec_np(clock_type: u32) -> u64;
+                fn clock_gettime_nsec_np(clock_id: clockid_t) -> u64;
             }
-            Instant { t: unsafe { clock_gettime_nsec_np(4) } }
+            Instant { t: unsafe { clock_gettime_nsec_np(8) } }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
