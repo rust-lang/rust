@@ -453,7 +453,7 @@ impl SimpleFormatArgs {
                     }
                 }
             },
-            ArgumentNamed(n) => {
+            ArgumentNamed(n, _) => {
                 if let Some(x) = self.named.iter_mut().find(|x| x.0 == n) {
                     match x.1.as_slice() {
                         // A non-empty format string has been seen already.
