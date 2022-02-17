@@ -2156,24 +2156,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            // When in async fn, prefer errors that come from inside the closure.
-            if !categorized_path[i].from_closure {
-                let span = categorized_path.iter().find_map(|p| {
-                    if p.from_closure
-                        && p.category == categorized_path[i].category
-                        && categorized_path[i].cause.span.contains(p.cause.span)
-                    {
-                        Some(p.cause.span)
-                    } else {
-                        None
-                    }
-                });
-
-                if let Some(span) = span {
-                    categorized_path[i].cause.span = span;
-                }
-            }
-
             return categorized_path[i].clone();
         }
 

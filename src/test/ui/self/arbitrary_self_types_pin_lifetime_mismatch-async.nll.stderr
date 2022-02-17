@@ -20,8 +20,9 @@ error: lifetime may not live long enough
   --> $DIR/arbitrary_self_types_pin_lifetime_mismatch-async.rs:17:64
    |
 LL |     async fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
-   |                  --  ---- has type `Pin<&'1 Foo>`              ^^^ associated function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
-   |                  |
+   |                  --              -                             ^^^ associated function was supposed to return data with lifetime `'1` but it is returning data with lifetime `'a`
+   |                  |               |
+   |                  |               let's call the lifetime of this reference `'1`
    |                  lifetime `'a` defined here
 
 error: aborting due to 3 previous errors

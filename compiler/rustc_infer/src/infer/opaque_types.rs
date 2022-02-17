@@ -276,7 +276,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!(?concrete_ty);
 
         let first_own_region = match opaque_defn.origin {
-            hir::OpaqueTyOrigin::FnReturn(..) => {
+            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..) => {
                 // We lower
                 //
                 // fn foo<'l0..'ln>() -> impl Trait<'l0..'lm>
@@ -291,7 +291,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             // These opaque type inherit all lifetime parameters from their
             // parent, so we have to check them all.
-            hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::TyAlias => 0,
+            hir::OpaqueTyOrigin::TyAlias => 0,
         };
 
         // For a case like `impl Foo<'a, 'b>`, we would generate a constraint

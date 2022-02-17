@@ -585,12 +585,7 @@ fn clean_ty_generics(
         .params
         .iter()
         .filter_map(|param| match param.kind {
-            ty::GenericParamDefKind::Lifetime => {
-                if param.name == kw::UnderscoreLifetime {
-                    return None;
-                }
-                Some(param.clean(cx))
-            }
+            ty::GenericParamDefKind::Lifetime => Some(param.clean(cx)),
             ty::GenericParamDefKind::Type { synthetic, .. } => {
                 if param.name == kw::SelfUpper {
                     assert_eq!(param.index, 0);
