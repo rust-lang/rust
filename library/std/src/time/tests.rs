@@ -13,7 +13,6 @@ macro_rules! assert_almost_eq {
 }
 
 #[test]
-#[cfg(all(target_arch = "aarch64", target_os = "macos"))]
 fn macos_resolution_regression() {
     let t0 = Instant::now();
     let t1 = t0 + Duration::from_nanos(50);
