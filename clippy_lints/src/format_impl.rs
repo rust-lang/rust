@@ -21,7 +21,6 @@ impl FormatTrait {
         }
     }
 }
-
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for format trait implementations (e.g. `Display`) with a recursive call to itself
@@ -62,12 +61,12 @@ declare_clippy_lint! {
 }
 
 #[derive(Default)]
-pub struct RecursiveFormatImpl {
+pub struct FormatImpl {
     // Whether we are inside Display or Debug trait impl - None for neither
     format_trait_impl: Option<FormatTrait>,
 }
 
-impl RecursiveFormatImpl {
+impl FormatImpl {
     pub fn new() -> Self {
         Self {
             format_trait_impl: None,
@@ -75,9 +74,9 @@ impl RecursiveFormatImpl {
     }
 }
 
-impl_lint_pass!(RecursiveFormatImpl => [RECURSIVE_FORMAT_IMPL]);
+impl_lint_pass!(FormatImpl => [RECURSIVE_FORMAT_IMPL]);
 
-impl<'tcx> LateLintPass<'tcx> for RecursiveFormatImpl {
+impl<'tcx> LateLintPass<'tcx> for FormatImpl {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let Some(format_trait_impl) = is_format_trait_impl(cx, item) {
             self.format_trait_impl = Some(format_trait_impl);
