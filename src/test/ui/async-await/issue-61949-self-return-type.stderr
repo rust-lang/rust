@@ -1,15 +1,9 @@
-error[E0597]: `bar` does not live long enough
-  --> $DIR/issue-61949-self-return-type.rs:20:18
+error[E0760]: `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+  --> $DIR/issue-61949-self-return-type.rs:10:40
    |
-LL |     let x = {
-   |         - borrow later stored here
-LL |         let bar = 22;
-LL |         Foo::new(&bar).await
-   |                  ^^^^ borrowed value does not live long enough
-LL |
-LL |     };
-   |     - `bar` dropped here while still borrowed
+LL |     pub async fn new(_bar: &'a i32) -> Self {
+   |                                        ^^^^ help: consider spelling out the type instead: `Foo<'a>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0760`.

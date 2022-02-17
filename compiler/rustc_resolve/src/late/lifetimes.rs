@@ -729,16 +729,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 self.missing_named_lifetime_spots.push(generics.into());
-                self.visit_early_late(
-                    None,
-                    item.hir_id(),
-                    &sig.decl,
-                    generics,
-                    sig.header.asyncness,
-                    |this| {
-                        intravisit::walk_item(this, item);
-                    },
-                );
+                self.visit_early_late(None, item.hir_id(), &sig.decl, generics, |this| {
+                    intravisit::walk_item(this, item);
+                });
                 self.missing_named_lifetime_spots.pop();
             }
 
@@ -856,16 +849,11 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
-            hir::ForeignItemKind::Fn(ref decl, _, ref generics) => self.visit_early_late(
-                None,
-                item.hir_id(),
-                decl,
-                generics,
-                hir::IsAsync::NotAsync,
-                |this| {
+            hir::ForeignItemKind::Fn(ref decl, _, ref generics) => {
+                self.visit_early_late(None, item.hir_id(), decl, generics, |this| {
                     intravisit::walk_foreign_item(this, item);
-                },
-            ),
+                })
+            }
             hir::ForeignItemKind::Static(..) => {
                 intravisit::walk_foreign_item(self, item);
             }
@@ -1142,7 +1130,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     trait_item.hir_id(),
                     &sig.decl,
                     &trait_item.generics,
-                    sig.header.asyncness,
                     |this| intravisit::walk_trait_item(this, trait_item),
                 );
                 self.missing_named_lifetime_spots.pop();
@@ -1212,7 +1199,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     impl_item.hir_id(),
                     &sig.decl,
                     &impl_item.generics,
-                    sig.header.asyncness,
                     |this| intravisit::walk_impl_item(this, impl_item),
                 );
                 self.missing_named_lifetime_spots.pop();
@@ -2173,15 +2159,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         hir_id: hir::HirId,
         decl: &'tcx hir::FnDecl<'tcx>,
         generics: &'tcx hir::Generics<'tcx>,
-        asyncness: hir::IsAsync,
         walk: F,
     ) where
         F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
     {
-        // Async fns need all their lifetime parameters to be early bound.
-        if asyncness != hir::IsAsync::Async {
-            insert_late_bound_lifetimes(self.map, decl, generics);
-        }
+        insert_late_bound_lifetimes(self.map, decl, generics);
 
         // Find the start of nested early scopes, e.g., in methods.
         let mut next_early_index = 0;
