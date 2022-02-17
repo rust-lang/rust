@@ -2,6 +2,7 @@
 
 features! {
     @TARGET: powerpc64;
+    @CFG: target_arch = "powerpc64";
     @MACRO_NAME: is_powerpc64_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `powerpc` feature is enabled.

@@ -2,6 +2,7 @@
 
 features! {
     @TARGET: aarch64;
+    @CFG: target_arch = "aarch64";
     @MACRO_NAME: is_aarch64_feature_detected;
     @MACRO_ATTRS:
     /// This macro tests, at runtime, whether an `aarch64` feature is enabled on aarch64 platforms.

@@ -2,6 +2,7 @@
 macro_rules! features {
     (
       @TARGET: $target:ident;
+      @CFG: $cfg:meta;
       @MACRO_NAME: $macro_name:ident;
       @MACRO_ATTRS: $(#[$macro_attrs:meta])*
       $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; )*
@@ -11,11 +12,57 @@ macro_rules! features {
         #[macro_export]
         $(#[$macro_attrs])*
         #[allow_internal_unstable(stdsimd_internal)]
+        #[cfg($cfg)]
+        #[doc(cfg($cfg))]
         macro_rules! $macro_name {
             $(
                 ($feature_lit) => {
                     cfg!(target_feature = $feature_lit) ||
                         $crate::detect::__is_feature_detected::$feature()
+                };
+            )*
+            $(
+                ($bind_feature) => { $macro_name!($feature_impl) };
+            )*
+            $(
+                ($nort_feature) => {
+                    compile_error!(
+                        concat!(
+                            stringify!($nort_feature),
+                            " feature cannot be detected at run-time"
+                        )
+                    )
+                };
+            )*
+            ($t:tt,) => {
+                    $macro_name!($t);
+            };
+            ($t:tt) => {
+                compile_error!(
+                    concat!(
+                        concat!("unknown ", stringify!($target)),
+                        concat!(" target feature: ", $t)
+                    )
+                )
+            };
+        }
+
+        $(#[$macro_attrs])*
+        #[macro_export]
+        #[cfg(not($cfg))]
+        #[doc(cfg($cfg))]
+        macro_rules! $macro_name {
+            $(
+                ($feature_lit) => {
+                    compile_error!(
+                        concat!(
+                            r#"This macro cannot be used on the current target.
+                            You can prevent it from being used in other architectures by
+                            guarding it behind a cfg("#,
+                            stringify!($cfg),
+                            ")."
+                        )
+                    )
                 };
             )*
             $(
@@ -53,6 +100,7 @@ macro_rules! features {
         #[derive(Copy, Clone)]
         #[repr(u8)]
         #[unstable(feature = "stdsimd_internal", issue = "none")]
+        #[cfg($cfg)]
         pub(crate) enum Feature {
             $(
                 $(#[$feature_comment])*
@@ -63,6 +111,7 @@ macro_rules! features {
             _last
         }
 
+        #[cfg($cfg)]
         impl Feature {
             pub(crate) fn to_str(self) -> &'static str {
                 match self {
@@ -86,6 +135,7 @@ macro_rules! features {
         /// PLEASE: do not use this, it is an implementation detail subject
         /// to change.
         #[doc(hidden)]
+        #[cfg($cfg)]
         pub mod __is_feature_detected {
             $(
 

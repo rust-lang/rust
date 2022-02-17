@@ -2,6 +2,7 @@
 
 features! {
     @TARGET: riscv;
+    @CFG: any(target_arch = "riscv32", target_arch = "riscv64");
     @MACRO_NAME: is_riscv_feature_detected;
     @MACRO_ATTRS:
     /// A macro to test at *runtime* whether instruction sets are available on

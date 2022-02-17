@@ -17,6 +17,7 @@
 
 features! {
     @TARGET: x86;
+    @CFG: any(target_arch = "x86", target_arch = "x86_64");
     @MACRO_NAME: is_x86_feature_detected;
     @MACRO_ATTRS:
     /// A macro to test at *runtime* whether a CPU feature is available on

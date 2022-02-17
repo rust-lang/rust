@@ -2,6 +2,7 @@
 
 features! {
     @TARGET: arm;
+    @CFG: target_arch = "arm";
     @MACRO_NAME: is_arm_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `arm` feature is enabled.

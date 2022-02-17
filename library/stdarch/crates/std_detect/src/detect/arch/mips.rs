@@ -2,6 +2,7 @@
 
 features! {
     @TARGET: mips;
+    @CFG: target_arch = "mips";
     @MACRO_NAME: is_mips_feature_detected;
     @MACRO_ATTRS:
     /// Checks if `mips` feature is enabled.
