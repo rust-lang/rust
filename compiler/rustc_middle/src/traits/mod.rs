@@ -368,6 +368,11 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
     MatchImpl(ObligationCause<'tcx>, DefId),
+
+    BinOp {
+        rhs_span: Option<Span>,
+        is_lit: bool,
+    },
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.

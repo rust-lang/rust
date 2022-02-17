@@ -201,7 +201,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: rhs_expr.span,
         });
 
-        let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
+        let result = self.lookup_op_method(
+            lhs_ty,
+            Some(rhs_ty_var),
+            Some(rhs_expr),
+            Op::Binary(op, is_assign),
+        );
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
@@ -382,6 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 lhs_expr.span,
                                 lhs_ty,
                                 rhs_ty,
+                                rhs_expr,
                                 op,
                                 is_assign,
                             );
@@ -390,6 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 rhs_expr.span,
                                 rhs_ty,
                                 lhs_ty,
+                                lhs_expr,
                                 op,
                                 is_assign,
                             );
@@ -400,7 +407,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if let Ref(_, rty, _) = lhs_ty.kind() {
                     if self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span)
-                        && self.lookup_op_method(*rty, &[rhs_ty], Op::Binary(op, is_assign)).is_ok()
+                        && self
+                            .lookup_op_method(
+                                *rty,
+                                Some(rhs_ty),
+                                Some(rhs_expr),
+                                Op::Binary(op, is_assign),
+                            )
+                            .is_ok()
                     {
                         if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                             let msg = &format!(
@@ -443,7 +457,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let needs_bound = self
                                 .lookup_op_method(
                                     eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
+                                    Some(eraser.fold_ty(rhs_ty)),
+                                    Some(rhs_expr),
                                     Op::Binary(op, is_assign),
                                 )
                                 .is_ok();
@@ -487,6 +502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         ty: Ty<'tcx>,
         other_ty: Ty<'tcx>,
+        other_expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
     ) -> bool /* did we suggest to call a function because of missing parentheses? */ {
@@ -513,7 +529,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             if self
-                .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
+                .lookup_op_method(
+                    fn_sig.output(),
+                    Some(other_ty),
+                    Some(other_expr),
+                    Op::Binary(op, is_assign),
+                )
                 .is_ok()
             {
                 let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
@@ -631,7 +652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: hir::UnOp,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
+        match self.lookup_op_method(operand_ty, None, None, Op::Unary(op, ex.span)) {
             Ok(method) => {
                 self.write_method_call(ex.hir_id, method);
                 method.sig.output()
@@ -705,7 +726,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn lookup_op_method(
         &self,
         lhs_ty: Ty<'tcx>,
-        other_tys: &[Ty<'tcx>],
+        other_ty: Option<Ty<'tcx>>,
+        other_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         op: Op,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
         let lang = self.tcx.lang_items();
@@ -791,7 +813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let opname = Ident::with_dummy_span(opname);
         let method = trait_did.and_then(|trait_did| {
-            self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
+            self.lookup_op_method_in_trait(span, opname, trait_did, lhs_ty, other_ty, other_ty_expr)
         });
 
         match (method, trait_did) {
@@ -803,7 +825,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, None) => Err(vec![]),
             (None, Some(trait_did)) => {
                 let (obligation, _) =
-                    self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
+                    self.obligation_for_op_method(span, trait_did, lhs_ty, other_ty, other_ty_expr);
                 let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
                 fulfill.register_predicate_obligation(self, obligation);
                 Err(fulfill.select_where_possible(&self.infcx))
