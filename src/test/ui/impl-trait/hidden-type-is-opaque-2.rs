@@ -2,7 +2,18 @@
 // into function arguments via the function's generic parameters
 // FIXME(oli-obk): make `expected_inputs_for_expected_output` support this
 
+#![feature(type_alias_impl_trait)]
+
 fn reify_as() -> Thunk<impl FnOnce(Continuation) -> Continuation> {
+    Thunk::new(|mut cont| { //~ ERROR type annotations needed
+        cont.reify_as();
+        cont
+    })
+}
+
+type Tait = impl FnOnce(Continuation) -> Continuation;
+
+fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| { //~ ERROR type annotations needed
         cont.reify_as();
         cont

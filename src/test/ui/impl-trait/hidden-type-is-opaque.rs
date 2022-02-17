@@ -1,6 +1,16 @@
 // check-pass
+#![feature(type_alias_impl_trait)]
 
 fn reify_as() -> Thunk<impl ContFn> {
+    Thunk::new(|mut cont| {
+        cont.reify_as();
+        cont
+    })
+}
+
+type Tait = impl ContFn;
+
+fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| {
         cont.reify_as();
         cont
