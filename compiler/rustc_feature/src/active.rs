@@ -285,13 +285,13 @@ declare_features! (
     /// Allows trait methods with arbitrary self types.
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
     /// Allows using `const` operands in inline assembly.
-    (active, asm_const, "1.58.0", Some(72016), None),
+    (active, asm_const, "1.58.0", Some(93332), None),
     /// Enables experimental inline assembly support for additional architectures.
-    (active, asm_experimental_arch, "1.58.0", Some(72016), None),
+    (active, asm_experimental_arch, "1.58.0", Some(93335), None),
     /// Allows using `sym` operands in inline assembly.
-    (active, asm_sym, "1.58.0", Some(72016), None),
+    (active, asm_sym, "1.58.0", Some(93333), None),
     /// Allows the `may_unwind` option in inline assembly.
-    (active, asm_unwind, "1.58.0", Some(72016), None),
+    (active, asm_unwind, "1.58.0", Some(93334), None),
     /// Allows users to enforce equality of associated constants `TraitImpl<AssocConst=3>`.
     (active, associated_const_equality, "1.58.0", Some(92827), None),
     /// Allows the user of associated type bounds.

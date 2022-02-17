@@ -1,8 +1,8 @@
 # `asm_experimental_arch`
 
-The tracking issue for this feature is: [#72016]
+The tracking issue for this feature is: [#93335]
 
-[#72016]: https://github.com/rust-lang/rust/issues/72016
+[#93335]: https://github.com/rust-lang/rust/issues/93335
 
 ------------------------
 

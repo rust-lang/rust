@@ -4,7 +4,7 @@ error[E0658]: the `may_unwind` option is unstable
 LL |         asm!("", options(may_unwind));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #72016 <https://github.com/rust-lang/rust/issues/72016> for more information
+   = note: see issue #93334 <https://github.com/rust-lang/rust/issues/93334> for more information
    = help: add `#![feature(asm_unwind)]` to the crate attributes to enable
 
 error: aborting due to previous error
