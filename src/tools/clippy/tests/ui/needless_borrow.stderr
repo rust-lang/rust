@@ -85,24 +85,6 @@ LL |     let y: &mut i32 = &mut &mut x;
    |                       ^^^^^^^^^^^ help: change this to: `x`
 
 error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:67:13
-   |
-LL |     let _ = (&s).len();
-   |             ^^^^ help: change this to: `s`
-
-error: this expression borrows a value the compiler would automatically borrow
-  --> $DIR/needless_borrow.rs:68:13
-   |
-LL |     let _ = (&s).capacity();
-   |             ^^^^ help: change this to: `s`
-
-error: this expression creates a reference which is immediately dereferenced by the compiler
-  --> $DIR/needless_borrow.rs:69:13
-   |
-LL |     let _ = (&&s).capacity();
-   |             ^^^^^ help: change this to: `s`
-
-error: this expression borrows a value the compiler would automatically borrow
   --> $DIR/needless_borrow.rs:72:13
    |
 LL |     let _ = (&x).0;
@@ -114,5 +96,5 @@ error: this expression borrows a value the compiler would automatically borrow
 LL |     let _ = unsafe { (&*x).0 };
    |                      ^^^^^ help: change this to: `(*x)`
 
-error: aborting due to 19 previous errors
+error: aborting due to 16 previous errors
 
