@@ -6,6 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
+use rustc_errors::Applicability;
 use rustc_expand::base::*;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -102,11 +103,20 @@ pub fn expand_test_or_bench(
         }
     };
 
-    if let ast::ItemKind::MacCall(_) = item.kind {
-        cx.sess.parse_sess.span_diagnostic.span_warn(
-            item.span,
-            "`#[test]` attribute should not be used on macros. Use `#[cfg(test)]` instead.",
-        );
+    // Note: non-associated fn items are already handled by `expand_test_or_bench`
+    if !matches!(item.kind, ast::ItemKind::Fn(_)) {
+        cx.sess
+            .parse_sess
+            .span_diagnostic
+            .struct_span_err(
+                attr_sp,
+                "the `#[test]` attribute may only be used on a non-associated function",
+            )
+            .note("the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions")
+            .span_label(item.span, format!("expected a non-associated function, found {} {}", item.kind.article(), item.kind.descr()))
+            .span_suggestion(attr_sp, "replace with conditional compilation to make the item only exist when tests are being run", String::from("#[cfg(test)]"), Applicability::MaybeIncorrect)
+            .emit();
+
         return vec![Annotatable::Item(item)];
     }
 
@@ -466,7 +476,7 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
             (false, _) => true,
         }
     } else {
-        sd.span_err(i.span, "only functions may be used as tests");
+        // should be unreachable because `is_test_fn_item` should catch all non-fn items
         false
     }
 }
