@@ -182,7 +182,12 @@ struct InlineAssemblyGenerator<'a, 'tcx> {
 impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     fn allocate_registers(&mut self) {
         let sess = self.tcx.sess;
-        let map = allocatable_registers(self.arch, &sess.target_features, &sess.target);
+        let map = allocatable_registers(
+            self.arch,
+            sess.relocation_model(),
+            &sess.target_features,
+            &sess.target,
+        );
         let mut allocated = FxHashMap::<_, (bool, bool)>::default();
         let mut regs = vec![None; self.operands.len()];
 
@@ -315,6 +320,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         // Allocate stack slots for saving clobbered registers
         let abi_clobber = InlineAsmClobberAbi::parse(
             self.arch,
+            self.tcx.sess.relocation_model(),
             &self.tcx.sess.target_features,
             &self.tcx.sess.target,
             sym::C,
