@@ -393,7 +393,17 @@ pub fn configure_and_expand(
     });
 
     let crate_types = sess.crate_types();
+    let is_executable_crate = crate_types.contains(&CrateType::Executable);
     let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
+
+    if crate_types.len() > 1 {
+        if is_executable_crate {
+            sess.err("cannot mix `bin` crate type with others");
+        }
+        if is_proc_macro_crate {
+            sess.err("cannot mix `proc-macro` crate type with others");
+        }
+    }
 
     // For backwards compatibility, we don't try to run proc macro injection
     // if rustdoc is run on a proc macro crate without '--crate-type proc-macro' being
@@ -411,7 +421,6 @@ pub fn configure_and_expand(
         msg.emit()
     } else {
         krate = sess.time("maybe_create_a_macro_crate", || {
-            let num_crate_types = crate_types.len();
             let is_test_crate = sess.opts.test;
             rustc_builtin_macros::proc_macro_harness::inject(
                 sess,
@@ -420,7 +429,6 @@ pub fn configure_and_expand(
                 is_proc_macro_crate,
                 has_proc_macro_decls,
                 is_test_crate,
-                num_crate_types,
                 sess.diagnostic(),
             )
         });

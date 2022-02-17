@@ -56,7 +56,6 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    num_crate_types: usize,
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     let ecfg = ExpansionConfig::default("proc_macro".to_string());
@@ -79,10 +78,6 @@ pub fn inject(
 
     if !is_proc_macro_crate {
         return krate;
-    }
-
-    if num_crate_types > 1 {
-        handler.err("cannot mix `proc-macro` crate type with others");
     }
 
     if is_test_crate {
