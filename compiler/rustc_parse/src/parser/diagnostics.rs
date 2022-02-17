@@ -160,8 +160,10 @@ impl AttemptLocalParseRecovery {
 /// C-style `i++`, `--i`, etc.
 #[derive(Debug, Copy, Clone)]
 struct IncDecRecovery {
-    /// This increment/decrement is not a subexpression.
-    standalone: bool,
+    /// Is this increment/decrement its own statement?
+    ///
+    /// This is `None` when we are unsure.
+    standalone: Option<bool>,
     /// Is this an increment or decrement?
     op: IncOrDec,
     /// Is this pre- or postfix?
@@ -1225,7 +1227,7 @@ impl<'a> Parser<'a> {
         prev_is_semi: bool,
     ) -> PResult<'a, P<Expr>> {
         let kind = IncDecRecovery {
-            standalone: prev_is_semi,
+            standalone: Some(prev_is_semi),
             op: IncOrDec::Inc,
             fixity: UnaryFixity::Pre,
         };
@@ -1237,13 +1239,9 @@ impl<'a> Parser<'a> {
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,
-        prev_is_semi: bool,
     ) -> PResult<'a, P<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: prev_is_semi,
-            op: IncOrDec::Inc,
-            fixity: UnaryFixity::Post,
-        };
+        let kind =
+            IncDecRecovery { standalone: None, op: IncOrDec::Inc, fixity: UnaryFixity::Post };
 
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
@@ -1272,25 +1270,44 @@ impl<'a> Parser<'a> {
             UnaryFixity::Post => (base.span.shrink_to_lo(), op_span),
         };
 
-        if kind.standalone {
-            self.inc_dec_standalone_recovery(err, kind, spans)
-        } else {
-            let Ok(base_src) = self.span_to_snippet(base.span)
-                else { return help_base_case(err, base) };
-            match kind.fixity {
-                UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, err, kind, spans),
-                UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, err, kind, spans),
+        match kind.standalone {
+            Some(true) => self.inc_dec_standalone_recovery(&mut err, kind, spans, false),
+            Some(false) => {
+                let Ok(base_src) = self.span_to_snippet(base.span)
+                    else { return help_base_case(err, base) };
+                match kind.fixity {
+                    UnaryFixity::Pre => {
+                        self.prefix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                    }
+                    UnaryFixity::Post => {
+                        self.postfix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                    }
+                }
+            }
+            None => {
+                let Ok(base_src) = self.span_to_snippet(base.span)
+                    else { return help_base_case(err, base) };
+                match kind.fixity {
+                    UnaryFixity::Pre => {
+                        self.prefix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                    }
+                    UnaryFixity::Post => {
+                        self.postfix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                    }
+                }
+                self.inc_dec_standalone_recovery(&mut err, kind, spans, true)
             }
         }
+        Err(err)
     }
 
     fn prefix_inc_dec_suggest(
         &mut self,
         base_src: String,
-        mut err: DiagnosticBuilder<'a>,
+        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-    ) -> PResult<'a, P<Expr>> {
+    ) {
         err.multipart_suggestion(
             &format!("use `{}= 1` instead", kind.op.chr()),
             vec![
@@ -1299,16 +1316,15 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MachineApplicable,
         );
-        Err(err)
     }
 
     fn postfix_inc_dec_suggest(
         &mut self,
         base_src: String,
-        mut err: DiagnosticBuilder<'a>,
+        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-    ) -> PResult<'a, P<Expr>> {
+    ) {
         err.multipart_suggestion(
             &format!("use `{}= 1` instead", kind.op.chr()),
             vec![
@@ -1317,21 +1333,31 @@ impl<'a> Parser<'a> {
             ],
             Applicability::MachineApplicable,
         );
-        Err(err)
     }
 
     fn inc_dec_standalone_recovery(
         &mut self,
-        mut err: DiagnosticBuilder<'a>,
+        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-    ) -> PResult<'a, P<Expr>> {
+        maybe_not_standalone: bool,
+    ) {
+        let msg = if maybe_not_standalone {
+            "or, if you don't need to use it as an expression, change it to this".to_owned()
+        } else {
+            format!("use `{}= 1` instead", kind.op.chr())
+        };
+        let applicability = if maybe_not_standalone {
+            // FIXME: Unspecified isn't right, but it's the least wrong option
+            Applicability::Unspecified
+        } else {
+            Applicability::MachineApplicable
+        };
         err.multipart_suggestion(
-            &format!("use `{}= 1` instead", kind.op.chr()),
+            &msg,
             vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
-            Applicability::MachineApplicable,
+            applicability,
         );
-        Err(err)
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.

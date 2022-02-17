@@ -8,6 +8,11 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = i; i += 1; tmp };
    |     +++++++++++  ~~~~~~~~~~~~~~~
+help: or, if you don't need to use it as an expression, change it to this
+   |
+LL -     i++;
+LL +     i += 1;
+   | 
 
 error: Rust has no postfix increment operator
   --> $DIR/increment-autofix.rs:11:12
@@ -19,6 +24,11 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp = i; i += 1; tmp } < 5 {
    |           +++++++++++  ~~~~~~~~~~~~~~~
+help: or, if you don't need to use it as an expression, change it to this
+   |
+LL -     while i++ < 5 {
+LL +     while i += 1 < 5 {
+   | 
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-autofix.rs:19:5

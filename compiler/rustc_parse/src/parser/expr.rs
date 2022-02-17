@@ -273,9 +273,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                // TODO: implement
-                let start_is_semi = false;
-                lhs = self.maybe_recover_from_postfix_increment(lhs, op_span, start_is_semi)?;
+                lhs = self.maybe_recover_from_postfix_increment(lhs, op_span)?;
                 continue;
             }
 
