@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{indent_of, snippet_block, snippet_opt, snippet_with_applicability};
+use clippy_utils::source::{indent_of, snippet_block, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, is_refutable, peel_blocks};
 use rustc_errors::Applicability;
@@ -12,23 +12,6 @@ use super::MATCH_SINGLE_BINDING;
 pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], expr: &Expr<'_>) {
     if expr.span.from_expansion() || arms.len() != 1 || is_refutable(cx, arms[0].pat) {
         return;
-    }
-
-    // HACK:
-    // This is a hack to deal with arms that are excluded by macros like `#[cfg]`. It is only used here
-    // to prevent false positives as there is currently no better way to detect if code was excluded by
-    // a macro. See PR #6435
-    if_chain! {
-        if let Some(match_snippet) = snippet_opt(cx, expr.span);
-        if let Some(arm_snippet) = snippet_opt(cx, arms[0].span);
-        if let Some(ex_snippet) = snippet_opt(cx, ex.span);
-        let rest_snippet = match_snippet.replace(&arm_snippet, "").replace(&ex_snippet, "");
-        if rest_snippet.contains("=>");
-        then {
-            // The code it self contains another thick arrow "=>"
-            // -> Either another arm or a comment
-            return;
-        }
     }
 
     let matched_vars = ex.span;
