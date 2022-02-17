@@ -234,4 +234,12 @@ macro_rules! single_match {
 
 fn main() {
     single_match!(5);
+
+    // Don't lint
+    let _ = match Some(0) {
+        #[cfg(feature = "foo")]
+        Some(10) => 11,
+        Some(x) => x,
+        _ => 0,
+    };
 }
