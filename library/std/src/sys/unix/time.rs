@@ -288,7 +288,7 @@ mod inner {
             #[cfg(target_os = "macos")]
             const clock_id: clock_t = 8;
             #[cfg(not(target_os = "macos"))]
-            const clock_id: clock_t  = libc::CLOCK_MONOTONIC;
+            const clock_id: clock_t = libc::CLOCK_MONOTONIC;
             Instant { t: now(clock_id) }
         }
 
