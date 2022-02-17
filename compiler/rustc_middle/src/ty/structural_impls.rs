@@ -8,6 +8,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
@@ -663,14 +664,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
-//
-// Ideally, each type should invoke `folder.fold_foo(self)` and
-// nothing else. In some cases, though, we haven't gotten around to
-// adding methods on the `folder` yet, and thus the folding is
-// hard-coded here. This is less-flexible, because folders cannot
-// override the behavior, but there are a lot of random types and one
-// can easily refactor the folding into the TypeFolder trait as
-// needed.
 
 /// AdtDefs are basically the same as a DefId.
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {
@@ -1268,5 +1261,15 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for hir::Constness {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::CONTINUE
     }
 }
