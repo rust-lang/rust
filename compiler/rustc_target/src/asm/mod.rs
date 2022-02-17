@@ -25,7 +25,7 @@ macro_rules! def_reg_class {
                 }
             }
 
-            pub fn parse(_arch: super::InlineAsmArch, name: rustc_span::Symbol) -> Result<Self, &'static str> {
+            pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static str> {
                 match name {
                     $(
                         rustc_span::sym::$class => Ok(Self::$class),
@@ -79,25 +79,38 @@ macro_rules! def_regs {
                 }
             }
 
-            pub fn parse(
-                _arch: super::InlineAsmArch,
-                _reloc_model: crate::spec::RelocModel,
-                _target_features: &rustc_data_structures::fx::FxHashSet<Symbol>,
-                _target: &crate::spec::Target,
-                _is_clobber: bool,
-                name: &str,
-            ) -> Result<Self, &'static str> {
+            pub fn parse(name: &str) -> Result<Self, &'static str> {
                 match name {
                     $(
-                        $($alias)|* | $reg_name => {
-                            $($filter(_arch, _reloc_model, _target_features, _target, _is_clobber)?;)?
-                            Ok(Self::$reg)
-                        }
+                        $($alias)|* | $reg_name => Ok(Self::$reg),
                     )*
                     $(
                         $($bad_reg)|* => Err($error),
                     )*
                     _ => Err("unknown register"),
+                }
+            }
+
+            pub fn validate(self,
+                _arch: super::InlineAsmArch,
+                _reloc_model: crate::spec::RelocModel,
+                _target_features: &rustc_data_structures::fx::FxHashSet<Symbol>,
+                _target: &crate::spec::Target,
+                _is_clobber: bool,
+            ) -> Result<(), &'static str> {
+                match self {
+                    $(
+                        Self::$reg => {
+                            $($filter(
+                                _arch,
+                                _reloc_model,
+                                _target_features,
+                                _target,
+                                _is_clobber
+                            )?;)?
+                            Ok(())
+                        }
+                    )*
                 }
             }
         }
@@ -297,93 +310,58 @@ impl InlineAsmReg {
         }
     }
 
-    pub fn parse(
+    pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
+        // FIXME: use direct symbol comparison for register names
+        // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access `Symbol`.
+        let name = name.as_str();
+        Ok(match arch {
+            InlineAsmArch::X86 | InlineAsmArch::X86_64 => Self::X86(X86InlineAsmReg::parse(name)?),
+            InlineAsmArch::Arm => Self::Arm(ArmInlineAsmReg::parse(name)?),
+            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmReg::parse(name)?),
+            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
+                Self::RiscV(RiscVInlineAsmReg::parse(name)?)
+            }
+            InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmReg::parse(name)?),
+            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
+                Self::PowerPC(PowerPCInlineAsmReg::parse(name)?)
+            }
+            InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmReg::parse(name)?),
+            InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
+                Self::Mips(MipsInlineAsmReg::parse(name)?)
+            }
+            InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(name)?),
+            InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmReg::parse(name)?),
+            InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
+                Self::Wasm(WasmInlineAsmReg::parse(name)?)
+            }
+            InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmReg::parse(name)?),
+            InlineAsmArch::Avr => Self::Avr(AvrInlineAsmReg::parse(name)?),
+            InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmReg::parse(name)?),
+        })
+    }
+
+    pub fn validate(
+        self,
         arch: InlineAsmArch,
         reloc_model: RelocModel,
         target_features: &FxHashSet<Symbol>,
         target: &Target,
         is_clobber: bool,
-        name: Symbol,
-    ) -> Result<Self, &'static str> {
-        // FIXME: use direct symbol comparison for register names
-        // Use `Symbol::as_str` instead of `Symbol::with` here because `has_feature` may access `Symbol`.
-        let name = name.as_str();
-        Ok(match arch {
-            InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                Self::X86(X86InlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
-            }
-            InlineAsmArch::Arm => {
-                Self::Arm(ArmInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
-            }
-            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => Self::RiscV(
-                RiscVInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?,
-            ),
-            InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => Self::PowerPC(
-                PowerPCInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?,
-            ),
-            InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::Mips | InlineAsmArch::Mips64 => Self::Mips(MipsInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::S390x => Self::S390x(S390xInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => Self::Wasm(WasmInlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-            InlineAsmArch::Bpf => {
-                Self::Bpf(BpfInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
-            }
-            InlineAsmArch::Avr => {
-                Self::Avr(AvrInlineAsmReg::parse(arch, reloc_model,target_features, target, is_clobber, name)?)
-            }
-            InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmReg::parse(
-                arch,
-                reloc_model,target_features,
-                target,
-                is_clobber,
-                name,
-            )?),
-        })
+    ) -> Result<(), &'static str> {
+        match self {
+            Self::X86(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Arm(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::AArch64(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::RiscV(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::PowerPC(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Hexagon(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Mips(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::S390x(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Bpf(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Avr(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Msp430(r) => r.validate(arch, reloc_model, target_features, target, is_clobber),
+            Self::Err => unreachable!(),
+        }
     }
 
     // NOTE: This function isn't used at the moment, but is needed to support
@@ -587,29 +565,29 @@ impl InlineAsmRegClass {
     pub fn parse(arch: InlineAsmArch, name: Symbol) -> Result<Self, &'static str> {
         Ok(match arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64 => {
-                Self::X86(X86InlineAsmRegClass::parse(arch, name)?)
+                Self::X86(X86InlineAsmRegClass::parse(name)?)
             }
-            InlineAsmArch::Arm => Self::Arm(ArmInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Arm => Self::Arm(ArmInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::AArch64 => Self::AArch64(AArch64InlineAsmRegClass::parse(name)?),
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => {
-                Self::RiscV(RiscVInlineAsmRegClass::parse(arch, name)?)
+                Self::RiscV(RiscVInlineAsmRegClass::parse(name)?)
             }
-            InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Nvptx64 => Self::Nvptx(NvptxInlineAsmRegClass::parse(name)?),
             InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
-                Self::PowerPC(PowerPCInlineAsmRegClass::parse(arch, name)?)
+                Self::PowerPC(PowerPCInlineAsmRegClass::parse(name)?)
             }
-            InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Hexagon => Self::Hexagon(HexagonInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Mips | InlineAsmArch::Mips64 => {
-                Self::Mips(MipsInlineAsmRegClass::parse(arch, name)?)
+                Self::Mips(MipsInlineAsmRegClass::parse(name)?)
             }
-            InlineAsmArch::S390x => Self::S390x(S390xInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::S390x => Self::S390x(S390xInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::SpirV => Self::SpirV(SpirVInlineAsmRegClass::parse(name)?),
             InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {
-                Self::Wasm(WasmInlineAsmRegClass::parse(arch, name)?)
+                Self::Wasm(WasmInlineAsmRegClass::parse(name)?)
             }
-            InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::Avr => Self::Avr(AvrInlineAsmRegClass::parse(arch, name)?),
-            InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmRegClass::parse(arch, name)?),
+            InlineAsmArch::Bpf => Self::Bpf(BpfInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::Avr => Self::Avr(AvrInlineAsmRegClass::parse(name)?),
+            InlineAsmArch::Msp430 => Self::Msp430(Msp430InlineAsmRegClass::parse(name)?),
         })
     }
 
@@ -857,8 +835,6 @@ impl InlineAsmClobberAbi {
     /// clobber ABIs for the target.
     pub fn parse(
         arch: InlineAsmArch,
-        reloc_model: RelocModel,
-        target_features: &FxHashSet<Symbol>,
         target: &Target,
         name: Symbol,
     ) -> Result<Self, &'static [&'static str]> {
@@ -882,13 +858,11 @@ impl InlineAsmClobberAbi {
                 _ => Err(&["C", "system", "efiapi", "aapcs"]),
             },
             InlineAsmArch::AArch64 => match name {
-                "C" | "system" | "efiapi" => {
-                    Ok(if aarch64::reserved_x18(arch, reloc_model, target_features, target, true).is_err() {
-                        InlineAsmClobberAbi::AArch64NoX18
-                    } else {
-                        InlineAsmClobberAbi::AArch64
-                    })
-                }
+                "C" | "system" | "efiapi" => Ok(if aarch64::target_reserves_x18(target) {
+                    InlineAsmClobberAbi::AArch64NoX18
+                } else {
+                    InlineAsmClobberAbi::AArch64
+                }),
                 _ => Err(&["C", "system", "efiapi"]),
             },
             InlineAsmArch::RiscV32 | InlineAsmArch::RiscV64 => match name {

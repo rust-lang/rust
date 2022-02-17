@@ -106,6 +106,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let mut asm_gen = InlineAssemblyGenerator {
         tcx: fx.tcx,
         arch: fx.tcx.sess.asm_arch.unwrap(),
+        enclosing_def_id: fx.instance.def_id(),
         template,
         operands,
         options,
@@ -169,6 +170,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 struct InlineAssemblyGenerator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     arch: InlineAsmArch,
+    enclosing_def_id: DefId,
     template: &'a [InlineAsmTemplatePiece],
     operands: &'a [InlineAsmOperand<'tcx>],
     options: InlineAsmOptions,
@@ -185,7 +187,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let map = allocatable_registers(
             self.arch,
             sess.relocation_model(),
-            &sess.target_features,
+            self.tcx.asm_target_features(self.enclosing_def_id),
             &sess.target,
         );
         let mut allocated = FxHashMap::<_, (bool, bool)>::default();
@@ -318,15 +320,9 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
         let mut new_slot = |x| new_slot_fn(&mut slot_size, x);
 
         // Allocate stack slots for saving clobbered registers
-        let abi_clobber = InlineAsmClobberAbi::parse(
-            self.arch,
-            self.tcx.sess.relocation_model(),
-            &self.tcx.sess.target_features,
-            &self.tcx.sess.target,
-            sym::C,
-        )
-        .unwrap()
-        .clobbered_regs();
+        let abi_clobber = InlineAsmClobberAbi::parse(self.arch, &self.tcx.sess.target, sym::C)
+            .unwrap()
+            .clobbered_regs();
         for (i, reg) in self.registers.iter().enumerate().filter_map(|(i, r)| r.map(|r| (i, r))) {
             let mut need_save = true;
             // If the register overlaps with a register clobbered by function call, then
