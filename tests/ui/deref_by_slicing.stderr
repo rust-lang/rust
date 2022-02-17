@@ -1,0 +1,58 @@
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:9:13
+   |
+LL |     let _ = &vec[..];
+   |             ^^^^^^^^ help: dereference the original value instead: `&*vec`
+   |
+   = note: `-D clippy::deref-by-slicing` implied by `-D warnings`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:10:13
+   |
+LL |     let _ = &mut vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&mut *vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:13:13
+   |
+LL |     let _ = &ref_vec[..];
+   |             ^^^^^^^^^^^^ help: dereference the original value instead: `&**ref_vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:14:21
+   |
+LL |     let mut_slice = &mut ref_vec[..];
+   |                     ^^^^^^^^^^^^^^^^ help: dereference the original value instead: `&mut **ref_vec`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:15:13
+   |
+LL |     let _ = &mut mut_slice[..]; // Err, re-borrows slice
+   |             ^^^^^^^^^^^^^^^^^^ help: reborrow the original value instead: `&mut *mut_slice`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:18:13
+   |
+LL |     let _ = &s[..];
+   |             ^^^^^^ help: dereference the original value instead: `&*s`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:21:18
+   |
+LL |     let _ = &mut &S[..]; // Err, re-borrows slice
+   |                  ^^^^^^ help: reborrow the original value instead: `&*S`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:25:13
+   |
+LL |     let _ = &slice_ref[..]; // Err, derefs slice
+   |             ^^^^^^^^^^^^^^ help: dereference the original value instead: `*slice_ref`
+
+error: slicing when dereferencing would work
+  --> $DIR/deref_by_slicing.rs:28:13
+   |
+LL |     let _ = (&bytes[..]).read_to_end(&mut vec![]).unwrap(); // Err, re-borrows slice
+   |             ^^^^^^^^^^^^ help: reborrow the original value instead: `(&*bytes)`
+
+error: aborting due to 9 previous errors
+

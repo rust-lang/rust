@@ -51,6 +51,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(panic_unimplemented::UNIMPLEMENTED),
     LintId::of(panic_unimplemented::UNREACHABLE),
     LintId::of(pattern_type_mismatch::PATTERN_TYPE_MISMATCH),
+    LintId::of(redundant_slicing::DEREF_BY_SLICING),
     LintId::of(same_name_method::SAME_NAME_METHOD),
     LintId::of(shadow::SHADOW_REUSE),
     LintId::of(shadow::SHADOW_SAME),

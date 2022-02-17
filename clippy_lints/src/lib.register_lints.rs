@@ -422,6 +422,7 @@ store.register_lints(&[
     redundant_else::REDUNDANT_ELSE,
     redundant_field_names::REDUNDANT_FIELD_NAMES,
     redundant_pub_crate::REDUNDANT_PUB_CRATE,
+    redundant_slicing::DEREF_BY_SLICING,
     redundant_slicing::REDUNDANT_SLICING,
     redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES,
     ref_option_ref::REF_OPTION_REF,

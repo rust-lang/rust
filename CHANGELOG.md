@@ -3105,6 +3105,7 @@ Released 2018-09-13
 [`deprecated_cfg_attr`]: https://rust-lang.github.io/rust-clippy/master/index.html#deprecated_cfg_attr
 [`deprecated_semver`]: https://rust-lang.github.io/rust-clippy/master/index.html#deprecated_semver
 [`deref_addrof`]: https://rust-lang.github.io/rust-clippy/master/index.html#deref_addrof
+[`deref_by_slicing`]: https://rust-lang.github.io/rust-clippy/master/index.html#deref_by_slicing
 [`derivable_impls`]: https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls
 [`derive_hash_xor_eq`]: https://rust-lang.github.io/rust-clippy/master/index.html#derive_hash_xor_eq
 [`derive_ord_xor_partial_ord`]: https://rust-lang.github.io/rust-clippy/master/index.html#derive_ord_xor_partial_ord
