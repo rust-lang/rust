@@ -3049,6 +3049,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
+    /// Converts a `[T; N]` into a `VecDeque<T>`.
+    ///
     /// ```
     /// use std::collections::VecDeque;
     ///
