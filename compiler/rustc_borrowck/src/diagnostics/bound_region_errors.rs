@@ -142,11 +142,9 @@ trait TypeOpInfo<'tcx> {
         let tcx = mbcx.infcx.tcx;
         let base_universe = self.base_universe();
 
-        let adjusted_universe = if let Some(adjusted) =
+        let Some(adjusted_universe) =
             placeholder.universe.as_u32().checked_sub(base_universe.as_u32())
-        {
-            adjusted
-        } else {
+        else {
             mbcx.buffer_error(self.fallback_error(tcx, cause.span));
             return;
         };

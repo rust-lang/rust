@@ -1099,9 +1099,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        let ret_ty = if let hir::FnRetTy::Return(ret_ty) = sig.decl.output {
-            ret_ty
-        } else {
+        let hir::FnRetTy::Return(ret_ty) = sig.decl.output else {
             return false;
         };
 
@@ -1168,7 +1166,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             };
 
         let sm = self.tcx.sess.source_map();
-        let snippet = if let (true, hir::TyKind::TraitObject(..), Ok(snippet), true) = (
+        let (true, hir::TyKind::TraitObject(..), Ok(snippet), true) = (
             // Verify that we're dealing with a return `dyn Trait`
             ret_ty.span.overlaps(span),
             &ret_ty.kind,
@@ -1176,9 +1174,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // If any of the return types does not conform to the trait, then we can't
             // suggest `impl Trait` nor trait objects: it is a type mismatch error.
             all_returns_conform_to_trait,
-        ) {
-            snippet
-        } else {
+        ) else {
             return false;
         };
         err.code(error_code!(E0746));

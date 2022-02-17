@@ -212,12 +212,7 @@ fn normalize_array_len_call<'tcx>(
                         let Some(local) = place.as_local() else { return };
                         match operand {
                             Operand::Copy(place) | Operand::Move(place) => {
-                                let operand_local =
-                                    if let Some(local) = place.local_or_deref_local() {
-                                        local
-                                    } else {
-                                        return;
-                                    };
+                                let Some(operand_local) = place.local_or_deref_local() else { return; };
                                 if !interesting_locals.contains(operand_local) {
                                     return;
                                 }

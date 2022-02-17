@@ -1963,16 +1963,12 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 // We want links' order to be reproducible so we don't use unstable sort.
                 assoc_consts.sort();
 
-                out.push_str(
-                    "<h3 class=\"sidebar-title\">\
-                        <a href=\"#implementations\">Associated Constants</a>\
-                     </h3>\
-                     <div class=\"sidebar-links\">",
+                print_sidebar_block(
+                    out,
+                    "implementations",
+                    "Associated Constants",
+                    assoc_consts.iter(),
                 );
-                for line in assoc_consts {
-                    write!(out, "{}", line);
-                }
-                out.push_str("</div>");
             }
             let mut methods = v
                 .iter()
@@ -1983,14 +1979,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 // We want links' order to be reproducible so we don't use unstable sort.
                 methods.sort();
 
-                out.push_str(
-                    "<h3 class=\"sidebar-title\"><a href=\"#implementations\">Methods</a></h3>\
-                     <div class=\"sidebar-links\">",
-                );
-                for line in methods {
-                    write!(out, "{}", line);
-                }
-                out.push_str("</div>");
+                print_sidebar_block(out, "implementations", "Methods", methods.iter());
             }
         }
 
@@ -2029,14 +2018,6 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 ret
             };
 
-            let write_sidebar_links = |out: &mut Buffer, links: Vec<String>| {
-                out.push_str("<div class=\"sidebar-links\">");
-                for link in links {
-                    out.push_str(&link);
-                }
-                out.push_str("</div>");
-            };
-
             let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
@@ -2047,27 +2028,30 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             let blanket_format = format_impls(blanket_impl);
 
             if !concrete_format.is_empty() {
-                out.push_str(
-                    "<h3 class=\"sidebar-title\"><a href=\"#trait-implementations\">\
-                        Trait Implementations</a></h3>",
+                print_sidebar_block(
+                    out,
+                    "trait-implementations",
+                    "Trait Implementations",
+                    concrete_format.iter(),
                 );
-                write_sidebar_links(out, concrete_format);
             }
 
             if !synthetic_format.is_empty() {
-                out.push_str(
-                    "<h3 class=\"sidebar-title\"><a href=\"#synthetic-implementations\">\
-                        Auto Trait Implementations</a></h3>",
+                print_sidebar_block(
+                    out,
+                    "synthetic-implementations",
+                    "Auto Trait Implementations",
+                    synthetic_format.iter(),
                 );
-                write_sidebar_links(out, synthetic_format);
             }
 
             if !blanket_format.is_empty() {
-                out.push_str(
-                    "<h3 class=\"sidebar-title\"><a href=\"#blanket-implementations\">\
-                        Blanket Implementations</a></h3>",
+                print_sidebar_block(
+                    out,
+                    "blanket-implementations",
+                    "Blanket Implementations",
+                    blanket_format.iter(),
                 );
-                write_sidebar_links(out, blanket_format);
             }
         }
     }
@@ -2127,20 +2111,14 @@ fn sidebar_deref_methods(
                 } else {
                     "deref-methods"
                 };
-                write!(
-                    out,
-                    "<h3 class=\"sidebar-title\"><a href=\"#{}\">Methods from {}&lt;Target={}&gt;</a></h3>",
-                    id,
+                let title = format!(
+                    "Methods from {}&lt;Target={}&gt;",
                     Escape(&format!("{:#}", impl_.inner_impl().trait_.as_ref().unwrap().print(cx))),
                     Escape(&format!("{:#}", real_target.print(cx))),
                 );
                 // We want links' order to be reproducible so we don't use unstable sort.
                 ret.sort();
-                out.push_str("<div class=\"sidebar-links\">");
-                for link in ret {
-                    write!(out, "{}", link);
-                }
-                out.push_str("</div>");
+                print_sidebar_block(out, id, &title, ret.iter());
             }
         }
 
@@ -2166,27 +2144,19 @@ fn sidebar_struct(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, s: &clea
     let fields = get_struct_fields_name(&s.fields);
 
     if !fields.is_empty() {
-        if let CtorKind::Fictive = s.struct_type {
-            sidebar.push_str(
-                "<h3 class=\"sidebar-title\"><a href=\"#fields\">Fields</a></h3>\
-                <div class=\"sidebar-links\">",
-            );
-
-            for field in fields {
-                sidebar.push_str(&field);
+        match s.struct_type {
+            CtorKind::Fictive => {
+                print_sidebar_block(&mut sidebar, "fields", "Fields", fields.iter());
             }
-
-            sidebar.push_str("</div>");
-        } else if let CtorKind::Fn = s.struct_type {
-            sidebar
-                .push_str("<h3 class=\"sidebar-title\"><a href=\"#fields\">Tuple Fields</a></h3>");
+            CtorKind::Fn => print_sidebar_title(&mut sidebar, "fields", "Tuple Fields"),
+            CtorKind::Const => {}
         }
     }
 
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 
@@ -2214,18 +2184,50 @@ fn extract_for_impl_name(item: &clean::Item, cx: &Context<'_>) -> Option<(String
     }
 }
 
+/// Don't call this function directly!!! Use `print_sidebar_title` or `print_sidebar_block` instead!
+fn print_sidebar_title_inner(buf: &mut Buffer, id: &str, title: &str) {
+    write!(
+        buf,
+        "<h3 class=\"sidebar-title\">\
+             <a href=\"#{}\">{}</a>\
+         </h3>",
+        id, title
+    );
+}
+
+fn print_sidebar_title(buf: &mut Buffer, id: &str, title: &str) {
+    buf.push_str("<div class=\"block\">");
+    print_sidebar_title_inner(buf, id, title);
+    buf.push_str("</div>");
+}
+
+fn print_sidebar_block(
+    buf: &mut Buffer,
+    id: &str,
+    title: &str,
+    items: impl Iterator<Item = impl fmt::Display>,
+) {
+    buf.push_str("<div class=\"block\">");
+    print_sidebar_title_inner(buf, id, title);
+    buf.push_str("<ul>");
+    for item in items {
+        write!(buf, "<li>{}</li>", item);
+    }
+    buf.push_str("</ul></div>");
+}
+
 fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean::Trait) {
-    buf.write_str("<div class=\"block items\">");
+    buf.write_str("<section>");
 
     fn print_sidebar_section(
         out: &mut Buffer,
         items: &[clean::Item],
-        before: &str,
+        id: &str,
+        title: &str,
         filter: impl Fn(&clean::Item) -> bool,
-        write: impl Fn(&mut Buffer, &str),
-        after: &str,
+        mapper: impl Fn(&str) -> String,
     ) {
-        let mut items = items
+        let mut items: Vec<&str> = items
             .iter()
             .filter_map(|m| match m.name {
                 Some(ref name) if filter(m) => Some(name.as_str()),
@@ -2235,52 +2237,44 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
         if !items.is_empty() {
             items.sort_unstable();
-            out.push_str(before);
-            for item in items.into_iter() {
-                write(out, &item);
-            }
-            out.push_str(after);
+            print_sidebar_block(out, id, title, items.into_iter().map(mapper));
         }
     }
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#associated-types\">\
-            Associated Types</a></h3><div class=\"sidebar-links\">",
+        "associated-types",
+        "Associated Types",
         |m| m.is_associated_type(),
-        |out, sym| write!(out, "<a href=\"#associatedtype.{0}\">{0}</a>", sym),
-        "</div>",
+        |sym| format!("<a href=\"#associatedtype.{0}\">{0}</a>", sym),
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#associated-const\">\
-            Associated Constants</a></h3><div class=\"sidebar-links\">",
+        "associated-const",
+        "Associated Constants",
         |m| m.is_associated_const(),
-        |out, sym| write!(out, "<a href=\"#associatedconstant.{0}\">{0}</a>", sym),
-        "</div>",
+        |sym| format!("<a href=\"#associatedconstant.{0}\">{0}</a>", sym),
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#required-methods\">\
-            Required Methods</a></h3><div class=\"sidebar-links\">",
+        "required-methods",
+        "Required Methods",
         |m| m.is_ty_method(),
-        |out, sym| write!(out, "<a href=\"#tymethod.{0}\">{0}</a>", sym),
-        "</div>",
+        |sym| format!("<a href=\"#tymethod.{0}\">{0}</a>", sym),
     );
 
     print_sidebar_section(
         buf,
         &t.items,
-        "<h3 class=\"sidebar-title\"><a href=\"#provided-methods\">\
-            Provided Methods</a></h3><div class=\"sidebar-links\">",
+        "provided-methods",
+        "Provided Methods",
         |m| m.is_method(),
-        |out, sym| write!(out, "<a href=\"#method.{0}\">{0}</a>", sym),
-        "</div>",
+        |sym| format!("<a href=\"#method.{0}\">{0}</a>", sym),
     );
 
     let cache = cx.cache();
@@ -2295,29 +2289,23 @@ fn sidebar_trait(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, t: &clean
 
         if !res.is_empty() {
             res.sort();
-            buf.push_str(
-                "<h3 class=\"sidebar-title\"><a href=\"#foreign-impls\">\
-                    Implementations on Foreign Types</a></h3>\
-                 <div class=\"sidebar-links\">",
+            print_sidebar_block(
+                buf,
+                "foreign-impls",
+                "Implementations on Foreign Types",
+                res.iter().map(|(name, id)| format!("<a href=\"#{}\">{}</a>", id, Escape(&name))),
             );
-            for (name, id) in res.into_iter() {
-                write!(buf, "<a href=\"#{}\">{}</a>", id, Escape(&name));
-            }
-            buf.push_str("</div>");
         }
     }
 
     sidebar_assoc_items(cx, buf, it);
 
-    buf.push_str("<h3 class=\"sidebar-title\"><a href=\"#implementors\">Implementors</a></h3>");
+    print_sidebar_title(buf, "implementors", "Implementors");
     if t.is_auto {
-        buf.push_str(
-            "<h3 class=\"sidebar-title\"><a \
-                href=\"#synthetic-implementors\">Auto Implementors</a></h3>",
-        );
+        print_sidebar_title(buf, "synthetic-implementors", "Auto Implementors");
     }
 
-    buf.push_str("</div>")
+    buf.push_str("</section>")
 }
 
 fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
@@ -2325,7 +2313,7 @@ fn sidebar_primitive(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 
@@ -2334,7 +2322,7 @@ fn sidebar_typedef(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 
@@ -2355,22 +2343,13 @@ fn sidebar_union(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, u: &clean
     let fields = get_struct_fields_name(&u.fields);
 
     if !fields.is_empty() {
-        sidebar.push_str(
-            "<h3 class=\"sidebar-title\"><a href=\"#fields\">Fields</a></h3>\
-            <div class=\"sidebar-links\">",
-        );
-
-        for field in fields {
-            sidebar.push_str(&field);
-        }
-
-        sidebar.push_str("</div>");
+        print_sidebar_block(&mut sidebar, "fields", "Fields", fields.iter());
     }
 
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 
@@ -2388,17 +2367,13 @@ fn sidebar_enum(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item, e: &clean:
         .collect::<Vec<_>>();
     if !variants.is_empty() {
         variants.sort_unstable();
-        sidebar.push_str(&format!(
-            "<h3 class=\"sidebar-title\"><a href=\"#variants\">Variants</a></h3>\
-             <div class=\"sidebar-links\">{}</div>",
-            variants.join(""),
-        ));
+        print_sidebar_block(&mut sidebar, "variants", "Variants", variants.iter());
     }
 
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 
@@ -2569,7 +2544,15 @@ fn sidebar_module(buf: &mut Buffer, items: &[clean::Item]) {
     }
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\"><ul>{}</ul></div>", sidebar);
+        write!(
+            buf,
+            "<section>\
+                 <div class=\"block\">\
+                     <ul>{}</ul>\
+                 </div>\
+             </section>",
+            sidebar
+        );
     }
 }
 
@@ -2578,7 +2561,7 @@ fn sidebar_foreign_type(cx: &Context<'_>, buf: &mut Buffer, it: &clean::Item) {
     sidebar_assoc_items(cx, &mut sidebar, it);
 
     if !sidebar.is_empty() {
-        write!(buf, "<div class=\"block items\">{}</div>", sidebar.into_inner());
+        write!(buf, "<section>{}</section>", sidebar.into_inner());
     }
 }
 

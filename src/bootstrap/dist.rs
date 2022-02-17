@@ -1877,12 +1877,6 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
     } else {
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
     }
-
-    if target.contains("x86_64") {
-        cmd.env("CFG_PLATFORM", "x64");
-    } else {
-        cmd.env("CFG_PLATFORM", "x86");
-    }
 }
 
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.

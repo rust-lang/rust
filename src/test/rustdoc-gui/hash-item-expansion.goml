@@ -5,7 +5,7 @@ assert-attribute: ("#blanket-implementations-list > details:nth-child(2)", {"ope
 // We first check that the impl block is open by default.
 assert-attribute: ("#implementations + details", {"open": ""})
 // To ensure that we will click on the currently hidden method.
-assert-text: (".sidebar-links > a", "must_use")
-click: ".sidebar-links > a"
+assert-text: (".sidebar-elems section .block li > a", "must_use")
+click: ".sidebar-elems section .block li > a"
 // We check that the impl block was opened as expected so that we can see the method.
 assert-attribute: ("#implementations + details", {"open": ""})

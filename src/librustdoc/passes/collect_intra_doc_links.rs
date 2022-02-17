@@ -1226,9 +1226,7 @@ impl LinkCollector<'_, '_> {
         let base_node =
             if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
-        let mut module_id = if let Some(id) = base_node {
-            id
-        } else {
+        let Some(mut module_id) = base_node else {
             // This is a bug.
             debug!("attempting to resolve item without parent module: {}", path_str);
             resolution_failure(
@@ -1977,9 +1975,7 @@ fn resolution_failure(
                     // If so, report it and say the first which failed; if not, say the first path segment didn't resolve.
                     let mut name = path_str;
                     'outer: loop {
-                        let (start, end) = if let Some(x) = split(name) {
-                            x
-                        } else {
+                        let Some((start, end)) = split(name) else {
                             // avoid bug that marked [Quux::Z] as missing Z, not Quux
                             if partial_res.is_none() {
                                 *unresolved = name.into();

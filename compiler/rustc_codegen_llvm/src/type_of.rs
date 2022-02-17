@@ -330,7 +330,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             ty::Ref(..) | ty::RawPtr(_) => {
                 return self.field(cx, index).llvm_type(cx);
             }
-            ty::Adt(def, _) if def.is_box() => {
+            // only wide pointer boxes are handled as pointers
+            // thin pointer boxes with scalar allocators are handled by the general logic below
+            ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
                 let ptr_ty = cx.tcx.mk_mut_ptr(self.ty.boxed_ty());
                 return cx.layout_of(ptr_ty).scalar_pair_element_llvm_type(cx, index, immediate);
             }

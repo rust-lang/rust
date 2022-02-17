@@ -51,9 +51,7 @@ crate fn where_clauses(cx: &DocContext<'_>, clauses: Vec<WP>) -> Vec<WP> {
     // Look for equality predicates on associated types that can be merged into
     // general bound predicates
     equalities.retain(|&(ref lhs, ref rhs)| {
-        let (self_, trait_did, name) = if let Some(p) = lhs.projection() {
-            p
-        } else {
+        let Some((self_, trait_did, name)) = lhs.projection() else {
             return true;
         };
         let generic = match self_ {

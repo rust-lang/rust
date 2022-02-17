@@ -1752,9 +1752,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                             <ul>",
                     );
 
-                    let adt = if let Adt(adt, _) = ty_layout.ty.kind() {
-                        adt
-                    } else {
+                    let Adt(adt, _) = ty_layout.ty.kind() else {
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
 

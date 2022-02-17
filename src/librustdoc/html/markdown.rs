@@ -236,9 +236,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
         let should_panic;
         let ignore;
         let edition;
-        let kind = if let Some(Event::Start(Tag::CodeBlock(kind))) = event {
-            kind
-        } else {
+        let Some(Event::Start(Tag::CodeBlock(kind))) = event else {
             return event;
         };
 

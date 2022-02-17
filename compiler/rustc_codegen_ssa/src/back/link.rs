@@ -216,17 +216,18 @@ pub fn each_linked_rlib(
         }
         let name = &info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
-        let path = if let Some((path, _)) = &used_crate_source.rlib {
-            path
-        } else if used_crate_source.rmeta.is_some() {
-            return Err(format!(
-                "could not find rlib for: `{}`, found rmeta (metadata) file",
-                name
-            ));
+        if let Some((path, _)) = &used_crate_source.rlib {
+            f(cnum, &path);
         } else {
-            return Err(format!("could not find rlib for: `{}`", name));
-        };
-        f(cnum, &path);
+            if used_crate_source.rmeta.is_some() {
+                return Err(format!(
+                    "could not find rlib for: `{}`, found rmeta (metadata) file",
+                    name
+                ));
+            } else {
+                return Err(format!("could not find rlib for: `{}`", name));
+            }
+        }
     }
     Ok(())
 }
