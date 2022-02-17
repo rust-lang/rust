@@ -53,7 +53,7 @@ query, you would just do this:
 let ty = tcx.type_of(some_def_id);
 ```
 
-[`TyTcx`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html
 
 ### How the compiler executes a query
 
