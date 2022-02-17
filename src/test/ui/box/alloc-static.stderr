@@ -1,0 +1,15 @@
+error[E0597]: `alloc` does not live long enough
+  --> $DIR/alloc-static.rs:28:33
+   |
+LL |     let boxed = Box::new_in(10, &alloc);
+   |                 ----------------^^^^^^-
+   |                 |               |
+   |                 |               borrowed value does not live long enough
+   |                 argument requires that `alloc` is borrowed for `'static`
+LL |
+LL | }
+   | - `alloc` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

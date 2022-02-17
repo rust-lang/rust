@@ -351,7 +351,7 @@ pub unsafe trait Allocator {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A> Allocator for &A
+unsafe impl<A> Allocator for &'static A
 where
     A: Allocator + ?Sized,
 {
