@@ -156,10 +156,15 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+/// Information for emitting suggestions and recovering from
+/// C-style `i++`, `--i`, etc.
 #[derive(Debug, Copy, Clone)]
 struct IncDecRecovery {
+    /// This increment/decrement is not a subexpression.
     standalone: bool,
+    /// Is this an increment or decrement?
     op: IncOrDec,
+    /// Is this pre- or postfix?
     fixity: UnaryFixity,
 }
 
@@ -1278,20 +1283,16 @@ impl<'a> Parser<'a> {
         }
 
         if kind.standalone {
-            self.inc_dec_standalone_recovery(base, err, kind, ident, spans)
+            self.inc_dec_standalone_recovery(base, err, kind, spans)
         } else {
             match kind.fixity {
-                UnaryFixity::Pre => {
-                    self.prefix_inc_dec_suggest_and_recover(base, err, kind, ident, spans)
-                }
-                UnaryFixity::Post => {
-                    self.postfix_inc_dec_suggest_and_recover(base, err, kind, ident, spans)
-                }
+                UnaryFixity::Pre => self.prefix_inc_dec_suggest(base, err, kind, ident, spans),
+                UnaryFixity::Post => self.postfix_inc_dec_suggest(base, err, kind, ident, spans),
             }
         }
     }
 
-    fn prefix_inc_dec_suggest_and_recover(
+    fn prefix_inc_dec_suggest(
         &mut self,
         _base: P<Expr>,
         mut err: DiagnosticBuilder<'a>,
@@ -1310,7 +1311,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    fn postfix_inc_dec_suggest_and_recover(
+    fn postfix_inc_dec_suggest(
         &mut self,
         _base: P<Expr>,
         mut err: DiagnosticBuilder<'a>,
@@ -1334,7 +1335,6 @@ impl<'a> Parser<'a> {
         _base: P<Expr>,
         mut err: DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
-        _ident: Ident,
         (pre_span, post_span): (Span, Span),
     ) -> PResult<'a, P<Expr>> {
         err.multipart_suggestion(

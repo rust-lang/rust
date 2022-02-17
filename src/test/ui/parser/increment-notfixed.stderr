@@ -1,0 +1,18 @@
+error: Rust has no postfix increment operator
+  --> $DIR/increment-notfixed.rs:11:16
+   |
+LL |     foo.bar.qux++;
+   |                ^^ not a valid postfix operator
+   |
+   = help: use `+= 1` instead
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-notfixed.rs:18:5
+   |
+LL |     ++foo.bar.qux;
+   |     ^^ not a valid prefix operator
+   |
+   = help: use `+= 1` instead
+
+error: aborting due to 2 previous errors
+

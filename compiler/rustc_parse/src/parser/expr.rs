@@ -592,13 +592,7 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.parse_prefix_expr(None)
             } // `+expr`
-            token::Ident(..) if this.token.is_keyword(kw::Box) => {
-                make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
-            }
-            token::Ident(..) if this.is_mistaken_not_ident_negation() => {
-                make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
-            }
-            // Recover from `++x`
+            // Recover from `++x`:
             token::BinOp(token::Plus)
                 if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
             {
@@ -608,8 +602,14 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.bump();
 
-                let operand_expr = this.parse_path_start_expr(Default::default())?;
+                let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
                 this.maybe_recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+            }
+            token::Ident(..) if this.token.is_keyword(kw::Box) => {
+                make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
+            }
+            token::Ident(..) if this.is_mistaken_not_ident_negation() => {
+                make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
             _ => return this.parse_dot_or_call_expr(Some(attrs)),
         }

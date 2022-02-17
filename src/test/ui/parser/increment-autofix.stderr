@@ -1,5 +1,5 @@
 error: Rust has no postfix increment operator
-  --> $DIR/increment.rs:5:6
+  --> $DIR/increment-autofix.rs:5:6
    |
 LL |     i++;
    |      ^^ not a valid postfix operator
@@ -10,7 +10,7 @@ LL |     { let tmp = i; i += 1; tmp };
    |     +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no postfix increment operator
-  --> $DIR/increment.rs:11:12
+  --> $DIR/increment-autofix.rs:11:12
    |
 LL |     while i++ < 5 {
    |            ^^ not a valid postfix operator
@@ -21,7 +21,7 @@ LL |     while { let tmp = i; i += 1; tmp } < 5 {
    |           +++++++++++  ~~~~~~~~~~~~~~~
 
 error: Rust has no prefix increment operator
-  --> $DIR/increment.rs:19:5
+  --> $DIR/increment-autofix.rs:19:5
    |
 LL |     ++i;
    |     ^^ not a valid prefix operator
@@ -33,7 +33,7 @@ LL +     i += 1;
    | 
 
 error: Rust has no prefix increment operator
-  --> $DIR/increment.rs:25:11
+  --> $DIR/increment-autofix.rs:25:11
    |
 LL |     while ++i < 5 {
    |           ^^ not a valid prefix operator
