@@ -309,23 +309,23 @@ impl<'tcx> OnUnimplementedFormatString {
                 Piece::String(_) => (), // Normal string, no need to check it
                 Piece::NextArgument(a) => match a.position {
                     // `{Self}` is allowed
-                    Position::ArgumentNamed(s) if s == kw::SelfUpper => (),
+                    Position::ArgumentNamed(s, _) if s == kw::SelfUpper => (),
                     // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s) if s == name => (),
+                    Position::ArgumentNamed(s, _) if s == name => (),
                     // `{from_method}` is allowed
-                    Position::ArgumentNamed(s) if s == sym::from_method => (),
+                    Position::ArgumentNamed(s, _) if s == sym::from_method => (),
                     // `{from_desugaring}` is allowed
-                    Position::ArgumentNamed(s) if s == sym::from_desugaring => (),
+                    Position::ArgumentNamed(s, _) if s == sym::from_desugaring => (),
                     // `{ItemContext}` is allowed
-                    Position::ArgumentNamed(s) if s == sym::ItemContext => (),
+                    Position::ArgumentNamed(s, _) if s == sym::ItemContext => (),
                     // `{integral}` and `{integer}` and `{float}` are allowed
-                    Position::ArgumentNamed(s)
+                    Position::ArgumentNamed(s, _)
                         if s == sym::integral || s == sym::integer_ || s == sym::float =>
                     {
                         ()
                     }
                     // So is `{A}` if A is a type parameter
-                    Position::ArgumentNamed(s) => {
+                    Position::ArgumentNamed(s, _) => {
                         match generics.params.iter().find(|param| param.name == s) {
                             Some(_) => (),
                             None => {
@@ -392,7 +392,7 @@ impl<'tcx> OnUnimplementedFormatString {
             .map(|p| match p {
                 Piece::String(s) => s,
                 Piece::NextArgument(a) => match a.position {
-                    Position::ArgumentNamed(s) => match generic_map.get(&s) {
+                    Position::ArgumentNamed(s, _) => match generic_map.get(&s) {
                         Some(val) => val,
                         None if s == name => &trait_str,
                         None => {

@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `oops` in this scope
+  --> $DIR/fn-help-with-err.rs:3:35
+   |
+LL |     let arc = std::sync::Arc::new(oops);
+   |                                   ^^^^ not found in this scope
+
+error[E0599]: no method named `blablabla` found for struct `Arc<_>` in the current scope
+  --> $DIR/fn-help-with-err.rs:7:9
+   |
+LL |     arc.blablabla();
+   |         ^^^^^^^^^ method not found in `Arc<_>`
+
+error[E0599]: no method named `blablabla` found for struct `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:40]>` in the current scope
+  --> $DIR/fn-help-with-err.rs:12:10
+   |
+LL |     arc2.blablabla();
+   |          ^^^^^^^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:10:36: 10:40]>`
+   |
+   = note: `arc2` is a function, perhaps you wish to call it
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

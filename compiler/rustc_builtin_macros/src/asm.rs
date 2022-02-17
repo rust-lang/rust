@@ -700,11 +700,11 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 Some(idx)
                             }
                         }
-                        parse::ArgumentNamed(name) => match args.named_args.get(&name) {
+                        parse::ArgumentNamed(name, span) => match args.named_args.get(&name) {
                             Some(&idx) => Some(idx),
                             None => {
                                 let msg = format!("there is no argument named `{}`", name);
-                                ecx.struct_span_err(span, &msg).emit();
+                                ecx.struct_span_err(template_span.from_inner(span), &msg).emit();
                                 None
                             }
                         },

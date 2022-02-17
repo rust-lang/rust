@@ -98,7 +98,7 @@ impl<T: Write> PrettyFormatter<T> {
         if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
             let time_str = format!(" <{}>", time);
 
-            let color = if opts.colored {
+            let color = if self.use_color {
                 if opts.is_critical(desc, time) {
                     Some(term::color::RED)
                 } else if opts.is_warn(desc, time) {

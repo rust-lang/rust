@@ -9,8 +9,10 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::{simplify_type, SimplifyParams};
 use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -40,7 +42,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(..) => return false,
                 };
 
+                // This conditional prevents us from asking to call errors and unresolved types.
+                // It might seem that we can use `predicate_must_hold_modulo_regions`,
+                // but since a Dummy binder is used to fill in the FnOnce trait's arguments,
+                // type resolution always gives a "maybe" here.
+                if self.autoderef(span, ty).any(|(ty, _)| {
+                    info!("check deref {:?} error", ty);
+                    matches!(ty.kind(), ty::Error(_) | ty::Infer(_))
+                }) {
+                    return false;
+                }
+
                 self.autoderef(span, ty).any(|(ty, _)| {
+                    info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
                         let fn_once_substs = tcx.mk_substs_trait(
                             ty,
@@ -1196,9 +1210,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(adt) if adt.did.is_local() => adt,
                 _ => continue,
             };
-            let can_derive = match self.tcx.get_diagnostic_name(trait_pred.def_id()) {
-                Some(sym::Default) => !adt.is_enum(),
-                Some(
+            if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
+                let can_derive = match diagnostic_name {
+                    sym::Default => !adt.is_enum(),
                     sym::Eq
                     | sym::PartialEq
                     | sym::Ord
@@ -1206,16 +1220,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | sym::Clone
                     | sym::Copy
                     | sym::Hash
-                    | sym::Debug,
-                ) => true,
-                _ => false,
-            };
-            if can_derive {
-                derives.push((
-                    format!("{}", trait_pred.self_ty()),
-                    self.tcx.def_span(adt.did),
-                    format!("{}", trait_pred.trait_ref.print_only_trait_name()),
-                ));
+                    | sym::Debug => true,
+                    _ => false,
+                };
+                if can_derive {
+                    let self_name = trait_pred.self_ty().to_string();
+                    let self_span = self.tcx.def_span(adt.did);
+                    if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
+                        for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
+                        {
+                            if let Some(parent_diagnostic_name) =
+                                self.tcx.get_diagnostic_name(super_trait.def_id())
+                            {
+                                derives.push((
+                                    self_name.clone(),
+                                    self_span.clone(),
+                                    parent_diagnostic_name.to_string(),
+                                ));
+                            }
+                        }
+                    }
+                    derives.push((self_name, self_span, diagnostic_name.to_string()));
+                } else {
+                    traits.push(self.tcx.def_span(trait_pred.def_id()));
+                }
             } else {
                 traits.push(self.tcx.def_span(trait_pred.def_id()));
             }

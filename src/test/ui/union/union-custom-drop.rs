@@ -4,7 +4,7 @@
 #![feature(untagged_unions)]
 
 union Foo {
-    bar: Bar, //~ ERROR unions may not contain fields that need dropping
+    bar: Bar, //~ ERROR unions cannot contain fields that may need dropping
 }
 
 union Bar {
