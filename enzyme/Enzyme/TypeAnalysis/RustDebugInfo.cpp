@@ -24,6 +24,7 @@
 // the type tree recursively.
 //
 //===-------------------------------------------------------------------===//
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/Support/CommandLine.h"

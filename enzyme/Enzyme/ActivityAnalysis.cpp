@@ -926,7 +926,7 @@ bool ActivityAnalyzer::isConstantValue(TypeResults &TR, Value *Val) {
   if (auto ce = dyn_cast<ConstantExpr>(Val)) {
     if (ce->isCast()) {
       if (auto PT = dyn_cast<PointerType>(ce->getType())) {
-        if (PT->getElementType()->isFunctionTy()) {
+        if (PT->getPointerElementType()->isFunctionTy()) {
           if (EnzymePrintActivity)
             llvm::errs()
                 << " VALUE nonconst as cast to pointer of functiontype " << *Val

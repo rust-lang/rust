@@ -773,7 +773,7 @@ static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
     B.SetInsertPoint(res);
 
     if (auto PT = dyn_cast<PointerType>(storePointer->getType())) {
-      if (PT->getElementType() != res->getType())
+      if (PT->getPointerElementType() != res->getType())
         storePointer = B.CreateBitCast(
             storePointer,
             PointerType::get(res->getType(), PT->getAddressSpace()));

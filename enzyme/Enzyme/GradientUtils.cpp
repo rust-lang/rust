@@ -613,8 +613,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
 #if LLVM_VERSION_MAJOR > 7
     auto toreturn = BuilderM.CreateGEP(
-        cast<PointerType>(inst->getPointerOperandType())->getElementType(), ptr,
-        ind, inst->getName() + "_unwrap");
+        inst->getPointerOperandType()->getPointerElementType(), ptr, ind,
+        inst->getName() + "_unwrap");
 #else
     auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
 #endif
@@ -679,9 +679,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     assert(pidx->getType() == load->getOperand(0)->getType());
 
 #if LLVM_VERSION_MAJOR > 7
-    auto toreturn = BuilderM.CreateLoad(
-        cast<PointerType>(pidx->getType())->getElementType(), pidx,
-        load->getName() + "_unwrap");
+    auto toreturn =
+        BuilderM.CreateLoad(pidx->getType()->getPointerElementType(), pidx,
+                            load->getName() + "_unwrap");
 #else
     auto toreturn = BuilderM.CreateLoad(pidx, load->getName() + "_unwrap");
 #endif
@@ -806,9 +806,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
         assert(pidx->getType() == dli->getOperand(0)->getType());
 #if LLVM_VERSION_MAJOR > 7
-        auto toreturn = BuilderM.CreateLoad(
-            cast<PointerType>(pidx->getType())->getElementType(), pidx,
-            phi->getName() + "_unwrap");
+        auto toreturn =
+            BuilderM.CreateLoad(pidx->getType()->getPointerElementType(), pidx,
+                                phi->getName() + "_unwrap");
 #else
         auto toreturn = BuilderM.CreateLoad(pidx, phi->getName() + "_unwrap");
 #endif
@@ -1862,14 +1862,14 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       if (omp) {
         Value *tid = ompThreadId();
 #if LLVM_VERSION_MAJOR > 7
-        Value *tPtr = BuilderQ.CreateInBoundsGEP(
-            cast<PointerType>(ret->getType())->getElementType(), ret,
-            ArrayRef<Value *>(tid));
+        Value *tPtr =
+            BuilderQ.CreateInBoundsGEP(ret->getType()->getPointerElementType(),
+                                       ret, ArrayRef<Value *>(tid));
 #else
         Value *tPtr = BuilderQ.CreateInBoundsGEP(ret, ArrayRef<Value *>(tid));
 #endif
-        ret = BuilderQ.CreateLoad(
-            cast<PointerType>(ret->getType())->getElementType(), tPtr);
+        ret =
+            BuilderQ.CreateLoad(ret->getType()->getPointerElementType(), tPtr);
       }
     } else {
       if (idx >= 0)
@@ -1904,7 +1904,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                          << " / lim = " << limit << "\n";
         }
         assert(isa<PointerType>(innerType));
-        innerType = cast<PointerType>(innerType)->getElementType();
+        innerType = innerType->getPointerElementType();
       }
 
       assert(malloc);
@@ -1935,8 +1935,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       bool isi1 = !ignoreType && malloc->getType()->isIntegerTy() &&
                   cast<IntegerType>(malloc->getType())->getBitWidth() == 1;
       assert(isa<PointerType>(cache->getType()));
-      assert(cast<PointerType>(cache->getType())->getElementType() ==
-             ret->getType());
+      assert(cache->getType()->getPointerElementType() == ret->getType());
       entryBuilder.CreateStore(ret, cache);
 
       auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ, lctx, cache,
@@ -2242,7 +2241,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                                       BuilderQ.GetInsertBlock()))
                          .size();
          i < limit; ++i) {
-      innerType = cast<PointerType>(innerType)->getElementType();
+      innerType = innerType->getPointerElementType();
     }
     assert(!ignoreType);
     if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
@@ -2836,9 +2835,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
         IRBuilder<> tbuild(incB);
 
 #if LLVM_VERSION_MAJOR > 7
-        Value *av = tbuild.CreateLoad(
-            cast<PointerType>(lc.antivaralloc->getType())->getElementType(),
-            lc.antivaralloc);
+        Value *av = tbuild.CreateLoad(lc.var->getType(), lc.antivaralloc);
 #else
         Value *av = tbuild.CreateLoad(lc.antivaralloc);
 #endif
@@ -3508,7 +3505,7 @@ Constant *GradientUtils::GetOrCreateShadowConstant(
     if (arg->isConstant() || arg->hasInternalLinkage() ||
         arg->hasPrivateLinkage() ||
         (arg->hasExternalLinkage() && arg->hasInitializer())) {
-      Type *type = cast<PointerType>(arg->getType())->getElementType();
+      Type *type = arg->getType()->getPointerElementType();
       auto shadow = new GlobalVariable(
           *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
           arg->getInitializer()
@@ -3781,7 +3778,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
   if (isa<Argument>(oval) && cast<Argument>(oval)->hasByValAttr()) {
     IRBuilder<> bb(inversionAllocs);
     AllocaInst *antialloca = bb.CreateAlloca(
-        cast<PointerType>(oval->getType())->getElementType(),
+        oval->getType()->getPointerElementType(),
         cast<PointerType>(oval->getType())->getPointerAddressSpace(), nullptr,
         oval->getName() + "'ipa");
     invertedPointers.insert(std::make_pair(
@@ -3789,11 +3786,11 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     auto dst_arg =
         bb.CreateBitCast(antialloca, Type::getInt8PtrTy(oval->getContext()));
     auto val_arg = ConstantInt::get(Type::getInt8Ty(oval->getContext()), 0);
-    auto len_arg = ConstantInt::get(
-        Type::getInt64Ty(oval->getContext()),
-        M->getDataLayout().getTypeAllocSizeInBits(
-            cast<PointerType>(oval->getType())->getElementType()) /
-            8);
+    auto len_arg =
+        ConstantInt::get(Type::getInt64Ty(oval->getContext()),
+                         M->getDataLayout().getTypeAllocSizeInBits(
+                             oval->getType()->getPointerElementType()) /
+                             8);
     auto volatile_arg = ConstantInt::getFalse(oval->getContext());
 
 #if LLVM_VERSION_MAJOR == 6
@@ -3931,7 +3928,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
           AddrSpace == SharedAddrSpace) {
         llvm::errs() << "warning found shared memory\n";
         //#if LLVM_VERSION_MAJOR >= 11
-        Type *type = cast<PointerType>(arg->getType())->getElementType();
+        Type *type = arg->getType()->getPointerElementType();
         // TODO this needs initialization by entry
         auto shadow = new GlobalVariable(
             *arg->getParent(), type, arg->isConstant(), arg->getLinkage(),
@@ -3957,7 +3954,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       // Create global variable locally if not externally visible
       if (arg->hasInternalLinkage() || arg->hasPrivateLinkage() ||
           (arg->hasExternalLinkage() && arg->hasInitializer())) {
-        Type *elemTy = cast<PointerType>(arg->getType())->getElementType();
+        Type *elemTy = arg->getType()->getPointerElementType();
         Type *type = getShadowType(elemTy);
         IRBuilder<> B(inversionAllocs);
         auto ip = arg->getInitializer() ? invertPointerM(arg->getInitializer(),
@@ -4017,9 +4014,9 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
       Value *agg = UndefValue::get(getShadowType(arg->getType()));
       for (unsigned i = 0; i < width; ++i) {
 #if LLVM_VERSION_MAJOR >= 8
-        Value *elem = BuilderM.CreateGEP(
-            cast<PointerType>(cs->getType())->getElementType(), cs,
-            {BuilderM.getInt32(0), BuilderM.getInt32(i)});
+        Value *elem =
+            BuilderM.CreateGEP(cs->getType()->getPointerElementType(), cs,
+                               {BuilderM.getInt32(0), BuilderM.getInt32(i)});
 #else
         Value *elem = BuilderM.CreateGEP(
             cs, {BuilderM.getInt32(0), BuilderM.getInt32(i)});
@@ -4068,7 +4065,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
     if (arg->isCast()) {
       if (auto PT = dyn_cast<PointerType>(arg->getType())) {
         if (isConstantValue(arg->getOperand(0)) &&
-            PT->getElementType()->isFunctionTy()) {
+            PT->getPointerElementType()->isFunctionTy()) {
           goto end;
         }
       }
@@ -4112,9 +4109,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
         auto rule = [&bb, &arg, &invertargs](Value *ip) {
 // TODO mark this the same inbounds as the original
 #if LLVM_VERSION_MAJOR > 7
-          return bb.CreateGEP(
-              cast<PointerType>(ip->getType())->getElementType(), ip,
-              invertargs, arg->getName() + "'ipg");
+          return bb.CreateGEP(ip->getType()->getPointerElementType(), ip,
+                              invertargs, arg->getName() + "'ipg");
 #else
           return bb.CreateGEP(ip, invertargs, arg->getName() + "'ipg");
 #endif
@@ -4232,9 +4228,9 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
     auto rule = [&](Value *ip) {
 #if LLVM_VERSION_MAJOR > 7
-      auto li = bb.CreateLoad(
-          cast<PointerType>(arg->getPointerOperandType())->getElementType(), ip,
-          arg->getName() + "'ipl");
+      auto li =
+          bb.CreateLoad(arg->getPointerOperandType()->getPointerElementType(),
+                        ip, arg->getName() + "'ipl");
 #else
       auto li = bb.CreateLoad(ip, arg->getName() + "'ipl");
 #endif
@@ -4296,9 +4292,8 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 
     auto rule = [&](Value *ip) {
 #if LLVM_VERSION_MAJOR > 7
-      auto shadow =
-          bb.CreateGEP(cast<PointerType>(ip->getType())->getElementType(), ip,
-                       invertargs, arg->getName() + "'ipg");
+      auto shadow = bb.CreateGEP(ip->getType()->getPointerElementType(), ip,
+                                 invertargs, arg->getName() + "'ipg");
 #else
       auto shadow = bb.CreateGEP(ip, invertargs, arg->getName() + "'ipg");
 #endif
@@ -5275,8 +5270,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
 #if LLVM_VERSION_MAJOR > 7
                   auto cptr = BuilderM.CreateGEP(
-                      cast<PointerType>(outer->getType())->getElementType(),
-                      outer, idxs);
+                      outer->getType()->getPointerElementType(), outer, idxs);
 #else
                   auto cptr = BuilderM.CreateGEP(outer, idxs);
 #endif
@@ -6472,8 +6466,7 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           dsto = Builder2.CreateConstInBoundsGEP1_64(
-              cast<PointerType>(dsto->getType())->getElementType(), dsto,
-              offset);
+              dsto->getType()->getPointerElementType(), dsto, offset);
 #else
           dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
 #endif
@@ -6490,8 +6483,7 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           srco = Builder2.CreateConstInBoundsGEP1_64(
-              cast<PointerType>(srco->getType())->getElementType(), srco,
-              offset);
+              srco->getType()->getPointerElementType(), srco, offset);
 #else
           srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
 #endif
@@ -6550,7 +6542,7 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
       if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
         dsto = BuilderZ.CreateConstInBoundsGEP1_64(
-            cast<PointerType>(dsto->getType())->getElementType(), dsto, offset);
+            dsto->getType()->getPointerElementType(), dsto, offset);
 #else
         dsto = BuilderZ.CreateConstInBoundsGEP1_64(dsto, offset);
 #endif
@@ -6563,7 +6555,7 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
       if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
         srco = BuilderZ.CreateConstInBoundsGEP1_64(
-            cast<PointerType>(srco->getType())->getElementType(), srco, offset);
+            srco->getType()->getPointerElementType(), srco, offset);
 #else
         srco = BuilderZ.CreateConstInBoundsGEP1_64(srco, offset);
 #endif

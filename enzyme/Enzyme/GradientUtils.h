@@ -1815,8 +1815,7 @@ private:
       entryBuilder.CreateStore(Constant::getNullValue(type),
                                differentials[val]);
     }
-    assert(cast<PointerType>(differentials[val]->getType())->getElementType() ==
-           type);
+    assert(differentials[val]->getType()->getPointerElementType() == type);
     return differentials[val];
   }
 
@@ -2092,13 +2091,11 @@ public:
     }
     assert(!isConstantValue(val));
     Value *tostore = getDifferential(val);
-    if (toset->getType() !=
-        cast<PointerType>(tostore->getType())->getElementType()) {
+    if (toset->getType() != tostore->getType()->getPointerElementType()) {
       llvm::errs() << "toset:" << *toset << "\n";
       llvm::errs() << "tostore:" << *tostore << "\n";
     }
-    assert(toset->getType() ==
-           cast<PointerType>(tostore->getType())->getElementType());
+    assert(toset->getType() == tostore->getType()->getPointerElementType());
     BuilderM.CreateStore(toset, tostore);
   }
 
@@ -2128,9 +2125,8 @@ public:
         const auto &idx = riter->first;
         if (idx.var) {
 #if LLVM_VERSION_MAJOR > 7
-          antimap[idx.var] = tbuild.CreateLoad(
-              cast<PointerType>(idx.antivaralloc->getType())->getElementType(),
-              idx.antivaralloc);
+          antimap[idx.var] =
+              tbuild.CreateLoad(idx.var->getType(), idx.antivaralloc);
 #else
           antimap[idx.var] = tbuild.CreateLoad(idx.antivaralloc);
 #endif
@@ -2142,8 +2138,7 @@ public:
         unwrapM(storeInto, tbuild, antimap, UnwrapMode::LegalFullUnwrap);
 #if LLVM_VERSION_MAJOR > 7
     LoadInst *forfree = cast<LoadInst>(tbuild.CreateLoad(
-        cast<PointerType>(metaforfree->getType())->getElementType(),
-        metaforfree));
+        metaforfree->getType()->getPointerElementType(), metaforfree));
 #else
     LoadInst *forfree = cast<LoadInst>(tbuild.CreateLoad(metaforfree));
 #endif
@@ -2191,20 +2186,17 @@ public:
 #endif
   {
     if (!(origptr->getType()->isPointerTy()) ||
-        !(cast<PointerType>(origptr->getType())->getElementType() ==
-          dif->getType())) {
+        !(origptr->getType()->getPointerElementType() == dif->getType())) {
       llvm::errs() << *oldFunc << "\n";
       llvm::errs() << *newFunc << "\n";
       llvm::errs() << "Origptr: " << *origptr << "\n";
       llvm::errs() << "Diff: " << *dif << "\n";
     }
     assert(origptr->getType()->isPointerTy());
-    assert(cast<PointerType>(origptr->getType())->getElementType() ==
-           dif->getType());
+    assert(origptr->getType()->getPointerElementType() == dif->getType());
 
     assert(origptr->getType()->isPointerTy());
-    assert(cast<PointerType>(origptr->getType())->getElementType() ==
-           dif->getType());
+    assert(origptr->getType()->getPointerElementType() == dif->getType());
 
     // const SCEV *S = SE.getSCEV(PN);
     // if (SE.getCouldNotCompute() == S)
@@ -2229,9 +2221,9 @@ public:
     assert(ptr);
     if (OrigOffset) {
 #if LLVM_VERSION_MAJOR > 7
-      ptr = BuilderM.CreateGEP(
-          cast<PointerType>(ptr->getType())->getElementType(), ptr,
-          lookupM(getNewFromOriginal(OrigOffset), BuilderM));
+      ptr =
+          BuilderM.CreateGEP(ptr->getType()->getPointerElementType(), ptr,
+                             lookupM(getNewFromOriginal(OrigOffset), BuilderM));
 #else
       ptr = BuilderM.CreateGEP(
           ptr, lookupM(getNewFromOriginal(OrigOffset), BuilderM));
@@ -2269,8 +2261,7 @@ public:
       auto AS = cast<PointerType>(ptr->getType())->getAddressSpace();
       if (Arch == Triple::amdgcn && AS == 4) {
         ptr = BuilderM.CreateAddrSpaceCast(
-            ptr, PointerType::get(
-                     cast<PointerType>(ptr->getType())->getElementType(), 1));
+            ptr, PointerType::get(ptr->getType()->getPointerElementType(), 1));
       }
 
       assert(!mask);
@@ -2314,7 +2305,7 @@ public:
               ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
 #if LLVM_VERSION_MAJOR > 7
           auto vptr = BuilderM.CreateGEP(
-              cast<PointerType>(ptr->getType())->getElementType(), ptr, Idxs);
+              ptr->getType()->getPointerElementType(), ptr, Idxs);
 #else
           auto vptr = BuilderM.CreateGEP(ptr, Idxs);
 #endif

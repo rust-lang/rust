@@ -319,8 +319,8 @@ castToDiffeFunctionArgType(IRBuilder<> &Builder, llvm::CallInst *CI,
     if (auto PT = dyn_cast<PointerType>(destType)) {
       if (ptr->getAddressSpace() != PT->getAddressSpace()) {
         res = Builder.CreateAddrSpaceCast(
-            res,
-            PointerType::get(ptr->getElementType(), PT->getAddressSpace()));
+            res, PointerType::get(ptr->getPointerElementType(),
+                                  PT->getAddressSpace()));
         assert(value);
         assert(destType);
         assert(FT);
@@ -524,8 +524,8 @@ public:
       case DerivativeMode::ForwardMode: {
         Value *sretPt = CI->getArgOperand(0);
         if (width > 1) {
-          PointerType *pty = dyn_cast<PointerType>(sretPt->getType());
-          if (auto sty = dyn_cast<StructType>(pty->getElementType())) {
+          PointerType *pty = cast<PointerType>(sretPt->getType());
+          if (auto sty = dyn_cast<StructType>(pty->getPointerElementType())) {
             Value *acc = UndefValue::get(
                 ArrayType::get(PointerType::get(sty->getElementType(0),
                                                 pty->getAddressSpace()),
@@ -533,8 +533,7 @@ public:
             for (size_t i = 0; i < width; ++i) {
 #if LLVM_VERSION_MAJOR > 7
               Value *elem = Builder.CreateStructGEP(
-                  cast<PointerType>(sretPt->getType())->getElementType(),
-                  sretPt, i);
+                  sretPt->getType()->getPointerElementType(), sretPt, i);
 #else
               Value *elem = Builder.CreateStructGEP(sretPt, i);
 #endif
@@ -607,8 +606,7 @@ public:
             if (CI->paramHasAttr(i, Attribute::ByVal)) {
 #if LLVM_VERSION_MAJOR > 7
               differet = Builder.CreateLoad(
-                  cast<PointerType>(differet->getType())->getElementType(),
-                  differet);
+                  differet->getType()->getPointerElementType(), differet);
 #else
               differet = Builder.CreateLoad(differet);
 #endif
@@ -620,7 +618,7 @@ public:
             if (CI->paramHasAttr(i, Attribute::ByVal)) {
 #if LLVM_VERSION_MAJOR > 7
               tape = Builder.CreateLoad(
-                  cast<PointerType>(tape->getType())->getElementType(), tape);
+                  tape->getType()->getPointerElementType(), tape);
 #else
               tape = Builder.CreateLoad(tape);
 #endif
@@ -695,7 +693,7 @@ public:
           if (auto PT = dyn_cast<PointerType>(PTy)) {
             if (ptr->getAddressSpace() != PT->getAddressSpace()) {
               res = Builder.CreateAddrSpaceCast(
-                  res, PointerType::get(ptr->getElementType(),
+                  res, PointerType::get(ptr->getPointerElementType(),
                                         PT->getAddressSpace()));
               assert(res);
               assert(PTy);
@@ -792,7 +790,7 @@ public:
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
       } else if (a.getType()->isPointerTy()) {
-        auto et = cast<PointerType>(a.getType())->getElementType();
+        auto et = a.getType()->getPointerElementType();
         if (et->isFPOrFPVectorTy()) {
           dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
         } else if (et->isPointerTy()) {
@@ -1099,7 +1097,7 @@ public:
           for (unsigned int i = 0; i < st->getNumElements(); i++) {
 #if LLVM_VERSION_MAJOR > 7
             Value *sgep = Builder.CreateStructGEP(
-                cast<PointerType>(sret->getType())->getElementType(), sret, i);
+                sret->getType()->getPointerElementType(), sret, i);
 #else
             Value *sgep = Builder.CreateStructGEP(sret, i);
 #endif

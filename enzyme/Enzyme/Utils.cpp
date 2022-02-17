@@ -132,10 +132,10 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     idx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateGEP(
-        cast<PointerType>(dst->getType())->getElementType(), dst, idx, "dst.i");
-    LoadInst *dstl = B.CreateLoad(
-        cast<PointerType>(dsti->getType())->getElementType(), dsti, "dst.i.l");
+    Value *dsti =
+        B.CreateGEP(dst->getType()->getPointerElementType(), dst, idx, "dst.i");
+    LoadInst *dstl =
+        B.CreateLoad(dsti->getType()->getPointerElementType(), dsti, "dst.i.l");
 #else
     Value *dsti = B.CreateGEP(dst, idx, "dst.i");
     LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
@@ -152,10 +152,10 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     }
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *srci = B.CreateGEP(
-        cast<PointerType>(src->getType())->getElementType(), src, idx, "src.i");
-    LoadInst *srcl = B.CreateLoad(
-        cast<PointerType>(srci->getType())->getElementType(), srci, "src.i.l");
+    Value *srci =
+        B.CreateGEP(src->getType()->getPointerElementType(), src, idx, "src.i");
+    LoadInst *srcl =
+        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
 #else
     Value *srci = B.CreateGEP(src, idx, "src.i");
     LoadInst *srcl = B.CreateLoad(srci, "src.i.l");
@@ -186,7 +186,7 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
 
 Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, unsigned dstalign,
                                    unsigned srcalign) {
-  Type *elementType = T->getElementType();
+  Type *elementType = T->getPointerElementType();
   assert(elementType->isFloatingPointTy());
   std::string name = "__enzyme_memcpy_" + tofltstr(elementType) + "da" +
                      std::to_string(dstalign) + "sa" +
@@ -241,13 +241,12 @@ Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, unsigned dstalign,
     sidx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateGEP(
-        cast<PointerType>(dst->getType())->getElementType(), dst, idx, "dst.i");
-    Value *srci =
-        B.CreateGEP(cast<PointerType>(src->getType())->getElementType(), src,
-                    sidx, "src.i");
-    LoadInst *srcl = B.CreateLoad(
-        cast<PointerType>(srci->getType())->getElementType(), srci, "src.i.l");
+    Value *dsti =
+        B.CreateGEP(dst->getType()->getPointerElementType(), dst, idx, "dst.i");
+    Value *srci = B.CreateGEP(src->getType()->getPointerElementType(), src,
+                              sidx, "src.i");
+    LoadInst *srcl =
+        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
 #else
     Value *dsti = B.CreateGEP(dst, idx, "dst.i");
     Value *srci = B.CreateGEP(src, sidx, "src.i");
@@ -467,8 +466,7 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
   {
     IRBuilder<> B(entry);
 #if LLVM_VERSION_MAJOR > 7
-    len = B.CreateLoad(cast<PointerType>(lenp->getType())->getElementType(),
-                       lenp);
+    len = B.CreateLoad(lenp->getType()->getPointerElementType(), lenp);
 #else
     len = B.CreateLoad(lenp);
 #endif
@@ -483,15 +481,15 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
     idx->addIncoming(ConstantInt::get(len->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateGEP(
-        cast<PointerType>(dst->getType())->getElementType(), dst, idx, "dst.i");
-    LoadInst *dstl = B.CreateLoad(
-        cast<PointerType>(dsti->getType())->getElementType(), dsti, "dst.i.l");
+    Value *dsti =
+        B.CreateGEP(dst->getType()->getPointerElementType(), dst, idx, "dst.i");
+    LoadInst *dstl =
+        B.CreateLoad(dsti->getType()->getPointerElementType(), dsti, "dst.i.l");
 
-    Value *srci = B.CreateGEP(
-        cast<PointerType>(src->getType())->getElementType(), src, idx, "src.i");
-    LoadInst *srcl = B.CreateLoad(
-        cast<PointerType>(srci->getType())->getElementType(), srci, "src.i.l");
+    Value *srci =
+        B.CreateGEP(src->getType()->getPointerElementType(), src, idx, "src.i");
+    LoadInst *srcl =
+        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
 #else
     Value *dsti = B.CreateGEP(dst, idx, "dst.i");
     LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
@@ -530,9 +528,8 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
   }
 
   GlobalVariable *GV = new GlobalVariable(
-      M, cast<PointerType>(OpPtr)->getElementType(), false,
-      GlobalVariable::InternalLinkage,
-      UndefValue::get(cast<PointerType>(OpPtr)->getElementType()), name);
+      M, OpPtr->getPointerElementType(), false, GlobalVariable::InternalLinkage,
+      UndefValue::get(OpPtr->getPointerElementType()), name);
 
   Type *i1Ty = Type::getInt1Ty(M.getContext());
   GlobalVariable *initD = new GlobalVariable(
@@ -565,9 +562,8 @@ llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
     IRBuilder<> B(entry);
 #if LLVM_VERSION_MAJOR > 7
     B.CreateCondBr(
-        B.CreateLoad(cast<PointerType>(initD->getType())->getElementType(),
-                     initD),
-        end, run);
+        B.CreateLoad(initD->getType()->getPointerElementType(), initD), end,
+        run);
 #else
     B.CreateCondBr(B.CreateLoad(initD), end, run);
 #endif
@@ -665,8 +661,7 @@ Function *getOrInsertExponentialAllocator(Module &M, bool ZeroInit) {
 
     Value *margs[] = {
 #if LLVM_VERSION_MAJOR > 7
-      B.CreateGEP(cast<PointerType>(gVal->getType())->getElementType(), gVal,
-                  prevSize),
+      B.CreateGEP(gVal->getType()->getPointerElementType(), gVal, prevSize),
 #else
       B.CreateGEP(gVal, prevSize),
 #endif

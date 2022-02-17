@@ -339,8 +339,7 @@ static inline DIFFE_TYPE whatType(llvm::Type *arg, DerivativeMode mode,
   }
 
   if (arg->isPointerTy()) {
-    switch (whatType(llvm::cast<llvm::PointerType>(arg)->getElementType(), mode,
-                     seen)) {
+    switch (whatType(arg->getPointerElementType(), mode, seen)) {
     case DIFFE_TYPE::OUT_DIFF:
       return DIFFE_TYPE::DUP_ARG;
     case DIFFE_TYPE::CONSTANT:

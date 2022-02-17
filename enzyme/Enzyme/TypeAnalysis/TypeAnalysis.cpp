@@ -1169,9 +1169,8 @@ void TypeAnalyzer::visitConstantExpr(ConstantExpr &CE) {
 
     int maxSize = -1;
     if (cast<ConstantInt>(CE.getOperand(1))->getLimitedValue() == 0) {
-      maxSize = DL.getTypeAllocSizeInBits(
-                    cast<PointerType>(g2->getType())->getElementType()) /
-                8;
+      maxSize =
+          DL.getTypeAllocSizeInBits(g2->getType()->getPointerElementType()) / 8;
     }
 
     delete g2;
@@ -1440,9 +1439,8 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
 
     int maxSize = -1;
     if (cast<ConstantInt>(vec[0])->getLimitedValue() == 0) {
-      maxSize = DL.getTypeAllocSizeInBits(
-                    cast<PointerType>(gep.getType())->getElementType()) /
-                8;
+      maxSize =
+          DL.getTypeAllocSizeInBits(gep.getType()->getPointerElementType()) / 8;
     }
 
     if (direction & DOWN) {
@@ -4210,8 +4208,8 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
                      TypeTree(ConcreteType(call.getType())).Only(-1), &call);
       TypeTree ival(BaseType::Pointer);
       auto objSize =
-          DL.getTypeSizeInBits(cast<PointerType>(call.getOperand(1)->getType())
-                                   ->getElementType()) /
+          DL.getTypeSizeInBits(
+              call.getOperand(1)->getType()->getPointerElementType()) /
           8;
       for (size_t i = 0; i < objSize; ++i) {
         ival.insert({(int)i}, BaseType::Integer);

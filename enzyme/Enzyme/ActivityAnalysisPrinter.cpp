@@ -95,7 +95,7 @@ public:
       if (a.getType()->isFPOrFPVectorTy()) {
         dt = ConcreteType(a.getType()->getScalarType());
       } else if (a.getType()->isPointerTy()) {
-        auto et = cast<PointerType>(a.getType())->getElementType();
+        auto et = a.getType()->getPointerElementType();
         if (et->isFPOrFPVectorTy()) {
           dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
         } else if (et->isPointerTy()) {
@@ -116,7 +116,7 @@ public:
     if (F.getReturnType()->isFPOrFPVectorTy()) {
       dt = ConcreteType(F.getReturnType()->getScalarType());
     } else if (F.getReturnType()->isPointerTy()) {
-      auto et = cast<PointerType>(F.getReturnType())->getElementType();
+      auto et = F.getReturnType()->getPointerElementType();
       if (et->isFPOrFPVectorTy()) {
         dt = TypeTree(ConcreteType(et->getScalarType())).Only(-1);
       } else if (et->isPointerTy()) {

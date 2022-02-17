@@ -839,9 +839,9 @@ public:
             Value *dif1Ptr =
                 lookup(gutils->invertPointerM(orig_ptr, Builder2), Builder2);
 #if LLVM_VERSION_MAJOR > 7
-            LoadInst *dif1 = Builder2.CreateLoad(
-                cast<PointerType>(dif1Ptr->getType())->getElementType(),
-                dif1Ptr, isVolatile);
+            LoadInst *dif1 =
+                Builder2.CreateLoad(dif1Ptr->getType()->getPointerElementType(),
+                                    dif1Ptr, isVolatile);
 #else
             LoadInst *dif1 = Builder2.CreateLoad(dif1Ptr, isVolatile);
 #endif
@@ -2706,21 +2706,19 @@ public:
         for (auto val : {orig_dst, orig_src}) {
           if (auto CI = dyn_cast<CastInst>(val)) {
             if (auto PT = dyn_cast<PointerType>(CI->getSrcTy())) {
-              if (PT->getElementType()->isFPOrFPVectorTy()) {
-                vd = TypeTree(
-                         ConcreteType(PT->getElementType()->getScalarType()))
-                         .Only(0);
+              auto ET = PT->getPointerElementType();
+              if (ET->isFPOrFPVectorTy()) {
+                vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0);
                 goto known;
               }
-              if (PT->getElementType()->isIntOrIntVectorTy()) {
+              if (ET->isIntOrIntVectorTy()) {
                 vd = TypeTree(BaseType::Integer).Only(0);
                 goto known;
               }
-              if (PT->getElementType()->isPointerTy()) {
+              if (ET->isPointerTy()) {
                 vd = TypeTree(BaseType::Pointer).Only(0);
                 goto known;
               }
-              auto ET = PT->getElementType();
               while (auto ST = dyn_cast<StructType>(ET)) {
                 if (!ST->getNumElements())
                   break;
@@ -3329,8 +3327,8 @@ public:
           auto *PowF = CI.getCalledValue();
 #endif
           assert(PowF);
-          auto FT = cast<FunctionType>(
-              cast<PointerType>(PowF->getType())->getElementType());
+          auto FT =
+              cast<FunctionType>(PowF->getType()->getPointerElementType());
           auto cal = cast<CallInst>(Builder2.CreateCall(FT, PowF, args));
           cal->setCallingConv(CI.getCallingConv());
 
@@ -3355,8 +3353,7 @@ public:
         auto *PowF = CI.getCalledValue();
 #endif
         assert(PowF);
-        auto FT = cast<FunctionType>(
-            cast<PointerType>(PowF->getType())->getElementType());
+        auto FT = cast<FunctionType>(PowF->getType()->getPointerElementType());
 
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
 
@@ -3791,8 +3788,8 @@ public:
           auto *PowF = CI.getCalledValue();
 #endif
           assert(PowF);
-          auto FT = cast<FunctionType>(
-              cast<PointerType>(PowF->getType())->getElementType());
+          auto FT =
+              cast<FunctionType>(PowF->getType()->getPointerElementType());
           auto cal = cast<CallInst>(Builder2.CreateCall(FT, PowF, args));
           cal->setCallingConv(CI.getCallingConv());
           cal->setDebugLoc(gutils->getNewFromOriginal(I.getDebugLoc()));
@@ -3826,8 +3823,7 @@ public:
         auto *PowF = CI.getCalledValue();
 #endif
         assert(PowF);
-        auto FT = cast<FunctionType>(
-            cast<PointerType>(PowF->getType())->getElementType());
+        auto FT = cast<FunctionType>(PowF->getType()->getPointerElementType());
 
         Value *op0 = gutils->getNewFromOriginal(orig_ops[0]);
         Value *op1 = gutils->getNewFromOriginal(orig_ops[1]);
@@ -4164,8 +4160,7 @@ public:
           for (auto gep : gepsToErase)
             gep->eraseFromParent();
           IRBuilder<> ph(&*newcalled->getEntryBlock().begin());
-          tape = UndefValue::get(
-              cast<PointerType>(tapeArg->getType())->getElementType());
+          tape = UndefValue::get(tapeArg->getType()->getPointerElementType());
           ValueToValueMapTy available;
           auto subarg = newcalled->arg_begin();
           subarg++;
@@ -4210,8 +4205,7 @@ public:
                       pair.first == -1
                           ? tapeArg
                           : ph.CreateInBoundsGEP(
-                                cast<PointerType>(tapeArg->getType())
-                                    ->getElementType(),
+                                tapeArg->getType()->getPointerElementType(),
                                 tapeArg, Idxs)));
 #else
                   op->replaceAllUsesWith(ph.CreateLoad(
@@ -4234,9 +4228,9 @@ public:
                 op->getType(),
                 pair.first == -1
                     ? tapeArg
-                    : ph.CreateInBoundsGEP(cast<PointerType>(tapeArg->getType())
-                                               ->getElementType(),
-                                           tapeArg, Idxs)));
+                    : ph.CreateInBoundsGEP(
+                          tapeArg->getType()->getPointerElementType(), tapeArg,
+                          Idxs)));
 #else
             op->replaceAllUsesWith(ph.CreateLoad(
                 pair.first == -1 ? tapeArg
@@ -4247,8 +4241,7 @@ public:
           assert(tape);
           auto alloc =
               IRBuilder<>(gutils->inversionAllocs)
-                  .CreateAlloca(
-                      cast<PointerType>(tapeArg->getType())->getElementType());
+                  .CreateAlloca(tapeArg->getType()->getPointerElementType());
           BuilderZ.CreateStore(tape, alloc);
           pre_args.push_back(alloc);
           assert(tape);
@@ -4448,8 +4441,7 @@ public:
                 ConstantInt::get(Type::getInt32Ty(ST->getContext()), ee)};
 #if LLVM_VERSION_MAJOR > 7
             Value *ptr = B.CreateInBoundsGEP(
-                cast<PointerType>(cacheArg->getType())->getElementType(),
-                cacheArg, Idxs);
+                cacheArg->getType()->getPointerElementType(), cacheArg, Idxs);
 #else
             Value *ptr = B.CreateInBoundsGEP(cacheArg, Idxs);
 #endif
@@ -4485,9 +4477,8 @@ public:
                     ConstantInt::get(Type::getInt64Ty(vt->getContext()), 0),
                     ConstantInt::get(Type::getInt32Ty(vt->getContext()), i)};
 #if LLVM_VERSION_MAJOR > 7
-                auto vptr = B.CreateGEP(
-                    cast<PointerType>(ptr->getType())->getElementType(), ptr,
-                    Idxs);
+                auto vptr = B.CreateGEP(ptr->getType()->getPointerElementType(),
+                                        ptr, Idxs);
 #else
                 auto vptr = B.CreateGEP(ptr, Idxs);
 #endif
@@ -4605,12 +4596,13 @@ public:
       if (looseTypeAnalysis) {
         if (isa<CastInst>(origArg) &&
             cast<CastInst>(origArg)->getSrcTy()->isPointerTy() &&
-            cast<PointerType>(cast<CastInst>(origArg)->getSrcTy())
-                ->getElementType()
+            cast<CastInst>(origArg)
+                ->getSrcTy()
+                ->getPointerElementType()
                 ->isFPOrFPVectorTy()) {
-          vd = TypeTree(ConcreteType(cast<PointerType>(
-                                         cast<CastInst>(origArg)->getSrcTy())
-                                         ->getElementType()
+          vd = TypeTree(ConcreteType(cast<CastInst>(origArg)
+                                         ->getSrcTy()
+                                         ->getPointerElementType()
                                          ->getScalarType()))
                    .Only(0);
           goto knownF;
@@ -4663,8 +4655,7 @@ public:
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           dsto = Builder2.CreateConstInBoundsGEP1_64(
-              cast<PointerType>(dsto->getType())->getElementType(), dsto,
-              offset);
+              dsto->getType()->getPointerElementType(), dsto, offset);
 #else
           dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
 #endif
@@ -4679,8 +4670,7 @@ public:
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           srco = Builder2.CreateConstInBoundsGEP1_64(
-              cast<PointerType>(srco->getType())->getElementType(), srco,
-              offset);
+              srco->getType()->getPointerElementType(), srco, offset);
 #else
           srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
 #endif
@@ -5011,8 +5001,8 @@ public:
                 firstallocation,
 #if LLVM_VERSION_MAJOR > 7
                 BuilderZ.CreateInBoundsGEP(
-                    cast<PointerType>(impialloc->getType())->getElementType(),
-                    impialloc, {c0_64, ConstantInt::get(i32, 0)})
+                    impialloc->getType()->getPointerElementType(), impialloc,
+                    {c0_64, ConstantInt::get(i32, 0)})
 #else
                 BuilderZ.CreateInBoundsGEP(impialloc,
                                            {c0_64, ConstantInt::get(i32, 0)})
@@ -5032,8 +5022,8 @@ public:
                 ibuf,
 #if LLVM_VERSION_MAJOR > 7
                 BuilderZ.CreateInBoundsGEP(
-                    cast<PointerType>(impialloc->getType())->getElementType(),
-                    impialloc, {c0_64, ConstantInt::get(i32, 0)})
+                    impialloc->getType()->getPointerElementType(), impialloc,
+                    {c0_64, ConstantInt::get(i32, 0)})
 #else
                 BuilderZ.CreateInBoundsGEP(impialloc,
                                            {c0_64, ConstantInt::get(i32, 0)})
@@ -5046,8 +5036,8 @@ public:
                   gutils->getNewFromOriginal(call.getOperand(1)), types[1]),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 1)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 1)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 1)})
@@ -5062,8 +5052,8 @@ public:
               BuilderZ.CreatePointerCast(dataType, types[2]),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 2)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 2)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 2)})
@@ -5075,8 +5065,8 @@ public:
                   gutils->getNewFromOriginal(call.getOperand(3)), types[3]),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 3)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 3)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 3)})
@@ -5088,8 +5078,8 @@ public:
                   gutils->getNewFromOriginal(call.getOperand(4)), types[4]),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 4)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 4)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 4)})
@@ -5104,8 +5094,8 @@ public:
               BuilderZ.CreatePointerCast(comm, types[5]),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 5)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 5)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 5)})
@@ -5120,8 +5110,8 @@ public:
                       : (int)MPI_CallType::IRECV),
 #if LLVM_VERSION_MAJOR > 7
               BuilderZ.CreateInBoundsGEP(
-                  cast<PointerType>(impialloc->getType())->getElementType(),
-                  impialloc, {c0_64, ConstantInt::get(i32, 6)})
+                  impialloc->getType()->getPointerElementType(), impialloc,
+                  {c0_64, ConstantInt::get(i32, 6)})
 #else
               BuilderZ.CreateInBoundsGEP(impialloc,
                                          {c0_64, ConstantInt::get(i32, 6)})
@@ -5140,13 +5130,13 @@ public:
             auto statusArg = recvfn->arg_end();
             statusArg--;
             if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
-              statusType = PT->getElementType();
+              statusType = PT->getPointerElementType();
           }
           if (Function *recvfn = called->getParent()->getFunction("MPI_Wait")) {
             auto statusArg = recvfn->arg_end();
             statusArg--;
             if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
-              statusType = PT->getElementType();
+              statusType = PT->getPointerElementType();
           }
           if (statusType == nullptr) {
             statusType = ArrayType::get(Type::getInt8Ty(call.getContext()), 24);
@@ -5388,7 +5378,7 @@ public:
 
 #if LLVM_VERSION_MAJOR > 7
         Value *cache = Builder2.CreateLoad(
-            cast<PointerType>(d_reqp->getType())->getElementType(), d_reqp);
+            d_reqp->getType()->getPointerElementType(), d_reqp);
 #else
         Value *cache = Builder2.CreateLoad(d_reqp);
 #endif
@@ -5524,8 +5514,7 @@ public:
         Value *idxs[] = {idx};
 #if LLVM_VERSION_MAJOR > 7
         Value *d_req = Builder2.CreateGEP(
-            cast<PointerType>(d_req_orig->getType())->getElementType(),
-            d_req_orig, idxs);
+            d_req_orig->getType()->getPointerElementType(), d_req_orig, idxs);
 #else
         Value *d_req = Builder2.CreateGEP(d_req_orig, idxs);
 #endif
@@ -5565,7 +5554,7 @@ public:
 
 #if LLVM_VERSION_MAJOR > 7
         Value *cache = Builder2.CreateLoad(
-            cast<PointerType>(d_reqp->getType())->getElementType(), d_reqp);
+            d_reqp->getType()->getPointerElementType(), d_reqp);
 #else
         Value *cache = Builder2.CreateLoad(d_reqp);
 #endif
@@ -5689,7 +5678,7 @@ public:
           auto statusArg = recvfn->arg_end();
           statusArg--;
           if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
-            statusType = PT->getElementType();
+            statusType = PT->getPointerElementType();
         }
         if (statusType == nullptr) {
           statusType = ArrayType::get(Type::getInt8Ty(call.getContext()), 24);
@@ -9372,8 +9361,7 @@ public:
                    gutils->getNewFromOriginal(call.getArgOperand(2))}));
 #if LLVM_VERSION_MAJOR > 7
           val = BuilderZ.CreateLoad(
-              cast<PointerType>(ptrshadow->getType())->getElementType(),
-              ptrshadow);
+              ptrshadow->getType()->getPointerElementType(), ptrshadow);
 #else
           val = BuilderZ.CreateLoad(ptrshadow);
 #endif
@@ -9408,9 +9396,8 @@ public:
           memset->addParamAttr(0, Attribute::NonNull);
         } else if (Mode == DerivativeMode::ReverseModeGradient) {
           PHINode *toReplace = BuilderZ.CreatePHI(
-              cast<PointerType>(call.getArgOperand(0)->getType())
-                  ->getElementType(),
-              1, orig->getName() + "_psxtmp");
+              call.getArgOperand(0)->getType()->getPointerElementType(), 1,
+              orig->getName() + "_psxtmp");
           val = gutils->cacheForReverse(BuilderZ, toReplace,
                                         getIndex(orig, CacheType::Shadow));
         }
@@ -9451,7 +9438,7 @@ public:
         IRBuilder<> Builder2(newCall->getNextNode());
 #if LLVM_VERSION_MAJOR > 7
         auto load = Builder2.CreateLoad(
-            cast<PointerType>(call.getOperand(0)->getType())->getElementType(),
+            call.getOperand(0)->getType()->getPointerElementType(),
             gutils->getNewFromOriginal(call.getOperand(0)), "posix_preread");
 #else
         auto load = Builder2.CreateLoad(
@@ -9712,8 +9699,8 @@ public:
 #endif
         newcalled = gutils->invertPointerM(callval, BuilderZ);
 
-        auto ft = cast<FunctionType>(
-            cast<PointerType>(callval->getType())->getElementType());
+        auto ft =
+            cast<FunctionType>(callval->getType()->getPointerElementType());
         bool retActive = subretType != DIFFE_TYPE::CONSTANT;
 
         ReturnType subretVal =
@@ -9735,8 +9722,8 @@ public:
       }
 
       assert(newcalled);
-      FunctionType *FT = cast<FunctionType>(
-          cast<PointerType>(newcalled->getType())->getElementType());
+      FunctionType *FT =
+          cast<FunctionType>(newcalled->getType()->getPointerElementType());
 
       SmallVector<ValueType, 2> BundleTypes;
       for (auto A : argsInverted)
@@ -9962,8 +9949,8 @@ public:
 #endif
         newcalled = gutils->invertPointerM(callval, BuilderZ);
 
-        auto ft = cast<FunctionType>(
-            cast<PointerType>(callval->getType())->getElementType());
+        auto ft =
+            cast<FunctionType>(callval->getType()->getPointerElementType());
 
         DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
                                     ? DIFFE_TYPE::OUT_DIFF
@@ -10034,8 +10021,8 @@ public:
       // sub_index_map = fnandtapetype.tapeIndices;
 
       assert(newcalled);
-      FunctionType *FT = cast<FunctionType>(
-          cast<PointerType>(newcalled->getType())->getElementType());
+      FunctionType *FT =
+          cast<FunctionType>(newcalled->getType()->getPointerElementType());
 
       // llvm::errs() << "seeing sub_index_map of " << sub_index_map->size()
       // << " in ap " << cast<Function>(called)->getName() << "\n";
@@ -10360,8 +10347,7 @@ public:
       assert(!gutils->isConstantValue(callval));
       newcalled = lookup(gutils->invertPointerM(callval, Builder2), Builder2);
 
-      auto ft = cast<FunctionType>(
-          cast<PointerType>(callval->getType())->getElementType());
+      auto ft = cast<FunctionType>(callval->getType()->getPointerElementType());
 
       DIFFE_TYPE subretType = orig->getType()->isFPOrFPVectorTy()
                                   ? DIFFE_TYPE::OUT_DIFF
@@ -10399,8 +10385,8 @@ public:
 
     assert(newcalled);
     // if (auto NC = dyn_cast<Function>(newcalled)) {
-    FunctionType *FT = cast<FunctionType>(
-        cast<PointerType>(newcalled->getType())->getElementType());
+    FunctionType *FT =
+        cast<FunctionType>(newcalled->getType()->getPointerElementType());
 
     if (false) {
     badfn:;

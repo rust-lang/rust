@@ -2165,8 +2165,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       Value *gep = ret;
       if (!removeStruct) {
 #if LLVM_VERSION_MAJOR > 7
-        gep = ib.CreateGEP(cast<PointerType>(ret->getType())->getElementType(),
-                           ret, Idxs, "");
+        gep = ib.CreateGEP(ret->getType()->getPointerElementType(), ret, Idxs,
+                           "");
 #else
         gep = ib.CreateGEP(ret, Idxs, "");
 #endif
@@ -2188,8 +2188,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       tapeMemory = ret;
       if (!removeStruct) {
 #if LLVM_VERSION_MAJOR > 7
-        tapeMemory = ib.CreateGEP(
-            cast<PointerType>(ret->getType())->getElementType(), ret, Idxs, "");
+        tapeMemory = ib.CreateGEP(ret->getType()->getPointerElementType(), ret,
+                                  Idxs, "");
 #else
         tapeMemory = ib.CreateGEP(ret, Idxs, "");
 #endif
@@ -2208,9 +2208,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         Value *gep = tapeMemory;
         if (!removeTapeStruct) {
 #if LLVM_VERSION_MAJOR > 7
-          gep = ib.CreateGEP(
-              cast<PointerType>(tapeMemory->getType())->getElementType(),
-              tapeMemory, Idxs, "");
+          gep = ib.CreateGEP(tapeMemory->getType()->getPointerElementType(),
+                             tapeMemory, Idxs, "");
 #else
           gep = ib.CreateGEP(tapeMemory, Idxs, "");
 #endif
@@ -2281,8 +2280,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       ib.CreateRetVoid();
     else {
 #if LLVM_VERSION_MAJOR > 7
-      ib.CreateRet(ib.CreateLoad(
-          cast<PointerType>(ret->getType())->getElementType(), ret));
+      ib.CreateRet(ib.CreateLoad(ret->getType()->getPointerElementType(), ret));
 #else
       ib.CreateRet(ib.CreateLoad(ret));
 #endif

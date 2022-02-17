@@ -510,8 +510,6 @@ bool CacheUtility::getContext(BasicBlock *BB, LoopContext &loopContext,
       cast<IntegerType>(CanonicalIV->getType())->getBitWidth() / 8);
 #endif
 
-  SCEVUnionPredicate BackedgePred;
-
   const SCEV *Limit = nullptr;
   const SCEV *MaxIterations = nullptr;
   {
@@ -954,8 +952,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
         IRBuilder<> build(containedloops.back().first.incvar->getNextNode());
 #if LLVM_VERSION_MAJOR > 7
         Value *allocation = build.CreateLoad(
-            cast<PointerType>(storeInto->getType())->getElementType(),
-            storeInto);
+            storeInto->getType()->getPointerElementType(), storeInto);
 #else
         Value *allocation = build.CreateLoad(storeInto);
 #endif
@@ -975,8 +972,7 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
             build.CreateMul(tsize, sublimits[i].first, "", /*NUW*/ true,
                             /*NSW*/ true)};
 
-        assert(cast<PointerType>(allocation->getType())->getElementType() ==
-               myType);
+        assert(allocation->getType()->getPointerElementType() == myType);
         Value *realloccall = nullptr;
 
         realloccall = build.CreateCall(
@@ -1024,16 +1020,15 @@ AllocaInst *CacheUtility::createCacheForScope(LimitContext ctx, Type *T,
           /*available*/ ValueToValueMapTy());
 
 #if LLVM_VERSION_MAJOR > 7
-      storeInto = v.CreateLoad(
-          cast<PointerType>(storeInto->getType())->getElementType(), storeInto);
+      storeInto = v.CreateLoad(storeInto->getType()->getPointerElementType(),
+                               storeInto);
 #if LLVM_VERSION_MAJOR >= 10
       cast<LoadInst>(storeInto)->setAlignment(Align(alignSize));
 #else
       cast<LoadInst>(storeInto)->setAlignment(alignSize);
 #endif
-      storeInto =
-          v.CreateGEP(cast<PointerType>(storeInto->getType())->getElementType(),
-                      storeInto, idx);
+      storeInto = v.CreateGEP(storeInto->getType()->getPointerElementType(),
+                              storeInto, idx);
 #else
       storeInto = v.CreateLoad(storeInto);
       cast<LoadInst>(storeInto)->setAlignment(alignSize);
@@ -1410,8 +1405,8 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
           ConstantInt::get(Type::getInt8Ty(cache->getContext()), 1), subidx));
 
 #if LLVM_VERSION_MAJOR > 7
-      Value *loadChunk = v.CreateLoad(
-          cast<PointerType>(loc->getType())->getElementType(), loc);
+      Value *loadChunk =
+          v.CreateLoad(loc->getType()->getPointerElementType(), loc);
 #else
       Value *loadChunk = v.CreateLoad(loc);
 #endif
@@ -1420,19 +1415,16 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
       auto toset = v.CreateShl(
           v.CreateZExt(val, Type::getInt8Ty(cache->getContext())), subidx);
       tostore = v.CreateOr(cleared, toset);
-      assert(tostore->getType() ==
-             cast<PointerType>(loc->getType())->getElementType());
+      assert(tostore->getType() == loc->getType()->getPointerElementType());
     }
   }
 
-  if (tostore->getType() !=
-      cast<PointerType>(loc->getType())->getElementType()) {
+  if (tostore->getType() != loc->getType()->getPointerElementType()) {
     llvm::errs() << "val: " << *val << "\n";
     llvm::errs() << "tostore: " << *tostore << "\n";
     llvm::errs() << "loc: " << *loc << "\n";
   }
-  assert(tostore->getType() ==
-         cast<PointerType>(loc->getType())->getElementType());
+  assert(tostore->getType() == loc->getType()->getPointerElementType());
   StoreInst *storeinst = v.CreateStore(tostore, loc);
 
   // If the value stored doesnt change (per efficient bool cache),
@@ -1509,8 +1501,7 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
   for (int i = sublimits.size() - 1; i >= 0; i--) {
     // Lookup the next allocation pointer
 #if LLVM_VERSION_MAJOR > 7
-    next = BuilderM.CreateLoad(
-        cast<PointerType>(next->getType())->getElementType(), next);
+    next = BuilderM.CreateLoad(next->getType()->getPointerElementType(), next);
 #else
     next = BuilderM.CreateLoad(next);
 #endif
@@ -1568,8 +1559,8 @@ Value *CacheUtility::getCachePointer(bool inForwardPass, IRBuilder<> &BuilderM,
         idx = BuilderM.CreateMul(idx, es, "", /*NUW*/ true, /*NSW*/ true);
       }
 #if LLVM_VERSION_MAJOR > 7
-      next = BuilderM.CreateGEP(
-          cast<PointerType>(next->getType())->getElementType(), next, idx);
+      next = BuilderM.CreateGEP(next->getType()->getPointerElementType(), next,
+                                idx);
 #else
       next = BuilderM.CreateGEP(next, idx);
 #endif
@@ -1590,8 +1581,8 @@ llvm::Value *CacheUtility::loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
                                                 llvm::Value *cache) {
   // Retrieve the actual result
 #if LLVM_VERSION_MAJOR > 7
-  auto result = BuilderM.CreateLoad(
-      cast<PointerType>(cptr->getType())->getElementType(), cptr);
+  auto result =
+      BuilderM.CreateLoad(cptr->getType()->getPointerElementType(), cptr);
 #else
   auto result = BuilderM.CreateLoad(cptr);
 #endif
@@ -1634,9 +1625,8 @@ CacheUtility::lookupValueFromCache(bool inForwardPass, IRBuilder<> &BuilderM,
   // Optionally apply the additional offset
   if (extraOffset) {
 #if LLVM_VERSION_MAJOR > 7
-    cptr =
-        BuilderM.CreateGEP(cast<PointerType>(cptr->getType())->getElementType(),
-                           cptr, extraOffset);
+    cptr = BuilderM.CreateGEP(cptr->getType()->getPointerElementType(), cptr,
+                              extraOffset);
 #else
     cptr = BuilderM.CreateGEP(cptr, extraOffset);
 #endif
