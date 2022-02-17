@@ -1,0 +1,154 @@
+- // MIR for `indexing` before SimpleLocalDse
++ // MIR for `indexing` after SimpleLocalDse
+  
+  fn indexing() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/dead_store_elimination.rs:36:19: 36:19
+      let mut _1: usize;                   // in scope 0 at $DIR/dead_store_elimination.rs:37:9: 37:14
+      let _4: usize;                       // in scope 0 at $DIR/dead_store_elimination.rs:39:15: 39:16
+      let mut _5: usize;                   // in scope 0 at $DIR/dead_store_elimination.rs:39:13: 39:17
+      let mut _6: bool;                    // in scope 0 at $DIR/dead_store_elimination.rs:39:13: 39:17
+      let _7: ();                          // in scope 0 at $DIR/dead_store_elimination.rs:40:5: 40:12
+      let mut _8: i32;                     // in scope 0 at $DIR/dead_store_elimination.rs:40:10: 40:11
+      let _13: usize;                      // in scope 0 at $DIR/dead_store_elimination.rs:45:16: 45:17
+      let mut _14: usize;                  // in scope 0 at $DIR/dead_store_elimination.rs:45:14: 45:18
+      let mut _15: bool;                   // in scope 0 at $DIR/dead_store_elimination.rs:45:14: 45:18
+      let _16: ();                         // in scope 0 at $DIR/dead_store_elimination.rs:46:5: 46:12
+      let mut _17: &i32;                   // in scope 0 at $DIR/dead_store_elimination.rs:46:10: 46:11
+      let _20: usize;                      // in scope 0 at $DIR/dead_store_elimination.rs:50:7: 50:8
+      let mut _21: usize;                  // in scope 0 at $DIR/dead_store_elimination.rs:50:5: 50:9
+      let mut _22: bool;                   // in scope 0 at $DIR/dead_store_elimination.rs:50:5: 50:9
+      let _23: ();                         // in scope 0 at $DIR/dead_store_elimination.rs:51:5: 51:12
+      let mut _24: [i32; 2];               // in scope 0 at $DIR/dead_store_elimination.rs:51:10: 51:11
+      scope 1 {
+          debug i => _1;                   // in scope 1 at $DIR/dead_store_elimination.rs:37:9: 37:14
+          let _2: [i32; 2];                // in scope 1 at $DIR/dead_store_elimination.rs:38:9: 38:10
+          scope 2 {
+              debug a => _2;               // in scope 2 at $DIR/dead_store_elimination.rs:38:9: 38:10
+              let _3: i32;                 // in scope 2 at $DIR/dead_store_elimination.rs:39:9: 39:10
+              scope 3 {
+                  debug x => _3;           // in scope 3 at $DIR/dead_store_elimination.rs:39:9: 39:10
+                  let mut _9: usize;       // in scope 3 at $DIR/dead_store_elimination.rs:42:9: 42:14
+                  scope 4 {
+                      debug i => _9;       // in scope 4 at $DIR/dead_store_elimination.rs:42:9: 42:14
+                      let _10: [i32; 2];   // in scope 4 at $DIR/dead_store_elimination.rs:43:9: 43:10
+                      scope 5 {
+                          debug a => _10;  // in scope 5 at $DIR/dead_store_elimination.rs:43:9: 43:10
+                          let _11: &[i32; 2]; // in scope 5 at $DIR/dead_store_elimination.rs:44:9: 44:10
+                          scope 6 {
+                              debug r => _11; // in scope 6 at $DIR/dead_store_elimination.rs:44:9: 44:10
+                              let _12: &i32; // in scope 6 at $DIR/dead_store_elimination.rs:45:9: 45:10
+                              scope 7 {
+                                  debug r => _12; // in scope 7 at $DIR/dead_store_elimination.rs:45:9: 45:10
+                                  let mut _18: usize; // in scope 7 at $DIR/dead_store_elimination.rs:48:9: 48:14
+                                  scope 8 {
+                                      debug i => _18; // in scope 8 at $DIR/dead_store_elimination.rs:48:9: 48:14
+                                      let mut _19: [i32; 2]; // in scope 8 at $DIR/dead_store_elimination.rs:49:9: 49:14
+                                      scope 9 {
+                                          debug a => _19; // in scope 9 at $DIR/dead_store_elimination.rs:49:9: 49:14
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/dead_store_elimination.rs:37:9: 37:14
+          _1 = const 0_usize;              // scope 0 at $DIR/dead_store_elimination.rs:37:17: 37:18
+          StorageLive(_2);                 // scope 1 at $DIR/dead_store_elimination.rs:38:9: 38:10
+          _2 = [const 1_i32; 2];           // scope 1 at $DIR/dead_store_elimination.rs:38:13: 38:19
+          StorageLive(_3);                 // scope 2 at $DIR/dead_store_elimination.rs:39:9: 39:10
+          StorageLive(_4);                 // scope 2 at $DIR/dead_store_elimination.rs:39:15: 39:16
+          _4 = const 0_usize;              // scope 2 at $DIR/dead_store_elimination.rs:39:15: 39:16
+          _5 = const 2_usize;              // scope 2 at $DIR/dead_store_elimination.rs:39:13: 39:17
+          _6 = const true;                 // scope 2 at $DIR/dead_store_elimination.rs:39:13: 39:17
+          goto -> bb1;                     // scope 2 at $DIR/dead_store_elimination.rs:39:13: 39:17
+      }
+  
+      bb1: {
+          _3 = _2[_4];                     // scope 2 at $DIR/dead_store_elimination.rs:39:13: 39:17
+          StorageDead(_4);                 // scope 2 at $DIR/dead_store_elimination.rs:39:17: 39:18
+          StorageLive(_7);                 // scope 3 at $DIR/dead_store_elimination.rs:40:5: 40:12
+          StorageLive(_8);                 // scope 3 at $DIR/dead_store_elimination.rs:40:10: 40:11
+          _8 = _3;                         // scope 3 at $DIR/dead_store_elimination.rs:40:10: 40:11
+          _7 = read::<i32>(move _8) -> bb2; // scope 3 at $DIR/dead_store_elimination.rs:40:5: 40:12
+                                           // mir::Constant
+                                           // + span: $DIR/dead_store_elimination.rs:40:5: 40:9
+                                           // + literal: Const { ty: fn(i32) {read::<i32>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb2: {
+          StorageDead(_8);                 // scope 3 at $DIR/dead_store_elimination.rs:40:11: 40:12
+          StorageDead(_7);                 // scope 3 at $DIR/dead_store_elimination.rs:40:12: 40:13
+          StorageLive(_9);                 // scope 3 at $DIR/dead_store_elimination.rs:42:9: 42:14
+          _9 = const 0_usize;              // scope 3 at $DIR/dead_store_elimination.rs:42:17: 42:18
+          StorageLive(_10);                // scope 4 at $DIR/dead_store_elimination.rs:43:9: 43:10
+          _10 = [const 11_i32; 2];         // scope 4 at $DIR/dead_store_elimination.rs:43:13: 43:20
+          StorageLive(_11);                // scope 5 at $DIR/dead_store_elimination.rs:44:9: 44:10
+          _11 = &_10;                      // scope 5 at $DIR/dead_store_elimination.rs:44:13: 44:15
+          StorageLive(_12);                // scope 6 at $DIR/dead_store_elimination.rs:45:9: 45:10
+          StorageLive(_13);                // scope 6 at $DIR/dead_store_elimination.rs:45:16: 45:17
+          _13 = const 0_usize;             // scope 6 at $DIR/dead_store_elimination.rs:45:16: 45:17
+          _14 = const 2_usize;             // scope 6 at $DIR/dead_store_elimination.rs:45:14: 45:18
+          _15 = const true;                // scope 6 at $DIR/dead_store_elimination.rs:45:14: 45:18
+          goto -> bb3;                     // scope 6 at $DIR/dead_store_elimination.rs:45:14: 45:18
+      }
+  
+      bb3: {
+          _12 = &(*_11)[_13];              // scope 6 at $DIR/dead_store_elimination.rs:45:13: 45:18
+          StorageLive(_16);                // scope 7 at $DIR/dead_store_elimination.rs:46:5: 46:12
+          StorageLive(_17);                // scope 7 at $DIR/dead_store_elimination.rs:46:10: 46:11
+          _17 = _12;                       // scope 7 at $DIR/dead_store_elimination.rs:46:10: 46:11
+          _16 = read::<&i32>(move _17) -> bb4; // scope 7 at $DIR/dead_store_elimination.rs:46:5: 46:12
+                                           // mir::Constant
+                                           // + span: $DIR/dead_store_elimination.rs:46:5: 46:9
+                                           // + literal: Const { ty: fn(&i32) {read::<&i32>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb4: {
+          StorageDead(_17);                // scope 7 at $DIR/dead_store_elimination.rs:46:11: 46:12
+          StorageDead(_16);                // scope 7 at $DIR/dead_store_elimination.rs:46:12: 46:13
+          StorageLive(_18);                // scope 7 at $DIR/dead_store_elimination.rs:48:9: 48:14
+          _18 = const 0_usize;             // scope 7 at $DIR/dead_store_elimination.rs:48:17: 48:18
+          StorageLive(_19);                // scope 8 at $DIR/dead_store_elimination.rs:49:9: 49:14
+          _19 = [const 13_i32; 2];         // scope 8 at $DIR/dead_store_elimination.rs:49:17: 49:24
+          StorageLive(_20);                // scope 9 at $DIR/dead_store_elimination.rs:50:7: 50:8
+          _20 = const 0_usize;             // scope 9 at $DIR/dead_store_elimination.rs:50:7: 50:8
+          _21 = const 2_usize;             // scope 9 at $DIR/dead_store_elimination.rs:50:5: 50:9
+          _22 = const true;                // scope 9 at $DIR/dead_store_elimination.rs:50:5: 50:9
+          goto -> bb5;                     // scope 9 at $DIR/dead_store_elimination.rs:50:5: 50:9
+      }
+  
+      bb5: {
+          _19[_20] = const 14_i32;         // scope 9 at $DIR/dead_store_elimination.rs:50:5: 50:14
+          StorageDead(_20);                // scope 9 at $DIR/dead_store_elimination.rs:50:14: 50:15
+          StorageLive(_23);                // scope 9 at $DIR/dead_store_elimination.rs:51:5: 51:12
+          StorageLive(_24);                // scope 9 at $DIR/dead_store_elimination.rs:51:10: 51:11
+          _24 = _19;                       // scope 9 at $DIR/dead_store_elimination.rs:51:10: 51:11
+          _23 = read::<[i32; 2]>(move _24) -> bb6; // scope 9 at $DIR/dead_store_elimination.rs:51:5: 51:12
+                                           // mir::Constant
+                                           // + span: $DIR/dead_store_elimination.rs:51:5: 51:9
+                                           // + literal: Const { ty: fn([i32; 2]) {read::<[i32; 2]>}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb6: {
+          StorageDead(_24);                // scope 9 at $DIR/dead_store_elimination.rs:51:11: 51:12
+          StorageDead(_23);                // scope 9 at $DIR/dead_store_elimination.rs:51:12: 51:13
+          nop;                             // scope 0 at $DIR/dead_store_elimination.rs:36:19: 52:2
+          StorageDead(_19);                // scope 8 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_18);                // scope 7 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_13);                // scope 6 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_12);                // scope 6 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_11);                // scope 5 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_10);                // scope 4 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_9);                 // scope 3 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_3);                 // scope 2 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_2);                 // scope 1 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          StorageDead(_1);                 // scope 0 at $DIR/dead_store_elimination.rs:52:1: 52:2
+          return;                          // scope 0 at $DIR/dead_store_elimination.rs:52:2: 52:2
+      }
+  }
+  
