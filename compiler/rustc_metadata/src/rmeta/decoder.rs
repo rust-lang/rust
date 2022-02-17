@@ -11,7 +11,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_errors::ErrorReported;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
 use rustc_hir as hir;
@@ -21,10 +20,12 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::lang_items;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
+use rustc_middle::middle::stability::DeprecationEntry;
+use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::{self, Body, Promoted};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -275,6 +276,99 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable<DecodeContext<'a, 'tcx>>> Lazy<[T]> {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.meta).map(move |_| T::decode(&mut dcx))
+    }
+}
+
+trait LazyQueryDecodable<'a, 'tcx, T> {
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        err: impl FnOnce() -> !,
+    ) -> T;
+}
+
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<Lazy<T>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>>,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        err: impl FnOnce() -> !,
+    ) -> T {
+        if let Some(l) = self { l.decode((cdata, tcx)) } else { err() }
+    }
+}
+
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, &'tcx T> for Option<Lazy<T>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>>,
+    T: ArenaAllocatable<'tcx>,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        err: impl FnOnce() -> !,
+    ) -> &'tcx T {
+        if let Some(l) = self { tcx.arena.alloc(l.decode((cdata, tcx))) } else { err() }
+    }
+}
+
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, Option<T>> for Option<Lazy<T>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>>,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        _err: impl FnOnce() -> !,
+    ) -> Option<T> {
+        self.map(|l| l.decode((cdata, tcx)))
+    }
+}
+
+impl<'a, 'tcx, T, E> LazyQueryDecodable<'a, 'tcx, Result<Option<T>, E>> for Option<Lazy<T>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>>,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        _err: impl FnOnce() -> !,
+    ) -> Result<Option<T>, E> {
+        Ok(self.map(|l| l.decode((cdata, tcx))))
+    }
+}
+
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, &'tcx [T]> for Option<Lazy<[T], usize>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>> + Copy,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        _err: impl FnOnce() -> !,
+    ) -> &'tcx [T] {
+        if let Some(l) = self { tcx.arena.alloc_from_iter(l.decode((cdata, tcx))) } else { &[] }
+    }
+}
+
+impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DeprecationEntry>>
+    for Option<Lazy<attr::Deprecation>>
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        _err: impl FnOnce() -> !,
+    ) -> Option<DeprecationEntry> {
+        self.map(|l| l.decode((cdata, tcx))).map(DeprecationEntry::external)
     }
 }
 
@@ -716,7 +810,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn opt_item_ident(self, item_index: DefIndex, sess: &Session) -> Option<Ident> {
         let name = self.def_key(item_index).disambiguated_data.data.get_opt_name()?;
-        let span = match self.root.tables.ident_span.get(self, item_index) {
+        let span = match self.root.tables.def_ident_span.get(self, item_index) {
             Some(lazy_span) => lazy_span.decode((self, sess)),
             None => {
                 // FIXME: this weird case of a name with no span is specific to `extern crate`
@@ -750,20 +844,22 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
-        self.root.tables.def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(|| {
-            bug!(
-                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
-                item_id,
-                self.root.name,
-                self.cnum,
-            )
-        })
+        self.root.tables.opt_def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(
+            || {
+                bug!(
+                    "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
+                    item_id,
+                    self.root.name,
+                    self.cnum,
+                )
+            },
+        )
     }
 
     fn get_span(self, index: DefIndex, sess: &Session) -> Span {
         self.root
             .tables
-            .span
+            .def_span
             .get(self, index)
             .unwrap_or_else(|| panic!("Missing span for {:?}", index))
             .decode((self, sess))
@@ -908,71 +1004,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
     }
 
-    fn get_explicit_predicates(
-        self,
-        item_id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.root.tables.explicit_predicates.get(self, item_id).unwrap().decode((self, tcx))
-    }
-
-    fn get_inferred_outlives(
-        self,
-        item_id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-        self.root
-            .tables
-            .inferred_outlives
-            .get(self, item_id)
-            .map(|predicates| tcx.arena.alloc_from_iter(predicates.decode((self, tcx))))
-            .unwrap_or_default()
-    }
-
-    fn get_super_predicates(
-        self,
-        item_id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.root.tables.super_predicates.get(self, item_id).unwrap().decode((self, tcx))
-    }
-
-    fn get_explicit_item_bounds(
-        self,
-        item_id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-        self.root
-            .tables
-            .explicit_item_bounds
-            .get(self, item_id)
-            .map(|bounds| tcx.arena.alloc_from_iter(bounds.decode((self, tcx))))
-            .unwrap_or_default()
-    }
-
     fn get_generics(self, item_id: DefIndex, sess: &Session) -> ty::Generics {
-        self.root.tables.generics.get(self, item_id).unwrap().decode((self, sess))
-    }
-
-    fn get_type(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        self.root
-            .tables
-            .ty
-            .get(self, id)
-            .unwrap_or_else(|| panic!("Not a type: {:?}", id))
-            .decode((self, tcx))
-    }
-
-    fn get_stability(self, id: DefIndex) -> Option<attr::Stability> {
-        self.root.tables.stability.get(self, id).map(|stab| stab.decode(self))
-    }
-
-    fn get_const_stability(self, id: DefIndex) -> Option<attr::ConstStability> {
-        self.root.tables.const_stability.get(self, id).map(|stab| stab.decode(self))
-    }
-
-    fn get_deprecation(self, id: DefIndex) -> Option<attr::Deprecation> {
-        self.root.tables.deprecation.get(self, id).map(|depr| depr.decode(self))
+        self.root.tables.generics_of.get(self, item_id).unwrap().decode((self, sess))
     }
 
     fn get_visibility(self, id: DefIndex) -> ty::Visibility {
@@ -1010,20 +1043,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.get_impl_data(id).coerce_unsized_info
     }
 
-    fn get_impl_trait(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> Option<ty::TraitRef<'tcx>> {
-        self.root.tables.impl_trait_ref.get(self, id).map(|tr| tr.decode((self, tcx)))
-    }
-
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {
         self.root.tables.expn_that_defined.get(self, id).unwrap().decode((self, sess))
-    }
-
-    fn get_const_param_default(
-        self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> rustc_middle::ty::Const<'tcx> {
-        self.root.tables.const_defaults.get(self, id).unwrap().decode((self, tcx))
     }
 
     /// Iterates over all the stability attributes in the given crate.
@@ -1163,7 +1184,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn is_item_mir_available(self, id: DefIndex) -> bool {
-        self.root.tables.mir.get(self, id).is_some()
+        self.root.tables.optimized_mir.get(self, id).is_some()
     }
 
     fn module_expansion(self, id: DefIndex, sess: &Session) -> ExpnId {
@@ -1173,60 +1194,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
             _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
         }
-    }
-
-    fn get_optimized_mir(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
-        self.root
-            .tables
-            .mir
-            .get(self, id)
-            .unwrap_or_else(|| {
-                bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
-            })
-            .decode((self, tcx))
-    }
-
-    fn get_mir_for_ctfe(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
-        self.root
-            .tables
-            .mir_for_ctfe
-            .get(self, id)
-            .unwrap_or_else(|| {
-                bug!("get_mir_for_ctfe: missing MIR for `{:?}`", self.local_def_id(id))
-            })
-            .decode((self, tcx))
-    }
-
-    fn get_thir_abstract_const(
-        self,
-        tcx: TyCtxt<'tcx>,
-        id: DefIndex,
-    ) -> Result<Option<&'tcx [thir::abstract_const::Node<'tcx>]>, ErrorReported> {
-        self.root
-            .tables
-            .thir_abstract_consts
-            .get(self, id)
-            .map_or(Ok(None), |v| Ok(Some(v.decode((self, tcx)))))
-    }
-
-    fn get_unused_generic_params(self, id: DefIndex) -> FiniteBitSet<u32> {
-        self.root
-            .tables
-            .unused_generic_params
-            .get(self, id)
-            .map(|params| params.decode(self))
-            .unwrap_or_default()
-    }
-
-    fn get_promoted_mir(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> IndexVec<Promoted, Body<'tcx>> {
-        self.root
-            .tables
-            .promoted_mir
-            .get(self, id)
-            .unwrap_or_else(|| {
-                bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
-            })
-            .decode((self, tcx))
     }
 
     fn mir_const_qualif(self, id: DefIndex) -> mir::ConstQualifs {
@@ -1286,10 +1253,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             container: container.with_def_id(parent),
             fn_has_self_parameter: has_self,
         }
-    }
-
-    fn get_item_variances(self, id: DefIndex) -> impl Iterator<Item = ty::Variance> + 'a {
-        self.root.tables.variances.get(self, id).unwrap_or_else(Lazy::empty).decode(self)
     }
 
     fn get_ctor_def_id_and_kind(self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
@@ -1479,7 +1442,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
             _ => Lazy::empty(),
         };
-        tcx.arena.alloc_from_iter(param_names.decode((self, tcx)))
+        LazyQueryDecodable::decode_query(Some(param_names), self, tcx, || unreachable!())
     }
 
     fn exported_symbols(
@@ -1549,10 +1512,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             EntryKind::Generator(data) => Some(data),
             _ => None,
         }
-    }
-
-    fn fn_sig(self, id: DefIndex, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        self.root.tables.fn_sig.get(self, id).unwrap().decode((self, tcx))
     }
 
     #[inline]
