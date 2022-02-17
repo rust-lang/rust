@@ -759,7 +759,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
         let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
 
-        // HACK(oli-obk): This is a backwards compatibility hack. Without it, the inference
+        // HACK(oli-obk): This is a hack to keep RPIT and TAIT in sync wrt their behaviour.
+        // Without it, the inference
         // variable will get instantiated with the opaque type. The inference variable often
         // has various helpful obligations registered for it that help closures figure out their
         // signature. If we infer the inference var to the opaque type, the closure won't be able
