@@ -269,11 +269,11 @@ impl Command {
             None
         };
         let program = resolve_exe(&self.program, || env::var_os("PATH"), child_paths)?;
-        let is_batch_file = program
-            .extension()
-            .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
-            .unwrap_or(false);
-        let program = path::maybe_verbatim(&program)?;
+        // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
+        let is_batch_file = matches!(
+            program.len().checked_sub(5).and_then(|i| program.get(i..)),
+            Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
+        );
         let mut cmd_str =
             make_command_line(&program, &self.args, self.force_quotes_enabled, is_batch_file)?;
         cmd_str.push(0); // add null terminator
@@ -370,7 +370,7 @@ fn resolve_exe<'a>(
     exe_path: &'a OsStr,
     parent_paths: impl FnOnce() -> Option<OsString>,
     child_paths: Option<&OsStr>,
-) -> io::Result<PathBuf> {
+) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
         return Err(io::const_io_error!(
@@ -392,19 +392,19 @@ fn resolve_exe<'a>(
         if has_exe_suffix {
             // The application name is a path to a `.exe` file.
             // Let `CreateProcessW` figure out if it exists or not.
-            return Ok(exe_path.into());
+            return path::maybe_verbatim(Path::new(exe_path));
         }
         let mut path = PathBuf::from(exe_path);
 
         // Append `.exe` if not already there.
         path = path::append_suffix(path, EXE_SUFFIX.as_ref());
-        if program_exists(&path) {
+        if let Some(path) = program_exists(&path) {
             return Ok(path);
         } else {
             // It's ok to use `set_extension` here because the intent is to
             // remove the extension that was just added.
             path.set_extension("");
-            return Ok(path);
+            return path::maybe_verbatim(&path);
         }
     } else {
         ensure_no_nuls(exe_path)?;
@@ -419,7 +419,7 @@ fn resolve_exe<'a>(
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }
-            if program_exists(&path) { Some(path) } else { None }
+            program_exists(&path)
         });
         if let Some(path) = result {
             return Ok(path);
@@ -435,10 +435,10 @@ fn search_paths<Paths, Exists>(
     parent_paths: Paths,
     child_paths: Option<&OsStr>,
     mut exists: Exists,
-) -> Option<PathBuf>
+) -> Option<Vec<u16>>
 where
     Paths: FnOnce() -> Option<OsString>,
-    Exists: FnMut(PathBuf) -> Option<PathBuf>,
+    Exists: FnMut(PathBuf) -> Option<Vec<u16>>,
 {
     // 1. Child paths
     // This is for consistency with Rust's historic behaviour.
@@ -490,17 +490,18 @@ where
 }
 
 /// Check if a file exists without following symlinks.
-fn program_exists(path: &Path) -> bool {
+fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
-        to_u16s(path)
-            .map(|path| {
-                // Getting attributes using `GetFileAttributesW` does not follow symlinks
-                // and it will almost always be successful if the link exists.
-                // There are some exceptions for special system files (e.g. the pagefile)
-                // but these are not executable.
-                c::GetFileAttributesW(path.as_ptr()) != c::INVALID_FILE_ATTRIBUTES
-            })
-            .unwrap_or(false)
+        let path = path::maybe_verbatim(path).ok()?;
+        // Getting attributes using `GetFileAttributesW` does not follow symlinks
+        // and it will almost always be successful if the link exists.
+        // There are some exceptions for special system files (e.g. the pagefile)
+        // but these are not executable.
+        if c::GetFileAttributesW(path.as_ptr()) == c::INVALID_FILE_ATTRIBUTES {
+            None
+        } else {
+            Some(path)
+        }
     }
 }
 
