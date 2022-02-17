@@ -42,7 +42,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(..) => return false,
                 };
 
+                // This conditional prevents us from asking to call errors and unresolved types.
+                // It might seem that we can use `predicate_must_hold_modulo_regions`,
+                // but since a Dummy binder is used to fill in the FnOnce trait's arguments,
+                // type resolution always gives a "maybe" here.
+                if self.autoderef(span, ty).any(|(ty, _)| {
+                    info!("check deref {:?} error", ty);
+                    matches!(ty.kind(), ty::Error(_) | ty::Infer(_))
+                }) {
+                    return false;
+                }
+
                 self.autoderef(span, ty).any(|(ty, _)| {
+                    info!("check deref {:?} impl FnOnce", ty);
                     self.probe(|_| {
                         let fn_once_substs = tcx.mk_substs_trait(
                             ty,
