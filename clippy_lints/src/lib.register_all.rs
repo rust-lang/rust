@@ -14,6 +14,8 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(attrs::DEPRECATED_SEMVER),
     LintId::of(attrs::MISMATCHED_TARGET_OS),
     LintId::of(attrs::USELESS_ATTRIBUTE),
+    LintId::of(await_holding_invalid::AWAIT_HOLDING_LOCK),
+    LintId::of(await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
     LintId::of(bit_mask::BAD_BIT_MASK),
     LintId::of(bit_mask::INEFFECTIVE_BIT_MASK),
     LintId::of(blacklisted_name::BLACKLISTED_NAME),
