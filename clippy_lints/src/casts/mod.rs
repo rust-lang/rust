@@ -419,6 +419,10 @@ impl_lint_pass!(Casts => [
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if !in_external_macro(cx.sess(), expr.span) {
+            ptr_as_ptr::check(cx, expr, &self.msrv);
+        }
+
         if expr.span.from_expansion() {
             return;
         }
@@ -455,7 +459,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);
