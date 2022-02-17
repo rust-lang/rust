@@ -1014,35 +1014,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.visibility.get(self, id).unwrap().decode(self)
     }
 
-    fn get_impl_data(self, id: DefIndex) -> ImplData {
-        match self.kind(id) {
-            EntryKind::Impl(data) => data.decode(self),
-            _ => bug!(),
-        }
-    }
-
-    fn get_parent_impl(self, id: DefIndex) -> Option<DefId> {
-        self.get_impl_data(id).parent_impl
-    }
-
-    fn get_impl_polarity(self, id: DefIndex) -> ty::ImplPolarity {
-        self.get_impl_data(id).polarity
-    }
-
-    fn get_impl_defaultness(self, id: DefIndex) -> hir::Defaultness {
-        self.get_impl_data(id).defaultness
-    }
-
-    fn get_impl_constness(self, id: DefIndex) -> hir::Constness {
-        self.get_impl_data(id).constness
-    }
-
     fn get_trait_item_def_id(self, id: DefIndex) -> Option<DefId> {
         self.root.tables.trait_item_def_id.get(self, id).map(|d| d.decode(self))
-    }
-
-    fn get_coerce_unsized_info(self, id: DefIndex) -> Option<ty::adjustment::CoerceUnsizedInfo> {
-        self.get_impl_data(id).coerce_unsized_info
     }
 
     fn get_expn_that_defined(self, id: DefIndex, sess: &Session) -> ExpnId {

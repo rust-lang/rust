@@ -302,6 +302,12 @@ define_tables! {
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     thir_abstract_const: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
+    impl_parent: Table<DefIndex, Lazy!(DefId)>,
+    impl_polarity: Table<DefIndex, Lazy!(ty::ImplPolarity)>,
+    impl_constness: Table<DefIndex, Lazy!(hir::Constness)>,
+    impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
+    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
+    coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -344,7 +350,7 @@ enum EntryKind {
     Closure,
     Generator(hir::GeneratorKind),
     Trait(Lazy<TraitData>),
-    Impl(Lazy<ImplData>),
+    Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
     AssocConst(AssocContainer, mir::ConstQualifs, Lazy<RenderedConst>),
@@ -381,18 +387,6 @@ struct TraitData {
     skip_array_during_method_dispatch: bool,
     specialization_kind: ty::trait_def::TraitSpecializationKind,
     must_implement_one_of: Option<Box<[Ident]>>,
-}
-
-#[derive(TyEncodable, TyDecodable)]
-struct ImplData {
-    polarity: ty::ImplPolarity,
-    constness: hir::Constness,
-    defaultness: hir::Defaultness,
-    parent_impl: Option<DefId>,
-
-    /// This is `Some` only for impls of `CoerceUnsized`.
-    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
-    coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
 }
 
 /// Describes whether the container of an associated item

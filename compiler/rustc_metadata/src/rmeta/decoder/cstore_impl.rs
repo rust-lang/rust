@@ -131,6 +131,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     visibility => { table }
     unused_generic_params => { table }
     opt_def_kind => { table }
+    impl_parent => { table }
+    impl_polarity => { table }
+    impl_defaultness => { table }
+    impl_constness => { table }
+    coerce_unsized_info => { table }
 
     trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -140,12 +145,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
     associated_item => { cdata.get_associated_item(def_id.index) }
-    impl_polarity => { cdata.get_impl_polarity(def_id.index) }
-    coerce_unsized_info => {
-        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
-            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
-        })
-    }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
@@ -156,7 +155,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
     rendered_const => { cdata.get_rendered_const(def_id.index) }
-    impl_parent => { cdata.get_parent_impl(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
@@ -176,8 +174,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     is_no_builtins => { cdata.root.no_builtins }
     symbol_mangling_version => { cdata.root.symbol_mangling_version }
-    impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
-    impl_constness => { cdata.get_impl_constness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)

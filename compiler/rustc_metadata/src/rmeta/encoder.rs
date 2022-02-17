@@ -1468,39 +1468,31 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 )
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
+                record!(self.tables.impl_defaultness[def_id] <- defaultness);
+                record!(self.tables.impl_constness[def_id] <- constness);
+
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
-                let polarity = self.tcx.impl_polarity(def_id);
-                let parent = if let Some(trait_ref) = trait_ref {
+                if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    trait_def.ancestors(self.tcx, def_id).ok().and_then(|mut an| {
-                        an.nth(1).and_then(|node| match node {
-                            specialization_graph::Node::Impl(parent) => Some(parent),
-                            _ => None,
-                        })
-                    })
-                } else {
-                    None
-                };
-
-                // if this is an impl of `CoerceUnsized`, create its
-                // "unsized info", else just store None
-                let coerce_unsized_info = trait_ref.and_then(|t| {
-                    if Some(t.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
-                        Some(self.tcx.at(item.span).coerce_unsized_info(def_id))
-                    } else {
-                        None
+                    if let Some(mut an) = trait_def.ancestors(self.tcx, def_id).ok() {
+                        if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
+                            record!(self.tables.impl_parent[def_id] <- parent);
+                        }
                     }
-                });
 
-                let data = ImplData {
-                    polarity,
-                    defaultness,
-                    constness,
-                    parent_impl: parent,
-                    coerce_unsized_info,
-                };
+                    // if this is an impl of `CoerceUnsized`, create its
+                    // "unsized info", else just store None
+                    if Some(trait_ref.def_id) == self.tcx.lang_items().coerce_unsized_trait() {
+                        let coerce_unsized_info =
+                            self.tcx.at(item.span).coerce_unsized_info(def_id);
+                        record!(self.tables.coerce_unsized_info[def_id] <- coerce_unsized_info);
+                    }
+                }
 
-                EntryKind::Impl(self.lazy(data))
+                let polarity = self.tcx.impl_polarity(def_id);
+                record!(self.tables.impl_polarity[def_id] <- polarity);
+
+                EntryKind::Impl
             }
             hir::ItemKind::Trait(..) => {
                 let trait_def = self.tcx.trait_def(def_id);
