@@ -344,34 +344,57 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
         pending_obligation.stalled_on.truncate(0);
 
+        let infcx = self.selcx.infcx();
         let obligation = &mut pending_obligation.obligation;
 
         debug!(?obligation, "process_obligation pre-resolve");
-
         if obligation.predicate.has_infer_types_or_consts() {
-            obligation.predicate =
-                self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
+            let mut predicate_changed = false;
+
+            if obligation.predicate.has_late_bound_vars_in_projection() {
+                let mut obligations = Vec::new();
+                let predicate = crate::traits::project::try_normalize_with_depth_to(
+                    self.selcx,
+                    obligation.param_env,
+                    obligation.cause.clone(),
+                    obligation.recursion_depth + 1,
+                    obligation.predicate,
+                    &mut obligations,
+                );
+                if predicate != obligation.predicate {
+                    if obligations.is_empty() {
+                        debug!(
+                            "progress_changed_obligations: late-bound predicate updated, fast path: {} => {}",
+                            obligation.predicate, predicate
+                        );
+                        // Optimization, since we don't need to return with Changed if we're
+                        // just updating the predicate to a new normalized form.
+                        predicate_changed = true;
+                        obligation.predicate = predicate;
+                    } else {
+                        debug!(
+                            "progress_changed_obligations: late-bound predicate updated, slow path: {} => {}, additional obligations: {:?}",
+                            obligation.predicate, predicate, obligations
+                        );
+                        obligations.push(obligation.with(predicate));
+                        return ProcessResult::Changed(mk_pending(obligations));
+                    }
+                } else {
+                    debug!(
+                        "progress_changed_obligations: late-bound predicate not updated: {}",
+                        obligation.predicate
+                    );
+                }
+            }
+
+            if !predicate_changed {
+                obligation.predicate =
+                    self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
+            }
         }
 
         debug!(?obligation, ?obligation.cause, "process_obligation");
 
-        let infcx = self.selcx.infcx();
-
-        if obligation.predicate.has_projections() {
-            let mut obligations = Vec::new();
-            let predicate = crate::traits::project::try_normalize_with_depth_to(
-                self.selcx,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                obligation.predicate,
-                &mut obligations,
-            );
-            if predicate != obligation.predicate {
-                obligations.push(obligation.with(predicate));
-                return ProcessResult::Changed(mk_pending(obligations));
-            }
-        }
         let binder = obligation.predicate.kind();
         match binder.no_bound_vars() {
             None => match binder.skip_binder() {

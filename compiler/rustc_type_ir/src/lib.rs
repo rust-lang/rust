@@ -107,6 +107,9 @@ bitflags! {
 
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 19;
+
+        // Does this value have any late-bound vars in any projection type substs?
+        const HAS_LATE_IN_PROJECTION      = 1 << 20;
     }
 }
 

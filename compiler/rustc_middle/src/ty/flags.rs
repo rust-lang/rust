@@ -163,7 +163,13 @@ impl FlagComputation {
 
             &ty::Projection(data) => {
                 self.add_flags(TypeFlags::HAS_TY_PROJECTION);
+                // Check if this projection type captures any late-bound variables in its substs
+                let old_outer = std::mem::replace(&mut self.outer_exclusive_binder, ty::INNERMOST);
                 self.add_projection_ty(data);
+                if self.outer_exclusive_binder > ty::INNERMOST {
+                    self.add_flags(TypeFlags::HAS_LATE_IN_PROJECTION);
+                }
+                self.outer_exclusive_binder = self.outer_exclusive_binder.max(old_outer);
             }
 
             &ty::Opaque(_, substs) => {
