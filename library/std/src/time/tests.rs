@@ -18,7 +18,6 @@ fn macos_resolution_regression() {
     let t0 = Instant::now();
     let t1 = t0 + Duration::from_nanos(50);
     let d = t1 - t0;
-    dbg!(t0, t1, d);
     assert_eq!(t0 + d, t1);
 }
 
