@@ -151,7 +151,7 @@ mod inner {
             extern "C" {
                 fn clock_gettime_nsec_np(clock_type: u32) -> u64;
             }
-            Instant { t: unsafe { clock_gettime_nsec_np(8) } }
+            Instant { t: unsafe { clock_gettime_nsec_np(4) } }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
