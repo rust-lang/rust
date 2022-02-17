@@ -200,9 +200,7 @@ fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
 //   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 //   automatically removed from the final output.
 pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> Vec<u8> {
-    let mut file = if let Some(file) = create_object_file(sess) {
-        file
-    } else {
+    let Some(mut file) = create_object_file(sess) else {
         // This is used to handle all "other" targets. This includes targets
         // in two categories:
         //
@@ -262,9 +260,7 @@ pub fn create_compressed_metadata_file(
 ) -> Vec<u8> {
     let mut compressed = rustc_metadata::METADATA_HEADER.to_vec();
     FrameEncoder::new(&mut compressed).write_all(metadata.raw_data()).unwrap();
-    let mut file = if let Some(file) = create_object_file(sess) {
-        file
-    } else {
+    let Some(mut file) = create_object_file(sess) else {
         return compressed.to_vec();
     };
     let section = file.add_section(

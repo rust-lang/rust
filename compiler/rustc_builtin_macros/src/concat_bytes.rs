@@ -6,9 +6,7 @@ use rustc_expand::base::{self, DummyResult};
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_nested: bool) {
-    let lit = if let ast::ExprKind::Lit(lit) = &expr.kind {
-        lit
-    } else {
+    let ast::ExprKind::Lit(lit) = &expr.kind else {
         unreachable!();
     };
     match lit.kind {

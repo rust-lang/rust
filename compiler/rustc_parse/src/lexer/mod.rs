@@ -158,9 +158,7 @@ impl<'a> StringReader<'a> {
         Some(match token {
             rustc_lexer::TokenKind::LineComment { doc_style } => {
                 // Skip non-doc comments
-                let doc_style = if let Some(doc_style) = doc_style {
-                    doc_style
-                } else {
+                let Some(doc_style) = doc_style else {
                     self.lint_unicode_text_flow(start);
                     return None;
                 };
@@ -185,9 +183,7 @@ impl<'a> StringReader<'a> {
                 }
 
                 // Skip non-doc comments
-                let doc_style = if let Some(doc_style) = doc_style {
-                    doc_style
-                } else {
+                let Some(doc_style) = doc_style else {
                     self.lint_unicode_text_flow(start);
                     return None;
                 };
