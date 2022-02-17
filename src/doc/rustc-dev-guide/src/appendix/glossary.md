@@ -18,7 +18,7 @@ Term                                                  | Meaning
 <span id="dag">DAG</span>                      &nbsp; |  A directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](../queries/incremental-compilation.md))
 <span id="data-flow">data-flow analysis</span> &nbsp; |  A static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./background.md#dataflow).
 <span id="debruijn">DeBruijn Index</span>      &nbsp; |  A technique for describing which binder a variable is bound by using only integers. It has the benefit that it is invariant under variable renaming. ([see more](./background.md#what-is-a-debruijn-index))
-<span id="def-id">DefId</span>                 &nbsp; |  An index identifying a definition (see `rustc_middle/src/hir/def_id.rs`). Uniquely identifies a `DefPath`. See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
+<span id="def-id">`DefId`</span>               &nbsp; |  An index identifying a definition (see `rustc_middle/src/hir/def_id.rs`). Uniquely identifies a `DefPath`. See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
 <span id="discriminant">discriminant</span>    &nbsp; |  The underlying value associated with an enum variant or generator state to indicate it as "active" (but not to be confused with its ["variant index"](#variant-idx)). At runtime, the discriminant of the active variant is encoded in the [tag](#tag).
 <span id="double-ptr">double pointer</span>    &nbsp; |  A pointer with additional metadata. See "fat pointer" for more.
 <span id="drop-glue">drop glue</span>          &nbsp; |  (internal) compiler-generated instructions that handle calling the destructors (`Drop`) for data types.
@@ -29,7 +29,7 @@ Term                                                  | Meaning
 <span id="free-var">free variable</span>       &nbsp; |  A "free variable" is one that is not bound within an expression or term; see [the background chapter for more](./background.md#free-vs-bound)
 <span id="generics">generics</span>            &nbsp; |  The set of generic type parameters defined on a type or item.
 <span id="hir">HIR</span>                      &nbsp; |  The High-level IR, created by lowering and desugaring the AST. ([see more](../hir.md))
-<span id="hir-id">HirId</span>                 &nbsp; |  Identifies a particular node in the HIR by combining a def-id with an "intra-definition offset". See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
+<span id="hir-id">`HirId`</span>               &nbsp; |  Identifies a particular node in the HIR by combining a def-id with an "intra-definition offset". See [the HIR chapter for more](../hir.md#identifiers-in-the-hir).
 <span id="hir-map">HIR map</span>              &nbsp; |  The HIR map, accessible via `tcx.hir()`, allows you to quickly navigate the HIR and convert between various forms of identifiers.
 <span id="ice">ICE</span>                      &nbsp; |  Short for internal compiler error, this is when the compiler crashes.
 <span id="ich">ICH</span>                      &nbsp; |  Short for incremental compilation hash, these are used as fingerprints for things such as HIR and crate metadata, to check if changes have been made. This is useful in incremental compilation to see if part of a crate has changed and should be recompiled.
@@ -75,14 +75,14 @@ Term                                                  | Meaning
 <span id="substs">substs</span>                &nbsp; |  The substitutions for a given generic type or item (e.g. the `i32`, `u32` in `HashMap<i32, u32>`).
 <span id="sysroot">sysroot</span>              &nbsp; |  The directory for build artifacts that are loaded by the compiler at runtime. ([see more](../building/bootstrapping.html#what-is-a-sysroot))
 <span id="tag">tag</span>                      &nbsp; |  The "tag" of an enum/generator encodes the [discriminant](#discriminant) of the active variant/state.  Tags can either be "direct" (simply storing the discriminant in a field) or use a ["niche"](#niche).
-<span id="tcx">tcx</span>                      &nbsp; |  The "typing context" (`TyCtxt`), main data structure of the compiler. ([see more](../ty.md))
+<span id="tcx">`tcx`</span>                    &nbsp; |  Standard variable name for the "typing context" (`TyCtxt`), main data structure of the compiler. ([see more](../ty.md))
 <span id="lifetime-tcx">`'tcx`</span>          &nbsp; |  The lifetime of the allocation arenas used by `TyCtxt`. Most data interned during a compilation session will use this lifetime with the exception of HIR data which uses the `'hir` lifetime. ([see more](../ty.md))
 <span id="token">token</span>                  &nbsp; |  The smallest unit of parsing. Tokens are produced after lexing ([see more](../the-parser.md)).
 <span id="tls">[TLS]</span>                    &nbsp; |  Thread-Local Storage. Variables may be defined so that each thread has its own copy (rather than all threads sharing the variable). This has some interactions with LLVM. Not all platforms support TLS.
 <span id="trait-ref">trait reference</span>    &nbsp; |  The name of a trait along with a suitable set of input type/lifetimes. ([see more](../traits/goals-and-clauses.md#trait-ref))
 <span id="trans">trans</span>                  &nbsp; |  Short for "translation", the code to translate MIR into LLVM IR. Renamed to codegen.
 <span id="ty">`Ty`</span>                      &nbsp; |  The internal representation of a type. ([see more](../ty.md))
-<span id="tyctxt">TyCtxt</span>                &nbsp; |  The data structure often referred to as [tcx](#tcx) in code which provides access to session data and the query system.
+<span id="tyctxt">`TyCtxt`</span>              &nbsp; |  The data structure often referred to as [`tcx`](#tcx) in code which provides access to session data and the query system.
 <span id="ufcs">UFCS</span>                    &nbsp; |  Short for Universal Function Call Syntax, this is an unambiguous syntax for calling a method. ([see more](../type-checking.md))
 <span id="ut">uninhabited type</span>          &nbsp; |  A type which has _no_ values. This is not the same as a ZST, which has exactly 1 value. An example of an uninhabited type is `enum Foo {}`, which has no variants, and so, can never be created. The compiler can treat code that deals with uninhabited types as dead code, since there is no such value to be manipulated. `!` (the never type) is an uninhabited type. Uninhabited types are also called "empty types".
 <span id="upvar">upvar</span>                  &nbsp; |  A variable captured by a closure from outside the closure.
