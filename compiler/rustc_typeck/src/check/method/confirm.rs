@@ -149,14 +149,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // time writing the results into the various typeck results.
         let mut autoderef =
             self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
-        let (ty, n) = match autoderef.nth(pick.autoderefs) {
-            Some(n) => n,
-            None => {
-                return self.tcx.ty_error_with_message(
-                    rustc_span::DUMMY_SP,
-                    &format!("failed autoderef {}", pick.autoderefs),
-                );
-            }
+        let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
+            return self.tcx.ty_error_with_message(
+                rustc_span::DUMMY_SP,
+                &format!("failed autoderef {}", pick.autoderefs),
+            );
         };
         assert_eq!(n, pick.autoderefs);
 
@@ -520,10 +517,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &self,
         predicates: &ty::InstantiatedPredicates<'tcx>,
     ) -> Option<Span> {
-        let sized_def_id = match self.tcx.lang_items().sized_trait() {
-            Some(def_id) => def_id,
-            None => return None,
-        };
+        let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.

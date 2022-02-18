@@ -484,9 +484,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         let place_ty = self.expr_ty(expr)?;
         let base_ty = self.expr_ty_adjusted(base)?;
 
-        let (region, mutbl) = match *base_ty.kind() {
-            ty::Ref(region, _, mutbl) => (region, mutbl),
-            _ => span_bug!(expr.span, "cat_overloaded_place: base is not a reference"),
+        let ty::Ref(region, _, mutbl) = *base_ty.kind() else {
+            span_bug!(expr.span, "cat_overloaded_place: base is not a reference");
         };
         let ref_ty = self.tcx().mk_ref(region, ty::TypeAndMut { ty: place_ty, mutbl });
 
@@ -544,14 +543,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<VariantIdx> {
         let res = self.typeck_results.qpath_res(qpath, pat_hir_id);
         let ty = self.typeck_results.node_type(pat_hir_id);
-        let adt_def = match ty.kind() {
-            ty::Adt(adt_def, _) => adt_def,
-            _ => {
-                self.tcx()
-                    .sess
-                    .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
-                return Err(());
-            }
+        let ty::Adt(adt_def, _) = ty.kind() else {
+            self.tcx()
+                .sess
+                .delay_span_bug(span, "struct or tuple struct pattern not applied to an ADT");
+            return Err(());
         };
 
         match res {
@@ -744,12 +740,9 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             PatKind::Slice(before, ref slice, after) => {
-                let element_ty = match place_with_id.place.ty().builtin_index() {
-                    Some(ty) => ty,
-                    None => {
-                        debug!("explicit index of non-indexable type {:?}", place_with_id);
-                        return Err(());
-                    }
+                let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
+                    debug!("explicit index of non-indexable type {:?}", place_with_id);
+                    return Err(());
                 };
                 let elt_place = self.cat_projection(
                     pat,

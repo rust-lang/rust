@@ -676,12 +676,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We do not expect any bound regions in our predicate, so
         // skip past the bound vars.
-        let predicate = match predicate.no_bound_vars() {
-            Some(p) => p,
-            None => {
-                debug!("deduce_future_output_from_projection: has late-bound regions");
-                return None;
-            }
+        let Some(predicate) = predicate.no_bound_vars() else {
+            debug!("deduce_future_output_from_projection: has late-bound regions");
+            return None;
         };
 
         // Check that this is a projection from the `Future` trait.

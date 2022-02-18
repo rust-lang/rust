@@ -40,11 +40,8 @@ struct InherentCollect<'tcx> {
 
 impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
     fn visit_item(&mut self, item: &hir::Item<'_>) {
-        let (ty, assoc_items) = match item.kind {
-            hir::ItemKind::Impl(hir::Impl { of_trait: None, ref self_ty, items, .. }) => {
-                (self_ty, items)
-            }
-            _ => return,
+        let hir::ItemKind::Impl(hir::Impl { of_trait: None, self_ty: ty, items: assoc_items, .. }) = item.kind else {
+            return;
         };
 
         let self_ty = self.tcx.type_of(item.def_id);

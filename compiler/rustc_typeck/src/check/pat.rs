@@ -981,9 +981,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.is_some()
         {
-            let substs = match pat_ty.kind() {
-                ty::Adt(_, substs) => substs,
-                _ => bug!("unexpected pattern type {:?}", pat_ty),
+            let ty::Adt(_, substs) = pat_ty.kind() else {
+                bug!("unexpected pattern type {:?}", pat_ty);
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
@@ -1221,9 +1220,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
 
-        let (substs, adt) = match adt_ty.kind() {
-            ty::Adt(adt, substs) => (substs, adt),
-            _ => span_bug!(pat.span, "struct pattern is not an ADT"),
+        let ty::Adt(adt, substs) = adt_ty.kind() else {
+            span_bug!(pat.span, "struct pattern is not an ADT");
         };
 
         // Index the struct fields' types.
