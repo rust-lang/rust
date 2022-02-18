@@ -947,8 +947,8 @@ impl Handler {
                 .get_expectation_id()
                 .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
 
-            // The unstable to stable map only maps the unstable it to a stable id
-            // the lint index is manually transferred here.
+            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
+            // The lint index inside the attribute is manually transferred here.
             let lint_index = unstable_id.get_lint_index();
             unstable_id.set_lint_index(None);
             let mut stable_id = *unstable_to_stable
@@ -966,6 +966,10 @@ impl Handler {
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
     pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
+        assert!(
+            self.inner.borrow().unstable_expect_diagnostics.is_empty(),
+            "`HandlerInner::unstable_expect_diagnostics` should be empty at this point",
+        );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
 }

@@ -387,7 +387,7 @@ pub fn struct_lint_level<'s, 'd>(
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
-        // This will therefore directly call the decorate function which will intern emit
+        // This will therefore directly call the decorate function which will in turn emit
         // the `Diagnostic`.
         if let Level::Expect(_) = level {
             let name = lint.name_lower();

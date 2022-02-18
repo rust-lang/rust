@@ -142,12 +142,12 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
-    /// The `expect` level will suppress the lint message but intern produce a message
+    /// The `expect` level will suppress the lint message but in turn produce a message
     /// if the lint wasn't issued in the expected scope. `Expect` should not be used as
     /// an initial level for a lint.
     ///
     /// Note that this still means that the lint is enabled in this position and should
-    /// be emitted, this will intern fulfill the expectation and suppress the lint.
+    /// be emitted, this will in turn fulfill the expectation and suppress the lint.
     ///
     /// See RFC 2383.
     ///
