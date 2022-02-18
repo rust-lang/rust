@@ -285,6 +285,12 @@ pub enum ObligationCauseCode<'tcx> {
         trait_item_def_id: DefId,
     },
 
+    /// Checking that the bounds of a trait's associated type hold for a given impl
+    CheckAssociatedTypeBounds {
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+    },
+
     /// Checking that this expression can be assigned where it needs to be
     // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable,
