@@ -98,7 +98,6 @@ fn elided_not_bound(_: &i32) -> impl Future<Output = i32> {
     async { 42 }
 }
 
-#[allow(clippy::needless_lifetimes)]
 fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
     async { 42 }
 }
