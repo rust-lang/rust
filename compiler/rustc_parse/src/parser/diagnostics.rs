@@ -161,13 +161,22 @@ impl AttemptLocalParseRecovery {
 #[derive(Debug, Copy, Clone)]
 struct IncDecRecovery {
     /// Is this increment/decrement its own statement?
-    ///
-    /// This is `None` when we are unsure.
-    standalone: Option<bool>,
+    standalone: IsStandalone,
     /// Is this an increment or decrement?
     op: IncOrDec,
     /// Is this pre- or postfix?
     fixity: UnaryFixity,
+}
+
+/// Is an increment or decrement expression its own statement?
+#[derive(Debug, Copy, Clone)]
+enum IsStandalone {
+    /// It's standalone, i.e., its own statement.
+    Standalone,
+    /// It's a subexpression, i.e., *not* standalone.
+    Subexpr,
+    /// It's maybe standalone; we're not sure.
+    Maybe,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -1226,11 +1235,9 @@ impl<'a> Parser<'a> {
         op_span: Span,
         prev_is_semi: bool,
     ) -> PResult<'a, P<Expr>> {
-        let kind = IncDecRecovery {
-            standalone: Some(prev_is_semi),
-            op: IncOrDec::Inc,
-            fixity: UnaryFixity::Pre,
-        };
+        let standalone =
+            if prev_is_semi { IsStandalone::Standalone } else { IsStandalone::Subexpr };
+        let kind = IncDecRecovery { standalone, op: IncOrDec::Inc, fixity: UnaryFixity::Pre };
 
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
@@ -1240,8 +1247,11 @@ impl<'a> Parser<'a> {
         operand_expr: P<Expr>,
         op_span: Span,
     ) -> PResult<'a, P<Expr>> {
-        let kind =
-            IncDecRecovery { standalone: None, op: IncOrDec::Inc, fixity: UnaryFixity::Post };
+        let kind = IncDecRecovery {
+            standalone: IsStandalone::Maybe,
+            op: IncOrDec::Inc,
+            fixity: UnaryFixity::Post,
+        };
 
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
@@ -1271,8 +1281,10 @@ impl<'a> Parser<'a> {
         };
 
         match kind.standalone {
-            Some(true) => self.inc_dec_standalone_recovery(&mut err, kind, spans, false),
-            Some(false) => {
+            IsStandalone::Standalone => {
+                self.inc_dec_standalone_recovery(&mut err, kind, spans, false)
+            }
+            IsStandalone::Subexpr => {
                 let Ok(base_src) = self.span_to_snippet(base.span)
                     else { return help_base_case(err, base) };
                 match kind.fixity {
@@ -1284,7 +1296,7 @@ impl<'a> Parser<'a> {
                     }
                 }
             }
-            None => {
+            IsStandalone::Maybe => {
                 let Ok(base_src) = self.span_to_snippet(base.span)
                     else { return help_base_case(err, base) };
                 match kind.fixity {
