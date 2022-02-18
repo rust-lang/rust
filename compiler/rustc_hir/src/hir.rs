@@ -2777,6 +2777,10 @@ impl FnHeader {
     pub fn is_const(&self) -> bool {
         matches!(&self.constness, Constness::Const)
     }
+
+    pub fn is_unsafe(&self) -> bool {
+        matches!(&self.unsafety, Unsafety::Unsafe)
+    }
 }
 
 #[derive(Debug, HashStable_Generic)]

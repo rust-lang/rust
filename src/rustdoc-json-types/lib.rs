@@ -3,13 +3,13 @@
 //! These types are the public API exposed through the `--output-format json` flag. The [`Crate`]
 //! struct is the root of the JSON blob and all other items are contained within.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 10;
+pub const FORMAT_VERSION: u32 = 11;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -287,29 +287,45 @@ pub enum StructType {
     Unit,
 }
 
-#[non_exhaustive]
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "snake_case")]
-pub enum Qualifiers {
-    Const,
-    Unsafe,
-    Async,
+pub struct Header {
+    #[serde(rename = "const")]
+    pub const_: bool,
+    #[serde(rename = "unsafe")]
+    pub unsafe_: bool,
+    #[serde(rename = "async")]
+    pub async_: bool,
+    pub abi: Abi,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum Abi {
+    // We only have a concrete listing here for stable ABI's because their are so many
+    // See rustc_ast_passes::feature_gate::PostExpansionVisitor::check_abi for the list
+    Rust,
+    C { unwind: bool },
+    Cdecl { unwind: bool },
+    Stdcall { unwind: bool },
+    Fastcall { unwind: bool },
+    Aapcs { unwind: bool },
+    Win64 { unwind: bool },
+    SysV64 { unwind: bool },
+    System { unwind: bool },
+    Other(String),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Method {
     pub decl: FnDecl,
     pub generics: Generics,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
     pub has_body: bool,
 }
 
@@ -426,8 +442,7 @@ pub enum Type {
 pub struct FunctionPointer {
     pub decl: FnDecl,
     pub generic_params: Vec<GenericParamDef>,
-    pub header: HashSet<Qualifiers>,
-    pub abi: String,
+    pub header: Header,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
