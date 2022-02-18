@@ -10,16 +10,20 @@ LL -     let _ = +1;
 LL +     let _ = 1;
    | 
 
-error: leading `+` is not supported
-  --> $DIR/issue-88276-unary-plus.rs:5:20
+error: Rust has no postfix increment operator
+  --> $DIR/issue-88276-unary-plus.rs:5:18
    |
 LL |     let _ = (1.0 + +2.0) * +3.0;
-   |                    ^ unexpected `+`
+   |                  ^^^ not a valid postfix operator
    |
-help: try removing the `+`
+help: use `+= 1` instead
+   |
+LL |     let _ = ({ let tmp = 1.0 ; 1.0 += 1; tmp }2.0) * +3.0;
+   |              +++++++++++     ~~~~~~~~~~~~~~~~~
+help: or, if you don't need to use it as an expression, change it to this
    |
 LL -     let _ = (1.0 + +2.0) * +3.0;
-LL +     let _ = (1.0 + 2.0) * +3.0;
+LL +     let _ = (1.0  += 12.0) * +3.0;
    | 
 
 error: leading `+` is not supported
