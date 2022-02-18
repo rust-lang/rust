@@ -488,8 +488,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
     pub(super) fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut s = String::new();
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
+        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         // We need to add synthesized lifetimes where appropriate. We do
         // this by hooking into the pretty printer and telling it to label the
@@ -504,15 +503,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        let _ = ty.print(printer);
-        s
+        ty.print(printer).unwrap().into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
     /// synthesized lifetime name where required.
     pub(super) fn get_region_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
-        let mut s = String::new();
-        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
+        let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, Namespace::TypeNS);
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
@@ -527,8 +524,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        let _ = region.print(printer);
-        s
+        region.print(printer).unwrap().into_buffer()
     }
 }
 
