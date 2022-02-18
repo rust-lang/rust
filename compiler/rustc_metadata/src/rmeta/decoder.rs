@@ -1032,13 +1032,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the language items in the given crate.
-    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
-        tcx.arena.alloc_from_iter(
-            self.root
-                .lang_items
-                .decode(self)
-                .map(|(def_index, index)| (self.local_def_id(def_index), index)),
-        )
+    fn get_lang_items(self) -> impl Iterator<Item = (DefId, usize)> + 'a {
+        self.root
+            .lang_items
+            .decode(self)
+            .map(move |(def_index, index)| (self.local_def_id(def_index), index))
     }
 
     /// Iterates over the diagnostic items in the given crate.
