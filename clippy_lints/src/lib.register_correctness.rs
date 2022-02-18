@@ -13,6 +13,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(bit_mask::INEFFECTIVE_BIT_MASK),
     LintId::of(booleans::LOGIC_BUG),
     LintId::of(casts::CAST_REF_TO_MUT),
+    LintId::of(casts::CAST_SLICE_DIFFERENT_SIZES),
     LintId::of(copies::IFS_SAME_COND),
     LintId::of(copies::IF_SAME_THEN_ELSE),
     LintId::of(derive::DERIVE_HASH_XOR_EQ),
