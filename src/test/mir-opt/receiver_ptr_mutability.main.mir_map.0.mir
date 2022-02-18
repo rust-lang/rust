@@ -37,7 +37,7 @@ fn main() -> () {
 
     bb1: {
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/receiver-ptr-mutability.rs:14:9: 14:12
-        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/receiver-ptr-mutability.rs:14:14: 14:23
+        AscribeUserType(_1, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/receiver-ptr-mutability.rs:14:14: 14:23
         StorageLive(_2);                 // scope 1 at $DIR/receiver-ptr-mutability.rs:15:5: 15:12
         StorageLive(_3);                 // scope 1 at $DIR/receiver-ptr-mutability.rs:15:5: 15:12
         StorageLive(_4);                 // scope 1 at $DIR/receiver-ptr-mutability.rs:15:5: 15:8
@@ -64,7 +64,7 @@ fn main() -> () {
         _6 = &_7;                        // scope 1 at $DIR/receiver-ptr-mutability.rs:18:34: 18:41
         _5 = &(*_6);                     // scope 1 at $DIR/receiver-ptr-mutability.rs:18:34: 18:41
         FakeRead(ForLet(None), _5);      // scope 1 at $DIR/receiver-ptr-mutability.rs:18:9: 18:16
-        AscribeUserType(_5, o, UserTypeProjection { base: UserType(3), projs: [] }); // scope 1 at $DIR/receiver-ptr-mutability.rs:18:18: 18:31
+        AscribeUserType(_5, UserTypeProjection { base: UserType(3), projs: [] }); // scope 1 at $DIR/receiver-ptr-mutability.rs:18:18: 18:31
         StorageDead(_6);                 // scope 1 at $DIR/receiver-ptr-mutability.rs:18:41: 18:42
         StorageLive(_10);                // scope 2 at $DIR/receiver-ptr-mutability.rs:19:5: 19:16
         StorageLive(_11);                // scope 2 at $DIR/receiver-ptr-mutability.rs:19:5: 19:16

@@ -139,7 +139,7 @@ fn address_of_reborrow() -> () {
         StorageLive(_5);                 // scope 2 at $DIR/address-of.rs:7:5: 7:18
         StorageLive(_6);                 // scope 2 at $DIR/address-of.rs:7:5: 7:18
         _6 = &raw const (*_1);           // scope 2 at $DIR/address-of.rs:7:5: 7:6
-        AscribeUserType(_6, o, UserTypeProjection { base: UserType(0), projs: [] }); // scope 2 at $DIR/address-of.rs:7:5: 7:18
+        AscribeUserType(_6, UserTypeProjection { base: UserType(0), projs: [] }); // scope 2 at $DIR/address-of.rs:7:5: 7:18
         _5 = _6;                         // scope 2 at $DIR/address-of.rs:7:5: 7:18
         StorageDead(_6);                 // scope 2 at $DIR/address-of.rs:7:18: 7:19
         StorageDead(_5);                 // scope 2 at $DIR/address-of.rs:7:18: 7:19
@@ -152,7 +152,7 @@ fn address_of_reborrow() -> () {
         _10 = &raw const (*_1);          // scope 2 at $DIR/address-of.rs:9:5: 9:6
         _9 = move _10 as *const dyn std::marker::Send (Pointer(Unsize)); // scope 2 at $DIR/address-of.rs:9:5: 9:6
         StorageDead(_10);                // scope 2 at $DIR/address-of.rs:9:5: 9:6
-        AscribeUserType(_9, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/address-of.rs:9:5: 9:25
+        AscribeUserType(_9, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/address-of.rs:9:5: 9:25
         _8 = _9;                         // scope 2 at $DIR/address-of.rs:9:5: 9:25
         StorageDead(_9);                 // scope 2 at $DIR/address-of.rs:9:25: 9:26
         StorageDead(_8);                 // scope 2 at $DIR/address-of.rs:9:25: 9:26
@@ -171,29 +171,29 @@ fn address_of_reborrow() -> () {
         StorageLive(_15);                // scope 2 at $DIR/address-of.rs:13:9: 13:10
         _15 = &raw const (*_1);          // scope 2 at $DIR/address-of.rs:13:23: 13:24
         FakeRead(ForLet(None), _15);     // scope 2 at $DIR/address-of.rs:13:9: 13:10
-        AscribeUserType(_15, o, UserTypeProjection { base: UserType(3), projs: [] }); // scope 2 at $DIR/address-of.rs:13:12: 13:20
+        AscribeUserType(_15, UserTypeProjection { base: UserType(3), projs: [] }); // scope 2 at $DIR/address-of.rs:13:12: 13:20
         StorageLive(_16);                // scope 3 at $DIR/address-of.rs:14:9: 14:10
         _16 = &raw const (*_1);          // scope 3 at $DIR/address-of.rs:14:31: 14:32
         FakeRead(ForLet(None), _16);     // scope 3 at $DIR/address-of.rs:14:9: 14:10
-        AscribeUserType(_16, o, UserTypeProjection { base: UserType(5), projs: [] }); // scope 3 at $DIR/address-of.rs:14:12: 14:28
+        AscribeUserType(_16, UserTypeProjection { base: UserType(5), projs: [] }); // scope 3 at $DIR/address-of.rs:14:12: 14:28
         StorageLive(_17);                // scope 4 at $DIR/address-of.rs:15:9: 15:10
         StorageLive(_18);                // scope 4 at $DIR/address-of.rs:15:30: 15:31
         _18 = &raw const (*_1);          // scope 4 at $DIR/address-of.rs:15:30: 15:31
         _17 = move _18 as *const dyn std::marker::Send (Pointer(Unsize)); // scope 4 at $DIR/address-of.rs:15:30: 15:31
         StorageDead(_18);                // scope 4 at $DIR/address-of.rs:15:30: 15:31
         FakeRead(ForLet(None), _17);     // scope 4 at $DIR/address-of.rs:15:9: 15:10
-        AscribeUserType(_17, o, UserTypeProjection { base: UserType(7), projs: [] }); // scope 4 at $DIR/address-of.rs:15:12: 15:27
+        AscribeUserType(_17, UserTypeProjection { base: UserType(7), projs: [] }); // scope 4 at $DIR/address-of.rs:15:12: 15:27
         StorageLive(_19);                // scope 5 at $DIR/address-of.rs:16:9: 16:10
         StorageLive(_20);                // scope 5 at $DIR/address-of.rs:16:27: 16:28
         _20 = &raw const (*_1);          // scope 5 at $DIR/address-of.rs:16:27: 16:28
         _19 = move _20 as *const [i32] (Pointer(Unsize)); // scope 5 at $DIR/address-of.rs:16:27: 16:28
         StorageDead(_20);                // scope 5 at $DIR/address-of.rs:16:27: 16:28
         FakeRead(ForLet(None), _19);     // scope 5 at $DIR/address-of.rs:16:9: 16:10
-        AscribeUserType(_19, o, UserTypeProjection { base: UserType(9), projs: [] }); // scope 5 at $DIR/address-of.rs:16:12: 16:24
+        AscribeUserType(_19, UserTypeProjection { base: UserType(9), projs: [] }); // scope 5 at $DIR/address-of.rs:16:12: 16:24
         StorageLive(_21);                // scope 6 at $DIR/address-of.rs:18:5: 18:18
         StorageLive(_22);                // scope 6 at $DIR/address-of.rs:18:5: 18:18
         _22 = &raw const (*_3);          // scope 6 at $DIR/address-of.rs:18:5: 18:6
-        AscribeUserType(_22, o, UserTypeProjection { base: UserType(10), projs: [] }); // scope 6 at $DIR/address-of.rs:18:5: 18:18
+        AscribeUserType(_22, UserTypeProjection { base: UserType(10), projs: [] }); // scope 6 at $DIR/address-of.rs:18:5: 18:18
         _21 = _22;                       // scope 6 at $DIR/address-of.rs:18:5: 18:18
         StorageDead(_22);                // scope 6 at $DIR/address-of.rs:18:18: 18:19
         StorageDead(_21);                // scope 6 at $DIR/address-of.rs:18:18: 18:19
@@ -206,7 +206,7 @@ fn address_of_reborrow() -> () {
         _26 = &raw const (*_3);          // scope 6 at $DIR/address-of.rs:20:5: 20:6
         _25 = move _26 as *const dyn std::marker::Send (Pointer(Unsize)); // scope 6 at $DIR/address-of.rs:20:5: 20:6
         StorageDead(_26);                // scope 6 at $DIR/address-of.rs:20:5: 20:6
-        AscribeUserType(_25, o, UserTypeProjection { base: UserType(11), projs: [] }); // scope 6 at $DIR/address-of.rs:20:5: 20:25
+        AscribeUserType(_25, UserTypeProjection { base: UserType(11), projs: [] }); // scope 6 at $DIR/address-of.rs:20:5: 20:25
         _24 = _25;                       // scope 6 at $DIR/address-of.rs:20:5: 20:25
         StorageDead(_25);                // scope 6 at $DIR/address-of.rs:20:25: 20:26
         StorageDead(_24);                // scope 6 at $DIR/address-of.rs:20:25: 20:26
@@ -219,29 +219,29 @@ fn address_of_reborrow() -> () {
         StorageLive(_29);                // scope 6 at $DIR/address-of.rs:23:9: 23:10
         _29 = &raw const (*_3);          // scope 6 at $DIR/address-of.rs:23:23: 23:24
         FakeRead(ForLet(None), _29);     // scope 6 at $DIR/address-of.rs:23:9: 23:10
-        AscribeUserType(_29, o, UserTypeProjection { base: UserType(13), projs: [] }); // scope 6 at $DIR/address-of.rs:23:12: 23:20
+        AscribeUserType(_29, UserTypeProjection { base: UserType(13), projs: [] }); // scope 6 at $DIR/address-of.rs:23:12: 23:20
         StorageLive(_30);                // scope 7 at $DIR/address-of.rs:24:9: 24:10
         _30 = &raw const (*_3);          // scope 7 at $DIR/address-of.rs:24:31: 24:32
         FakeRead(ForLet(None), _30);     // scope 7 at $DIR/address-of.rs:24:9: 24:10
-        AscribeUserType(_30, o, UserTypeProjection { base: UserType(15), projs: [] }); // scope 7 at $DIR/address-of.rs:24:12: 24:28
+        AscribeUserType(_30, UserTypeProjection { base: UserType(15), projs: [] }); // scope 7 at $DIR/address-of.rs:24:12: 24:28
         StorageLive(_31);                // scope 8 at $DIR/address-of.rs:25:9: 25:10
         StorageLive(_32);                // scope 8 at $DIR/address-of.rs:25:30: 25:31
         _32 = &raw const (*_3);          // scope 8 at $DIR/address-of.rs:25:30: 25:31
         _31 = move _32 as *const dyn std::marker::Send (Pointer(Unsize)); // scope 8 at $DIR/address-of.rs:25:30: 25:31
         StorageDead(_32);                // scope 8 at $DIR/address-of.rs:25:30: 25:31
         FakeRead(ForLet(None), _31);     // scope 8 at $DIR/address-of.rs:25:9: 25:10
-        AscribeUserType(_31, o, UserTypeProjection { base: UserType(17), projs: [] }); // scope 8 at $DIR/address-of.rs:25:12: 25:27
+        AscribeUserType(_31, UserTypeProjection { base: UserType(17), projs: [] }); // scope 8 at $DIR/address-of.rs:25:12: 25:27
         StorageLive(_33);                // scope 9 at $DIR/address-of.rs:26:9: 26:10
         StorageLive(_34);                // scope 9 at $DIR/address-of.rs:26:27: 26:28
         _34 = &raw const (*_3);          // scope 9 at $DIR/address-of.rs:26:27: 26:28
         _33 = move _34 as *const [i32] (Pointer(Unsize)); // scope 9 at $DIR/address-of.rs:26:27: 26:28
         StorageDead(_34);                // scope 9 at $DIR/address-of.rs:26:27: 26:28
         FakeRead(ForLet(None), _33);     // scope 9 at $DIR/address-of.rs:26:9: 26:10
-        AscribeUserType(_33, o, UserTypeProjection { base: UserType(19), projs: [] }); // scope 9 at $DIR/address-of.rs:26:12: 26:24
+        AscribeUserType(_33, UserTypeProjection { base: UserType(19), projs: [] }); // scope 9 at $DIR/address-of.rs:26:12: 26:24
         StorageLive(_35);                // scope 10 at $DIR/address-of.rs:28:5: 28:16
         StorageLive(_36);                // scope 10 at $DIR/address-of.rs:28:5: 28:16
         _36 = &raw mut (*_3);            // scope 10 at $DIR/address-of.rs:28:5: 28:6
-        AscribeUserType(_36, o, UserTypeProjection { base: UserType(20), projs: [] }); // scope 10 at $DIR/address-of.rs:28:5: 28:16
+        AscribeUserType(_36, UserTypeProjection { base: UserType(20), projs: [] }); // scope 10 at $DIR/address-of.rs:28:5: 28:16
         _35 = _36;                       // scope 10 at $DIR/address-of.rs:28:5: 28:16
         StorageDead(_36);                // scope 10 at $DIR/address-of.rs:28:16: 28:17
         StorageDead(_35);                // scope 10 at $DIR/address-of.rs:28:16: 28:17
@@ -254,7 +254,7 @@ fn address_of_reborrow() -> () {
         _40 = &raw mut (*_3);            // scope 10 at $DIR/address-of.rs:30:5: 30:6
         _39 = move _40 as *mut dyn std::marker::Send (Pointer(Unsize)); // scope 10 at $DIR/address-of.rs:30:5: 30:6
         StorageDead(_40);                // scope 10 at $DIR/address-of.rs:30:5: 30:6
-        AscribeUserType(_39, o, UserTypeProjection { base: UserType(21), projs: [] }); // scope 10 at $DIR/address-of.rs:30:5: 30:23
+        AscribeUserType(_39, UserTypeProjection { base: UserType(21), projs: [] }); // scope 10 at $DIR/address-of.rs:30:5: 30:23
         _38 = _39;                       // scope 10 at $DIR/address-of.rs:30:5: 30:23
         StorageDead(_39);                // scope 10 at $DIR/address-of.rs:30:23: 30:24
         StorageDead(_38);                // scope 10 at $DIR/address-of.rs:30:23: 30:24
@@ -267,25 +267,25 @@ fn address_of_reborrow() -> () {
         StorageLive(_43);                // scope 10 at $DIR/address-of.rs:33:9: 33:10
         _43 = &raw mut (*_3);            // scope 10 at $DIR/address-of.rs:33:21: 33:22
         FakeRead(ForLet(None), _43);     // scope 10 at $DIR/address-of.rs:33:9: 33:10
-        AscribeUserType(_43, o, UserTypeProjection { base: UserType(23), projs: [] }); // scope 10 at $DIR/address-of.rs:33:12: 33:18
+        AscribeUserType(_43, UserTypeProjection { base: UserType(23), projs: [] }); // scope 10 at $DIR/address-of.rs:33:12: 33:18
         StorageLive(_44);                // scope 11 at $DIR/address-of.rs:34:9: 34:10
         _44 = &raw mut (*_3);            // scope 11 at $DIR/address-of.rs:34:29: 34:30
         FakeRead(ForLet(None), _44);     // scope 11 at $DIR/address-of.rs:34:9: 34:10
-        AscribeUserType(_44, o, UserTypeProjection { base: UserType(25), projs: [] }); // scope 11 at $DIR/address-of.rs:34:12: 34:26
+        AscribeUserType(_44, UserTypeProjection { base: UserType(25), projs: [] }); // scope 11 at $DIR/address-of.rs:34:12: 34:26
         StorageLive(_45);                // scope 12 at $DIR/address-of.rs:35:9: 35:10
         StorageLive(_46);                // scope 12 at $DIR/address-of.rs:35:28: 35:29
         _46 = &raw mut (*_3);            // scope 12 at $DIR/address-of.rs:35:28: 35:29
         _45 = move _46 as *mut dyn std::marker::Send (Pointer(Unsize)); // scope 12 at $DIR/address-of.rs:35:28: 35:29
         StorageDead(_46);                // scope 12 at $DIR/address-of.rs:35:28: 35:29
         FakeRead(ForLet(None), _45);     // scope 12 at $DIR/address-of.rs:35:9: 35:10
-        AscribeUserType(_45, o, UserTypeProjection { base: UserType(27), projs: [] }); // scope 12 at $DIR/address-of.rs:35:12: 35:25
+        AscribeUserType(_45, UserTypeProjection { base: UserType(27), projs: [] }); // scope 12 at $DIR/address-of.rs:35:12: 35:25
         StorageLive(_47);                // scope 13 at $DIR/address-of.rs:36:9: 36:10
         StorageLive(_48);                // scope 13 at $DIR/address-of.rs:36:25: 36:26
         _48 = &raw mut (*_3);            // scope 13 at $DIR/address-of.rs:36:25: 36:26
         _47 = move _48 as *mut [i32] (Pointer(Unsize)); // scope 13 at $DIR/address-of.rs:36:25: 36:26
         StorageDead(_48);                // scope 13 at $DIR/address-of.rs:36:25: 36:26
         FakeRead(ForLet(None), _47);     // scope 13 at $DIR/address-of.rs:36:9: 36:10
-        AscribeUserType(_47, o, UserTypeProjection { base: UserType(29), projs: [] }); // scope 13 at $DIR/address-of.rs:36:12: 36:22
+        AscribeUserType(_47, UserTypeProjection { base: UserType(29), projs: [] }); // scope 13 at $DIR/address-of.rs:36:12: 36:22
         _0 = const ();                   // scope 0 at $DIR/address-of.rs:3:26: 37:2
         StorageDead(_47);                // scope 13 at $DIR/address-of.rs:37:1: 37:2
         StorageDead(_45);                // scope 12 at $DIR/address-of.rs:37:1: 37:2
