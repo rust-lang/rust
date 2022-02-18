@@ -210,7 +210,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
 
-        blanket_impls.iter().chain(non_blanket_impls.iter().map(|(_, v)| v).flatten()).cloned()
+        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
 }
 

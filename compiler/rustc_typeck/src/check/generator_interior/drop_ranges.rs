@@ -246,7 +246,7 @@ impl DropRangesBuilder {
 
     fn add_control_edge(&mut self, from: PostOrderId, to: PostOrderId) {
         trace!("adding control edge from {:?} to {:?}", from, to);
-        self.node_mut(from.into()).successors.push(to.into());
+        self.node_mut(from).successors.push(to);
     }
 }
 

@@ -211,8 +211,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
 
         let all_candidate_names: Vec<_> = all_candidates()
-            .map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
-            .flatten()
+            .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
             .filter_map(
                 |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
             )

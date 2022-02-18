@@ -1437,8 +1437,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                                     self.tcx
                                         .associated_items(did)
                                         .in_definition_order()
-                                        .filter(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
-                                        .next()
+                                        .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
                                 },
                             )
                         })

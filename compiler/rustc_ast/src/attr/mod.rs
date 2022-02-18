@@ -230,7 +230,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        Some(MetaItemKind::from_mac_args(&self.args)?)
+        MetaItemKind::from_mac_args(&self.args)
     }
 }
 

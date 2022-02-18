@@ -392,7 +392,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
                     "when the type does not implement `Copy`, \
                     wrap it inside a `ManuallyDrop<_>` and ensure it is manually dropped",
                     vec![
-                        (ty_span.shrink_to_lo(), format!("std::mem::ManuallyDrop<")),
+                        (ty_span.shrink_to_lo(), "std::mem::ManuallyDrop<".into()),
                         (ty_span.shrink_to_hi(), ">".into()),
                     ],
                     Applicability::MaybeIncorrect,

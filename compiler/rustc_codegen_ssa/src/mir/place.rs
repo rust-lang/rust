@@ -476,7 +476,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Subslice { from, to, from_end } => {
                     let mut subslice = cg_base.project_index(bx, bx.cx().const_usize(from as u64));
                     let projected_ty =
-                        PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, elem.clone()).ty;
+                        PlaceTy::from_ty(cg_base.layout.ty).projection_ty(tcx, *elem).ty;
                     subslice.layout = bx.cx().layout_of(self.monomorphize(projected_ty));
 
                     if subslice.layout.is_unsized() {
