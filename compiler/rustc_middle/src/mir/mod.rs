@@ -1844,8 +1844,8 @@ rustc_index::newtype_index! {
     /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
     ///
     /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
-    /// rustc can identify that a field projection refers to two different regions of memory
-    /// or the same one between the base and the projection element.
+    /// rustc can identify that a field projection refers to either two different regions of memory
+    /// or the same one between the base and the 'projection element'.
     /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
     /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
