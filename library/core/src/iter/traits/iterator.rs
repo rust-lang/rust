@@ -2,6 +2,7 @@ use crate::cmp::{self, Ordering};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
 
 use super::super::try_process;
+use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
 use super::super::{FlatMap, Flatten};
@@ -1856,7 +1857,7 @@ pub trait Iterator {
         <<Self as Iterator>::Item as Try>::Residual: Residual<B>,
         B: FromIterator<<Self::Item as Try>::Output>,
     {
-        try_process(self, |i| i.collect())
+        try_process(ByRefSized(self), |i| i.collect())
     }
 
     /// Collects all the items from an iterator into a collection.
