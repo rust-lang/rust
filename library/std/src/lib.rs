@@ -311,7 +311,6 @@
 #![feature(panic_internals)]
 #![feature(panic_can_unwind)]
 #![feature(panic_unwind)]
-#![feature(pin_static_ref)]
 #![feature(platform_intrinsics)]
 #![feature(portable_simd)]
 #![feature(prelude_import)]
