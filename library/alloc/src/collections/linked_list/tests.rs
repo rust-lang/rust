@@ -1,4 +1,5 @@
 use super::*;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
 use crate::vec::Vec;
 
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -984,35 +985,34 @@ fn drain_filter_complex() {
 
 #[test]
 fn drain_filter_drop_panic_leak() {
-    static mut DROPS: i32 = 0;
-
-    struct D(bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            unsafe {
-                DROPS += 1;
-            }
-
-            if self.0 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let d0 = CrashTestDummy::new(0);
+    let d1 = CrashTestDummy::new(1);
+    let d2 = CrashTestDummy::new(2);
+    let d3 = CrashTestDummy::new(3);
+    let d4 = CrashTestDummy::new(4);
+    let d5 = CrashTestDummy::new(5);
+    let d6 = CrashTestDummy::new(6);
+    let d7 = CrashTestDummy::new(7);
     let mut q = LinkedList::new();
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_back(D(false));
-    q.push_front(D(false));
-    q.push_front(D(true));
-    q.push_front(D(false));
+    q.push_back(d3.spawn(Panic::Never));
+    q.push_back(d4.spawn(Panic::Never));
+    q.push_back(d5.spawn(Panic::Never));
+    q.push_back(d6.spawn(Panic::Never));
+    q.push_back(d7.spawn(Panic::Never));
+    q.push_front(d2.spawn(Panic::Never));
+    q.push_front(d1.spawn(Panic::InDrop));
+    q.push_front(d0.spawn(Panic::Never));
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).ok();
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_filter(|_| true)))).unwrap_err();
 
-    assert_eq!(unsafe { DROPS }, 8);
+    assert_eq!(d0.dropped(), 1);
+    assert_eq!(d1.dropped(), 1);
+    assert_eq!(d2.dropped(), 1);
+    assert_eq!(d3.dropped(), 1);
+    assert_eq!(d4.dropped(), 1);
+    assert_eq!(d5.dropped(), 1);
+    assert_eq!(d6.dropped(), 1);
+    assert_eq!(d7.dropped(), 1);
     assert!(q.is_empty());
 }
 

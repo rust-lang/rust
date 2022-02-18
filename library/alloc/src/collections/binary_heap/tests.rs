@@ -1,8 +1,8 @@
 use super::*;
 use crate::boxed::Box;
+use crate::testing::crash_test::{CrashTestDummy, Panic};
 use std::iter::TrustedLen;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::atomic::{AtomicU32, Ordering};
 
 #[test]
 fn test_iterator() {
@@ -291,33 +291,30 @@ fn test_drain_sorted() {
 
 #[test]
 fn test_drain_sorted_leak() {
-    static DROPS: AtomicU32 = AtomicU32::new(0);
-
-    #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-    struct D(u32, bool);
-
-    impl Drop for D {
-        fn drop(&mut self) {
-            DROPS.fetch_add(1, Ordering::SeqCst);
-
-            if self.1 {
-                panic!("panic in `drop`");
-            }
-        }
-    }
-
+    let d0 = CrashTestDummy::new(0);
+    let d1 = CrashTestDummy::new(1);
+    let d2 = CrashTestDummy::new(2);
+    let d3 = CrashTestDummy::new(3);
+    let d4 = CrashTestDummy::new(4);
+    let d5 = CrashTestDummy::new(5);
     let mut q = BinaryHeap::from(vec![
-        D(0, false),
-        D(1, false),
-        D(2, false),
-        D(3, true),
-        D(4, false),
-        D(5, false),
+        d0.spawn(Panic::Never),
+        d1.spawn(Panic::Never),
+        d2.spawn(Panic::Never),
+        d3.spawn(Panic::InDrop),
+        d4.spawn(Panic::Never),
+        d5.spawn(Panic::Never),
     ]);
 
-    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).ok();
+    catch_unwind(AssertUnwindSafe(|| drop(q.drain_sorted()))).unwrap_err();
 
-    assert_eq!(DROPS.load(Ordering::SeqCst), 6);
+    assert_eq!(d0.dropped(), 1);
+    assert_eq!(d1.dropped(), 1);
+    assert_eq!(d2.dropped(), 1);
+    assert_eq!(d3.dropped(), 1);
+    assert_eq!(d4.dropped(), 1);
+    assert_eq!(d5.dropped(), 1);
+    assert!(q.is_empty());
 }
 
 #[test]
