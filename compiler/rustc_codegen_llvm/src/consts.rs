@@ -53,8 +53,10 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
             }
         };
 
-        // Generating partially-uninit consts inhibits optimizations, so it is disabled by default.
-        // See https://github.com/rust-lang/rust/issues/84565.
+        // Generating partially-uninit consts is limited to small allocations,
+        // to avoid the cost of generating large complex const expressions.
+        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
+        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
         let allow_partially_uninit =
             match cx.sess().opts.debugging_opts.partially_uninit_const_threshold {
                 Some(max) => range.len() <= max,

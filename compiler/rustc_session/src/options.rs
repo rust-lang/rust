@@ -1341,9 +1341,9 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
-    partially_uninit_const_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+    partially_uninit_const_threshold: Option<usize> = (Some(1024), parse_opt_number, [TRACKED],
         "allow generating const initializers with mixed init/uninit bytes, \
-        and set the maximum total size of a const allocation for which this is allowed (default: never)"),
+        and set the maximum total size of a const allocation for which this is allowed (default: 1024 bytes)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics (default: no)"),
     pick_stable_methods_before_any_unstable: bool = (true, parse_bool, [TRACKED],
