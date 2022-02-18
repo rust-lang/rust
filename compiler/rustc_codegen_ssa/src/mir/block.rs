@@ -170,10 +170,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                let target_llbb = fx.llbb(target);
-                let mut ret_bx = Bx::build(fx.cx, target_llbb);
-                fx.set_debug_loc(&mut ret_bx, self.terminator.source_info);
-                fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
+                bx.switch_to_block(fx.llbb(target));
+                fx.set_debug_loc(bx, self.terminator.source_info);
+                fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
             let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
@@ -462,7 +461,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // After this point, bx is the block for the call to panic.
-        bx = Bx::build(self.cx, panic_block);
+        bx.switch_to_block(panic_block);
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Get the location information.
@@ -914,10 +913,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let bb_fail = bx.append_sibling_block("type_test.fail");
             bx.cond_br(cond, bb_pass, bb_fail);
 
-            let mut bx_pass = Bx::build(self.cx, bb_pass);
+            bx.switch_to_block(bb_pass);
             helper.do_call(
                 self,
-                &mut bx_pass,
+                &mut bx,
                 fn_abi,
                 fn_ptr,
                 &llargs,
@@ -925,9 +924,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
             );
 
-            let mut bx_fail = Bx::build(self.cx, bb_fail);
-            bx_fail.abort();
-            bx_fail.unreachable();
+            bx.switch_to_block(bb_fail);
+            bx.abort();
+            bx.unreachable();
 
             return;
         }

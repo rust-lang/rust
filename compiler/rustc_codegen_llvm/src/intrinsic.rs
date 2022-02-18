@@ -522,11 +522,11 @@ fn codegen_msvc_try<'ll>(
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
         bx.invoke(try_func_ty, try_func, &[data], normal, catchswitch, None);
 
-        let mut normal = Builder::build(bx.cx, normal);
-        normal.ret(bx.const_i32(0));
+        bx.switch_to_block(normal);
+        bx.ret(bx.const_i32(0));
 
-        let mut catchswitch = Builder::build(bx.cx, catchswitch);
-        let cs = catchswitch.catch_switch(None, None, &[catchpad_rust, catchpad_foreign]);
+        bx.switch_to_block(catchswitch);
+        let cs = bx.catch_switch(None, None, &[catchpad_rust, catchpad_foreign]);
 
         // We can't use the TypeDescriptor defined in libpanic_unwind because it
         // might be in another DLL and the SEH encoding only supports specifying
@@ -559,24 +559,24 @@ fn codegen_msvc_try<'ll>(
         // since our exception object effectively contains a Box.
         //
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
-        let mut catchpad_rust = Builder::build(bx.cx, catchpad_rust);
+        bx.switch_to_block(catchpad_rust);
         let flags = bx.const_i32(8);
-        let funclet = catchpad_rust.catch_pad(cs, &[tydesc, flags, slot]);
-        let ptr = catchpad_rust.load(bx.type_i8p(), slot, ptr_align);
+        let funclet = bx.catch_pad(cs, &[tydesc, flags, slot]);
+        let ptr = bx.load(bx.type_i8p(), slot, ptr_align);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        catchpad_rust.call(catch_ty, catch_func, &[data, ptr], Some(&funclet));
-        catchpad_rust.catch_ret(&funclet, caught);
+        bx.call(catch_ty, catch_func, &[data, ptr], Some(&funclet));
+        bx.catch_ret(&funclet, caught);
 
         // The flag value of 64 indicates a "catch-all".
-        let mut catchpad_foreign = Builder::build(bx.cx, catchpad_foreign);
+        bx.switch_to_block(catchpad_foreign);
         let flags = bx.const_i32(64);
         let null = bx.const_null(bx.type_i8p());
-        let funclet = catchpad_foreign.catch_pad(cs, &[null, flags, null]);
-        catchpad_foreign.call(catch_ty, catch_func, &[data, null], Some(&funclet));
-        catchpad_foreign.catch_ret(&funclet, caught);
+        let funclet = bx.catch_pad(cs, &[null, flags, null]);
+        bx.call(catch_ty, catch_func, &[data, null], Some(&funclet));
+        bx.catch_ret(&funclet, caught);
 
-        let mut caught = Builder::build(bx.cx, caught);
-        caught.ret(bx.const_i32(1));
+        bx.switch_to_block(caught);
+        bx.ret(bx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function
@@ -626,8 +626,8 @@ fn codegen_gnu_try<'ll>(
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
         bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
 
-        let mut then = Builder::build(bx.cx, then);
-        then.ret(bx.const_i32(0));
+        bx.switch_to_block(then);
+        bx.ret(bx.const_i32(0));
 
         // Type indicator for the exception being thrown.
         //
@@ -635,15 +635,15 @@ fn codegen_gnu_try<'ll>(
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
-        let mut catch = Builder::build(bx.cx, catch);
+        bx.switch_to_block(catch);
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
-        let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
+        let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 1);
         let tydesc = bx.const_null(bx.type_i8p());
-        catch.add_clause(vals, tydesc);
-        let ptr = catch.extract_value(vals, 0);
+        bx.add_clause(vals, tydesc);
+        let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        catch.call(catch_ty, catch_func, &[data, ptr], None);
-        catch.ret(bx.const_i32(1));
+        bx.call(catch_ty, catch_func, &[data, ptr], None);
+        bx.ret(bx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function
@@ -690,51 +690,45 @@ fn codegen_emcc_try<'ll>(
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
         bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
 
-        let mut then = Builder::build(bx.cx, then);
-        then.ret(bx.const_i32(0));
+        bx.switch_to_block(then);
+        bx.ret(bx.const_i32(0));
 
         // Type indicator for the exception being thrown.
         //
         // The first value in this tuple is a pointer to the exception object
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
-        let mut catch = Builder::build(bx.cx, catch);
+        bx.switch_to_block(catch);
         let tydesc = bx.eh_catch_typeinfo();
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
-        let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 2);
-        catch.add_clause(vals, tydesc);
-        catch.add_clause(vals, bx.const_null(bx.type_i8p()));
-        let ptr = catch.extract_value(vals, 0);
-        let selector = catch.extract_value(vals, 1);
+        let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 2);
+        bx.add_clause(vals, tydesc);
+        bx.add_clause(vals, bx.const_null(bx.type_i8p()));
+        let ptr = bx.extract_value(vals, 0);
+        let selector = bx.extract_value(vals, 1);
 
         // Check if the typeid we got is the one for a Rust panic.
-        let rust_typeid = catch.call_intrinsic("llvm.eh.typeid.for", &[tydesc]);
-        let is_rust_panic = catch.icmp(IntPredicate::IntEQ, selector, rust_typeid);
-        let is_rust_panic = catch.zext(is_rust_panic, bx.type_bool());
+        let rust_typeid = bx.call_intrinsic("llvm.eh.typeid.for", &[tydesc]);
+        let is_rust_panic = bx.icmp(IntPredicate::IntEQ, selector, rust_typeid);
+        let is_rust_panic = bx.zext(is_rust_panic, bx.type_bool());
 
         // We need to pass two values to catch_func (ptr and is_rust_panic), so
         // create an alloca and pass a pointer to that.
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let i8_align = bx.tcx().data_layout.i8_align.abi;
         let catch_data_type = bx.type_struct(&[bx.type_i8p(), bx.type_bool()], false);
-        let catch_data = catch.alloca(catch_data_type, ptr_align);
-        let catch_data_0 = catch.inbounds_gep(
-            catch_data_type,
-            catch_data,
-            &[bx.const_usize(0), bx.const_usize(0)],
-        );
-        catch.store(ptr, catch_data_0, ptr_align);
-        let catch_data_1 = catch.inbounds_gep(
-            catch_data_type,
-            catch_data,
-            &[bx.const_usize(0), bx.const_usize(1)],
-        );
-        catch.store(is_rust_panic, catch_data_1, i8_align);
-        let catch_data = catch.bitcast(catch_data, bx.type_i8p());
+        let catch_data = bx.alloca(catch_data_type, ptr_align);
+        let catch_data_0 =
+            bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(0)]);
+        bx.store(ptr, catch_data_0, ptr_align);
+        let catch_data_1 =
+            bx.inbounds_gep(catch_data_type, catch_data, &[bx.const_usize(0), bx.const_usize(1)]);
+        bx.store(is_rust_panic, catch_data_1, i8_align);
+        let catch_data = bx.bitcast(catch_data, bx.type_i8p());
 
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
-        catch.call(catch_ty, catch_func, &[data, catch_data], None);
-        catch.ret(bx.const_i32(1));
+        bx.call(catch_ty, catch_func, &[data, catch_data], None);
+        bx.ret(bx.const_i32(1));
     });
 
     // Note that no invoke is used here because by definition this function

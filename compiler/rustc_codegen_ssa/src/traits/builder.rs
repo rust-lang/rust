@@ -53,6 +53,8 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn append_sibling_block(&mut self, name: &str) -> Self::BasicBlock;
 
+    fn switch_to_block(&mut self, llbb: Self::BasicBlock);
+
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);

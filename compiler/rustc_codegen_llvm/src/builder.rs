@@ -166,6 +166,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Self::append_block(self.cx, self.llfn(), name)
     }
 
+    fn switch_to_block(&mut self, llbb: Self::BasicBlock) {
+        *self = Self::build(self.cx, llbb)
+    }
+
     fn ret_void(&mut self) {
         unsafe {
             llvm::LLVMBuildRetVoid(self.llbuilder);
