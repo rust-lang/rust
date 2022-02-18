@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, Body, BodyId, GeneratorKind};
@@ -9,8 +9,7 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to await while holding a
-    /// non-async-aware MutexGuard.
+    /// Checks for calls to await while holding a non-async-aware MutexGuard.
     ///
     /// ### Why is this bad?
     /// The Mutex types found in std::sync and parking_lot
@@ -22,41 +21,57 @@ declare_clippy_lint! {
     /// either by introducing a scope or an explicit call to Drop::drop.
     ///
     /// ### Known problems
-    /// Will report false positive for explicitly dropped guards ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)).
+    /// Will report false positive for explicitly dropped guards
+    /// ([#6446](https://github.com/rust-lang/rust-clippy/issues/6446)). A workaround for this is
+    /// to wrap the `.lock()` call in a block instead of explicitly dropping the guard.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// use std::sync::Mutex;
-    ///
+    /// ```rust
+    /// # use std::sync::Mutex;
+    /// # async fn baz() {}
     /// async fn foo(x: &Mutex<u32>) {
-    ///   let guard = x.lock().unwrap();
+    ///   let mut guard = x.lock().unwrap();
     ///   *guard += 1;
-    ///   bar.await;
+    ///   baz().await;
+    /// }
+    ///
+    /// async fn bar(x: &Mutex<u32>) {
+    ///   let mut guard = x.lock().unwrap();
+    ///   *guard += 1;
+    ///   drop(guard); // explicit drop
+    ///   baz().await;
     /// }
     /// ```
     ///
     /// Use instead:
-    /// ```rust,ignore
-    /// use std::sync::Mutex;
-    ///
+    /// ```rust
+    /// # use std::sync::Mutex;
+    /// # async fn baz() {}
     /// async fn foo(x: &Mutex<u32>) {
     ///   {
-    ///     let guard = x.lock().unwrap();
+    ///     let mut guard = x.lock().unwrap();
     ///     *guard += 1;
     ///   }
-    ///   bar.await;
+    ///   baz().await;
+    /// }
+    ///
+    /// async fn bar(x: &Mutex<u32>) {
+    ///   {
+    ///     let mut guard = x.lock().unwrap();
+    ///     *guard += 1;
+    ///   } // guard dropped here at end of scope
+    ///   baz().await;
     /// }
     /// ```
     #[clippy::version = "1.45.0"]
     pub AWAIT_HOLDING_LOCK,
-    pedantic,
-    "Inside an async function, holding a MutexGuard while calling await"
+    suspicious,
+    "inside an async function, holding a `MutexGuard` while calling `await`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to await while holding a
-    /// `RefCell` `Ref` or `RefMut`.
+    /// Checks for calls to await while holding a `RefCell` `Ref` or `RefMut`.
     ///
     /// ### Why is this bad?
     /// `RefCell` refs only check for exclusive mutable access
@@ -64,35 +79,52 @@ declare_clippy_lint! {
     /// risks panics from a mutable ref shared while other refs are outstanding.
     ///
     /// ### Known problems
-    /// Will report false positive for explicitly dropped refs ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)).
+    /// Will report false positive for explicitly dropped refs
+    /// ([#6353](https://github.com/rust-lang/rust-clippy/issues/6353)). A workaround for this is
+    /// to wrap the `.borrow[_mut]()` call in a block instead of explicitly dropping the ref.
     ///
     /// ### Example
-    /// ```rust,ignore
-    /// use std::cell::RefCell;
-    ///
+    /// ```rust
+    /// # use std::cell::RefCell;
+    /// # async fn baz() {}
     /// async fn foo(x: &RefCell<u32>) {
     ///   let mut y = x.borrow_mut();
     ///   *y += 1;
-    ///   bar.await;
+    ///   baz().await;
+    /// }
+    ///
+    /// async fn bar(x: &RefCell<u32>) {
+    ///   let mut y = x.borrow_mut();
+    ///   *y += 1;
+    ///   drop(y); // explicit drop
+    ///   baz().await;
     /// }
     /// ```
     ///
     /// Use instead:
-    /// ```rust,ignore
-    /// use std::cell::RefCell;
-    ///
+    /// ```rust
+    /// # use std::cell::RefCell;
+    /// # async fn baz() {}
     /// async fn foo(x: &RefCell<u32>) {
     ///   {
     ///      let mut y = x.borrow_mut();
     ///      *y += 1;
     ///   }
-    ///   bar.await;
+    ///   baz().await;
+    /// }
+    ///
+    /// async fn bar(x: &RefCell<u32>) {
+    ///   {
+    ///     let mut y = x.borrow_mut();
+    ///     *y += 1;
+    ///   } // y dropped here at end of scope
+    ///   baz().await;
     /// }
     /// ```
     #[clippy::version = "1.49.0"]
     pub AWAIT_HOLDING_REFCELL_REF,
-    pedantic,
-    "Inside an async function, holding a RefCell ref while calling await"
+    suspicious,
+    "inside an async function, holding a `RefCell` ref while calling `await`"
 }
 
 declare_lint_pass!(AwaitHolding => [AWAIT_HOLDING_LOCK, AWAIT_HOLDING_REFCELL_REF]);
@@ -118,23 +150,36 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
             if is_mutex_guard(cx, adt.did) {
-                span_lint_and_note(
+                span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_LOCK,
                     ty_cause.span,
-                    "this MutexGuard is held across an 'await' point. Consider using an async-aware Mutex type or ensuring the MutexGuard is dropped before calling await",
-                    ty_cause.scope_span.or(Some(span)),
-                    "these are all the await points this lock is held through",
+                    "this `MutexGuard` is held across an `await` point",
+                    |diag| {
+                        diag.help(
+                            "consider using an async-aware `Mutex` type or ensuring the \
+                                `MutexGuard` is dropped before calling await",
+                        );
+                        diag.span_note(
+                            ty_cause.scope_span.unwrap_or(span),
+                            "these are all the `await` points this lock is held through",
+                        );
+                    },
                 );
             }
             if is_refcell_ref(cx, adt.did) {
-                span_lint_and_note(
+                span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_REFCELL_REF,
                     ty_cause.span,
-                    "this RefCell Ref is held across an 'await' point. Consider ensuring the Ref is dropped before calling await",
-                    ty_cause.scope_span.or(Some(span)),
-                    "these are all the await points this ref is held through",
+                    "this `RefCell` reference is held across an `await` point",
+                    |diag| {
+                        diag.help("ensure the reference is dropped before calling `await`");
+                        diag.span_note(
+                            ty_cause.scope_span.unwrap_or(span),
+                            "these are all the `await` points this reference is held through",
+                        );
+                    },
                 );
             }
         }
