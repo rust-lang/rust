@@ -87,12 +87,14 @@ impl fmt::Display for AllocError {
 /// # Safety
 ///
 /// * Memory blocks returned from an allocator must point to valid memory and retain their validity
-///   until the instance and all of its clones are dropped,
+///   until the instance and all of its clones are dropped, forgotten, or otherwise rendered
+///   inaccessible. The validity of memory block is tied directly to the validity of the allocator
+///   group that it is allocated from.
 ///
-/// * cloning or moving the allocator must not invalidate memory blocks returned from this
-///   allocator. A cloned allocator must behave like the same allocator, and
+/// * Cloning or moving the allocator must not invalidate memory blocks returned from this
+///   allocator. A cloned allocator must behave like the same allocator.
 ///
-/// * any pointer to a memory block which is [*currently allocated*] may be passed to any other
+/// * Any pointer to a memory block which is [*currently allocated*] may be passed to any other
 ///   method of the allocator.
 ///
 /// [*currently allocated*]: #currently-allocated-memory
@@ -408,3 +410,21 @@ where
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+/// An [`Allocator`] which returns memory blocks that can safely be pinned.
+///
+/// Unlike `Allocator`, `PinSafeAllocator` guarantees that forgetting an instance will cause any
+/// allocated memory to remain valid indefinitely.
+///
+/// # Safety
+///
+/// In addition to the safety guarantees of `Allocator`, memory blocks returned from a
+/// `PinSafeAllocator` must retain their validity until the instance and all of its clones are
+/// dropped.
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub unsafe trait PinSafeAllocator: Allocator {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+// SAFETY: Allocators that live forever never become unreachable, and so never invalidate their
+// allocated memory blocks.
+unsafe impl<A: Allocator + ?Sized> PinSafeAllocator for &'static A {}

@@ -44,6 +44,8 @@ extern "Rust" {
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
+/// This type is always guaranteed to implement [`PinSafeAllocator`].
+///
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -313,6 +315,11 @@ unsafe impl Allocator for Global {
         }
     }
 }
+
+// SAFETY: memory blocks allocated by `Global` are not invalidated when `Global` is dropped.
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[cfg(not(test))]
+unsafe impl PinSafeAllocator for Global {}
 
 /// The allocator for unique pointers.
 #[cfg(all(not(no_global_oom_handling), not(test)))]

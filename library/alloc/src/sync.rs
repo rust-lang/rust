@@ -530,6 +530,7 @@ impl<T> Arc<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
     pub fn pin(data: T) -> Pin<Arc<T>> {
+        // SAFETY: Global is a pin-safe allocator.
         unsafe { Pin::new_unchecked(Arc::new(data)) }
     }
 
@@ -537,6 +538,7 @@ impl<T> Arc<T> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn try_pin(data: T) -> Result<Pin<Arc<T>>, AllocError> {
+        // SAFETY: Global is a pin-safe allocator.
         unsafe { Ok(Pin::new_unchecked(Arc::try_new(data)?)) }
     }
 

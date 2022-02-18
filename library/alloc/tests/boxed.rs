@@ -1,4 +1,4 @@
-use core::alloc::{AllocError, Allocator, Layout};
+use core::alloc::{AllocError, Allocator, Layout, PinSafeAllocator};
 use core::cell::Cell;
 use core::mem::MaybeUninit;
 use core::ptr::NonNull;
@@ -150,6 +150,9 @@ unsafe impl const Allocator for ConstAllocator {
         self
     }
 }
+
+// SAFETY: Memory allocated by `ConstAllocator` is never invalidated.
+unsafe impl const PinSafeAllocator for ConstAllocator {}
 
 #[test]
 fn const_box() {

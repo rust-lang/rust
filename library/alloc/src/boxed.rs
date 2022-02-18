@@ -168,7 +168,7 @@ use core::task::{Context, Poll};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
-use crate::alloc::{AllocError, Allocator, Global, Layout};
+use crate::alloc::{AllocError, Allocator, Global, Layout, PinSafeAllocator};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
 use crate::raw_vec::RawVec;
@@ -1123,8 +1123,12 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         // recognized as "releasing" the unique pointer to permit aliased raw accesses,
         // so all raw pointer methods have to go through `Box::leak`. Turning *that* to a raw pointer
         // behaves correctly.
-        let alloc = unsafe { ptr::read(&b.1) };
-        (Unique::from(Box::leak(b)), alloc)
+        let manually_drop = mem::ManuallyDrop::new(b);
+        // SAFETY: unique ownership of the memory block moves into `ptr`
+        let ptr = unsafe { &mut *manually_drop.0.as_ptr() };
+        // SAFETY: moving the allocator will not invalidate `ptr`
+        let alloc = unsafe { ptr::read(&manually_drop.1) };
+        (Unique::from(ptr), alloc)
     }
 
     /// Returns a reference to the underlying allocator.
@@ -1179,9 +1183,13 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[inline]
     pub const fn leak<'a>(b: Self) -> &'a mut T
     where
-        A: 'a,
+        A: ~const PinSafeAllocator,
     {
-        unsafe { &mut *mem::ManuallyDrop::new(b).0.as_ptr() }
+        let (ptr, alloc) = Box::into_unique(b);
+        mem::forget(alloc);
+        // SAFETY: ptr will remain valid for any lifetime since `alloc` is never
+        // dropped
+        unsafe { &mut *ptr.as_ptr() }
     }
 
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
@@ -1218,7 +1226,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     pub const fn into_pin(boxed: Self) -> Pin<Self>
     where
-        A: 'static,
+        A: ~const PinSafeAllocator,
     {
         // It's not possible to move or replace the insides of a `Pin<Box<T>>`
         // when `T: !Unpin`, so it's safe to pin it directly without any
@@ -1454,9 +1462,9 @@ impl<T> From<T> for Box<T> {
 
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const From<Box<T, A>> for Pin<Box<T, A>>
+impl<T: ?Sized, A> const From<Box<T, A>> for Pin<Box<T, A>>
 where
-    A: 'static,
+    A: ~const PinSafeAllocator,
 {
     /// Converts a `Box<T>` into a `Pin<Box<T>>`. If `T` does not implement [`Unpin`], then
     /// `*boxed` will be pinned in memory and unable to be moved.
@@ -2033,13 +2041,10 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
  */
 #[stable(feature = "pin", since = "1.33.0")]
 #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-impl<T: ?Sized, A: Allocator> const Unpin for Box<T, A> where A: 'static {}
+impl<T: ?Sized, A: Allocator> const Unpin for Box<T, A> {}
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R> + Unpin, R, A: Allocator> Generator<R> for Box<G, A>
-where
-    A: 'static,
-{
+impl<G: ?Sized + Generator<R> + Unpin, R, A: Allocator> Generator<R> for Box<G, A> {
     type Yield = G::Yield;
     type Return = G::Return;
 
@@ -2049,10 +2054,7 @@ where
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
-impl<G: ?Sized + Generator<R>, R, A: Allocator> Generator<R> for Pin<Box<G, A>>
-where
-    A: 'static,
-{
+impl<G: ?Sized + Generator<R>, R, A: Allocator> Generator<R> for Pin<Box<G, A>> {
     type Yield = G::Yield;
     type Return = G::Return;
 
@@ -2062,10 +2064,7 @@ where
 }
 
 #[stable(feature = "futures_api", since = "1.36.0")]
-impl<F: ?Sized + Future + Unpin, A: Allocator> Future for Box<F, A>
-where
-    A: 'static,
-{
+impl<F: ?Sized + Future + Unpin, A: Allocator> Future for Box<F, A> {
     type Output = F::Output;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {

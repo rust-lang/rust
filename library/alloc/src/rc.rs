@@ -630,6 +630,7 @@ impl<T> Rc<T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[must_use]
     pub fn pin(value: T) -> Pin<Rc<T>> {
+        // SAFETY: Global is a pin-safe allocator.
         unsafe { Pin::new_unchecked(Rc::new(value)) }
     }
 

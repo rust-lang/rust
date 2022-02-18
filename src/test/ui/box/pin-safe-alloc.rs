@@ -1,8 +1,10 @@
+// run-pass
 #![feature(allocator_api)]
+#![feature(box_into_pin)]
 
-use std::alloc::{AllocError, Allocator, Layout, System};
+use std::alloc::{AllocError, Allocator, Layout, PinSafeAllocator, System};
 use std::ptr::NonNull;
-
+use std::marker::PhantomPinned;
 use std::boxed::Box;
 
 struct Alloc {}
@@ -17,14 +19,18 @@ unsafe impl Allocator for Alloc {
     }
 }
 
-fn use_value(_: u32) {}
+unsafe impl PinSafeAllocator for Alloc {}
 
 fn main() {
+    struct MyPinned {
+        _value: u32,
+        _pinned: PhantomPinned,
+    }
+
+    let value = MyPinned {
+        _value: 0,
+        _pinned: PhantomPinned,
+    };
     let alloc = Alloc {};
-    let boxed = Box::new_in(10, alloc.by_ref());
-    //~^ ERROR `alloc` does not live long enough
-    let theref = Box::leak(boxed);
-    drop(alloc);
-    //~^ ERROR cannot move out of `alloc` because it is borrowed
-    use_value(*theref)
+    let _ = Box::pin_in(value, alloc);
 }
