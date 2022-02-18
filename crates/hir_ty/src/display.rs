@@ -1095,6 +1095,7 @@ impl HirDisplay for TypeRef {
                 write!(f, "]")?;
             }
             TypeRef::Fn(parameters, is_varargs) => {
+                // FIXME: Function pointer qualifiers.
                 write!(f, "fn(")?;
                 for index in 0..parameters.len() - 1 {
                     let (param_name, param_type) = &parameters[index];
