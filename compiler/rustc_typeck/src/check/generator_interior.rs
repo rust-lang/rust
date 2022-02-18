@@ -13,7 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
-use rustc_middle::middle::region::{self, YieldData};
+use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -369,7 +369,17 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         self.expr_count += 1;
 
-        let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
+
+        let scope = if self.drop_ranges.is_borrowed_temporary(expr) {
+            self.region_scope_tree.temporary_scope(expr.hir_id.local_id)
+        } else {
+            debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
+            match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
+                Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
+                None => self.region_scope_tree.temporary_scope(expr.hir_id.local_id),
+            }
+        };
 
         // If there are adjustments, then record the final type --
         // this is the actual value that is being produced.
