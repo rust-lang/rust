@@ -1199,11 +1199,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         hir::TraitFn::Required(ref names) => self.encode_fn_param_names(names),
                         hir::TraitFn::Provided(body) => self.encode_fn_param_names_for_body(body),
                     };
-                    FnData {
-                        asyncness: m_sig.header.asyncness,
-                        constness: hir::Constness::NotConst,
-                        param_names,
-                    }
+                    record!(self.tables.asyncness[def_id] <- m_sig.header.asyncness);
+                    FnData { constness: hir::Constness::NotConst, param_names }
                 } else {
                     bug!()
                 };
@@ -1264,8 +1261,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             ty::AssocKind::Fn => {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
+                    record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
                     FnData {
-                        asyncness: sig.header.asyncness,
                         // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
                         constness: if self.tcx.is_const_fn_raw(def_id) {
                             hir::Constness::Const
@@ -1407,8 +1404,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Const
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
+                record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
                 let data = FnData {
-                    asyncness: sig.header.asyncness,
                     constness: sig.header.constness,
                     param_names: self.encode_fn_param_names_for_body(body),
                 };
@@ -1876,8 +1873,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
+                record!(self.tables.asyncness[def_id] <- hir::IsAsync::NotAsync);
                 let data = FnData {
-                    asyncness: hir::IsAsync::NotAsync,
                     constness: if self.tcx.is_const_fn_raw(def_id) {
                         hir::Constness::Const
                     } else {

@@ -138,6 +138,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     coerce_unsized_info => { table }
     mir_const_qualif => { table }
     rendered_const => { table }
+    asyncness => { table }
 
     trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -149,7 +150,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     associated_item => { cdata.get_associated_item(def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
-    asyncness => { cdata.asyncness(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
     generator_kind => { cdata.generator_kind(def_id.index) }

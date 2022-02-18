@@ -310,6 +310,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
     mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
     rendered_const: Table<DefIndex, Lazy!(String)>,
+    asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -361,7 +362,6 @@ enum EntryKind {
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct FnData {
-    asyncness: hir::IsAsync,
     constness: hir::Constness,
     param_names: Lazy<[Ident]>,
 }

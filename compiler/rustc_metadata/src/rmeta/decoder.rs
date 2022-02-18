@@ -1431,15 +1431,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         constness == hir::Constness::Const
     }
 
-    fn asyncness(self, id: DefIndex) -> hir::IsAsync {
-        match self.kind(id) {
-            EntryKind::Fn(data) => data.decode(self).asyncness,
-            EntryKind::AssocFn(data) => data.decode(self).fn_data.asyncness,
-            EntryKind::ForeignFn(data) => data.decode(self).asyncness,
-            _ => bug!("asyncness: expected function kind"),
-        }
-    }
-
     fn is_foreign_item(self, id: DefIndex) -> bool {
         match self.kind(id) {
             EntryKind::ForeignImmStatic | EntryKind::ForeignMutStatic | EntryKind::ForeignFn(_) => {
