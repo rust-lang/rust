@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but unnormalized input args aren't treated as implied.
 
@@ -14,7 +15,7 @@ struct Foo;
 impl MyTrait for Foo {
     type Assoc<'a, 'b> where 'b: 'a = u32;
 
-    fn do_sth(_: u32) {} //~ lifetime bound
+    fn do_sth(_: u32) {}
     // fn do_sth(_: Self::Assoc<'static, 'static>) {}
     // fn do_sth(_: Self::Assoc<'_, '_>) {}
 }

@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but seems to run into a TAIT issue.
 
@@ -20,7 +21,6 @@ trait Yay<AdditionalValue> {
 
 impl<'a> Yay<&'a ()> for () {
     type InnerStream<'s> = impl Stream<Item = i32> + 's;
-    //~^ the type
     fn foo<'s>() -> Self::InnerStream<'s> { todo!() }
 }
 

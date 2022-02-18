@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass.
 
@@ -15,7 +16,6 @@ struct Bar;
 
 impl Foo for Bar {
     type Ass = Bar;
-    //~^ overflow
 }
 
 fn main() {}

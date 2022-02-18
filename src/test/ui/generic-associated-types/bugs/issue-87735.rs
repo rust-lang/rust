@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but we need an extension of implied bounds (probably).
 
@@ -23,7 +24,7 @@ struct Foo<T>(T);
 #[derive(Debug)]
 struct FooRef<'a, U>(&'a [U]);
 
-impl<'b, T, U> AsRef2 for Foo<T> //~ the type parameter
+impl<'b, T, U> AsRef2 for Foo<T>
 where
     // * `for<'b, 'c> T: AsRef2<Output<'b> = &'c [U]>>` does not work
     //
