@@ -404,6 +404,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         func.new_block(name)
     }
 
+    fn switch_to_block(&mut self, block: Self::BasicBlock) {
+        *self.cx.current_block.borrow_mut() = Some(block);
+        self.block = Some(block);
+    }
+
     fn ret_void(&mut self) {
         self.llbb().end_with_void_return(None)
     }
@@ -886,19 +891,20 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.br(header_bb);
 
-        let mut header_bx = Builder::build(self.cx, header_bb);
-        let keep_going = header_bx.icmp(IntPredicate::IntNE, current_val, end);
-        header_bx.cond_br(keep_going, body_bb, next_bb);
+        self.switch_to_block(header_bb);
+        let keep_going = self.icmp(IntPredicate::IntNE, current_val, end);
+        self.cond_br(keep_going, body_bb, next_bb);
 
-        let mut body_bx = Builder::build(self.cx, body_bb);
+        self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut body_bx, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
-        body_bx.llbb().add_assignment(None, current, next);
-        body_bx.br(header_bb);
+        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
+        self.llbb().add_assignment(None, current, next);
+        self.br(header_bb);
 
-        Builder::build(self.cx, next_bb)
+        self.switch_to_block(next_bb);
+        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
