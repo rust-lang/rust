@@ -47,12 +47,12 @@ impl<T> Sharded<T> {
 
     #[inline]
     pub fn get_shard_by_hash(&self, hash: u64) -> &Lock<T> {
-        &self.shards[get_shard_index_by_hash(hash)].0
+        if SHARDS == 1 { &self.shards[0].0 } else { &self.shards[get_shard_index_by_hash(hash)].0 }
     }
 
     #[inline]
     pub fn get_shard_by_index(&self, i: usize) -> &Lock<T> {
-        &self.shards[i].0
+        if SHARDS == 1 { &self.shards[0].0 } else { &self.shards[i].0 }
     }
 
     pub fn lock_shards(&self) -> Vec<LockGuard<'_, T>> {
@@ -142,9 +142,13 @@ fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
 /// consistently for each `Sharded` instance.
 #[inline]
 pub fn get_shard_index_by_hash(hash: u64) -> usize {
-    let hash_len = mem::size_of::<usize>();
-    // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.
-    // hashbrown also uses the lowest bits, so we can't use those
-    let bits = (hash >> (hash_len * 8 - 7 - SHARD_BITS)) as usize;
-    bits % SHARDS
+    if SHARDS == 1 {
+        0
+    } else {
+        let hash_len = mem::size_of::<usize>();
+        // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.
+        // hashbrown also uses the lowest bits, so we can't use those
+        let bits = (hash >> (hash_len * 8 - 7 - SHARD_BITS)) as usize;
+        bits % SHARDS
+    }
 }
