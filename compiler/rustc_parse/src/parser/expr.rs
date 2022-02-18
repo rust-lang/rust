@@ -269,6 +269,7 @@ impl<'a> Parser<'a> {
 
             if self.prev_token == token::BinOp(token::Plus)
                 && self.token == token::BinOp(token::Plus)
+                && self.prev_token.span.between(self.token.span).is_empty()
             {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
