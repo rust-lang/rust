@@ -151,7 +151,6 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     fn visit_ascribe_user_ty(
         &mut self,
         _place: &Place<'tcx>,
-        _variance: &ty::Variance,
         _user_ty: &UserTypeProjection,
         _location: Location,
     ) {

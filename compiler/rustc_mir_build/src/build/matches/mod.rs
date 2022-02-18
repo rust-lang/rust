@@ -546,24 +546,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     Statement {
                         source_info: ty_source_info,
-                        kind: StatementKind::AscribeUserType(
-                            Box::new((place, user_ty)),
-                            // We always use invariant as the variance here. This is because the
-                            // variance field from the ascription refers to the variance to use
-                            // when applying the type to the value being matched, but this
-                            // ascription applies rather to the type of the binding. e.g., in this
-                            // example:
-                            //
-                            // ```
-                            // let x: T = <expr>
-                            // ```
-                            //
-                            // We are creating an ascription that defines the type of `x` to be
-                            // exactly `T` (i.e., with invariance). The variance field, in
-                            // contrast, is intended to be used to relate `T` to the type of
-                            // `<expr>`.
-                            ty::Variance::Invariant,
-                        ),
+                        kind: StatementKind::AscribeUserType(Box::new((place, user_ty))),
                     },
                 );
 
@@ -2086,10 +2069,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block,
                 Statement {
                     source_info,
-                    kind: StatementKind::AscribeUserType(
-                        Box::new((ascription.source, user_ty)),
-                        ascription.variance,
-                    ),
+                    kind: StatementKind::AscribeUserType(Box::new((ascription.source, user_ty))),
                 },
             );
         }

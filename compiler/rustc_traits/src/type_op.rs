@@ -53,14 +53,14 @@ pub fn type_op_ascribe_user_type_with_span<'a, 'tcx: 'a>(
     key: ParamEnvAnd<'tcx, AscribeUserType<'tcx>>,
     span: Option<Span>,
 ) -> Result<(), NoSolution> {
-    let (param_env, AscribeUserType { mir_ty, def_id, user_substs }) = key.into_parts();
+    let (param_env, AscribeUserType { mir_ty, variance, def_id, user_substs }) = key.into_parts();
     debug!(
         "type_op_ascribe_user_type: mir_ty={:?} def_id={:?} user_substs={:?}",
         mir_ty, def_id, user_substs
     );
 
     let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
-    cx.relate_mir_and_user_ty(mir_ty, def_id, user_substs, span)?;
+    cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs, span)?;
     Ok(())
 }
 
@@ -121,6 +121,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
     fn relate_mir_and_user_ty(
         &mut self,
         mir_ty: Ty<'tcx>,
+        variance: ty::Variance,
         def_id: DefId,
         user_substs: UserSubsts<'tcx>,
         span: Option<Span>,
@@ -133,7 +134,7 @@ impl<'me, 'tcx> AscribeUserTypeCx<'me, 'tcx> {
         debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
 
-        self.relate(mir_ty, Variance::Invariant, ty)?;
+        self.relate(mir_ty, variance, ty)?;
 
         // Prove the predicates coming along with `def_id`.
         //

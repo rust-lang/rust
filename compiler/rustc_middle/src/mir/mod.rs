@@ -1581,7 +1581,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
+    AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>),
 
     /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
     /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
@@ -1705,8 +1705,8 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
-            AscribeUserType(box (ref place, ref c_ty), ref variance) => {
-                write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
+            AscribeUserType(box (ref place, ref c_ty)) => {
+                write!(fmt, "AscribeUserType({:?}, {:?})", place, c_ty)
             }
             Coverage(box self::Coverage { ref kind, code_region: Some(ref rgn) }) => {
                 write!(fmt, "Coverage::{:?} for {:?}", kind, rgn)

@@ -128,10 +128,9 @@ macro_rules! make_mir_visitor {
 
             fn visit_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
-                                     variance: & $($mutability)? ty::Variance,
                                      user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
-                self.super_ascribe_user_ty(place, variance, user_ty, location);
+                self.super_ascribe_user_ty(place, user_ty, location);
             }
 
             fn visit_coverage(&mut self,
@@ -413,9 +412,8 @@ macro_rules! make_mir_visitor {
                     }
                     StatementKind::AscribeUserType(
                         box(ref $($mutability)? place, ref $($mutability)? user_ty),
-                        variance
                     ) => {
-                        self.visit_ascribe_user_ty(place, variance, user_ty, location);
+                        self.visit_ascribe_user_ty(place, user_ty, location);
                     }
                     StatementKind::Coverage(coverage) => {
                         self.visit_coverage(
@@ -775,7 +773,6 @@ macro_rules! make_mir_visitor {
 
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
-                                     _variance: & $($mutability)? ty::Variance,
                                      user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(

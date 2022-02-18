@@ -365,7 +365,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.literal.ty(),
-                ty::Variance::Invariant,
                 &UserTypeProjection { base: annotation_index, projs: vec![] },
                 location.to_locations(),
                 ConstraintCategory::Boring,
@@ -425,6 +424,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                         ConstraintCategory::Boring,
                         self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
                             constant.literal.ty(),
+                            ty::Variance::Invariant,
                             uv.def.did,
                             UserSubsts { substs: uv.substs, user_self_ty: None },
                         )),
@@ -492,7 +492,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
                 if let Err(terr) = self.cx.relate_type_and_user_type(
                     ty,
-                    ty::Variance::Invariant,
                     user_ty,
                     Locations::All(*span),
                     ConstraintCategory::TypeAnnotation,
@@ -1108,6 +1107,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         ConstraintCategory::BoringNoLocation,
                         self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
                             inferred_ty,
+                            variance,
                             def_id,
                             user_substs,
                         )),
@@ -1178,7 +1178,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn relate_type_and_user_type(
         &mut self,
         a: Ty<'tcx>,
-        v: ty::Variance,
         user_ty: &UserTypeProjection,
         locations: Locations,
         category: ConstraintCategory,
@@ -1206,7 +1205,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         let ty = curr_projected_ty.ty;
-        self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;
+        self.relate_types(ty, ty::Variance::Invariant, a, locations, category)?;
 
         Ok(())
     }
@@ -1401,7 +1400,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if let Some(annotation_index) = self.rvalue_user_ty(rv) {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
-                        ty::Variance::Invariant,
                         &UserTypeProjection { base: annotation_index, projs: vec![] },
                         location.to_locations(),
                         ConstraintCategory::Boring,
@@ -1453,11 +1451,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(box (ref place, ref projection), variance) => {
+            StatementKind::AscribeUserType(box (ref place, ref projection)) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
-                    variance,
                     projection,
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,

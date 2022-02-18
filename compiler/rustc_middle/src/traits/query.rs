@@ -20,20 +20,26 @@ use std::mem;
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
     use crate::ty::subst::UserSubsts;
-    use crate::ty::{Predicate, Ty};
+    use crate::ty::{self, Predicate, Ty};
     use rustc_hir::def_id::DefId;
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
     pub struct AscribeUserType<'tcx> {
         pub mir_ty: Ty<'tcx>,
+        pub variance: ty::Variance,
         pub def_id: DefId,
         pub user_substs: UserSubsts<'tcx>,
     }
 
     impl<'tcx> AscribeUserType<'tcx> {
-        pub fn new(mir_ty: Ty<'tcx>, def_id: DefId, user_substs: UserSubsts<'tcx>) -> Self {
-            Self { mir_ty, def_id, user_substs }
+        pub fn new(
+            mir_ty: Ty<'tcx>,
+            variance: ty::Variance,
+            def_id: DefId,
+            user_substs: UserSubsts<'tcx>,
+        ) -> Self {
+            Self { mir_ty, variance, def_id, user_substs }
         }
     }
 

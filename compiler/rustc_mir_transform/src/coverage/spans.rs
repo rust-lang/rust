@@ -833,7 +833,7 @@ pub(super) fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span>
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Retag(_, _)
-        | StatementKind::AscribeUserType(_, _) => {
+        | StatementKind::AscribeUserType(_) => {
             Some(statement.source_info.span)
         }
     }

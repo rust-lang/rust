@@ -501,13 +501,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Statement {
                             source_info,
-                            kind: StatementKind::AscribeUserType(
-                                Box::new((
-                                    place,
-                                    UserTypeProjection { base: annotation_index, projs: vec![] },
-                                )),
-                                Variance::Invariant,
-                            ),
+                            kind: StatementKind::AscribeUserType(Box::new((
+                                place,
+                                UserTypeProjection { base: annotation_index, projs: vec![] },
+                            ))),
                         },
                     );
                 }
@@ -529,13 +526,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         Statement {
                             source_info,
-                            kind: StatementKind::AscribeUserType(
-                                Box::new((
-                                    Place::from(temp),
-                                    UserTypeProjection { base: annotation_index, projs: vec![] },
-                                )),
-                                Variance::Invariant,
-                            ),
+                            kind: StatementKind::AscribeUserType(Box::new((
+                                Place::from(temp),
+                                UserTypeProjection { base: annotation_index, projs: vec![] },
+                            ))),
                         },
                     );
                 }
