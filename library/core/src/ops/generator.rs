@@ -47,7 +47,7 @@ pub enum GeneratorState<Y, R> {
 /// fn main() {
 ///     let mut generator = || {
 ///         yield 1;
-///         return "foo"
+///         "foo"
 ///     };
 ///
 ///     match Pin::new(&mut generator).resume(()) {
