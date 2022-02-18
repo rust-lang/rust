@@ -1569,7 +1569,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         match ty.kind() {
             ty::Generator(..) => {
                 let data = self.tcx.generator_kind(def_id).unwrap();
-                record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Generator(data));
+                record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::Generator);
+                record!(self.tables.generator_kind[def_id.to_def_id()] <- data);
             }
 
             ty::Closure(..) => {

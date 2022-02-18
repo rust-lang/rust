@@ -312,6 +312,7 @@ define_tables! {
     rendered_const: Table<DefIndex, Lazy!(String)>,
     asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
     fn_arg_names: Table<DefIndex, Lazy!([Ident])>,
+    generator_kind: Table<DefIndex, Lazy!(hir::GeneratorKind)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -352,7 +353,7 @@ enum EntryKind {
     MacroDef(Lazy<MacroDef>),
     ProcMacro(MacroKind),
     Closure,
-    Generator(hir::GeneratorKind),
+    Generator,
     Trait(Lazy<TraitData>),
     Impl,
     AssocFn(Lazy<AssocFnData>),

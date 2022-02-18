@@ -1439,13 +1439,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn generator_kind(self, id: DefIndex) -> Option<hir::GeneratorKind> {
-        match self.kind(id) {
-            EntryKind::Generator(data) => Some(data),
-            _ => None,
-        }
-    }
-
     #[inline]
     fn def_key(self, index: DefIndex) -> DefKey {
         *self
