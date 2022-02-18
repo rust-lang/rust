@@ -318,6 +318,59 @@ fn test_drain_sorted_leak() {
 }
 
 #[test]
+fn test_drain_forget() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let mut q =
+        BinaryHeap::from(vec![a.spawn(Panic::Never), b.spawn(Panic::Never), c.spawn(Panic::Never)]);
+
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut it = q.drain();
+        it.next();
+        mem::forget(it);
+    }))
+    .unwrap();
+    // Behaviour after leaking is explicitly unspecified and order is arbitrary,
+    // so it's fine if these start failing, but probably worth knowing.
+    assert!(q.is_empty());
+    assert_eq!(a.dropped() + b.dropped() + c.dropped(), 1);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+    drop(q);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+}
+
+#[test]
+fn test_drain_sorted_forget() {
+    let a = CrashTestDummy::new(0);
+    let b = CrashTestDummy::new(1);
+    let c = CrashTestDummy::new(2);
+    let mut q =
+        BinaryHeap::from(vec![a.spawn(Panic::Never), b.spawn(Panic::Never), c.spawn(Panic::Never)]);
+
+    catch_unwind(AssertUnwindSafe(|| {
+        let mut it = q.drain_sorted();
+        it.next();
+        mem::forget(it);
+    }))
+    .unwrap();
+    // Behaviour after leaking is explicitly unspecified,
+    // so it's fine if these start failing, but probably worth knowing.
+    assert_eq!(q.len(), 2);
+    assert_eq!(a.dropped(), 0);
+    assert_eq!(b.dropped(), 0);
+    assert_eq!(c.dropped(), 1);
+    drop(q);
+    assert_eq!(a.dropped(), 1);
+    assert_eq!(b.dropped(), 1);
+    assert_eq!(c.dropped(), 1);
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = BinaryHeap::new();
     a.push(1);
