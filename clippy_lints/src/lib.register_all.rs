@@ -23,6 +23,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(bool_assert_comparison::BOOL_ASSERT_COMPARISON),
     LintId::of(booleans::LOGIC_BUG),
     LintId::of(booleans::NONMINIMAL_BOOL),
+    LintId::of(casts::CAST_ENUM_TRUNCATION),
     LintId::of(casts::CAST_REF_TO_MUT),
     LintId::of(casts::CHAR_LIT_AS_U8),
     LintId::of(casts::FN_TO_NUMERIC_CAST),
