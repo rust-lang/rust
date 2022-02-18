@@ -51,7 +51,8 @@ pub enum GenericArgKind<'tcx> {
 /// This function goes from `&'a [Ty<'tcx>]` to `&'a [GenericArg<'tcx>]`
 ///
 /// This is sound as, for types, `GenericArg` is just
-/// `NonZeroUsize::new_unchecked(ty as *const _ as usize)`.
+/// `NonZeroUsize::new_unchecked(ty as *const _ as usize)` as
+/// long as we use `0` for the `TYPE_TAG`.
 pub fn ty_slice_as_generic_args<'a, 'tcx>(ts: &'a [Ty<'tcx>]) -> &'a [GenericArg<'tcx>] {
     assert_eq!(TYPE_TAG, 0);
     // SAFETY: the whole slice is valid and immutable.

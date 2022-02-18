@@ -70,12 +70,20 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
             // See `fn intern_type_list` for more details.
             //
             // We therefore hash types without adding a hash for their discriminant.
+            //
+            // In order to make it very unlikely for the sequence of bytes being hashed for
+            // a `GenericArgKind::Type` to be the same as the sequence of bytes being
+            // hashed for one of the other variants, we hash a `0xFF` byte before hashing
+            // their discriminant (since the discriminant of `TyKind` is unlikely to ever start
+            // with 0xFF).
             ty::subst::GenericArgKind::Type(ty) => ty.hash_stable(hcx, hasher),
             ty::subst::GenericArgKind::Const(ct) => {
+                0xFFu8.hash_stable(hcx, hasher);
                 mem::discriminant(self).hash_stable(hcx, hasher);
                 ct.hash_stable(hcx, hasher);
             }
             ty::subst::GenericArgKind::Lifetime(lt) => {
+                0xFFu8.hash_stable(hcx, hasher);
                 mem::discriminant(self).hash_stable(hcx, hasher);
                 lt.hash_stable(hcx, hasher);
             }
