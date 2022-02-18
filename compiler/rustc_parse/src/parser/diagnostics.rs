@@ -1337,15 +1337,12 @@ impl<'a> Parser<'a> {
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
     ) {
-        let mut msg = format!("use `{}= 1` instead", kind.op.chr());
-        if base_src.trim() == "tmp" {
-            msg.push_str(" (rename `tmp` so it doesn't conflict with your variable)");
-        }
+        let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
         err.multipart_suggestion(
-            &msg,
+            &format!("use `{}= 1` instead", kind.op.chr()),
             vec![
-                (pre_span, "{ let tmp = ".to_string()),
-                (post_span, format!("; {} {}= 1; tmp }}", base_src, kind.op.chr())),
+                (pre_span, format!("{{ let {} = ", tmp_var)),
+                (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
             ],
             Applicability::HasPlaceholders,
         );

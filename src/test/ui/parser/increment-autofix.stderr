@@ -36,10 +36,10 @@ error: Rust has no postfix increment operator
 LL |     tmp++;
    |        ^^ not a valid postfix operator
    |
-help: use `+= 1` instead (rename `tmp` so it doesn't conflict with your variable)
+help: use `+= 1` instead
    |
-LL |     { let tmp = tmp; tmp += 1; tmp };
-   |     +++++++++++    ~~~~~~~~~~~~~~~~~
+LL |     { let tmp_ = tmp; tmp += 1; tmp_ };
+   |     ++++++++++++    ~~~~~~~~~~~~~~~~~~
 help: or, if you don't need to use it as an expression, change it to this
    |
 LL -     tmp++;
@@ -52,10 +52,10 @@ error: Rust has no postfix increment operator
 LL |     while tmp++ < 5 {
    |              ^^ not a valid postfix operator
    |
-help: use `+= 1` instead (rename `tmp` so it doesn't conflict with your variable)
+help: use `+= 1` instead
    |
-LL |     while { let tmp = tmp; tmp += 1; tmp } < 5 {
-   |           +++++++++++    ~~~~~~~~~~~~~~~~~
+LL |     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
+   |           ++++++++++++    ~~~~~~~~~~~~~~~~~~
 help: or, if you don't need to use it as an expression, change it to this
    |
 LL -     while tmp++ < 5 {
