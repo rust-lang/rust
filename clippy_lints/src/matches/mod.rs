@@ -668,9 +668,27 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     });
     let end = e.span.hi();
 
+    // Walk through all the non-code space before each match arm. The space trailing the final arm is
+    // handled after the `try_fold` e.g.
+    //
+    // match foo {
+    // _________^-                      everything between the scrutinee and arm1
+    //|    arm1 => (),
+    //|---^___________^                 everything before arm2
+    //|    #[cfg(feature = "enabled")]
+    //|    arm2 => some_code(),
+    //|---^____________________^        everything before arm3
+    //|    // some comment about arm3
+    //|    arm3 => some_code(),
+    //|---^____________________^        everything after arm3
+    //|    #[cfg(feature = "disabled")]
+    //|    arm4 = some_code(),
+    //|};
+    //|^
     let found = arm_spans.try_fold(start, |start, range| {
         let Some((end, next_start)) = range else {
-            // Shouldn't happen, but treat this as though a `cfg` attribute were found
+            // Shouldn't happen as macros can't expand to match arms, but treat this as though a `cfg` attribute were
+            // found.
             return Err(());
         };
         let span = SpanData {
@@ -697,6 +715,7 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
     }
 }
 
+/// Checks if the given span contains a `#[cfg(..)]` attribute
 fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
     let Some(snip) = snippet_opt(cx, s) else {
         // Assume true. This would require either an invalid span, or one which crosses file boundaries.
@@ -708,6 +727,8 @@ fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
         pos += t.len;
         (t.kind, start..pos)
     });
+
+    // Search for the token sequence [`#`, `[`, `cfg`]
     while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
         let mut iter = iter.by_ref().skip_while(|(t, _)| {
             matches!(
