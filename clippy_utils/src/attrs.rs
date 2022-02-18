@@ -22,6 +22,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
     ("cyclomatic_complexity", DeprecationStatus::Replaced("cognitive_complexity")),
     ("dump",                  DeprecationStatus::None),
     ("msrv",                  DeprecationStatus::None),
+    ("has_significant_drop",  DeprecationStatus::None),
 ];
 
 pub struct LimitStack {
