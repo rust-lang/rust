@@ -834,6 +834,12 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
+    /// The variance relation inferred type and the user type.
+    ///
+    /// If this is covariant, then `inferred_ty` has to be a subtype of `user_ty`.
+    ///
+    /// As the variance is already applied from `user_ty` to `inferred_ty`, all
+    /// other uses of `inferred_ty` should be invariant.
     pub variance: Variance,
 }
 
