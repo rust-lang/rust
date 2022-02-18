@@ -1,13 +1,13 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::expr_or_init;
-use clippy_utils::ty::is_isize_or_usize;
+use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
 use rustc_ast::ast;
 use rustc_attr::IntType;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, FloatTy, Ty, VariantDiscr};
+use rustc_middle::ty::{self, FloatTy, Ty};
 
 use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
@@ -117,17 +117,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             {
                 let i = def.variant_index_with_ctor_id(id);
                 let variant = &def.variants[i];
-                let nbits: u64 = match variant.discr {
-                    VariantDiscr::Explicit(id) => utils::read_explicit_enum_value(cx.tcx, id).unwrap().nbits(),
-                    VariantDiscr::Relative(x) => {
-                        match def.variants[(i.as_usize() - x as usize).into()].discr {
-                            VariantDiscr::Explicit(id) => {
-                                utils::read_explicit_enum_value(cx.tcx, id).unwrap().add(x).nbits()
-                            }
-                            VariantDiscr::Relative(_) => (32 - x.leading_zeros()).into(),
-                        }
-                    }
-                };
+                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, def, i));
                 (nbits, Some(variant))
             } else {
                 (utils::enum_ty_to_nbits(def, cx.tcx), None)

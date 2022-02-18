@@ -1,7 +1,5 @@
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
+use clippy_utils::ty::{read_explicit_enum_value, EnumValue};
 use rustc_middle::ty::{self, AdtDef, IntTy, Ty, TyCtxt, UintTy, VariantDiscr};
-use rustc_span::def_id::DefId;
-use rustc_target::abi::Size;
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
@@ -27,53 +25,13 @@ pub(super) fn int_ty_to_nbits(typ: Ty<'_>, tcx: TyCtxt<'_>) -> u64 {
     }
 }
 
-pub(super) enum EnumValue {
-    Unsigned(u128),
-    Signed(i128),
-}
-impl EnumValue {
-    pub(super) fn add(self, n: u32) -> Self {
-        match self {
-            Self::Unsigned(x) => Self::Unsigned(x + u128::from(n)),
-            Self::Signed(x) => Self::Signed(x + i128::from(n)),
-        }
+pub(super) fn enum_value_nbits(value: EnumValue) -> u64 {
+    match value {
+        EnumValue::Unsigned(x) => 128 - x.leading_zeros(),
+        EnumValue::Signed(x) if x < 0 => 128 - (-(x + 1)).leading_zeros() + 1,
+        EnumValue::Signed(x) => 128 - x.leading_zeros(),
     }
-
-    pub(super) fn nbits(self) -> u64 {
-        match self {
-            Self::Unsigned(x) => 128 - x.leading_zeros(),
-            Self::Signed(x) if x < 0 => 128 - (-(x + 1)).leading_zeros() + 1,
-            Self::Signed(x) => 128 - x.leading_zeros(),
-        }
-        .into()
-    }
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
-pub(super) fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
-    if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
-        match tcx.type_of(id).kind() {
-            ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
-                1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
-                2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
-                4 => i128::from(value.assert_bits(Size::from_bytes(4)) as u32 as i32),
-                8 => i128::from(value.assert_bits(Size::from_bytes(8)) as u64 as i64),
-                16 => value.assert_bits(Size::from_bytes(16)) as i128,
-                _ => return None,
-            })),
-            ty::Uint(_) => Some(EnumValue::Unsigned(match value.size().bytes() {
-                1 => value.assert_bits(Size::from_bytes(1)),
-                2 => value.assert_bits(Size::from_bytes(2)),
-                4 => value.assert_bits(Size::from_bytes(4)),
-                8 => value.assert_bits(Size::from_bytes(8)),
-                16 => value.assert_bits(Size::from_bytes(16)),
-                _ => return None,
-            })),
-            _ => None,
-        }
-    } else {
-        None
-    }
+    .into()
 }
 
 pub(super) fn enum_ty_to_nbits(adt: &AdtDef, tcx: TyCtxt<'_>) -> u64 {
