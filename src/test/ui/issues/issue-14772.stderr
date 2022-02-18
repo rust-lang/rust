@@ -1,8 +1,0 @@
-error: only functions may be used as tests
-  --> $DIR/issue-14772.rs:4:1
-   |
-LL | mod foo {}
-   | ^^^^^^^^^^
-
-error: aborting due to previous error
-

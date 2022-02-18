@@ -292,7 +292,7 @@ pub unsafe fn create_module<'ll>(
             "sign-return-address-all\0".as_ptr().cast(),
             pac_opts.leaf.into(),
         );
-        let is_bkey = if pac_opts.key == PAuthKey::A { false } else { true };
+        let is_bkey: bool = pac_opts.key != PAuthKey::A;
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,

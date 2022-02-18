@@ -823,7 +823,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
             );
             let mut all_stable = true;
             for ident in
-                attr.meta_item_list().into_iter().flatten().map(|nested| nested.ident()).flatten()
+                attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
             {
                 let name = ident.name;
                 let stable_since = lang_features

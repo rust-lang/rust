@@ -527,7 +527,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                       // FIXME(associated_const_equality): add a useful error message here.
                       tcx.ty_error_with_message(
                         DUMMY_SP,
-                        &format!("Could not find associated const on trait"),
+                        "Could not find associated const on trait",
                     )
                   }
                 }

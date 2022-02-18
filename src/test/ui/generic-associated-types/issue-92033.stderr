@@ -1,0 +1,22 @@
+error[E0477]: the type `&'s Texture` does not fulfill the required lifetime
+  --> $DIR/issue-92033.rs:22:28
+   |
+LL | /     type TextureIter<'a>: Iterator<Item = &'a Texture>
+LL | |     where
+LL | |         Self: 'a;
+   | |_________________- definition of `TextureIter` from trait
+...
+LL |       type TextureIter<'a> = std::option::IntoIter<&'a Texture>;
+   |                           -  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           |
+   |                           help: try copying this clause from the trait: `where Self: 'a`
+   |
+note: type must outlive the lifetime `'a` as defined here
+  --> $DIR/issue-92033.rs:22:22
+   |
+LL |     type TextureIter<'a> = std::option::IntoIter<&'a Texture>;
+   |                      ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0477`.

@@ -220,18 +220,16 @@ pub fn partition<'tcx>(
         let mut cgus: Vec<_> = post_inlining.codegen_units.iter_mut().collect();
         cgus.sort_by_key(|cgu| cgu.size_estimate());
 
-        let dead_code_cgu = if let Some(cgu) = cgus
-            .into_iter()
-            .rev()
-            .filter(|cgu| cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External))
-            .next()
-        {
-            cgu
-        } else {
-            // If there are no CGUs that have externally linked items,
-            // then we just pick the first CGU as a fallback.
-            &mut post_inlining.codegen_units[0]
-        };
+        let dead_code_cgu =
+            if let Some(cgu) = cgus.into_iter().rev().find(|cgu| {
+                cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External)
+            }) {
+                cgu
+            } else {
+                // If there are no CGUs that have externally linked items,
+                // then we just pick the first CGU as a fallback.
+                &mut post_inlining.codegen_units[0]
+            };
         dead_code_cgu.make_code_coverage_dead_code_cgu();
     }
 

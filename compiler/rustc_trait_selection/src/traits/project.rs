@@ -959,7 +959,7 @@ fn opt_normalize_projection_type<'a, 'b, 'tcx>(
                 infcx.inner.borrow_mut().projection_cache().insert_term(cache_key, result.clone());
             }
             obligations.extend(result.obligations);
-            Ok(Some(result.value.into()))
+            Ok(Some(result.value))
         }
         Ok(Projected::NoProgress(projected_ty)) => {
             let result = Normalized { value: projected_ty, obligations: vec![] };
