@@ -17,6 +17,7 @@
 #![feature(array_windows)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
 #![feature(nll)]
@@ -2103,13 +2104,9 @@ where
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let (file, line_lo, col_lo, line_hi, col_hi) = match ctx.span_data_to_lines_and_cols(&span)
-        {
-            Some(pos) => pos,
-            None => {
-                Hash::hash(&TAG_INVALID_SPAN, hasher);
-                return;
-            }
+        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span) else {
+            Hash::hash(&TAG_INVALID_SPAN, hasher);
+            return;
         };
 
         Hash::hash(&TAG_VALID_SPAN, hasher);

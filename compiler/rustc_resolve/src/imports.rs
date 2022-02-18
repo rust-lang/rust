@@ -351,13 +351,11 @@ impl<'a> Resolver<'a> {
             if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
                 continue;
             }
-            let module = match single_import.imported_module.get() {
-                Some(x) => x,
-                None => return Err((Undetermined, Weak::No)),
+            let Some(module) = single_import.imported_module.get() else {
+                return Err((Undetermined, Weak::No));
             };
-            let ident = match single_import.kind {
-                ImportKind::Single { source, .. } => source,
-                _ => unreachable!(),
+            let ImportKind::Single { source: ident, .. } = single_import.kind else {
+                unreachable!();
             };
             match self.resolve_ident_in_module(
                 module,
@@ -1347,12 +1345,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     }
 
     fn resolve_glob_import(&mut self, import: &'b Import<'b>) {
-        let module = match import.imported_module.get().unwrap() {
-            ModuleOrUniformRoot::Module(module) => module,
-            _ => {
-                self.r.session.span_err(import.span, "cannot glob-import all possible crates");
-                return;
-            }
+        let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
+            self.r.session.span_err(import.span, "cannot glob-import all possible crates");
+            return;
         };
 
         if module.is_trait() {

@@ -35,10 +35,7 @@ struct ExprVisitor<'tcx> {
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let (def, substs) = match *ty.kind() {
-        ty::Adt(def, substs) => (def, substs),
-        _ => return ty,
-    };
+    let ty::Adt(def, substs) = *ty.kind() else { return ty };
 
     if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
         let data_idx;
@@ -202,18 +199,15 @@ impl<'tcx> ExprVisitor<'tcx> {
             }
             _ => None,
         };
-        let asm_ty = match asm_ty {
-            Some(asm_ty) => asm_ty,
-            None => {
-                let msg = &format!("cannot use value of type `{}` for inline assembly", ty);
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-                err.note(
-                    "only integers, floats, SIMD vectors, pointers and function pointers \
-                     can be used as arguments for inline assembly",
-                );
-                err.emit();
-                return None;
-            }
+        let Some(asm_ty) = asm_ty else {
+            let msg = &format!("cannot use value of type `{}` for inline assembly", ty);
+            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            err.note(
+                "only integers, floats, SIMD vectors, pointers and function pointers \
+                 can be used as arguments for inline assembly",
+            );
+            err.emit();
+            return None;
         };
 
         // Check that the type implements Copy. The only case where this can
@@ -260,27 +254,24 @@ impl<'tcx> ExprVisitor<'tcx> {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
         let reg_class = reg.reg_class();
         let supported_tys = reg_class.supported_types(asm_arch);
-        let feature = match supported_tys.iter().find(|&&(t, _)| t == asm_ty) {
-            Some((_, feature)) => feature,
-            None => {
-                let msg = &format!("type `{}` cannot be used with this register class", ty);
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-                let supported_tys: Vec<_> =
-                    supported_tys.iter().map(|(t, _)| t.to_string()).collect();
-                err.note(&format!(
-                    "register class `{}` supports these types: {}",
-                    reg_class.name(),
-                    supported_tys.join(", "),
+        let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
+            let msg = &format!("type `{}` cannot be used with this register class", ty);
+            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            let supported_tys: Vec<_> =
+                supported_tys.iter().map(|(t, _)| t.to_string()).collect();
+            err.note(&format!(
+                "register class `{}` supports these types: {}",
+                reg_class.name(),
+                supported_tys.join(", "),
+            ));
+            if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
+                err.help(&format!(
+                    "consider using the `{}` register class instead",
+                    suggest.name()
                 ));
-                if let Some(suggest) = reg_class.suggest_class(asm_arch, asm_ty) {
-                    err.help(&format!(
-                        "consider using the `{}` register class instead",
-                        suggest.name()
-                    ));
-                }
-                err.emit();
-                return Some(asm_ty);
             }
+            err.emit();
+            return Some(asm_ty);
         };
 
         // Check whether the selected type requires a target feature. Note that

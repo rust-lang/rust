@@ -58,9 +58,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         let callee_ty = instance.ty(bx.tcx(), ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => (def_id, substs),
-            _ => bug!("expected fn item type, found {}", callee_ty),
+        let ty::FnDef(def_id, substs) = *callee_ty.kind() else {
+            bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(bx.tcx());
@@ -338,21 +337,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     );
                     return;
                 }
-                let (_width, signed) = match int_type_width_signed(ret_ty, bx.tcx()) {
-                    Some(pair) => pair,
-                    None => {
-                        span_invalid_monomorphization_error(
-                            bx.tcx().sess,
-                            span,
-                            &format!(
-                                "invalid monomorphization of `float_to_int_unchecked` \
-                                      intrinsic:  expected basic integer type, \
-                                      found `{}`",
-                                ret_ty
-                            ),
-                        );
-                        return;
-                    }
+                let Some((_width, signed)) = int_type_width_signed(ret_ty, bx.tcx()) else {
+                    span_invalid_monomorphization_error(
+                        bx.tcx().sess,
+                        span,
+                        &format!(
+                            "invalid monomorphization of `float_to_int_unchecked` \
+                                    intrinsic:  expected basic integer type, \
+                                    found `{}`",
+                            ret_ty
+                        ),
+                    );
+                    return;
                 };
                 if signed {
                     bx.fptosi(args[0].immediate(), llret_ty)

@@ -263,9 +263,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         while let Some(vid) = changes.pop() {
             constraints[vid].retain(|&(a_vid, b_vid)| {
-                let a_region = match *var_values.value(a_vid) {
-                    VarValue::ErrorValue => return false,
-                    VarValue::Value(a_region) => a_region,
+                let VarValue::Value(a_region) = *var_values.value(a_vid) else {
+                    return false;
                 };
                 let b_data = var_values.value_mut(b_vid);
                 if self.expand_node(a_region, b_vid, b_data) {
@@ -485,9 +484,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     let a_data = var_data.value_mut(a_vid);
                     debug!("contraction: {:?} == {:?}, {:?}", a_vid, a_data, b_region);
 
-                    let a_region = match *a_data {
-                        VarValue::ErrorValue => continue,
-                        VarValue::Value(a_region) => a_region,
+                    let VarValue::Value(a_region) = *a_data else {
+                        continue;
                     };
 
                     // Do not report these errors immediately:

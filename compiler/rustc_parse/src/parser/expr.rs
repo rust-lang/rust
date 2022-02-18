@@ -1667,9 +1667,8 @@ impl<'a> Parser<'a> {
             Err(LitError::NotLiteral) => None,
             Err(err) => {
                 let span = token.span;
-                let lit = match token.kind {
-                    token::Literal(lit) => lit,
-                    _ => unreachable!(),
+                let token::Literal(lit) = token.kind else {
+                    unreachable!();
                 };
                 self.bump();
                 self.report_lit_error(err, lit, span);

@@ -39,12 +39,9 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         let def_id = body.source.def_id();
-        let returned_local = match local_eligible_for_nrvo(body) {
-            Some(l) => l,
-            None => {
-                debug!("`{:?}` was ineligible for NRVO", def_id);
-                return;
-            }
+        let Some(returned_local) = local_eligible_for_nrvo(body) else {
+            debug!("`{:?}` was ineligible for NRVO", def_id);
+            return;
         };
 
         if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {

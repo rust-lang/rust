@@ -369,10 +369,9 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
         unsafe {
             let attrs = self.tcx.codegen_fn_attrs(def_id);
 
-            let (v, alloc) = match codegen_static_initializer(self, def_id) {
-                Ok(v) => v,
+            let Ok((v, alloc)) = codegen_static_initializer(self, def_id) else {
                 // Error has already been reported
-                Err(_) => return,
+                return;
             };
 
             let g = self.get_static(def_id);

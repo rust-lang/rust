@@ -62,10 +62,7 @@ fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Option<ConstVa
     use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {
         ty::FloatTy::F32 => {
-            let rust_f = match num.parse::<f32>() {
-                Ok(f) => f,
-                Err(_) => return None,
-            };
+            let Ok(rust_f) = num.parse::<f32>() else { return None };
             let mut f = num.parse::<Single>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
             });
@@ -85,10 +82,7 @@ fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Option<ConstVa
             Scalar::from_f32(f)
         }
         ty::FloatTy::F64 => {
-            let rust_f = match num.parse::<f64>() {
-                Ok(f) => f,
-                Err(_) => return None,
-            };
+            let Ok(rust_f) = num.parse::<f64>() else { return None };
             let mut f = num.parse::<Double>().unwrap_or_else(|e| {
                 panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
             });

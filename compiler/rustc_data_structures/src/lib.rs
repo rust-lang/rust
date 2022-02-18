@@ -14,6 +14,7 @@
 #![feature(control_flow_enum)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
+#![feature(let_else)]
 #![feature(hash_raw_entry)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(min_specialization)]

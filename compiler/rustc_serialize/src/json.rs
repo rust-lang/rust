@@ -2306,9 +2306,8 @@ impl crate::Decoder for Decoder {
             }
             json => bad!(ExpectedError("String or Object".to_owned(), json.to_string())),
         };
-        let idx = match names.iter().position(|n| *n == &name[..]) {
-            Some(idx) => idx,
-            None => bad!(UnknownVariantError(name)),
+        let Some(idx) = names.iter().position(|n| *n == &name[..]) else {
+            bad!(UnknownVariantError(name));
         };
         f(self, idx)
     }

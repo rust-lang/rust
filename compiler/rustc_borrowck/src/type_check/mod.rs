@@ -810,13 +810,12 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
-                    let mut variant = match variants.nth(variant_index.into()) {
-                        Some(v) => v,
-                        None => bug!(
+                    let Some(mut variant) = variants.nth(variant_index.into()) else {
+                        bug!(
                             "variant_index of generator out of range: {:?}/{:?}",
                             variant_index,
                             substs.as_generator().state_tys(def_id, tcx).count()
-                        ),
+                        );
                     };
                     return match variant.nth(field.index()) {
                         Some(ty) => Ok(ty),
@@ -2178,35 +2177,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body, tcx).kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_from,
-                                mutbl: hir::Mutability::Mut,
-                            }) => ty_from,
-                            _ => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "unexpected base type for cast {:?}",
-                                    ty,
-                                );
-                                return;
-                            }
+                        let ty::RawPtr(ty::TypeAndMut {
+                            ty: ty_from,
+                            mutbl: hir::Mutability::Mut,
+                        }) = op.ty(body, tcx).kind() else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "unexpected base type for cast {:?}",
+                                ty,
+                            );
+                            return;
                         };
-                        let ty_to = match ty.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_to,
-                                mutbl: hir::Mutability::Not,
-                            }) => ty_to,
-                            _ => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "unexpected target type for cast {:?}",
-                                    ty,
-                                );
-                                return;
-                            }
+                        let ty::RawPtr(ty::TypeAndMut {
+                            ty: ty_to,
+                            mutbl: hir::Mutability::Not,
+                        }) = ty.kind() else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "unexpected target type for cast {:?}",
+                                ty,
+                            );
+                            return;
                         };
                         if let Err(terr) = self.sub_types(
                             *ty_from,
@@ -2238,17 +2231,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             _ => None,
                         };
 
-                        let (ty_elem, ty_mut) = match opt_ty_elem_mut {
-                            Some(ty_elem_mut) => ty_elem_mut,
-                            None => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "ArrayToPointer cast from unexpected type {:?}",
-                                    ty_from,
-                                );
-                                return;
-                            }
+                        let Some((ty_elem, ty_mut)) = opt_ty_elem_mut else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "ArrayToPointer cast from unexpected type {:?}",
+                                ty_from,
+                            );
+                            return;
                         };
 
                         let (ty_to, ty_to_mut) = match ty.kind() {

@@ -756,9 +756,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                     return;
                 }
 
-                let cnum = match self.tcx.extern_mod_stmt_cnum(item.def_id) {
-                    Some(cnum) => cnum,
-                    None => return,
+                let Some(cnum) = self.tcx.extern_mod_stmt_cnum(item.def_id) else {
+                    return;
                 };
                 let def_id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
                 self.tcx.check_stability(def_id, Some(item.hir_id()), item.span, None);
@@ -808,10 +807,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // so semi-randomly perform it here in stability.rs
             hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
                 let ty = self.tcx.type_of(item.def_id);
-                let (adt_def, substs) = match ty.kind() {
-                    ty::Adt(adt_def, substs) => (adt_def, substs),
-                    _ => bug!(),
-                };
+                let ty::Adt(adt_def, substs) = ty.kind() else { bug!() };
 
                 // Non-`Copy` fields are unstable, except for `ManuallyDrop`.
                 let param_env = self.tcx.param_env(item.def_id);

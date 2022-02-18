@@ -596,9 +596,8 @@ impl server::Literal for Rustc<'_, '_> {
         let minus_present = parser.eat(&token::BinOp(token::Minus));
 
         let lit_span = parser.token.span.data();
-        let mut lit = match parser.token.kind {
-            token::Literal(lit) => lit,
-            _ => return Err(()),
+        let token::Literal(mut lit) = parser.token.kind else {
+            return Err(());
         };
 
         // Check no comment or whitespace surrounding the (possibly negative)

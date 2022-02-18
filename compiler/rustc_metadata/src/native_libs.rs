@@ -33,9 +33,8 @@ struct Collector<'tcx> {
 
 impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let (abi, foreign_mod_items) = match it.kind {
-            hir::ItemKind::ForeignMod { abi, items } => (abi, items),
-            _ => return,
+        let hir::ItemKind::ForeignMod { abi, items: foreign_mod_items } = it.kind else {
+            return;
         };
 
         if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
@@ -45,9 +44,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
-            let items = match m.meta_item_list() {
-                Some(item) => item,
-                None => continue,
+            let Some(items) = m.meta_item_list() else {
+                continue;
             };
             let mut lib = NativeLib {
                 name: None,
@@ -63,9 +61,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
             for item in items.iter() {
                 if item.has_name(sym::kind) {
                     kind_specified = true;
-                    let kind = match item.value_str() {
-                        Some(name) => name,
-                        None => continue, // skip like historical compilers
+                    let Some(kind) = item.value_str() else {
+                        continue; // skip like historical compilers
                     };
                     lib.kind = match kind.as_str() {
                         "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
@@ -101,9 +98,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 } else if item.has_name(sym::name) {
                     lib.name = item.value_str();
                 } else if item.has_name(sym::cfg) {
-                    let cfg = match item.meta_item_list() {
-                        Some(list) => list,
-                        None => continue, // skip like historical compilers
+                    let Some(cfg) = item.meta_item_list() else {
+                        continue; // skip like historical compilers
                     };
                     if cfg.is_empty() {
                         sess.span_err(item.span(), "`cfg()` must have an argument");
@@ -262,11 +258,8 @@ impl Collector<'_> {
         }
         // this just unwraps lib.name; we already established that it isn't empty above.
         if let (NativeLibKind::RawDylib, Some(lib_name)) = (lib.kind, lib.name) {
-            let span = match span {
-                Some(s) => s,
-                None => {
-                    bug!("raw-dylib libraries are not supported on the command line");
-                }
+            let Some(span) = span else {
+                bug!("raw-dylib libraries are not supported on the command line");
             };
 
             if !self.tcx.sess.target.options.is_like_windows {

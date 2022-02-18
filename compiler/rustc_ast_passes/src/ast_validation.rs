@@ -482,9 +482,8 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body: Option<Span>) {
-        let body = match body {
-            None => return,
-            Some(body) => body,
+        let Some(body) = body else {
+            return;
         };
         self.err_handler()
             .struct_span_err(ident.span, &format!("incorrect `{}` inside `extern` block", kind))
@@ -504,9 +503,8 @@ impl<'a> AstValidator<'a> {
 
     /// An `fn` in `extern { ... }` cannot have a body `{ ... }`.
     fn check_foreign_fn_bodyless(&self, ident: Ident, body: Option<&Block>) {
-        let body = match body {
-            None => return,
-            Some(body) => body,
+        let Some(body) = body else {
+            return;
         };
         self.err_handler()
             .struct_span_err(ident.span, "incorrect function inside `extern` block")

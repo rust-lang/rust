@@ -89,9 +89,8 @@ pub fn dump_mir<'tcx, F>(
 }
 
 pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
-    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
-        None => return false,
-        Some(ref filters) => filters,
+    let Some(ref filters) = tcx.sess.opts.debugging_opts.dump_mir else {
+        return false;
     };
     let node_path = ty::print::with_forced_impl_filename_line(|| {
         // see notes on #41697 below
@@ -586,9 +585,8 @@ fn write_scope_tree(
         )?;
     }
 
-    let children = match scope_tree.get(&parent) {
-        Some(children) => children,
-        None => return Ok(()),
+    let Some(children) = scope_tree.get(&parent) else {
+        return Ok(());
     };
 
     for &child in children {

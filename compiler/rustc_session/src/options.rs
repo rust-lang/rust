@@ -762,12 +762,9 @@ mod parse {
             }
         }
 
-        let v = match v {
-            None => {
-                *slot = Some(MirSpanview::Statement);
-                return true;
-            }
-            Some(v) => v,
+        let Some(v) = v else {
+            *slot = Some(MirSpanview::Statement);
+            return true;
         };
 
         *slot = Some(match v.trim_end_matches('s') {
@@ -791,12 +788,9 @@ mod parse {
             }
         }
 
-        let v = match v {
-            None => {
-                *slot = Some(InstrumentCoverage::All);
-                return true;
-            }
-            Some(v) => v,
+        let Some(v) = v else {
+            *slot = Some(InstrumentCoverage::All);
+            return true;
         };
 
         *slot = Some(match v {

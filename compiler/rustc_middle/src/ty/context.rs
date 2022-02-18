@@ -1123,9 +1123,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn layout_scalar_valid_range(self, def_id: DefId) -> (Bound<u128>, Bound<u128>) {
         let attrs = self.get_attrs(def_id);
         let get = |name| {
-            let attr = match attrs.iter().find(|a| a.has_name(name)) {
-                Some(attr) => attr,
-                None => return Bound::Unbounded,
+            let Some(attr) = attrs.iter().find(|a| a.has_name(name)) else {
+                return Bound::Unbounded;
             };
             debug!("layout_scalar_valid_range: attr={:?}", attr);
             if let Some(
@@ -1513,9 +1512,8 @@ impl<'tcx> TyCtxt<'tcx> {
         scope_def_id: LocalDefId,
     ) -> Vec<&'tcx hir::Ty<'tcx>> {
         let hir_id = self.hir().local_def_id_to_hir_id(scope_def_id);
-        let hir_output = match self.hir().fn_decl_by_hir_id(hir_id) {
-            Some(hir::FnDecl { output: hir::FnRetTy::Return(ty), .. }) => ty,
-            _ => return vec![],
+        let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir().fn_decl_by_hir_id(hir_id) else {
+            return vec![];
         };
 
         let mut v = TraitObjectVisitor(vec![], self.hir());
