@@ -77,6 +77,7 @@ pub fn reserved_x18(
     _arch: InlineAsmArch,
     _target_features: &FxHashSet<Symbol>,
     target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if target.os == "android"
         || target.is_like_fuchsia

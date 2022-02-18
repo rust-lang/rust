@@ -56,6 +56,7 @@ fn not_e(
     _arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if target_features.contains(&sym::e) {
         Err("register can't be used with the `e` target feature")

@@ -47,6 +47,7 @@ fn only_alu32(
     _arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if !target_features.contains(&sym::alu32) {
         Err("register can't be used without the `alu32` target feature")
