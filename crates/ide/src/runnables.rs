@@ -426,8 +426,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                             ty_args.format_with(", ", |ty, cb| cb(&ty.display(db)))
                         );
                     }
-                    format_to!(path, "::{}", def_name);
-                    return Some(path);
+                    format_to!(path, "::{}\"", def_name);
+                    return Some(format!("\"{}", path));
                 }
             }
         }
@@ -966,7 +966,7 @@ impl Data {
                         },
                         kind: DocTest {
                             test_id: Path(
-                                "Data::foo",
+                                "\"Data::foo\"",
                             ),
                         },
                         cfg: None,
@@ -1360,7 +1360,7 @@ impl Foo {
                         },
                         kind: DocTest {
                             test_id: Path(
-                                "foo::Foo::foo",
+                                "\"foo::Foo::foo\"",
                             ),
                         },
                         cfg: None,
@@ -2066,7 +2066,7 @@ impl<T, U> Foo<T, U> {
                         },
                         kind: DocTest {
                             test_id: Path(
-                                "Foo<T, U>::t",
+                                "\"Foo<T, U>::t\"",
                             ),
                         },
                         cfg: None,
