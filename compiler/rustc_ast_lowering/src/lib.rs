@@ -1659,12 +1659,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // When we create the opaque type for this async fn, it is going to have
         // to capture all the lifetimes involved in the signature (including in the
-        // return type). This is done by:
+        // return type). This is done by introducing lifetime parameters for:
         //
-        // - making the opaque type inherit all lifetime parameters from its parent;
-        // - make all the elided lifetimes in the fn arguments into parameters;
-        // - manually introducing parameters on the opaque type for elided
-        //   lifetimes in the return type.
+        // - all the explicitly declared lifetimes from the impl and function itself;
+        // - all the elided lifetimes in the fn arguments;
+        // - all the elided lifetimes in the return type.
         //
         // So for example in this snippet:
         //
@@ -1680,14 +1679,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we would create an opaque type like:
         //
         // ```
-        // type Foo<'a>::bar<'b, '0, '1>::Bar<'2> = impl Future<Output = &'2 u32>;
+        // type Bar<'a, 'b, '0, '1, '2> = impl Future<Output = &'2 u32>;
         // ```
         //
         // and we would then desugar `bar` to the equivalent of:
         //
         // ```rust
         // impl<'a> Foo<'a> {
-        //   fn bar<'b, '0, '1>(&'0 self, x: &'b Vec<f64>, y: &'1 str) -> Bar<'_>
+        //   fn bar<'b, '0, '1>(&'0 self, x: &'b Vec<f64>, y: &'1 str) -> Bar<'a, 'b, '0, '1, '_>
         // }
         // ```
         //
@@ -1695,7 +1694,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // this is because the elided lifetimes from the return type
         // should be figured out using the ordinary elision rules, and
         // this desugaring achieves that.
-        let mut lifetime_params = Vec::new();
+
+        debug!("lower_async_fn_ret_ty: in_scope_lifetimes={:#?}", self.in_scope_lifetimes);
+        debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", self.lifetimes_to_define);
+
+        // Calculate all the lifetimes that should be captured
+        // by the opaque type. This should include all in-scope
+        // lifetime parameters, including those defined in-band.
+        //
+        // `lifetime_params` is a vector of tuple (span, parameter name, lifetime name).
+
+        // Input lifetime like `'a` or `'1`:
+        let mut lifetime_params: Vec<_> = self
+            .in_scope_lifetimes
+            .iter()
+            .cloned()
+            .map(|name| (name.ident().span, name, hir::LifetimeName::Param(name)))
+            .chain(
+                self.lifetimes_to_define
+                    .iter()
+                    .map(|&(span, name)| (span, name, hir::LifetimeName::Param(name))),
+            )
+            .collect();
+
         self.with_hir_id_owner(opaque_ty_node_id, |this| {
             // We have to be careful to get elision right here. The
             // idea is that we create a lifetime parameter for each
@@ -1714,12 +1735,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_async_fn_ret_ty: future_bound={:#?}", future_bound);
             debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", lifetimes_to_define);
 
-            // Output lifetime like `'_`:
-            lifetime_params = lifetimes_to_define;
+            lifetime_params.extend(
+                // Output lifetime like `'_`:
+                lifetimes_to_define
+                    .into_iter()
+                    .map(|(span, name)| (span, name, hir::LifetimeName::Implicit(false))),
+            );
             debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
             let generic_params =
-                this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name)| {
+                this.arena.alloc_from_iter(lifetime_params.iter().map(|&(span, hir_name, _)| {
                     this.lifetime_to_generic_param(span, hir_name, opaque_ty_def_id)
                 }));
 
@@ -1737,22 +1762,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             this.generate_opaque_type(opaque_ty_def_id, opaque_ty_item, span, opaque_ty_span)
         });
 
-        // We need to create the lifetime arguments to our opaque type.
-        // Continuing with our example, we're creating the type arguments
-        // for the return type:
+        // As documented above on the variable
+        // `input_lifetimes_count`, we need to create the lifetime
+        // arguments to our opaque type. Continuing with our example,
+        // we're creating the type arguments for the return type:
         //
         // ```
-        // For<'a>::bar<'b, '0, '1>::Bar<'_>
+        // Bar<'a, 'b, '0, '1, '_>
         // ```
         //
-        // For the "input" lifetime parameters are inherited automatically.
-        // For the "output" lifetime parameters, we just want to generate `'_`.
+        // For the "input" lifetime parameters, we wish to create
+        // references to the parameters themselves, including the
+        // "implicit" ones created from parameter types (`'a`, `'b`,
+        // '`0`, `'1`).
+        //
+        // For the "output" lifetime parameters, we just want to
+        // generate `'_`.
         let generic_args =
-            self.arena.alloc_from_iter(lifetime_params.into_iter().map(|(span, _)| {
+            self.arena.alloc_from_iter(lifetime_params.into_iter().map(|(span, _, name)| {
                 GenericArg::Lifetime(hir::Lifetime {
                     hir_id: self.next_id(),
                     span: self.lower_span(span),
-                    name: hir::LifetimeName::Implicit(false),
+                    name,
                 })
             }));
 

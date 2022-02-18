@@ -8,6 +8,7 @@ pub struct Foo<'a> {
 
 impl<'a> Foo<'a> {
     pub async fn new(_bar: &'a i32) -> Self {
+    //~^ ERROR `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
         Foo {
             bar: &22
         }
@@ -18,7 +19,6 @@ async fn foo() {
     let x = {
         let bar = 22;
         Foo::new(&bar).await
-        //~^ ERROR `bar` does not live long enough [E0597]
     };
     drop(x);
 }

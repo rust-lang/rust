@@ -1,0 +1,11 @@
+error[E0760]: `async fn` return type cannot contain a projection or `Self` that references lifetimes from a parent scope
+  --> $DIR/issue-78600.rs:6:33
+   |
+LL |     async fn new(i: &'a i32) -> Result<Self, ()> {
+   |                                 ^^^^^^^----^^^^^
+   |                                        |
+   |                                        help: consider spelling out the type instead: `S<'a>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0760`.

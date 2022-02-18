@@ -545,8 +545,10 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
         }
     }
 
-    if let ItemKind::OpaqueTy(hir::OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(..), .. }) =
-        item.kind
+    if let ItemKind::OpaqueTy(hir::OpaqueTy {
+        origin: hir::OpaqueTyOrigin::AsyncFn(..) | hir::OpaqueTyOrigin::FnReturn(..),
+        ..
+    }) = item.kind
     {
         let mut visitor = ProhibitOpaqueVisitor {
             opaque_identity_ty: tcx.mk_opaque(
@@ -568,13 +570,20 @@ pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
 
         if let Some(ty) = prohibit_opaque.break_value() {
             visitor.visit_item(&item);
+            let is_async = match item.kind {
+                ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
+                    matches!(origin, hir::OpaqueTyOrigin::AsyncFn(..))
+                }
+                _ => unreachable!(),
+            };
 
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
                 E0760,
-                "`impl Trait` return type cannot contain a projection or `Self` that references lifetimes from \
+                "`{}` return type cannot contain a projection or `Self` that references lifetimes from \
                  a parent scope",
+                if is_async { "async fn" } else { "impl Trait" },
             );
 
             for (span, name) in visitor.selftys {

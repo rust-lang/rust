@@ -10,13 +10,10 @@
 // Even wrong cases don't cause errors because async functions are desugared with all lifetimes
 // involved in the signature. So, we cannot predict what lifetimes are unused in async function.
 async fn async_wrong_without_args<'a>() {}
-//~^ ERROR lifetime parameter `'a` never used [unused_lifetimes]
 
 async fn async_wrong_1_lifetime<'a>(_: &i32) {}
-//~^ ERROR lifetime parameter `'a` never used [unused_lifetimes]
 
 async fn async_wrong_2_lifetimes<'a, 'b>(_: &'a i32, _: &i32) {}
-//~^ ERROR lifetime parameter `'b` never used [unused_lifetimes]
 
 async fn async_right_1_lifetime<'a>(_: &'a i32) {}
 
