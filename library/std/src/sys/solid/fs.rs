@@ -289,7 +289,26 @@ impl OpenOptions {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(CString::new(path.as_os_str().as_bytes())?)
+    let path = path.as_os_str().as_bytes();
+
+    if !path.starts_with(br"\") {
+        // Relative paths aren't supported
+        return Err(crate::io::const_io_error!(
+            crate::io::ErrorKind::Unsupported,
+            "relative path is not supported on this platform",
+        ));
+    }
+
+    // Apply the thread-safety wrapper
+    const SAFE_PREFIX: &[u8] = br"\TS";
+    let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
+
+    CString::from_vec_with_nul(wrapped_path).map_err(|_| {
+        crate::io::const_io_error!(
+            io::ErrorKind::InvalidInput,
+            "path provided contains a nul byte",
+        )
+    })
 }
 
 impl File {
