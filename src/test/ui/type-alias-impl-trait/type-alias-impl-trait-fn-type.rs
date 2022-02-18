@@ -4,7 +4,7 @@
 // FIXME: this is ruled out for now but should work
 
 type Foo = fn() -> impl Send;
-//~^ ERROR: `impl Trait` not allowed outside of function and method return types
+//~^ ERROR: `impl Trait` only allowed in function and inherent method return types
 
 fn make_foo() -> Foo {
     || 15
