@@ -1195,12 +1195,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             ty::AssocKind::Fn => {
                 let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
-                    let param_names = match *m {
-                        hir::TraitFn::Required(ref names) => self.encode_fn_param_names(names),
-                        hir::TraitFn::Provided(body) => self.encode_fn_param_names_for_body(body),
+                    match *m {
+                        hir::TraitFn::Required(ref names) => {
+                            record!(self.tables.fn_arg_names[def_id] <- *names)
+                        }
+                        hir::TraitFn::Provided(body) => {
+                            record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
+                        }
                     };
                     record!(self.tables.asyncness[def_id] <- m_sig.header.asyncness);
-                    FnData { constness: hir::Constness::NotConst, param_names }
+                    FnData { constness: hir::Constness::NotConst }
                 } else {
                     bug!()
                 };
@@ -1262,6 +1266,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::AssocKind::Fn => {
                 let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
                     record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
+                    record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                     FnData {
                         // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
                         constness: if self.tcx.is_const_fn_raw(def_id) {
@@ -1269,7 +1274,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         } else {
                             hir::Constness::NotConst
                         },
-                        param_names: self.encode_fn_param_names_for_body(body),
                     }
                 } else {
                     bug!()
@@ -1292,14 +1296,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
         }
-    }
-
-    fn encode_fn_param_names_for_body(&mut self, body_id: hir::BodyId) -> Lazy<[Ident]> {
-        self.lazy(self.tcx.hir().body_param_names(body_id))
-    }
-
-    fn encode_fn_param_names(&mut self, param_names: &[Ident]) -> Lazy<[Ident]> {
-        self.lazy(param_names.iter())
     }
 
     fn encode_mir(&mut self) {
@@ -1405,10 +1401,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
                 record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
-                let data = FnData {
-                    constness: sig.header.constness,
-                    param_names: self.encode_fn_param_names_for_body(body),
-                };
+                record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
+                let data = FnData { constness: sig.header.constness };
 
                 EntryKind::Fn(self.lazy(data))
             }
@@ -1874,13 +1868,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 record!(self.tables.asyncness[def_id] <- hir::IsAsync::NotAsync);
+                record!(self.tables.fn_arg_names[def_id] <- *names);
                 let data = FnData {
                     constness: if self.tcx.is_const_fn_raw(def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
                     },
-                    param_names: self.encode_fn_param_names(names),
                 };
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignFn(self.lazy(data)));
             }

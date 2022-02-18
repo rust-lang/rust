@@ -1395,15 +1395,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
-    fn get_fn_param_names(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [Ident] {
-        let param_names = match self.kind(id) {
-            EntryKind::Fn(data) | EntryKind::ForeignFn(data) => data.decode(self).param_names,
-            EntryKind::AssocFn(data) => data.decode(self).fn_data.param_names,
-            _ => Lazy::empty(),
-        };
-        LazyQueryDecodable::decode_query(Some(param_names), self, tcx, || unreachable!())
-    }
-
     fn exported_symbols(
         self,
         tcx: TyCtxt<'tcx>,
