@@ -2305,7 +2305,7 @@ pub fn recursive_type_with_infinite_size_error<'tcx>(
         path,
     );
     if spans.len() <= 4 {
-        // FIXME: This suggestion might be erroneous if Option or Box are shadowed
+        // FIXME(compiler-errors): This suggestion might be erroneous if Box is shadowed
         err.multipart_suggestion(
             &msg,
             spans
@@ -2356,14 +2356,10 @@ fn get_option_generic_from_field_id(tcx: TyCtxt<'_>, field_id: Option<hir::HirId
     }
 
     // Match a single generic arg in the 0th path segment
-    let generic_arg = path.segments.get(0)?.args?.args.get(0);
+    let generic_arg = path.segments.last()?.args?.args.get(0)?;
 
     // Take the span out of the type, if it's a type
-    if let Some(hir::GenericArg::Type(generic_ty)) = generic_arg {
-        Some(generic_ty.span)
-    } else {
-        None
-    }
+    if let hir::GenericArg::Type(generic_ty) = generic_arg { Some(generic_ty.span) } else { None }
 }
 
 /// Summarizes information
