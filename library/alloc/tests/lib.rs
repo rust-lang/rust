@@ -44,7 +44,6 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 mod arc;
-mod binary_heap;
 mod borrow;
 mod boxed;
 mod btree_set_hash;
