@@ -6,7 +6,7 @@ use super::CrateDebugContext;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, DefIdTree, Ty};
-use rustc_target::abi::VariantIdx;
+use rustc_target::abi::Variants;
 
 use crate::common::CodegenCx;
 use crate::llvm;
@@ -72,20 +72,15 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
     match *pointee_ty.kind() {
         ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
         ty::Dynamic(..) => Some(FatPtrKind::Dyn),
-        ty::Adt(adt_def, _) => {
-            assert!(adt_def.is_struct());
-            assert!(adt_def.variants.len() == 1);
-            let variant = &adt_def.variants[VariantIdx::from_usize(0)];
-            assert!(!variant.fields.is_empty());
-            let last_field_index = variant.fields.len() - 1;
-
+        ty::Adt(..) | ty::Tuple(..) if matches!(layout.variants, Variants::Single { .. }) => {
+            let last_field_index = layout.fields.count() - 1;
             debug_assert!(
                 (0..last_field_index)
                     .all(|field_index| { !layout.field(cx, field_index).is_unsized() })
             );
 
             let unsized_field = layout.field(cx, last_field_index);
-            assert!(unsized_field.is_unsized());
+            debug_assert!(unsized_field.is_unsized());
             fat_pointer_kind(cx, unsized_field.ty)
         }
         ty::Foreign(_) => {
