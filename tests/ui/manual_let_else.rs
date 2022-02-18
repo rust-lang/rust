@@ -88,6 +88,13 @@ fn fire() {
         return;
     };
 
+    // Tuples supported for the identity block and pattern
+    let v = if let (Some(v_some), w_some) = (g(), 0) {
+        (w_some, v_some)
+    } else {
+        return;
+    };
+
     // entirely inside macro lints
     macro_rules! create_binding_if_some {
         ($n:ident, $e:expr) => {

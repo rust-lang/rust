@@ -101,7 +101,17 @@ LL | |     };
    | |______^
 
 error: this could be rewritten as `let else`
-  --> $DIR/manual_let_else.rs:94:13
+  --> $DIR/manual_let_else.rs:92:5
+   |
+LL | /     let v = if let (Some(v_some), w_some) = (g(), 0) {
+LL | |         (w_some, v_some)
+LL | |     } else {
+LL | |         return;
+LL | |     };
+   | |______^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else.rs:101:13
    |
 LL |             let $n = if let Some(v) = $e { v } else { return };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -111,5 +121,5 @@ LL |     create_binding_if_some!(w, g());
    |
    = note: this error originates in the macro `create_binding_if_some` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

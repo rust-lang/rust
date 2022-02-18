@@ -3,6 +3,7 @@ use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -201,20 +202,33 @@ fn pat_has_no_bindings(pat: &'_ Pat<'_>) -> bool {
 
 /// Checks if the passed block is a simple identity referring to bindings created by the pattern
 fn expr_is_simple_identity(pat: &'_ Pat<'_>, expr: &'_ Expr<'_>) -> bool {
-    // TODO support patterns with multiple bindings and tuples, like:
+    // We support patterns with multiple bindings and tuples, like:
     //   let ... = if let (Some(foo), bar) = g() { (foo, bar) } else { ... }
-    if_chain! {
-        if let ExprKind::Path(QPath::Resolved(_ty, path)) = &peel_blocks(expr).kind;
-        if let [path_seg] = path.segments;
-        then {
-            let mut pat_bindings = Vec::new();
-            pat.each_binding_or_first(&mut |_ann, _hir_id, _sp, ident| {
-                pat_bindings.push(ident);
-            });
-            if let [binding] = &pat_bindings[..] {
-                return path_seg.ident == *binding;
+    let peeled = peel_blocks(expr);
+    let paths = match peeled.kind {
+        ExprKind::Tup(exprs) | ExprKind::Array(exprs) => exprs,
+        ExprKind::Path(_) => std::slice::from_ref(peeled),
+        _ => return false,
+    };
+    let mut pat_bindings = FxHashSet::default();
+    pat.each_binding_or_first(&mut |_ann, _hir_id, _sp, ident| {
+        pat_bindings.insert(ident);
+    });
+    if pat_bindings.len() < paths.len() {
+        return false;
+    }
+    for path in paths {
+        if_chain! {
+            if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind;
+            if let [path_seg] = path.segments;
+            then {
+                if !pat_bindings.remove(&path_seg.ident) {
+                    return false;
+                }
+            } else {
+                return false;
             }
         }
     }
-    false
+    true
 }
