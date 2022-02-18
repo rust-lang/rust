@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let name = self.item_name(id);
 
         let (kind, container, has_self) = match self.kind(id) {
-            EntryKind::AssocConst(container, _) => (ty::AssocKind::Const, container, false),
+            EntryKind::AssocConst(container) => (ty::AssocKind::Const, container, false),
             EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
                 (ty::AssocKind::Fn, data.container, data.has_self)
@@ -1409,15 +1409,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
         tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
-    }
-
-    fn get_rendered_const(self, id: DefIndex) -> String {
-        match self.kind(id) {
-            EntryKind::AnonConst(data)
-            | EntryKind::Const(data)
-            | EntryKind::AssocConst(_, data) => data.decode(self).0,
-            _ => bug!(),
-        }
     }
 
     fn get_macro(self, id: DefIndex, sess: &Session) -> MacroDef {

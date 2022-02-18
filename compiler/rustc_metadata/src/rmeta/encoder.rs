@@ -1188,13 +1188,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     &(&self.tcx.hir() as &dyn intravisit::Map<'_>),
                     |s| s.print_trait_item(ast_item),
                 );
-                let rendered_const = self.lazy(RenderedConst(rendered));
 
-                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(
-                    container,
-                    rendered_const,
-                ));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
                 record!(self.tables.mir_const_qualif[def_id] <- mir::ConstQualifs::default());
+                record!(self.tables.rendered_const[def_id] <- rendered);
             }
             ty::AssocKind::Fn => {
                 let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
@@ -1256,12 +1253,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
                     let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let const_data = self.encode_rendered_const_for_body(body_id);
 
-                    record!(self.tables.kind[def_id] <- EntryKind::AssocConst(
-                        container,
-                        self.encode_rendered_const_for_body(body_id))
-                    );
+                    record!(self.tables.kind[def_id] <- EntryKind::AssocConst(container));
                     record!(self.tables.mir_const_qualif[def_id] <- qualifs);
+                    record!(self.tables.rendered_const[def_id] <- const_data);
                 } else {
                     bug!()
                 }
@@ -1385,14 +1381,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> Lazy<RenderedConst> {
+    fn encode_rendered_const_for_body(&mut self, body_id: hir::BodyId) -> String {
         let hir = self.tcx.hir();
         let body = hir.body(body_id);
-        let rendered = rustc_hir_pretty::to_string(&(&hir as &dyn intravisit::Map<'_>), |s| {
+        rustc_hir_pretty::to_string(&(&hir as &dyn intravisit::Map<'_>), |s| {
             s.print_expr(&body.value)
-        });
-        let rendered_const = &RenderedConst(rendered);
-        self.lazy(rendered_const)
+        })
     }
 
     fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
@@ -1407,8 +1401,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
                 let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let const_data = self.encode_rendered_const_for_body(body_id);
                 record!(self.tables.mir_const_qualif[def_id] <- qualifs);
-                EntryKind::Const(self.encode_rendered_const_for_body(body_id))
+                record!(self.tables.rendered_const[def_id] <- const_data);
+                EntryKind::Const
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
                 let data = FnData {
@@ -1604,8 +1600,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(const_data));
+        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst);
         record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
+        record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
         self.encode_item_type(def_id.to_def_id());
     }
 

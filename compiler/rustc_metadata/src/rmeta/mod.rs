@@ -309,6 +309,7 @@ define_tables! {
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
     mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
+    rendered_const: Table<DefIndex, Lazy!(String)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -325,8 +326,8 @@ define_tables! {
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 enum EntryKind {
-    AnonConst(Lazy<RenderedConst>),
-    Const(Lazy<RenderedConst>),
+    AnonConst,
+    Const,
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -354,14 +355,9 @@ enum EntryKind {
     Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
-    AssocConst(AssocContainer, Lazy<RenderedConst>),
+    AssocConst(AssocContainer),
     TraitAlias,
 }
-
-/// Contains a constant which has been rendered to a String.
-/// Used by rustdoc.
-#[derive(Encodable, Decodable)]
-struct RenderedConst(String);
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct FnData {

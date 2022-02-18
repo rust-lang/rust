@@ -137,6 +137,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     impl_constness => { table }
     coerce_unsized_info => { table }
     mir_const_qualif => { table }
+    rendered_const => { table }
 
     trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -154,7 +155,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generator_kind => { cdata.generator_kind(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     fn_arg_names => { cdata.get_fn_param_names(tcx, def_id.index) }
-    rendered_const => { cdata.get_rendered_const(def_id.index) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     is_ctfe_mir_available => { cdata.is_ctfe_mir_available(def_id.index) }
