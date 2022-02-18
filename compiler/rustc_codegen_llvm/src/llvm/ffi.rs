@@ -190,6 +190,7 @@ pub enum Attribute {
     StackProtectStrong = 31,
     StackProtect = 32,
     NoUndef = 33,
+    SanitizeMemTag = 34,
 }
 
 /// LLVMIntPredicate
