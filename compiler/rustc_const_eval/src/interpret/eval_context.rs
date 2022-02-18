@@ -631,15 +631,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let (unsized_size, unsized_align) =
-                    match self.size_and_align_of(metadata, &field)? {
-                        Some(size_and_align) => size_and_align,
-                        None => {
-                            // A field with an extern type. We don't know the actual dynamic size
-                            // or the alignment.
-                            return Ok(None);
-                        }
-                    };
+                let Some((unsized_size, unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                    // A field with an extern type. We don't know the actual dynamic size
+                    // or the alignment.
+                    return Ok(None);
+                };
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`

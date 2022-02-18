@@ -318,15 +318,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         let intrinsic_name = ecx.tcx.item_name(instance.def_id());
 
         // CTFE-specific intrinsics.
-        let (dest, ret) = match ret {
-            None => {
-                return Err(ConstEvalErrKind::NeedsRfc(format!(
-                    "calling intrinsic `{}`",
-                    intrinsic_name
-                ))
-                .into());
-            }
-            Some(p) => p,
+        let Some((dest, ret)) = ret else {
+            return Err(ConstEvalErrKind::NeedsRfc(format!(
+                "calling intrinsic `{}`",
+                intrinsic_name
+            ))
+            .into());
         };
         match intrinsic_name {
             sym::ptr_guaranteed_eq | sym::ptr_guaranteed_ne => {

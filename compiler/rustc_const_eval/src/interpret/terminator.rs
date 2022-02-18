@@ -321,10 +321,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let (body, instance) =
-                    match M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? {
-                        Some(body) => body,
-                        None => return Ok(()),
+                let Some((body, instance)) =
+                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? else {
+                        return Ok(());
                     };
 
                 // Compute callee information using the `instance` returned by
