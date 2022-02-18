@@ -1121,6 +1121,10 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     }
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
+    // Hash visibility information since it does not appear in HIR.
+    let resolutions = tcx.resolutions(());
+    resolutions.visibilities.hash_stable(&mut hcx, &mut stable_hasher);
+    resolutions.has_pub_restricted.hash_stable(&mut hcx, &mut stable_hasher);
 
     let crate_hash: Fingerprint = stable_hasher.finish();
     Svh::new(crate_hash.to_smaller_hash())
