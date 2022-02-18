@@ -303,6 +303,36 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
     inner(path.as_ref(), contents.as_ref())
 }
 
+/// Appends bytes to a file.
+///
+/// This function will create a file if it does not exist,
+/// and will append to it instead of overwriting previous
+/// content if it does.
+///
+/// This is a convenience function for using [`OpenOptions::append`]
+/// and [`write_all`] with fewer imports.
+///
+/// [`write_all`]: Write::write_all
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::fs;
+///
+/// fn main() -> std::io::Result<()> {
+///     fs::append("foo.txt", b"Lorem ipsum")?;
+///     fs::append("bar.txt", "dolor sit")?;
+///     Ok(())
+/// }
+/// ```
+#[unstable(feature = "fs_append_bytes", issue = "94135")]
+pub fn append<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
+    fn inner(path: &Path, contents: &[u8]) -> io::Result<()> {
+        OpenOptions::new().create(true).append(true).open(path)?.write_all(contents)
+    }
+    inner(path.as_ref(), contents.as_ref())
+}
+
 impl File {
     /// Attempts to open a file in read-only mode.
     ///
