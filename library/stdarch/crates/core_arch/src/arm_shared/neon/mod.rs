@@ -4989,6 +4989,10 @@ pub unsafe fn vget_high_f32(a: float32x4_t) -> float32x2_t {
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(
+    target_arch = "aarch64",
+    stable(feature = "vget_low_s8", since = "1.60.0")
+)]
 pub unsafe fn vget_low_s8(a: int8x16_t) -> int8x8_t {
     simd_shuffle8!(a, a, [0, 1, 2, 3, 4, 5, 6, 7])
 }
