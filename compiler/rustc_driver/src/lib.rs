@@ -216,10 +216,12 @@ fn run_compiler(
     }
 
     let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
+    let check_cfg = interface::parse_check_cfg(matches.opt_strs("check-cfg"));
     let (odir, ofile) = make_output(&matches);
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: cfg,
+        crate_check_cfg: check_cfg,
         input: Input::File(PathBuf::new()),
         input_path: None,
         output_file: ofile,

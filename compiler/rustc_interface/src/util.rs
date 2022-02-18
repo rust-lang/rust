@@ -15,6 +15,7 @@ use rustc_parse::validate_attr;
 use rustc_query_impl::QueryCtxt;
 use rustc_resolve::{self, Resolver};
 use rustc_session as session;
+use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
@@ -65,6 +66,7 @@ pub fn add_configuration(
 pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
+    check_cfg: CheckCfg,
     diagnostic_output: DiagnosticOutput,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
@@ -100,7 +102,13 @@ pub fn create_session(
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
+
+    let mut check_cfg = config::to_crate_check_config(check_cfg);
+    check_cfg.fill_well_known();
+    check_cfg.fill_actual(&cfg);
+
     sess.parse_sess.config = cfg;
+    sess.parse_sess.check_config = check_cfg;
 
     (Lrc::new(sess), Lrc::new(codegen_backend))
 }

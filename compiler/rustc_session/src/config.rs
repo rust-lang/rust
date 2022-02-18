@@ -16,7 +16,7 @@ use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, Tar
 
 use rustc_serialize::json;
 
-use crate::parse::CrateConfig;
+use crate::parse::{CrateCheckConfig, CrateConfig};
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
 use rustc_span::source_map::{FileName, FilePathMapping};
@@ -936,6 +936,7 @@ pub const fn default_lib_output() -> CrateType {
 }
 
 fn default_configuration(sess: &Session) -> CrateConfig {
+    // NOTE: This should be kept in sync with `CrateCheckConfig::fill_well_known` below.
     let end = &sess.target.endian;
     let arch = &sess.target.arch;
     let wordsz = sess.target.pointer_width.to_string();
@@ -1018,6 +1019,91 @@ fn default_configuration(sess: &Session) -> CrateConfig {
 /// but the symbol interner is not yet set up then, so we must convert it later.
 pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig {
     cfg.into_iter().map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b)))).collect()
+}
+
+/// The parsed `--check-cfg` options
+pub struct CheckCfg<T = String> {
+    /// Set if `names()` checking is enabled
+    pub names_checked: bool,
+    /// The union of all `names()`
+    pub names_valid: FxHashSet<T>,
+    /// The set of names for which `values()` was used
+    pub values_checked: FxHashSet<T>,
+    /// The set of all (name, value) pairs passed in `values()`
+    pub values_valid: FxHashSet<(T, T)>,
+}
+
+impl<T> Default for CheckCfg<T> {
+    fn default() -> Self {
+        CheckCfg {
+            names_checked: false,
+            names_valid: FxHashSet::default(),
+            values_checked: FxHashSet::default(),
+            values_valid: FxHashSet::default(),
+        }
+    }
+}
+
+impl<T> CheckCfg<T> {
+    fn map_data<O: Eq + Hash>(&self, f: impl Fn(&T) -> O) -> CheckCfg<O> {
+        CheckCfg {
+            names_checked: self.names_checked,
+            names_valid: self.names_valid.iter().map(|a| f(a)).collect(),
+            values_checked: self.values_checked.iter().map(|a| f(a)).collect(),
+            values_valid: self.values_valid.iter().map(|(a, b)| (f(a), f(b))).collect(),
+        }
+    }
+}
+
+/// Converts the crate `--check-cfg` options from `String` to `Symbol`.
+/// `rustc_interface::interface::Config` accepts this in the compiler configuration,
+/// but the symbol interner is not yet set up then, so we must convert it later.
+pub fn to_crate_check_config(cfg: CheckCfg) -> CrateCheckConfig {
+    cfg.map_data(|s| Symbol::intern(s))
+}
+
+impl CrateCheckConfig {
+    /// Fills a `CrateCheckConfig` with well-known configuration names.
+    pub fn fill_well_known(&mut self) {
+        // NOTE: This should be kept in sync with `default_configuration`
+        const WELL_KNOWN_NAMES: &[Symbol] = &[
+            sym::unix,
+            sym::windows,
+            sym::target_os,
+            sym::target_family,
+            sym::target_arch,
+            sym::target_endian,
+            sym::target_pointer_width,
+            sym::target_env,
+            sym::target_abi,
+            sym::target_vendor,
+            sym::target_thread_local,
+            sym::target_has_atomic_load_store,
+            sym::target_has_atomic,
+            sym::target_has_atomic_equal_alignment,
+            sym::panic,
+            sym::sanitize,
+            sym::debug_assertions,
+            sym::proc_macro,
+            sym::test,
+            sym::doc,
+            sym::doctest,
+            sym::feature,
+        ];
+        for &name in WELL_KNOWN_NAMES {
+            self.names_valid.insert(name);
+        }
+    }
+
+    /// Fills a `CrateCheckConfig` with configuration names and values that are actually active.
+    pub fn fill_actual(&mut self, cfg: &CrateConfig) {
+        for &(k, v) in cfg {
+            self.names_valid.insert(k);
+            if let Some(v) = v {
+                self.values_valid.insert((k, v));
+            }
+        }
+    }
 }
 
 pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateConfig {
@@ -1163,6 +1249,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
+        opt::multi("", "check-cfg", "Provide list of valid cfg options for checking", "SPEC"),
         opt::multi_s(
             "L",
             "",
