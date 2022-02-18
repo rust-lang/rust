@@ -689,16 +689,12 @@ fn string<T: Display>(
     klass: Option<Class>,
     context_info: &Option<ContextInfo<'_, '_, '_>>,
 ) {
-    let klass = match klass {
-        None => return write!(out, "{}", text),
-        Some(klass) => klass,
-    };
-    let def_span = match klass.get_span() {
-        Some(d) => d,
-        None => {
-            write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text);
-            return;
-        }
+    let Some(klass) = klass
+    else { return write!(out, "{}", text) };
+    let Some(def_span) = klass.get_span()
+    else {
+        write!(out, "<span class=\"{}\">{}</span>", klass.as_html(), text);
+        return;
     };
     let mut text_s = text.to_string();
     if text_s.contains("::") {

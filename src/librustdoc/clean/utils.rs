@@ -57,10 +57,8 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let m = match *module.kind {
-            ItemKind::ModuleItem(ref mut m) => m,
-            _ => unreachable!(),
-        };
+        let ItemKind::ModuleItem(ref mut m) = *module.kind
+        else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,

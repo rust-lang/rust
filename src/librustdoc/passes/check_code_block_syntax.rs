@@ -67,11 +67,11 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             return;
         }
 
-        let local_id = match item.def_id.as_def_id().and_then(|x| x.as_local()) {
-            Some(id) => id,
+        let Some(local_id) = item.def_id.as_def_id().and_then(|x| x.as_local())
+        else {
             // We don't need to check the syntax for other crates so returning
             // without doing anything should not be a problem.
-            None => return,
+            return;
         };
 
         let hir_id = self.cx.tcx.hir().local_def_id_to_hir_id(local_id);
