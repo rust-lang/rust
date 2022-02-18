@@ -53,9 +53,6 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn append_sibling_block(&mut self, name: &str) -> Self::BasicBlock;
 
-    // FIXME(eddyb) replace with callers using `append_sibling_block`.
-    fn build_sibling_block(&mut self, name: &str) -> Self;
-
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);

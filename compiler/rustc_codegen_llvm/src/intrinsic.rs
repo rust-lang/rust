@@ -452,11 +452,11 @@ fn codegen_msvc_try<'ll>(
     let (llty, llfn) = get_rust_try_fn(bx, &mut |mut bx| {
         bx.set_personality_fn(bx.eh_personality());
 
-        let mut normal = bx.build_sibling_block("normal");
-        let mut catchswitch = bx.build_sibling_block("catchswitch");
-        let mut catchpad_rust = bx.build_sibling_block("catchpad_rust");
-        let mut catchpad_foreign = bx.build_sibling_block("catchpad_foreign");
-        let mut caught = bx.build_sibling_block("caught");
+        let normal = bx.append_sibling_block("normal");
+        let catchswitch = bx.append_sibling_block("catchswitch");
+        let catchpad_rust = bx.append_sibling_block("catchpad_rust");
+        let catchpad_foreign = bx.append_sibling_block("catchpad_foreign");
+        let caught = bx.append_sibling_block("caught");
 
         let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
@@ -520,12 +520,13 @@ fn codegen_msvc_try<'ll>(
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
         let slot = bx.alloca(bx.type_i8p(), ptr_align);
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
-        bx.invoke(try_func_ty, try_func, &[data], normal.llbb(), catchswitch.llbb(), None);
+        bx.invoke(try_func_ty, try_func, &[data], normal, catchswitch, None);
 
+        let mut normal = Builder::build(bx.cx, normal);
         normal.ret(bx.const_i32(0));
 
-        let cs =
-            catchswitch.catch_switch(None, None, &[catchpad_rust.llbb(), catchpad_foreign.llbb()]);
+        let mut catchswitch = Builder::build(bx.cx, catchswitch);
+        let cs = catchswitch.catch_switch(None, None, &[catchpad_rust, catchpad_foreign]);
 
         // We can't use the TypeDescriptor defined in libpanic_unwind because it
         // might be in another DLL and the SEH encoding only supports specifying
@@ -558,20 +559,23 @@ fn codegen_msvc_try<'ll>(
         // since our exception object effectively contains a Box.
         //
         // Source: MicrosoftCXXABI::getAddrOfCXXCatchHandlerType in clang
+        let mut catchpad_rust = Builder::build(bx.cx, catchpad_rust);
         let flags = bx.const_i32(8);
         let funclet = catchpad_rust.catch_pad(cs, &[tydesc, flags, slot]);
         let ptr = catchpad_rust.load(bx.type_i8p(), slot, ptr_align);
         let catch_ty = bx.type_func(&[bx.type_i8p(), bx.type_i8p()], bx.type_void());
         catchpad_rust.call(catch_ty, catch_func, &[data, ptr], Some(&funclet));
-        catchpad_rust.catch_ret(&funclet, caught.llbb());
+        catchpad_rust.catch_ret(&funclet, caught);
 
         // The flag value of 64 indicates a "catch-all".
+        let mut catchpad_foreign = Builder::build(bx.cx, catchpad_foreign);
         let flags = bx.const_i32(64);
         let null = bx.const_null(bx.type_i8p());
         let funclet = catchpad_foreign.catch_pad(cs, &[null, flags, null]);
         catchpad_foreign.call(catch_ty, catch_func, &[data, null], Some(&funclet));
-        catchpad_foreign.catch_ret(&funclet, caught.llbb());
+        catchpad_foreign.catch_ret(&funclet, caught);
 
+        let mut caught = Builder::build(bx.cx, caught);
         caught.ret(bx.const_i32(1));
     });
 
@@ -613,14 +617,16 @@ fn codegen_gnu_try<'ll>(
         //      (%ptr, _) = landingpad
         //      call %catch_func(%data, %ptr)
         //      ret 1
-        let mut then = bx.build_sibling_block("then");
-        let mut catch = bx.build_sibling_block("catch");
+        let then = bx.append_sibling_block("then");
+        let catch = bx.append_sibling_block("catch");
 
         let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
-        bx.invoke(try_func_ty, try_func, &[data], then.llbb(), catch.llbb(), None);
+        bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
+
+        let mut then = Builder::build(bx.cx, then);
         then.ret(bx.const_i32(0));
 
         // Type indicator for the exception being thrown.
@@ -629,6 +635,7 @@ fn codegen_gnu_try<'ll>(
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
+        let mut catch = Builder::build(bx.cx, catch);
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 1);
         let tydesc = bx.const_null(bx.type_i8p());
@@ -674,14 +681,16 @@ fn codegen_emcc_try<'ll>(
         //      %catch_data[1] = %is_rust_panic
         //      call %catch_func(%data, %catch_data)
         //      ret 1
-        let mut then = bx.build_sibling_block("then");
-        let mut catch = bx.build_sibling_block("catch");
+        let then = bx.append_sibling_block("then");
+        let catch = bx.append_sibling_block("catch");
 
         let try_func = llvm::get_param(bx.llfn(), 0);
         let data = llvm::get_param(bx.llfn(), 1);
         let catch_func = llvm::get_param(bx.llfn(), 2);
         let try_func_ty = bx.type_func(&[bx.type_i8p()], bx.type_void());
-        bx.invoke(try_func_ty, try_func, &[data], then.llbb(), catch.llbb(), None);
+        bx.invoke(try_func_ty, try_func, &[data], then, catch, None);
+
+        let mut then = Builder::build(bx.cx, then);
         then.ret(bx.const_i32(0));
 
         // Type indicator for the exception being thrown.
@@ -689,6 +698,7 @@ fn codegen_emcc_try<'ll>(
         // The first value in this tuple is a pointer to the exception object
         // being thrown.  The second value is a "selector" indicating which of
         // the landing pad clauses the exception's type had been matched to.
+        let mut catch = Builder::build(bx.cx, catch);
         let tydesc = bx.eh_catch_typeinfo();
         let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
         let vals = catch.landing_pad(lpad_ty, bx.eh_personality(), 2);

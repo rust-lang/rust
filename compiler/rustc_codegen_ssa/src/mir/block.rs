@@ -452,15 +452,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
-        let panic_block = bx.build_sibling_block("panic");
+        let panic_block = bx.append_sibling_block("panic");
         if expected {
-            bx.cond_br(cond, lltarget, panic_block.llbb());
+            bx.cond_br(cond, lltarget, panic_block);
         } else {
-            bx.cond_br(cond, panic_block.llbb(), lltarget);
+            bx.cond_br(cond, panic_block, lltarget);
         }
 
         // After this point, bx is the block for the call to panic.
-        bx = panic_block;
+        bx = Bx::build(self.cx, panic_block);
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Get the location information.
@@ -908,10 +908,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             // Test whether the function pointer is associated with the type identifier.
             let cond = bx.type_test(fn_ptr, typeid_metadata);
-            let mut bx_pass = bx.build_sibling_block("type_test.pass");
-            let mut bx_fail = bx.build_sibling_block("type_test.fail");
-            bx.cond_br(cond, bx_pass.llbb(), bx_fail.llbb());
+            let bb_pass = bx.append_sibling_block("type_test.pass");
+            let bb_fail = bx.append_sibling_block("type_test.fail");
+            bx.cond_br(cond, bb_pass, bb_fail);
 
+            let mut bx_pass = Bx::build(self.cx, bb_pass);
             helper.do_call(
                 self,
                 &mut bx_pass,
@@ -922,6 +923,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
             );
 
+            let mut bx_fail = Bx::build(self.cx, bb_fail);
             bx_fail.abort();
             bx_fail.unreachable();
 
@@ -1441,7 +1443,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         })
     }
 
-    // FIXME(eddyb) replace with `build_sibling_block`/`append_sibling_block`
+    // FIXME(eddyb) replace with `append_sibling_block`
     // (which requires having a `Bx` already, and not all callers do).
     fn new_block(&self, name: &str) -> Bx {
         let llbb = Bx::append_block(self.cx, self.llfn, name);
