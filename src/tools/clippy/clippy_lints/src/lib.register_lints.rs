@@ -475,6 +475,7 @@ store.register_lints(&[
     size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT,
     slow_vector_initialization::SLOW_VECTOR_INITIALIZATION,
     stable_sort_primitive::STABLE_SORT_PRIMITIVE,
+    significant_drop_in_scrutinee::SIGNIFICANT_DROP_IN_SCRUTINEE,
     strings::STRING_ADD,
     strings::STRING_ADD_ASSIGN,
     strings::STRING_FROM_UTF8_AS_BYTES,

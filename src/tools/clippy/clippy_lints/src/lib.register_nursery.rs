@@ -25,6 +25,7 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
     LintId::of(redundant_pub_crate::REDUNDANT_PUB_CRATE),
     LintId::of(regex::TRIVIAL_REGEX),
+    LintId::of(significant_drop_in_scrutinee::SIGNIFICANT_DROP_IN_SCRUTINEE),
     LintId::of(strings::STRING_LIT_AS_BYTES),
     LintId::of(suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS),
     LintId::of(trailing_empty_array::TRAILING_EMPTY_ARRAY),
