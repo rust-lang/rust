@@ -322,11 +322,8 @@ fn trait_has_sized_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 }
 
 fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    let sized_def_id = match tcx.lang_items().sized_trait() {
-        Some(def_id) => def_id,
-        None => {
-            return false; /* No Sized trait, can't require it! */
-        }
+    let Some(sized_def_id) = tcx.lang_items().sized_trait() else {
+        return false; /* No Sized trait, can't require it! */
     };
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
