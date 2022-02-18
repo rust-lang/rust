@@ -572,3 +572,17 @@ pub fn get_discriminant_value(tcx: TyCtxt<'_>, adt: &'_ AdtDef, i: VariantIdx) -
         },
     }
 }
+
+/// Check if the given type is either `core::ffi::c_void`, `std::os::raw::c_void`, or one of the
+/// platform specific `libc::<platform>::c_void` types in libc.
+pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    if let ty::Adt(adt, _) = ty.kind()
+        && let &[krate, .., name] = &*cx.get_def_path(adt.did)
+        && let sym::libc | sym::core | sym::std = krate
+        && name.as_str() == "c_void"
+    {
+        true
+    } else {
+        false
+    }
+}
