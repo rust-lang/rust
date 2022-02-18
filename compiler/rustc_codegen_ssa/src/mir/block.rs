@@ -170,7 +170,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                let mut ret_bx = fx.build_block(target);
+                let target_llbb = fx.llbb(target);
+                let mut ret_bx = Bx::build(fx.cx, target_llbb);
                 fx.set_debug_loc(&mut ret_bx, self.terminator.source_info);
                 fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
             }
@@ -1023,7 +1024,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
-        let mut bx = self.build_block(bb);
+        let llbb = self.llbb(bb);
+        let mut bx = Bx::build(self.cx, llbb);
         let mir = self.mir;
         let data = &mir[bb];
 
@@ -1463,11 +1465,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.cached_llbbs[bb] = Some(llbb);
             llbb
         })
-    }
-
-    pub fn build_block(&mut self, bb: mir::BasicBlock) -> Bx {
-        let llbb = self.llbb(bb);
-        Bx::build(self.cx, llbb)
     }
 
     fn make_return_dest(
