@@ -6,8 +6,6 @@ use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
 
-use super::MAX;
-
 /// Converts a `u32` to a `char`.
 ///
 /// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
