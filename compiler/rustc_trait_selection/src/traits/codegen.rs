@@ -64,6 +64,8 @@ pub fn codegen_fulfill_obligation<'tcx>(
             Err(Unimplemented) => {
                 // This can trigger when we probe for the source of a `'static` lifetime requirement
                 // on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
+                // This can also trigger when we have a global bound that is not actually satisfied,
+                // but was included during typeck due to the trivial_bounds feature.
                 infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
