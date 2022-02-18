@@ -297,7 +297,7 @@ impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             ImplTraitPosition::Path => "path",
-            ImplTraitPosition::Variable => "variable",
+            ImplTraitPosition::Variable => "variable binding",
             ImplTraitPosition::Type => "type",
             ImplTraitPosition::Trait => "trait",
             ImplTraitPosition::AsyncBlock => "async block",
@@ -1419,10 +1419,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.sess,
                             t.span,
                             E0562,
-                            "`impl Trait` not allowed outside of \
-                            function and inherent method return types",
+                            "`impl Trait` only allowed in function and inherent method return types, not in {}",
+                            position
                         );
-                        err.note(&format!("found `impl Trait` in {}", position));
                         err.emit();
                         hir::TyKind::Err
                     }
