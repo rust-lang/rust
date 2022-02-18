@@ -136,6 +136,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     impl_defaultness => { table }
     impl_constness => { table }
     coerce_unsized_info => { table }
+    mir_const_qualif => { table }
 
     trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
@@ -145,7 +146,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
     associated_item => { cdata.get_associated_item(def_id.index) }
-    mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     asyncness => { cdata.asyncness(def_id.index) }

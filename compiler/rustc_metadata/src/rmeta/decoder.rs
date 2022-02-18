@@ -24,7 +24,6 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc_middle::middle::stability::DeprecationEntry;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::thir;
 use rustc_middle::ty::codec::TyDecoder;
@@ -1171,21 +1170,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn mir_const_qualif(self, id: DefIndex) -> mir::ConstQualifs {
-        match self.kind(id) {
-            EntryKind::AnonConst(qualif, _)
-            | EntryKind::Const(qualif, _)
-            | EntryKind::AssocConst(
-                AssocContainer::ImplDefault
-                | AssocContainer::ImplFinal
-                | AssocContainer::TraitWithDefault,
-                qualif,
-                _,
-            ) => qualif,
-            _ => bug!("mir_const_qualif: unexpected kind"),
-        }
-    }
-
     fn get_fn_has_self_parameter(self, id: DefIndex) -> bool {
         match self.kind(id) {
             EntryKind::AssocFn(data) => data.decode(self).has_self,
@@ -1209,7 +1193,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let name = self.item_name(id);
 
         let (kind, container, has_self) = match self.kind(id) {
-            EntryKind::AssocConst(container, _, _) => (ty::AssocKind::Const, container, false),
+            EntryKind::AssocConst(container, _) => (ty::AssocKind::Const, container, false),
             EntryKind::AssocFn(data) => {
                 let data = data.decode(self);
                 (ty::AssocKind::Fn, data.container, data.has_self)
@@ -1429,9 +1413,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_rendered_const(self, id: DefIndex) -> String {
         match self.kind(id) {
-            EntryKind::AnonConst(_, data)
-            | EntryKind::Const(_, data)
-            | EntryKind::AssocConst(_, _, data) => data.decode(self).0,
+            EntryKind::AnonConst(data)
+            | EntryKind::Const(data)
+            | EntryKind::AssocConst(_, data) => data.decode(self).0,
             _ => bug!(),
         }
     }

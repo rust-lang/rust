@@ -308,6 +308,7 @@ define_tables! {
     impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
+    mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -324,8 +325,8 @@ define_tables! {
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 enum EntryKind {
-    AnonConst(mir::ConstQualifs, Lazy<RenderedConst>),
-    Const(mir::ConstQualifs, Lazy<RenderedConst>),
+    AnonConst(Lazy<RenderedConst>),
+    Const(Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -353,7 +354,7 @@ enum EntryKind {
     Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
-    AssocConst(AssocContainer, mir::ConstQualifs, Lazy<RenderedConst>),
+    AssocConst(AssocContainer, Lazy<RenderedConst>),
     TraitAlias,
 }
 

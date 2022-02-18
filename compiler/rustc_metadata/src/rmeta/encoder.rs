@@ -1192,9 +1192,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 record!(self.tables.kind[def_id] <- EntryKind::AssocConst(
                     container,
-                    Default::default(),
                     rendered_const,
                 ));
+                record!(self.tables.mir_const_qualif[def_id] <- mir::ConstQualifs::default());
             }
             ty::AssocKind::Fn => {
                 let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
@@ -1259,9 +1259,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                     record!(self.tables.kind[def_id] <- EntryKind::AssocConst(
                         container,
-                        qualifs,
                         self.encode_rendered_const_for_body(body_id))
                     );
+                    record!(self.tables.mir_const_qualif[def_id] <- qualifs);
                 } else {
                     bug!()
                 }
@@ -1407,7 +1407,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
                 let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
-                EntryKind::Const(qualifs, self.encode_rendered_const_for_body(body_id))
+                record!(self.tables.mir_const_qualif[def_id] <- qualifs);
+                EntryKind::Const(self.encode_rendered_const_for_body(body_id))
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
                 let data = FnData {
@@ -1603,7 +1604,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let const_data = self.encode_rendered_const_for_body(body_id);
         let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(qualifs, const_data));
+        record!(self.tables.kind[def_id.to_def_id()] <- EntryKind::AnonConst(const_data));
+        record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
         self.encode_item_type(def_id.to_def_id());
     }
 
