@@ -11,10 +11,7 @@
       bb0: {
 -         StorageLive(_2);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
 -         StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
--         _3 = &_1;                        // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
 -         StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
--         _4 = _3;                         // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
--         _2 = move _3 as &[u8] (Pointer(Unsize)); // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
 -         StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:38:7: 38:8
           _0 = const N;                    // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14
 -         StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:38:5: 38:14

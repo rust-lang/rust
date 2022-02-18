@@ -1,5 +1,7 @@
 // compile-flags: -C overflow-checks=no -Zunsound-mir-opts
 
+#![feature(bench_black_box)]
+
 struct Point {
     x: u32,
     y: u32,
@@ -19,6 +21,8 @@ fn main() {
 
     let p = Point { x: 32, y: 32 };
     let a = p.x + p.y;
+
+    core::hint::black_box(());
 }
 
 // EMIT_MIR const_debuginfo.main.ConstDebugInfo.diff
