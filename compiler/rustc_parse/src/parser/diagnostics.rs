@@ -1220,7 +1220,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    pub(super) fn maybe_recover_from_prefix_increment(
+    pub(super) fn recover_from_prefix_increment(
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,
@@ -1235,7 +1235,7 @@ impl<'a> Parser<'a> {
         self.recover_from_inc_dec(operand_expr, kind, op_span)
     }
 
-    pub(super) fn maybe_recover_from_postfix_increment(
+    pub(super) fn recover_from_postfix_increment(
         &mut self,
         operand_expr: P<Expr>,
         op_span: Span,

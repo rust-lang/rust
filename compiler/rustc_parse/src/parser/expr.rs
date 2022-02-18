@@ -273,7 +273,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                lhs = self.maybe_recover_from_postfix_increment(lhs, op_span)?;
+                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
                 continue;
             }
 
@@ -601,7 +601,7 @@ impl<'a> Parser<'a> {
                 this.bump();
 
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
-                this.maybe_recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+                this.recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
             }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
