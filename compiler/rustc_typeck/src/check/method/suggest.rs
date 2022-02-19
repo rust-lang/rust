@@ -37,9 +37,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Closure(..) | ty::FnDef(..) | ty::FnPtr(_) => true,
             // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
-                let fn_once = match tcx.lang_items().require(LangItem::FnOnce) {
-                    Ok(fn_once) => fn_once,
-                    Err(..) => return false,
+                let Some(fn_once) = tcx.lang_items().fn_once_trait() else {
+                    return false;
                 };
 
                 // This conditional prevents us from asking to call errors and unresolved types.
@@ -112,12 +111,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
-                        let item = match self.associated_value(impl_did, item_name).or_else(|| {
+                        let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
                             let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
                             self.associated_value(impl_trait_ref.def_id, item_name)
-                        }) {
-                            Some(item) => item,
-                            None => continue,
+                        }) else {
+                            continue;
                         };
                         let note_span = self
                             .tcx
@@ -194,10 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
-                        let item = match self.associated_value(trait_did, item_name) {
-                            Some(item) => item,
-                            None => continue,
-                        };
+                        let Some(item) = self.associated_value(trait_did, item_name) else { continue };
                         let item_span = self
                             .tcx
                             .sess
@@ -1202,10 +1197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut derives = Vec::<(String, Span, String)>::new();
         let mut traits = Vec::<Span>::new();
         for (pred, _, _) in unsatisfied_predicates {
-            let trait_pred = match pred.kind().skip_binder() {
-                ty::PredicateKind::Trait(trait_pred) => trait_pred,
-                _ => continue,
-            };
+            let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
             let adt = match trait_pred.self_ty().ty_adt_def() {
                 Some(adt) if adt.did.is_local() => adt,
                 _ => continue,

@@ -799,10 +799,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         let expr_kind = fcx.pointer_kind(m_expr.ty, self.span)?;
         let cast_kind = fcx.pointer_kind(m_cast.ty, self.span)?;
 
-        let cast_kind = match cast_kind {
+        let Some(cast_kind) = cast_kind else {
             // We can't cast if target pointer kind is unknown
-            None => return Err(CastError::UnknownCastPtrKind),
-            Some(cast_kind) => cast_kind,
+            return Err(CastError::UnknownCastPtrKind);
         };
 
         // Cast to thin pointer is OK
@@ -810,10 +809,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             return Ok(CastKind::PtrPtrCast);
         }
 
-        let expr_kind = match expr_kind {
+        let Some(expr_kind) = expr_kind else {
             // We can't cast to fat pointer if source pointer kind is unknown
-            None => return Err(CastError::UnknownExprPtrKind),
-            Some(expr_kind) => expr_kind,
+            return Err(CastError::UnknownExprPtrKind);
         };
 
         // thin -> fat? report invalid cast (don't complain about vtable kinds)

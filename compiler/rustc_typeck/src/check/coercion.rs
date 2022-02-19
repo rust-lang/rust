@@ -429,13 +429,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // (e.g., in example above, the failure from relating `Vec<T>`
         // to the target type), since that should be the least
         // confusing.
-        let InferOk { value: ty, mut obligations } = match found {
-            Some(d) => d,
-            None => {
-                let err = first_error.expect("coerce_borrowed_pointer had no error");
-                debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
-                return Err(err);
-            }
+        let Some(InferOk { value: ty, mut obligations }) = found else {
+            let err = first_error.expect("coerce_borrowed_pointer had no error");
+            debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
+            return Err(err);
         };
 
         if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
@@ -461,9 +458,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
-        let r_borrow = match ty.kind() {
-            ty::Ref(r_borrow, _, _) => r_borrow,
-            _ => span_bug!(span, "expected a ref type, got {:?}", ty),
+        let ty::Ref(r_borrow, _, _) = ty.kind() else {
+            span_bug!(span, "expected a ref type, got {:?}", ty);
         };
         let mutbl = match mutbl_b {
             hir::Mutability::Not => AutoBorrowMutability::Not,
@@ -944,9 +940,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We don't ever need two-phase here since we throw out the result of the coercion
         let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         self.probe(|_| {
-            let ok = match coerce.coerce(source, target) {
-                Ok(ok) => ok,
-                _ => return false,
+            let Ok(ok) = coerce.coerce(source, target) else {
+                return false;
             };
             let mut fcx = traits::FulfillmentContext::new_in_snapshot();
             fcx.register_predicate_obligations(self, ok.obligations);

@@ -622,15 +622,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the `enclosing_loops` field and let's coerce the
             // type of `expr_opt` into what is expected.
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-            let ctxt = match enclosing_breakables.opt_find_breakable(target_id) {
-                Some(ctxt) => ctxt,
-                None => {
-                    // Avoid ICE when `break` is inside a closure (#65383).
-                    return tcx.ty_error_with_message(
-                        expr.span,
-                        "break was outside loop, but no error was emitted",
-                    );
-                }
+            let Some(ctxt) = enclosing_breakables.opt_find_breakable(target_id) else {
+                // Avoid ICE when `break` is inside a closure (#65383).
+                return tcx.ty_error_with_message(
+                    expr.span,
+                    "break was outside loop, but no error was emitted",
+                );
             };
 
             if let Some(ref mut coerce) = ctxt.coerce {

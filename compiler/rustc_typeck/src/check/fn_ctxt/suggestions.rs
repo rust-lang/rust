@@ -438,9 +438,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-                let fn_name = match self.tcx.hir().find(parent) {
-                    Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) => fn_name,
-                    _ => return false,
+                let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
+                    return false;
                 };
                 match fn_name.kind {
                     ExprKind::Path(QPath::TypeRelative(

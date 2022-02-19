@@ -38,9 +38,8 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
     let trait_def_id = trait_ref.def_id;
 
     let item = tcx.hir().item(hir::ItemId { def_id });
-    let impl_ = match item.kind {
-        hir::ItemKind::Impl(ref impl_) => impl_,
-        _ => bug!("{:?} is not an impl: {:?}", def_id, item),
+    let hir::ItemKind::Impl(ref impl_) = item.kind else {
+        bug!("{:?} is not an impl: {:?}", def_id, item);
     };
     let sp = tcx.sess.source_map().guess_head_span(item.span);
     let tr = impl_.of_trait.as_ref().unwrap();
