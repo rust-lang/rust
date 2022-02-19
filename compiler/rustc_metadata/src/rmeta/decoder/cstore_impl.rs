@@ -129,12 +129,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     opt_def_kind => { Some(cdata.def_kind(def_id.index)) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     def_ident_span => { cdata.opt_item_ident(def_id.index, &tcx.sess).map(|ident| ident.span) }
-    lookup_stability => {
-        cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
-    }
-    lookup_const_stability => {
-        cdata.get_const_stability(def_id.index).map(|s| tcx.intern_const_stability(s))
-    }
+    lookup_stability => { cdata.get_stability(def_id.index) }
+    lookup_const_stability => { cdata.get_const_stability(def_id.index) }
     lookup_deprecation_entry => {
         cdata.get_deprecation(def_id.index).map(DeprecationEntry::external)
     }

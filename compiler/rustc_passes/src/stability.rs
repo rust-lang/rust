@@ -87,9 +87,9 @@ impl InheritStability {
 // A private tree-walker for producing an Index.
 struct Annotator<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    index: &'a mut Index<'tcx>,
-    parent_stab: Option<&'tcx Stability>,
-    parent_const_stab: Option<&'tcx ConstStability>,
+    index: &'a mut Index,
+    parent_stab: Option<Stability>,
+    parent_const_stab: Option<ConstStability>,
     parent_depr: Option<DeprecationEntry>,
     in_trait_impl: bool,
 }
@@ -171,7 +171,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let mut const_span = None;
 
         let const_stab = const_stab.map(|(const_stab, const_span_node)| {
-            let const_stab = self.tcx.intern_const_stability(const_stab);
             self.index.const_stab_map.insert(def_id, const_stab);
             const_span = Some(const_span_node);
             const_stab
@@ -228,7 +227,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             debug!("annotate: found {:?}", stab);
-            let stab = self.tcx.intern_stability(stab);
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
@@ -299,8 +297,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     fn recurse_with_stability_attrs(
         &mut self,
         depr: Option<DeprecationEntry>,
-        stab: Option<&'tcx Stability>,
-        const_stab: Option<&'tcx ConstStability>,
+        stab: Option<Stability>,
+        const_stab: Option<ConstStability>,
         f: impl FnOnce(&mut Self),
     ) {
         // These will be `Some` if this item changes the corresponding stability attribute.
@@ -655,7 +653,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // stable (assuming they have not inherited instability from their parent).
 }
 
-fn stability_index<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
+fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let is_staged_api =
         tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
     let mut staged_api = FxHashMap::default();
@@ -698,14 +696,14 @@ fn stability_index<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Index<'tcx> {
             let reason = "this crate is being loaded from the sysroot, an \
                           unstable location; did you mean to load this crate \
                           from crates.io via `Cargo.toml` instead?";
-            let stability = tcx.intern_stability(Stability {
+            let stability = Stability {
                 level: attr::StabilityLevel::Unstable {
                     reason: Some(Symbol::intern(reason)),
                     issue: NonZeroU32::new(27812),
                     is_soft: false,
                 },
                 feature: sym::rustc_private,
-            });
+            };
             annotator.parent_stab = Some(stability);
         }
 
