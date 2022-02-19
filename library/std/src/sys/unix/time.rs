@@ -286,7 +286,7 @@ mod inner {
     impl Instant {
         pub fn now() -> Instant {
             #[cfg(target_os = "macos")]
-            const clock_id: clock_t = 8;
+            const clock_id: clock_t = libc::CLOCK_UPTIME_RAW;
             #[cfg(not(target_os = "macos"))]
             const clock_id: clock_t = libc::CLOCK_MONOTONIC;
             Instant { t: now(clock_id) }
