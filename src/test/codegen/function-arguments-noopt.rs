@@ -23,7 +23,7 @@ pub fn boolean_call(x: bool, f: fn(bool) -> bool) -> bool {
   f(x)
 }
 
-// CHECK: define i32* @borrow(i32* %x)
+// CHECK: define align 4 i32* @borrow(i32* align 4 %x)
 #[no_mangle]
 pub fn borrow(x: &i32) -> &i32 {
   x
@@ -32,7 +32,7 @@ pub fn borrow(x: &i32) -> &i32 {
 // CHECK-LABEL: @borrow_call
 #[no_mangle]
 pub fn borrow_call(x: &i32, f: fn(&i32) -> &i32) -> &i32 {
-  // CHECK: call i32* %f(i32* %x)
+  // CHECK: call align 4 i32* %f(i32* align 4 %x)
   f(x)
 }
 

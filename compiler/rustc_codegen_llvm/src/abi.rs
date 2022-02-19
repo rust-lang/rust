@@ -59,6 +59,9 @@ impl ArgAttributesExt for ArgAttributes {
                     llattr.apply_llfn(idx, llfn);
                 }
             }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
+            }
             match self.arg_ext {
                 ArgExtension::None => {}
                 ArgExtension::Zext => llvm::Attribute::ZExt.apply_llfn(idx, llfn),
@@ -76,9 +79,6 @@ impl ArgAttributesExt for ArgAttributes {
                     llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
                 }
                 regular -= ArgAttribute::NonNull;
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
             }
             for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
                 if regular.contains(attr) {
@@ -105,6 +105,13 @@ impl ArgAttributesExt for ArgAttributes {
                     llattr.apply_callsite(idx, callsite);
                 }
             }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentCallSiteAttr(
+                    callsite,
+                    idx.as_uint(),
+                    align.bytes() as u32,
+                );
+            }
             match self.arg_ext {
                 ArgExtension::None => {}
                 ArgExtension::Zext => llvm::Attribute::ZExt.apply_callsite(idx, callsite),
@@ -126,13 +133,6 @@ impl ArgAttributesExt for ArgAttributes {
                     );
                 }
                 regular -= ArgAttribute::NonNull;
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentCallSiteAttr(
-                    callsite,
-                    idx.as_uint(),
-                    align.bytes() as u32,
-                );
             }
             for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
                 if regular.contains(attr) {
