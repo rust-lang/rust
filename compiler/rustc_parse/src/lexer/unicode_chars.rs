@@ -338,20 +338,16 @@ pub(super) fn check_for_substitution<'a>(
     ch: char,
     err: &mut DiagnosticBuilder<'a>,
 ) -> Option<token::TokenKind> {
-    let (u_name, ascii_char) = match UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) {
-        Some(&(_u_char, u_name, ascii_char)) => (u_name, ascii_char),
-        None => return None,
+    let Some(&(_u_char, u_name, ascii_char)) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) else {
+        return None;
     };
 
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 
-    let (ascii_name, token) = match ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) {
-        Some((_ascii_char, ascii_name, token)) => (ascii_name, token),
-        None => {
-            let msg = format!("substitution character not found for '{}'", ch);
-            reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-            return None;
-        }
+    let Some((_ascii_char, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) else {
+        let msg = format!("substitution character not found for '{}'", ch);
+        reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+        return None;
     };
 
     // special help suggestion for "directed" double quotes

@@ -3479,16 +3479,15 @@ impl<'a> Resolver<'a> {
         let ident = Ident::with_dummy_span(sym::main);
         let parent_scope = &ParentScope::module(module, self);
 
-        let name_binding = match self.resolve_ident_in_module(
+        let Ok(name_binding) = self.resolve_ident_in_module(
             ModuleOrUniformRoot::Module(module),
             ident,
             ValueNS,
             parent_scope,
             false,
             DUMMY_SP,
-        ) {
-            Ok(name_binding) => name_binding,
-            _ => return,
+        ) else {
+            return;
         };
 
         let res = name_binding.res();

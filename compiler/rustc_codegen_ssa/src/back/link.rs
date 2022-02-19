@@ -674,9 +674,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     loop {
         i += 1;
         prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, tmpdir));
-        let output = match prog {
-            Ok(ref output) => output,
-            Err(_) => break,
+        let Ok(ref output) = prog else {
+            break;
         };
         if output.status.success() {
             break;
@@ -2025,9 +2024,8 @@ fn add_local_native_libraries(
     let search_path = OnceCell::new();
     let mut last = (NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
-        let name = match lib.name {
-            Some(l) => l,
-            None => continue,
+        let Some(name) = lib.name else {
+            continue;
         };
 
         // Skip if this library is the same as the last.
@@ -2382,9 +2380,8 @@ fn add_upstream_native_libraries(
     let mut last = (NativeLibKind::Unspecified, None);
     for &cnum in &codegen_results.crate_info.used_crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
-            let name = match lib.name {
-                Some(l) => l,
-                None => continue,
+            let Some(name) = lib.name else {
+                continue;
             };
             if !relevant_lib(sess, &lib) {
                 continue;

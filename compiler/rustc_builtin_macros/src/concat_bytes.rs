@@ -121,9 +121,8 @@ pub fn expand_concat_bytes(
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let es = match base::get_exprs_from_tts(cx, sp, tts) {
-        Some(e) => e,
-        None => return DummyResult::any(sp),
+    let Some(es) = base::get_exprs_from_tts(cx, sp, tts) else {
+        return DummyResult::any(sp);
     };
     let mut accumulator = Vec::new();
     let mut missing_literals = vec![];

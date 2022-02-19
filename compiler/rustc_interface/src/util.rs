@@ -430,10 +430,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
     ];
     for entry in d.filter_map(|e| e.ok()) {
         let path = entry.path();
-        let filename = match path.file_name().and_then(|s| s.to_str()) {
-            Some(s) => s,
-            None => continue,
-        };
+        let Some(filename) = path.file_name().and_then(|s| s.to_str()) else { continue };
         if !(filename.starts_with(DLL_PREFIX) && filename.ends_with(DLL_SUFFIX)) {
             continue;
         }

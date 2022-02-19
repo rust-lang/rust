@@ -72,9 +72,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyDatum<RustInterner<'tcx>>> {
         let def_id = assoc_type_id.0;
         let assoc_item = self.interner.tcx.associated_item(def_id);
-        let trait_def_id = match assoc_item.container {
-            AssocItemContainer::TraitContainer(def_id) => def_id,
-            _ => unimplemented!("Not possible??"),
+        let AssocItemContainer::TraitContainer(trait_def_id) = assoc_item.container else {
+            unimplemented!("Not possible??");
         };
         match assoc_item.kind {
             AssocKind::Type => {}

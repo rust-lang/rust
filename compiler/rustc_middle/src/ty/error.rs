@@ -861,11 +861,10 @@ fn foo(&self) -> Self::T { String::new() }
         body_owner_def_id: DefId,
         found: Ty<'tcx>,
     ) -> bool {
-        let hir_id =
-            match body_owner_def_id.as_local().map(|id| self.hir().local_def_id_to_hir_id(id)) {
-                Some(hir_id) => hir_id,
-                None => return false,
-            };
+        let Some(hir_id) = body_owner_def_id.as_local() else {
+            return false;
+        };
+        let hir_id = self.hir().local_def_id_to_hir_id(hir_id);
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = self.hir().get_parent_item(hir_id);

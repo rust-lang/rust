@@ -354,9 +354,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                 let tcx = self.tcx;
                 self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
 
-                let trait_def_id = match trait_ref.path.res {
-                    Res::Def(DefKind::Trait, def_id) => def_id,
-                    _ => unreachable!(),
+                let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
+                    unreachable!();
                 };
 
                 if !trait_def_id.is_local() {

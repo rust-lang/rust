@@ -79,9 +79,8 @@ fn get_features(
             continue;
         }
 
-        let list = match attr.meta_item_list() {
-            Some(list) => list,
-            None => continue,
+        let Some(list) = attr.meta_item_list() else {
+            continue;
         };
 
         for mi in list {
@@ -112,9 +111,8 @@ fn get_features(
             continue;
         }
 
-        let list = match attr.meta_item_list() {
-            Some(list) => list,
-            None => continue,
+        let Some(list) = attr.meta_item_list() else {
+            continue;
         };
 
         let bad_input = |span| {
@@ -340,10 +338,9 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     crate fn expand_cfg_attr(&self, attr: Attribute, recursive: bool) -> Vec<Attribute> {
-        let (cfg_predicate, expanded_attrs) =
-            match rustc_parse::parse_cfg_attr(&attr, &self.sess.parse_sess) {
-                None => return vec![],
-                Some(r) => r,
+        let Some((cfg_predicate, expanded_attrs)) =
+            rustc_parse::parse_cfg_attr(&attr, &self.sess.parse_sess) else {
+                return vec![];
             };
 
         // Lint on zero attributes in source.
@@ -389,18 +386,16 @@ impl<'a> StripUnconfigured<'a> {
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
         let mut orig_trees = orig_tokens.trees();
-        let pound_token = match orig_trees.next().unwrap() {
-            TokenTree::Token(token @ Token { kind: TokenKind::Pound, .. }) => token,
-            _ => panic!("Bad tokens for attribute {:?}", attr),
+        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }) = orig_trees.next().unwrap() else {
+            panic!("Bad tokens for attribute {:?}", attr);
         };
         let pound_span = pound_token.span;
 
         let mut trees = vec![(AttrAnnotatedTokenTree::Token(pound_token), Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let bang_token = match orig_trees.next().unwrap() {
-                TokenTree::Token(token @ Token { kind: TokenKind::Not, .. }) => token,
-                _ => panic!("Bad tokens for attribute {:?}", attr),
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }) = orig_trees.next().unwrap() else {
+                panic!("Bad tokens for attribute {:?}", attr);
             };
             trees.push((AttrAnnotatedTokenTree::Token(bang_token), Spacing::Alone));
         }

@@ -136,12 +136,9 @@ impl<I: Idx> IntervalSet<I> {
 
     pub fn contains(&self, needle: I) -> bool {
         let needle = needle.index() as u32;
-        let last = match self.map.partition_point(|r| r.0 <= needle).checked_sub(1) {
-            Some(idx) => idx,
-            None => {
-                // All ranges in the map start after the new range's end
-                return false;
-            }
+        let Some(last) = self.map.partition_point(|r| r.0 <= needle).checked_sub(1) else {
+            // All ranges in the map start after the new range's end
+            return false;
         };
         let (_, prev_end) = &self.map[last];
         needle <= *prev_end
@@ -170,12 +167,9 @@ impl<I: Idx> IntervalSet<I> {
         if start > end {
             return None;
         }
-        let last = match self.map.partition_point(|r| r.0 <= end).checked_sub(1) {
-            Some(idx) => idx,
-            None => {
-                // All ranges in the map start after the new range's end
-                return None;
-            }
+        let Some(last) = self.map.partition_point(|r| r.0 <= end).checked_sub(1) else {
+            // All ranges in the map start after the new range's end
+            return None;
         };
         let (_, prev_end) = &self.map[last];
         if start <= *prev_end { Some(I::new(std::cmp::min(*prev_end, end) as usize)) } else { None }

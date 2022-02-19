@@ -274,11 +274,9 @@ where
     use std::io::{self, Write};
 
     let def_id = body.source.def_id();
-    let attrs = match RustcMirAttrs::parse(tcx, def_id) {
-        Ok(attrs) => attrs,
-
+    let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
         // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
-        Err(()) => return Ok(()),
+        return Ok(());
     };
 
     let mut file = match attrs.output_path(A::NAME) {

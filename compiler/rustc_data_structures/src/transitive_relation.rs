@@ -190,11 +190,8 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     ///
     /// Note that this set can, in principle, have any size.
     pub fn minimal_upper_bounds(&self, a: &T, b: &T) -> Vec<&T> {
-        let (mut a, mut b) = match (self.index(a), self.index(b)) {
-            (Some(a), Some(b)) => (a, b),
-            (None, _) | (_, None) => {
-                return vec![];
-            }
+        let (Some(mut a), Some(mut b)) = (self.index(a), self.index(b)) else {
+            return vec![];
         };
 
         // in some cases, there are some arbitrary choices to be made;
@@ -294,9 +291,8 @@ impl<T: Eq + Hash> TransitiveRelation<T> {
     /// then `parents(a)` returns `[b, c]`. The `postdom_parent` function
     /// would further reduce this to just `f`.
     pub fn parents(&self, a: &T) -> Vec<&T> {
-        let a = match self.index(a) {
-            Some(a) => a,
-            None => return vec![],
+        let Some(a) = self.index(a) else {
+            return vec![];
         };
 
         // Steal the algorithm for `minimal_upper_bounds` above, but

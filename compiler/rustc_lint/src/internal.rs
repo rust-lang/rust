@@ -23,10 +23,7 @@ declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
 impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
-        let def_id = match path.res {
-            Res::Def(rustc_hir::def::DefKind::Struct, id) => id,
-            _ => return,
-        };
+        let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
         if matches!(cx.tcx.hir().get(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
             // don't lint imports, only actual usages
             return;

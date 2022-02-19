@@ -410,12 +410,9 @@ fn check_unused_unsafe(
 ) {
     let body_id = tcx.hir().maybe_body_owned_by(tcx.hir().local_def_id_to_hir_id(def_id));
 
-    let body_id = match body_id {
-        Some(body) => body,
-        None => {
-            debug!("check_unused_unsafe({:?}) - no body found", def_id);
-            return;
-        }
+    let Some(body_id) = body_id else {
+        debug!("check_unused_unsafe({:?}) - no body found", def_id);
+        return;
     };
     let body = tcx.hir().body(body_id);
     debug!("check_unused_unsafe({:?}, body={:?}, used_unsafe={:?})", def_id, body, used_unsafe);

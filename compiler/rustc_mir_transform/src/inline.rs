@@ -118,9 +118,8 @@ impl<'tcx> Inliner<'tcx> {
                 continue;
             }
 
-            let callsite = match self.resolve_callsite(caller_body, bb, bb_data) {
-                None => continue,
-                Some(it) => it,
+            let Some(callsite) = self.resolve_callsite(caller_body, bb, bb_data) else {
+                continue;
             };
 
             let span = trace_span!("process_blocks", %callsite.callee, ?bb);

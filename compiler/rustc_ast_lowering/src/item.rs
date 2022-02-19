@@ -1376,9 +1376,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and
         // where clauses for `?Sized`.
         for pred in &generics.where_clause.predicates {
-            let bound_pred = match *pred {
-                WherePredicate::BoundPredicate(ref bound_pred) => bound_pred,
-                _ => continue,
+            let WherePredicate::BoundPredicate(ref bound_pred) = *pred else {
+                continue;
             };
             let compute_is_param = || {
                 // Check if the where clause type is a plain type parameter.

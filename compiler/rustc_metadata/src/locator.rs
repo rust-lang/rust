@@ -690,14 +690,11 @@ impl<'a> CrateLocator<'a> {
                     loc.original().clone(),
                 ));
             }
-            let file = match loc.original().file_name().and_then(|s| s.to_str()) {
-                Some(file) => file,
-                None => {
-                    return Err(CrateError::ExternLocationNotFile(
-                        self.crate_name,
-                        loc.original().clone(),
-                    ));
-                }
+            let Some(file) = loc.original().file_name().and_then(|s| s.to_str()) else {
+                return Err(CrateError::ExternLocationNotFile(
+                    self.crate_name,
+                    loc.original().clone(),
+                ));
             };
 
             if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))

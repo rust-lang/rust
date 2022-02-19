@@ -1138,9 +1138,8 @@ impl EmitterWriter {
     }
 
     fn get_multispan_max_line_num(&mut self, msp: &MultiSpan) -> usize {
-        let sm = match self.sm {
-            Some(ref sm) => sm,
-            None => return 0,
+        let Some(ref sm) = self.sm else {
+            return 0;
         };
 
         let mut max = 0;
@@ -1590,9 +1589,8 @@ impl EmitterWriter {
         level: &Level,
         max_line_num_len: usize,
     ) -> io::Result<()> {
-        let sm = match self.sm {
-            Some(ref sm) => sm,
-            None => return Ok(()),
+        let Some(ref sm) = self.sm else {
+            return Ok(());
         };
 
         // Render the replacements for each suggestion

@@ -560,9 +560,9 @@ impl SplitVarLenSlice {
 
     /// Pass a set of slices relative to which to split this one.
     fn split(&mut self, slices: impl Iterator<Item = SliceKind>) {
-        let (max_prefix_len, max_suffix_len) = match &mut self.max_slice {
-            VarLen(prefix, suffix) => (prefix, suffix),
-            FixedLen(_) => return, // No need to split
+        let VarLen(max_prefix_len, max_suffix_len) = &mut self.max_slice else {
+            // No need to split
+            return;
         };
         // We grow `self.max_slice` to be larger than all slices encountered, as described above.
         // For diagnostics, we keep the prefix and suffix lengths separate, but grow them so that
@@ -1181,10 +1181,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
         ty: Ty<'tcx>,
         variant: &'a VariantDef,
     ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
-        let (adt, substs) = match ty.kind() {
-            ty::Adt(adt, substs) => (adt, substs),
-            _ => bug!(),
-        };
+        let ty::Adt(adt, substs) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
         let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
 
@@ -1578,9 +1575,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match self_slice.kind {
                     FixedLen(_) => bug!("{:?} doesn't cover {:?}", self_slice, other_slice),
                     VarLen(prefix, suffix) => {
-                        let inner_ty = match *self.ty.kind() {
-                            ty::Slice(ty) | ty::Array(ty, _) => ty,
-                            _ => bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty),
+                        let (ty::Slice(inner_ty) | ty::Array(inner_ty, _)) = *self.ty.kind() else {
+                            bug!("bad slice pattern {:?} {:?}", self.ctor, self.ty);
                         };
                         let prefix = &self.fields.fields[..prefix];
                         let suffix = &self.fields.fields[self_slice.arity() - suffix..];

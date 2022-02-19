@@ -2071,11 +2071,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ) = rvalue
                         {
                             for operand in operands {
-                                let assigned_from = match operand {
-                                    Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                                        assigned_from
-                                    }
-                                    _ => continue,
+                                let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                                    continue;
                                 };
                                 debug!(
                                     "annotate_argument_and_return_for_borrow: assigned_from={:?}",
@@ -2083,10 +2080,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 );
 
                                 // Find the local from the operand.
-                                let assigned_from_local = match assigned_from.local_or_deref_local()
-                                {
-                                    Some(local) => local,
-                                    None => continue,
+                                let Some(assigned_from_local) = assigned_from.local_or_deref_local() else {
+                                    continue;
                                 };
 
                                 if assigned_from_local != target {
@@ -2138,10 +2133,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
 
                         // Find the local from the rvalue.
-                        let assigned_from_local = match assigned_from.local_or_deref_local() {
-                            Some(local) => local,
-                            None => continue,
-                        };
+                        let Some(assigned_from_local) = assigned_from.local_or_deref_local() else { continue };
                         debug!(
                             "annotate_argument_and_return_for_borrow: \
                              assigned_from_local={:?}",
@@ -2189,11 +2181,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         assigned_to, args
                     );
                     for operand in args {
-                        let assigned_from = match operand {
-                            Operand::Copy(assigned_from) | Operand::Move(assigned_from) => {
-                                assigned_from
-                            }
-                            _ => continue,
+                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand else {
+                            continue;
                         };
                         debug!(
                             "annotate_argument_and_return_for_borrow: assigned_from={:?}",

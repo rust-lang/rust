@@ -339,9 +339,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             _ => {}
         }
 
-        let (a, b) = match self.abi {
-            Abi::ScalarPair(a, b) => (a, b),
-            _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
+        let Abi::ScalarPair(a, b) = self.abi else {
+            bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self);
         };
         let scalar = [a, b][index];
 

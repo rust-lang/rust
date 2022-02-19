@@ -1319,9 +1319,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     // Try to use a ScalarPair for all tagged enums.
                     let mut common_prim = None;
                     for (field_layouts, layout_variant) in iter::zip(&variants, &layout_variants) {
-                        let offsets = match layout_variant.fields {
-                            FieldsShape::Arbitrary { ref offsets, .. } => offsets,
-                            _ => bug!(),
+                        let FieldsShape::Arbitrary { ref offsets, .. } = layout_variant.fields else {
+                            bug!();
                         };
                         let mut fields =
                             iter::zip(field_layouts, offsets).filter(|p| !p.0.is_zst());
@@ -1571,9 +1570,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let tcx = self.tcx;
         let subst_field = |ty: Ty<'tcx>| ty.subst(tcx, substs);
 
-        let info = match tcx.generator_layout(def_id) {
-            None => return Err(LayoutError::Unknown(ty)),
-            Some(info) => info,
+        let Some(info) = tcx.generator_layout(def_id) else {
+            return Err(LayoutError::Unknown(ty));
         };
         let (ineligible_locals, assignments) = self.generator_saved_local_eligibility(&info);
 
@@ -1676,9 +1674,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 )?;
                 variant.variants = Variants::Single { index };
 
-                let (offsets, memory_index) = match variant.fields {
-                    FieldsShape::Arbitrary { offsets, memory_index } => (offsets, memory_index),
-                    _ => bug!(),
+                let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
+                    bug!();
                 };
 
                 // Now, stitch the promoted and variant-only fields back together in

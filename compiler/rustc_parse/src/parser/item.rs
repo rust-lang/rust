@@ -439,9 +439,8 @@ impl<'a> Parser<'a> {
 
     /// Recover if we parsed attributes and expected an item but there was none.
     fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
-        let (start, end) = match attrs {
-            [] => return Ok(()),
-            [x0 @ xn] | [x0, .., xn] => (x0, xn),
+        let ([start @ end] | [start, .., end]) = attrs else {
+            return Ok(());
         };
         let msg = if end.is_doc_comment() {
             "expected item after doc comment"
