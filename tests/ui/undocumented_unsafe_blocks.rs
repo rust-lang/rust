@@ -89,11 +89,6 @@ fn block_comment_newlines() {
     unsafe {}
 }
 
-#[rustfmt::skip]
-fn inline_block_comment() {
-    /* Safety: */unsafe {}
-}
-
 fn block_comment_with_extras() {
     /* This is a description
      * SAFETY:
@@ -207,6 +202,43 @@ fn local_commented_block() {
 fn local_nest() {
     // safety:
     let _ = [(42, unsafe {}, unsafe {}), (52, unsafe {}, unsafe {})];
+}
+
+fn in_fn_call(x: *const u32) {
+    fn f(x: u32) {}
+
+    // Safety: reason
+    f(unsafe { *x });
+}
+
+fn multi_in_fn_call(x: *const u32) {
+    fn f(x: u32, y: u32) {}
+
+    // Safety: reason
+    f(unsafe { *x }, unsafe { *x });
+}
+
+fn in_multiline_fn_call(x: *const u32) {
+    fn f(x: u32, y: u32) {}
+
+    f(
+        // Safety: reason
+        unsafe { *x },
+        0,
+    );
+}
+
+fn in_macro_call(x: *const u32) {
+    // Safety: reason
+    println!("{}", unsafe { *x });
+}
+
+fn in_multiline_macro_call(x: *const u32) {
+    println!(
+        "{}",
+        // Safety: reason
+        unsafe { *x },
+    );
 }
 
 // Invalid comments
