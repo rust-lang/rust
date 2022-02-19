@@ -304,6 +304,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
         },
         (
             Trait(box ast::Trait {
+                constness: lc,
                 is_auto: la,
                 unsafety: lu,
                 generics: lg,
@@ -311,6 +312,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 items: li,
             }),
             Trait(box ast::Trait {
+                constness: rc,
                 is_auto: ra,
                 unsafety: ru,
                 generics: rg,
@@ -319,6 +321,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
             }),
         ) => {
             la == ra
+                && matches!(lc, ast::Const::No) == matches!(rc, ast::Const::No)
                 && matches!(lu, Unsafe::No) == matches!(ru, Unsafe::No)
                 && eq_generics(lg, rg)
                 && over(lb, rb, eq_generic_bound)

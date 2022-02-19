@@ -244,6 +244,9 @@ impl<'a> Parser<'a> {
             let m = self.parse_mutability();
             let (ident, ty, expr) = self.parse_item_global(Some(m))?;
             (ident, ItemKind::Static(ty, m, expr))
+        } else if self.check_keyword(kw::Trait) || self.check_trait_item_front_matter() {
+            // TRAIT ITEM
+            self.parse_item_trait(attrs, lo)?
         } else if let Const::Yes(const_span) = self.parse_constness() {
             // CONST ITEM
             if self.token.is_keyword(kw::Impl) {
@@ -254,9 +257,6 @@ impl<'a> Parser<'a> {
                 let (ident, ty, expr) = self.parse_item_global(None)?;
                 (ident, ItemKind::Const(def(), ty, expr))
             }
-        } else if self.check_keyword(kw::Trait) || self.check_auto_or_unsafe_trait_item() {
-            // TRAIT ITEM
-            self.parse_item_trait(attrs, lo)?
         } else if self.check_keyword(kw::Impl)
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Impl])
         {
@@ -302,7 +302,7 @@ impl<'a> Parser<'a> {
     pub(super) fn is_path_start_item(&mut self) -> bool {
         self.is_crate_vis() // no: `crate::b`, yes: `crate $item`
         || self.is_kw_followed_by_ident(kw::Union) // no: `union::b`, yes: `union U { .. }`
-        || self.check_auto_or_unsafe_trait_item() // no: `auto::b`, yes: `auto trait X { .. }`
+        || self.check_trait_item_front_matter() // no: `auto::b`, yes: `auto trait X { .. }`
         || self.is_async_fn() // no(2015): `async::b`, yes: `async fn`
         || matches!(self.is_macro_rules_item(), IsMacroRulesItem::Yes{..}) // no: `macro_rules::b`, yes: `macro_rules! mac`
     }
@@ -690,16 +690,22 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Is this an `(unsafe auto? | auto) trait` item?
-    fn check_auto_or_unsafe_trait_item(&mut self) -> bool {
+    /// Is this an `(unsafe auto? | const unsafe? | auto) trait` item?
+    fn check_trait_item_front_matter(&mut self) -> bool {
         // auto trait
         self.check_keyword(kw::Auto) && self.is_keyword_ahead(1, &[kw::Trait])
             // unsafe auto trait
             || self.check_keyword(kw::Unsafe) && self.is_keyword_ahead(1, &[kw::Trait, kw::Auto])
+            || self.check_keyword(kw::Const) && self.is_keyword_ahead(1, &[kw::Trait, kw::Unsafe])
     }
 
-    /// Parses `unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
+    /// Parses `const? unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut Vec<Attribute>, lo: Span) -> PResult<'a, ItemInfo> {
+        let constness = self.parse_constness();
+        if let Const::Yes(span) = constness {
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+        }
+
         let unsafety = self.parse_unsafety();
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
@@ -748,7 +754,14 @@ impl<'a> Parser<'a> {
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok((
                 ident,
-                ItemKind::Trait(Box::new(Trait { is_auto, unsafety, generics, bounds, items })),
+                ItemKind::Trait(Box::new(Trait {
+                    constness,
+                    is_auto,
+                    unsafety,
+                    generics,
+                    bounds,
+                    items,
+                })),
             ))
         }
     }

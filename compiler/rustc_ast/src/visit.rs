@@ -333,6 +333,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_variant_data(struct_definition);
         }
         ItemKind::Trait(box Trait {
+            constness: _,
             unsafety: _,
             is_auto: _,
             ref generics,

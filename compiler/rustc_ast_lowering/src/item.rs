@@ -408,6 +408,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             ItemKind::Trait(box Trait {
+                constness: _, // reserved
                 is_auto,
                 unsafety,
                 ref generics,
