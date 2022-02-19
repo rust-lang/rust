@@ -17,7 +17,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::NodeIdHashingMode;
@@ -144,6 +144,37 @@ impl<'tcx> TyCtxt<'tcx> {
             });
         });
         hasher.finish()
+    }
+
+    pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {
+        match res {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, _), def_id) => {
+                Some(self.parent(def_id).and_then(|def_id| self.parent(def_id)).unwrap())
+            }
+            Res::Def(DefKind::Variant | DefKind::Ctor(CtorOf::Struct, _), def_id) => {
+                Some(self.parent(def_id).unwrap())
+            }
+            // Other `DefKind`s don't have generics and would ICE when calling
+            // `generics_of`.
+            Res::Def(
+                DefKind::Struct
+                | DefKind::Union
+                | DefKind::Enum
+                | DefKind::Trait
+                | DefKind::OpaqueTy
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Impl,
+                def_id,
+            ) => Some(def_id),
+            Res::Err => None,
+            _ => None,
+        }
     }
 
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {

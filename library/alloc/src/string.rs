@@ -1628,16 +1628,23 @@ impl String {
         self.vec.clear()
     }
 
-    /// Creates a draining iterator that removes the specified range in the `String`
-    /// and yields the removed `chars`.
+    /// Removes the specified range from the string in bulk, returning all
+    /// removed characters as an iterator.
     ///
-    /// Note: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// The returned iterator keeps a mutable borrow on the string to optimize
+    /// its implementation.
     ///
     /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
+    ///
+    /// # Leaking
+    ///
+    /// If the returned iterator goes out of scope without being dropped (due to
+    /// [`core::mem::forget`], for example), the string may still contain a copy
+    /// of any drained characters, or may have lost characters arbitrarily,
+    /// including characters outside the range.
     ///
     /// # Examples
     ///
@@ -1652,7 +1659,7 @@ impl String {
     /// assert_eq!(t, "α is alpha, ");
     /// assert_eq!(s, "β is beta");
     ///
-    /// // A full range clears the string
+    /// // A full range clears the string, like `clear()` does
     /// s.drain(..);
     /// assert_eq!(s, "");
     /// ```

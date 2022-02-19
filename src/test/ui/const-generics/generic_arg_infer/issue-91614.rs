@@ -4,5 +4,5 @@ use std::simd::Mask;
 
 fn main() {
     let y = Mask::<_, _>::splat(false);
-    //~^ error: type annotations needed for `Mask<_, {_: usize}>`
+    //~^ ERROR: type annotations needed for
 }

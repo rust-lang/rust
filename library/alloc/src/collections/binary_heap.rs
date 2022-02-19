@@ -746,9 +746,12 @@ impl<T: Ord> BinaryHeap<T> {
         self.rebuild_tail(start);
     }
 
-    /// Returns an iterator which retrieves elements in heap order.
-    /// The retrieved elements are removed from the original heap.
-    /// The remaining elements will be removed on drop in heap order.
+    /// Clears the binary heap, returning an iterator over the removed elements
+    /// in heap order. If the iterator is dropped before being fully consumed,
+    /// it drops the remaining elements in heap order.
+    ///
+    /// The returned iterator keeps a mutable borrow on the heap to optimize
+    /// its implementation.
     ///
     /// Note:
     /// * `.drain_sorted()` is *O*(*n* \* log(*n*)); much slower than `.drain()`.
@@ -1158,9 +1161,12 @@ impl<T> BinaryHeap<T> {
         self.len() == 0
     }
 
-    /// Clears the binary heap, returning an iterator over the removed elements.
+    /// Clears the binary heap, returning an iterator over the removed elements
+    /// in arbitrary order. If the iterator is dropped before being fully
+    /// consumed, it drops the remaining elements in arbitrary order.
     ///
-    /// The elements are removed in arbitrary order.
+    /// The returned iterator keeps a mutable borrow on the heap to optimize
+    /// its implementation.
     ///
     /// # Examples
     ///

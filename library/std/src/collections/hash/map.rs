@@ -547,6 +547,10 @@ impl<K, V, S> HashMap<K, V, S> {
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
     ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining key-value pairs. The returned iterator keeps a
+    /// mutable borrow on the vector to optimize its implementation.
+    ///
     /// # Examples
     ///
     /// ```

@@ -606,7 +606,7 @@ pub trait PrettyPrinter<'tcx>:
             ty::Infer(infer_ty) => {
                 let verbose = self.tcx().sess.verbose();
                 if let ty::TyVar(ty_vid) = infer_ty {
-                    if let Some(name) = self.infer_ty_name(ty_vid) {
+                    if let Some(name) = self.ty_infer_name(ty_vid) {
                         p!(write("{}", name))
                     } else {
                         if verbose {
@@ -1015,7 +1015,11 @@ pub trait PrettyPrinter<'tcx>:
         }
     }
 
-    fn infer_ty_name(&self, _: ty::TyVid) -> Option<String> {
+    fn ty_infer_name(&self, _: ty::TyVid) -> Option<String> {
+        None
+    }
+
+    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<String> {
         None
     }
 
@@ -1203,7 +1207,14 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            ty::ConstKind::Infer(..) => print_underscore!(),
+            ty::ConstKind::Infer(infer_ct) => {
+                match infer_ct {
+                    ty::InferConst::Var(ct_vid)
+                        if let Some(name) = self.const_infer_name(ct_vid) =>
+                            p!(write("{}", name)),
+                    _ => print_underscore!(),
+                }
+            }
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_value(value, ct.ty(), print_ty);
@@ -1559,7 +1570,8 @@ pub struct FmtPrinterData<'a, 'tcx, F> {
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
-    pub name_resolver: Option<Box<&'a dyn Fn(ty::TyVid) -> Option<String>>>,
+    pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<String> + 'a>>,
+    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<String> + 'a>>,
 }
 
 impl<'a, 'tcx, F> Deref for FmtPrinter<'a, 'tcx, F> {
@@ -1588,7 +1600,8 @@ impl<'a, 'tcx, F> FmtPrinter<'a, 'tcx, F> {
             binder_depth: 0,
             printed_type_count: 0,
             region_highlight_mode: RegionHighlightMode::new(tcx),
-            name_resolver: None,
+            ty_infer_name_resolver: None,
+            const_infer_name_resolver: None,
         }))
     }
 }
@@ -1843,8 +1856,12 @@ impl<'tcx, F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
 }
 
 impl<'tcx, F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
-    fn infer_ty_name(&self, id: ty::TyVid) -> Option<String> {
-        self.0.name_resolver.as_ref().and_then(|func| func(id))
+    fn ty_infer_name(&self, id: ty::TyVid) -> Option<String> {
+        self.0.ty_infer_name_resolver.as_ref().and_then(|func| func(id))
+    }
+
+    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<String> {
+        self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
     fn print_value_path(

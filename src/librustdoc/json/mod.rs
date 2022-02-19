@@ -8,6 +8,7 @@ mod conversions;
 
 use std::cell::RefCell;
 use std::fs::{create_dir_all, File};
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -213,7 +214,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let mut index = (*self.index).clone().into_inner();
         index.extend(self.get_trait_items());
         // This needs to be the default HashMap for compatibility with the public interface for
-        // rustdoc-json
+        // rustdoc-json-types
         #[allow(rustc::default_hash_types)]
         let output = types::Crate {
             root: types::Id(String::from("0:0")),
@@ -263,8 +264,10 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let mut p = out_dir;
         p.push(output.index.get(&output.root).unwrap().name.clone().unwrap());
         p.set_extension("json");
-        let file = try_err!(File::create(&p), p);
-        serde_json::ser::to_writer(&file, &output).unwrap();
+        let mut file = BufWriter::new(try_err!(File::create(&p), p));
+        serde_json::ser::to_writer(&mut file, &output).unwrap();
+        try_err!(file.flush(), p);
+
         Ok(())
     }
 
