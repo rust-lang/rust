@@ -9,3 +9,5 @@
 pub mod bit_set;
 pub mod interval;
 pub mod vec;
+
+pub use rustc_macros::newtype_index;
