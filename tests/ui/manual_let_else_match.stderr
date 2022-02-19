@@ -1,5 +1,5 @@
 error: this could be rewritten as `let else`
-  --> $DIR/manual_let_else_match.rs:28:5
+  --> $DIR/manual_let_else_match.rs:32:5
    |
 LL | /     let v = match g() {
 LL | |         Some(v_some) => v_some,
@@ -10,7 +10,7 @@ LL | |     };
    = note: `-D clippy::manual-let-else` implied by `-D warnings`
 
 error: this could be rewritten as `let else`
-  --> $DIR/manual_let_else_match.rs:33:5
+  --> $DIR/manual_let_else_match.rs:37:5
    |
 LL | /     let v = match g() {
 LL | |         Some(v_some) => v_some,
@@ -19,16 +19,25 @@ LL | |     };
    | |______^
 
 error: this could be rewritten as `let else`
-  --> $DIR/manual_let_else_match.rs:40:9
+  --> $DIR/manual_let_else_match.rs:44:9
    |
 LL | /         let v = match h() {
-LL | |             Variant::Foo => continue,
+LL | |             (Some(_), Some(_)) | (None, None) => continue,
+LL | |             (Some(v), None) | (None, Some(v)) => v,
+LL | |         };
+   | |__________^
+
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:49:9
+   |
+LL | /         let v = match build_enum() {
+LL | |             _ => continue,
 LL | |             Variant::Bar(v) | Variant::Baz(v) => v,
 LL | |         };
    | |__________^
 
 error: this could be rewritten as `let else`
-  --> $DIR/manual_let_else_match.rs:48:5
+  --> $DIR/manual_let_else_match.rs:57:5
    |
 LL | /     let v = match f() {
 LL | |         Ok(v) => v,
@@ -36,5 +45,14 @@ LL | |         Err(_) => return,
 LL | |     };
    | |______^
 
-error: aborting due to 4 previous errors
+error: this could be rewritten as `let else`
+  --> $DIR/manual_let_else_match.rs:63:5
+   |
+LL | /     let v = match f().map_err(|_| ()) {
+LL | |         Ok(v) => v,
+LL | |         Err(()) => return,
+LL | |     };
+   | |______^
+
+error: aborting due to 6 previous errors
 

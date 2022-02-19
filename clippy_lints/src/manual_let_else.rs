@@ -1,14 +1,16 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, QPath, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
@@ -108,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualLetElse {
                     }
                     if expr_is_simple_identity(arm.pat, arm.body) {
                         found_identity_arm = true;
-                    } else if expr_diverges(cx, arm.body) && pat_has_no_bindings(arm.pat) {
+                    } else if expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat) {
                         found_diverging_arm = true;
                     }
                 }
@@ -194,10 +196,39 @@ fn from_different_macros(span_a: Span, span_b: Span) -> bool {
     data_for_comparison(span_a) != data_for_comparison(span_b)
 }
 
-fn pat_has_no_bindings(pat: &'_ Pat<'_>) -> bool {
-    let mut has_no_bindings = true;
-    pat.each_binding_or_first(&mut |_, _, _, _| has_no_bindings = false);
-    has_no_bindings
+fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>) -> bool {
+    // Check whether the pattern contains any bindings, as the
+    // binding might potentially be used in the body.
+    // TODO: only look for *used* bindings.
+    let mut has_bindings = false;
+    pat.each_binding_or_first(&mut |_, _, _, _| has_bindings = true);
+    if has_bindings {
+        return false;
+    }
+
+    // Check whether any possibly "unknown" patterns are included,
+    // because users might not know which values some enum has.
+    // Well-known enums are excepted, as we assume people know them.
+    // We do a deep check, to be able to disallow Err(En::Foo(_))
+    // for usage of the En::Foo variant, as we disallow En::Foo(_),
+    // but we allow Err(_).
+    let typeck_results = cx.typeck_results();
+    let mut has_disallowed = false;
+    pat.walk_always(|pat| {
+        // Only do the check if the type is "spelled out" in the pattern
+        if !matches!(
+            pat.kind,
+            PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..)
+        ) {
+            return;
+        };
+        let ty = typeck_results.pat_ty(pat);
+        // Option and Result are allowed, everything else isn't.
+        if !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) {
+            has_disallowed = true;
+        }
+    });
+    !has_disallowed
 }
 
 /// Checks if the passed block is a simple identity referring to bindings created by the pattern

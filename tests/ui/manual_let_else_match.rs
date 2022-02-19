@@ -4,12 +4,6 @@
 // Ensure that we don't conflict with match -> if let lints
 #![warn(clippy::single_match_else, clippy::single_match)]
 
-enum Variant {
-    Foo,
-    Bar(u32),
-    Baz(u32),
-}
-
 fn f() -> Result<u32, u32> {
     Ok(0)
 }
@@ -18,7 +12,17 @@ fn g() -> Option<()> {
     None
 }
 
-fn h() -> Variant {
+fn h() -> (Option<()>, Option<()>) {
+    (None, None)
+}
+
+enum Variant {
+    Foo,
+    Bar(u32),
+    Baz(u32),
+}
+
+fn build_enum() -> Variant {
     Variant::Foo
 }
 
@@ -36,9 +40,14 @@ fn fire() {
     };
 
     loop {
-        // More complex pattern for the identity arm
+        // More complex pattern for the identity arm and diverging arm
         let v = match h() {
-            Variant::Foo => continue,
+            (Some(_), Some(_)) | (None, None) => continue,
+            (Some(v), None) | (None, Some(v)) => v,
+        };
+        // Custom enums are supported as long as the "else" arm is a simple _
+        let v = match build_enum() {
+            _ => continue,
             Variant::Bar(v) | Variant::Baz(v) => v,
         };
     }
@@ -49,21 +58,27 @@ fn fire() {
         Ok(v) => v,
         Err(_) => return,
     };
+
+    // Err(()) is an allowed pattern
+    let v = match f().map_err(|_| ()) {
+        Ok(v) => v,
+        Err(()) => return,
+    };
 }
 
 fn not_fire() {
     // Multiple diverging arms
     let v = match h() {
-        Variant::Foo => panic!(),
-        Variant::Bar(_v) => return,
-        Variant::Baz(v) => v,
+        _ => panic!(),
+        (None, Some(_v)) => return,
+        (Some(v), None) => v,
     };
 
     // Multiple identity arms
     let v = match h() {
-        Variant::Foo => panic!(),
-        Variant::Bar(v) => v,
-        Variant::Baz(v) => v,
+        _ => panic!(),
+        (None, Some(v)) => v,
+        (Some(v), None) => v,
     };
 
     // No diverging arm at all, only identity arms.
@@ -74,8 +89,8 @@ fn not_fire() {
     };
 
     // The identity arm has a guard
-    let v = match h() {
-        Variant::Bar(v) if g().is_none() => v,
+    let v = match g() {
+        Some(v) if g().is_none() => v,
         _ => return,
     };
 
@@ -89,5 +104,18 @@ fn not_fire() {
     let v = match f() {
         Ok(v) => v,
         Err(e) => panic!("error: {e}"),
+    };
+
+    // Custom enum where the diverging arm
+    // explicitly mentions the variant
+    let v = match build_enum() {
+        Variant::Foo => return,
+        Variant::Bar(v) | Variant::Baz(v) => v,
+    };
+
+    // The custom enum is surrounded by an Err()
+    let v = match Err(build_enum()) {
+        Ok(v) | Err(Variant::Bar(v) | Variant::Baz(v)) => v,
+        Err(Variant::Foo) => return,
     };
 }
