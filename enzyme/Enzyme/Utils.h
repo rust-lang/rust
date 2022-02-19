@@ -890,6 +890,53 @@ enum class MPI_CallType {
   IRECV = 2,
 };
 
+enum class MPI_Elem {
+  Buf = 0,
+  Count = 1,
+  DataType = 2,
+  Src = 3,
+  Tag = 4,
+  Comm = 5,
+  Call = 6,
+  Old = 7
+};
+
+static inline llvm::StructType *getMPIHelper(llvm::LLVMContext &Context) {
+  using namespace llvm;
+  auto i64 = Type::getInt64Ty(Context);
+  Type *types[] = {
+      /*buf      0 */ Type::getInt8PtrTy(Context),
+      /*count    1 */ i64,
+      /*datatype 2 */ Type::getInt8PtrTy(Context),
+      /*src      3 */ i64,
+      /*tag      4 */ i64,
+      /*comm     5 */ Type::getInt8PtrTy(Context),
+      /*fn       6 */ Type::getInt8Ty(Context),
+      /*old      7 */ Type::getInt8PtrTy(Context),
+  };
+  return StructType::get(Context, types, false);
+}
+
+template <MPI_Elem E, bool Pointer = true>
+static inline llvm::Value *getMPIMemberPtr(llvm::IRBuilder<> &B,
+                                           llvm::Value *V) {
+  using namespace llvm;
+  auto i64 = Type::getInt64Ty(V->getContext());
+  auto i32 = Type::getInt32Ty(V->getContext());
+  auto c0_64 = ConstantInt::get(i64, 0);
+
+  if (Pointer) {
+#if LLVM_VERSION_MAJOR > 7
+    return B.CreateInBoundsGEP(V->getType()->getPointerElementType(), V,
+                               {c0_64, ConstantInt::get(i32, (uint64_t)E)});
+#else
+    return B.CreateInBoundsGEP(V, {c0_64, ConstantInt::get(i32, (uint64_t)E)});
+#endif
+  } else {
+    return B.CreateExtractValue(V, {(unsigned)E});
+  }
+}
+
 llvm::Value *getOrInsertOpFloatSum(llvm::Module &M, llvm::Type *OpPtr,
                                    ConcreteType CT, llvm::Type *intType,
                                    llvm::IRBuilder<> &B2);
@@ -942,4 +989,9 @@ template <typename T> static inline llvm::Function *getFunctionFromCall(T *op) {
   }
   return called;
 }
+
+llvm::Function *
+getOrInsertDifferentialWaitallSave(llvm::Module &M,
+                                   llvm::ArrayRef<llvm::Type *> T,
+                                   llvm::PointerType *reqType);
 #endif

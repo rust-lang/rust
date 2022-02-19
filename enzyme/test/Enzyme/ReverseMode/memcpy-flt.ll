@@ -67,10 +67,10 @@ attributes #3 = { nounwind }
 
 ; CHECK: for.body:                                        
 ; CHECK-NEXT:   %idx = phi i64 [ 0, %entry ], [ %idx.next, %for.body ] 
-; CHECK-NEXT:   %dst.i = getelementptr double, double* %dst, i64 %idx
+; CHECK-NEXT:   %dst.i = getelementptr inbounds double, double* %dst, i64 %idx
 ; CHECK-NEXT:   %dst.i.l = load double, double* %dst.i, align 1
 ; CHECK-NEXT:   store double 0.000000e+00, double* %dst.i, align 1
-; CHECK-NEXT:   %src.i = getelementptr double, double* %src, i64 %idx
+; CHECK-NEXT:   %src.i = getelementptr inbounds double, double* %src, i64 %idx
 ; CHECK-NEXT:   %src.i.l = load double, double* %src.i, align 1
 ; CHECK-NEXT:   %1 = fadd fast double %src.i.l, %dst.i.l
 ; CHECK-NEXT:   store double %1, double* %src.i, align 1

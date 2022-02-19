@@ -200,7 +200,7 @@ handleInactiveFunction(llvm::Module &M, llvm::GlobalVariable &g,
 }
 
 static void handleKnownFunctions(llvm::Function &F) {
-  if (F.getName() == "MPI_Irecv") {
+  if (F.getName() == "MPI_Irecv" || F.getName() == "PMPI_Irecv") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
@@ -216,7 +216,7 @@ static void handleKnownFunctions(llvm::Function &F) {
     }
     F.addParamAttr(6, Attribute::WriteOnly);
   }
-  if (F.getName() == "MPI_Isend") {
+  if (F.getName() == "MPI_Isend" || F.getName() == "PMPI_Isend") {
     F.addFnAttr(Attribute::InaccessibleMemOrArgMemOnly);
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
@@ -225,7 +225,7 @@ static void handleKnownFunctions(llvm::Function &F) {
     F.addFnAttr(Attribute::NoFree);
     F.addFnAttr(Attribute::NoSync);
 #endif
-    F.addParamAttr(0, Attribute::WriteOnly);
+    F.addParamAttr(0, Attribute::ReadOnly);
     if (F.getFunctionType()->getParamType(2)->isPointerTy()) {
       F.addParamAttr(2, Attribute::NoCapture);
       F.addParamAttr(2, Attribute::ReadOnly);
@@ -251,7 +251,7 @@ static void handleKnownFunctions(llvm::Function &F) {
       F.addParamAttr(1, Attribute::NoCapture);
     }
   }
-  if (F.getName() == "MPI_Wait") {
+  if (F.getName() == "MPI_Wait" || F.getName() == "PMPI_Wait") {
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -259,12 +259,11 @@ static void handleKnownFunctions(llvm::Function &F) {
     F.addFnAttr(Attribute::NoFree);
     F.addFnAttr(Attribute::NoSync);
 #endif
-    F.addParamAttr(0, Attribute::ReadOnly);
     F.addParamAttr(0, Attribute::NoCapture);
     F.addParamAttr(1, Attribute::WriteOnly);
     F.addParamAttr(1, Attribute::NoCapture);
   }
-  if (F.getName() == "MPI_Waitall") {
+  if (F.getName() == "MPI_Waitall" || F.getName() == "PMPI_Waitall") {
     F.addFnAttr(Attribute::NoUnwind);
     F.addFnAttr(Attribute::NoRecurse);
 #if LLVM_VERSION_MAJOR >= 9
@@ -272,7 +271,6 @@ static void handleKnownFunctions(llvm::Function &F) {
     F.addFnAttr(Attribute::NoFree);
     F.addFnAttr(Attribute::NoSync);
 #endif
-    F.addParamAttr(1, Attribute::ReadOnly);
     F.addParamAttr(1, Attribute::NoCapture);
     F.addParamAttr(2, Attribute::WriteOnly);
     F.addParamAttr(2, Attribute::NoCapture);

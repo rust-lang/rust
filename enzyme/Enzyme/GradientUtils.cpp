@@ -161,6 +161,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         }
       }
     }
+    assert(!TapesToPreventRecomputation.count(inst));
   }
 
   std::pair<Value *, BasicBlock *> idx = std::make_pair(val, scope);

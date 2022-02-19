@@ -190,28 +190,36 @@ static inline bool is_use_directly_needed_in_reverse(
   }
 
   if (auto CI = dyn_cast<CallInst>(user)) {
-    if (auto F = CI->getCalledFunction()) {
-      // Only need primal length and datatype for reverse
-      if (F->getName() == "MPI_Isend" || F->getName() == "MPI_Irecv") {
-        if (val != CI->getArgOperand(1) && val != CI->getArgOperand(2)) {
+    if (auto F = getFunctionFromCall(const_cast<CallInst *>(CI))) {
+      auto funcName = F->getName();
+      if (F->hasFnAttribute("enzyme_math"))
+        funcName = F->getFnAttribute("enzyme_math").getValueAsString();
+
+      // Only need primal (and shadow) request for reverse
+      if (funcName == "MPI_Isend" || funcName == "MPI_Irecv" ||
+          funcName == "PMPI_Isend" || funcName == "PMPI_Irecv") {
+        if (val != CI->getArgOperand(6)) {
           return false;
         }
       }
-      // Don't need any primal arguments for mpi_wait
-      if (F->getName() == "MPI_Wait")
-        return false;
-      // Only need element count for reverse of waitall
-      if (F->getName() == "MPI_Waitall")
+
+      // Only need the primal request.
+      if (funcName == "MPI_Wait" || funcName == "PMPI_Wait")
         if (val != CI->getArgOperand(0))
+          return false;
+
+      // Only need element count for reverse of waitall
+      if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall")
+        if (val != CI->getArgOperand(0) || val != CI->getOperand(1))
           return false;
       // Since adjoint of barrier is another barrier in reverse
       // we still need even if instruction is inactive
-      if (F->getName() == "__kmpc_barrier" || F->getName() == "MPI_Barrier")
+      if (funcName == "__kmpc_barrier" || funcName == "MPI_Barrier")
         return true;
 
       // Since adjoint of GC preserve is another preserve in reverse
       // we still need even if instruction is inactive
-      if (F->getName() == "llvm.julia.gc_preserve_begin")
+      if (funcName == "llvm.julia.gc_preserve_begin")
         return true;
     }
   }
@@ -298,11 +306,65 @@ static inline bool is_value_needed_in_reverse(
       }
 
       if (auto CI = dyn_cast<CallInst>(user)) {
-        if (auto F = CI->getCalledFunction()) {
+        if (auto F = getFunctionFromCall(const_cast<CallInst *>(CI))) {
+          StringRef funcName = F->getName();
+          if (F->hasFnAttribute("enzyme_math"))
+            funcName = F->getFnAttribute("enzyme_math").getValueAsString();
+
+          // Only need shadow request for reverse
+          if (funcName == "MPI_Irecv" || funcName == "PMPI_Irecv") {
+            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+              continue;
+            // Need shadow request
+            if (inst == CI->getArgOperand(6))
+              return seen[idx] = true;
+            // Need shadow buffer in forward pass
+            if (mode != DerivativeMode::ReverseModeGradient)
+              if (inst == CI->getArgOperand(0))
+                return seen[idx] = true;
+            continue;
+          }
+          if (funcName == "MPI_Isend" || funcName == "PMPI_Isend") {
+            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+              continue;
+            // Need shadow request
+            if (inst == CI->getArgOperand(6))
+              return seen[idx] = true;
+            // Need shadow buffer in reverse pass or forward mode
+            if (mode != DerivativeMode::ReverseModePrimal)
+              if (inst == CI->getArgOperand(0))
+                return seen[idx] = true;
+            continue;
+          }
+
+          // Don't need shadow of anything (all via cache for reverse),
+          // but need shadow of request for primal.
+          if (funcName == "MPI_Wait" || funcName == "PMPI_Wait") {
+            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+              continue;
+            // Need shadow request in forward pass
+            if (mode != DerivativeMode::ReverseModeGradient)
+              if (inst == CI->getArgOperand(0))
+                return seen[idx] = true;
+            continue;
+          }
+
+          // Don't need shadow of anything (all via cache for reverse),
+          // but need shadow of request for primal.
+          if (funcName == "MPI_Waitall" || funcName == "PMPI_Waitall") {
+            if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
+              continue;
+            // Need shadow request in forward pass
+            if (mode != DerivativeMode::ReverseModeGradient)
+              if (inst == CI->getArgOperand(1))
+                return seen[idx] = true;
+            continue;
+          }
+
           // Use in a write barrier requires the shadow in the forward, even
           // though the instruction is active.
           if (mode != DerivativeMode::ReverseModeGradient &&
-              F->getName() == "julia.write_barrier") {
+              funcName == "julia.write_barrier") {
             return seen[idx] = true;
           }
         }

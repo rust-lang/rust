@@ -3624,21 +3624,23 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
       return;
     }
     if (funcName == "MPI_Send" || funcName == "MPI_Ssend" ||
-        funcName == "MPI_Bsend") {
-      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
-                     &call);
-      updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
-      updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
-      updateAnalysis(call.getOperand(4), TypeTree(BaseType::Integer).Only(-1),
-                     &call);
-      updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
-      return;
-    }
-    if (funcName == "MPI_Recv" || funcName == "MPI_Brecv") {
-      updateAnalysis(call.getOperand(0), TypeTree(BaseType::Pointer).Only(-1),
-                     &call);
+        funcName == "MPI_Bsend" || funcName == "MPI_Recv" ||
+        funcName == "MPI_Brecv") {
+      TypeTree buf = TypeTree(BaseType::Pointer);
+
+      if (Constant *C = dyn_cast<Constant>(call.getOperand(2))) {
+        while (ConstantExpr *CE = dyn_cast<ConstantExpr>(C)) {
+          C = CE->getOperand(0);
+        }
+        if (auto GV = dyn_cast<GlobalVariable>(C)) {
+          if (GV->getName() == "ompi_mpi_double") {
+            buf.insert({0}, Type::getDoubleTy(C->getContext()));
+          } else if (GV->getName() == "ompi_mpi_float") {
+            buf.insert({0}, Type::getFloatTy(C->getContext()));
+          }
+        }
+      }
+      updateAnalysis(call.getOperand(0), buf.Only(-1), &call);
       updateAnalysis(call.getOperand(1), TypeTree(BaseType::Integer).Only(-1),
                      &call);
       updateAnalysis(call.getOperand(3), TypeTree(BaseType::Integer).Only(-1),
