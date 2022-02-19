@@ -306,8 +306,6 @@ declare_features! (
     (active, c_variadic, "1.34.0", Some(44930), None),
     /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
     (incomplete, capture_disjoint_fields, "1.49.0", Some(53488), None),
-    /// Enables `#[cfg(panic = "...")]` config key.
-    (active, cfg_panic, "1.49.0", Some(77443), None),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
     /// Allows `cfg(target_abi = "...")`.

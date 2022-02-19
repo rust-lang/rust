@@ -1,7 +1,7 @@
 // build-pass
 // compile-flags: -C panic=abort
 // no-prefer-dynamic
-#![feature(cfg_panic)]
+
 
 #[cfg(panic = "unwind")]
 pub fn bad() -> i32 { }
