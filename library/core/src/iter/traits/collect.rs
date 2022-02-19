@@ -374,11 +374,11 @@ pub trait Extend<A> {
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
-impl Extend<()> for () {
-    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+impl<T> Extend<T> for () {
+    fn extend<A: IntoIterator<Item = T>>(&mut self, iter: A) {
         iter.into_iter().for_each(drop)
     }
-    fn extend_one(&mut self, _item: ()) {}
+    fn extend_one(&mut self, _item: T) {}
 }
 
 #[stable(feature = "extend_for_tuple", since = "1.56.0")]
