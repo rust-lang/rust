@@ -6,8 +6,6 @@ use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
 
-use super::MAX;
-
 /// Converts a `u32` to a `char`.
 ///
 /// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
@@ -271,7 +269,20 @@ impl FromStr for char {
 
 #[inline]
 const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
-    if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
+    // This is an optimized version of the check
+    // (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF),
+    // which can also be written as
+    // i >= 0x110000 || (i >= 0xD800 && i < 0xE000).
+    //
+    // The XOR with 0xD800 permutes the ranges such that 0xD800..0xE000 is
+    // mapped to 0x0000..0x0800, while keeping all the high bits outside 0xFFFF the same.
+    // In particular, numbers >= 0x110000 stay in this range.
+    //
+    // Subtracting 0x800 causes 0x0000..0x0800 to wrap, meaning that a single
+    // unsigned comparison against 0x110000 - 0x800 will detect both the wrapped
+    // surrogate range as well as the numbers originally larger than 0x110000.
+    //
+    if (i ^ 0xD800).wrapping_sub(0x800) >= 0x110000 - 0x800 {
         Err(CharTryFromError(()))
     } else {
         // SAFETY: checked that it's a legal unicode value
