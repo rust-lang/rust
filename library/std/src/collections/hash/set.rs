@@ -227,7 +227,12 @@ impl<T, S> HashSet<T, S> {
         self.base.is_empty()
     }
 
-    /// Clears the set, returning all elements in an iterator.
+    /// Clears the set, returning all elements as an iterator. Keeps the
+    /// allocated memory for reuse.
+    ///
+    /// If the returned iterator is dropped before being fully consumed, it
+    /// drops the remaining elements. The returned iterator keeps a mutable
+    /// borrow on the vector to optimize its implementation.
     ///
     /// # Examples
     ///
