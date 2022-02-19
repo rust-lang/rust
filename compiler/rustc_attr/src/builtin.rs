@@ -463,25 +463,28 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                 let name = cfg.ident().expect("multi-segment cfg predicate").name;
                 let value = cfg.value_str();
-                if sess.check_config.names_checked && !sess.check_config.names_valid.contains(&name)
-                {
-                    sess.buffer_lint(
-                        UNEXPECTED_CFGS,
-                        cfg.span,
-                        CRATE_NODE_ID,
-                        "unexpected `cfg` condition name",
-                    );
-                }
-                if let Some(val) = value {
-                    if sess.check_config.values_checked.contains(&name)
-                        && !sess.check_config.values_valid.contains(&(name, val))
-                    {
+                if let Some(names_valid) = &sess.check_config.names_valid {
+                    if !names_valid.contains(&name) {
                         sess.buffer_lint(
                             UNEXPECTED_CFGS,
                             cfg.span,
                             CRATE_NODE_ID,
-                            "unexpected `cfg` condition value",
+                            "unexpected `cfg` condition name",
                         );
+                    }
+                }
+                if let Some(val) = value {
+                    if let Some(values_valid) = &sess.check_config.values_valid {
+                        if let Some(values) = values_valid.get(&name) {
+                            if !values.contains(&val) {
+                                sess.buffer_lint(
+                                    UNEXPECTED_CFGS,
+                                    cfg.span,
+                                    CRATE_NODE_ID,
+                                    "unexpected `cfg` condition value",
+                                );
+                            }
+                        }
                     }
                 }
                 sess.config.contains(&(name, value))
