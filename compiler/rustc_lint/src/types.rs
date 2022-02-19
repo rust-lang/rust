@@ -1331,14 +1331,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let t = cx.tcx.type_of(it.def_id);
             let ty = cx.tcx.erase_regions(t);
-            let layout = match cx.layout_of(ty) {
-                Ok(layout) => layout,
-                Err(
-                    ty::layout::LayoutError::Unknown(_)
-                    | ty::layout::LayoutError::SizeOverflow(_)
-                    | ty::layout::LayoutError::NormalizationFailure(_, _),
-                ) => return,
-            };
+            let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple {
                     tag_encoding: TagEncoding::Direct, tag, ref variants, ..
                 } = &layout.variants else {

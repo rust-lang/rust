@@ -641,9 +641,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let tok_result = match expander.expand(self.cx, span, mac.args.inner_tokens()) {
-                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
-                        Ok(ts) => ts,
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.inner_tokens()) else {
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
@@ -698,9 +697,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let tok_result = match expander.expand(self.cx, span, inner_tokens, tokens) {
-                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
-                        Ok(ts) => ts,
+                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
                 }

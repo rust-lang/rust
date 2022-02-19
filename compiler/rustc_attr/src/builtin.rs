@@ -556,17 +556,14 @@ pub fn eval_condition(
                     return false;
                 }
             };
-            let min_version = match parse_version(min_version.as_str(), false) {
-                Some(ver) => ver,
-                None => {
-                    sess.span_diagnostic
-                        .struct_span_warn(
-                            *span,
-                            "unknown version literal format, assuming it refers to a future version",
-                        )
-                        .emit();
-                    return false;
-                }
+            let Some(min_version) = parse_version(min_version.as_str(), false) else {
+                sess.span_diagnostic
+                    .struct_span_warn(
+                        *span,
+                        "unknown version literal format, assuming it refers to a future version",
+                    )
+                    .emit();
+                return false;
             };
             let rustc_version = parse_version(env!("CFG_RELEASE"), true).unwrap();
 
@@ -669,9 +666,8 @@ where
             break;
         }
 
-        let meta = match attr.meta() {
-            Some(meta) => meta,
-            None => continue,
+        let Some(meta) = attr.meta() else {
+            continue;
         };
         let mut since = None;
         let mut note = None;

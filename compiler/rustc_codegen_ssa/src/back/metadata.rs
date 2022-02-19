@@ -79,15 +79,14 @@ fn search_for_metadata<'a>(
     bytes: &'a [u8],
     section: &str,
 ) -> Result<&'a [u8], String> {
-    let file = match object::File::parse(bytes) {
-        Ok(f) => f,
+    let Ok(file) = object::File::parse(bytes) else {
         // The parse above could fail for odd reasons like corruption, but for
         // now we just interpret it as this target doesn't support metadata
         // emission in object files so the entire byte slice itself is probably
         // a metadata file. Ideally though if necessary we could at least check
         // the prefix of bytes to see if it's an actual metadata object and if
         // not forward the error along here.
-        Err(_) => return Ok(bytes),
+        return Ok(bytes);
     };
     file.section_by_name(section)
         .ok_or_else(|| format!("no `{}` section in '{}'", section, path.display()))?

@@ -26,11 +26,8 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
 
                 let stmt = stmt.replace_nop();
                 let source_info = stmt.source_info;
-                let (lhs, kind, operands) = match stmt.kind {
-                    StatementKind::Assign(box (lhs, Rvalue::Aggregate(kind, operands))) => {
-                        (lhs, kind, operands)
-                    }
-                    _ => bug!(),
+                let StatementKind::Assign(box (lhs, Rvalue::Aggregate(kind, operands))) = stmt.kind else {
+                    bug!();
                 };
 
                 Some(expand_aggregate(

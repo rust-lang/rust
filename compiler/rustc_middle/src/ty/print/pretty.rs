@@ -415,9 +415,8 @@ pub trait PrettyPrinter<'tcx>:
             cur_def_key = self.tcx().def_key(parent);
         }
 
-        let visible_parent = match visible_parent_map.get(&def_id).cloned() {
-            Some(parent) => parent,
-            None => return Ok((self, false)),
+        let Some(visible_parent) = visible_parent_map.get(&def_id).cloned() else {
+            return Ok((self, false));
         };
 
         let actual_parent = self.tcx().parent(def_id);

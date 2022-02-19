@@ -330,9 +330,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         args: Vec<AstP<Expr>>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
-        let path = match f.kind {
-            ExprKind::Path(None, ref mut path) => path,
-            _ => unreachable!(),
+        let ExprKind::Path(None, ref mut path) = f.kind else {
+            unreachable!();
         };
 
         // Split the arguments into const generics and normal arguments

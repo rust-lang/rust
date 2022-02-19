@@ -628,9 +628,8 @@ where
         ret
     });
 
-    let mut html_diff = match html_diff {
-        Cow::Borrowed(_) => return raw_diff,
-        Cow::Owned(s) => s,
+    let Cow::Owned(mut html_diff) = html_diff else {
+        return raw_diff;
     };
 
     if inside_font_tag {

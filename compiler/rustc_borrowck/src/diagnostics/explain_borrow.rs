@@ -650,13 +650,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // The only kind of statement that we care about is assignments...
                 if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-                    let into = match place.local_or_deref_local() {
-                        Some(into) => into,
-                        None => {
-                            // Continue at the next location.
-                            queue.push(current_location.successor_within_block());
-                            continue;
-                        }
+                    let Some(into) = place.local_or_deref_local() else {
+                        // Continue at the next location.
+                        queue.push(current_location.successor_within_block());
+                        continue;
                     };
 
                     match rvalue {

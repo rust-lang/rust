@@ -522,9 +522,8 @@ impl<'tcx> DumpVisitor<'tcx> {
         ty_params: &'tcx hir::Generics<'tcx>,
     ) {
         let enum_data = self.save_ctxt.get_item_data(item);
-        let enum_data = match enum_data {
-            None => return,
-            Some(data) => data,
+        let Some(enum_data) = enum_data else {
+            return;
         };
         down_cast_data!(enum_data, DefData, item.span);
 

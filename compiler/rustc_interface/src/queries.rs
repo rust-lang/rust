@@ -259,10 +259,7 @@ impl<'tcx> Queries<'tcx> {
     /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.
     fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
-        let def_id = match tcx.entry_fn(()) {
-            Some((def_id, _)) => def_id,
-            _ => return,
-        };
+        let Some((def_id, _)) = tcx.entry_fn(()) else { return };
 
         let attrs = &*tcx.get_attrs(def_id);
         let attrs = attrs.iter().filter(|attr| attr.has_name(sym::rustc_error));

@@ -913,9 +913,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let TypeTest { generic_kind, lower_bound, locations, verify_bound: _ } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
-        let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
-            Some(s) => s,
-            None => return false,
+        let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
+            return false;
         };
 
         // For each region outlived by lower_bound find a non-local,
@@ -1623,15 +1622,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // If we have some bound universal region `'a`, then the only
         // elements it can contain is itself -- we don't know anything
         // else about it!
-        let error_element = match {
+        let Some(error_element) = ({
             self.scc_values.elements_contained_in(longer_fr_scc).find(|element| match element {
                 RegionElement::Location(_) => true,
                 RegionElement::RootUniversalRegion(_) => true,
                 RegionElement::PlaceholderRegion(placeholder1) => placeholder != *placeholder1,
             })
-        } {
-            Some(v) => v,
-            None => return,
+        }) else {
+            return;
         };
         debug!("check_bound_universal_region: error_element = {:?}", error_element);
 

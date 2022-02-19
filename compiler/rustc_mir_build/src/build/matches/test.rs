@@ -126,11 +126,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &Candidate<'pat, 'tcx>,
         variants: &mut BitSet<VariantIdx>,
     ) -> bool {
-        let match_pair = match candidate.match_pairs.iter().find(|mp| mp.place == *test_place) {
-            Some(match_pair) => match_pair,
-            _ => {
-                return false;
-            }
+        let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
+            return false;
         };
 
         match *match_pair.pattern.kind {
@@ -421,9 +418,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let deref_ty = match *ty.kind() {
-            ty::Ref(_, deref_ty, _) => deref_ty,
-            _ => bug!("non_scalar_compare called on non-reference type: {}", ty),
+        let ty::Ref(_, deref_ty, _) = *ty.kind() else {
+            bug!("non_scalar_compare called on non-reference type: {}", ty);
         };
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, None);

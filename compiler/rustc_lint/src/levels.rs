@@ -95,9 +95,9 @@ impl<'s> LintLevelsBuilder<'s> {
             let orig_level = level;
             let lint_flag_val = Symbol::intern(lint_name);
 
-            let ids = match store.find_lints(&lint_name) {
-                Ok(ids) => ids,
-                Err(_) => continue, // errors handled in check_lint_name_cmdline above
+            let Ok(ids) = store.find_lints(&lint_name) else {
+                // errors handled in check_lint_name_cmdline above
+                continue
             };
             for id in ids {
                 // ForceWarn and Forbid cannot be overriden

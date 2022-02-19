@@ -1318,9 +1318,8 @@ impl CheckAttrVisitor<'_> {
             return false;
         }
 
-        let list = match attr.meta_item_list() {
-            None => return false,
-            Some(it) => it,
+        let Some(list) = attr.meta_item_list() else {
+            return false;
         };
 
         if matches!(&list[..], &[NestedMetaItem::Literal(Lit { kind: LitKind::Int(..), .. })]) {
@@ -1352,18 +1351,16 @@ impl CheckAttrVisitor<'_> {
             return false;
         }
 
-        let list = match attr.meta_item_list() {
+        let Some(list) = attr.meta_item_list() else {
             // The attribute form is validated on AST.
-            None => return false,
-            Some(it) => it,
+            return false;
         };
 
-        let (decl, generics) = match item {
-            Some(ItemLike::Item(Item {
-                kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
-                ..
-            })) => (decl, generics),
-            _ => bug!("should be a function item"),
+        let Some(ItemLike::Item(Item {
+            kind: ItemKind::Fn(FnSig { decl, .. }, generics, _),
+            ..
+        }))  = item else {
+            bug!("should be a function item");
         };
 
         for param in generics.params {

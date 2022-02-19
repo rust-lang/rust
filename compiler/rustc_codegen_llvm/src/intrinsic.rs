@@ -88,9 +88,8 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let tcx = self.tcx;
         let callee_ty = instance.ty(tcx, ty::ParamEnv::reveal_all());
 
-        let (def_id, substs) = match *callee_ty.kind() {
-            ty::FnDef(def_id, substs) => (def_id, substs),
-            _ => bug!("expected fn item type, found {}", callee_ty),
+        let ty::FnDef(def_id, substs) = *callee_ty.kind() else {
+            bug!("expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(tcx);
@@ -1000,9 +999,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 }
             })
             .collect();
-        let indices = match indices {
-            Some(i) => i,
-            None => return Ok(bx.const_null(llret_ty)),
+        let Some(indices) = indices else {
+            return Ok(bx.const_null(llret_ty));
         };
 
         return Ok(bx.shuffle_vector(

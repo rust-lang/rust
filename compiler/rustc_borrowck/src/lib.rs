@@ -1914,10 +1914,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // without going over a Deref.
             let mut shortest_uninit_seen = None;
             for prefix in this.prefixes(base, PrefixSet::Shallow) {
-                let mpi = match this.move_path_for_place(prefix) {
-                    Some(mpi) => mpi,
-                    None => continue,
-                };
+                let Some(mpi) = this.move_path_for_place(prefix) else { continue };
 
                 if maybe_uninits.contains(mpi) {
                     debug!(

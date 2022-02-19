@@ -766,18 +766,15 @@ pub fn type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll 
 
         if already_stored_in_typemap {
             // Also make sure that we already have a `TypeMap` entry for the unique type ID.
-            let metadata_for_uid = match type_map.find_metadata_for_unique_id(unique_type_id) {
-                Some(metadata) => metadata,
-                None => {
-                    bug!(
-                        "expected type metadata for unique \
-                               type ID '{}' to already be in \
-                               the `debuginfo::TypeMap` but it \
-                               was not. (Ty = {})",
-                        type_map.get_unique_type_id_as_string(unique_type_id),
-                        t
-                    );
-                }
+            let Some(metadata_for_uid) = type_map.find_metadata_for_unique_id(unique_type_id) else {
+                bug!(
+                    "expected type metadata for unique \
+                            type ID '{}' to already be in \
+                            the `debuginfo::TypeMap` but it \
+                            was not. (Ty = {})",
+                    type_map.get_unique_type_id_as_string(unique_type_id),
+                    t
+                );
             };
 
             match type_map.find_metadata_for_type(t) {

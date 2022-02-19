@@ -385,16 +385,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
             switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
         });
 
-        let (enum_place, enum_def) = match enum_ {
-            Some(x) => x,
-            None => return,
+        let Some((enum_place, enum_def)) = enum_ else {
+            return;
         };
 
         let mut discriminants = enum_def.discriminants(self.tcx);
         edge_effects.apply(|trans, edge| {
-            let value = match edge.value {
-                Some(x) => x,
-                None => return,
+            let Some(value) = edge.value else {
+                return;
             };
 
             // MIR building adds discriminants to the `values` array in the same order as they
@@ -507,16 +505,14 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             switch_on_enum_discriminant(self.tcx, &self.body, &self.body[block], discr)
         });
 
-        let (enum_place, enum_def) = match enum_ {
-            Some(x) => x,
-            None => return,
+        let Some((enum_place, enum_def)) = enum_ else {
+            return;
         };
 
         let mut discriminants = enum_def.discriminants(self.tcx);
         edge_effects.apply(|trans, edge| {
-            let value = match edge.value {
-                Some(x) => x,
-                None => return,
+            let Some(value) = edge.value else {
+                return;
             };
 
             // MIR building adds discriminants to the `values` array in the same order as they

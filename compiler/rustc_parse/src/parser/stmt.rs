@@ -524,9 +524,8 @@ impl<'a> Parser<'a> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let mut stmt = match self.parse_stmt_without_recovery(true, ForceCollect::No)? {
-            Some(stmt) => stmt,
-            None => return Ok(None),
+        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
+            return Ok(None);
         };
 
         let mut eat_semi = true;
