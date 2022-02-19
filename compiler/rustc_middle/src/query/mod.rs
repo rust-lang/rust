@@ -1,3 +1,9 @@
+//! Defines the various compiler queries.
+//!
+//! For more information on the query system, see
+//! ["Queries: demand-driven compilation"](https://rustc-dev-guide.rust-lang.org/query.html).
+//! This chapter includes instructions for adding new queries.
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
