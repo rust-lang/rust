@@ -957,6 +957,7 @@ impl InitMask {
 }
 
 /// Yields [`InitChunk`]s. See [`InitMask::range_as_init_chunks`].
+#[derive(Clone)]
 pub struct InitChunkIter<'a> {
     init_mask: &'a InitMask,
     /// Whether the next chunk we will return is initialized.
