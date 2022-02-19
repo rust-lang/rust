@@ -1485,9 +1485,9 @@ options! {
         "in diagnostics, use heuristics to shorten paths referring to items"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
         "emit compiler diagnostics in a form suitable for UI testing (default: no)"),
-    uninit_const_chunk_threshold: usize = (256, parse_number, [TRACKED],
+    uninit_const_chunk_threshold: usize = (16, parse_number, [TRACKED],
         "allow generating const initializers with mixed init/uninit chunks, \
-        and set the maximum number of chunks for which this is allowed (default: 256)"),
+        and set the maximum number of chunks for which this is allowed (default: 16)"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
