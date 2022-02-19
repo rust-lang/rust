@@ -645,7 +645,7 @@ impl<T> LinkedList<T> {
     /// Returns `true` if the `LinkedList` contains an element equal to the
     /// given value.
     ///
-    /// This operation should compute in *O*(*n*) time.
+    /// This operation should compute linearly in *O*(*n*) time.
     ///
     /// # Examples
     ///
@@ -1569,7 +1569,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// Appends an element to the front of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in *O*(1) time.
     // `push_front` continues to point to "ghost" when it addes a node to mimic
     // the behavior of `insert_before` on an empty list.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
@@ -1584,7 +1584,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// Appends an element to the back of the cursor's parent list. The node
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in *O*(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn push_back(&mut self, elt: T) {
         // Safety: We know that `push_back` does not change the position in
@@ -1603,7 +1603,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// unchanged, unless it was pointing to the front element. In that case, it
     /// points to the new front element.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in *O*(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn pop_front(&mut self) -> Option<T> {
         // We can't check if current is empty, we must check the list directly.
@@ -1630,7 +1630,7 @@ impl<'a, T> CursorMut<'a, T> {
     /// unchanged, unless it was pointing to the back element. In that case, it
     /// points to the "ghost" element.
     ///
-    /// This operation should compute in O(1) time.
+    /// This operation should compute in *O*(1) time.
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.list.is_empty() {

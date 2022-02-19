@@ -1322,6 +1322,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// Returns `true` if the deque contains an element equal to the
     /// given value.
     ///
+    /// This operation is *O*(*n*).
+    ///
+    /// Note that if you have a sorted `VecDeque`, [`binary_search`] may be faster.
+    ///
+    /// [`binary_search`]: VecDeque::binary_search
+    ///
     /// # Examples
     ///
     /// ```
@@ -2528,7 +2534,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque for a given element.
+    /// Binary searches this `VecDeque` for a given element.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// If the value is found then [`Result::Ok`] is returned, containing the
     /// index of the matching element. If there are multiple matches, then any
@@ -2538,6 +2545,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search_by`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search_by`]: VecDeque::binary_search_by
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2581,7 +2589,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         self.binary_search_by(|e| e.cmp(x))
     }
 
-    /// Binary searches the sorted deque with a comparator function.
+    /// Binary searches this `VecDeque` with a comparator function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the deque, returning an order code that
@@ -2596,6 +2605,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by_key`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by_key`]: VecDeque::binary_search_by_key
     /// [`partition_point`]: VecDeque::partition_point
@@ -2634,7 +2644,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Binary searches the sorted deque with a key extraction function.
+    /// Binary searches this `VecDeque` with a key extraction function.
+    /// This behaves similarly to [`contains`] if this `VecDeque` is sorted.
     ///
     /// Assumes that the deque is sorted by the key, for instance with
     /// [`make_contiguous().sort_by_key()`] using the same key extraction function.
@@ -2647,6 +2658,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// See also [`binary_search`], [`binary_search_by`], and [`partition_point`].
     ///
+    /// [`contains`]: VecDeque::contains
     /// [`make_contiguous().sort_by_key()`]: VecDeque::make_contiguous
     /// [`binary_search`]: VecDeque::binary_search
     /// [`binary_search_by`]: VecDeque::binary_search_by
