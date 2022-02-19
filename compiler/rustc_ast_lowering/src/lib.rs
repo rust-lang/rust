@@ -54,7 +54,7 @@ use rustc_hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, DefPathHash, LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::intravisit;
-use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName};
+use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
@@ -156,6 +156,7 @@ struct LoweringContext<'a, 'hir: 'a> {
     current_hir_id_owner: LocalDefId,
     item_local_id_counter: hir::ItemLocalId,
     local_id_to_def_id: SortedMap<ItemLocalId, LocalDefId>,
+    trait_map: FxHashMap<ItemLocalId, Box<[TraitCandidate]>>,
 
     /// NodeIds that are lowered inside the current HIR owner.
     node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
@@ -314,6 +315,7 @@ pub fn lower_crate<'a, 'hir>(
         item_local_id_counter: hir::ItemLocalId::new(0),
         node_id_to_local_id: FxHashMap::default(),
         local_id_to_def_id: SortedMap::new(),
+        trait_map: FxHashMap::default(),
         generator_kind: None,
         task_context: None,
         current_item: None,
@@ -442,6 +444,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_node_ids = std::mem::take(&mut self.node_id_to_local_id);
         let current_id_to_def_id = std::mem::take(&mut self.local_id_to_def_id);
+        let current_trait_map = std::mem::take(&mut self.trait_map);
         let current_owner = std::mem::replace(&mut self.current_hir_id_owner, def_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
@@ -458,6 +461,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.bodies = current_bodies;
         self.node_id_to_local_id = current_node_ids;
         self.local_id_to_def_id = current_id_to_def_id;
+        self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
         self.item_local_id_counter = current_local_counter;
 
@@ -470,15 +474,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
-        let node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
-
-        let trait_map = node_id_to_local_id
-            .into_iter()
-            .filter_map(|(node_id, local_id)| {
-                let traits = self.resolver.take_trait_map(node_id)?;
-                Some((local_id, traits.into_boxed_slice()))
-            })
-            .collect();
 
         #[cfg(debug_assertions)]
         for (id, attrs) in attrs.iter() {
@@ -508,7 +503,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir::AttributeMap { map: attrs, hash }
         };
 
-        hir::OwnerInfo { nodes, parenting, attrs, trait_map }
+        hir::OwnerInfo { nodes, parenting, attrs, trait_map: std::mem::take(&mut self.trait_map) }
     }
 
     /// Hash the HIR node twice, one deep and one shallow hash.  This allows to differentiate
@@ -562,6 +557,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             *o = hir::MaybeOwner::NonOwner(hir_id);
                         }
                         self.local_id_to_def_id.insert(local_id, def_id);
+                    }
+
+                    if let Some(traits) = self.resolver.take_trait_map(ast_node_id) {
+                        self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
                     }
                 }
 
