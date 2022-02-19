@@ -317,6 +317,8 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 /// # Examples
 ///
 /// ```no_run
+/// #![feature(fs_append)]
+///
 /// use std::fs;
 ///
 /// fn main() -> std::io::Result<()> {
