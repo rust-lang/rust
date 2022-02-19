@@ -147,6 +147,10 @@ pub(crate) fn try_destructure_const<'tcx>(
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty().kind() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
+        // Checks if we have any variants, to avoid downcasting to a non-existing variant (when
+        // there are no variants `read_discriminant` successfully returns a non-existing variant
+        // index).
+        ty::Adt(def, _) if def.variants.is_empty() => throw_ub!(Unreachable),
         ty::Adt(def, _) => {
             let variant = ecx.read_discriminant(&op)?.1;
             let down = ecx.operand_downcast(&op, variant)?;
