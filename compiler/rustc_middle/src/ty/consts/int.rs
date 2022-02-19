@@ -384,3 +384,10 @@ impl fmt::UpperHex for ScalarInt {
         write!(f, "{:01$X}", { self.data }, self.size as usize * 2)
     }
 }
+
+impl fmt::Display for ScalarInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.check_data();
+        write!(f, "{}", { self.data })
+    }
+}
