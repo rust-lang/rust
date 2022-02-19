@@ -8,6 +8,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
@@ -465,11 +466,16 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                 let value = cfg.value_str();
                 if let Some(names_valid) = &sess.check_config.names_valid {
                     if !names_valid.contains(&name) {
-                        sess.buffer_lint(
+                        sess.buffer_lint_with_diagnostic(
                             UNEXPECTED_CFGS,
                             cfg.span,
                             CRATE_NODE_ID,
                             "unexpected `cfg` condition name",
+                            BuiltinLintDiagnostics::UnexpectedCfg(
+                                cfg.ident().unwrap().span,
+                                name,
+                                None,
+                            ),
                         );
                     }
                 }
@@ -477,11 +483,16 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                     if let Some(values_valid) = &sess.check_config.values_valid {
                         if let Some(values) = values_valid.get(&name) {
                             if !values.contains(&val) {
-                                sess.buffer_lint(
+                                sess.buffer_lint_with_diagnostic(
                                     UNEXPECTED_CFGS,
                                     cfg.span,
                                     CRATE_NODE_ID,
                                     "unexpected `cfg` condition value",
+                                    BuiltinLintDiagnostics::UnexpectedCfg(
+                                        cfg.name_value_literal_span().unwrap(),
+                                        name,
+                                        Some(val),
+                                    ),
                                 );
                             }
                         }

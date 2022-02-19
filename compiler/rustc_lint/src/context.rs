@@ -766,7 +766,39 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::NamedAsmLabel(help) => {
                     db.help(&help);
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
-                }
+                },
+                BuiltinLintDiagnostics::UnexpectedCfg(span, name, value) => {
+                    let mut possibilities: Vec<Symbol> = if value.is_some() {
+                        let Some(values_valid) = &sess.parse_sess.check_config.values_valid else {
+                            bug!("it shouldn't be possible to have a diagnostic on a value if values checking is not enable");
+                        };
+                        let Some(values) = values_valid.get(&name) else {
+                            bug!("it shouldn't be possible to have a diagnostic on a value whose name is not in values");
+                        };
+                        values.iter().map(|&s| s).collect()
+                    } else {
+                        let Some(names_valid) = &sess.parse_sess.check_config.names_valid else {
+                            bug!("it shouldn't be possible to have a diagnostic on a value if values checking is not enable");
+                        };
+                        names_valid.iter().map(|s| *s).collect()
+                    };
+
+                    // Show the full list if all possible values for a given name, but don't do it
+                    // for names as the possibilities could be very long
+                    if value.is_some() {
+                        // Sorting can take some time, so we only do it if required
+                        possibilities.sort();
+
+                        let possibilities = possibilities.iter().map(Symbol::as_str).intersperse(", ").collect::<String>();
+                        db.note(&format!("possible values for `{name}` are: {possibilities}"));
+                    }
+
+                    // Suggest the most probable if we found one
+                    if let Some(best_match) = find_best_match_for_name(&possibilities, value.unwrap_or(name), None) {
+                        let ponctuation = if value.is_some() { "\"" } else { "" };
+                        db.span_suggestion(span, "did you mean", format!("{ponctuation}{best_match}{ponctuation}"), Applicability::MaybeIncorrect);
+                    }
+                },
             }
             // Rewrap `db`, and pass control to the user.
             decorate(LintDiagnosticBuilder::new(db));
