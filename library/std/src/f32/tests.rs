@@ -299,6 +299,7 @@ fn test_is_sign_negative() {
     assert!((-f32::NAN).is_sign_negative());
 }
 
+#[allow(unused_macros)]
 macro_rules! assert_f32_biteq {
     ($left : expr, $right : expr) => {
         let l: &f32 = &$left;
