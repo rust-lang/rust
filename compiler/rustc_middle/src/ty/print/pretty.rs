@@ -1583,7 +1583,9 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ns: Namespace) -> Self {
         FmtPrinter(Box::new(FmtPrinterData {
             tcx,
-            fmt: String::new(),
+            // Estimated reasonable capacity to allocate upfront based on a few
+            // benchmarks.
+            fmt: String::with_capacity(64),
             empty_path: false,
             in_value: ns == Namespace::ValueNS,
             print_alloc_ids: false,
