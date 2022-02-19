@@ -2056,6 +2056,7 @@ impl Step for RustDev {
             "llvm-bcanalyzer",
             "llvm-cov",
             "llvm-dwp",
+            "llvm-nm",
         ] {
             tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
         }
