@@ -21,6 +21,8 @@ You can also use my [fork of gcc](https://github.com/antoyo/gcc) which already i
 ```bash
 $ git clone https://github.com/rust-lang/rustc_codegen_gcc.git
 $ cd rustc_codegen_gcc
+$ git clone https://github.com/llvm/llvm-project llvm --depth 1 --single-branch
+$ export RUST_COMPILER_RT_ROOT="$PWD/llvm/compiler-rt"
 $ ./prepare_build.sh # download and patch sysroot src
 $ ./build.sh --release
 ```
