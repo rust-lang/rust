@@ -271,3 +271,6 @@ impl EmptyTrait1 for HasEmptyTraits {}
 impl EmptyTrait2 for HasEmptyTraits {}
 #[doc(cfg(feature = "some-feature"))]
 impl EmptyTrait3 for HasEmptyTraits {}
+
+mod macros;
+pub use macros::*;
