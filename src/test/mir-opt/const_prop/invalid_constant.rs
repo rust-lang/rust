@@ -1,6 +1,8 @@
 // Verify that we can pretty print invalid constants.
 
+#![feature(adt_const_params)]
 #![feature(inline_const)]
+#![allow(incomplete_features)]
 
 #[derive(Copy, Clone)]
 #[repr(u32)]
@@ -31,4 +33,10 @@ fn main() {
         empty: Empty,
     }
     let _enum_without_variants = [NoVariants { int: 0 }];
+
+    // A non-UTF-8 string slice. Regression test for #75763 and #78520.
+    struct Str<const S: &'static str>;
+    let _non_utf8_str: Str::<{
+        unsafe { std::mem::transmute::<&[u8], &str>(&[0xC0, 0xC1, 0xF5]) }
+    }>;
 }
