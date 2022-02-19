@@ -254,8 +254,8 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,
-    left: &dyn fmt::Debug,
-    right: &dyn fmt::Debug,
+    upper_bounds: &dyn fmt::Debug,
+    target: &dyn fmt::Debug,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     let op = match kind {
@@ -266,17 +266,17 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
-            r#"assertion failed: `(left {} right)`
-   left: `{:?}`,
-  right: `{:?}`,
-context: `{:?}`"#,
-            op, left, right, args
+            r#"assertion failed: `(upper_bounds {} target)`
+   Error: `{:?}`,        
+   upper_bounds: `{:?}`,
+   target: `{:?}`"#,
+            op, args, upper_bounds, target,
         ),
         None => panic!(
-            r#"assertion failed: `(left {} right)`
-  left: `{:?}`,
- right: `{:?}`"#,
-            op, left, right,
+            r#"assertion failed: `(upper_bounds {} target)`
+   upper_bounds: `{:?}`,
+   target: `{:?}`"#,
+            op, upper_bounds, target,
         ),
     }
 }
