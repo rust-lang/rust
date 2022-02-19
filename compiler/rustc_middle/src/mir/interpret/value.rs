@@ -456,6 +456,11 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
     }
+
+    // FIXME: Replace current `impl Display for Scalar` with `impl LowerHex`.
+    pub fn rustdoc_display(&self) -> String {
+        if let Scalar::Int(int) = self { int.to_string() } else { self.to_string() }
+    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Hash)]
