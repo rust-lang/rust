@@ -1,23 +1,34 @@
-// Verify that we can pretty print invalid constant introduced
-// by constant propagation. Regression test for issue #93688.
-//
-// compile-flags: -Copt-level=0 -Zinline-mir
+// Verify that we can pretty print invalid constants.
+
 #![feature(inline_const)]
-#[inline(always)]
-pub fn f(x: Option<Option<()>>) -> Option<()> {
-    match x {
-        None => None,
-        Some(y) => y,
-    }
-}
+
+#[derive(Copy, Clone)]
+#[repr(u32)]
+enum E { A, B, C }
+
+#[derive(Copy, Clone)]
+enum Empty {}
 
 // EMIT_MIR invalid_constant.main.ConstProp.diff
 fn main() {
-    f(None);
-
-    union Union {
+    // An invalid char.
+    union InvalidChar {
         int: u32,
         chr: char,
     }
-    let _invalid_char = const { Union { int: 0x110001 } };
+    let _invalid_char = const { InvalidChar { int: 0x110001 } };
+
+    // An enum with an invalid tag. Regression test for #93688.
+    union InvalidTag {
+        int: u32,
+        e: E,
+    }
+    let _invalid_tag = [InvalidTag { int: 4 }];
+
+    // An enum without variants. Regression test for #94073.
+    union NoVariants {
+        int: u32,
+        empty: Empty,
+    }
+    let _enum_without_variants = [NoVariants { int: 0 }];
 }
