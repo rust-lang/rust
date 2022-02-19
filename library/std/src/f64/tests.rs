@@ -297,7 +297,7 @@ macro_rules! assert_f64_biteq {
         let lb = l.to_bits();
         let rb = r.to_bits();
         assert_eq!(lb, rb, "float {} ({:#x}) is not equal to {} ({:#x})", *l, lb, *r, rb);
-    }
+    };
 }
 
 // Ignore test on x87 floating point, these platforms do not guarantee NaN
