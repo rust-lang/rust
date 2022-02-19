@@ -1,9 +1,10 @@
 use crate::iter::FromIterator;
 
-/// Collapses all unit items from an iterator into one.
+/// Drains all items from an iterator.
 ///
-/// This is more useful when combined with higher-level abstractions, like
-/// collecting to a `Result<(), E>` where you only care about errors:
+/// This is useful to run an iterator to completion when you don't
+/// care about the result, or to collect into a `Result<(), E>` when
+/// you only care about errors:
 ///
 /// ```
 /// use std::io::*;
@@ -14,8 +15,8 @@ use crate::iter::FromIterator;
 /// assert!(res.is_ok());
 /// ```
 #[stable(feature = "unit_from_iter", since = "1.23.0")]
-impl FromIterator<()> for () {
-    fn from_iter<I: IntoIterator<Item = ()>>(iter: I) -> Self {
-        iter.into_iter().for_each(|()| {})
+impl<T> FromIterator<T> for () {
+    fn from_iter<A: IntoIterator<Item = T>>(iter: A) -> Self {
+        iter.into_iter().for_each(|_| {})
     }
 }
