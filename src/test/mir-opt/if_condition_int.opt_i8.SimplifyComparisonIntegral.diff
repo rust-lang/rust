@@ -7,7 +7,7 @@
       let mut _2: bool;                    // in scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
       let mut _3: i8;                      // in scope 0 at $DIR/if-condition-int.rs:25:8: 25:9
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
           StorageLive(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:8: 25:9
           _3 = _1;                         // scope 0 at $DIR/if-condition-int.rs:25:8: 25:9
@@ -19,19 +19,19 @@
 +         switchInt(move _3) -> [42_i8: bb1, otherwise: bb2]; // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 +         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
           _0 = const 0_u32;                // scope 0 at $DIR/if-condition-int.rs:25:18: 25:19
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
 +         StorageDead(_3);                 // scope 0 at $DIR/if-condition-int.rs:25:8: 25:15
           _0 = const 1_u32;                // scope 0 at $DIR/if-condition-int.rs:25:29: 25:30
           goto -> bb3;                     // scope 0 at $DIR/if-condition-int.rs:25:5: 25:32
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb1, bb2]
           StorageDead(_2);                 // scope 0 at $DIR/if-condition-int.rs:25:31: 25:32
           return;                          // scope 0 at $DIR/if-condition-int.rs:26:2: 26:2
       }

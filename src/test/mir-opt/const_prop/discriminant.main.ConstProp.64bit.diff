@@ -11,7 +11,7 @@
           debug x => _1;                   // in scope 1 at $DIR/discriminant.rs:11:9: 11:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/discriminant.rs:11:9: 11:10
           StorageLive(_2);                 // scope 0 at $DIR/discriminant.rs:11:13: 11:64
           StorageLive(_3);                 // scope 0 at $DIR/discriminant.rs:11:34: 11:44
@@ -23,21 +23,21 @@
 +         switchInt(const 1_isize) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           switchInt(((_3 as Some).0: bool)) -> [false: bb3, otherwise: bb2]; // scope 0 at $DIR/discriminant.rs:11:21: 11:31
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           _2 = const 42_i32;               // scope 0 at $DIR/discriminant.rs:11:47: 11:49
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb0, bb1]
           _2 = const 10_i32;               // scope 0 at $DIR/discriminant.rs:11:59: 11:61
           goto -> bb4;                     // scope 0 at $DIR/discriminant.rs:11:13: 11:64
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb2, bb3]
           _1 = Add(move _2, const 0_i32);  // scope 0 at $DIR/discriminant.rs:11:13: 11:68
           StorageDead(_2);                 // scope 0 at $DIR/discriminant.rs:11:67: 11:68
           StorageDead(_3);                 // scope 0 at $DIR/discriminant.rs:11:68: 11:69

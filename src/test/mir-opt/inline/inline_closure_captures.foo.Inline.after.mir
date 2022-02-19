@@ -22,7 +22,7 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_3);                 // scope 0 at $DIR/inline-closure-captures.rs:11:9: 11:10
         StorageLive(_4);                 // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24
         _4 = &_2;                        // scope 0 at $DIR/inline-closure-captures.rs:11:13: 11:24

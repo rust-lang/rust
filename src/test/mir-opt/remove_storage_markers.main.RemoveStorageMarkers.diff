@@ -33,7 +33,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/remove_storage_markers.rs:7:9: 7:16
           _1 = const 0_i32;                // scope 0 at $DIR/remove_storage_markers.rs:7:19: 7:20
 -         StorageLive(_2);                 // scope 1 at $DIR/remove_storage_markers.rs:8:14: 8:19
@@ -47,7 +47,7 @@
           goto -> bb1;                     // scope 2 at $DIR/remove_storage_markers.rs:8:5: 10:6
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0, bb2]
 -         StorageLive(_6);                 // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
 -         StorageLive(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
 -         StorageLive(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19
@@ -62,7 +62,7 @@
                                            // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> std::option::Option<<std::ops::Range<i32> as std::iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as std::iter::range::RangeIteratorImpl>::spec_next}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb4]
 -         StorageLive(_12);                // scope 2 at $DIR/remove_storage_markers.rs:8:9: 8:10
           _12 = ((_7 as Some).0: i32);     // scope 2 at $DIR/remove_storage_markers.rs:8:9: 8:10
 -         StorageLive(_13);                // scope 3 at $DIR/remove_storage_markers.rs:9:16: 9:17
@@ -78,7 +78,7 @@
           goto -> bb1;                     // scope 2 at $DIR/remove_storage_markers.rs:8:5: 10:6
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb4]
           _0 = const ();                   // scope 2 at $DIR/remove_storage_markers.rs:8:5: 10:6
 -         StorageDead(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
 -         StorageDead(_7);                 // scope 2 at $DIR/remove_storage_markers.rs:10:5: 10:6
@@ -89,7 +89,7 @@
           return;                          // scope 0 at $DIR/remove_storage_markers.rs:11:2: 11:2
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb1]
 -         StorageDead(_14);                // scope 5 at $DIR/remove_storage_markers.rs:8:14: 8:19
 -         StorageDead(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:8:18: 8:19
           _10 = discriminant(_7);          // scope 2 at $DIR/remove_storage_markers.rs:8:14: 8:19

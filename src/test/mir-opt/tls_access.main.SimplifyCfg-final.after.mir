@@ -11,7 +11,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 1 at $DIR/tls-access.rs:8:13: 8:14
         StorageLive(_2);                 // scope 1 at $DIR/tls-access.rs:8:18: 8:21
         _2 = &/*tls*/ mut FOO;           // scope 1 at $DIR/tls-access.rs:8:18: 8:21

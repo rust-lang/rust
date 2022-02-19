@@ -51,7 +51,7 @@ static XXX: &Foo = {
     let mut _47: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:21:17: 21:23
     let mut _48: (u32, u32);             // in scope 0 at $DIR/storage_live_dead_in_statics.rs:21:25: 21:31
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:28: 23:2
         StorageLive(_2);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
         StorageLive(_3);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6

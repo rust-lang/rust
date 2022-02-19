@@ -7,7 +7,7 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
     let mut _3: usize;                   // in scope 0 at $DIR/issue-72181.rs:16:40: 16:45
     let mut _4: bool;                    // in scope 0 at $DIR/issue-72181.rs:16:40: 16:45
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/issue-72181.rs:16:43: 16:44
         _2 = const 0_usize;              // scope 0 at $DIR/issue-72181.rs:16:43: 16:44
         _3 = Len(_1);                    // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
@@ -15,13 +15,13 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
         assert(move _4, "index out of bounds: the length is {} but the index is {}", move _3, _2) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue-72181.rs:16:40: 16:45
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         _0 = (_1[_2].1: u32);            // scope 0 at $DIR/issue-72181.rs:16:40: 16:47
         StorageDead(_2);                 // scope 0 at $DIR/issue-72181.rs:16:48: 16:49
         return;                          // scope 0 at $DIR/issue-72181.rs:16:49: 16:49
     }
 
-    bb2 (cleanup): {
+    bb2 (cleanup): {                     // preds: [bb0]
         resume;                          // scope 0 at $DIR/issue-72181.rs:16:1: 16:49
     }
 }

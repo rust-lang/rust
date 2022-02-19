@@ -5,7 +5,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/cycle.rs:16:11: 16:11
       let _1: ();                          // in scope 0 at $DIR/cycle.rs:17:5: 17:9
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:17:5: 17:9
           _1 = f::<fn() {g}>(g) -> bb1;    // scope 0 at $DIR/cycle.rs:17:5: 17:9
                                            // mir::Constant
@@ -16,7 +16,7 @@
                                            // + literal: Const { ty: fn() {g}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_1);                 // scope 0 at $DIR/cycle.rs:17:9: 17:10
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:16:11: 18:2
           return;                          // scope 0 at $DIR/cycle.rs:18:2: 18:2

@@ -14,7 +14,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/const_prop_miscompile.rs:5:9: 5:14
           (_1.0: i32) = const 1_i32;       // scope 0 at $DIR/const_prop_miscompile.rs:5:17: 5:21
           StorageLive(_2);                 // scope 1 at $DIR/const_prop_miscompile.rs:6:6: 6:14

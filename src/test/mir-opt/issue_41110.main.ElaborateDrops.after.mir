@@ -11,7 +11,7 @@ fn main() -> () {
         debug x => _1;                   // in scope 1 at $DIR/issue-41110.rs:8:9: 8:10
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:9: 8:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41110.rs:8:9: 8:10
         StorageLive(_2);                 // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
@@ -26,7 +26,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(S) -> S {S::id}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_4);                 // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
         _1 = S::other(move _2, move _3) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/issue-41110.rs:8:13: 8:28
@@ -35,7 +35,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(S, S) {S::other}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_3);                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
         StorageDead(_2);                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
@@ -44,27 +44,27 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/issue-41110.rs:9:2: 9:2
     }
 
-    bb3 (cleanup): {
+    bb3 (cleanup): {                     // preds: [bb1]
         goto -> bb5;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 
-    bb4 (cleanup): {
+    bb4 (cleanup): {                     // preds: [bb0]
         goto -> bb5;                     // scope 0 at $DIR/issue-41110.rs:8:26: 8:27
     }
 
-    bb5 (cleanup): {
+    bb5 (cleanup): {                     // preds: [bb3, bb4]
         goto -> bb8;                     // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 
-    bb6 (cleanup): {
+    bb6 (cleanup): {                     // preds: [bb7, bb8]
         resume;                          // scope 0 at $DIR/issue-41110.rs:7:1: 9:2
     }
 
-    bb7 (cleanup): {
+    bb7 (cleanup): {                     // preds: [bb8]
         drop(_2) -> bb6;                 // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 
-    bb8 (cleanup): {
+    bb8 (cleanup): {                     // preds: [bb5]
         switchInt(_5) -> [false: bb6, otherwise: bb7]; // scope 0 at $DIR/issue-41110.rs:8:27: 8:28
     }
 }

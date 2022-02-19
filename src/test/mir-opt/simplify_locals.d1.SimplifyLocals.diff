@@ -7,7 +7,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:22:13: 22:17
 -         discriminant(_1) = 0;            // scope 0 at $DIR/simplify-locals.rs:22:13: 22:17
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:22:17: 22:18

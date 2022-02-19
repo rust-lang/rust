@@ -13,7 +13,7 @@
       let mut _8: usize;                   // in scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
       let mut _9: bool;                    // in scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:27
           StorageLive(_4);                 // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:13
           _4 = _1;                         // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:13
@@ -28,7 +28,7 @@
 +         goto -> bb1;                     // scope 0 at $DIR/lower_slice_len.rs:5:16: 5:27
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_6);                 // scope 0 at $DIR/lower_slice_len.rs:5:26: 5:27
           _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:27
           StorageDead(_5);                 // scope 0 at $DIR/lower_slice_len.rs:5:26: 5:27
@@ -36,7 +36,7 @@
           switchInt(move _3) -> [false: bb4, otherwise: bb2]; // scope 0 at $DIR/lower_slice_len.rs:5:8: 5:27
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           StorageLive(_7);                 // scope 0 at $DIR/lower_slice_len.rs:6:15: 6:20
           _7 = _1;                         // scope 0 at $DIR/lower_slice_len.rs:6:15: 6:20
           _8 = Len((*_2));                 // scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
@@ -44,18 +44,18 @@
           assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb3; // scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
           _0 = (*_2)[_7];                  // scope 0 at $DIR/lower_slice_len.rs:6:9: 6:21
           StorageDead(_7);                 // scope 0 at $DIR/lower_slice_len.rs:7:5: 7:6
           goto -> bb5;                     // scope 0 at $DIR/lower_slice_len.rs:5:5: 9:6
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb1]
           _0 = const 42_u8;                // scope 0 at $DIR/lower_slice_len.rs:8:9: 8:11
           goto -> bb5;                     // scope 0 at $DIR/lower_slice_len.rs:5:5: 9:6
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb3, bb4]
           StorageDead(_3);                 // scope 0 at $DIR/lower_slice_len.rs:9:5: 9:6
           return;                          // scope 0 at $DIR/lower_slice_len.rs:10:2: 10:2
       }

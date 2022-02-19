@@ -21,7 +21,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:5:25: 5:35
           StorageLive(_3);                 // scope 0 at $DIR/bad_op_unsafe_oob_for_slices.rs:5:25: 5:35
@@ -47,7 +47,7 @@
 +         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, const 3_usize) -> bb1; // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           _5 = (*_1)[_6];                  // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:18: 7:25
           StorageDead(_6);                 // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:7:25: 7:26
           nop;                             // scope 2 at $DIR/bad_op_unsafe_oob_for_slices.rs:6:5: 8:6

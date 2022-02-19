@@ -9,7 +9,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:29:5: 29:47
           StorageLive(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
 -         std::intrinsics::unreachable();  // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
@@ -19,7 +19,7 @@
 +         unreachable;                     // scope 1 at $DIR/lower_intrinsics.rs:29:14: 29:45
       }
   
-      bb1 (cleanup): {
+      bb1 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:28:1: 30:2
       }
   }

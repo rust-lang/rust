@@ -19,7 +19,7 @@ fn borrow_and_cast(_1: i32) -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/address-of.rs:42:9: 42:10
         StorageLive(_3);                 // scope 0 at $DIR/address-of.rs:42:13: 42:15
         _3 = &_1;                        // scope 0 at $DIR/address-of.rs:42:13: 42:15

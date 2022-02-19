@@ -7,7 +7,7 @@
 -     let mut _2: (i32, E);                // in scope 0 at $DIR/simplify-locals.rs:28:5: 28:17
 -     let mut _3: E;                       // in scope 0 at $DIR/simplify-locals.rs:28:11: 28:15
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
 -         discriminant(_1) = 1;            // scope 0 at $DIR/simplify-locals.rs:28:22: 28:26
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify-locals.rs:28:5: 28:17

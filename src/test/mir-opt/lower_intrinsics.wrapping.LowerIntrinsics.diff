@@ -24,7 +24,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:7:9: 7:11
           StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
           _4 = _1;                         // scope 0 at $DIR/lower_intrinsics.rs:7:45: 7:46
@@ -38,7 +38,7 @@
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:7:49: 7:50
           StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:7:49: 7:50
           StorageLive(_6);                 // scope 1 at $DIR/lower_intrinsics.rs:8:9: 8:11
@@ -54,7 +54,7 @@
 +         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           StorageDead(_8);                 // scope 1 at $DIR/lower_intrinsics.rs:8:49: 8:50
           StorageDead(_7);                 // scope 1 at $DIR/lower_intrinsics.rs:8:49: 8:50
           StorageLive(_9);                 // scope 2 at $DIR/lower_intrinsics.rs:9:9: 9:11
@@ -70,7 +70,7 @@
 +         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
           StorageDead(_11);                // scope 2 at $DIR/lower_intrinsics.rs:9:49: 9:50
           StorageDead(_10);                // scope 2 at $DIR/lower_intrinsics.rs:9:49: 9:50
           _0 = const ();                   // scope 0 at $DIR/lower_intrinsics.rs:6:38: 10:2
@@ -80,7 +80,7 @@
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:10:2: 10:2
       }
   
-      bb4 (cleanup): {
+      bb4 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:6:1: 10:2
       }
   }

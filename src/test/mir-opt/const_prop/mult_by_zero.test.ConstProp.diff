@@ -6,7 +6,7 @@
       let mut _0: i32;                     // return place in scope 0 at $DIR/mult_by_zero.rs:4:21: 4:24
       let mut _2: i32;                     // in scope 0 at $DIR/mult_by_zero.rs:5:3: 5:4
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:4
           _2 = _1;                         // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:4
 -         _0 = Mul(move _2, const 0_i32);  // scope 0 at $DIR/mult_by_zero.rs:5:3: 5:8

@@ -9,7 +9,7 @@
           debug x => _1;                   // in scope 1 at $DIR/checked_add.rs:5:9: 5:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/checked_add.rs:5:9: 5:10
 -         _2 = CheckedAdd(const 1_u32, const 1_u32); // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
@@ -17,7 +17,7 @@
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_u32, const 1_u32) -> bb1; // scope 0 at $DIR/checked_add.rs:5:18: 5:23
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         _1 = move (_2.0: u32);           // scope 0 at $DIR/checked_add.rs:5:18: 5:23
 +         _1 = const 2_u32;                // scope 0 at $DIR/checked_add.rs:5:18: 5:23
           nop;                             // scope 0 at $DIR/checked_add.rs:4:11: 6:2

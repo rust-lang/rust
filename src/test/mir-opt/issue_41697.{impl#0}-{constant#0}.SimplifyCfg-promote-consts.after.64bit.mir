@@ -4,17 +4,17 @@
     let mut _0: usize;                   // return place in scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     let mut _1: (usize, bool);           // in scope 0 at $DIR/issue-41697.rs:18:19: 18:22
 
-    bb0: {
+    bb0: {                               // preds: []
         _1 = CheckedAdd(const 1_usize, const 1_usize); // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
         assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         _0 = move (_1.0: usize);         // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
         return;                          // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 
-    bb2 (cleanup): {
+    bb2 (cleanup): {                     // preds: [bb0]
         resume;                          // scope 0 at $DIR/issue-41697.rs:18:19: 18:22
     }
 }

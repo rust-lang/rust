@@ -9,7 +9,7 @@ fn d(_1: &Box<T>) -> &T {
         debug self => _3;                // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         _3 = &(*_1);                     // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15

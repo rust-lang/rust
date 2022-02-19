@@ -20,7 +20,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/issue-72181.rs:24:13: 24:34
         _1 = std::mem::size_of::<Foo>() -> [return: bb1, unwind: bb3]; // scope 0 at $DIR/issue-72181.rs:24:13: 24:34
                                          // mir::Constant
@@ -28,7 +28,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() -> usize {std::mem::size_of::<Foo>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_1);                 // scope 0 at $DIR/issue-72181.rs:24:34: 24:35
         StorageLive(_2);                 // scope 1 at $DIR/issue-72181.rs:26:9: 26:10
         StorageLive(_3);                 // scope 1 at $DIR/issue-72181.rs:26:14: 26:27
@@ -47,7 +47,7 @@ fn main() -> () {
         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> [success: bb2, unwind: bb3]; // scope 4 at $DIR/issue-72181.rs:27:22: 27:26
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         _5 = (_2[_6].0: u64);            // scope 4 at $DIR/issue-72181.rs:27:22: 27:28
         StorageDead(_6);                 // scope 2 at $DIR/issue-72181.rs:27:30: 27:31
         StorageDead(_5);                 // scope 2 at $DIR/issue-72181.rs:27:30: 27:31
@@ -56,7 +56,7 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/issue-72181.rs:28:2: 28:2
     }
 
-    bb3 (cleanup): {
+    bb3 (cleanup): {                     // preds: [bb0, bb1]
         resume;                          // scope 0 at $DIR/issue-72181.rs:23:1: 28:2
     }
 }

@@ -10,7 +10,7 @@
       let _5: &i32;                        // in scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 +     let mut _6: &[&i32; 1];              // in scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
           StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
 -         StorageLive(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
@@ -39,14 +39,14 @@
                                            // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
           StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:43: 9:44
           return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
       }
   
-      bb2 (cleanup): {
+      bb2 (cleanup): {                     // preds: [bb0]
           resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:9:1: 9:45
       }
 - }

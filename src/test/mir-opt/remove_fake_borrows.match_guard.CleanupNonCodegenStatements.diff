@@ -12,27 +12,27 @@
       let mut _7: &i32;                    // in scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
       let mut _8: bool;                    // in scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
   
-      bb0: {
+      bb0: {                               // preds: []
 -         FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 +         nop;                             // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
           _3 = discriminant(_1);           // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
           switchInt(move _3) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/remove_fake_borrows.rs:7:5: 7:12
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0, bb2, bb6]
           _0 = const 1_i32;                // scope 0 at $DIR/remove_fake_borrows.rs:9:14: 9:15
           goto -> bb7;                     // scope 0 at $DIR/remove_fake_borrows.rs:9:14: 9:15
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           switchInt((*(*((_1 as Some).0: &&i32)))) -> [0_i32: bb3, otherwise: bb1]; // scope 0 at $DIR/remove_fake_borrows.rs:7:5: 7:12
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
           goto -> bb4;                     // scope 0 at $DIR/remove_fake_borrows.rs:8:9: 8:16
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb3]
 -         _4 = &shallow _1;                // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 -         _5 = &shallow ((_1 as Some).0: &&i32); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
 -         _6 = &shallow (*((_1 as Some).0: &&i32)); // scope 0 at $DIR/remove_fake_borrows.rs:7:11: 7:12
@@ -46,7 +46,7 @@
           switchInt(move _8) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb4]
           StorageDead(_8);                 // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 -         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
 -         FakeRead(ForMatchGuard, _5);     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
@@ -60,16 +60,16 @@
           goto -> bb7;                     // scope 0 at $DIR/remove_fake_borrows.rs:8:25: 8:26
       }
   
-      bb6: {
+      bb6: {                               // preds: [bb4]
           StorageDead(_8);                 // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
           goto -> bb1;                     // scope 0 at $DIR/remove_fake_borrows.rs:8:20: 8:21
       }
   
-      bb7: {
+      bb7: {                               // preds: [bb1, bb5]
           return;                          // scope 0 at $DIR/remove_fake_borrows.rs:11:2: 11:2
       }
   
-      bb8 (cleanup): {
+      bb8 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/remove_fake_borrows.rs:6:1: 11:2
       }
   }

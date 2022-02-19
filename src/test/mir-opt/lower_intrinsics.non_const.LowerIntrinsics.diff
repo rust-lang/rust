@@ -9,7 +9,7 @@
           debug size_of_t => _1;           // in scope 1 at $DIR/lower_intrinsics.rs:62:9: 62:18
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:62:9: 62:18
           _1 = std::intrinsics::size_of::<T>; // scope 0 at $DIR/lower_intrinsics.rs:62:21: 62:51
                                            // mir::Constant
@@ -22,13 +22,13 @@
 +         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:63:5: 63:16
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:63:15: 63:16
           StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:64:1: 64:2
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:64:2: 64:2
       }
   
-      bb2 (cleanup): {
+      bb2 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:60:1: 64:2
       }
   }

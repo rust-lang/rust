@@ -13,7 +13,7 @@
       let mut _8: isize;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
       let _9: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:20:5: 24:6
           StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
           discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
@@ -22,7 +22,7 @@
 +         switchInt(move _3) -> bb1;       // scope 0 at $DIR/uninhabited_enum_branching.rs:20:5: 20:19
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_5);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
           _5 = const "C";                  // scope 0 at $DIR/uninhabited_enum_branching.rs:23:21: 23:24
                                            // ty::Const
@@ -36,7 +36,8 @@
           goto -> bb4;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:23:23: 23:24
       }
   
-      bb2: {
+-     bb2: {                               // preds: [bb0]
++     bb2: {                               // preds: []
           _1 = const "A(Empty)";           // scope 0 at $DIR/uninhabited_enum_branching.rs:21:24: 21:34
                                            // ty::Const
                                            // + ty: &str
@@ -47,7 +48,8 @@
           goto -> bb4;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:21:24: 21:34
       }
   
-      bb3: {
+-     bb3: {                               // preds: [bb0]
++     bb3: {                               // preds: []
           StorageLive(_4);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:22:24: 22:34
           _4 = const "B(Empty)";           // scope 0 at $DIR/uninhabited_enum_branching.rs:22:24: 22:34
                                            // ty::Const
@@ -61,7 +63,7 @@
           goto -> bb4;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:22:33: 22:34
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb1, bb2, bb3]
           StorageDead(_2);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:24:6: 24:7
           StorageDead(_1);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:24:6: 24:7
           StorageLive(_6);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 29:6
@@ -71,7 +73,7 @@
           switchInt(move _8) -> [4_isize: bb6, otherwise: bb5]; // scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 26:19
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb4]
           StorageLive(_9);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
           _9 = const "E";                  // scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
                                            // ty::Const
@@ -85,7 +87,7 @@
           goto -> bb7;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:28:23: 28:24
       }
   
-      bb6: {
+      bb6: {                               // preds: [bb4]
           _6 = const "D";                  // scope 0 at $DIR/uninhabited_enum_branching.rs:27:21: 27:24
                                            // ty::Const
                                            // + ty: &str
@@ -96,7 +98,7 @@
           goto -> bb7;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:27:21: 27:24
       }
   
-      bb7: {
+      bb7: {                               // preds: [bb5, bb6]
           StorageDead(_7);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
           StorageDead(_6);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
           _0 = const ();                   // scope 0 at $DIR/uninhabited_enum_branching.rs:19:11: 30:2

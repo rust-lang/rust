@@ -34,7 +34,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_4);                 // scope 0 at $DIR/funky_arms.rs:15:9: 15:19
           StorageLive(_5);                 // scope 0 at $DIR/funky_arms.rs:15:22: 15:37
           _5 = &(*_1);                     // scope 0 at $DIR/funky_arms.rs:15:22: 15:37
@@ -44,23 +44,23 @@
                                            // + literal: Const { ty: for<'r> fn(&'r std::fmt::Formatter) -> bool {std::fmt::Formatter::sign_plus}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_5);                 // scope 0 at $DIR/funky_arms.rs:15:36: 15:37
           StorageLive(_6);                 // scope 1 at $DIR/funky_arms.rs:19:9: 19:13
           switchInt(_4) -> [false: bb3, otherwise: bb2]; // scope 1 at $DIR/funky_arms.rs:19:16: 19:32
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           discriminant(_6) = 1;            // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:21:17: 21:41
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb1]
           discriminant(_6) = 0;            // scope 1 at $DIR/funky_arms.rs:20:18: 20:38
           goto -> bb4;                     // scope 1 at $DIR/funky_arms.rs:20:18: 20:38
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb2, bb3]
           StorageLive(_7);                 // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
           StorageLive(_8);                 // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
           _8 = &(*_1);                     // scope 2 at $DIR/funky_arms.rs:24:30: 24:45
@@ -70,13 +70,13 @@
                                            // + literal: Const { ty: for<'r> fn(&'r std::fmt::Formatter) -> std::option::Option<usize> {std::fmt::Formatter::precision}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb4]
           StorageDead(_8);                 // scope 2 at $DIR/funky_arms.rs:24:44: 24:45
           _9 = discriminant(_7);           // scope 2 at $DIR/funky_arms.rs:24:12: 24:27
           switchInt(move _9) -> [1_isize: bb6, otherwise: bb8]; // scope 2 at $DIR/funky_arms.rs:24:12: 24:27
       }
   
-      bb6: {
+      bb6: {                               // preds: [bb5]
           StorageLive(_10);                // scope 2 at $DIR/funky_arms.rs:24:17: 24:26
           _10 = ((_7 as Some).0: usize);   // scope 2 at $DIR/funky_arms.rs:24:17: 24:26
           StorageLive(_11);                // scope 2 at $DIR/funky_arms.rs:26:43: 26:46
@@ -101,7 +101,7 @@
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(&'r mut std::fmt::Formatter<'s>, &'t0 T, core::num::flt2dec::Sign, u32, bool) -> std::result::Result<(), std::fmt::Error> {float_to_exponential_common_exact::<T>}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb7: {
+      bb7: {                               // preds: [bb6]
           StorageDead(_17);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
           StorageDead(_14);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
           StorageDead(_13);                // scope 2 at $DIR/funky_arms.rs:26:86: 26:87
@@ -111,7 +111,7 @@
           goto -> bb10;                    // scope 2 at $DIR/funky_arms.rs:24:5: 29:6
       }
   
-      bb8: {
+      bb8: {                               // preds: [bb5]
           StorageLive(_18);                // scope 2 at $DIR/funky_arms.rs:28:46: 28:49
           _18 = &mut (*_1);                // scope 2 at $DIR/funky_arms.rs:28:46: 28:49
           StorageLive(_19);                // scope 2 at $DIR/funky_arms.rs:28:51: 28:54
@@ -126,7 +126,7 @@
                                            // + literal: Const { ty: for<'r, 's, 't0> fn(&'r mut std::fmt::Formatter<'s>, &'t0 T, core::num::flt2dec::Sign, bool) -> std::result::Result<(), std::fmt::Error> {float_to_exponential_common_shortest::<T>}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb9: {
+      bb9: {                               // preds: [bb8]
           StorageDead(_21);                // scope 2 at $DIR/funky_arms.rs:28:67: 28:68
           StorageDead(_20);                // scope 2 at $DIR/funky_arms.rs:28:67: 28:68
           StorageDead(_19);                // scope 2 at $DIR/funky_arms.rs:28:67: 28:68
@@ -134,7 +134,7 @@
           goto -> bb10;                    // scope 2 at $DIR/funky_arms.rs:24:5: 29:6
       }
   
-      bb10: {
+      bb10: {                              // preds: [bb7, bb9]
           StorageDead(_6);                 // scope 1 at $DIR/funky_arms.rs:30:1: 30:2
           StorageDead(_4);                 // scope 0 at $DIR/funky_arms.rs:30:1: 30:2
           StorageDead(_7);                 // scope 0 at $DIR/funky_arms.rs:30:1: 30:2

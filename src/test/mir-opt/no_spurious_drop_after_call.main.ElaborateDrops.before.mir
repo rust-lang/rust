@@ -7,7 +7,7 @@ fn main() -> () {
     let mut _3: &str;                    // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
     let _4: &str;                        // in scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:22
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
         StorageLive(_2);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
         StorageLive(_3);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:20: 9:34
@@ -26,7 +26,7 @@ fn main() -> () {
                                          // + literal: Const { ty: for<'r> fn(&'r str) -> std::string::String {<str as std::string::ToString>::to_string}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_3);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:33: 9:34
         _1 = std::mem::drop::<String>(move _2) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:5: 9:35
                                          // mir::Constant
@@ -34,7 +34,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(std::string::String) {std::mem::drop::<std::string::String>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_2);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:34: 9:35
         StorageDead(_4);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
         StorageDead(_1);                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:35: 9:36
@@ -42,11 +42,11 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/no-spurious-drop-after-call.rs:10:2: 10:2
     }
 
-    bb3 (cleanup): {
+    bb3 (cleanup): {                     // preds: [bb1]
         drop(_2) -> bb4;                 // scope 0 at $DIR/no-spurious-drop-after-call.rs:9:34: 9:35
     }
 
-    bb4 (cleanup): {
+    bb4 (cleanup): {                     // preds: [bb3]
         resume;                          // scope 0 at $DIR/no-spurious-drop-after-call.rs:8:1: 10:2
     }
 }

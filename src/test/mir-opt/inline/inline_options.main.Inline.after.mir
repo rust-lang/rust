@@ -10,7 +10,7 @@ fn main() -> () {
         let _5: ();                      // in scope 1 at $DIR/inline-options.rs:10:5: 10:21
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/inline-options.rs:9:5: 9:18
         _1 = not_inlined() -> bb1;       // scope 0 at $DIR/inline-options.rs:9:5: 9:18
                                          // mir::Constant
@@ -18,7 +18,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() {not_inlined}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_1);                 // scope 0 at $DIR/inline-options.rs:9:18: 9:19
         StorageLive(_2);                 // scope 0 at $DIR/inline-options.rs:10:5: 10:21
         StorageLive(_3);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
@@ -28,7 +28,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() {g}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_3);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         StorageLive(_4);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         _4 = g() -> bb3;                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
@@ -37,7 +37,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() {g}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         StorageDead(_4);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         StorageLive(_5);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         _5 = g() -> bb4;                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
@@ -46,7 +46,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() {g}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageDead(_5);                 // scope 1 at $DIR/inline-options.rs:10:5: 10:21
         StorageDead(_2);                 // scope 0 at $DIR/inline-options.rs:10:21: 10:22
         _0 = const ();                   // scope 0 at $DIR/inline-options.rs:8:11: 11:2

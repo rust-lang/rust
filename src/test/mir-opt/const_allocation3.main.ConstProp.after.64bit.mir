@@ -5,7 +5,7 @@ fn main() -> () {
     let _1: &Packed;                     // in scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
     let mut _2: &&Packed;                // in scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         StorageLive(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
         _2 = const {alloc1: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8

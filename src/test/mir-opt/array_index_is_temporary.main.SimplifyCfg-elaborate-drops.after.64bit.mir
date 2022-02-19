@@ -23,7 +23,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/array-index-is-temporary.rs:13:9: 13:14
         _1 = [const 42_u32, const 43_u32, const 44_u32]; // scope 0 at $DIR/array-index-is-temporary.rs:13:17: 13:29
         StorageLive(_2);                 // scope 1 at $DIR/array-index-is-temporary.rs:14:9: 14:14
@@ -42,7 +42,7 @@ fn main() -> () {
                                          // + literal: Const { ty: unsafe fn(*mut usize) -> u32 {foo}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_6);                 // scope 4 at $DIR/array-index-is-temporary.rs:16:26: 16:27
         StorageLive(_7);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
         _7 = _2;                         // scope 3 at $DIR/array-index-is-temporary.rs:16:7: 16:8
@@ -51,7 +51,7 @@ fn main() -> () {
         assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, _7) -> bb2; // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:9
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         _1[_7] = move _5;                // scope 3 at $DIR/array-index-is-temporary.rs:16:5: 16:29
         StorageDead(_5);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:28: 16:29
         StorageDead(_7);                 // scope 3 at $DIR/array-index-is-temporary.rs:16:29: 16:30

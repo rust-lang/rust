@@ -12,15 +12,15 @@ fn main() -> () {
         debug beacon => _2;              // in scope 1 at $DIR/issue-49232.rs:7:13: 7:19
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0, bb9]
         falseUnwind -> [real: bb2, cleanup: bb11]; // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageLive(_2);                 // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageLive(_3);                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
         _3 = const true;                 // scope 0 at $DIR/issue-49232.rs:8:19: 8:23
@@ -28,29 +28,29 @@ fn main() -> () {
         switchInt(_3) -> [false: bb3, otherwise: bb4]; // scope 0 at $DIR/issue-49232.rs:8:13: 8:23
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         falseEdge -> [real: bb5, imaginary: bb4]; // scope 0 at $DIR/issue-49232.rs:9:17: 9:22
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb2, bb3]
         _0 = const ();                   // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
         goto -> bb10;                    // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb3]
         _2 = const 4_i32;                // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
         goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:9:26: 9:27
     }
 
-    bb6: {
+    bb6: {                               // preds: []
         unreachable;                     // scope 0 at $DIR/issue-49232.rs:10:25: 10:30
     }
 
-    bb7: {
+    bb7: {                               // preds: []
         goto -> bb8;                     // scope 0 at $DIR/issue-49232.rs:11:13: 11:14
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb5, bb7]
         FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue-49232.rs:7:13: 7:19
         StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
         StorageLive(_5);                 // scope 1 at $DIR/issue-49232.rs:13:9: 13:22
@@ -62,7 +62,7 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(&i32) {std::mem::drop::<&i32>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb9: {
+    bb9: {                               // preds: [bb8]
         StorageDead(_6);                 // scope 1 at $DIR/issue-49232.rs:13:21: 13:22
         StorageDead(_5);                 // scope 1 at $DIR/issue-49232.rs:13:22: 13:23
         _1 = const ();                   // scope 0 at $DIR/issue-49232.rs:6:10: 14:6
@@ -70,13 +70,13 @@ fn main() -> () {
         goto -> bb1;                     // scope 0 at $DIR/issue-49232.rs:6:5: 14:6
     }
 
-    bb10: {
+    bb10: {                              // preds: [bb4]
         StorageDead(_3);                 // scope 0 at $DIR/issue-49232.rs:12:10: 12:11
         StorageDead(_2);                 // scope 0 at $DIR/issue-49232.rs:14:5: 14:6
         return;                          // scope 0 at $DIR/issue-49232.rs:15:2: 15:2
     }
 
-    bb11 (cleanup): {
+    bb11 (cleanup): {                    // preds: [bb1, bb8]
         resume;                          // scope 0 at $DIR/issue-49232.rs:5:1: 15:2
     }
 }

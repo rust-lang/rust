@@ -15,7 +15,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:12:9: 12:10
         _1 = const 4_i32;                // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
         StorageLive(_2);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:9: 13:10

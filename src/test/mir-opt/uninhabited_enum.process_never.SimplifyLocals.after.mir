@@ -10,7 +10,7 @@ fn process_never(_1: *const !) -> () {
     scope 2 {
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:8:8: 8:14
         _2 = &(*_1);                     // scope 2 at $DIR/uninhabited-enum.rs:8:26: 8:33
         StorageDead(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:9:1: 9:2

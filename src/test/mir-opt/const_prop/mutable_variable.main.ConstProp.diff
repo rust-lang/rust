@@ -12,7 +12,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable.rs:5:9: 5:14
           _1 = const 42_i32;               // scope 0 at $DIR/mutable_variable.rs:5:17: 5:19
           _1 = const 99_i32;               // scope 1 at $DIR/mutable_variable.rs:6:5: 6:11

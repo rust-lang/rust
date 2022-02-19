@@ -12,7 +12,7 @@
           debug x => _1;                   // in scope 1 at $DIR/read_immutable_static.rs:7:9: 7:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/read_immutable_static.rs:7:9: 7:10
           StorageLive(_2);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16
           StorageLive(_3);                 // scope 0 at $DIR/read_immutable_static.rs:7:13: 7:16

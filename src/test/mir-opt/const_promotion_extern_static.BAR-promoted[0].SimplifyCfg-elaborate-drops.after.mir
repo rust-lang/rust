@@ -6,7 +6,7 @@ promoted[0] in BAR: &[&i32; 1] = {
     let mut _2: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:32: 9:34
     let mut _3: &i32;                    // in scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 
-    bb0: {
+    bb0: {                               // preds: []
         _3 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34

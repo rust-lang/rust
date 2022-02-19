@@ -19,7 +19,7 @@ fn main() -> () {
         debug plop => _1;                // in scope 1 at $DIR/uninhabited_enum_branching2.rs:19:9: 19:13
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:9: 19:13
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:38: 19:46
         discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:38: 19:46
@@ -33,7 +33,7 @@ fn main() -> () {
         switchInt(move _5) -> [2_isize: bb2, otherwise: bb1]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:21:5: 21:22
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageLive(_8);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:21: 25:24
         _8 = const "D";                  // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:21: 25:24
                                          // ty::Const
@@ -47,7 +47,7 @@ fn main() -> () {
         goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:25:23: 25:24
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0]
         StorageLive(_7);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:21: 24:24
         _7 = const "C";                  // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:21: 24:24
                                          // ty::Const
@@ -61,7 +61,7 @@ fn main() -> () {
         goto -> bb3;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:24:23: 24:24
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb1, bb2]
         StorageDead(_4);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:26:6: 26:7
         StorageDead(_3);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:26:6: 26:7
         StorageLive(_9);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 33:6
@@ -69,7 +69,7 @@ fn main() -> () {
         switchInt(move _10) -> [2_isize: bb5, otherwise: bb4]; // scope 1 at $DIR/uninhabited_enum_branching2.rs:28:5: 28:21
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageLive(_13);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:21: 32:24
         _13 = const "D";                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:21: 32:24
                                          // ty::Const
@@ -83,7 +83,7 @@ fn main() -> () {
         goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:32:23: 32:24
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb3]
         StorageLive(_12);                // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:21: 31:24
         _12 = const "C";                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:21: 31:24
                                          // ty::Const
@@ -97,7 +97,7 @@ fn main() -> () {
         goto -> bb6;                     // scope 1 at $DIR/uninhabited_enum_branching2.rs:31:23: 31:24
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb4, bb5]
         StorageDead(_9);                 // scope 1 at $DIR/uninhabited_enum_branching2.rs:33:6: 33:7
         _0 = const ();                   // scope 0 at $DIR/uninhabited_enum_branching2.rs:18:11: 34:2
         StorageDead(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:34:1: 34:2

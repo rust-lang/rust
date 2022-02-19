@@ -25,7 +25,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/cycle.rs:9:9: 9:14
 -         _1 = val() -> bb1;               // scope 0 at $DIR/cycle.rs:9:17: 9:22
 +         nop;                             // scope 0 at $DIR/cycle.rs:9:9: 9:14
@@ -35,7 +35,7 @@
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageLive(_2);                 // scope 1 at $DIR/cycle.rs:10:9: 10:10
 -         _2 = _1;                         // scope 1 at $DIR/cycle.rs:10:13: 10:14
 -         StorageLive(_3);                 // scope 2 at $DIR/cycle.rs:11:9: 11:10

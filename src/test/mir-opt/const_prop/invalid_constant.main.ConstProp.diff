@@ -18,7 +18,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           discriminant(_2) = 0;            // scope 0 at $DIR/invalid_constant.rs:16:7: 16:11
 -         _4 = discriminant(_2);           // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
 -         switchInt(move _4) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
@@ -26,7 +26,7 @@
 +         switchInt(const 0_isize) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb2, bb3]
 -         _3 = const { Union { int: 0x110001 } }; // scope 0 at $DIR/invalid_constant.rs:22:25: 22:58
 +         _3 = const main::Union { int: 1114113_u32, chr: {transmute(0x00110001): char} }; // scope 0 at $DIR/invalid_constant.rs:22:25: 22:58
                                            // ty::Const
@@ -41,7 +41,7 @@
           return;                          // scope 0 at $DIR/invalid_constant.rs:23:2: 23:2
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
 -         _5 = ((_2 as Some).0: std::option::Option<()>); // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
 -         _1 = _5;                         // scope 3 at $DIR/invalid_constant.rs:16:5: 16:12
 +         _5 = const Scalar(0x02): Option::<()>; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
@@ -61,7 +61,7 @@
           goto -> bb1;                     // scope 0 at $DIR/invalid_constant.rs:10:20: 10:21
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb0]
           discriminant(_1) = 0;            // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
           goto -> bb1;                     // scope 0 at $DIR/invalid_constant.rs:9:17: 9:21
       }

@@ -7,7 +7,7 @@
 +     scope 1 (inlined target_feature) {   // at $DIR/inline-compatibility.rs:13:5: 13:21
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
 -         _1 = target_feature() -> bb1;    // scope 0 at $DIR/inline-compatibility.rs:13:5: 13:21
 -                                          // mir::Constant
@@ -15,7 +15,7 @@
 -                                          // + literal: Const { ty: unsafe fn() {target_feature}, val: Value(Scalar(<ZST>)) }
 -     }
 - 
--     bb1: {
+-     bb1: {                               // preds: [bb0]
           StorageDead(_1);                 // scope 0 at $DIR/inline-compatibility.rs:13:21: 13:22
           _0 = const ();                   // scope 0 at $DIR/inline-compatibility.rs:12:40: 14:2
           return;                          // scope 0 at $DIR/inline-compatibility.rs:14:2: 14:2

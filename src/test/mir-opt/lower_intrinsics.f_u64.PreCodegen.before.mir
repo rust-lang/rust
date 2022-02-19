@@ -11,7 +11,7 @@ fn f_u64() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:40:5: 40:21
         _1 = const 0_u64;                // scope 0 at $DIR/lower_intrinsics.rs:40:5: 40:21
         StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:40:5: 40:21
@@ -23,7 +23,7 @@ fn f_u64() -> () {
                                          // + literal: Const { ty: fn(u64) {f_non_zst::<u64>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_3);                 // scope 1 at $DIR/lower_intrinsics.rs:40:5: 40:21
         StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:40:5: 40:21
         StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:40:5: 40:21

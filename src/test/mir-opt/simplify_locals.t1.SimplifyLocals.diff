@@ -8,7 +8,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:44:5: 44:17
 -         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:44:14: 44:15
 -         _2 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify-locals.rs:44:14: 44:15

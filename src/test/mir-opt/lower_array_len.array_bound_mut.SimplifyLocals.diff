@@ -24,7 +24,7 @@
 +     let mut _10: usize;                  // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
 +     let mut _11: bool;                   // in scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
           StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:18:8: 18:13
           _4 = _1;                         // scope 0 at $DIR/lower_array_len.rs:18:8: 18:13
@@ -45,7 +45,7 @@
           switchInt(move _3) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/lower_array_len.rs:18:8: 18:27
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageLive(_8);                 // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
 -         _8 = _1;                         // scope 0 at $DIR/lower_array_len.rs:19:15: 19:20
 -         _9 = const N;                    // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
@@ -58,7 +58,7 @@
 +         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb2; // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
 -         _0 = (*_2)[_8];                  // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
 -         StorageDead(_8);                 // scope 0 at $DIR/lower_array_len.rs:20:5: 20:6
 +         _0 = (*_2)[_6];                  // scope 0 at $DIR/lower_array_len.rs:19:9: 19:21
@@ -66,7 +66,7 @@
           goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:18:5: 24:6
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb0]
 -         StorageLive(_11);                // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
 -         _11 = const 0_usize;             // scope 0 at $DIR/lower_array_len.rs:21:15: 21:16
 -         _12 = const N;                   // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
@@ -79,7 +79,7 @@
 +         assert(move _11, "index out of bounds: the length is {} but the index is {}", move _10, const 0_usize) -> bb4; // scope 0 at $DIR/lower_array_len.rs:21:9: 21:17
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb3]
 -         (*_2)[_11] = const 42_u8;        // scope 0 at $DIR/lower_array_len.rs:21:9: 21:22
 -         StorageDead(_11);                // scope 0 at $DIR/lower_array_len.rs:21:22: 21:23
 +         (*_2)[_9] = const 42_u8;         // scope 0 at $DIR/lower_array_len.rs:21:9: 21:22
@@ -88,7 +88,7 @@
           goto -> bb5;                     // scope 0 at $DIR/lower_array_len.rs:18:5: 24:6
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb2, bb4]
           StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:24:5: 24:6
           return;                          // scope 0 at $DIR/lower_array_len.rs:25:2: 25:2
       }

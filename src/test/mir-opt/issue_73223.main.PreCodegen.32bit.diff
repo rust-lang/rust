@@ -40,7 +40,7 @@
           debug v => _3;                   // in scope 2 at $DIR/issue-73223.rs:3:14: 3:15
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/issue-73223.rs:2:9: 2:14
           StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
@@ -87,7 +87,7 @@
           switchInt(move _11) -> [false: bb2, otherwise: bb1]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_14);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           discriminant(_14) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_15);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -112,7 +112,7 @@
                                            // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           StorageDead(_11);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_10);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_9);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

@@ -19,7 +19,7 @@
           debug b => _9;                   // in scope 1 at $DIR/early_otherwise_branch.rs:23:24: 23:25
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:22:11: 22:17
           StorageLive(_4);                 // scope 0 at $DIR/early_otherwise_branch.rs:22:12: 22:13
           _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch.rs:22:12: 22:13
@@ -39,19 +39,21 @@
 +         switchInt(move _11) -> [false: bb4, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:22:5: 22:17
       }
   
-      bb1: {
+-     bb1: {                               // preds: [bb0, bb2]
++     bb1: {                               // preds: [bb0, bb4]
 +         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:24:14: 24:15
           _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch.rs:24:14: 24:15
 -         goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch.rs:24:14: 24:15
 +         goto -> bb3;                     // scope 0 at $DIR/early_otherwise_branch.rs:24:14: 24:15
       }
   
-      bb2: {
+-     bb2: {                               // preds: [bb0]
 -         _6 = discriminant((_3.1: std::option::Option<bool>)); // scope 0 at $DIR/early_otherwise_branch.rs:22:11: 22:17
 -         switchInt(move _6) -> [1_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:22:5: 22:17
 -     }
 - 
--     bb3: {
+-     bb3: {                               // preds: [bb2]
++     bb2: {                               // preds: [bb4]
           StorageLive(_8);                 // scope 0 at $DIR/early_otherwise_branch.rs:23:15: 23:16
           _8 = (((_3.0: std::option::Option<u32>) as Some).0: u32); // scope 0 at $DIR/early_otherwise_branch.rs:23:15: 23:16
           StorageLive(_9);                 // scope 0 at $DIR/early_otherwise_branch.rs:23:24: 23:25
@@ -63,13 +65,13 @@
 +         goto -> bb3;                     // scope 0 at $DIR/early_otherwise_branch.rs:23:31: 23:32
       }
   
--     bb4: {
-+     bb3: {
+-     bb4: {                               // preds: [bb1, bb3]
++     bb3: {                               // preds: [bb1, bb2]
           StorageDead(_3);                 // scope 0 at $DIR/early_otherwise_branch.rs:26:1: 26:2
           return;                          // scope 0 at $DIR/early_otherwise_branch.rs:26:2: 26:2
 +     }
 + 
-+     bb4: {
++     bb4: {                               // preds: [bb0]
 +         StorageDead(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:22:5: 22:17
 +         switchInt(_7) -> [1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:22:5: 22:17
       }

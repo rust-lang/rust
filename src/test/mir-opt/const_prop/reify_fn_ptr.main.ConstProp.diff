@@ -9,7 +9,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:41
           StorageLive(_2);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:26
           StorageLive(_3);                 // scope 0 at $DIR/reify_fn_ptr.rs:4:13: 4:17

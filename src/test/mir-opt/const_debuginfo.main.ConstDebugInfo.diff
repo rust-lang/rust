@@ -52,7 +52,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/const_debuginfo.rs:9:9: 9:10
           _1 = const 1_u8;                 // scope 0 at $DIR/const_debuginfo.rs:9:13: 9:16
           StorageLive(_2);                 // scope 1 at $DIR/const_debuginfo.rs:10:9: 10:10

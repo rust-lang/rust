@@ -47,7 +47,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageLive(_3);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:29:8: 29:9
@@ -57,7 +57,7 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         switchInt(move _8) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageLive(_11);                // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
         _11 = move ((_4 as Err).0: i32); // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageLive(_12);                // scope 7 at $DIR/separate_const_switch.rs:29:8: 29:10
@@ -94,11 +94,11 @@ fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
         return;                          // scope 0 at $DIR/separate_const_switch.rs:30:2: 30:2
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0]
         unreachable;                     // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb0]
         StorageLive(_9);                 // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
         _9 = move ((_4 as Ok).0: i32);   // scope 5 at $DIR/separate_const_switch.rs:29:8: 29:10
         StorageLive(_10);                // scope 6 at $DIR/separate_const_switch.rs:29:8: 29:10

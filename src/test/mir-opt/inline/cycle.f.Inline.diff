@@ -8,7 +8,7 @@
       let mut _3: &impl Fn();              // in scope 0 at $DIR/cycle.rs:6:5: 6:6
       let mut _4: ();                      // in scope 0 at $DIR/cycle.rs:6:5: 6:8
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/cycle.rs:6:5: 6:8
           StorageLive(_3);                 // scope 0 at $DIR/cycle.rs:6:5: 6:6
           _3 = &_1;                        // scope 0 at $DIR/cycle.rs:6:5: 6:6
@@ -19,7 +19,7 @@
                                            // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as std::ops::FnOnce<()>>::Output {<impl Fn() as std::ops::Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_4);                 // scope 0 at $DIR/cycle.rs:6:7: 6:8
           StorageDead(_3);                 // scope 0 at $DIR/cycle.rs:6:7: 6:8
           StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:6:8: 6:9
@@ -27,15 +27,15 @@
           drop(_1) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/cycle.rs:7:1: 7:2
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           return;                          // scope 0 at $DIR/cycle.rs:7:2: 7:2
       }
   
-      bb3 (cleanup): {
+      bb3 (cleanup): {                     // preds: [bb0]
           drop(_1) -> bb4;                 // scope 0 at $DIR/cycle.rs:7:1: 7:2
       }
   
-      bb4 (cleanup): {
+      bb4 (cleanup): {                     // preds: [bb1, bb3]
           resume;                          // scope 0 at $DIR/cycle.rs:5:1: 7:2
       }
   }

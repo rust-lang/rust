@@ -6,7 +6,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:23:24: 23:24
       let mut _2: T;                       // in scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
           _2 = move _1;                    // scope 0 at $DIR/lower_intrinsics.rs:24:30: 24:31
 -         _0 = std::intrinsics::forget::<T>(move _2) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
@@ -17,16 +17,16 @@
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:24:5: 24:32
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:24:31: 24:32
           goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:25:1: 25:2
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:25:2: 25:2
       }
   
-      bb3 (cleanup): {
+      bb3 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:23:1: 25:2
       }
   }

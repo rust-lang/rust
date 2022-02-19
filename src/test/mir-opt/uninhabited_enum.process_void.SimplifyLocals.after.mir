@@ -10,7 +10,7 @@ fn process_void(_1: *const Void) -> () {
     scope 2 {
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:14:8: 14:14
         _2 = &(*_1);                     // scope 2 at $DIR/uninhabited-enum.rs:14:26: 14:33
         StorageDead(_2);                 // scope 0 at $DIR/uninhabited-enum.rs:17:1: 17:2

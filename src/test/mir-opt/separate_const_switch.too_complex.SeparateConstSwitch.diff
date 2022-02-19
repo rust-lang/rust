@@ -27,13 +27,13 @@
           debug r => _11;                  // in scope 4 at $DIR/separate_const_switch.rs:21:28: 21:29
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/separate_const_switch.rs:14:11: 19:6
           _3 = discriminant(_1);           // scope 0 at $DIR/separate_const_switch.rs:15:15: 15:16
           switchInt(move _3) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/separate_const_switch.rs:15:9: 15:16
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_6);                 // scope 0 at $DIR/separate_const_switch.rs:17:17: 17:18
           _6 = ((_1 as Err).0: usize);     // scope 0 at $DIR/separate_const_switch.rs:17:17: 17:18
           StorageLive(_7);                 // scope 2 at $DIR/separate_const_switch.rs:17:42: 17:43
@@ -47,7 +47,7 @@
 +         switchInt(move _8) -> [0_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:14:5: 19:6
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           StorageLive(_4);                 // scope 0 at $DIR/separate_const_switch.rs:16:16: 16:17
           _4 = ((_1 as Ok).0: i32);        // scope 0 at $DIR/separate_const_switch.rs:16:16: 16:17
           StorageLive(_5);                 // scope 1 at $DIR/separate_const_switch.rs:16:44: 16:45
@@ -59,14 +59,14 @@
 -         goto -> bb3;                     // scope 0 at $DIR/separate_const_switch.rs:16:45: 16:46
 -     }
 - 
--     bb3: {
+-     bb3: {                               // preds: [bb1, bb2]
           _8 = discriminant(_2);           // scope 0 at $DIR/separate_const_switch.rs:14:11: 19:6
 -         switchInt(move _8) -> [0_isize: bb5, otherwise: bb4]; // scope 0 at $DIR/separate_const_switch.rs:14:5: 19:6
 +         switchInt(move _8) -> [0_isize: bb4, otherwise: bb3]; // scope 0 at $DIR/separate_const_switch.rs:14:5: 19:6
       }
   
--     bb4: {
-+     bb3: {
+-     bb4: {                               // preds: [bb3]
++     bb3: {                               // preds: [bb1, bb2]
           StorageLive(_11);                // scope 0 at $DIR/separate_const_switch.rs:21:28: 21:29
           _11 = ((_2 as Break).0: usize);  // scope 0 at $DIR/separate_const_switch.rs:21:28: 21:29
           discriminant(_0) = 0;            // scope 4 at $DIR/separate_const_switch.rs:21:34: 21:38
@@ -75,8 +75,8 @@
 +         goto -> bb5;                     // scope 0 at $DIR/separate_const_switch.rs:21:37: 21:38
       }
   
--     bb5: {
-+     bb4: {
+-     bb5: {                               // preds: [bb3]
++     bb4: {                               // preds: [bb1, bb2]
           StorageLive(_9);                 // scope 0 at $DIR/separate_const_switch.rs:20:31: 20:32
           _9 = ((_2 as Continue).0: i32);  // scope 0 at $DIR/separate_const_switch.rs:20:31: 20:32
           StorageLive(_10);                // scope 3 at $DIR/separate_const_switch.rs:20:42: 20:43
@@ -89,8 +89,8 @@
 +         goto -> bb5;                     // scope 0 at $DIR/separate_const_switch.rs:20:43: 20:44
       }
   
--     bb6: {
-+     bb5: {
+-     bb6: {                               // preds: [bb4, bb5]
++     bb5: {                               // preds: [bb3, bb4]
           StorageDead(_2);                 // scope 0 at $DIR/separate_const_switch.rs:23:1: 23:2
           return;                          // scope 0 at $DIR/separate_const_switch.rs:23:2: 23:2
       }

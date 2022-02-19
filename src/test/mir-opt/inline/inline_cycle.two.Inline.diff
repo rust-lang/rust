@@ -14,7 +14,7 @@
 +         }
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
 -         _1 = call::<fn() {f}>(f) -> bb1; // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageLive(_2);                 // scope 0 at $DIR/inline-cycle.rs:49:5: 49:12
@@ -33,7 +33,7 @@
 +         _3 = move _4() -> bb1;           // scope 2 at $DIR/inline-cycle.rs:49:5: 49:12
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 +         StorageDead(_5);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageDead(_4);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12
 +         StorageDead(_3);                 // scope 1 at $DIR/inline-cycle.rs:49:5: 49:12

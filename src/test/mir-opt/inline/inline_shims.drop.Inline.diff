@@ -17,7 +17,7 @@
 +         }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/inline-shims.rs:11:5: 11:42
           StorageLive(_4);                 // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
           _4 = _1;                         // scope 1 at $DIR/inline-shims.rs:11:38: 11:39
@@ -27,7 +27,7 @@
                                            // + literal: Const { ty: unsafe fn(*mut std::vec::Vec<A>) {std::ptr::drop_in_place::<std::vec::Vec<A>>}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_4);                 // scope 1 at $DIR/inline-shims.rs:11:39: 11:40
           StorageDead(_3);                 // scope 0 at $DIR/inline-shims.rs:11:41: 11:42
           StorageLive(_5);                 // scope 2 at $DIR/inline-shims.rs:12:38: 12:39
@@ -42,14 +42,15 @@
 +         switchInt(move _6) -> [0_isize: bb2, otherwise: bb3]; // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
       }
   
-      bb2: {
+-     bb2: {                               // preds: [bb1]
++     bb2: {                               // preds: [bb1, bb3]
 +         StorageDead(_7);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
 +         StorageDead(_6);                 // scope 2 at $DIR/inline-shims.rs:12:14: 12:40
           StorageDead(_5);                 // scope 2 at $DIR/inline-shims.rs:12:39: 12:40
           return;                          // scope 0 at $DIR/inline-shims.rs:13:2: 13:2
 +     }
 + 
-+     bb3: {
++     bb3: {                               // preds: [bb1]
 +         drop((((*_5) as Some).0: B)) -> bb2; // scope 3 at $DIR/inline-shims.rs:12:14: 12:40
       }
   }

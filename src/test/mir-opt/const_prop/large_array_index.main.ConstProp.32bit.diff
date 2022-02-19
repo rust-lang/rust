@@ -12,7 +12,7 @@
           debug x => _1;                   // in scope 1 at $DIR/large_array_index.rs:6:9: 6:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/large_array_index.rs:6:9: 6:10
           StorageLive(_2);                 // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
           _2 = [const 0_u8; 5000];         // scope 0 at $DIR/large_array_index.rs:6:17: 6:29
@@ -25,7 +25,7 @@
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 5000_usize, const 2_usize) -> bb1; // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           _1 = _2[_3];                     // scope 0 at $DIR/large_array_index.rs:6:17: 6:32
           StorageDead(_3);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33
           StorageDead(_2);                 // scope 0 at $DIR/large_array_index.rs:6:32: 6:33

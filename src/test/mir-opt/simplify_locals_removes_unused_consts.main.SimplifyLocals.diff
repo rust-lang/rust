@@ -19,7 +19,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:20: 13:28
 -         StorageLive(_2);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:21: 13:23
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify-locals-removes-unused-consts.rs:13:25: 13:27
@@ -40,7 +40,7 @@
                                            // + literal: Const { ty: fn(((), ())) {use_zst}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageDead(_5);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:21: 14:22
 -         StorageDead(_4);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:14:22: 14:23
 -         StorageLive(_8);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:5: 16:35
@@ -60,7 +60,7 @@
                                            // + literal: Const { ty: fn(u8) {use_u8}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
 -         StorageDead(_9);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:34: 16:35
 -         StorageDead(_11);                // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36
 -         StorageDead(_8);                 // scope 1 at $DIR/simplify-locals-removes-unused-consts.rs:16:35: 16:36

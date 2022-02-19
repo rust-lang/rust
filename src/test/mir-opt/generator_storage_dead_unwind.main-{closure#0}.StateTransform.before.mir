@@ -19,7 +19,7 @@ yields ()
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_3);                 // scope 0 at $DIR/generator-storage-dead-unwind.rs:23:13: 23:14
         (_3.0: i32) = const 5_i32;       // scope 0 at $DIR/generator-storage-dead-unwind.rs:23:17: 23:23
         StorageLive(_4);                 // scope 1 at $DIR/generator-storage-dead-unwind.rs:24:13: 24:14
@@ -29,7 +29,7 @@ yields ()
         _5 = yield(move _6) -> [resume: bb1, drop: bb5]; // scope 2 at $DIR/generator-storage-dead-unwind.rs:25:9: 25:14
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_6);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:25:13: 25:14
         StorageDead(_5);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:25:14: 25:15
         StorageLive(_7);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:9: 26:16
@@ -41,7 +41,7 @@ yields ()
                                          // + literal: Const { ty: fn(Foo) {take::<Foo>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_8);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:15: 26:16
         StorageDead(_7);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:16: 26:17
         StorageLive(_9);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:9: 27:16
@@ -53,7 +53,7 @@ yields ()
                                          // + literal: Const { ty: fn(Bar) {take::<Bar>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         StorageDead(_10);                // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:15: 27:16
         StorageDead(_9);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:16: 27:17
         _0 = const ();                   // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:19: 28:6
@@ -62,49 +62,49 @@ yields ()
         drop(_1) -> [return: bb4, unwind: bb11]; // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         return;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:6: 28:6
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb0]
         StorageDead(_6);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:25:13: 25:14
         StorageDead(_5);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:25:14: 25:15
         StorageDead(_4);                 // scope 1 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_3) -> [return: bb6, unwind: bb12]; // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb5]
         StorageDead(_3);                 // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_1) -> [return: bb7, unwind: bb11]; // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb6]
         generator_drop;                  // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 28:6
     }
 
-    bb8 (cleanup): {
+    bb8 (cleanup): {                     // preds: [bb2]
         StorageDead(_10);                // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:15: 27:16
         StorageDead(_9);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:27:16: 27:17
         goto -> bb10;                    // scope 2 at no-location
     }
 
-    bb9 (cleanup): {
+    bb9 (cleanup): {                     // preds: [bb1]
         StorageDead(_8);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:15: 26:16
         StorageDead(_7);                 // scope 2 at $DIR/generator-storage-dead-unwind.rs:26:16: 26:17
         goto -> bb10;                    // scope 2 at no-location
     }
 
-    bb10 (cleanup): {
+    bb10 (cleanup): {                    // preds: [bb8, bb9]
         StorageDead(_4);                 // scope 1 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         StorageDead(_3);                 // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_1) -> bb11;                // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
     }
 
-    bb11 (cleanup): {
+    bb11 (cleanup): {                    // preds: [bb3, bb6, bb10, bb12]
         resume;                          // scope 0 at $DIR/generator-storage-dead-unwind.rs:22:16: 28:6
     }
 
-    bb12 (cleanup): {
+    bb12 (cleanup): {                    // preds: [bb5]
         StorageDead(_3);                 // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
         drop(_1) -> bb11;                // scope 0 at $DIR/generator-storage-dead-unwind.rs:28:5: 28:6
     }

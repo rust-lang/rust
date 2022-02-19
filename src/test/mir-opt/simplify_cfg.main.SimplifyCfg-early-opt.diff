@@ -7,15 +7,16 @@
       let mut _2: bool;                    // in scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
       let mut _3: !;                       // in scope 0 at $DIR/simplify_cfg.rs:9:18: 11:10
   
-      bb0: {
+      bb0: {                               // preds: []
           goto -> bb1;                     // scope 0 at $DIR/simplify_cfg.rs:8:5: 12:6
       }
   
-      bb1: {
+-     bb1: {                               // preds: [bb0, bb5]
 -         goto -> bb2;                     // scope 0 at $DIR/simplify_cfg.rs:8:5: 12:6
 -     }
 - 
--     bb2: {
+-     bb2: {                               // preds: [bb1]
++     bb1: {                               // preds: [bb0, bb4]
           StorageLive(_2);                 // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
 -         _2 = bar() -> [return: bb3, unwind: bb6]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
 +         _2 = bar() -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
@@ -24,28 +25,28 @@
                                            // + literal: Const { ty: fn() -> bool {bar}, val: Value(Scalar(<ZST>)) }
       }
   
--     bb3: {
+-     bb3: {                               // preds: [bb2]
 -         switchInt(move _2) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
-+     bb2: {
++     bb2: {                               // preds: [bb1]
 +         switchInt(move _2) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/simplify_cfg.rs:9:12: 9:17
       }
   
--     bb4: {
-+     bb3: {
+-     bb4: {                               // preds: [bb3]
++     bb3: {                               // preds: [bb2]
           _0 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:10:13: 10:18
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:11:9: 11:10
           return;                          // scope 0 at $DIR/simplify_cfg.rs:13:2: 13:2
       }
   
--     bb5: {
-+     bb4: {
+-     bb5: {                               // preds: [bb3]
++     bb4: {                               // preds: [bb2]
           _1 = const ();                   // scope 0 at $DIR/simplify_cfg.rs:11:10: 11:10
           StorageDead(_2);                 // scope 0 at $DIR/simplify_cfg.rs:11:9: 11:10
           goto -> bb1;                     // scope 0 at $DIR/simplify_cfg.rs:8:5: 12:6
       }
   
--     bb6 (cleanup): {
-+     bb5 (cleanup): {
+-     bb6 (cleanup): {                     // preds: [bb2]
++     bb5 (cleanup): {                     // preds: [bb1]
           resume;                          // scope 0 at $DIR/simplify_cfg.rs:7:1: 13:2
       }
   }

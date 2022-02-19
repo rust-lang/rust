@@ -17,83 +17,83 @@ fn std::ptr::drop_in_place(_1: *mut [String]) -> () {
     let mut _14: bool;                   // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     let mut _15: *mut [std::string::String]; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
-    bb0: {
+    bb0: {                               // preds: []
         goto -> bb15;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb6, bb12]
         return;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb2 (cleanup): {
+    bb2 (cleanup): {                     // preds: [bb4, bb10]
         resume;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb3 (cleanup): {
+    bb3 (cleanup): {                     // preds: [bb4]
         _5 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         drop((*_5)) -> bb4;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb4 (cleanup): {
+    bb4 (cleanup): {                     // preds: [bb3, bb5]
         _6 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         switchInt(move _6) -> [false: bb3, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb6]
         _7 = &raw mut (*_1)[_4];         // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _4 = Add(move _4, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         drop((*_7)) -> [return: bb6, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb5, bb7]
         _8 = Eq(_4, _3);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         switchInt(move _8) -> [false: bb5, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb8]
         _4 = const 0_usize;              // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         goto -> bb6;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb15]
         goto -> bb7;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb9 (cleanup): {
+    bb9 (cleanup): {                     // preds: [bb10]
         _11 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         drop((*_11)) -> bb10;            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb10 (cleanup): {
+    bb10 (cleanup): {                    // preds: [bb9, bb11]
         _12 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         switchInt(move _12) -> [false: bb9, otherwise: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb11: {
+    bb11: {                              // preds: [bb12]
         _13 = _9;                        // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _9 = Offset(move _9, const 1_usize); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         drop((*_13)) -> [return: bb12, unwind: bb10]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb12: {
+    bb12: {                              // preds: [bb11, bb13]
         _14 = Eq(_9, _10);               // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         switchInt(move _14) -> [false: bb11, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb13: {
+    bb13: {                              // preds: [bb14]
         _15 = &raw mut (*_1);            // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _9 = move _15 as *mut std::string::String (Misc); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _10 = Offset(_9, move _3);       // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         goto -> bb12;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb14: {
+    bb14: {                              // preds: [bb15]
         goto -> bb13;                    // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
     }
 
-    bb15: {
+    bb15: {                              // preds: [bb0]
         _2 = SizeOf(std::string::String); // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         _3 = Len((*_1));                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
         switchInt(move _2) -> [0_usize: bb8, otherwise: bb14]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL

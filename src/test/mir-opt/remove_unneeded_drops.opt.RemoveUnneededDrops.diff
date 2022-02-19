@@ -10,14 +10,14 @@
           debug _x => _3;                  // in scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
           StorageLive(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
           _3 = _1;                         // scope 0 at $DIR/remove_unneeded_drops.rs:4:10: 4:11
 -         drop(_3) -> bb1;                 // scope 1 at $DIR/remove_unneeded_drops.rs:4:5: 4:12
 -     }
 - 
--     bb1: {
+-     bb1: {                               // preds: [bb0]
           StorageDead(_3);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:11: 4:12
           StorageDead(_2);                 // scope 0 at $DIR/remove_unneeded_drops.rs:4:12: 4:13
 -         nop;                             // scope 0 at $DIR/remove_unneeded_drops.rs:3:17: 5:2

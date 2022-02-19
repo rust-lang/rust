@@ -6,7 +6,7 @@ fn <impl at $DIR/retag.rs:11:1: 19:2>::foo(_1: &Test, _2: &mut i32) -> &mut i32 
     let mut _0: &mut i32;                // return place in scope 0 at $DIR/retag.rs:13:42: 13:53
     let mut _3: &mut i32;                // in scope 0 at $DIR/retag.rs:14:9: 14:10
 
-    bb0: {
+    bb0: {                               // preds: []
         Retag([fn entry] _1);            // scope 0 at $DIR/retag.rs:13:5: 15:6
         Retag([fn entry] _2);            // scope 0 at $DIR/retag.rs:13:5: 15:6
         StorageLive(_3);                 // scope 0 at $DIR/retag.rs:14:9: 14:10

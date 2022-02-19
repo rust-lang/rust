@@ -27,7 +27,7 @@ fn num_to_digit(_1: char) -> u32 {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/issue-59352.rs:14:8: 14:11
         _2 = _1;                         // scope 0 at $DIR/issue-59352.rs:14:8: 14:11
         StorageLive(_5);                 // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
@@ -42,7 +42,7 @@ fn num_to_digit(_1: char) -> u32 {
                                          // + literal: Const { ty: fn(char, u32) -> std::option::Option<u32> {std::char::methods::<impl char>::to_digit}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb5]
         StorageDead(_11);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         StorageLive(_3);                 // scope 0 at $DIR/issue-59352.rs:14:26: 14:41
         StorageLive(_4);                 // scope 0 at $DIR/issue-59352.rs:14:26: 14:29
@@ -53,24 +53,24 @@ fn num_to_digit(_1: char) -> u32 {
                                          // + literal: Const { ty: fn(char, u32) -> std::option::Option<u32> {std::char::methods::<impl char>::to_digit}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_4);                 // scope 0 at $DIR/issue-59352.rs:14:40: 14:41
         StorageLive(_10);                // scope 0 at $DIR/issue-59352.rs:14:26: 14:50
         _10 = discriminant(_3);          // scope 3 at $DIR/issue-59352.rs:14:26: 14:50
         switchInt(move _10) -> [0_isize: bb6, 1_isize: bb8, otherwise: bb7]; // scope 3 at $DIR/issue-59352.rs:14:26: 14:50
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb5]
         StorageDead(_11);                // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
         _0 = const 0_u32;                // scope 0 at $DIR/issue-59352.rs:14:60: 14:61
         goto -> bb4;                     // scope 0 at $DIR/issue-59352.rs:14:5: 14:63
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3, bb8]
         return;                          // scope 0 at $DIR/issue-59352.rs:15:2: 15:2
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb0]
         _6 = &_7;                        // scope 1 at $DIR/issue-59352.rs:14:8: 14:23
         StorageDead(_8);                 // scope 1 at $DIR/issue-59352.rs:14:8: 14:23
         StorageLive(_9);                 // scope 1 at $DIR/issue-59352.rs:14:8: 14:23
@@ -85,7 +85,7 @@ fn num_to_digit(_1: char) -> u32 {
         switchInt(move _11) -> [1_isize: bb1, otherwise: bb3]; // scope 0 at $DIR/issue-59352.rs:14:8: 14:23
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb2]
         core::panicking::panic(const "called `Option::unwrap()` on a `None` value"); // scope 3 at $DIR/issue-59352.rs:14:26: 14:50
                                          // mir::Constant
                                          // + span: $DIR/issue-59352.rs:14:26: 14:50
@@ -98,11 +98,11 @@ fn num_to_digit(_1: char) -> u32 {
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [99, 97, 108, 108, 101, 100, 32, 96, 79, 112, 116, 105, 111, 110, 58, 58, 117, 110, 119, 114, 97, 112, 40, 41, 96, 32, 111, 110, 32, 97, 32, 96, 78, 111, 110, 101, 96, 32, 118, 97, 108, 117, 101], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [8796093022207], len: Size { raw: 43 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 43 }) }
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb2]
         unreachable;                     // scope 3 at $DIR/issue-59352.rs:14:26: 14:50
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb2]
         _0 = move ((_3 as Some).0: u32); // scope 3 at $DIR/issue-59352.rs:14:26: 14:50
         StorageDead(_10);                // scope 0 at $DIR/issue-59352.rs:14:26: 14:50
         StorageDead(_3);                 // scope 0 at $DIR/issue-59352.rs:14:49: 14:50

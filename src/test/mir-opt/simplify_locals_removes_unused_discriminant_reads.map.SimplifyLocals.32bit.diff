@@ -14,7 +14,7 @@
           debug x => ((_0 as Some).0: std::boxed::Box<()>); // in scope 1 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:6:14: 6:15
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         _5 = const false;                // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:11: 4:12
 -         _5 = const true;                 // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:11: 4:12
 -         _2 = discriminant(_1);           // scope 0 at $DIR/simplify-locals-removes-unused-discriminant-reads.rs:4:11: 4:12

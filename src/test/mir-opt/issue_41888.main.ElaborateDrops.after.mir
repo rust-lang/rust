@@ -20,7 +20,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         _9 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
@@ -32,11 +32,11 @@ fn main() -> () {
                                          // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         switchInt(move _2) -> [false: bb7, otherwise: bb2]; // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageLive(_3);                 // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageLive(_4);                 // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
         _4 = K;                          // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
@@ -45,17 +45,17 @@ fn main() -> () {
         goto -> bb14;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb14]
         goto -> bb4;                     // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageDead(_3);                 // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
         _5 = discriminant(_1);           // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
         switchInt(move _5) -> [0_isize: bb5, otherwise: bb6]; // scope 1 at $DIR/issue-41888.rs:10:16: 10:24
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb4]
         StorageLive(_6);                 // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
         _9 = const false;                // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
         _6 = move ((_1 as F).0: K);      // scope 1 at $DIR/issue-41888.rs:10:21: 10:23
@@ -64,22 +64,22 @@ fn main() -> () {
         goto -> bb8;                     // scope 1 at $DIR/issue-41888.rs:10:9: 13:10
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb4]
         _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:13:10: 13:10
         goto -> bb8;                     // scope 1 at $DIR/issue-41888.rs:10:9: 13:10
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb1]
         _0 = const ();                   // scope 1 at $DIR/issue-41888.rs:14:6: 14:6
         goto -> bb8;                     // scope 1 at $DIR/issue-41888.rs:8:5: 14:6
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb5, bb6, bb7]
         StorageDead(_2);                 // scope 1 at $DIR/issue-41888.rs:14:5: 14:6
         goto -> bb20;                    // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb9: {
+    bb9: {                               // preds: [bb15]
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         _9 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
@@ -87,19 +87,19 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/issue-41888.rs:15:2: 15:2
     }
 
-    bb10 (cleanup): {
+    bb10 (cleanup): {                    // preds: [bb13]
         goto -> bb11;                    // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
     }
 
-    bb11 (cleanup): {
+    bb11 (cleanup): {                    // preds: [bb0, bb10]
         goto -> bb12;                    // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb12 (cleanup): {
+    bb12 (cleanup): {                    // preds: [bb11, bb16, bb17, bb18, bb22]
         resume;                          // scope 0 at $DIR/issue-41888.rs:6:1: 15:2
     }
 
-    bb13 (cleanup): {
+    bb13 (cleanup): {                    // preds: []
         _7 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _8 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _9 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
@@ -107,7 +107,7 @@ fn main() -> () {
         goto -> bb10;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }
 
-    bb14: {
+    bb14: {                              // preds: [bb2]
         _7 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _8 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
         _9 = const true;                 // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
@@ -115,38 +115,38 @@ fn main() -> () {
         goto -> bb3;                     // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }
 
-    bb15: {
+    bb15: {                              // preds: [bb17, bb19, bb20]
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         goto -> bb9;                     // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb16 (cleanup): {
+    bb16 (cleanup): {                    // preds: [bb21]
         goto -> bb12;                    // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb17: {
+    bb17: {                              // preds: [bb19]
         drop(_1) -> [return: bb15, unwind: bb12]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb18 (cleanup): {
+    bb18 (cleanup): {                    // preds: [bb21]
         drop(_1) -> bb12;                // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb19: {
+    bb19: {                              // preds: [bb20]
         _10 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         switchInt(move _10) -> [0_isize: bb15, otherwise: bb17]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb20: {
+    bb20: {                              // preds: [bb8]
         switchInt(_7) -> [false: bb15, otherwise: bb19]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb21 (cleanup): {
+    bb21 (cleanup): {                    // preds: [bb22]
         _11 = discriminant(_1);          // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
         switchInt(move _11) -> [0_isize: bb16, otherwise: bb18]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 
-    bb22 (cleanup): {
+    bb22 (cleanup): {                    // preds: []
         switchInt(_7) -> [false: bb12, otherwise: bb21]; // scope 0 at $DIR/issue-41888.rs:15:1: 15:2
     }
 }

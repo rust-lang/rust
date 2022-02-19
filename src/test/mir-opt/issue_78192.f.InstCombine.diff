@@ -11,7 +11,7 @@
           debug b => _2;                   // in scope 1 at $DIR/issue-78192.rs:3:9: 3:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/issue-78192.rs:3:9: 3:10
           StorageLive(_3);                 // scope 0 at $DIR/issue-78192.rs:3:24: 3:40
           StorageLive(_4);                 // scope 0 at $DIR/issue-78192.rs:3:25: 3:40

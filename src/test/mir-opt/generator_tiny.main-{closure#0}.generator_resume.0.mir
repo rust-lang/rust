@@ -26,19 +26,19 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
         debug _d => _3;                  // in scope 1 at $DIR/generator-tiny.rs:20:13: 20:15
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         _11 = discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]))); // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         switchInt(move _11) -> [0_u32: bb1, 3_u32: bb5, otherwise: bb6]; // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         _10 = move _2;                   // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_3);                 // scope 0 at $DIR/generator-tiny.rs:20:13: 20:15
         StorageLive(_4);                 // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
         goto -> bb2;                     // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1, bb4]
         StorageLive(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         StorageLive(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
@@ -47,7 +47,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
         return;                          // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb5]
         StorageDead(_7);                 // scope 1 at $DIR/generator-tiny.rs:22:17: 22:18
         StorageDead(_6);                 // scope 1 at $DIR/generator-tiny.rs:22:18: 22:19
         StorageLive(_8);                 // scope 1 at $DIR/generator-tiny.rs:23:13: 23:21
@@ -57,13 +57,13 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
                                          // + literal: Const { ty: fn() {callee}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageDead(_8);                 // scope 1 at $DIR/generator-tiny.rs:23:21: 23:22
         _5 = const ();                   // scope 1 at $DIR/generator-tiny.rs:21:14: 24:10
         goto -> bb2;                     // scope 1 at $DIR/generator-tiny.rs:21:9: 24:10
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb0]
         StorageLive(_3);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_4);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
         StorageLive(_6);                 // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
@@ -72,7 +72,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
         goto -> bb3;                     // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb0]
         unreachable;                     // scope 0 at $DIR/generator-tiny.rs:19:16: 25:6
     }
 }

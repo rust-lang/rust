@@ -15,7 +15,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/branch.rs:13:9: 13:10
 -         _1 = val() -> bb1;               // scope 0 at $DIR/branch.rs:13:13: 13:18
 +         nop;                             // scope 0 at $DIR/branch.rs:13:9: 13:10
@@ -25,7 +25,7 @@
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageLive(_2);                 // scope 1 at $DIR/branch.rs:15:9: 15:10
 +         nop;                             // scope 1 at $DIR/branch.rs:15:9: 15:10
           StorageLive(_3);                 // scope 1 at $DIR/branch.rs:15:16: 15:22
@@ -35,17 +35,17 @@
                                            // + literal: Const { ty: fn() -> bool {cond}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           switchInt(move _3) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/branch.rs:15:16: 15:22
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
 -         _2 = _1;                         // scope 1 at $DIR/branch.rs:16:9: 16:10
 +         nop;                             // scope 1 at $DIR/branch.rs:16:9: 16:10
           goto -> bb6;                     // scope 1 at $DIR/branch.rs:15:13: 20:6
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb2]
           StorageLive(_4);                 // scope 1 at $DIR/branch.rs:18:9: 18:14
           _4 = val() -> bb5;               // scope 1 at $DIR/branch.rs:18:9: 18:14
                                            // mir::Constant
@@ -53,14 +53,14 @@
                                            // + literal: Const { ty: fn() -> i32 {val}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb4]
           StorageDead(_4);                 // scope 1 at $DIR/branch.rs:18:14: 18:15
 -         _2 = _1;                         // scope 1 at $DIR/branch.rs:19:9: 19:10
 +         nop;                             // scope 1 at $DIR/branch.rs:19:9: 19:10
           goto -> bb6;                     // scope 1 at $DIR/branch.rs:15:13: 20:6
       }
   
-      bb6: {
+      bb6: {                               // preds: [bb3, bb5]
           StorageDead(_3);                 // scope 1 at $DIR/branch.rs:20:5: 20:6
           nop;                             // scope 0 at $DIR/branch.rs:12:11: 21:2
 -         StorageDead(_2);                 // scope 1 at $DIR/branch.rs:21:1: 21:2

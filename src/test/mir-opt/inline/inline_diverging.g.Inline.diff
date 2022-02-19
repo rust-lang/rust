@@ -13,7 +13,7 @@
 +     scope 1 (inlined panic) {            // at $DIR/inline-diverging.rs:16:9: 16:16
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
           StorageLive(_3);                 // scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
           _3 = _1;                         // scope 0 at $DIR/inline-diverging.rs:13:8: 13:9
@@ -22,7 +22,7 @@
           switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/inline-diverging.rs:13:8: 13:13
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_4);                 // scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
           _4 = _1;                         // scope 0 at $DIR/inline-diverging.rs:14:9: 14:10
           _0 = move _4 as u32 (Misc);      // scope 0 at $DIR/inline-diverging.rs:14:9: 14:17
@@ -31,7 +31,7 @@
           return;                          // scope 0 at $DIR/inline-diverging.rs:18:2: 18:2
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           StorageLive(_6);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
 -         panic();                         // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16
 +         StorageLive(_7);                 // scope 0 at $DIR/inline-diverging.rs:16:9: 16:16

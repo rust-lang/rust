@@ -12,7 +12,7 @@ fn b(_1: &mut Box<T>) -> &mut T {
         let mut _6: &mut T;              // in scope 1 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageLive(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageLive(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15

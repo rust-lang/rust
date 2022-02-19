@@ -11,25 +11,25 @@ fn main() -> () {
         debug should_break => _1;        // in scope 1 at $DIR/issue-38669.rs:5:9: 5:25
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
         _1 = const false;                // scope 0 at $DIR/issue-38669.rs:5:28: 5:33
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/issue-38669.rs:5:9: 5:25
         goto -> bb1;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0, bb4]
         falseUnwind -> [real: bb2, cleanup: bb5]; // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageLive(_3);                 // scope 1 at $DIR/issue-38669.rs:7:9: 9:10
         StorageLive(_4);                 // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
         _4 = _1;                         // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
         switchInt(move _4) -> [false: bb4, otherwise: bb3]; // scope 1 at $DIR/issue-38669.rs:7:12: 7:24
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         _0 = const ();                   // scope 1 at $DIR/issue-38669.rs:8:13: 8:18
         StorageDead(_4);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
@@ -37,7 +37,7 @@ fn main() -> () {
         return;                          // scope 0 at $DIR/issue-38669.rs:12:2: 12:2
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb2]
         _3 = const ();                   // scope 1 at $DIR/issue-38669.rs:9:10: 9:10
         StorageDead(_4);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
         StorageDead(_3);                 // scope 1 at $DIR/issue-38669.rs:9:9: 9:10
@@ -46,7 +46,7 @@ fn main() -> () {
         goto -> bb1;                     // scope 1 at $DIR/issue-38669.rs:6:5: 11:6
     }
 
-    bb5 (cleanup): {
+    bb5 (cleanup): {                     // preds: [bb1]
         resume;                          // scope 0 at $DIR/issue-38669.rs:4:1: 12:2
     }
 }

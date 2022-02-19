@@ -9,7 +9,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:56:5: 56:23
 -         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
 -         StorageLive(_3);                 // scope 1 at $DIR/simplify-locals.rs:56:20: 56:21

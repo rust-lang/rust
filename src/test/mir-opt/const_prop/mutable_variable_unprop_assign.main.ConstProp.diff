@@ -21,7 +21,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:9: 5:10
           _1 = foo() -> bb1;               // scope 0 at $DIR/mutable_variable_unprop_assign.rs:5:13: 5:18
                                            // mir::Constant
@@ -29,7 +29,7 @@
                                            // + literal: Const { ty: fn() -> i32 {foo}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:9: 6:14
           (_2.0: i32) = const 1_i32;       // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35
           (_2.1: i32) = const 2_i32;       // scope 1 at $DIR/mutable_variable_unprop_assign.rs:6:29: 6:35

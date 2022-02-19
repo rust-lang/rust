@@ -13,7 +13,7 @@
           debug buf => _2;                 // in scope 1 at $DIR/simple.rs:5:9: 5:16
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/simple.rs:5:9: 5:16
           _2 = [const 0_u8; 1024];         // scope 0 at $DIR/simple.rs:5:19: 5:28
           StorageLive(_3);                 // scope 1 at $DIR/simple.rs:6:5: 6:19
@@ -26,7 +26,7 @@
           _3 = move _4(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:6:5: 6:19
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_5);                 // scope 1 at $DIR/simple.rs:6:18: 6:19
           StorageDead(_4);                 // scope 1 at $DIR/simple.rs:6:18: 6:19
           StorageDead(_6);                 // scope 1 at $DIR/simple.rs:6:19: 6:20

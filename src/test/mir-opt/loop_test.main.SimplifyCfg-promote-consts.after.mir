@@ -12,21 +12,21 @@ fn main() -> () {
         debug x => _6;                   // in scope 1 at $DIR/loop_test.rs:14:13: 14:14
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:10:5: 12:6
         StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
         _2 = const true;                 // scope 0 at $DIR/loop_test.rs:10:8: 10:12
         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:10:8: 10:12
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         _0 = const ();                   // scope 0 at $DIR/loop_test.rs:11:9: 11:15
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         return;                          // scope 0 at $DIR/loop_test.rs:17:2: 17:2
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0]
         _1 = const ();                   // scope 0 at $DIR/loop_test.rs:12:6: 12:6
         StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
         StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:12:5: 12:6
@@ -34,11 +34,11 @@ fn main() -> () {
         goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:13:5: 16:6
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2, bb4]
         falseUnwind -> [real: bb4, cleanup: bb5]; // scope 0 at $DIR/loop_test.rs:13:5: 16:6
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:14:13: 14:14
         _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:14:17: 14:18
         FakeRead(ForLet(None), _6);      // scope 0 at $DIR/loop_test.rs:14:13: 14:14
@@ -46,7 +46,7 @@ fn main() -> () {
         goto -> bb3;                     // scope 0 at no-location
     }
 
-    bb5 (cleanup): {
+    bb5 (cleanup): {                     // preds: [bb3]
         resume;                          // scope 0 at $DIR/loop_test.rs:6:1: 17:2
     }
 }

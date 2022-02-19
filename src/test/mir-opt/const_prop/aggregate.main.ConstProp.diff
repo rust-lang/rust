@@ -10,7 +10,7 @@
           debug x => _1;                   // in scope 1 at $DIR/aggregate.rs:5:9: 5:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/aggregate.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:24
           StorageLive(_3);                 // scope 0 at $DIR/aggregate.rs:5:13: 5:22

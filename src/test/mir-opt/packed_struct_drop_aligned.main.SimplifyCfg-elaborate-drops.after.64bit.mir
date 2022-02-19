@@ -12,7 +12,7 @@ fn main() -> () {
         debug x => _1;                   // in scope 1 at $DIR/packed-struct-drop-aligned.rs:6:9: 6:14
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:9: 6:14
         StorageLive(_2);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:24: 6:42
         StorageLive(_3);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:6:32: 6:41
@@ -31,21 +31,21 @@ fn main() -> () {
         drop(_6) -> [return: bb4, unwind: bb3]; // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb4]
         StorageDead(_1);                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:8:1: 8:2
         return;                          // scope 0 at $DIR/packed-struct-drop-aligned.rs:8:2: 8:2
     }
 
-    bb2 (cleanup): {
+    bb2 (cleanup): {                     // preds: [bb3, bb4]
         resume;                          // scope 0 at $DIR/packed-struct-drop-aligned.rs:5:1: 8:2
     }
 
-    bb3 (cleanup): {
+    bb3 (cleanup): {                     // preds: [bb0]
         (_1.0: Aligned) = move _4;       // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         drop(_1) -> bb2;                 // scope 0 at $DIR/packed-struct-drop-aligned.rs:8:1: 8:2
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb0]
         StorageDead(_6);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         (_1.0: Aligned) = move _4;       // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:5: 7:8
         StorageDead(_4);                 // scope 1 at $DIR/packed-struct-drop-aligned.rs:7:28: 7:29

@@ -12,7 +12,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/cast.rs:4:9: 4:10
 -         _1 = const 42_u8 as u32 (Misc);  // scope 0 at $DIR/cast.rs:4:13: 4:24
 +         _1 = const 42_u32;               // scope 0 at $DIR/cast.rs:4:13: 4:24

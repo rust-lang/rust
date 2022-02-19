@@ -351,7 +351,9 @@ where
 
     // Basic block label at the top.
     let cleanup_text = if data.is_cleanup { " (cleanup)" } else { "" };
-    writeln!(w, "{}{:?}{}: {{", INDENT, block, cleanup_text)?;
+    let indented_body = format!("{}{:?}{}: {{", INDENT, block, cleanup_text);
+    let predecessors = &body.predecessors()[block];
+    writeln!(w, "{:A$} // preds: {:?}", indented_body, predecessors, A = ALIGN)?;
 
     // List of statements in the middle.
     let mut current_location = Location { block, statement_index: 0 };

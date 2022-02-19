@@ -3,7 +3,7 @@
 fn hello() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
 
-    bb0: {
+    bb0: {                               // preds: []
         return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
     }
 }

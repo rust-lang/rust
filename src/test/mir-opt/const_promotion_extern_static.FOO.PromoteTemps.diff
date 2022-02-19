@@ -12,7 +12,7 @@
       scope 1 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
           StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
 -         StorageLive(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
@@ -41,14 +41,14 @@
                                            // + literal: Const { ty: for<'r> fn(&'r [&i32]) -> *const &i32 {core::slice::<impl [&i32]>::as_ptr}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageDead(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
 -         StorageDead(_3);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
           StorageDead(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:54: 13:55
           return;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
   
-      bb2 (cleanup): {
+      bb2 (cleanup): {                     // preds: [bb0]
           resume;                          // scope 0 at $DIR/const-promotion-extern-static.rs:13:1: 13:56
       }
   }

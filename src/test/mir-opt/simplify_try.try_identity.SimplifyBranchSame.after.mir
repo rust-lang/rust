@@ -32,7 +32,7 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
         debug r => _4;                   // in scope 4 at $DIR/simplify_try.rs:21:19: 21:33
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/simplify_try.rs:21:9: 21:10
         StorageLive(_3);                 // scope 0 at $DIR/simplify_try.rs:21:19: 21:33
         StorageLive(_4);                 // scope 0 at $DIR/simplify_try.rs:21:31: 21:32
@@ -43,7 +43,7 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
         goto -> bb1;                     // scope 0 at $DIR/simplify_try.rs:21:13: 21:33
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         _0 = move _3;                    // scope 1 at $DIR/simplify_try.rs:25:5: 25:10
         StorageDead(_3);                 // scope 0 at $DIR/simplify_try.rs:24:6: 24:7
         StorageDead(_2);                 // scope 0 at $DIR/simplify_try.rs:26:1: 26:2

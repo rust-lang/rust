@@ -25,7 +25,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
         _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:11:20: 11:25
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/basic_assignment.rs:11:9: 11:17
@@ -44,41 +44,41 @@ fn main() -> () {
         replace(_5 <- move _6) -> [return: bb1, unwind: bb5]; // scope 4 at $DIR/basic_assignment.rs:23:5: 23:11
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         drop(_6) -> [return: bb2, unwind: bb6]; // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
         _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:10:11: 24:2
         drop(_5) -> [return: bb3, unwind: bb7]; // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
         drop(_4) -> [return: bb4, unwind: bb8]; // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageDead(_4);                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
         StorageDead(_2);                 // scope 1 at $DIR/basic_assignment.rs:24:1: 24:2
         StorageDead(_1);                 // scope 0 at $DIR/basic_assignment.rs:24:1: 24:2
         return;                          // scope 0 at $DIR/basic_assignment.rs:24:2: 24:2
     }
 
-    bb5 (cleanup): {
+    bb5 (cleanup): {                     // preds: [bb0]
         drop(_6) -> bb6;                 // scope 4 at $DIR/basic_assignment.rs:23:19: 23:20
     }
 
-    bb6 (cleanup): {
+    bb6 (cleanup): {                     // preds: [bb1, bb5]
         drop(_5) -> bb7;                 // scope 3 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
-    bb7 (cleanup): {
+    bb7 (cleanup): {                     // preds: [bb2, bb6]
         drop(_4) -> bb8;                 // scope 2 at $DIR/basic_assignment.rs:24:1: 24:2
     }
 
-    bb8 (cleanup): {
+    bb8 (cleanup): {                     // preds: [bb3, bb7]
         resume;                          // scope 0 at $DIR/basic_assignment.rs:10:1: 24:2
     }
 }

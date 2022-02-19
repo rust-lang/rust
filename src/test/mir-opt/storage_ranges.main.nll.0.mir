@@ -36,7 +36,7 @@ fn main() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10
         _1 = const 0_i32;                // scope 0 at $DIR/storage_ranges.rs:4:13: 4:14
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/storage_ranges.rs:4:9: 4:10

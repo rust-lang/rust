@@ -18,12 +18,12 @@
 +         debug y => ((_0 as Err).0: i32); // in scope 2 at $DIR/simplify-arm.rs:19:13: 19:14
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           _2 = discriminant(_1);           // scope 0 at $DIR/simplify-arm.rs:17:11: 17:12
           switchInt(move _2) -> [0_isize: bb3, 1_isize: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify-arm.rs:17:5: 17:12
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         StorageLive(_5);                 // scope 0 at $DIR/simplify-arm.rs:19:13: 19:14
 -         _5 = ((_1 as Err).0: i32);       // scope 0 at $DIR/simplify-arm.rs:19:13: 19:14
 -         StorageLive(_6);                 // scope 2 at $DIR/simplify-arm.rs:19:23: 19:24
@@ -36,11 +36,11 @@
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:19:24: 19:25
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           unreachable;                     // scope 0 at $DIR/simplify-arm.rs:17:11: 17:12
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb0]
 -         StorageLive(_3);                 // scope 0 at $DIR/simplify-arm.rs:18:12: 18:13
 -         _3 = ((_1 as Ok).0: u8);         // scope 0 at $DIR/simplify-arm.rs:18:12: 18:13
 -         StorageLive(_4);                 // scope 1 at $DIR/simplify-arm.rs:18:21: 18:22
@@ -53,7 +53,7 @@
           goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:18:22: 18:23
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb1, bb3]
           return;                          // scope 0 at $DIR/simplify-arm.rs:21:2: 21:2
       }
   }

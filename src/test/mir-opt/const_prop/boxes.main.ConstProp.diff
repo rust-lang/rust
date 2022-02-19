@@ -16,7 +16,7 @@
       scope 2 {
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/boxes.rs:12:9: 12:10
           StorageLive(_2);                 // scope 0 at $DIR/boxes.rs:12:13: 12:22
           StorageLive(_3);                 // scope 0 at $DIR/boxes.rs:12:14: 12:22
@@ -31,7 +31,7 @@
                                            // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_7);                 // scope 0 at $DIR/boxes.rs:12:14: 12:22
           _7 = ShallowInitBox(move _6, i32); // scope 0 at $DIR/boxes.rs:12:14: 12:22
           (*_7) = const 42_i32;            // scope 0 at $DIR/boxes.rs:12:19: 12:21
@@ -43,14 +43,14 @@
           drop(_3) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/boxes.rs:12:26: 12:27
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           StorageDead(_3);                 // scope 0 at $DIR/boxes.rs:12:26: 12:27
           nop;                             // scope 0 at $DIR/boxes.rs:11:11: 13:2
           StorageDead(_1);                 // scope 0 at $DIR/boxes.rs:13:1: 13:2
           return;                          // scope 0 at $DIR/boxes.rs:13:2: 13:2
       }
   
-      bb3 (cleanup): {
+      bb3 (cleanup): {                     // preds: [bb1]
           resume;                          // scope 0 at $DIR/boxes.rs:11:1: 13:2
       }
   }

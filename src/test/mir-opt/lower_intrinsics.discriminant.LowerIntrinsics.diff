@@ -23,7 +23,7 @@
       let mut _18: &();                    // in scope 0 at $DIR/lower_intrinsics.rs:76:42: 76:45
       let mut _19: &i32;                   // in scope 0 at $DIR/lower_intrinsics.rs:75:42: 75:44
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:74:5: 74:45
           StorageLive(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:74:42: 74:44
           StorageLive(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:74:42: 74:44
@@ -37,7 +37,7 @@
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:74:5: 74:45
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_3);                 // scope 0 at $DIR/lower_intrinsics.rs:74:44: 74:45
           StorageDead(_4);                 // scope 0 at $DIR/lower_intrinsics.rs:74:45: 74:46
           StorageDead(_2);                 // scope 0 at $DIR/lower_intrinsics.rs:74:45: 74:46
@@ -61,7 +61,7 @@
 +         goto -> bb2;                     // scope 0 at $DIR/lower_intrinsics.rs:75:5: 75:45
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           StorageDead(_6);                 // scope 0 at $DIR/lower_intrinsics.rs:75:44: 75:45
           StorageDead(_7);                 // scope 0 at $DIR/lower_intrinsics.rs:75:45: 75:46
           StorageDead(_5);                 // scope 0 at $DIR/lower_intrinsics.rs:75:45: 75:46
@@ -85,7 +85,7 @@
 +         goto -> bb3;                     // scope 0 at $DIR/lower_intrinsics.rs:76:5: 76:46
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
           StorageDead(_10);                // scope 0 at $DIR/lower_intrinsics.rs:76:45: 76:46
           StorageDead(_11);                // scope 0 at $DIR/lower_intrinsics.rs:76:46: 76:47
           StorageDead(_9);                 // scope 0 at $DIR/lower_intrinsics.rs:76:46: 76:47
@@ -109,7 +109,7 @@
 +         goto -> bb4;                     // scope 0 at $DIR/lower_intrinsics.rs:77:5: 77:48
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb3]
           StorageDead(_14);                // scope 0 at $DIR/lower_intrinsics.rs:77:47: 77:48
           StorageDead(_15);                // scope 0 at $DIR/lower_intrinsics.rs:77:48: 77:49
           StorageDead(_13);                // scope 0 at $DIR/lower_intrinsics.rs:77:48: 77:49
@@ -117,11 +117,11 @@
           drop(_1) -> bb5;                 // scope 0 at $DIR/lower_intrinsics.rs:78:1: 78:2
       }
   
-      bb5: {
+      bb5: {                               // preds: [bb4]
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:78:2: 78:2
       }
   
-      bb6 (cleanup): {
+      bb6 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:73:1: 78:2
       }
   }

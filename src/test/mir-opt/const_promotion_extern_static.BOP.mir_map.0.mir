@@ -5,7 +5,7 @@ static BOP: &i32 = {
     let _1: &i32;                        // in scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
     let _2: i32;                         // in scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/const-promotion-extern-static.rs:16:20: 16:23
         StorageLive(_2);                 // scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23
         _2 = const 13_i32;               // scope 0 at $DIR/const-promotion-extern-static.rs:16:21: 16:23

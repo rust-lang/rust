@@ -23,7 +23,7 @@ fn foo(_1: T, _2: &i32) -> i32 {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_3);                 // scope 0 at $DIR/inline-closure-borrows-arg.rs:12:9: 12:10
         StorageLive(_4);                 // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6
         _4 = &_3;                        // scope 1 at $DIR/inline-closure-borrows-arg.rs:16:5: 16:6

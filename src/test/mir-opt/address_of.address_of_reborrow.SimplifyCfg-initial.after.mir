@@ -125,7 +125,7 @@ fn address_of_reborrow() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/address-of.rs:4:9: 4:10
         StorageLive(_2);                 // scope 0 at $DIR/address-of.rs:4:14: 4:21
         _2 = [const 0_i32; 10];          // scope 0 at $DIR/address-of.rs:4:14: 4:21

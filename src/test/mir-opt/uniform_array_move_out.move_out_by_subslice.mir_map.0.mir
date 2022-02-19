@@ -25,7 +25,7 @@ fn move_out_by_subslice() -> () {
     scope 3 {
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
         StorageLive(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         _3 = SizeOf(i32);                // scope 2 at $DIR/uniform_array_move_out.rs:11:14: 11:19
@@ -36,7 +36,7 @@ fn move_out_by_subslice() -> () {
                                          // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageLive(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         _6 = ShallowInitBox(move _5, i32); // scope 0 at $DIR/uniform_array_move_out.rs:11:14: 11:19
         (*_6) = const 1_i32;             // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
@@ -44,7 +44,7 @@ fn move_out_by_subslice() -> () {
         drop(_6) -> [return: bb2, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_6);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:18: 11:19
         StorageLive(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         _8 = SizeOf(i32);                // scope 3 at $DIR/uniform_array_move_out.rs:11:21: 11:26
@@ -55,7 +55,7 @@ fn move_out_by_subslice() -> () {
                                          // + literal: Const { ty: unsafe fn(usize, usize) -> *mut u8 {alloc::alloc::exchange_malloc}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         StorageLive(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         _11 = ShallowInitBox(move _10, i32); // scope 0 at $DIR/uniform_array_move_out.rs:11:21: 11:26
         (*_11) = const 2_i32;            // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
@@ -63,18 +63,18 @@ fn move_out_by_subslice() -> () {
         drop(_11) -> [return: bb4, unwind: bb10]; // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb3]
         StorageDead(_11);                // scope 0 at $DIR/uniform_array_move_out.rs:11:25: 11:26
         _1 = [move _2, move _7];         // scope 0 at $DIR/uniform_array_move_out.rs:11:13: 11:27
         drop(_7) -> [return: bb5, unwind: bb11]; // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb4]
         StorageDead(_7);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
         drop(_2) -> [return: bb6, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb5]
         StorageDead(_2);                 // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
         FakeRead(ForLet(None), _1);      // scope 0 at $DIR/uniform_array_move_out.rs:11:9: 11:10
         StorageLive(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:12:10: 12:17
@@ -83,29 +83,29 @@ fn move_out_by_subslice() -> () {
         drop(_12) -> [return: bb7, unwind: bb9]; // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb6]
         StorageDead(_12);                // scope 1 at $DIR/uniform_array_move_out.rs:13:1: 13:2
         drop(_1) -> [return: bb8, unwind: bb12]; // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb7]
         StorageDead(_1);                 // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
         return;                          // scope 0 at $DIR/uniform_array_move_out.rs:13:2: 13:2
     }
 
-    bb9 (cleanup): {
+    bb9 (cleanup): {                     // preds: [bb6]
         drop(_1) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:13:1: 13:2
     }
 
-    bb10 (cleanup): {
+    bb10 (cleanup): {                    // preds: [bb3]
         drop(_7) -> bb11;                // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
-    bb11 (cleanup): {
+    bb11 (cleanup): {                    // preds: [bb1, bb2, bb4, bb10]
         drop(_2) -> bb12;                // scope 0 at $DIR/uniform_array_move_out.rs:11:26: 11:27
     }
 
-    bb12 (cleanup): {
+    bb12 (cleanup): {                    // preds: [bb0, bb5, bb7, bb9, bb11]
         resume;                          // scope 0 at $DIR/uniform_array_move_out.rs:10:1: 13:2
     }
 }

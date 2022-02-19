@@ -10,7 +10,7 @@
 +     scope 2 (inlined <Vec<()> as Foo>::bar) { // at $DIR/inline-specialization.rs:5:13: 5:38
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-specialization.rs:5:9: 5:10
 -         _1 = <Vec<()> as Foo>::bar() -> bb1; // scope 0 at $DIR/inline-specialization.rs:5:13: 5:38
 -                                          // mir::Constant
@@ -18,7 +18,7 @@
 -                                          // + literal: Const { ty: fn() -> u32 {<std::vec::Vec<()> as Foo>::bar}, val: Value(Scalar(<ZST>)) }
 -     }
 - 
--     bb1: {
+-     bb1: {                               // preds: [bb0]
 +         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:5:13: 5:38
           _0 = const ();                   // scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
           StorageDead(_1);                 // scope 0 at $DIR/inline-specialization.rs:6:1: 6:2

@@ -6,7 +6,7 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/copy_propagation_arg.rs:21:20: 21:20
       let mut _2: i32;                     // in scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
   
-      bb0: {
+      bb0: {                               // preds: []
 -         StorageLive(_2);                 // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
 -         _2 = _1;                         // scope 0 at $DIR/copy_propagation_arg.rs:23:9: 23:10
 -         _1 = move _2;                    // scope 0 at $DIR/copy_propagation_arg.rs:23:5: 23:10

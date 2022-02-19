@@ -9,7 +9,7 @@
 +     scope 1 (inlined instruction_set_t32) { // at $DIR/inline-instruction-set.rs:43:5: 43:26
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-instruction-set.rs:42:5: 42:26
           _1 = instruction_set_a32() -> bb1; // scope 0 at $DIR/inline-instruction-set.rs:42:5: 42:26
                                            // mir::Constant
@@ -17,7 +17,7 @@
                                            // + literal: Const { ty: fn() {instruction_set_a32}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_1);                 // scope 0 at $DIR/inline-instruction-set.rs:42:26: 42:27
           StorageLive(_2);                 // scope 0 at $DIR/inline-instruction-set.rs:43:5: 43:26
 -         _2 = instruction_set_t32() -> bb2; // scope 0 at $DIR/inline-instruction-set.rs:43:5: 43:26
@@ -26,7 +26,7 @@
 -                                          // + literal: Const { ty: fn() {instruction_set_t32}, val: Value(Scalar(<ZST>)) }
 -     }
 - 
--     bb2: {
+-     bb2: {                               // preds: [bb1]
           StorageDead(_2);                 // scope 0 at $DIR/inline-instruction-set.rs:43:26: 43:27
           StorageLive(_3);                 // scope 0 at $DIR/inline-instruction-set.rs:46:5: 46:30
 -         _3 = instruction_set_default() -> bb3; // scope 0 at $DIR/inline-instruction-set.rs:46:5: 46:30
@@ -36,8 +36,8 @@
                                            // + literal: Const { ty: fn() {instruction_set_default}, val: Value(Scalar(<ZST>)) }
       }
   
--     bb3: {
-+     bb2: {
+-     bb3: {                               // preds: [bb2]
++     bb2: {                               // preds: [bb1]
           StorageDead(_3);                 // scope 0 at $DIR/inline-instruction-set.rs:46:30: 46:31
           _0 = const ();                   // scope 0 at $DIR/inline-instruction-set.rs:41:14: 47:2
           return;                          // scope 0 at $DIR/inline-instruction-set.rs:47:2: 47:2

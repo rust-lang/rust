@@ -61,7 +61,7 @@ fn array_casts() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/retag.rs:58:9: 58:14
         _1 = [const 0_usize, const 0_usize]; // scope 0 at $DIR/retag.rs:58:29: 58:35
         StorageLive(_2);                 // scope 1 at $DIR/retag.rs:59:9: 59:10
@@ -84,7 +84,7 @@ fn array_casts() -> () {
                                          // + literal: Const { ty: unsafe fn(*mut usize, usize) -> *mut usize {std::ptr::mut_ptr::<impl *mut usize>::add}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_7);                 // scope 3 at $DIR/retag.rs:60:22: 60:23
         (*_6) = const 1_usize;           // scope 3 at $DIR/retag.rs:60:14: 60:27
         StorageDead(_6);                 // scope 3 at $DIR/retag.rs:60:27: 60:28
@@ -115,7 +115,7 @@ fn array_casts() -> () {
                                          // + literal: Const { ty: unsafe fn(*const usize, usize) -> *const usize {std::ptr::const_ptr::<impl *const usize>::add}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         StorageDead(_17);                // scope 6 at $DIR/retag.rs:64:33: 64:34
         _15 = (*_16);                    // scope 6 at $DIR/retag.rs:64:25: 64:34
         _14 = &_15;                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -154,7 +154,7 @@ fn array_casts() -> () {
         switchInt(move _22) -> [false: bb4, otherwise: bb3]; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         StorageLive(_27);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _27 = core::panicking::AssertKind::Eq; // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_28);                // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -180,7 +180,7 @@ fn array_casts() -> () {
                                          // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r usize, &'s usize, std::option::Option<std::fmt::Arguments<'t0>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb2]
         _12 = const ();                  // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_22);                // scope 7 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageDead(_21);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

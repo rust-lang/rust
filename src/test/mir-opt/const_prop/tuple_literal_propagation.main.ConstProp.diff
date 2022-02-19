@@ -10,7 +10,7 @@
           debug x => _1;                   // in scope 1 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/tuple_literal_propagation.rs:3:9: 3:10
           (_1.0: u32) = const 1_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
           (_1.1: u32) = const 2_u32;       // scope 0 at $DIR/tuple_literal_propagation.rs:3:13: 3:19
@@ -24,7 +24,7 @@
                                            // + literal: Const { ty: fn((u32, u32)) {consume}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_3);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:14: 5:15
           StorageDead(_2);                 // scope 1 at $DIR/tuple_literal_propagation.rs:5:15: 5:16
           nop;                             // scope 0 at $DIR/tuple_literal_propagation.rs:2:11: 6:2

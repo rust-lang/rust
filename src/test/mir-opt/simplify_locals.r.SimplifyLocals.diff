@@ -14,7 +14,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:33:9: 33:14
           _1 = const 1_i32;                // scope 0 at $DIR/simplify-locals.rs:33:17: 33:18
 -         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:35:13: 35:15

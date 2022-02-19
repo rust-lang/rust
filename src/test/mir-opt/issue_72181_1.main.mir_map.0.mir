@@ -17,7 +17,7 @@ fn main() -> () {
     scope 2 {
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_2);                 // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
         StorageLive(_3);                 // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
         _3 = ();                         // scope 2 at $DIR/issue-72181-1.rs:17:41: 17:43
@@ -27,7 +27,7 @@ fn main() -> () {
                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(()) -> Void {std::intrinsics::transmute::<(), Void>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_3);                 // scope 2 at $DIR/issue-72181-1.rs:17:43: 17:44
         FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue-72181-1.rs:16:9: 16:10
         AscribeUserType(_2, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/issue-72181-1.rs:16:12: 16:16
@@ -40,18 +40,18 @@ fn main() -> () {
                                          // + literal: Const { ty: fn(Void) -> ! {f}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb2: {
+    bb2: {                               // preds: []
         StorageDead(_5);                 // scope 1 at $DIR/issue-72181-1.rs:20:8: 20:9
         StorageDead(_4);                 // scope 1 at $DIR/issue-72181-1.rs:20:9: 20:10
         StorageDead(_2);                 // scope 0 at $DIR/issue-72181-1.rs:21:1: 21:2
         unreachable;                     // scope 0 at $DIR/issue-72181-1.rs:15:11: 21:2
     }
 
-    bb3: {
+    bb3: {                               // preds: []
         return;                          // scope 0 at $DIR/issue-72181-1.rs:21:2: 21:2
     }
 
-    bb4 (cleanup): {
+    bb4 (cleanup): {                     // preds: [bb0, bb1]
         resume;                          // scope 0 at $DIR/issue-72181-1.rs:15:1: 21:2
     }
 }

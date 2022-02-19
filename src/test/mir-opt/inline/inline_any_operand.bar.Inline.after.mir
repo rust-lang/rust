@@ -16,7 +16,7 @@ fn bar() -> bool {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/inline-any-operand.rs:11:9: 11:10
         _1 = foo;                        // scope 0 at $DIR/inline-any-operand.rs:11:13: 11:16
                                          // mir::Constant

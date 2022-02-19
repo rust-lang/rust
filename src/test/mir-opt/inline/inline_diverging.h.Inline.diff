@@ -31,7 +31,7 @@
 +         }
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
 -         _1 = call_twice::<!, fn() -> ! {sleep}>(sleep) -> bb1; // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
 +         StorageLive(_2);                 // scope 0 at $DIR/inline-diverging.rs:22:5: 22:22
@@ -50,10 +50,11 @@
 +         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:22:5: 22:22
       }
   
-      bb1: {
+-     bb1: {                               // preds: [bb0]
 -         StorageDead(_1);                 // scope 0 at $DIR/inline-diverging.rs:22:22: 22:23
 -         _0 = const ();                   // scope 0 at $DIR/inline-diverging.rs:21:12: 23:2
 -         return;                          // scope 0 at $DIR/inline-diverging.rs:23:2: 23:2
++     bb1: {                               // preds: [bb0, bb1]
 +         goto -> bb1;                     // scope 5 at $DIR/inline-diverging.rs:22:5: 22:22
       }
   }

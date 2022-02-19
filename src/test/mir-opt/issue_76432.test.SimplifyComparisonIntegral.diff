@@ -35,7 +35,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/issue_76432.rs:7:9: 7:10
           StorageLive(_3);                 // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
           StorageLive(_4);                 // scope 0 at $DIR/issue_76432.rs:7:19: 7:29
@@ -65,7 +65,7 @@
           goto -> bb2;                     // scope 1 at $DIR/issue_76432.rs:9:9: 9:33
       }
   
-      bb1: {
+      bb1: {                               // preds: []
           StorageLive(_22);                // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
           core::panicking::panic(const "internal error: entered unreachable code"); // scope 1 at $SRC_DIR/core/src/panic.rs:LL:COL
                                            // mir::Constant
@@ -79,7 +79,7 @@
                                            // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [105, 110, 116, 101, 114, 110, 97, 108, 32, 101, 114, 114, 111, 114, 58, 32, 101, 110, 116, 101, 114, 101, 100, 32, 117, 110, 114, 101, 97, 99, 104, 97, 98, 108, 101, 32, 99, 111, 100, 101], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [1099511627775], len: Size { raw: 40 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 40 }) }
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           StorageLive(_13);                // scope 1 at $DIR/issue_76432.rs:9:10: 9:16
           _13 = &(*_2)[0 of 3];            // scope 1 at $DIR/issue_76432.rs:9:10: 9:16
           StorageLive(_14);                // scope 1 at $DIR/issue_76432.rs:9:18: 9:24

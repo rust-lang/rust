@@ -17,7 +17,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/mutable_variable_no_prop.rs:7:9: 7:14
           _1 = const 42_u32;               // scope 0 at $DIR/mutable_variable_no_prop.rs:7:17: 7:19
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_no_prop.rs:8:5: 10:6

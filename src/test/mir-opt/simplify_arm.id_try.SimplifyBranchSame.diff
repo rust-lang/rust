@@ -33,7 +33,7 @@
           debug r => _4;                   // in scope 4 at $DIR/simplify-arm.rs:36:19: 36:33
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/simplify-arm.rs:36:9: 36:10
           StorageLive(_3);                 // scope 0 at $DIR/simplify-arm.rs:36:19: 36:33
           StorageLive(_4);                 // scope 0 at $DIR/simplify-arm.rs:36:31: 36:32
@@ -45,7 +45,7 @@
 +         goto -> bb1;                     // scope 0 at $DIR/simplify-arm.rs:36:13: 36:33
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           _0 = move _3;                    // scope 1 at $DIR/simplify-arm.rs:40:5: 40:10
           StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:39:6: 39:7
           StorageDead(_2);                 // scope 0 at $DIR/simplify-arm.rs:41:1: 41:2
@@ -53,18 +53,19 @@
 +         goto -> bb2;                     // scope 0 at $DIR/simplify-arm.rs:41:2: 41:2
       }
   
-      bb2: {
+-     bb2: {                               // preds: [bb0]
 -         unreachable;                     // scope 0 at $DIR/simplify-arm.rs:36:19: 36:33
 -     }
 - 
--     bb3: {
+-     bb3: {                               // preds: [bb0]
 -         _0 = move _3;                    // scope 6 at $DIR/simplify-arm.rs:37:26: 37:51
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-arm.rs:39:6: 39:7
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-arm.rs:41:1: 41:2
 -         goto -> bb4;                     // scope 0 at $DIR/simplify-arm.rs:41:2: 41:2
 -     }
 - 
--     bb4: {
+-     bb4: {                               // preds: [bb1, bb3]
++     bb2: {                               // preds: [bb1]
           return;                          // scope 0 at $DIR/simplify-arm.rs:41:2: 41:2
       }
   }

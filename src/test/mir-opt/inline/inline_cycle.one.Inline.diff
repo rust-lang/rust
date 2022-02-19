@@ -7,7 +7,7 @@
 +     scope 1 (inlined <C as Call>::call) { // at $DIR/inline-cycle.rs:14:5: 14:24
 +     }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
 -         _1 = <C as Call>::call() -> bb1; // scope 0 at $DIR/inline-cycle.rs:14:5: 14:24
 +         _1 = <A<C> as Call>::call() -> bb1; // scope 1 at $DIR/inline-cycle.rs:14:5: 14:24
@@ -18,7 +18,7 @@
 +                                          // + literal: Const { ty: fn() {<A<C> as Call>::call}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_1);                 // scope 0 at $DIR/inline-cycle.rs:14:24: 14:25
           _0 = const ();                   // scope 0 at $DIR/inline-cycle.rs:13:10: 15:2
           return;                          // scope 0 at $DIR/inline-cycle.rs:15:2: 15:2

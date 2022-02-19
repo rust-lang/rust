@@ -7,7 +7,7 @@
       let mut _2: ((u8, u8),);             // in scope 0 at $DIR/issue-67019.rs:11:10: 11:19
       let mut _3: (u8, u8);                // in scope 0 at $DIR/issue-67019.rs:11:11: 11:17
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/issue-67019.rs:11:5: 11:20
           StorageLive(_2);                 // scope 0 at $DIR/issue-67019.rs:11:10: 11:19
           StorageLive(_3);                 // scope 0 at $DIR/issue-67019.rs:11:11: 11:17
@@ -22,7 +22,7 @@
                                            // + literal: Const { ty: fn(((u8, u8),)) {test}, val: Value(Scalar(<ZST>)) }
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageDead(_2);                 // scope 0 at $DIR/issue-67019.rs:11:19: 11:20
           StorageDead(_1);                 // scope 0 at $DIR/issue-67019.rs:11:20: 11:21
           nop;                             // scope 0 at $DIR/issue-67019.rs:10:11: 12:2

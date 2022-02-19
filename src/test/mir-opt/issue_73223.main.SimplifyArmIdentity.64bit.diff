@@ -48,7 +48,7 @@
           debug v => _4;                   // in scope 2 at $DIR/issue-73223.rs:3:14: 3:15
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/issue-73223.rs:2:9: 2:14
           StorageLive(_2);                 // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
           ((_2 as Some).0: i32) = const 1_i32; // scope 0 at $DIR/issue-73223.rs:2:23: 2:30
@@ -57,14 +57,14 @@
           goto -> bb2;                     // scope 0 at $DIR/issue-73223.rs:2:17: 2:30
       }
   
-      bb1: {
+      bb1: {                               // preds: []
           nop;                             // scope 0 at $DIR/issue-73223.rs:4:17: 4:23
           StorageDead(_2);                 // scope 0 at $DIR/issue-73223.rs:5:6: 5:7
           StorageDead(_1);                 // scope 0 at $DIR/issue-73223.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/issue-73223.rs:9:2: 9:2
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           StorageLive(_4);                 // scope 0 at $DIR/issue-73223.rs:3:14: 3:15
           _4 = ((_2 as Some).0: i32);      // scope 0 at $DIR/issue-73223.rs:3:14: 3:15
           _1 = _4;                         // scope 2 at $DIR/issue-73223.rs:3:20: 3:21
@@ -111,7 +111,7 @@
           switchInt(move _15) -> [false: bb4, otherwise: bb3]; // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb2]
           StorageLive(_20);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           discriminant(_20) = 0;           // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_21);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -145,7 +145,7 @@
                                            // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb2]
           nop;                             // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_15);                // scope 4 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageDead(_14);                // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

@@ -12,7 +12,7 @@
           debug x => _1;                   // in scope 1 at $DIR/array_index.rs:5:9: 5:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/array_index.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/array_index.rs:5:18: 5:30
           _2 = [const 0_u32, const 1_u32, const 2_u32, const 3_u32]; // scope 0 at $DIR/array_index.rs:5:18: 5:30
@@ -25,7 +25,7 @@
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 4_usize, const 2_usize) -> bb1; // scope 0 at $DIR/array_index.rs:5:18: 5:33
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         _1 = _2[_3];                     // scope 0 at $DIR/array_index.rs:5:18: 5:33
 +         _1 = const 2_u32;                // scope 0 at $DIR/array_index.rs:5:18: 5:33
           StorageDead(_3);                 // scope 0 at $DIR/array_index.rs:5:33: 5:34

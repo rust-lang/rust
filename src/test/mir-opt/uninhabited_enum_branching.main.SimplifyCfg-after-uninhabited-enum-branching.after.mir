@@ -12,7 +12,7 @@ fn main() -> () {
     let mut _8: isize;                   // in scope 0 at $DIR/uninhabited_enum_branching.rs:27:9: 27:17
     let _9: &str;                        // in scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:20:5: 24:6
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
         discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching.rs:20:11: 20:19
@@ -36,7 +36,7 @@ fn main() -> () {
         switchInt(move _8) -> [4_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/uninhabited_enum_branching.rs:26:5: 26:19
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageLive(_9);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
         _9 = const "E";                  // scope 0 at $DIR/uninhabited_enum_branching.rs:28:21: 28:24
                                          // ty::Const
@@ -50,7 +50,7 @@ fn main() -> () {
         goto -> bb3;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:28:23: 28:24
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0]
         _6 = const "D";                  // scope 0 at $DIR/uninhabited_enum_branching.rs:27:21: 27:24
                                          // ty::Const
                                          // + ty: &str
@@ -61,7 +61,7 @@ fn main() -> () {
         goto -> bb3;                     // scope 0 at $DIR/uninhabited_enum_branching.rs:27:21: 27:24
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb1, bb2]
         StorageDead(_7);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
         StorageDead(_6);                 // scope 0 at $DIR/uninhabited_enum_branching.rs:29:6: 29:7
         _0 = const ();                   // scope 0 at $DIR/uninhabited_enum_branching.rs:19:11: 30:2

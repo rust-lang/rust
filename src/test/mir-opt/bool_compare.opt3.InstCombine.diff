@@ -7,7 +7,7 @@
       let mut _2: bool;                    // in scope 0 at $DIR/bool_compare.rs:13:8: 13:18
       let mut _3: bool;                    // in scope 0 at $DIR/bool_compare.rs:13:8: 13:9
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_2);                 // scope 0 at $DIR/bool_compare.rs:13:8: 13:18
           StorageLive(_3);                 // scope 0 at $DIR/bool_compare.rs:13:8: 13:9
           _3 = _1;                         // scope 0 at $DIR/bool_compare.rs:13:8: 13:9
@@ -17,17 +17,17 @@
           switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/bool_compare.rs:13:8: 13:18
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           _0 = const 0_u32;                // scope 0 at $DIR/bool_compare.rs:13:21: 13:22
           goto -> bb3;                     // scope 0 at $DIR/bool_compare.rs:13:5: 13:35
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb0]
           _0 = const 1_u32;                // scope 0 at $DIR/bool_compare.rs:13:32: 13:33
           goto -> bb3;                     // scope 0 at $DIR/bool_compare.rs:13:5: 13:35
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb1, bb2]
           StorageDead(_2);                 // scope 0 at $DIR/bool_compare.rs:13:34: 13:35
           return;                          // scope 0 at $DIR/bool_compare.rs:14:2: 14:2
       }

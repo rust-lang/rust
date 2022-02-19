@@ -4,7 +4,7 @@
   fn align_of() -> usize {
       let mut _0: usize;                   // return place in scope 0 at $DIR/lower_intrinsics.rs:18:25: 18:30
   
-      bb0: {
+      bb0: {                               // preds: []
 -         _0 = std::intrinsics::min_align_of::<T>() -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:42
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:19:5: 19:40
@@ -13,11 +13,11 @@
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:19:5: 19:42
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           return;                          // scope 0 at $DIR/lower_intrinsics.rs:20:2: 20:2
       }
   
-      bb2 (cleanup): {
+      bb2 (cleanup): {                     // preds: []
           resume;                          // scope 0 at $DIR/lower_intrinsics.rs:18:1: 20:2
       }
   }

@@ -22,7 +22,7 @@ fn try_identity(_1: Result<u32, i32>) -> Result<u32, i32> {
         debug r => _0;                   // in scope 4 at $DIR/simplify_try.rs:21:19: 21:33
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         _0 = _1;                         // scope 0 at $DIR/simplify_try.rs:21:31: 21:32
         return;                          // scope 0 at $DIR/simplify_try.rs:26:2: 26:2
     }

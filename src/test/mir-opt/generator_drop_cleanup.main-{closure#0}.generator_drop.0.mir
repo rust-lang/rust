@@ -27,58 +27,58 @@ fn main::{closure#0}(_1: *mut [generator@$DIR/generator-drop-cleanup.rs:10:15: 1
         debug _s => (((*_1) as variant#3).0: std::string::String); // in scope 1 at $DIR/generator-drop-cleanup.rs:11:13: 11:15
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         _8 = discriminant((*_1));        // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
         switchInt(move _8) -> [0_u32: bb7, 3_u32: bb10, otherwise: bb11]; // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb10]
         StorageDead(_5);                 // scope 1 at $DIR/generator-drop-cleanup.rs:12:13: 12:14
         StorageDead(_4);                 // scope 1 at $DIR/generator-drop-cleanup.rs:12:14: 12:15
         drop((((*_1) as variant#3).0: std::string::String)) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb1]
         nop;                             // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
         goto -> bb8;                     // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb8]
         return;                          // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb4 (cleanup): {
+    bb4 (cleanup): {                     // preds: [bb5]
         resume;                          // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb5 (cleanup): {
+    bb5 (cleanup): {                     // preds: [bb1]
         nop;                             // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
         goto -> bb4;                     // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb9]
         return;                          // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb0]
         goto -> bb9;                     // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb2]
         goto -> bb3;                     // scope 0 at $DIR/generator-drop-cleanup.rs:13:5: 13:6
     }
 
-    bb9: {
+    bb9: {                               // preds: [bb7]
         goto -> bb6;                     // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb10: {
+    bb10: {                              // preds: [bb0]
         StorageLive(_4);                 // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
         StorageLive(_5);                 // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
         goto -> bb1;                     // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 
-    bb11: {
+    bb11: {                              // preds: [bb0]
         return;                          // scope 0 at $DIR/generator-drop-cleanup.rs:10:15: 13:6
     }
 }

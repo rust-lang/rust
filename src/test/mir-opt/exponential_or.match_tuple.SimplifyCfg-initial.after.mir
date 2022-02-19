@@ -17,50 +17,50 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
         debug z => _8;                   // in scope 1 at $DIR/exponential-or.rs:6:57: 6:78
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/exponential-or.rs:5:11: 5:12
         switchInt((_1.0: u32)) -> [1_u32: bb2, 4_u32: bb2, otherwise: bb1]; // scope 0 at $DIR/exponential-or.rs:6:15: 6:20
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0, bb2, bb3, bb6, bb7, bb8]
         _0 = const 0_u32;                // scope 0 at $DIR/exponential-or.rs:7:14: 7:15
         goto -> bb10;                    // scope 0 at $DIR/exponential-or.rs:7:14: 7:15
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0, bb0]
         _2 = discriminant((_1.2: std::option::Option<i32>)); // scope 0 at $DIR/exponential-or.rs:6:37: 6:55
         switchInt(move _2) -> [0_isize: bb4, 1_isize: bb3, otherwise: bb1]; // scope 0 at $DIR/exponential-or.rs:6:37: 6:55
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb2]
         switchInt((((_1.2: std::option::Option<i32>) as Some).0: i32)) -> [1_i32: bb4, 8_i32: bb4, otherwise: bb1]; // scope 0 at $DIR/exponential-or.rs:6:37: 6:55
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb2, bb3, bb3]
         _5 = Le(const 6_u32, (_1.3: u32)); // scope 0 at $DIR/exponential-or.rs:6:62: 6:67
         switchInt(move _5) -> [false: bb6, otherwise: bb5]; // scope 0 at $DIR/exponential-or.rs:6:62: 6:67
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb4]
         _6 = Le((_1.3: u32), const 9_u32); // scope 0 at $DIR/exponential-or.rs:6:62: 6:67
         switchInt(move _6) -> [false: bb6, otherwise: bb8]; // scope 0 at $DIR/exponential-or.rs:6:62: 6:67
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb4, bb5]
         _3 = Le(const 13_u32, (_1.3: u32)); // scope 0 at $DIR/exponential-or.rs:6:70: 6:77
         switchInt(move _3) -> [false: bb1, otherwise: bb7]; // scope 0 at $DIR/exponential-or.rs:6:70: 6:77
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb6]
         _4 = Le((_1.3: u32), const 16_u32); // scope 0 at $DIR/exponential-or.rs:6:70: 6:77
         switchInt(move _4) -> [false: bb1, otherwise: bb8]; // scope 0 at $DIR/exponential-or.rs:6:70: 6:77
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb5, bb7]
         falseEdge -> [real: bb9, imaginary: bb1]; // scope 0 at $DIR/exponential-or.rs:6:9: 6:79
     }
 
-    bb9: {
+    bb9: {                               // preds: [bb8]
         StorageLive(_7);                 // scope 0 at $DIR/exponential-or.rs:6:10: 6:21
         _7 = (_1.0: u32);                // scope 0 at $DIR/exponential-or.rs:6:10: 6:21
         StorageLive(_8);                 // scope 0 at $DIR/exponential-or.rs:6:57: 6:78
@@ -77,7 +77,7 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
         goto -> bb10;                    // scope 0 at $DIR/exponential-or.rs:6:87: 6:88
     }
 
-    bb10: {
+    bb10: {                              // preds: [bb1, bb9]
         return;                          // scope 0 at $DIR/exponential-or.rs:9:2: 9:2
     }
 }

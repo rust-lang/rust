@@ -7,20 +7,20 @@
       let mut _2: isize;                   // in scope 0 at $DIR/matches_reduce_branches.rs:8:22: 8:26
 +     let mut _3: isize;                   // in scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
   
-      bb0: {
+      bb0: {                               // preds: []
           _2 = discriminant(_1);           // scope 0 at $DIR/matches_reduce_branches.rs:8:17: 8:20
 -         switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
--     bb1: {
+-     bb1: {                               // preds: [bb0]
 -         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
--     bb2: {
+-     bb2: {                               // preds: [bb0]
 -         goto -> bb3;                     // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 -     }
 - 
--     bb3: {
+-     bb3: {                               // preds: [bb1, bb2]
 +         StorageLive(_3);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         _3 = move _2;                    // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
 +         StorageDead(_3);                 // scope 0 at $SRC_DIR/core/src/macros/mod.rs:LL:COL

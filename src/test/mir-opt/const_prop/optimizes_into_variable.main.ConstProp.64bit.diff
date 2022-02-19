@@ -22,7 +22,7 @@
           }
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/optimizes_into_variable.rs:12:9: 12:10
 -         _2 = CheckedAdd(const 2_i32, const 2_i32); // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 -         assert(!move (_2.1: bool), "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
@@ -30,7 +30,7 @@
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_i32, const 2_i32) -> bb1; // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         _1 = move (_2.0: i32);           // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
 +         _1 = const 4_i32;                // scope 0 at $DIR/optimizes_into_variable.rs:12:13: 12:18
           StorageLive(_3);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:9: 13:10
@@ -45,7 +45,7 @@
 +         assert(const true, "index out of bounds: the length is {} but the index is {}", const 6_usize, const 3_usize) -> bb2; // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
 -         _3 = _4[_5];                     // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
 +         _3 = const 3_i32;                // scope 1 at $DIR/optimizes_into_variable.rs:13:13: 13:34
           StorageDead(_5);                 // scope 1 at $DIR/optimizes_into_variable.rs:13:34: 13:35

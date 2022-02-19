@@ -10,7 +10,7 @@
           debug x => _1;                   // in scope 1 at $DIR/indirect.rs:5:9: 5:10
       }
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_1);                 // scope 0 at $DIR/indirect.rs:5:9: 5:10
           StorageLive(_2);                 // scope 0 at $DIR/indirect.rs:5:13: 5:25
 -         _2 = const 2_u32 as u8 (Misc);   // scope 0 at $DIR/indirect.rs:5:13: 5:25
@@ -21,7 +21,7 @@
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u8, const 1_u8) -> bb1; // scope 0 at $DIR/indirect.rs:5:13: 5:29
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
 -         _1 = move (_3.0: u8);            // scope 0 at $DIR/indirect.rs:5:13: 5:29
 +         _1 = const 3_u8;                 // scope 0 at $DIR/indirect.rs:5:13: 5:29
           StorageDead(_2);                 // scope 0 at $DIR/indirect.rs:5:28: 5:29

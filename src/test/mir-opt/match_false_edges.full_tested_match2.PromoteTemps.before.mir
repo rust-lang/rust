@@ -22,7 +22,7 @@ fn full_tested_match2() -> () {
         debug y => _9;                   // in scope 3 at $DIR/match_false_edges.rs:29:14: 29:15
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/match_false_edges.rs:26:13: 30:6
         StorageLive(_2);                 // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
         _2 = Option::<i32>::Some(const 42_i32); // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
@@ -31,15 +31,15 @@ fn full_tested_match2() -> () {
         switchInt(move _3) -> [0_isize: bb1, 1_isize: bb2, otherwise: bb4]; // scope 0 at $DIR/match_false_edges.rs:26:13: 26:27
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0, bb2, bb8]
         falseEdge -> [real: bb9, imaginary: bb3]; // scope 0 at $DIR/match_false_edges.rs:28:9: 28:13
     }
 
-    bb2: {
+    bb2: {                               // preds: [bb0]
         falseEdge -> [real: bb5, imaginary: bb1]; // scope 0 at $DIR/match_false_edges.rs:27:9: 27:16
     }
 
-    bb3: {
+    bb3: {                               // preds: [bb1, bb8]
         StorageLive(_9);                 // scope 0 at $DIR/match_false_edges.rs:29:14: 29:15
         _9 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:29:14: 29:15
         StorageLive(_10);                // scope 3 at $DIR/match_false_edges.rs:29:24: 29:25
@@ -50,11 +50,11 @@ fn full_tested_match2() -> () {
         goto -> bb10;                    // scope 0 at $DIR/match_false_edges.rs:29:25: 29:26
     }
 
-    bb4: {
+    bb4: {                               // preds: [bb0]
         unreachable;                     // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
     }
 
-    bb5: {
+    bb5: {                               // preds: [bb2]
         StorageLive(_6);                 // scope 0 at $DIR/match_false_edges.rs:27:14: 27:15
         _6 = &((_2 as Some).0: i32);     // scope 0 at $DIR/match_false_edges.rs:27:14: 27:15
         _4 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:26:19: 26:27
@@ -65,11 +65,11 @@ fn full_tested_match2() -> () {
                                          // + literal: Const { ty: fn() -> bool {guard}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb6: {
+    bb6: {                               // preds: [bb5]
         switchInt(move _7) -> [false: bb8, otherwise: bb7]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
     }
 
-    bb7: {
+    bb7: {                               // preds: [bb6]
         StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
         FakeRead(ForMatchGuard, _4);     // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
         FakeRead(ForGuardBinding, _6);   // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
@@ -84,25 +84,25 @@ fn full_tested_match2() -> () {
         goto -> bb10;                    // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
     }
 
-    bb8: {
+    bb8: {                               // preds: [bb6]
         StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:27:26: 27:27
         StorageDead(_6);                 // scope 0 at $DIR/match_false_edges.rs:27:36: 27:37
         falseEdge -> [real: bb3, imaginary: bb1]; // scope 0 at $DIR/match_false_edges.rs:27:20: 27:27
     }
 
-    bb9: {
+    bb9: {                               // preds: [bb1]
         _1 = (const 3_i32, const 3_i32); // scope 0 at $DIR/match_false_edges.rs:28:17: 28:23
         goto -> bb10;                    // scope 0 at $DIR/match_false_edges.rs:28:17: 28:23
     }
 
-    bb10: {
+    bb10: {                              // preds: [bb3, bb7, bb9]
         StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:30:6: 30:7
         _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:25:29: 31:2
         return;                          // scope 0 at $DIR/match_false_edges.rs:31:2: 31:2
     }
 
-    bb11 (cleanup): {
+    bb11 (cleanup): {                    // preds: [bb5]
         resume;                          // scope 0 at $DIR/match_false_edges.rs:25:1: 31:2
     }
 }

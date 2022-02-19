@@ -15,7 +15,7 @@
       let mut _10: bool;                   // in scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
       let mut _11: &[u8; N];               // in scope 0 at $DIR/lower_array_len.rs:7:16: 7:27
   
-      bb0: {
+      bb0: {                               // preds: []
           StorageLive(_3);                 // scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
           StorageLive(_4);                 // scope 0 at $DIR/lower_array_len.rs:7:8: 7:13
           _4 = _1;                         // scope 0 at $DIR/lower_array_len.rs:7:8: 7:13
@@ -38,7 +38,7 @@
           switchInt(move _3) -> [false: bb3, otherwise: bb1]; // scope 0 at $DIR/lower_array_len.rs:7:8: 7:27
       }
   
-      bb1: {
+      bb1: {                               // preds: [bb0]
           StorageLive(_8);                 // scope 0 at $DIR/lower_array_len.rs:8:15: 8:20
           _8 = _1;                         // scope 0 at $DIR/lower_array_len.rs:8:15: 8:20
 -         _9 = Len((*_2));                 // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
@@ -47,18 +47,18 @@
           assert(move _10, "index out of bounds: the length is {} but the index is {}", move _9, _8) -> bb2; // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
       }
   
-      bb2: {
+      bb2: {                               // preds: [bb1]
           _0 = (*_2)[_8];                  // scope 0 at $DIR/lower_array_len.rs:8:9: 8:21
           StorageDead(_8);                 // scope 0 at $DIR/lower_array_len.rs:9:5: 9:6
           goto -> bb4;                     // scope 0 at $DIR/lower_array_len.rs:7:5: 11:6
       }
   
-      bb3: {
+      bb3: {                               // preds: [bb0]
           _0 = const 42_u8;                // scope 0 at $DIR/lower_array_len.rs:10:9: 10:11
           goto -> bb4;                     // scope 0 at $DIR/lower_array_len.rs:7:5: 11:6
       }
   
-      bb4: {
+      bb4: {                               // preds: [bb2, bb3]
           StorageDead(_3);                 // scope 0 at $DIR/lower_array_len.rs:11:5: 11:6
           return;                          // scope 0 at $DIR/lower_array_len.rs:12:2: 12:2
       }

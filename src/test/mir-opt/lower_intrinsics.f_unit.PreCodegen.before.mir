@@ -10,7 +10,7 @@ fn f_unit() -> () {
         }
     }
 
-    bb0: {
+    bb0: {                               // preds: []
         StorageLive(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:34:16: 34:18
         StorageLive(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
         _2 = f_zst::<()>(const ()) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
@@ -19,7 +19,7 @@ fn f_unit() -> () {
                                          // + literal: Const { ty: fn(()) {f_zst::<()>}, val: Value(Scalar(<ZST>)) }
     }
 
-    bb1: {
+    bb1: {                               // preds: [bb0]
         StorageDead(_2);                 // scope 1 at $DIR/lower_intrinsics.rs:34:5: 34:19
         StorageDead(_1);                 // scope 0 at $DIR/lower_intrinsics.rs:34:18: 34:19
         return;                          // scope 0 at $DIR/lower_intrinsics.rs:35:2: 35:2
