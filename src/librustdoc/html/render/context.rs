@@ -250,6 +250,8 @@ impl<'tcx> Context<'tcx> {
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
+
         for item in &m.items {
             if item.is_stripped() {
                 continue;
@@ -258,13 +260,16 @@ impl<'tcx> Context<'tcx> {
             let short = item.type_();
             let myname = match item.name {
                 None => continue,
-                Some(ref s) => s.to_string(),
+                Some(s) => s,
             };
-            let short = short.to_string();
-            map.entry(short).or_default().push((
-                myname,
-                Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
-            ));
+            if inserted.entry(short).or_default().insert(myname) {
+                let short = short.to_string();
+                let myname = myname.to_string();
+                map.entry(short).or_default().push((
+                    myname,
+                    Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
+                ));
+            }
         }
 
         if self.shared.sort_modules_alphabetically {
