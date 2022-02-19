@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -2692,7 +2691,6 @@ fn from_target_feature(
             // Only allow features whose feature gates have been enabled.
             let allowed = match feature_gate.as_ref().copied() {
                 Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::aarch64_target_feature) => rust_features.aarch64_target_feature,
                 Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
                 Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
                 Some(sym::mips_target_feature) => rust_features.mips_target_feature,

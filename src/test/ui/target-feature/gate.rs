@@ -16,7 +16,6 @@
 // gate-test-avx512_target_feature
 // gate-test-tbm_target_feature
 // gate-test-arm_target_feature
-// gate-test-aarch64_target_feature
 // gate-test-hexagon_target_feature
 // gate-test-mips_target_feature
 // gate-test-wasm_target_feature

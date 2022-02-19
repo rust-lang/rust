@@ -1,7 +1,7 @@
 // only-aarch64
 // build-fail
 
-#![feature(aarch64_target_feature, target_feature_11)]
+#![cfg_attr(bootstrap, feature(aarch64_target_feature))]
 
 fn main() {
     #[target_feature(enable = "pacg")]

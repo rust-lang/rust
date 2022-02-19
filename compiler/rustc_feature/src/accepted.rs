@@ -46,6 +46,8 @@ declare_features! (
     // feature-group-start: accepted features
     // -------------------------------------------------------------------------
 
+    /// Allows `#[target_feature(...)]` on aarch64 platforms
+    (accepted, aarch64_target_feature, "1.60.0", Some(44839), None),
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
