@@ -87,7 +87,6 @@ pub fn getsockopt<T: Copy>(sock: &Socket, level: c_int, option_name: c_int) -> i
             &mut option_value as *mut T as *mut _,
             &mut option_len,
         ))?;
-        assert_eq!(option_len as usize, mem::size_of::<T>());
         Ok(option_value)
     }
 }
