@@ -37,7 +37,7 @@ impl Parse for Newtype {
         braced!(body in input);
 
         // Any additional `#[derive]` macro paths to apply
-        let mut derive_paths: Option<Vec<Path>> = None;
+        let mut derive_paths: Vec<Path> = Vec::new();
         let mut debug_format: Option<DebugFormat> = None;
         let mut max = None;
         let mut consts = Vec::new();
@@ -62,28 +62,23 @@ impl Parse for Newtype {
                     let derives: Punctuated<Path, Token![,]> =
                         derives.parse_terminated(Path::parse)?;
                     try_comma()?;
-                    if let Some(old) = derive_paths.replace(derives.into_iter().collect()) {
-                        panic!("Specified multiple derives: {:?}", old);
-                    }
+                    derive_paths.extend(derives);
                     continue;
                 }
                 if body.lookahead1().peek(kw::DEBUG_FORMAT) {
                     body.parse::<kw::DEBUG_FORMAT>()?;
                     body.parse::<Token![=]>()?;
-                    if body.lookahead1().peek(kw::custom) {
+                    let new_debug_format = if body.lookahead1().peek(kw::custom) {
                         body.parse::<kw::custom>()?;
-                        if let Some(old) = debug_format.replace(DebugFormat::Custom) {
-                            panic!("Specified multiple debug format options: {:?}", old);
-                        }
+                        DebugFormat::Custom
                     } else {
                         let format_str: LitStr = body.parse()?;
-                        if let Some(old) =
-                            debug_format.replace(DebugFormat::Format(format_str.value()))
-                        {
-                            panic!("Specified multiple debug format options: {:?}", old);
-                        }
-                    }
+                        DebugFormat::Format(format_str.value())
+                    };
                     try_comma()?;
+                    if let Some(old) = debug_format.replace(new_debug_format) {
+                        panic!("Specified multiple debug format options: {:?}", old);
+                    }
                     continue;
                 }
                 if body.lookahead1().peek(kw::MAX) {
@@ -121,7 +116,6 @@ impl Parse for Newtype {
             }
         }
 
-        let derive_paths = derive_paths.unwrap_or_else(Vec::new);
         let debug_format = debug_format.unwrap_or(DebugFormat::Format("{}".to_string()));
         // shave off 256 indices at the end to allow space for packing these indices into enums
         let max = max.unwrap_or_else(|| Lit::Int(LitInt::new("0xFFFF_FF00", Span::call_site())));
@@ -158,20 +152,13 @@ impl Parse for Newtype {
 
         Ok(Self(quote! {
             #(#attrs)*
-            #[derive(Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #(#derive_paths),*)]
+            #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, #(#derive_paths),*)]
             #[rustc_layout_scalar_valid_range_end(#max)]
             #vis struct #name {
                 private: u32,
             }
 
             #(#consts)*
-
-            impl Clone for #name {
-                #[inline]
-                fn clone(&self) -> Self {
-                    *self
-                }
-            }
 
             impl #name {
                 /// Maximum value the index can take, as a `u32`.
@@ -313,7 +300,6 @@ impl Parse for Newtype {
 
             #encodable_impls
             #debug_impl
-
         }))
     }
 }
