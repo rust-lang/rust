@@ -87,8 +87,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 
 #[cfg(not(bootstrap))]
 #[cold]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[track_caller]
+#[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
 fn panic_no_unwind() -> ! {
     if cfg!(feature = "panic_immediate_abort") {

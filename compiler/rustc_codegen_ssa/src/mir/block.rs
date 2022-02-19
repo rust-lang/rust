@@ -135,21 +135,38 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
-        if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
+
+        let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
+            Some(self.llblock(fx, cleanup))
+        } else if fx.mir[self.bb].is_cleanup
+            && fn_abi.can_unwind
+            && !base::wants_msvc_seh(fx.cx.tcx().sess)
+        {
+            // Exception must not propagate out of the execution of a cleanup (doing so
+            // can cause undefined behaviour). We insert a double unwind guard for
+            // functions that can potentially unwind to protect against this.
+            //
+            // This is not necessary for SEH which does not use successive unwinding
+            // like Itanium EH. EH frames in SEH are different from normal function
+            // frames and SEH will abort automatically if an exception tries to
+            // propagate out from cleanup.
+            Some(fx.double_unwind_guard())
+        } else {
+            None
+        };
+
+        if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
                 fx.llbb(target)
             } else {
                 fx.unreachable_block()
             };
-            let invokeret = bx.invoke(
-                fn_ty,
-                fn_ptr,
-                &llargs,
-                ret_llbb,
-                self.llblock(fx, cleanup),
-                self.funclet(fx),
-            );
+            let invokeret =
+                bx.invoke(fn_ty, fn_ptr, &llargs, ret_llbb, unwind_block, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, invokeret);
+            if fx.mir[self.bb].is_cleanup {
+                bx.apply_attrs_to_cleanup_callsite(invokeret);
+            }
 
             if let Some((ret_dest, target)) = destination {
                 let mut ret_bx = fx.build_block(target);
@@ -486,9 +503,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let span = terminator.source_info.span;
         self.set_debug_loc(&mut bx, terminator.source_info);
 
-        // Get the location information.
-        let location = self.get_caller_location(&mut bx, terminator.source_info).immediate();
-
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", LangItem::PanicNoUnwind);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
@@ -496,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llfn = bx.get_fn_addr(instance);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &[location], None, None);
+        helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None);
     }
 
     /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
@@ -1395,6 +1409,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.unreachable();
             self.unreachable_block = Some(bx.llbb());
             bx.llbb()
+        })
+    }
+
+    fn double_unwind_guard(&mut self) -> Bx::BasicBlock {
+        self.double_unwind_guard.unwrap_or_else(|| {
+            assert!(!base::wants_msvc_seh(self.cx.sess()));
+
+            let mut bx = self.new_block("abort");
+            self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
+
+            let llpersonality = self.cx.eh_personality();
+            let llretty = self.landing_pad_type();
+            bx.cleanup_landing_pad(llretty, llpersonality);
+
+            let def_id = common::langcall(bx.tcx(), None, "", LangItem::PanicNoUnwind);
+            let instance = ty::Instance::mono(bx.tcx(), def_id);
+            let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
+            let fn_ptr = bx.get_fn_addr(instance);
+            let fn_ty = bx.fn_decl_backend_type(&fn_abi);
+
+            let llret = bx.call(fn_ty, fn_ptr, &[], None);
+            bx.apply_attrs_callsite(&fn_abi, llret);
+            bx.apply_attrs_to_cleanup_callsite(llret);
+
+            bx.unreachable();
+            let llbb = bx.llbb();
+
+            self.double_unwind_guard = Some(llbb);
+            llbb
         })
     }
 
