@@ -16535,7 +16535,7 @@ pub unsafe fn vmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 vmaxq_f32_(a, b)
 }
 
-/// Floating-point Maximun Number (vector)
+/// Floating-point Maximum Number (vector)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16552,7 +16552,7 @@ pub unsafe fn vmaxnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 vmaxnm_f32_(a, b)
 }
 
-/// Floating-point Maximun Number (vector)
+/// Floating-point Maximum Number (vector)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16807,7 +16807,7 @@ pub unsafe fn vminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 vminq_f32_(a, b)
 }
 
-/// Floating-point Minimun Number (vector)
+/// Floating-point Minimum Number (vector)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]
@@ -16824,7 +16824,7 @@ pub unsafe fn vminnm_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 vminnm_f32_(a, b)
 }
 
-/// Floating-point Minimun Number (vector)
+/// Floating-point Minimum Number (vector)
 #[inline]
 #[target_feature(enable = "neon")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "fp-armv8,v8"))]

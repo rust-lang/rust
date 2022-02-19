@@ -108,26 +108,3 @@ vqshluq_n_s32
 vqshluq_n_s64
 vqshluq_n_s8
 vqshlus_n_s32
-
-# These tests produce a different result from C but only in debug builds of
-# stdarch. This likely both a bug in stdarch (expanding to a different LLVM
-# intrinsic) and a bug in LLVM (incorrect optimization changing the behavior of
-# integer operations).
-vqrdmlah_lane_s16
-vqrdmlah_lane_s32
-vqrdmlah_laneq_s16
-vqrdmlah_laneq_s32
-vqrdmlah_s16
-vqrdmlah_s32
-vqrdmlahh_lane_s16
-vqrdmlahh_laneq_s16
-vqrdmlahh_s16
-vqrdmlahq_lane_s16
-vqrdmlahq_lane_s32
-vqrdmlahq_laneq_s16
-vqrdmlahq_laneq_s32
-vqrdmlahq_s16
-vqrdmlahq_s32
-vqrdmlahs_lane_s32
-vqrdmlahs_laneq_s32
-vqrdmlahs_s32

@@ -846,7 +846,7 @@ a = MIN, -1, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0
 fixed = 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 validate TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE
 
-aarch64 = sshr
+aarch64 = cmlt
 generate int8x8_t:uint8x8_t, int8x16_t:uint8x16_t, int16x4_t:uint16x4_t, int16x8_t:uint16x8_t, int32x2_t:uint32x2_t, int32x4_t:uint32x4_t, int64x1_t:uint64x1_t, int64x2_t:uint64x2_t
 
 /// Floating-point compare less than zero
@@ -1069,7 +1069,7 @@ b = MAX, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 n = 1:0
 validate 1, MAX
 
-aarch64 = zip1
+aarch64 = mov
 generate int64x2_t:int64x1_t:int64x2_t, uint64x2_t:uint64x1_t:uint64x2_t, poly64x2_t:poly64x1_t:poly64x2_t
 
 /// Insert vector element from another vector element
@@ -1087,7 +1087,7 @@ validate 1., 0.5, 3., 4.
 
 aarch64 = mov
 generate float32x4_t:float32x2_t:float32x4_t
-aarch64 = zip1
+aarch64 = mov
 generate float64x2_t:float64x1_t:float64x2_t
 
 /// Insert vector element from another vector element
@@ -5527,13 +5527,13 @@ generate i16:int16x4_t:i16, i16:int16x8_t:i16, i32:int32x2_t:i32, i32:int32x4_t:
 
 /// Signed saturating rounding doubling multiply accumulate returning high half
 name = vqrdmlah
-multi_fn = vqadd-out-noext, a, {vqrdmulh-out-noext, b, c}
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 c = 2, 2, 2, 2, 2, 2, 2, 2
 validate 3, 3, 3, 3, 3, 3, 3, 3
 
 aarch64 = sqrdmlah
+link-aarch64 = sqrdmlah._EXT_
 target = rdm
 generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
 
@@ -5557,7 +5557,8 @@ name = vqrdmlah
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqadd-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = vqrdmlah-out-noext, a, b, c
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 c = 0, 2, 0, 0, 0, 0, 0, 0
