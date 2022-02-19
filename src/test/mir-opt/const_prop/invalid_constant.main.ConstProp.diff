@@ -5,39 +5,53 @@
       let mut _0: ();                      // return place in scope 0 at $DIR/invalid_constant.rs:15:11: 15:11
       let _1: std::option::Option<()>;     // in scope 0 at $DIR/invalid_constant.rs:16:5: 16:12
       let mut _2: std::option::Option<std::option::Option<()>>; // in scope 0 at $DIR/invalid_constant.rs:16:7: 16:11
-      scope 1 (inlined f) {                // at $DIR/invalid_constant.rs:16:5: 16:12
-          debug x => _2;                   // in scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
-          let mut _3: isize;               // in scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
-          let _4: std::option::Option<()>; // in scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
-          scope 2 {
-              debug y => _4;               // in scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+      let _3: main::Union;                 // in scope 0 at $DIR/invalid_constant.rs:22:9: 22:22
+      scope 1 {
+          debug _invalid_char => _3;       // in scope 1 at $DIR/invalid_constant.rs:22:9: 22:22
+      }
+      scope 2 (inlined f) {                // at $DIR/invalid_constant.rs:16:5: 16:12
+          debug x => _2;                   // in scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+          let mut _4: isize;               // in scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+          let _5: std::option::Option<()>; // in scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+          scope 3 {
+              debug y => _5;               // in scope 3 at $DIR/invalid_constant.rs:16:5: 16:12
           }
       }
   
       bb0: {
           discriminant(_2) = 0;            // scope 0 at $DIR/invalid_constant.rs:16:7: 16:11
--         _3 = discriminant(_2);           // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
--         switchInt(move _3) -> [0_isize: bb3, otherwise: bb2]; // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
-+         _3 = const 0_isize;              // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
-+         switchInt(const 0_isize) -> [0_isize: bb3, otherwise: bb2]; // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
+-         _4 = discriminant(_2);           // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+-         switchInt(move _4) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
++         _4 = const 0_isize;              // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
++         switchInt(const 0_isize) -> [0_isize: bb3, otherwise: bb2]; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/invalid_constant.rs:15:11: 17:2
-          return;                          // scope 0 at $DIR/invalid_constant.rs:17:2: 17:2
+-         _3 = const { Union { int: 0x110001 } }; // scope 0 at $DIR/invalid_constant.rs:22:25: 22:58
++         _3 = const main::Union { int: 1114113_u32, chr: {transmute(0x00110001): char} }; // scope 0 at $DIR/invalid_constant.rs:22:25: 22:58
+                                           // ty::Const
+                                           // + ty: main::Union
+-                                          // + val: Unevaluated(main::{constant#0}, [main::Union], None)
++                                          // + val: Value(Scalar(0x00110001))
+                                           // mir::Constant
+                                           // + span: $DIR/invalid_constant.rs:22:25: 22:58
+-                                          // + literal: Const { ty: main::Union, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:8 ~ invalid_constant[726d]::main::{constant#0}), const_param_did: None }, substs: [main::Union], promoted: None }) }
++                                          // + literal: Const { ty: main::Union, val: Value(Scalar(0x00110001)) }
+          nop;                             // scope 0 at $DIR/invalid_constant.rs:15:11: 23:2
+          return;                          // scope 0 at $DIR/invalid_constant.rs:23:2: 23:2
       }
   
       bb2: {
--         _4 = ((_2 as Some).0: std::option::Option<()>); // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
--         _1 = _4;                         // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
-+         _4 = const Scalar(0x02): Option::<()>; // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
+-         _5 = ((_2 as Some).0: std::option::Option<()>); // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
+-         _1 = _5;                         // scope 3 at $DIR/invalid_constant.rs:16:5: 16:12
++         _5 = const Scalar(0x02): Option::<()>; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
 +                                          // ty::Const
 +                                          // + ty: std::option::Option<()>
 +                                          // + val: Value(Scalar(0x02))
 +                                          // mir::Constant
 +                                          // + span: $DIR/invalid_constant.rs:16:5: 16:12
 +                                          // + literal: Const { ty: std::option::Option<()>, val: Value(Scalar(0x02)) }
-+         _1 = const Scalar(0x02): Option::<()>; // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
++         _1 = const Scalar(0x02): Option::<()>; // scope 3 at $DIR/invalid_constant.rs:16:5: 16:12
 +                                          // ty::Const
 +                                          // + ty: std::option::Option<()>
 +                                          // + val: Value(Scalar(0x02))
@@ -48,7 +62,7 @@
       }
   
       bb3: {
-          discriminant(_1) = 0;            // scope 1 at $DIR/invalid_constant.rs:16:5: 16:12
+          discriminant(_1) = 0;            // scope 2 at $DIR/invalid_constant.rs:16:5: 16:12
           goto -> bb1;                     // scope 0 at $DIR/invalid_constant.rs:9:17: 9:21
       }
   }
