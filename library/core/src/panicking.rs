@@ -267,7 +267,7 @@ fn assert_failed_inner(
     match args {
         Some(args) => panic!(
             r#"assertion failed: `(upper_bounds {} target)`
-   Error: `{:?}`,        
+   Error: `{:?}`,
    upper_bounds: `{:?}`,
    target: `{:?}`"#,
             op, args, upper_bounds, target,
