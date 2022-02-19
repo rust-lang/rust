@@ -289,6 +289,19 @@ fn test_is_sign_negative() {
     assert!((-f64::NAN).is_sign_negative());
 }
 
+macro_rules! assert_f64_biteq {
+    ($left : expr, $right : expr) => {
+        let l: &f64 = &$left;
+        let r: &f64 = &$right;
+        let lb = l.to_bits();
+        let rb = r.to_bits();
+        assert_eq!(lb, rb, "float {} ({:#x}) is not equal to {} ({:#x})", *l, lb, *r, rb);
+    }
+}
+
+// Ignore test on x87 floating point, these platforms do not guarantee NaN
+// payloads are preserved and flush denormals to zero, failing the tests.
+#[cfg(not(target_arch = "x86"))]
 #[test]
 fn test_next_up() {
     let tiny = f64::from_bits(1);
@@ -296,36 +309,31 @@ fn test_next_up() {
     let max_down = f64::from_bits(0x7fef_ffff_ffff_fffe);
     let largest_subnormal = f64::from_bits(0x000f_ffff_ffff_ffff);
     let smallest_normal = f64::from_bits(0x0010_0000_0000_0000);
+    assert_f64_biteq!(f64::NEG_INFINITY.next_up(), f64::MIN);
+    assert_f64_biteq!(f64::MIN.next_up(), -max_down);
+    assert_f64_biteq!((-1.0 - f64::EPSILON).next_up(), -1.0);
+    assert_f64_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_f64_biteq!((-tiny_up).next_up(), -tiny);
+    assert_f64_biteq!((-tiny).next_up(), -0.0f64);
+    assert_f64_biteq!((-0.0f64).next_up(), tiny);
+    assert_f64_biteq!(0.0f64.next_up(), tiny);
+    assert_f64_biteq!(tiny.next_up(), tiny_up);
+    assert_f64_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_f64_biteq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
+    assert_f64_biteq!(f64::MAX.next_up(), f64::INFINITY);
+    assert_f64_biteq!(f64::INFINITY.next_up(), f64::INFINITY);
 
-    // Check that NaNs roundtrip.
-    // Ignore test on x87 floating point, the code is still correct but these
-    // platforms do not guarantee NaN payloads are preserved, which caused these
-    // tests to fail.
-    #[cfg(not(all(target_arch = "x86", not(target_feature = "fxsr"))))]
-    {
-        let nan0 = f64::NAN;
-        let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
-        let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
-        assert_eq!(nan0.next_up().to_bits(), nan0.to_bits());
-        assert_eq!(nan1.next_up().to_bits(), nan1.to_bits());
-        assert_eq!(nan2.next_up().to_bits(), nan2.to_bits());
-    }
-
-    assert_eq!(f64::NEG_INFINITY.next_up(), f64::MIN);
-    assert_eq!(f64::MIN.next_up(), -max_down);
-    assert_eq!((-1.0 - f64::EPSILON).next_up(), -1.0);
-    assert_eq!((-smallest_normal).next_up(), -largest_subnormal);
-    assert_eq!((-tiny_up).next_up(), -tiny);
-    assert_eq!((-tiny).next_up().to_bits(), (-0.0f64).to_bits());
-    assert_eq!((-0.0f64).next_up(), tiny);
-    assert_eq!(0.0f64.next_up(), tiny);
-    assert_eq!(tiny.next_up(), tiny_up);
-    assert_eq!(largest_subnormal.next_up(), smallest_normal);
-    assert_eq!(1.0f64.next_up(), 1.0 + f64::EPSILON);
-    assert_eq!(f64::MAX.next_up(), f64::INFINITY);
-    assert_eq!(f64::INFINITY.next_up(), f64::INFINITY);
+    let nan0 = f64::NAN;
+    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
+    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
+    assert_f64_biteq!(nan0.next_up(), nan0);
+    assert_f64_biteq!(nan1.next_up(), nan1);
+    assert_f64_biteq!(nan2.next_up(), nan2);
 }
 
+// Ignore test on x87 floating point, these platforms do not guarantee NaN
+// payloads are preserved and flush denormals to zero, failing the tests.
+#[cfg(not(target_arch = "x86"))]
 #[test]
 fn test_next_down() {
     let tiny = f64::from_bits(1);
@@ -333,35 +341,27 @@ fn test_next_down() {
     let max_down = f64::from_bits(0x7fef_ffff_ffff_fffe);
     let largest_subnormal = f64::from_bits(0x000f_ffff_ffff_ffff);
     let smallest_normal = f64::from_bits(0x0010_0000_0000_0000);
+    assert_f64_biteq!(f64::NEG_INFINITY.next_down(), f64::NEG_INFINITY);
+    assert_f64_biteq!(f64::MIN.next_down(), f64::NEG_INFINITY);
+    assert_f64_biteq!((-max_down).next_down(), f64::MIN);
+    assert_f64_biteq!((-1.0f64).next_down(), -1.0 - f64::EPSILON);
+    assert_f64_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_f64_biteq!((-tiny).next_down(), -tiny_up);
+    assert_f64_biteq!((-0.0f64).next_down(), -tiny);
+    assert_f64_biteq!((0.0f64).next_down(), -tiny);
+    assert_f64_biteq!(tiny.next_down(), 0.0f64);
+    assert_f64_biteq!(tiny_up.next_down(), tiny);
+    assert_f64_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_f64_biteq!((1.0 + f64::EPSILON).next_down(), 1.0f64);
+    assert_f64_biteq!(f64::MAX.next_down(), max_down);
+    assert_f64_biteq!(f64::INFINITY.next_down(), f64::MAX);
 
-    // Check that NaNs roundtrip.
-    // Ignore test on x87 floating point, the code is still correct but these
-    // platforms do not guarantee NaN payloads are preserved, which caused these
-    // tests to fail.
-    #[cfg(not(all(target_arch = "x86", not(target_feature = "fxsr"))))]
-    {
-        let nan0 = f64::NAN;
-        let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
-        let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
-        assert_eq!(nan0.next_down().to_bits(), nan0.to_bits());
-        assert_eq!(nan1.next_down().to_bits(), nan1.to_bits());
-        assert_eq!(nan2.next_down().to_bits(), nan2.to_bits());
-    }
-
-    assert_eq!(f64::NEG_INFINITY.next_down(), f64::NEG_INFINITY);
-    assert_eq!(f64::MIN.next_down(), f64::NEG_INFINITY);
-    assert_eq!((-max_down).next_down(), f64::MIN);
-    assert_eq!((-1.0f64).next_down(), -1.0 - f64::EPSILON);
-    assert_eq!((-largest_subnormal).next_down(), -smallest_normal);
-    assert_eq!((-tiny).next_down(), -tiny_up);
-    assert_eq!((-0.0f64).next_down(), -tiny);
-    assert_eq!((0.0f64).next_down(), -tiny);
-    assert_eq!(tiny.next_down().to_bits(), 0.0f64.to_bits());
-    assert_eq!(tiny_up.next_down(), tiny);
-    assert_eq!(smallest_normal.next_down(), largest_subnormal);
-    assert_eq!((1.0 + f64::EPSILON).next_down(), 1.0f64);
-    assert_eq!(f64::MAX.next_down(), max_down);
-    assert_eq!(f64::INFINITY.next_down(), f64::MAX);
+    let nan0 = f64::NAN;
+    let nan1 = f64::from_bits(f64::NAN.to_bits() ^ 0x000a_aaaa_aaaa_aaaa);
+    let nan2 = f64::from_bits(f64::NAN.to_bits() ^ 0x0005_5555_5555_5555);
+    assert_f64_biteq!(nan0.next_down(), nan0);
+    assert_f64_biteq!(nan1.next_down(), nan1);
+    assert_f64_biteq!(nan2.next_down(), nan2);
 }
 
 #[test]
