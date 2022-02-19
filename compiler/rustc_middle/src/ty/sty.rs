@@ -8,7 +8,9 @@ use crate::infer::canonical::Canonical;
 use crate::ty::fold::ValidateBoundVars;
 use crate::ty::subst::{GenericArg, InternalSubsts, Subst, SubstsRef};
 use crate::ty::InferTy::{self, *};
-use crate::ty::{self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable};
+use crate::ty::{
+    self, AdtDef, DefIdTree, Discr, Term, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitor,
+};
 use crate::ty::{DelaySpanBugEmitted, List, ParamEnv};
 use polonius_engine::Atom;
 use rustc_data_structures::captures::Captures;
@@ -24,7 +26,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::{Deref, Range};
+use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
@@ -2070,6 +2072,24 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn has_concrete_skeleton(self) -> bool {
         !matches!(self.kind(), Param(_) | Infer(_) | Error(_))
+    }
+
+    /// Checks whether a type recursively contains another type
+    ///
+    /// Example: `Option<()>` contains `()`
+    pub fn contains(self, other: Ty<'tcx>) -> bool {
+        struct ContainsTyVisitor<'tcx>(Ty<'tcx>);
+
+        impl<'tcx> TypeVisitor<'tcx> for ContainsTyVisitor<'tcx> {
+            type BreakTy = ();
+
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                if self.0 == t { ControlFlow::BREAK } else { t.super_visit_with(self) }
+            }
+        }
+
+        let cf = self.visit_with(&mut ContainsTyVisitor(other));
+        cf.is_break()
     }
 
     /// Returns the type and mutability of `*ty`.

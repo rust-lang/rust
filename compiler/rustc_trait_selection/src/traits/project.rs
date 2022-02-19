@@ -19,6 +19,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorReported;
@@ -1075,16 +1076,6 @@ fn project<'cx, 'tcx>(
         return Ok(Projected::Progress(Progress::error(selcx.tcx())));
     }
 
-    // If the obligation contains any inference types or consts in associated
-    // type substs, then we don't assemble any candidates.
-    // This isn't really correct, but otherwise we can end up in a case where
-    // we constrain inference variables by selecting a single predicate, when
-    // we need to stay general. See issue #91762.
-    let (_, predicate_own_substs) = obligation.predicate.trait_ref_and_own_substs(selcx.tcx());
-    if predicate_own_substs.iter().any(|g| g.has_infer_types_or_consts()) {
-        return Err(ProjectionError::TooManyCandidates);
-    }
-
     let mut candidates = ProjectionCandidateSet::None;
 
     // Make sure that the following procedures are kept in order. ParamEnv
@@ -1182,7 +1173,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         ProjectionCandidate::TraitDef,
         bounds.iter(),
         true,
-    )
+    );
 }
 
 /// In the case of a trait object like
@@ -1247,28 +1238,35 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
         let bound_predicate = predicate.kind();
         if let ty::PredicateKind::Projection(data) = predicate.kind().skip_binder() {
             let data = bound_predicate.rebind(data);
-            let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
+            if data.projection_def_id() != obligation.predicate.item_def_id {
+                continue;
+            }
 
-            let is_match = same_def_id
-                && infcx.probe(|_| {
-                    selcx.match_projection_projections(
-                        obligation,
-                        data,
-                        potentially_unnormalized_candidates,
-                    )
-                });
+            let is_match = infcx.probe(|_| {
+                selcx.match_projection_projections(
+                    obligation,
+                    data,
+                    potentially_unnormalized_candidates,
+                )
+            });
 
-            if is_match {
-                candidate_set.push_candidate(ctor(data));
+            match is_match {
+                ProjectionMatchesProjection::Yes => {
+                    candidate_set.push_candidate(ctor(data));
 
-                if potentially_unnormalized_candidates
-                    && !obligation.predicate.has_infer_types_or_consts()
-                {
-                    // HACK: Pick the first trait def candidate for a fully
-                    // inferred predicate. This is to allow duplicates that
-                    // differ only in normalization.
-                    return;
+                    if potentially_unnormalized_candidates
+                        && !obligation.predicate.has_infer_types_or_consts()
+                    {
+                        // HACK: Pick the first trait def candidate for a fully
+                        // inferred predicate. This is to allow duplicates that
+                        // differ only in normalization.
+                        return;
+                    }
                 }
+                ProjectionMatchesProjection::Ambiguous => {
+                    candidate_set.mark_ambiguous();
+                }
+                ProjectionMatchesProjection::No => {}
             }
         }
     }

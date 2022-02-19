@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/invalid-cfg-value.rs:7:7
+   |
+LL | #[cfg(feature = "sedre")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

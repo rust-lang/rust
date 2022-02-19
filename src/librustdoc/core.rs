@@ -200,6 +200,7 @@ crate fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
+        scrape_examples_options,
         ..
     }: RustdocOptions,
 ) -> rustc_interface::Config {
@@ -227,6 +228,7 @@ crate fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
+    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
@@ -244,12 +246,14 @@ crate fn create_config(
         edition,
         describe_lints,
         crate_name,
+        test,
         ..Options::default()
     };
 
     interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_check_cfg: interface::parse_check_cfg(vec![]),
         input,
         input_path: cpath,
         output_file: None,

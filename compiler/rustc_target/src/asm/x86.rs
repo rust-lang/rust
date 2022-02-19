@@ -141,6 +141,7 @@ fn x86_64_only(
     arch: InlineAsmArch,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Err("register is only available on x86_64"),
@@ -153,6 +154,7 @@ fn high_byte(
     arch: InlineAsmArch,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86_64 => Err("high byte registers cannot be used as an operand on x86_64"),
@@ -164,6 +166,7 @@ fn rbx_reserved(
     arch: InlineAsmArch,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Ok(()),
@@ -178,6 +181,7 @@ fn esi_reserved(
     arch: InlineAsmArch,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => {

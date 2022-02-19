@@ -66,10 +66,13 @@ fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> 
 }
 
 fn frame_pointer_r11(
-    _arch: InlineAsmArch,
+    arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
+    not_thumb1(arch, target_features, target, is_clobber)?;
+
     if !frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
     } else {
@@ -81,6 +84,7 @@ fn frame_pointer_r7(
     _arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r7) cannot be used as an operand for inline asm")
@@ -93,9 +97,13 @@ fn not_thumb1(
     _arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::thumb_mode) && !target_features.contains(&sym::thumb2) {
-        Err("high registers (r8+) cannot be used in Thumb-1 code")
+    if !is_clobber
+        && target_features.contains(&sym::thumb_mode)
+        && !target_features.contains(&sym::thumb2)
+    {
+        Err("high registers (r8+) can only be used as clobbers in Thumb-1 code")
     } else {
         Ok(())
     }
@@ -105,8 +113,9 @@ fn reserved_r9(
     arch: InlineAsmArch,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    not_thumb1(arch, target_features, target)?;
+    not_thumb1(arch, target_features, target, is_clobber)?;
 
     // We detect this using the reserved-r9 feature instead of using the target
     // because the relocation model can be changed with compiler options.

@@ -115,19 +115,19 @@ LL |     let _: impl Tr1<As1: Copy> = S1;
    = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
    = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/feature-gate-associated_type_bounds.rs:58:14
    |
 LL | const _cdef: impl Tr1<As1: Copy> = S1;
    |              ^^^^^^^^^^^^^^^^^^^
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/feature-gate-associated_type_bounds.rs:64:15
    |
 LL | static _sdef: impl Tr1<As1: Copy> = S1;
    |               ^^^^^^^^^^^^^^^^^^^
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
   --> $DIR/feature-gate-associated_type_bounds.rs:71:12
    |
 LL |     let _: impl Tr1<As1: Copy> = S1;

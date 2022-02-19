@@ -55,6 +55,19 @@ pub fn sanitize<'ll>(cx: &CodegenCx<'ll, '_>, no_sanitize: SanitizerSet, llfn: &
     if enabled.contains(SanitizerSet::HWADDRESS) {
         llvm::Attribute::SanitizeHWAddress.apply_llfn(Function, llfn);
     }
+    if enabled.contains(SanitizerSet::MEMTAG) {
+        // Check to make sure the mte target feature is actually enabled.
+        let sess = cx.tcx.sess;
+        let features = llvm_util::llvm_global_features(sess).join(",");
+        let mte_feature_enabled = features.rfind("+mte");
+        let mte_feature_disabled = features.rfind("-mte");
+
+        if mte_feature_enabled.is_none() || (mte_feature_disabled > mte_feature_enabled) {
+            sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+        }
+
+        llvm::Attribute::SanitizeMemTag.apply_llfn(Function, llfn);
+    }
 }
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.

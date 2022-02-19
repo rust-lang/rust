@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/empty-names.rs:6:7
+   |
+LL | #[cfg(unknown_key = "value")]
+   |       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

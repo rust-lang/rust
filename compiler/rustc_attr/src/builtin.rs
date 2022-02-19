@@ -1,10 +1,13 @@
 //! Parsing and validation of builtin attributes
 
-use rustc_ast::{self as ast, Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast as ast;
+use rustc_ast::node_id::CRATE_NODE_ID;
+use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
+use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
@@ -458,8 +461,30 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                 true
             }
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                let ident = cfg.ident().expect("multi-segment cfg predicate");
-                sess.config.contains(&(ident.name, cfg.value_str()))
+                let name = cfg.ident().expect("multi-segment cfg predicate").name;
+                let value = cfg.value_str();
+                if sess.check_config.names_checked && !sess.check_config.names_valid.contains(&name)
+                {
+                    sess.buffer_lint(
+                        UNEXPECTED_CFGS,
+                        cfg.span,
+                        CRATE_NODE_ID,
+                        "unexpected `cfg` condition name",
+                    );
+                }
+                if let Some(val) = value {
+                    if sess.check_config.values_checked.contains(&name)
+                        && !sess.check_config.values_valid.contains(&(name, val))
+                    {
+                        sess.buffer_lint(
+                            UNEXPECTED_CFGS,
+                            cfg.span,
+                            CRATE_NODE_ID,
+                            "unexpected `cfg` condition value",
+                        );
+                    }
+                }
+                sess.config.contains(&(name, value))
             }
         }
     })

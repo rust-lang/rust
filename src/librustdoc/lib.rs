@@ -596,6 +596,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "collect function call information for functions from the target crate",
             )
         }),
+        unstable("scrape-tests", |o| {
+            o.optflag("", "scrape-tests", "Include test code when scraping examples")
+        }),
         unstable("with-examples", |o| {
             o.optmulti(
                 "",

@@ -57,20 +57,20 @@ fn _rpit_dyn() -> Box<dyn Tr1<As1: Copy>> { Box::new(S1) }
 
 const _cdef: impl Tr1<As1: Copy> = S1;
 //~^ ERROR associated type bounds are unstable
-//~| ERROR `impl Trait` not allowed outside of function and method return types [E0562]
+//~| ERROR `impl Trait` only allowed in function and inherent method return types
 // FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
 // const _cdef_dyn: &dyn Tr1<As1: Copy> = &S1;
 
 static _sdef: impl Tr1<As1: Copy> = S1;
 //~^ ERROR associated type bounds are unstable
-//~| ERROR `impl Trait` not allowed outside of function and method return types [E0562]
+//~| ERROR `impl Trait` only allowed in function and inherent method return types
 // FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
 // static _sdef_dyn: &dyn Tr1<As1: Copy> = &S1;
 
 fn main() {
     let _: impl Tr1<As1: Copy> = S1;
     //~^ ERROR associated type bounds are unstable
-    //~| ERROR `impl Trait` not allowed outside of function and method return types [E0562]
+    //~| ERROR `impl Trait` only allowed in function and inherent method return types
     // FIXME: uncomment when `impl_trait_in_bindings` feature is fixed.
     // let _: &dyn Tr1<As1: Copy> = &S1;
 }

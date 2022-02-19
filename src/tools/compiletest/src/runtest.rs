@@ -1274,6 +1274,16 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
+        if self.props.known_bug {
+            if !expected_errors.is_empty() {
+                self.fatal_proc_rec(
+                    "`known_bug` tests should not have an expected errors",
+                    proc_res,
+                );
+            }
+            return;
+        }
+
         // On Windows, keep all '\' path separators to match the paths reported in the JSON output
         // from the compiler
         let os_file_name = self.testpaths.file.display().to_string();
@@ -1310,6 +1320,7 @@ impl<'test> TestCx<'test> {
                 }
 
                 None => {
+                    // If the test is a known bug, don't require that the error is annotated
                     if self.is_unexpected_compiler_message(actual_error, expect_help, expect_note) {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",

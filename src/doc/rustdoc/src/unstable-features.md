@@ -509,3 +509,6 @@ reverse-dependency like `examples/ex.rs` is given to rustdoc with the target
 crate being documented (`foobar`) and a path to output the calls
 (`output.calls`). Then, the generated calls file can be passed via
 `--with-examples` to the subsequent documentation of `foobar`.
+
+To scrape examples from test code, e.g. functions marked `#[test]`, then
+add the `--scrape-tests` flag.

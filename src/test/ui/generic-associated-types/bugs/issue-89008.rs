@@ -1,5 +1,6 @@
 // check-fail
 // edition:2021
+// known-bug
 
 // This should pass, but seems to run into a TAIT bug.
 
@@ -31,11 +32,11 @@ trait X {
 struct Y;
 
 impl X for Y {
-    type LineStream<'a, Repr> = impl Stream<Item = Repr>; //~ could not find
+    type LineStream<'a, Repr> = impl Stream<Item = Repr>;
 
     type LineStreamFut<'a, Repr> = impl Future<Output = Self::LineStream<'a, Repr>> ;
 
-    fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> { //~ type mismatch
+    fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {
         async {empty()}
     }
 }

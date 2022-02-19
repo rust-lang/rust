@@ -6,7 +6,7 @@ use crate::spec::{Target, TargetOptions};
 pub fn target() -> Target {
     let mut base = super::linux_musl_base::opts();
     base.cpu = "mips64r2".to_string();
-    base.features = "+mips64r2".to_string();
+    base.features = "+mips64r2,+soft-float".to_string();
     base.max_atomic_width = Some(64);
     base.crt_static_default = false;
 

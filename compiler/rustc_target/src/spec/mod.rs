@@ -606,6 +606,7 @@ bitflags::bitflags! {
         const THREAD  = 1 << 3;
         const HWADDRESS = 1 << 4;
         const CFI     = 1 << 5;
+        const MEMTAG  = 1 << 6;
     }
 }
 
@@ -619,6 +620,7 @@ impl SanitizerSet {
             SanitizerSet::CFI => "cfi",
             SanitizerSet::LEAK => "leak",
             SanitizerSet::MEMORY => "memory",
+            SanitizerSet::MEMTAG => "memtag",
             SanitizerSet::THREAD => "thread",
             SanitizerSet::HWADDRESS => "hwaddress",
             _ => return None,
@@ -652,6 +654,7 @@ impl IntoIterator for SanitizerSet {
             SanitizerSet::CFI,
             SanitizerSet::LEAK,
             SanitizerSet::MEMORY,
+            SanitizerSet::MEMTAG,
             SanitizerSet::THREAD,
             SanitizerSet::HWADDRESS,
         ]
@@ -1883,6 +1886,7 @@ impl Target {
                                 Some("cfi") => SanitizerSet::CFI,
                                 Some("leak") => SanitizerSet::LEAK,
                                 Some("memory") => SanitizerSet::MEMORY,
+                                Some("memtag") => SanitizerSet::MEMTAG,
                                 Some("thread") => SanitizerSet::THREAD,
                                 Some("hwaddress") => SanitizerSet::HWADDRESS,
                                 Some(s) => return Err(format!("unknown sanitizer {}", s)),

@@ -2957,6 +2957,43 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `unexpected_cfgs` lint detects unexpected conditional compilation conditions.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --check-cfg 'names()'
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// #[cfg(widnows)]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: unknown condition name used
+    ///  --> lint_example.rs:1:7
+    ///   |
+    /// 1 | #[cfg(widnows)]
+    ///   |       ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(unexpected_cfgs)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is only active when a `--check-cfg='names(...)'` option has been passed
+    /// to the compiler and triggers whenever an unknown condition name or value is used.
+    /// The known condition include names or values passed in `--check-cfg`, `--cfg`, and some
+    /// well-knows names and values built into the compiler.
+    pub UNEXPECTED_CFGS,
+    Warn,
+    "detects unexpected names and values in `#[cfg]` conditions",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3055,6 +3092,7 @@ declare_lint_pass! {
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        UNEXPECTED_CFGS,
     ]
 }
 

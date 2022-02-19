@@ -1,4 +1,5 @@
 // check-fail
+// known-bug
 
 // This should pass, but has a missed normalization due to HRTB.
 
@@ -25,7 +26,6 @@ fn do_something<I: Iterable>(i: I, mut f: impl for<'a> Fn(&mut I::Iterator<'a>))
 fn main() {
     do_something(SomeImplementation(), |_| ());
     do_something(SomeImplementation(), test);
-    //~^ type mismatch
 }
 
 fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}

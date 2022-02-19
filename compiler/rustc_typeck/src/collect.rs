@@ -3009,6 +3009,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI;
                     } else if item.has_name(sym::memory) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY;
+                    } else if item.has_name(sym::memtag) {
+                        codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG;
                     } else if item.has_name(sym::thread) {
                         codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD;
                     } else if item.has_name(sym::hwaddress) {
@@ -3016,7 +3018,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     } else {
                         tcx.sess
                             .struct_span_err(item.span(), "invalid argument for `no_sanitize`")
-                            .note("expected one of: `address`, `hwaddress`, `memory` or `thread`")
+                            .note("expected one of: `address`, `cfi`, `hwaddress`, `memory`, `memtag`, or `thread`")
                             .emit();
                     }
                 }
