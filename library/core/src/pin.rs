@@ -805,7 +805,7 @@ impl<T: ?Sized> Pin<&'static T> {
     ///
     /// This is safe, because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
-    #[stable(feature = "pin_static_ref", since = "1.60.0")]
+    #[stable(feature = "pin_static_ref", since = "1.61.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const fn static_ref(r: &'static T) -> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
@@ -858,7 +858,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
     ///
     /// This is safe, because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
-    #[stable(feature = "pin_static_ref", since = "1.60.0")]
+    #[stable(feature = "pin_static_ref", since = "1.61.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
         // SAFETY: The 'static borrow guarantees the data will not be
