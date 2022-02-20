@@ -139,7 +139,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK: for.body4.lr.ph:                                  ; preds = %for.cond1.preheader
 ; CHECK-NEXT:   %[[a3:.+]] = load i32, i32* %N, align 4, !tbaa !2
 ; CHECK-NEXT:   %[[a4:.+]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %iv
-; CHECK-NEXT:   store i32 %[[a3]], i32* %[[a4]], align 4, !invariant.group !8
+; CHECK-NEXT:   store i32 %[[a3]], i32* %[[a4]], align 4, !tbaa !2, !invariant.group !8
 ; CHECK-NEXT:   %[[a5:.+]] = sext i32 %[[a3]] to i64
 ; CHECK-NEXT:   br label %for.body4
 
@@ -153,7 +153,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[a8:.+]] = mul nuw nsw i64 %iv, %[[smax_unwrap]]
 ; CHECK-NEXT:   %[[a9:.+]] = add nuw nsw i64 %iv1, %[[a8]]
 ; CHECK-NEXT:   %[[a10:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %[[a9]]
-; CHECK-NEXT:   store double %[[a7]], double* %[[a10]], align 8, !invariant.group !9
+; CHECK-NEXT:   store double %[[a7]], double* %[[a10]], align 8, !tbaa !6, !invariant.group !9
 ; CHECK-NEXT:   %cmp2 = icmp slt i64 %iv.next2, %[[a5]]
 ; CHECK-NEXT:   br i1 %cmp2, label %for.body4, label %for.cond.cleanup3
 
@@ -198,7 +198,7 @@ attributes #9 = { noreturn nounwind }
 ; CHECK-NEXT:   %[[a16:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[smax_unwrap:.+]]
 ; CHECK-NEXT:   %[[a17:.+]] = add nuw nsw i64 %"iv1'ac.1", %[[a16]]
 ; CHECK-NEXT:   %[[a18:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %[[a17]]
-; CHECK-NEXT:   %[[a19:.+]] = load double, double* %[[a18]], align 8, !invariant.group !9
+; CHECK-NEXT:   %[[a19:.+]] = load double, double* %[[a18]], align 8, !tbaa !6, !invariant.group !9
 ; CHECK-NEXT:   %m0diffe = fmul fast double %[[a14]], %[[a19]]
 ; CHECK-NEXT:   %[[a20:.+]] = fadd fast double %"'de.1", %m0diffe
 ; CHECK-NEXT:   %[[a21:.+]] = fadd fast double %[[a20]], %m0diffe
@@ -212,7 +212,7 @@ attributes #9 = { noreturn nounwind }
 
 ; CHECK: invertfor.cond.cleanup3.loopexit:                 ; preds = %invertfor.cond.cleanup3
 ; CHECK-NEXT:   %[[a25:.+]] = getelementptr inbounds i32, i32* %[[malloccache12]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a26:.+]] = load i32, i32* %[[a25]], align 4, !invariant.group !8
+; CHECK-NEXT:   %[[a26:.+]] = load i32, i32* %[[a25]], align 4, !tbaa !2, !invariant.group !8
 ; CHECK-NEXT:   %[[_unwrap17:.+]] = sext i32 %[[a26]] to i64
 ; TODO-CHECK-NEXT:   %[[_unwrap14:.+]] = icmp sgt i64 %[[_unwrap17]], 1
 ; TODO-CHECK-NEXT:   %[[smax_unwrap19:.+]] = select i1 %[[_unwrap14]], i64 %[[_unwrap17]], i64 1

@@ -152,7 +152,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   store double %call, double* %arrayidx, align 8, !tbaa !9
 ; CHECK-NEXT:   %[[trueiv:.+]] = add nuw nsw i64 %iv, %[[lb]]
 ; CHECK-NEXT:   %[[loc:.+]] = getelementptr inbounds double, double* %0, i64 %[[trueiv]]
-; CHECK-NEXT:   store double %[[ld]], double* %[[loc]], align 8, !invariant.group !
+; CHECK-NEXT:   store double %[[ld]], double* %[[loc]], align 8, !tbaa !9, !invariant.group !
 ; CHECK-NEXT:   %add11 = add nuw i64 %[[true1iv]], 1
 ; CHECK-NEXT:   %add = add nuw i64 %cond, 1
 ; CHECK-NEXT:   %cmp7 = icmp ult i64 %add11, %add
@@ -209,7 +209,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %[[i9:.+]] = add nuw nsw i64 %"iv'ac.0", %_unwrap2
 ; CHECK-NEXT:   %[[i10:.+]] = getelementptr inbounds double, double* %truetape, i64 %[[i9]]
-; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !invariant.group !
+; CHECK-NEXT:   %[[i11:.+]] = load double, double* %[[i10]], align 8, !tbaa !9, !invariant.group !
 ; CHECK-NEXT:   %[[i12:.+]] = call fast double @llvm.sqrt.f64(double %[[i11]])
 ; CHECK-NEXT:   %[[i13:.+]] = fmul fast double 5.000000e-01, %[[i8]]
 ; CHECK-NEXT:   %[[i14:.+]] = fdiv fast double %[[i13]], %[[i12]]

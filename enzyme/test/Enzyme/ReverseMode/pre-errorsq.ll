@@ -108,7 +108,7 @@ exit:                                             ; preds = %end2
 ; CHECK-NEXT:   %[[iv4:.+]] = mul nuw nsw i64 %iv, %[[a1]]
 ; CHECK-NEXT:   %[[iv10:.+]] = add nuw nsw i64 %iv1, %[[iv4]]
 ; CHECK-NEXT:   %[[gep:.+]] = getelementptr inbounds double, double* %loaded_malloccache, i64 %[[iv10]]
-; CHECK-NEXT:   store double %loaded, double* %[[gep]], align 8, !invariant.group !10
+; CHECK-NEXT:   store double %loaded, double* %[[gep]], align 8, !tbaa !2, !invariant.group !10
 ; CHECK-NEXT:   %mul = fmul double %loaded, %loaded
 ; CHECK-NEXT:   %add = fadd double %res, %mul
 ; CHECK-NEXT:   %cond2 = icmp eq i64 %nextj, %rows
@@ -154,7 +154,7 @@ exit:                                             ; preds = %end2
 ; CHECK-DAG:   %[[mul:.+]] = mul nuw nsw i64 %"iv'ac.0", %[[_unwrap3]]
 ; CHECK-DAG:   %[[idx:.+]] = add nuw nsw i64 %"iv1'ac.0", %[[mul]]
 ; CHECK-NEXT:   %[[gepidx:.+]] = getelementptr inbounds double, double* %[[ev]], i64 %[[idx]]
-; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gepidx]], align 8, !invariant.group ![[fda:.+]]
+; CHECK-NEXT:   %[[ld:.+]] = load double, double* %[[gepidx]], align 8, !tbaa !2, !invariant.group ![[fda:.+]]
 ; CHECK-NEXT:   %m0diffeloaded = fmul fast double %[[dadd:.+]], %[[ld]]
 ; CHECK-NEXT:   %m1diffeloaded = fmul fast double %[[dadd]], %[[ld]]
 ; CHECK-NEXT:   %[[diffe:.+]] = fadd fast double %m0diffeloaded, %m1diffeloaded

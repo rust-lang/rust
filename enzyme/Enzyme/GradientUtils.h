@@ -99,6 +99,7 @@ extern llvm::cl::opt<bool> EnzymeInactiveDynamic;
 extern llvm::cl::opt<bool> EnzymeFreeInternalAllocations;
 extern llvm::cl::opt<bool> EnzymeRematerialize;
 }
+extern unsigned int MD_ToCopy[5];
 
 struct InvertedPointerConfig : ValueMapConfig<const llvm::Value *> {
   typedef GradientUtils *ExtraData;
@@ -1444,7 +1445,8 @@ public:
                  bool permitCache = true) override final;
 
   void ensureLookupCached(Instruction *inst, bool shouldFree = true,
-                          BasicBlock *scope = nullptr) {
+                          BasicBlock *scope = nullptr,
+                          llvm::MDNode *TBAA = nullptr) {
     assert(inst);
     if (scopeMap.find(inst) != scopeMap.end())
       return;
@@ -1463,7 +1465,7 @@ public:
     insert_or_assign(
         scopeMap, Val,
         std::pair<AssertingVH<AllocaInst>, LimitContext>(cache, lctx));
-    storeInstructionInCache(lctx, inst, cache);
+    storeInstructionInCache(lctx, inst, cache, TBAA);
   }
 
   std::map<Instruction *, ValueMap<BasicBlock *, WeakTrackingVH>> lcssaFixes;

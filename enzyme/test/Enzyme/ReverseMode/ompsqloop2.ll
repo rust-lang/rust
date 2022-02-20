@@ -138,7 +138,7 @@ declare !callback !13 void @__kmpc_fork_call(%struct.ident_t*, i32, void (i32*, 
 ; CHECK-NEXT:  br i1 %[[cmp]], label %invertomp.inner.for.body_phirc, label %invertomp.inner.for.body_phimerge
 
 ; CHECK: invertomp.inner.for.body_phirc: 
-; CHECK-NEXT:  %"i9'ipl_unwrap" = load double*, double** %"e_new'", align 8, !invariant.group !
+; CHECK-NEXT:  %"i9'ipl_unwrap" = load double*, double** %"e_new'", align 8, !tbaa !{{[0-9]+}}, !invariant.group !
 ; CHECK-NEXT:  br label %invertomp.inner.for.body_phimerge
 
 ; CHECK: invertomp.inner.for.body_phimerge:

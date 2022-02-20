@@ -363,12 +363,14 @@ public:
   /// Given an allocation defined at a particular ctx, store the value val
   /// in the cache at the location defined in the given builder
   void storeInstructionInCache(LimitContext ctx, llvm::IRBuilder<> &BuilderM,
-                               llvm::Value *val, llvm::AllocaInst *cache);
+                               llvm::Value *val, llvm::AllocaInst *cache,
+                               llvm::MDNode *TBAA = nullptr);
 
   /// Given an allocation defined at a particular ctx, store the instruction
   /// in the cache right after the instruction is executed
   void storeInstructionInCache(LimitContext ctx, llvm::Instruction *inst,
-                               llvm::AllocaInst *cache);
+                               llvm::AllocaInst *cache,
+                               llvm::MDNode *TBAA = nullptr);
 
   /// Given an allocation specified by the LimitContext ctx and cache, compute a
   /// pointer that can hold the underlying type being cached. This value should

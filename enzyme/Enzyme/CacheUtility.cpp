@@ -93,8 +93,11 @@ void CacheUtility::replaceAWithB(Value *A, Value *B, bool storeInCache) {
         scopeInstructions.erase(stfound);
         for (auto st : tmpInstructions)
           cast<StoreInst>(&*st)->eraseFromParent();
+        MDNode *TBAA = nullptr;
+        if (auto I = dyn_cast<Instruction>(A))
+          TBAA = I->getMetadata(LLVMContext::MD_tbaa);
         storeInstructionInCache(found->second.second, cast<Instruction>(B),
-                                cache);
+                                cache, TBAA);
       }
     }
 
@@ -1347,7 +1350,7 @@ CacheUtility::SubLimitType CacheUtility::getSubLimits(bool inForwardPass,
 /// in the cache at the location defined in the given builder
 void CacheUtility::storeInstructionInCache(LimitContext ctx,
                                            IRBuilder<> &BuilderM, Value *val,
-                                           AllocaInst *cache) {
+                                           AllocaInst *cache, MDNode *TBAA) {
   assert(BuilderM.GetInsertBlock()->getParent() == newFunc);
   if (auto inst = dyn_cast<Instruction>(val))
     assert(inst->getParent()->getParent() == newFunc);
@@ -1447,6 +1450,7 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
                                .getTypeAllocSizeInBits(val->getType()) /
                            8);
   unsigned align = getCacheAlignment((unsigned)byteSizeOfType->getZExtValue());
+  storeinst->setMetadata(LLVMContext::MD_tbaa, TBAA);
 #if LLVM_VERSION_MAJOR >= 10
   storeinst->setAlignment(Align(align));
 #else
@@ -1459,7 +1463,8 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
 /// in the cache right after the instruction is executed
 void CacheUtility::storeInstructionInCache(LimitContext ctx,
                                            llvm::Instruction *inst,
-                                           llvm::AllocaInst *cache) {
+                                           llvm::AllocaInst *cache,
+                                           llvm::MDNode *TBAA) {
   assert(ctx.Block);
   assert(inst);
   assert(cache);
@@ -1477,7 +1482,7 @@ void CacheUtility::storeInstructionInCache(LimitContext ctx,
     v.SetInsertPoint(putafter);
   }
   v.setFastMathFlags(getFast());
-  storeInstructionInCache(ctx, v, inst, cache);
+  storeInstructionInCache(ctx, v, inst, cache, TBAA);
 }
 
 /// Given an allocation specified by the LimitContext ctx and cache, compute a

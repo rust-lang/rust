@@ -166,7 +166,7 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[lstructiv:.+]] = load %struct.n*, %struct.n** %[[toload]], align 8, !invariant.group
 ; //NOTE this should be LICM'd outside this loop (but LICM doesn't handle invariant group at the momeny :'( )
 ; CHECK-NEXT:   %"values'ipg_unwrap" = getelementptr inbounds %struct.n, %struct.n* %[[lstructiv]], i64 0, i32 0
-; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !invariant.group
+; CHECK-NEXT:   %[[loadediv:.+]] = load double*, double** %"values'ipg_unwrap", align 8, !tbaa !2, !invariant.group
 ; CHECK-NEXT:   %[[arrayidxipg:.+]] = getelementptr inbounds double, double* %[[loadediv]], i64 %[[mantivar]]
 ; CHECK-NEXT:   %[[arrayload:.+]] = load double, double* %[[arrayidxipg]]
 ; CHECK-NEXT:   %[[arraytostore:.+]] = fadd fast double %[[arrayload]], %differeturn

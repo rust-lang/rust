@@ -148,7 +148,7 @@ attributes #4 = { "enzyme_inactive" }
 ; CHECK: invertfor.inc30:                                  ; preds = %for.inc30, %incinvertfor.cond8.preheader
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %7, %incinvertfor.cond8.preheader ], [ 12, %for.inc30 ]
 ; CHECK-NEXT:   %[[unwrap16:.+]] = getelementptr inbounds i64, i64* %[[i0]], i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !invariant.group !
+; CHECK-NEXT:   %[[unwrap17:.+]] = load i64, i64* %[[unwrap16]], align 8, !tbaa !2, !invariant.group !
 ; CHECK-NEXT:   %[[unwrap18]] = add i64 %[[unwrap17]], -1
 ; CHECK-NEXT:   br label %invertfor.body15
 ; CHECK-NEXT: }

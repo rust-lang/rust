@@ -416,7 +416,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %arrayidx.i.i.i = getelementptr inbounds double, double* %a3, i64 %mul.i.i.i
 ; CHECK-NEXT:   %a6 = load double, double* %arrayidx.i.i.i, align 8, !tbaa !2
 ; CHECK-NEXT:   %[[a6gep:.+]] = getelementptr inbounds double, double* %a6_malloccache, i64 %iv
-; CHECK-NEXT:   store double %a6, double* %[[a6gep]], align 8, !invariant.group ![[iga6:[0-9]+]]
+; CHECK-NEXT:   store double %a6, double* %[[a6gep]], align 8, !tbaa !2, !invariant.group ![[iga6:[0-9]+]]
 ; CHECK-NEXT:   %mul.i.i8 = fmul double %a6, %a6
 ; CHECK-NEXT:   %add.i = fadd double %res.0, %mul.i.i8
 ; CHECK-NEXT:   %cmp = icmp ne i64 %iv.next, 4
@@ -566,7 +566,7 @@ attributes #22 = { readnone speculatable }
 ; CHECK-NEXT:   %"iv'ac.0" = phi i64 [ %[[inciv:.+]], %incinvertfor.body ], [ 3, %for.body ]
 ; CHECK-NEXT:   %[[ge1:.+]] = getelementptr inbounds double, double* %tapeArg, i64 %"iv'ac.0"
 ; TODO make this use iga6
-; CHECK-NEXT:   %[[loc:.+]] = load double, double* %[[ge1]], align 8, !invariant.group ![[iga6_other:[0-9]+]]
+; CHECK-NEXT:   %[[loc:.+]] = load double, double* %[[ge1]], align 8, !tbaa !2, !invariant.group ![[iga6_other:[0-9]+]]
 ; CHECK-NEXT:   %m0diffea6 = fmul fast double %differeturn, %[[loc]]
 ; CHECK-NEXT:   %[[adx:.+]] = fadd fast double %m0diffea6, %m0diffea6
 ; CHECK-NEXT:   %mul.i.i.i_unwrap = mul nsw i64 4, %"iv'ac.0"

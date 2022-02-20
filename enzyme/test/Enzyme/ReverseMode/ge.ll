@@ -89,7 +89,7 @@ attributes #3 = { nounwind }
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 %idxprom
 ; CHECK-NEXT:   %[[a4:.+]] = load double, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   %[[a5:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %iv
-; CHECK-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !invariant.group !6
+; CHECK-NEXT:   store double %[[a4]], double* %[[a5]], align 8, !tbaa !2, !invariant.group !6
 ; CHECK-NEXT:   %inc = add i32 %[[a3]], 1
 ; CHECK-NEXT:   %cmp = icmp ugt i32 %inc, %N
 ; CHECK-NEXT:   br i1 %cmp, label %for.cond.cleanup, label %for.body
@@ -102,7 +102,7 @@ attributes #3 = { nounwind }
 ; CHECK:   %"add'de.0" = phi double [ %differeturn, %for.cond.cleanup ], [ %"add'de.0", %incinvertfor.body ]
 ; CHECK:   %"iv'ac.0" = phi i64 [ %[[a1]], %for.cond.cleanup ], [ %[[a12:.+]], %incinvertfor.body ]
 ; CHECK-NEXT:   %[[a6:.+]] = getelementptr inbounds double, double* %_malloccache, i64 %"iv'ac.0"
-; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, !invariant.group !6
+; CHECK-NEXT:   %[[a7:.+]] = load double, double* %[[a6]], align 8, !tbaa !2, !invariant.group !6
 ; CHECK-NEXT:   %m0diffe = fmul fast double %"add'de.0", %[[a7]]
 ; CHECK-NEXT:   %[[a8:.+]] = fadd fast double %m0diffe, %m0diffe
 ; CHECK-NEXT:   %[[unwrap:.+]] = trunc i64 %"iv'ac.0" to i32

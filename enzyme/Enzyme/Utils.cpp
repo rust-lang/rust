@@ -185,17 +185,16 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
   return F;
 }
 
-Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, unsigned dstalign,
-                                   unsigned srcalign) {
+Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, Type *IT,
+                                   unsigned dstalign, unsigned srcalign) {
   Type *elementType = T->getPointerElementType();
   assert(elementType->isFloatingPointTy());
-  std::string name = "__enzyme_memcpy_" + tofltstr(elementType) + "da" +
-                     std::to_string(dstalign) + "sa" +
+  std::string name = "__enzyme_memcpy_" + tofltstr(elementType) + "_" +
+                     std::to_string(cast<IntegerType>(IT)->getBitWidth()) +
+                     "_da" + std::to_string(dstalign) + "sa" +
                      std::to_string(srcalign) + "stride";
-  FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()),
-                                       {T, T, Type::getInt32Ty(M.getContext()),
-                                        Type::getInt32Ty(M.getContext())},
-                                       false);
+  FunctionType *FT =
+      FunctionType::get(Type::getVoidTy(M.getContext()), {T, T, IT, IT}, false);
 
 #if LLVM_VERSION_MAJOR >= 9
   Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());

@@ -104,6 +104,10 @@ llvm::cl::opt<bool>
 extern void (*CustomErrorHandler)(const char *);
 }
 
+unsigned int MD_ToCopy[5] = {LLVMContext::MD_dbg, LLVMContext::MD_tbaa,
+                             LLVMContext::MD_tbaa_struct, LLVMContext::MD_range,
+                             LLVMContext::MD_nonnull};
+
 Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                               const ValueToValueMapTy &available,
                               UnwrapMode unwrapMode, BasicBlock *scope,
@@ -686,6 +690,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
 #else
     auto toreturn = BuilderM.CreateLoad(pidx, load->getName() + "_unwrap");
 #endif
+    toreturn->copyMetadata(*load, MD_ToCopy);
     toreturn->copyIRFlags(load);
     unwrappedLoads[toreturn] = load;
     if (toreturn->getParent()->getParent() != load->getParent()->getParent())
@@ -2217,8 +2222,11 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       return malloc;
     }
 
-    ensureLookupCached(cast<Instruction>(malloc),
-                       /*shouldFree=*/reverseBlocks.size() > 0);
+    ensureLookupCached(
+        cast<Instruction>(malloc),
+        /*shouldFree=*/reverseBlocks.size() > 0,
+        /*scope*/ nullptr,
+        cast<Instruction>(malloc)->getMetadata(LLVMContext::MD_tbaa));
     auto found2 = scopeMap.find(malloc);
     assert(found2 != scopeMap.end());
     assert(found2->second.first);
@@ -2427,6 +2435,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                               available),
                       lookupM(getNewFromOriginal(SI->getPointerOperand()), NB,
                               available));
+                  ts->copyMetadata(*SI, MD_ToCopy);
 #if LLVM_VERSION_MAJOR >= 10
                   ts->setAlignment(SI->getAlign());
 #else
@@ -2516,6 +2525,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                   auto Defs = getInvertedBundles(CI, BundleTypes, NB,
                                                  /*lookup*/ true, available);
                   auto cal = NB.CreateCall(CI->getCalledFunction(), args, Defs);
+                  cal->copyMetadata(*CI, MD_ToCopy);
                   cal->setName("remat_" + CI->getName());
                   cal->setAttributes(CI->getAttributes());
                   cal->setCallingConv(CI->getCallingConv());
@@ -2622,6 +2632,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
                                                    /*lookup*/ true, available);
                     auto cal =
                         NB.CreateCall(MS->getCalledFunction(), args, Defs);
+                    cal->copyMetadata(*MS, MD_ToCopy);
                     cal->setAttributes(MS->getAttributes());
                     cal->setCallingConv(MS->getCallingConv());
                     cal->setTailCallKind(MS->getTailCallKind());
@@ -4235,6 +4246,7 @@ Value *GradientUtils::invertPointerM(Value *const oval, IRBuilder<> &BuilderM,
 #else
       auto li = bb.CreateLoad(ip, arg->getName() + "'ipl");
 #endif
+      li->copyMetadata(*arg, MD_ToCopy);
       li->copyIRFlags(arg);
 #if LLVM_VERSION_MAJOR >= 10
       li->setAlignment(arg->getAlign());
@@ -5591,7 +5603,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
     }
   }
 
-  ensureLookupCached(inst, /*shouldFree*/ true, scope);
+  ensureLookupCached(inst, /*shouldFree*/ true, scope,
+                     inst->getMetadata(LLVMContext::MD_tbaa));
   bool isi1 = inst->getType()->isIntegerTy() &&
               cast<IntegerType>(inst->getType())->getBitWidth() == 1;
   assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
@@ -5599,6 +5612,9 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   Value *result =
       lookupValueFromCache(/*isForwardPass*/ false, BuilderM, found->second,
                            found->first, isi1, available);
+  if (auto LI2 = dyn_cast<LoadInst>(result))
+    if (auto LI1 = dyn_cast<LoadInst>(inst))
+      LI2->copyMetadata(*LI1, MD_ToCopy);
   if (result->getType() != inst->getType()) {
     llvm::errs() << "newFunc: " << *newFunc << "\n";
     llvm::errs() << "result: " << *result << "\n";

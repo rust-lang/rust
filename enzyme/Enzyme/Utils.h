@@ -573,7 +573,8 @@ getOrInsertDifferentialFloatMemcpy(llvm::Module &M, llvm::Type *T,
 
 /// Create function for type that performs memcpy with a stride
 llvm::Function *getOrInsertMemcpyStrided(llvm::Module &M, llvm::PointerType *T,
-                                         unsigned dstalign, unsigned srcalign);
+                                         llvm::Type *IT, unsigned dstalign,
+                                         unsigned srcalign);
 
 /// Create function for type that performs the derivative memmove on floating
 /// point memory

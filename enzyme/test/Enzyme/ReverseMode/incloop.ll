@@ -171,7 +171,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %7 = load double, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   store double 0.000000e+00, double* %arrayidx, align 8, !tbaa !2
 ; CHECK-NEXT:   %8 = getelementptr inbounds double, double* %_malloccache, i64 %iv
-; CHECK-NEXT:   store double %7, double* %8, align 8, !invariant.group ![[igroup:[0-9]+]]
+; CHECK-NEXT:   store double %7, double* %8, align 8, !tbaa !2, !invariant.group ![[igroup:[0-9]+]]
 ; CHECK-NEXT:   %indvars.iv.next = add nuw nsw i64 %6, %0
 ; CHECK-NEXT:   %9 = trunc i64 %indvars.iv.next to i32
 ; CHECK-NEXT:   %cmp1 = icmp sgt i32 %mul, %9
@@ -208,7 +208,7 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %"arrayidx'ipg_unwrap" = getelementptr inbounds double, double* %"a'", i64 %_unwrap6
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %12 = getelementptr inbounds double, double* %_cache.0, i64 %"iv'ac.0"
-; CHECK-NEXT:   %13 = load double, double* %12, align 8, !invariant.group ![[igroup]]
+; CHECK-NEXT:   %13 = load double, double* %12, align 8, !tbaa !2, !invariant.group ![[igroup]]
 ; CHECK-NEXT:   %m0diffe = fmul fast double %differeturn, %13
 ; CHECK-NEXT:   %m1diffe = fmul fast double %differeturn, %13
 ; CHECK-NEXT:   %14 = fadd fast double %m0diffe, %m1diffe

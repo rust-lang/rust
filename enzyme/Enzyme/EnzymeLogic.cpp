@@ -3177,7 +3177,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     llvm::raw_string_ostream ss(s);
     ss << "No reverse pass found for " + key.todiff->getName() << "\n";
     ss << *key.todiff << "\n";
-    CustomErrorHandler(ss.str().c_str());
     if (CustomErrorHandler) {
       CustomErrorHandler(ss.str().c_str());
     } else {
