@@ -1,0 +1,65 @@
+- // MIR for `non_copy_id` before SimplifyArmIdentity
++ // MIR for `non_copy_id` after SimplifyArmIdentity
+  
+  fn non_copy_id(_1: NonCopy) -> NonCopy {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_arm.rs:63:16: 63:17
+      let mut _0: NonCopy;                 // return place in scope 0 at $DIR/simplify_arm.rs:63:31: 63:38
+      let mut _2: isize;                   // in scope 0 at $DIR/simplify_arm.rs:65:9: 65:22
+-     let _3: std::string::String;         // in scope 0 at $DIR/simplify_arm.rs:65:20: 65:21
+-     let mut _4: std::string::String;     // in scope 0 at $DIR/simplify_arm.rs:65:37: 65:38
+-     let _5: std::vec::Vec<u32>;          // in scope 0 at $DIR/simplify_arm.rs:66:20: 66:21
+-     let mut _6: std::vec::Vec<u32>;      // in scope 0 at $DIR/simplify_arm.rs:66:37: 66:38
+-     let mut _7: bool;                    // in scope 0 at $DIR/simplify_arm.rs:68:1: 68:2
+-     let mut _8: bool;                    // in scope 0 at $DIR/simplify_arm.rs:68:1: 68:2
+-     let mut _9: isize;                   // in scope 0 at $DIR/simplify_arm.rs:68:1: 68:2
+-     let mut _10: isize;                  // in scope 0 at $DIR/simplify_arm.rs:68:1: 68:2
+      scope 1 {
+-         debug a => _3;                   // in scope 1 at $DIR/simplify_arm.rs:65:20: 65:21
++         debug a => ((_0 as A).0: std::string::String); // in scope 1 at $DIR/simplify_arm.rs:65:20: 65:21
+      }
+      scope 2 {
+-         debug b => _5;                   // in scope 2 at $DIR/simplify_arm.rs:66:20: 66:21
++         debug b => ((_0 as B).0: std::vec::Vec<u32>); // in scope 2 at $DIR/simplify_arm.rs:66:20: 66:21
+      }
+  
+      bb0: {
+-         _7 = const false;                // scope 0 at $DIR/simplify_arm.rs:64:11: 64:12
+-         _8 = const false;                // scope 0 at $DIR/simplify_arm.rs:64:11: 64:12
+-         _7 = const true;                 // scope 0 at $DIR/simplify_arm.rs:64:11: 64:12
+-         _8 = const true;                 // scope 0 at $DIR/simplify_arm.rs:64:11: 64:12
+          _2 = discriminant(_1);           // scope 0 at $DIR/simplify_arm.rs:64:11: 64:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_arm.rs:64:5: 64:12
+      }
+  
+      bb1: {
+-         StorageLive(_5);                 // scope 0 at $DIR/simplify_arm.rs:66:20: 66:21
+-         _5 = move ((_1 as B).0: std::vec::Vec<u32>); // scope 0 at $DIR/simplify_arm.rs:66:20: 66:21
+-         StorageLive(_6);                 // scope 2 at $DIR/simplify_arm.rs:66:37: 66:38
+-         _6 = move _5;                    // scope 2 at $DIR/simplify_arm.rs:66:37: 66:38
+-         ((_0 as B).0: std::vec::Vec<u32>) = move _6; // scope 2 at $DIR/simplify_arm.rs:66:26: 66:39
+-         discriminant(_0) = 1;            // scope 2 at $DIR/simplify_arm.rs:66:26: 66:39
+-         StorageDead(_6);                 // scope 2 at $DIR/simplify_arm.rs:66:38: 66:39
+-         StorageDead(_5);                 // scope 0 at $DIR/simplify_arm.rs:66:38: 66:39
++         _0 = move _1;                    // scope 2 at $DIR/simplify_arm.rs:66:26: 66:39
+          goto -> bb3;                     // scope 0 at $DIR/simplify_arm.rs:66:38: 66:39
+      }
+  
+      bb2: {
+-         StorageLive(_3);                 // scope 0 at $DIR/simplify_arm.rs:65:20: 65:21
+-         _3 = move ((_1 as A).0: std::string::String); // scope 0 at $DIR/simplify_arm.rs:65:20: 65:21
+-         StorageLive(_4);                 // scope 1 at $DIR/simplify_arm.rs:65:37: 65:38
+-         _4 = move _3;                    // scope 1 at $DIR/simplify_arm.rs:65:37: 65:38
+-         ((_0 as A).0: std::string::String) = move _4; // scope 1 at $DIR/simplify_arm.rs:65:26: 65:39
+-         discriminant(_0) = 0;            // scope 1 at $DIR/simplify_arm.rs:65:26: 65:39
+-         StorageDead(_4);                 // scope 1 at $DIR/simplify_arm.rs:65:38: 65:39
+-         StorageDead(_3);                 // scope 0 at $DIR/simplify_arm.rs:65:38: 65:39
++         _0 = move _1;                    // scope 1 at $DIR/simplify_arm.rs:65:26: 65:39
+          goto -> bb3;                     // scope 0 at $DIR/simplify_arm.rs:65:38: 65:39
+      }
+  
+      bb3: {
+-         _9 = discriminant(_1);           // scope 0 at $DIR/simplify_arm.rs:68:1: 68:2
+          return;                          // scope 0 at $DIR/simplify_arm.rs:68:2: 68:2
+      }
+  }
+  

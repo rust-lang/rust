@@ -1,0 +1,42 @@
+- // MIR for `partial_copy` before SimplifyArmIdentity
++ // MIR for `partial_copy` after SimplifyArmIdentity
+  
+  fn partial_copy(_1: MultiField) -> MultiField {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_arm_correctness.rs:46:17: 46:18
+      let mut _0: MultiField;              // return place in scope 0 at $DIR/simplify_arm_correctness.rs:46:35: 46:45
+      let mut _2: isize;                   // in scope 0 at $DIR/simplify_arm_correctness.rs:48:9: 48:29
+      let _3: u32;                         // in scope 0 at $DIR/simplify_arm_correctness.rs:48:23: 48:24
+      let _4: u32;                         // in scope 0 at $DIR/simplify_arm_correctness.rs:48:26: 48:28
+      let mut _5: u32;                     // in scope 0 at $DIR/simplify_arm_correctness.rs:48:47: 48:48
+      scope 1 {
+          debug a => _3;                   // in scope 1 at $DIR/simplify_arm_correctness.rs:48:23: 48:24
+          debug _b => _4;                  // in scope 1 at $DIR/simplify_arm_correctness.rs:48:26: 48:28
+      }
+  
+      bb0: {
+          _2 = discriminant(_1);           // scope 0 at $DIR/simplify_arm_correctness.rs:47:11: 47:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_arm_correctness.rs:47:5: 47:12
+      }
+  
+      bb1: {
+          discriminant(_0) = 1;            // scope 0 at $DIR/simplify_arm_correctness.rs:49:26: 49:39
+          return;                          // scope 0 at $DIR/simplify_arm_correctness.rs:49:26: 49:39
+      }
+  
+      bb2: {
+          StorageLive(_3);                 // scope 0 at $DIR/simplify_arm_correctness.rs:48:23: 48:24
+          _3 = ((_1 as A).0: u32);         // scope 0 at $DIR/simplify_arm_correctness.rs:48:23: 48:24
+          StorageLive(_4);                 // scope 0 at $DIR/simplify_arm_correctness.rs:48:26: 48:28
+          _4 = ((_1 as A).1: u32);         // scope 0 at $DIR/simplify_arm_correctness.rs:48:26: 48:28
+          StorageLive(_5);                 // scope 1 at $DIR/simplify_arm_correctness.rs:48:47: 48:48
+          _5 = _3;                         // scope 1 at $DIR/simplify_arm_correctness.rs:48:47: 48:48
+          ((_0 as A).0: u32) = move _5;    // scope 1 at $DIR/simplify_arm_correctness.rs:48:33: 48:52
+          ((_0 as A).1: u32) = const 5_u32; // scope 1 at $DIR/simplify_arm_correctness.rs:48:33: 48:52
+          discriminant(_0) = 0;            // scope 1 at $DIR/simplify_arm_correctness.rs:48:33: 48:52
+          StorageDead(_5);                 // scope 1 at $DIR/simplify_arm_correctness.rs:48:51: 48:52
+          StorageDead(_4);                 // scope 0 at $DIR/simplify_arm_correctness.rs:48:51: 48:52
+          StorageDead(_3);                 // scope 0 at $DIR/simplify_arm_correctness.rs:48:51: 48:52
+          return;                          // scope 0 at $DIR/simplify_arm_correctness.rs:48:51: 48:52
+      }
+  }
+  

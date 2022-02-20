@@ -1,0 +1,36 @@
+- // MIR for `mixed_copy_a_id` before SimplifyArmIdentity
++ // MIR for `mixed_copy_a_id` after SimplifyArmIdentity
+  
+  fn mixed_copy_a_id(_1: MixedCopyA) -> MixedCopyA {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_arm_correctness.rs:12:20: 12:21
+      let mut _0: MixedCopyA;              // return place in scope 0 at $DIR/simplify_arm_correctness.rs:12:38: 12:48
+      let mut _2: isize;                   // in scope 0 at $DIR/simplify_arm_correctness.rs:14:9: 14:25
+      let _3: u32;                         // in scope 0 at $DIR/simplify_arm_correctness.rs:14:23: 14:24
+      let mut _4: u32;                     // in scope 0 at $DIR/simplify_arm_correctness.rs:14:43: 14:44
+      scope 1 {
+          debug a => _3;                   // in scope 1 at $DIR/simplify_arm_correctness.rs:14:23: 14:24
+      }
+  
+      bb0: {
+          _2 = discriminant(_1);           // scope 0 at $DIR/simplify_arm_correctness.rs:13:11: 13:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_arm_correctness.rs:13:5: 13:12
+      }
+  
+      bb1: {
+          discriminant(_0) = 1;            // scope 0 at $DIR/simplify_arm_correctness.rs:15:26: 15:39
+          return;                          // scope 0 at $DIR/simplify_arm_correctness.rs:15:26: 15:39
+      }
+  
+      bb2: {
+          StorageLive(_3);                 // scope 0 at $DIR/simplify_arm_correctness.rs:14:23: 14:24
+          _3 = ((_1 as A).0: u32);         // scope 0 at $DIR/simplify_arm_correctness.rs:14:23: 14:24
+          StorageLive(_4);                 // scope 1 at $DIR/simplify_arm_correctness.rs:14:43: 14:44
+          _4 = _3;                         // scope 1 at $DIR/simplify_arm_correctness.rs:14:43: 14:44
+          ((_0 as A).0: u32) = move _4;    // scope 1 at $DIR/simplify_arm_correctness.rs:14:29: 14:45
+          discriminant(_0) = 0;            // scope 1 at $DIR/simplify_arm_correctness.rs:14:29: 14:45
+          StorageDead(_4);                 // scope 1 at $DIR/simplify_arm_correctness.rs:14:44: 14:45
+          StorageDead(_3);                 // scope 0 at $DIR/simplify_arm_correctness.rs:14:44: 14:45
+          return;                          // scope 0 at $DIR/simplify_arm_correctness.rs:14:44: 14:45
+      }
+  }
+  

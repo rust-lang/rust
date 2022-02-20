@@ -1,0 +1,85 @@
+- // MIR for `multi_field_id` before SimplifyArmIdentity
++ // MIR for `multi_field_id` after SimplifyArmIdentity
+  
+  fn multi_field_id(_1: MultiField) -> MultiField {
+      debug x => _1;                       // in scope 0 at $DIR/simplify_arm.rs:50:19: 50:20
+      let mut _0: MultiField;              // return place in scope 0 at $DIR/simplify_arm.rs:50:37: 50:47
+      let mut _2: isize;                   // in scope 0 at $DIR/simplify_arm.rs:52:9: 52:28
+-     let _3: u32;                         // in scope 0 at $DIR/simplify_arm.rs:52:23: 52:24
+-     let _4: u32;                         // in scope 0 at $DIR/simplify_arm.rs:52:26: 52:27
+-     let mut _5: u32;                     // in scope 0 at $DIR/simplify_arm.rs:52:46: 52:47
+-     let mut _6: u32;                     // in scope 0 at $DIR/simplify_arm.rs:52:49: 52:50
+-     let _7: u32;                         // in scope 0 at $DIR/simplify_arm.rs:53:23: 53:24
+-     let _8: u32;                         // in scope 0 at $DIR/simplify_arm.rs:53:26: 53:27
+-     let _9: u32;                         // in scope 0 at $DIR/simplify_arm.rs:53:29: 53:30
+-     let mut _10: u32;                    // in scope 0 at $DIR/simplify_arm.rs:53:49: 53:50
+-     let mut _11: u32;                    // in scope 0 at $DIR/simplify_arm.rs:53:52: 53:53
+-     let mut _12: u32;                    // in scope 0 at $DIR/simplify_arm.rs:53:55: 53:56
+      scope 1 {
+-         debug a => _3;                   // in scope 1 at $DIR/simplify_arm.rs:52:23: 52:24
+-         debug b => _4;                   // in scope 1 at $DIR/simplify_arm.rs:52:26: 52:27
++         debug a => ((_0 as A).0: u32);   // in scope 1 at $DIR/simplify_arm.rs:52:23: 52:24
++         debug b => ((_0 as A).1: u32);   // in scope 1 at $DIR/simplify_arm.rs:52:26: 52:27
+      }
+      scope 2 {
+-         debug a => _7;                   // in scope 2 at $DIR/simplify_arm.rs:53:23: 53:24
+-         debug b => _8;                   // in scope 2 at $DIR/simplify_arm.rs:53:26: 53:27
+-         debug c => _9;                   // in scope 2 at $DIR/simplify_arm.rs:53:29: 53:30
++         debug a => ((_0 as B).0: u32);   // in scope 2 at $DIR/simplify_arm.rs:53:23: 53:24
++         debug b => ((_0 as B).1: u32);   // in scope 2 at $DIR/simplify_arm.rs:53:26: 53:27
++         debug c => ((_0 as B).2: u32);   // in scope 2 at $DIR/simplify_arm.rs:53:29: 53:30
+      }
+  
+      bb0: {
+          _2 = discriminant(_1);           // scope 0 at $DIR/simplify_arm.rs:51:11: 51:12
+          switchInt(move _2) -> [0_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/simplify_arm.rs:51:5: 51:12
+      }
+  
+      bb1: {
+-         StorageLive(_7);                 // scope 0 at $DIR/simplify_arm.rs:53:23: 53:24
+-         _7 = ((_1 as B).0: u32);         // scope 0 at $DIR/simplify_arm.rs:53:23: 53:24
+-         StorageLive(_8);                 // scope 0 at $DIR/simplify_arm.rs:53:26: 53:27
+-         _8 = ((_1 as B).1: u32);         // scope 0 at $DIR/simplify_arm.rs:53:26: 53:27
+-         StorageLive(_9);                 // scope 0 at $DIR/simplify_arm.rs:53:29: 53:30
+-         _9 = ((_1 as B).2: u32);         // scope 0 at $DIR/simplify_arm.rs:53:29: 53:30
+-         StorageLive(_10);                // scope 2 at $DIR/simplify_arm.rs:53:49: 53:50
+-         _10 = _7;                        // scope 2 at $DIR/simplify_arm.rs:53:49: 53:50
+-         StorageLive(_11);                // scope 2 at $DIR/simplify_arm.rs:53:52: 53:53
+-         _11 = _8;                        // scope 2 at $DIR/simplify_arm.rs:53:52: 53:53
+-         StorageLive(_12);                // scope 2 at $DIR/simplify_arm.rs:53:55: 53:56
+-         _12 = _9;                        // scope 2 at $DIR/simplify_arm.rs:53:55: 53:56
+-         ((_0 as B).0: u32) = move _10;   // scope 2 at $DIR/simplify_arm.rs:53:35: 53:57
+-         ((_0 as B).1: u32) = move _11;   // scope 2 at $DIR/simplify_arm.rs:53:35: 53:57
+-         ((_0 as B).2: u32) = move _12;   // scope 2 at $DIR/simplify_arm.rs:53:35: 53:57
+-         discriminant(_0) = 1;            // scope 2 at $DIR/simplify_arm.rs:53:35: 53:57
+-         StorageDead(_12);                // scope 2 at $DIR/simplify_arm.rs:53:56: 53:57
+-         StorageDead(_11);                // scope 2 at $DIR/simplify_arm.rs:53:56: 53:57
+-         StorageDead(_10);                // scope 2 at $DIR/simplify_arm.rs:53:56: 53:57
+-         StorageDead(_9);                 // scope 0 at $DIR/simplify_arm.rs:53:56: 53:57
+-         StorageDead(_8);                 // scope 0 at $DIR/simplify_arm.rs:53:56: 53:57
+-         StorageDead(_7);                 // scope 0 at $DIR/simplify_arm.rs:53:56: 53:57
++         _0 = _1;                         // scope 2 at $DIR/simplify_arm.rs:53:35: 53:57
+          return;                          // scope 0 at $DIR/simplify_arm.rs:53:56: 53:57
+      }
+  
+      bb2: {
+-         StorageLive(_3);                 // scope 0 at $DIR/simplify_arm.rs:52:23: 52:24
+-         _3 = ((_1 as A).0: u32);         // scope 0 at $DIR/simplify_arm.rs:52:23: 52:24
+-         StorageLive(_4);                 // scope 0 at $DIR/simplify_arm.rs:52:26: 52:27
+-         _4 = ((_1 as A).1: u32);         // scope 0 at $DIR/simplify_arm.rs:52:26: 52:27
+-         StorageLive(_5);                 // scope 1 at $DIR/simplify_arm.rs:52:46: 52:47
+-         _5 = _3;                         // scope 1 at $DIR/simplify_arm.rs:52:46: 52:47
+-         StorageLive(_6);                 // scope 1 at $DIR/simplify_arm.rs:52:49: 52:50
+-         _6 = _4;                         // scope 1 at $DIR/simplify_arm.rs:52:49: 52:50
+-         ((_0 as A).0: u32) = move _5;    // scope 1 at $DIR/simplify_arm.rs:52:32: 52:51
+-         ((_0 as A).1: u32) = move _6;    // scope 1 at $DIR/simplify_arm.rs:52:32: 52:51
+-         discriminant(_0) = 0;            // scope 1 at $DIR/simplify_arm.rs:52:32: 52:51
+-         StorageDead(_6);                 // scope 1 at $DIR/simplify_arm.rs:52:50: 52:51
+-         StorageDead(_5);                 // scope 1 at $DIR/simplify_arm.rs:52:50: 52:51
+-         StorageDead(_4);                 // scope 0 at $DIR/simplify_arm.rs:52:50: 52:51
+-         StorageDead(_3);                 // scope 0 at $DIR/simplify_arm.rs:52:50: 52:51
++         _0 = _1;                         // scope 1 at $DIR/simplify_arm.rs:52:32: 52:51
+          return;                          // scope 0 at $DIR/simplify_arm.rs:52:50: 52:51
+      }
+  }
+  
