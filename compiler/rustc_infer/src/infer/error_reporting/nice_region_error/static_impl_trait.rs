@@ -490,14 +490,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let tcx = self.tcx();
 
         // Find the method being called.
-        let instance = match ty::Instance::resolve(
+        let Ok(Some(instance)) = ty::Instance::resolve(
             tcx,
             ctxt.param_env,
             ctxt.assoc_item.def_id,
             self.infcx.resolve_vars_if_possible(ctxt.substs),
-        ) {
-            Ok(Some(instance)) => instance,
-            _ => return false,
+        ) else {
+            return false;
         };
 
         let mut v = TraitObjectVisitor(FxHashSet::default());
@@ -505,11 +504,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let (ident, self_ty) =
-            match self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0) {
-                Some((ident, self_ty)) => (ident, self_ty),
-                None => return false,
-            };
+        let Some((ident, self_ty)) = self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0) else {
+            return false;
+        };
 
         // Find the trait object types in the argument, so we point at *only* the trait object.
         self.suggest_constrain_dyn_trait_in_impl(err, &v.0, ident, self_ty)

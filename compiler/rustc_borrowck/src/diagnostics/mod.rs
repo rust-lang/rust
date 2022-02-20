@@ -444,10 +444,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     debug!("borrowed_content_source: init={:?}", init);
                     // We're only interested in statements that initialized a value, not the
                     // initializations from arguments.
-                    let loc = match init.location {
-                        InitLocation::Statement(stmt) => stmt,
-                        _ => continue,
-                    };
+                    let InitLocation::Statement(loc) = init.location else { continue };
 
                     let bbd = &self.body[loc.block];
                     let is_terminator = bbd.statements.len() == loc.statement_index;
@@ -787,9 +784,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> UseSpans<'tcx> {
         use self::UseSpans::*;
 
-        let stmt = match self.body[location.block].statements.get(location.statement_index) {
-            Some(stmt) => stmt,
-            None => return OtherUse(self.body.source_info(location).span),
+        let Some(stmt) = self.body[location.block].statements.get(location.statement_index) else {
+            return OtherUse(self.body.source_info(location).span);
         };
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);

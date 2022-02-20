@@ -1808,12 +1808,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (_, Res::SelfTy { trait_: Some(_), alias_to: Some((impl_def_id, _)) }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
                 // trait reference.
-                let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
-                    Some(trait_ref) => trait_ref,
-                    None => {
-                        // A cycle error occurred, most likely.
-                        return Err(ErrorReported);
-                    }
+                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
+                    // A cycle error occurred, most likely.
+                    return Err(ErrorReported);
                 };
 
                 self.one_bound_for_assoc_type(

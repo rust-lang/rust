@@ -310,10 +310,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
             if let Some(archive) = self.src_archive() {
                 for child in archive.iter() {
                     let child = child.map_err(string_to_io_error)?;
-                    let child_name = match child.name() {
-                        Some(s) => s,
-                        None => continue,
-                    };
+                    let Some(child_name) = child.name() else { continue };
                     if removals.iter().any(|r| r == child_name) {
                         continue;
                     }

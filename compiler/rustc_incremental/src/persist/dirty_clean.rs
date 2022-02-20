@@ -368,9 +368,8 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
     fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
-            let assertion = match self.assertion_maybe(item_id, attr) {
-                Some(a) => a,
-                None => continue,
+            let Some(assertion) = self.assertion_maybe(item_id, attr) else {
+                continue;
             };
             self.checked_attrs.insert(attr.id);
             for label in assertion.clean {

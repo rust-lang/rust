@@ -86,9 +86,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_
             // }
 
             let new = {
-                let other_f = match other_fs {
-                    [o_f] => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
+                let [other_f] = other_fs else {
+                    cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`");
                 };
 
                 let args =

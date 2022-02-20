@@ -121,12 +121,9 @@ impl TargetDataLayout {
                     dl.pointer_align = align(a, p)?;
                 }
                 [s, ref a @ ..] if s.starts_with('i') => {
-                    let bits = match s[1..].parse::<u64>() {
-                        Ok(bits) => bits,
-                        Err(_) => {
-                            size(&s[1..], "i")?; // For the user error.
-                            continue;
-                        }
+                    let Ok(bits) = s[1..].parse::<u64>() else {
+                        size(&s[1..], "i")?; // For the user error.
+                        continue;
                     };
                     let a = align(a, s)?;
                     match bits {

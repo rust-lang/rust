@@ -1582,12 +1582,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         def_id: DefId,
         span: Span,
     ) {
-        let variants = match self.collect_enum_ctors(def_id) {
-            Some(variants) => variants,
-            None => {
-                err.note("you might have meant to use one of the enum's variants");
-                return;
-            }
+        let Some(variants) = self.collect_enum_ctors(def_id) else {
+            err.note("you might have meant to use one of the enum's variants");
+            return;
         };
 
         let suggest_only_tuple_variants =

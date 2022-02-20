@@ -219,10 +219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (self.tcx.lang_items().fn_mut_trait(), Ident::with_dummy_span(sym::call_mut), true),
             (self.tcx.lang_items().fn_once_trait(), Ident::with_dummy_span(sym::call_once), false),
         ] {
-            let trait_def_id = match opt_trait_def_id {
-                Some(def_id) => def_id,
-                None => continue,
-            };
+            let Some(trait_def_id) = opt_trait_def_id else { continue };
 
             let opt_input_types = opt_arg_exprs.map(|arg_exprs| {
                 [self.tcx.mk_tup(arg_exprs.iter().map(|e| {
@@ -246,11 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let (region, mutbl) = if let ty::Ref(r, _, mutbl) =
-                        method.sig.inputs()[0].kind()
-                    {
-                        (r, mutbl)
-                    } else {
+                    let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
                         self.tcx

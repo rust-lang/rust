@@ -115,12 +115,9 @@ impl<'tcx> SaveContext<'tcx> {
         let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
         for &n in self.tcx.crates(()).iter() {
-            let span = match self.tcx.extern_crate(n.as_def_id()) {
-                Some(&ExternCrate { span, .. }) => span,
-                None => {
-                    debug!("skipping crate {}, no data", n);
-                    continue;
-                }
+            let Some(&ExternCrate { span, .. }) = self.tcx.extern_crate(n.as_def_id()) else {
+                debug!("skipping crate {}, no data", n);
+                continue;
             };
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
@@ -566,12 +563,9 @@ impl<'tcx> SaveContext<'tcx> {
                 }
             },
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    Some(id) => id,
-                    None => {
-                        debug!("could not resolve method id for {:?}", expr);
-                        return None;
-                    }
+                let Some(method_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) else {
+                    debug!("could not resolve method id for {:?}", expr);
+                    return None;
                 };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),

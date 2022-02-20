@@ -339,9 +339,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                     let idx2 = *o.get();
                                     let &(ref op2, op_sp2) = &operands[idx2];
-                                    let reg2 = match op2.reg() {
-                                        Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
-                                        _ => unreachable!(),
+                                    let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg() else {
+                                        unreachable!();
                                     };
 
                                     let msg = format!(

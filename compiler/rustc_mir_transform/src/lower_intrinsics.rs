@@ -17,9 +17,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
             let terminator = block.terminator.as_mut().unwrap();
             if let TerminatorKind::Call { func, args, destination, .. } = &mut terminator.kind {
                 let func_ty = func.ty(local_decls, tcx);
-                let (intrinsic_name, substs) = match resolve_rust_intrinsic(tcx, func_ty) {
-                    None => continue,
-                    Some(it) => it,
+                let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(tcx, func_ty) else {
+                    continue;
                 };
                 match intrinsic_name {
                     sym::unreachable => {

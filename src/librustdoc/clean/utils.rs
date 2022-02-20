@@ -302,7 +302,11 @@ fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: ty::Const<'_>) -> S
     // For all other types, fallback to the original `pretty_print_const`.
     match (ct.val(), ct.ty().kind()) {
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
-            format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
+            format!(
+                "{}{}",
+                format_integer_with_underscore_sep(&int.rustdoc_display()),
+                ui.name_str()
+            )
         }
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
             let ty = tcx.lift(ct.ty()).unwrap();

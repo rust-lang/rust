@@ -196,12 +196,11 @@ fn cs_clone(
             let fields = all_fields
                 .iter()
                 .map(|field| {
-                    let ident = match field.name {
-                        Some(i) => i,
-                        None => cx.span_bug(
+                    let Some(ident) = field.name else {
+                        cx.span_bug(
                             trait_span,
                             &format!("unnamed field in normal struct in `derive({})`", name,),
-                        ),
+                        );
                     };
                     let call = subcall(cx, field);
                     cx.field_imm(field.span, ident, call)

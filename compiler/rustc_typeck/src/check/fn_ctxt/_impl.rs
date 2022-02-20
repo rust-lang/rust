@@ -745,10 +745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_args: &[Ty<'tcx>],
     ) -> Vec<Ty<'tcx>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let ret_ty = match expected_ret.only_has_type(self) {
-            Some(ret) => ret,
-            None => return Vec::new(),
-        };
+        let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
         let expect_args = self
             .fudge_inference_if_ok(|| {
                 // Attempt to apply a subtyping relationship between the formal
@@ -1044,9 +1041,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
-        let last_expr = match last_stmt.kind {
-            hir::StmtKind::Semi(ref e) => e,
-            _ => return None,
+        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+            return None;
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
@@ -1061,11 +1057,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     last_def_id, last_bounds, exp_def_id, exp_bounds
                 );
 
-                let (last_local_id, exp_local_id) =
-                    match (last_def_id.as_local(), exp_def_id.as_local()) {
-                        (Some(last_hir_id), Some(exp_hir_id)) => (last_hir_id, exp_hir_id),
-                        (_, _) => return None,
-                    };
+                let last_local_id = last_def_id.as_local()?;
+                let exp_local_id = exp_def_id.as_local()?;
 
                 match (
                     &self.tcx.hir().expect_item(last_local_id).kind,

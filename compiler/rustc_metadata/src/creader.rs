@@ -475,9 +475,8 @@ impl<'a> CrateLoader<'a> {
         locator.triple = TargetTriple::from_triple(config::host_triple());
         locator.filesearch = self.sess.host_filesearch(path_kind);
 
-        let host_result = match self.load(locator)? {
-            Some(host_result) => host_result,
-            None => return Ok(None),
+        let Some(host_result) = self.load(locator)? else {
+            return Ok(None);
         };
 
         Ok(Some(if self.sess.opts.debugging_opts.dual_proc_macros {
@@ -574,9 +573,8 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn load(&self, locator: &mut CrateLocator<'_>) -> Result<Option<LoadResult>, CrateError> {
-        let library = match locator.maybe_load_library_crate()? {
-            Some(library) => library,
-            None => return Ok(None),
+        let Some(library) = locator.maybe_load_library_crate()? else {
+            return Ok(None);
         };
 
         // In the case that we're loading a crate, but not matching

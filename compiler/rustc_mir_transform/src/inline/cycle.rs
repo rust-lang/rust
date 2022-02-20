@@ -46,12 +46,9 @@ crate fn mir_callgraph_reachable<'tcx>(
         trace!(%caller);
         for &(callee, substs) in tcx.mir_inliner_callees(caller.def) {
             let substs = caller.subst_mir_and_normalize_erasing_regions(tcx, param_env, substs);
-            let callee = match ty::Instance::resolve(tcx, param_env, callee, substs).unwrap() {
-                Some(callee) => callee,
-                None => {
-                    trace!(?callee, "cannot resolve, skipping");
-                    continue;
-                }
+            let Some(callee) = ty::Instance::resolve(tcx, param_env, callee, substs).unwrap() else {
+                trace!(?callee, "cannot resolve, skipping");
+                continue;
             };
 
             // Found a path.

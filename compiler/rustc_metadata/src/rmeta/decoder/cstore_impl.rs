@@ -249,9 +249,8 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
                 .find(|lib| {
-                    let fm_id = match lib.foreign_module {
-                        Some(id) => id,
-                        None => return false,
+                    let Some(fm_id) = lib.foreign_module else {
+                        return false;
                     };
                     let map = tcx.foreign_modules(id.krate);
                     map.get(&fm_id)

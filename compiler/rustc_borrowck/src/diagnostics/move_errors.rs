@@ -188,10 +188,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let mpi = match self.move_data.rev_lookup.find(move_from.as_ref()) {
-                    LookupResult::Parent(Some(mpi)) => mpi,
+                let LookupResult::Parent(Some(mpi)) = self.move_data.rev_lookup.find(move_from.as_ref()) else {
                     // move_from should be a projection from match_place.
-                    _ => unreachable!("Probably not unreachable..."),
+                    unreachable!("Probably not unreachable...");
                 };
                 for ge in &mut *grouped_errors {
                     if let GroupedMoveError::MovesFromValue {

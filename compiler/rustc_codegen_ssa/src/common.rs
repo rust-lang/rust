@@ -202,11 +202,8 @@ pub fn asm_const_to_str<'tcx>(
     const_value: ConstValue<'tcx>,
     ty_and_layout: TyAndLayout<'tcx>,
 ) -> String {
-    let scalar = match const_value {
-        ConstValue::Scalar(s) => s,
-        _ => {
-            span_bug!(sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
-        }
+    let ConstValue::Scalar(scalar) = const_value else {
+        span_bug!(sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
     };
     let value = scalar.assert_bits(ty_and_layout.size);
     match ty_and_layout.ty.kind() {

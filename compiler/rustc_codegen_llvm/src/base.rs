@@ -138,10 +138,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
-    let sect = match attrs.link_section {
-        Some(name) => name,
-        None => return,
-    };
+    let Some(sect) = attrs.link_section else { return };
     unsafe {
         let buf = SmallCStr::new(sect.as_str());
         llvm::LLVMSetSection(llval, buf.as_ptr());

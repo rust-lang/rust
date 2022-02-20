@@ -1430,9 +1430,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_min_captures = match self.closure_min_captures {
-            None => return,
-            Some(closure_min_captures) => closure_min_captures,
+        let Some(closure_min_captures) = self.closure_min_captures else {
+            return;
         };
 
         // If closure_min_captures is Some(), upvars must be Some() too.

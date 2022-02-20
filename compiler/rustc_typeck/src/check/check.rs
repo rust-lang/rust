@@ -415,13 +415,10 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Spa
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id);
-    let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
-        Ok(l) => l,
-        Err(_) => {
-            // Generic statics are rejected, but we still reach this case.
-            tcx.sess.delay_span_bug(span, "generic static must be rejected");
-            return;
-        }
+    let Ok(layout) = tcx.layout_of(ParamEnv::reveal_all().and(ty)) else {
+        // Generic statics are rejected, but we still reach this case.
+        tcx.sess.delay_span_bug(span, "generic static must be rejected");
+        return;
     };
     if layout.abi.is_uninhabited() {
         tcx.struct_span_lint_hir(
@@ -852,10 +849,7 @@ pub(super) fn check_specialization_validity<'tcx>(
     impl_id: DefId,
     impl_item: &hir::ImplItemRef,
 ) {
-    let ancestors = match trait_def.ancestors(tcx, impl_id) {
-        Ok(ancestors) => ancestors,
-        Err(_) => return,
-    };
+    let Ok(ancestors) = trait_def.ancestors(tcx, impl_id) else { return };
     let mut ancestor_impls = ancestors.skip(1).filter_map(|parent| {
         if parent.is_from_trait() {
             None

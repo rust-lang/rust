@@ -49,10 +49,7 @@ fn sized_constraint_for_ty<'tcx>(
             // we know that `T` is Sized and do not need to check
             // it on the impl.
 
-            let sized_trait = match tcx.lang_items().sized_trait() {
-                Some(x) => x,
-                _ => return vec![ty],
-            };
+            let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let sized_predicate = ty::Binder::dummy(ty::TraitRef {
                 def_id: sized_trait,
                 substs: tcx.mk_substs_trait(ty, &[]),

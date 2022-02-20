@@ -635,9 +635,8 @@ pub struct WhereBoundPredicate<'hir> {
 impl<'hir> WhereBoundPredicate<'hir> {
     /// Returns `true` if `param_def_id` matches the `bounded_ty` of this predicate.
     pub fn is_param_bound(&self, param_def_id: DefId) -> bool {
-        let path = match self.bounded_ty.kind {
-            TyKind::Path(QPath::Resolved(None, path)) => path,
-            _ => return false,
+        let TyKind::Path(QPath::Resolved(None, path)) = self.bounded_ty.kind else {
+            return false;
         };
         match path.res {
             Res::Def(DefKind::TyParam, def_id)

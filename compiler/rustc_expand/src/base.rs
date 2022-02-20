@@ -1299,20 +1299,16 @@ pub fn parse_macro_name_and_helper_attrs(
     // Once we've located the `#[proc_macro_derive]` attribute, verify
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
-    let list = match attr.meta_item_list() {
-        Some(list) => list,
-        None => return None,
+    let Some(list) = attr.meta_item_list() else {
+        return None;
     };
     if list.len() != 1 && list.len() != 2 {
         diag.span_err(attr.span, "attribute must have either one or two arguments");
         return None;
     }
-    let trait_attr = match list[0].meta_item() {
-        Some(meta_item) => meta_item,
-        _ => {
-            diag.span_err(list[0].span(), "not a meta item");
-            return None;
-        }
+    let Some(trait_attr) = list[0].meta_item() else {
+        diag.span_err(list[0].span(), "not a meta item");
+        return None;
     };
     let trait_ident = match trait_attr.ident() {
         Some(trait_ident) if trait_attr.is_word() => trait_ident,
@@ -1341,12 +1337,9 @@ pub fn parse_macro_name_and_helper_attrs(
             })
             .iter()
             .filter_map(|attr| {
-                let attr = match attr.meta_item() {
-                    Some(meta_item) => meta_item,
-                    _ => {
-                        diag.span_err(attr.span(), "not a meta item");
-                        return None;
-                    }
+                let Some(attr) = attr.meta_item() else {
+                    diag.span_err(attr.span(), "not a meta item");
+                    return None;
                 };
 
                 let ident = match attr.ident() {

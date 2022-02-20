@@ -116,9 +116,8 @@ fn inject_impl_of_structural_trait(
     structural_path: generic::ty::Path,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let item = match *item {
-        Annotatable::Item(ref item) => item,
-        _ => unreachable!(),
+    let Annotatable::Item(ref item) = *item else {
+        unreachable!();
     };
 
     let generics = match item.kind {

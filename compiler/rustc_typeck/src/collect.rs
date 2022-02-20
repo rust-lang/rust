@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -1018,9 +1017,8 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
 
     let def_id = def_id.expect_local();
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let item = match tcx.hir().get(hir_id) {
-        Node::Item(item) => item,
-        _ => bug!(),
+    let Node::Item(item) = tcx.hir().get(hir_id) else {
+        bug!();
     };
 
     let repr = ReprOptions::new(tcx, def_id.to_def_id());
@@ -1122,9 +1120,8 @@ fn super_predicates_that_define_assoc_type(
         debug!("super_predicates_that_define_assoc_type: local trait_def_id={:?}", trait_def_id);
         let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id.expect_local());
 
-        let item = match tcx.hir().get(trait_hir_id) {
-            Node::Item(item) => item,
-            _ => bug!("trait_node_id {} is not an item", trait_hir_id),
+        let Node::Item(item) = tcx.hir().get(trait_hir_id) else {
+            bug!("trait_node_id {} is not an item", trait_hir_id);
         };
 
         let (generics, bounds) = match item.kind {
@@ -2637,10 +2634,7 @@ fn from_target_feature(
     supported_target_features: &FxHashMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
 ) {
-    let list = match attr.meta_item_list() {
-        Some(list) => list,
-        None => return,
-    };
+    let Some(list) = attr.meta_item_list() else { return };
     let bad_item = |span| {
         let msg = "malformed `target_feature` attribute input";
         let code = "enable = \"..\"".to_owned();
@@ -2658,35 +2652,29 @@ fn from_target_feature(
         }
 
         // Must be of the form `enable = "..."` (a string).
-        let value = match item.value_str() {
-            Some(value) => value,
-            None => {
-                bad_item(item.span());
-                continue;
-            }
+        let Some(value) = item.value_str() else {
+            bad_item(item.span());
+            continue;
         };
 
         // We allow comma separation to enable multiple features.
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
-            let feature_gate = match supported_target_features.get(feature) {
-                Some(g) => g,
-                None => {
-                    let msg =
-                        format!("the feature named `{}` is not valid for this target", feature);
-                    let mut err = tcx.sess.struct_span_err(item.span(), &msg);
-                    err.span_label(
-                        item.span(),
-                        format!("`{}` is not valid for this target", feature),
-                    );
-                    if let Some(stripped) = feature.strip_prefix('+') {
-                        let valid = supported_target_features.contains_key(stripped);
-                        if valid {
-                            err.help("consider removing the leading `+` in the feature name");
-                        }
+            let Some(feature_gate) = supported_target_features.get(feature) else {
+                let msg =
+                    format!("the feature named `{}` is not valid for this target", feature);
+                let mut err = tcx.sess.struct_span_err(item.span(), &msg);
+                err.span_label(
+                    item.span(),
+                    format!("`{}` is not valid for this target", feature),
+                );
+                if let Some(stripped) = feature.strip_prefix('+') {
+                    let valid = supported_target_features.contains_key(stripped);
+                    if valid {
+                        err.help("consider removing the leading `+` in the feature name");
                     }
-                    err.emit();
-                    return None;
                 }
+                err.emit();
+                return None;
             };
 
             // Only allow features whose feature gates have been enabled.
