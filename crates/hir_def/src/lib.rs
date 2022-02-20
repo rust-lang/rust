@@ -787,7 +787,7 @@ fn attr_macro_as_call_id(
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
             attr_name: last_segment.to_string().into_boxed_str(),
-            attr_args: arg,
+            attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id.ast_index,
         },
     );

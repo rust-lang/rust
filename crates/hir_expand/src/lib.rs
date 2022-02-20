@@ -135,7 +135,7 @@ pub enum MacroCallKind {
     Attr {
         ast_id: AstId<ast::Item>,
         attr_name: Box<str>,
-        attr_args: (tt::Subtree, mbe::TokenMap),
+        attr_args: Arc<(tt::Subtree, mbe::TokenMap)>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
@@ -472,7 +472,7 @@ impl ExpansionInfo {
 
             let token_range = token.value.text_range();
             match &loc.kind {
-                MacroCallKind::Attr { attr_args: (_, map), invoc_attr_index, .. } => {
+                MacroCallKind::Attr { attr_args, invoc_attr_index, .. } => {
                     let attr = item
                         .doc_comments_and_attrs()
                         .nth(*invoc_attr_index as usize)
@@ -486,8 +486,9 @@ impl ExpansionInfo {
                             let relative_range =
                                 token.value.text_range().checked_sub(attr_input_start)?;
                             // shift by the item's tree's max id
-                            let token_id =
-                                self.macro_arg_shift.shift(map.token_by_range(relative_range)?);
+                            let token_id = self
+                                .macro_arg_shift
+                                .shift(attr_args.1.token_by_range(relative_range)?);
                             Some(token_id)
                         }
                         _ => None,
@@ -535,13 +536,13 @@ impl ExpansionInfo {
 
         // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.
         let (token_map, tt) = match &loc.kind {
-            MacroCallKind::Attr { attr_args: (_, arg_token_map), .. } => {
+            MacroCallKind::Attr { attr_args, .. } => {
                 // try unshifting the the token id, if unshifting fails, the token resides in the non-item attribute input
                 // note that the `TokenExpander::map_id_up` earlier only unshifts for declarative macros, so we don't double unshift with this
                 match self.macro_arg_shift.unshift(token_id) {
                     Some(unshifted) => {
                         token_id = unshifted;
-                        (arg_token_map, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+                        (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
                     }
                     None => (&self.macro_arg.1, self.arg.clone()),
                 }
