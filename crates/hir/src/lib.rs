@@ -74,7 +74,7 @@ use rustc_hash::FxHashSet;
 use stdx::{format_to, impl_from};
 use syntax::{
     ast::{self, HasAttrs as _, HasDocComments, HasName},
-    AstNode, AstPtr, SmolStr, SyntaxKind, SyntaxNodePtr,
+    AstNode, AstPtr, SmolStr, SyntaxNodePtr, T,
 };
 use tt::{Ident, Leaf, Literal, TokenTree};
 
@@ -628,43 +628,37 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
 
         DefDiagnosticKind::UnresolvedProcMacro { ast } => {
             let mut precise_location = None;
-            let (node, name) = match ast {
+            let (node, macro_name) = match ast {
                 MacroCallKind::FnLike { ast_id, .. } => {
                     let node = ast_id.to_node(db.upcast());
                     (ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))), None)
                 }
-                MacroCallKind::Derive { ast_id, derive_name, .. } => {
+                MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
                     let node = ast_id.to_node(db.upcast());
 
                     // Compute the precise location of the macro name's token in the derive
                     // list.
-                    // FIXME: This does not handle paths to the macro, but neither does the
-                    // rest of r-a.
-                    let derive_attrs =
-                        node.attrs().filter_map(|attr| match attr.as_simple_call() {
-                            Some((name, args)) if name == "derive" => Some(args),
-                            _ => None,
-                        });
-                    'outer: for attr in derive_attrs {
-                        let tokens =
-                            attr.syntax().children_with_tokens().filter_map(|elem| match elem {
-                                syntax::NodeOrToken::Node(_) => None,
+                    let token = (|| {
+                        let derive_attr = node.attrs().nth(*derive_attr_index as usize)?;
+                        derive_attr
+                            .syntax()
+                            .children_with_tokens()
+                            .filter_map(|elem| match elem {
                                 syntax::NodeOrToken::Token(tok) => Some(tok),
-                            });
-                        for token in tokens {
-                            if token.kind() == SyntaxKind::IDENT && token.text() == &**derive_name {
-                                precise_location = Some(token.text_range());
-                                break 'outer;
-                            }
-                        }
-                    }
-
+                                _ => None,
+                            })
+                            .group_by(|t| t.kind() == T![,])
+                            .into_iter()
+                            .nth(*derive_index as usize)
+                            .and_then(|(_, mut g)| g.find(|t| t.kind() == T![ident]))
+                    })();
+                    precise_location = token.as_ref().map(|tok| tok.text_range());
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&node))),
-                        Some(derive_name.clone()),
+                        token.as_ref().map(ToString::to_string),
                     )
                 }
-                MacroCallKind::Attr { ast_id, invoc_attr_index, attr_name, .. } => {
+                MacroCallKind::Attr { ast_id, invoc_attr_index, .. } => {
                     let node = ast_id.to_node(db.upcast());
                     let attr = node
                         .doc_comments_and_attrs()
@@ -673,14 +667,15 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                         .unwrap_or_else(|| panic!("cannot find attribute #{}", invoc_attr_index));
                     (
                         ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),
-                        Some(attr_name.clone()),
+                        attr.path()
+                            .and_then(|path| path.segment())
+                            .and_then(|seg| seg.name_ref())
+                            .as_ref()
+                            .map(ToString::to_string),
                     )
                 }
             };
-            acc.push(
-                UnresolvedProcMacro { node, precise_location, macro_name: name.map(Into::into) }
-                    .into(),
-            );
+            acc.push(UnresolvedProcMacro { node, precise_location, macro_name }.into());
         }
 
         DefDiagnosticKind::UnresolvedMacroCall { ast, path } => {

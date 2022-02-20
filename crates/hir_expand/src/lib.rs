@@ -125,16 +125,16 @@ pub enum MacroCallKind {
     },
     Derive {
         ast_id: AstId<ast::Adt>,
-        derive_name: Box<str>,
         /// Syntactical index of the invoking `#[derive]` attribute.
         ///
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
         derive_attr_index: u32,
+        /// Index of the derive macro in the derive attribute
+        derive_index: u32,
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        attr_name: Box<str>,
         attr_args: Arc<(tt::Subtree, mbe::TokenMap)>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///

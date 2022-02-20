@@ -741,23 +741,19 @@ fn macro_call_as_call_id(
 fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr: AttrId,
+    derive_pos: u32,
     db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
     let def: MacroDefId = resolver(item_attr.path.clone())
         .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
-    let last_segment = item_attr
-        .path
-        .segments()
-        .last()
-        .ok_or_else(|| UnresolvedMacro { path: item_attr.path.clone() })?;
     let res = def.as_lazy_macro(
         db.upcast(),
         krate,
         MacroCallKind::Derive {
             ast_id: item_attr.ast_id,
-            derive_name: last_segment.to_string().into_boxed_str(),
+            derive_index: derive_pos,
             derive_attr_index: derive_attr.ast_index,
         },
     );
@@ -771,8 +767,6 @@ fn attr_macro_as_call_id(
     krate: CrateId,
     def: MacroDefId,
 ) -> MacroCallId {
-    let attr_path = &item_attr.path;
-    let last_segment = attr_path.segments().last().expect("empty attribute path");
     let mut arg = match macro_attr.input.as_deref() {
         Some(attr::AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
         _ => Default::default(),
@@ -786,7 +780,6 @@ fn attr_macro_as_call_id(
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
-            attr_name: last_segment.to_string().into_boxed_str(),
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id.ast_index,
         },
