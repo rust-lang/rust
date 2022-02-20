@@ -183,12 +183,10 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                             } else if meta_item.has_name(sym::values) {
                                 if let Some((name, values)) = args.split_first() {
                                     if name.is_word() && name.ident().is_some() {
-                                        let values_valid = cfg
-                                            .values_valid
-                                            .get_or_insert_with(|| FxHashMap::default());
                                         let ident = name.ident().expect("multi-segment cfg key");
-                                        let ident_values = values_valid
-                                            .entry(ident.to_string())
+                                        let ident_values = cfg
+                                            .values_valid
+                                            .entry(ident.name.to_string())
                                             .or_insert_with(|| FxHashSet::default());
 
                                         for val in values {
@@ -225,10 +223,8 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
             );
         }
 
-        if let Some(values_valid) = &cfg.values_valid {
-            if let Some(names_valid) = &mut cfg.names_valid {
-                names_valid.extend(values_valid.keys().cloned());
-            }
+        if let Some(names_valid) = &mut cfg.names_valid {
+            names_valid.extend(cfg.values_valid.keys().cloned());
         }
         cfg
     })

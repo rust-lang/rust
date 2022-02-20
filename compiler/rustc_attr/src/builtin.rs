@@ -462,7 +462,8 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                 true
             }
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                let name = cfg.ident().expect("multi-segment cfg predicate").name;
+                let ident = cfg.ident().expect("multi-segment cfg predicate");
+                let name = ident.name;
                 let value = cfg.value_str();
                 if let Some(names_valid) = &sess.check_config.names_valid {
                     if !names_valid.contains(&name) {
@@ -471,30 +472,24 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                             cfg.span,
                             CRATE_NODE_ID,
                             "unexpected `cfg` condition name",
-                            BuiltinLintDiagnostics::UnexpectedCfg(
-                                cfg.ident().unwrap().span,
-                                name,
-                                None,
-                            ),
+                            BuiltinLintDiagnostics::UnexpectedCfg(ident.span, name, None),
                         );
                     }
                 }
-                if let Some(val) = value {
-                    if let Some(values_valid) = &sess.check_config.values_valid {
-                        if let Some(values) = values_valid.get(&name) {
-                            if !values.contains(&val) {
-                                sess.buffer_lint_with_diagnostic(
-                                    UNEXPECTED_CFGS,
-                                    cfg.span,
-                                    CRATE_NODE_ID,
-                                    "unexpected `cfg` condition value",
-                                    BuiltinLintDiagnostics::UnexpectedCfg(
-                                        cfg.name_value_literal_span().unwrap(),
-                                        name,
-                                        Some(val),
-                                    ),
-                                );
-                            }
+                if let Some(value) = value {
+                    if let Some(values) = &sess.check_config.values_valid.get(&name) {
+                        if !values.contains(&value) {
+                            sess.buffer_lint_with_diagnostic(
+                                UNEXPECTED_CFGS,
+                                cfg.span,
+                                CRATE_NODE_ID,
+                                "unexpected `cfg` condition value",
+                                BuiltinLintDiagnostics::UnexpectedCfg(
+                                    cfg.name_value_literal_span().unwrap(),
+                                    name,
+                                    Some(value),
+                                ),
+                            );
                         }
                     }
                 }
