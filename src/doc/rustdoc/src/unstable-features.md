@@ -512,3 +512,17 @@ crate being documented (`foobar`) and a path to output the calls
 
 To scrape examples from test code, e.g. functions marked `#[test]`, then
 add the `--scrape-tests` flag.
+
+### `--check-cfg`: check configuration flags
+
+This flag accepts the same values as `rustc --check-cfg`, and uses it to check configuration flags.
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options \
+    --check-cfg='names()' --check-cfg='values(feature, "foo", "bar")'
+```
+
+The example above check every well known names (`target_os`, `doc`, `test`, ... via `names()`)
+and check the values of `feature`: `foo` and `bar`.
