@@ -210,7 +210,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<$tcx> {
-            $($(#[$attr])* pub $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
+            $($(#[$attr])* pub $name: query_storage::$name<$tcx>,)*
         }
 
         impl<$tcx> TyCtxtEnsure<$tcx> {

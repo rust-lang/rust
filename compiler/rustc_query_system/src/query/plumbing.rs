@@ -12,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHasher};
 #[cfg(parallel_compiler)]
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
-use rustc_data_structures::sync::{Lock, LockGuard};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, FatalError};
 use rustc_session::Session;
@@ -24,21 +24,10 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ptr;
 
-pub struct QueryCacheStore<C: QueryCache> {
-    cache: C,
-    shards: Sharded<C::Sharded>,
-}
-
-impl<C: QueryCache + Default> Default for QueryCacheStore<C> {
-    fn default() -> Self {
-        Self { cache: C::default(), shards: Default::default() }
-    }
-}
-
 /// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
 pub struct QueryLookup {
     pub(super) key_hash: u64,
-    shard: usize,
+    pub(super) shard: usize,
 }
 
 // We compute the key's hash once and then use it for both the
@@ -48,22 +37,6 @@ fn hash_for_shard<K: Hash>(key: &K) -> u64 {
     let mut hasher = FxHasher::default();
     key.hash(&mut hasher);
     hasher.finish()
-}
-
-impl<C: QueryCache> QueryCacheStore<C> {
-    pub(super) fn get_lookup<'tcx>(
-        &'tcx self,
-        key: &C::Key,
-    ) -> (QueryLookup, LockGuard<'tcx, C::Sharded>) {
-        let key_hash = hash_for_shard(key);
-        let shard = get_shard_index_by_hash(key_hash);
-        let lock = self.shards.get_shard_by_index(shard).lock();
-        (QueryLookup { key_hash, shard }, lock)
-    }
-
-    pub fn iter_results(&self, f: &mut dyn FnMut(&C::Key, &C::Value, DepNodeIndex)) {
-        self.cache.iter(&self.shards, f)
-    }
 }
 
 struct QueryStateShard<K> {
@@ -239,12 +212,7 @@ where
 
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(
-        self,
-        cache: &QueryCacheStore<C>,
-        result: C::Value,
-        dep_node_index: DepNodeIndex,
-    ) -> C::Stored
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored
     where
         C: QueryCache<Key = K>,
     {
@@ -265,10 +233,7 @@ where
                     QueryResult::Poisoned => panic!(),
                 }
             };
-            let result = {
-                let mut lock = cache.shards.get_shard_by_index(shard).lock();
-                cache.cache.complete(&mut lock, key, result, dep_node_index)
-            };
+            let result = cache.complete(key, result, dep_node_index);
             (job, result)
         };
 
@@ -334,7 +299,7 @@ where
 #[inline]
 pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
-    cache: &'a QueryCacheStore<C>,
+    cache: &'a C,
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
@@ -344,7 +309,7 @@ where
     CTX: DepContext,
     OnHit: FnOnce(&C::Stored) -> R,
 {
-    cache.cache.lookup(cache, &key, |value, index| {
+    cache.lookup(&key, |value, index| {
         if unlikely!(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
@@ -356,7 +321,7 @@ where
 fn try_execute_query<CTX, C>(
     tcx: CTX,
     state: &QueryState<C::Key>,
-    cache: &QueryCacheStore<C>,
+    cache: &C,
     span: Span,
     key: C::Key,
     lookup: QueryLookup,
@@ -375,14 +340,13 @@ where
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(tcx, error, query.handle_cycle_error, &cache.cache);
+            let result = mk_cycle(tcx, error, query.handle_cycle_error, cache);
             (result, None)
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
             let (v, index) = cache
-                .cache
-                .lookup(cache, &key, |value, index| (value.clone(), index))
+                .lookup(&key, |value, index| (value.clone(), index))
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
             if unlikely!(tcx.dep_context().profiler().enabled()) {
@@ -760,7 +724,7 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
-    let cached = cache.cache.lookup(cache, &key, |_, index| {
+    let cached = cache.lookup(&key, |_, index| {
         if unlikely!(tcx.dep_context().profiler().enabled()) {
             tcx.dep_context().profiler().query_cache_hit(index.into());
         }

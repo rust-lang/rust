@@ -337,7 +337,7 @@ macro_rules! define_queries {
             }
 
             #[inline(always)]
-            fn query_cache<'a>(tcx: QueryCtxt<$tcx>) -> &'a QueryCacheStore<Self::Cache>
+            fn query_cache<'a>(tcx: QueryCtxt<$tcx>) -> &'a Self::Cache
                 where 'tcx:'a
             {
                 &tcx.query_caches.$name

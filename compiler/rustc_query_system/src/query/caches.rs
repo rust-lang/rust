@@ -1,9 +1,9 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::{QueryCacheStore, QueryLookup};
+use crate::query::plumbing::QueryLookup;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::fmt::Debug;
@@ -25,15 +25,13 @@ pub trait QueryStorage {
 
 pub trait QueryCache: QueryStorage + Sized {
     type Key: Hash + Eq + Clone + Debug;
-    type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<'s, R, OnHit>(
+    fn lookup<R, OnHit>(
         &self,
-        state: &'s QueryCacheStore<Self>,
         key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
@@ -41,19 +39,9 @@ pub trait QueryCache: QueryStorage + Sized {
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: Self::Key,
-        value: Self::Value,
-        index: DepNodeIndex,
-    ) -> Self::Stored;
+    fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    );
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 }
 
 pub struct DefaultCacheSelector;
@@ -62,11 +50,13 @@ impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
     type Cache = DefaultCache<K, V>;
 }
 
-pub struct DefaultCache<K, V>(PhantomData<(K, V)>);
+pub struct DefaultCache<K, V> {
+    shards: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+}
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache(PhantomData)
+        DefaultCache { shards: Default::default() }
     }
 }
 
@@ -87,19 +77,16 @@ where
     V: Clone + Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, R, OnHit>(
-        &self,
-        state: &'s QueryCacheStore<Self>,
-        key: &K,
-        on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
-        let (lookup, lock) = state.get_lookup(key);
+        let key_hash = sharded::make_hash(key);
+        let shard = sharded::get_shard_index_by_hash(key_hash);
+        let lock = self.shards.get_shard_by_index(shard).lock();
+        let lookup = QueryLookup { key_hash, shard };
         let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
@@ -111,23 +98,13 @@ where
     }
 
     #[inline]
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: K,
-        value: V,
-        index: DepNodeIndex,
-    ) -> Self::Stored {
-        lock_sharded_storage.insert(key, (value.clone(), index));
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
+        self.shards.get_shard_by_value(&key).lock().insert(key, (value.clone(), index));
         value
     }
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    ) {
-        let shards = shards.lock_shards();
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let shards = self.shards.lock_shards();
         for shard in shards.iter() {
             for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
@@ -144,12 +121,15 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tc
 
 pub struct ArenaCache<'tcx, K, V> {
     arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
-    phantom: PhantomData<(K, &'tcx V)>,
+    shards: Sharded<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
 }
 
 impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     fn default() -> Self {
-        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), phantom: PhantomData }
+        ArenaCache {
+            arena: WorkerLocal::new(|_| TypedArena::default()),
+            shards: Default::default(),
+        }
     }
 }
 
@@ -171,19 +151,16 @@ where
     V: Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, R, OnHit>(
-        &self,
-        state: &'s QueryCacheStore<Self>,
-        key: &K,
-        on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, QueryLookup>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
-        let (lookup, lock) = state.get_lookup(key);
+        let key_hash = sharded::make_hash(key);
+        let shard = sharded::get_shard_index_by_hash(key_hash);
+        let lock = self.shards.get_shard_by_index(shard).lock();
+        let lookup = QueryLookup { key_hash, shard };
         let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
 
         if let Some((_, value)) = result {
@@ -195,25 +172,15 @@ where
     }
 
     #[inline]
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: K,
-        value: V,
-        index: DepNodeIndex,
-    ) -> Self::Stored {
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
         let value = self.arena.alloc((value, index));
         let value = unsafe { &*(value as *const _) };
-        lock_sharded_storage.insert(key, value);
+        self.shards.get_shard_by_value(&key).lock().insert(key, value);
         &value.0
     }
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    ) {
-        let shards = shards.lock_shards();
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let shards = self.shards.lock_shards();
         for shard in shards.iter() {
             for (k, v) in shard.iter() {
                 f(k, &v.0, v.1);
