@@ -1023,10 +1023,10 @@ pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig 
 
 /// The parsed `--check-cfg` options
 pub struct CheckCfg<T = String> {
-    /// The set of all `names()`, if none no names checking is performed
+    /// The set of all `names()`, if None no name checking is performed
     pub names_valid: Option<FxHashSet<T>>,
-    /// The set of all `values()`, if none no values chcking is performed
-    pub values_valid: Option<FxHashMap<T, FxHashSet<T>>>,
+    /// The set of all `values()`
+    pub values_valid: FxHashMap<T, FxHashSet<T>>,
 }
 
 impl<T> Default for CheckCfg<T> {
@@ -1042,9 +1042,11 @@ impl<T> CheckCfg<T> {
                 .names_valid
                 .as_ref()
                 .map(|names_valid| names_valid.iter().map(|a| f(a)).collect()),
-            values_valid: self.values_valid.as_ref().map(|values_valid| {
-                values_valid.iter().map(|(a, b)| (f(a), b.iter().map(|b| f(b)).collect())).collect()
-            }),
+            values_valid: self
+                .values_valid
+                .iter()
+                .map(|(a, b)| (f(a), b.iter().map(|b| f(b)).collect()))
+                .collect(),
         }
     }
 }
@@ -1098,11 +1100,9 @@ impl CrateCheckConfig {
                 names_valid.insert(k);
             }
             if let Some(v) = v {
-                if let Some(values_valid) = &mut self.values_valid {
-                    values_valid.entry(k).and_modify(|values| {
-                        values.insert(v);
-                    });
-                }
+                self.values_valid.entry(k).and_modify(|values| {
+                    values.insert(v);
+                });
             }
         }
     }

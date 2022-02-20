@@ -5,7 +5,7 @@ LL | #[cfg(feature = "sedre")]
    |       ^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unexpected_cfgs)]` on by default
-   = note: possible values for `feature` are: rand, serde, full
+   = note: expected values for `feature` are: full, rand, serde
 
 warning: 1 warning emitted
 
