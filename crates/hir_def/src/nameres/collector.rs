@@ -1036,6 +1036,9 @@ impl DefCollector<'_> {
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = std::mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
+        let mut push_resolved = |directive: &MacroDirective, call_id| {
+            resolved.push((directive.module_id, directive.depth, directive.container, call_id));
+        };
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|directive| {
             let resolver = |path| {
@@ -1060,12 +1063,7 @@ impl DefCollector<'_> {
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
-                        resolved.push((
-                            directive.module_id,
-                            call_id,
-                            directive.depth,
-                            directive.container,
-                        ));
+                        push_resolved(directive, call_id);
                         res = ReachedFixedPoint::No;
                         return false;
                     }
@@ -1074,6 +1072,7 @@ impl DefCollector<'_> {
                     let call_id = derive_macro_as_call_id(
                         ast_id,
                         *derive_attr,
+                        *derive_pos as u32,
                         self.db,
                         self.def_map.krate,
                         &resolver,
@@ -1086,12 +1085,7 @@ impl DefCollector<'_> {
                             *derive_pos,
                         );
 
-                        resolved.push((
-                            directive.module_id,
-                            call_id,
-                            directive.depth,
-                            directive.container,
-                        ));
+                        push_resolved(directive, call_id);
                         res = ReachedFixedPoint::No;
                         return false;
                     }
@@ -1229,12 +1223,7 @@ impl DefCollector<'_> {
                         .scope
                         .add_attr_macro_invoc(ast_id, call_id);
 
-                    resolved.push((
-                        directive.module_id,
-                        call_id,
-                        directive.depth,
-                        directive.container,
-                    ));
+                    push_resolved(directive, call_id);
                     res = ReachedFixedPoint::No;
                     return false;
                 }
@@ -1245,7 +1234,7 @@ impl DefCollector<'_> {
         // Attribute resolution can add unresolved macro invocations, so concatenate the lists.
         self.unresolved_macros.extend(macros);
 
-        for (module_id, macro_call_id, depth, container) in resolved {
+        for (module_id, depth, container, macro_call_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, depth, container);
         }
 
