@@ -9,8 +9,11 @@ use crate::stable_hasher::{stable_hash_reduce, HashStable, StableHasher, ToStabl
 ///
 /// It supports insert, remove, get functions from FxHashSet.
 /// It also allows to convert hashset to a sorted vector with the method `into_sorted_vector()`.
-#[derive(Clone)]
-pub struct StableSet<T> {
+#[derive(Clone, Encodable, Decodable)]
+pub struct StableSet<T>
+where
+    T: Eq + Hash,
+{
     base: FxHashSet<T>,
 }
 
@@ -63,6 +66,16 @@ impl<T: Hash + Eq> StableSet<T> {
     }
 
     #[inline]
+    pub fn sorted_vector<HCX>(&self, hcx: &HCX) -> Vec<&T>
+    where
+        T: ToStableHashKey<HCX>,
+    {
+        let mut vector = self.base.iter().collect::<Vec<_>>();
+        vector.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
+        vector
+    }
+
+    #[inline]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
         T: Borrow<Q>,
@@ -93,7 +106,7 @@ impl<T: Hash + Eq> StableSet<T> {
 
 impl<T, HCX> HashStable<HCX> for StableSet<T>
 where
-    T: ToStableHashKey<HCX> + Eq,
+    T: ToStableHashKey<HCX> + Eq + Hash,
 {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
@@ -101,5 +114,25 @@ where
             let key = key.to_stable_hash_key(hcx);
             key.hash_stable(hcx, hasher);
         });
+    }
+}
+
+impl<T> FromIterator<T> for StableSet<T>
+where
+    T: Eq + Hash,
+{
+    #[inline]
+    fn from_iter<Collection: IntoIterator<Item = T>>(iter: Collection) -> Self {
+        Self { base: iter.into_iter().collect() }
+    }
+}
+
+impl<T> Extend<T> for StableSet<T>
+where
+    T: Eq + Hash,
+{
+    #[inline]
+    fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
+        self.base.extend(iter)
     }
 }

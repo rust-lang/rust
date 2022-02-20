@@ -25,12 +25,13 @@ use crate::ty::{
 };
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_set::StableSet;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_data_structures::vec_map::VecMap;
@@ -480,7 +481,7 @@ pub struct TypeckResults<'tcx> {
     /// This is used for warning unused imports. During type
     /// checking, this `Lrc` should not be cloned: it must have a ref-count
     /// of 1 so that we can insert things into the set mutably.
-    pub used_trait_imports: Lrc<FxHashSet<LocalDefId>>,
+    pub used_trait_imports: Lrc<StableSet<LocalDefId>>,
 
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `Some(ErrorGuaranteed)`.
@@ -2208,7 +2209,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to identify which traits may define a given associated type to help avoid cycle errors.
     /// Returns a `DefId` iterator.
     fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let mut set = FxHashSet::default();
+        let mut set = StableSet::default();
         let mut stack = vec![trait_def_id];
 
         set.insert(trait_def_id);

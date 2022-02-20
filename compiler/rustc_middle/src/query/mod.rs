@@ -775,7 +775,7 @@ rustc_queries! {
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone) and
     /// their respective impl (i.e., part of the derive macro)
     query live_symbols_and_ignored_derived_traits(_: ()) -> (
-        FxHashSet<LocalDefId>,
+        StableSet<LocalDefId>,
         FxHashMap<LocalDefId, Vec<(DefId, DefId)>>
     ) {
         storage(ArenaCacheSelector<'tcx>)
@@ -828,7 +828,7 @@ rustc_queries! {
         }
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx FxHashSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx StableSet<LocalDefId> {
         desc { |tcx| "used_trait_imports `{}`", tcx.def_path_str(key.to_def_id()) }
         cache_on_disk_if { true }
     }
@@ -978,7 +978,7 @@ rustc_queries! {
         desc { "checking for private elements in public interfaces" }
     }
 
-    query reachable_set(_: ()) -> FxHashSet<LocalDefId> {
+    query reachable_set(_: ()) -> StableSet<LocalDefId> {
         storage(ArenaCacheSelector<'tcx>)
         desc { "reachability" }
     }
@@ -1055,7 +1055,7 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {
+    query asm_target_features(def_id: DefId) -> &'tcx StableSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -1506,7 +1506,7 @@ rustc_queries! {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: LocalDefId) ->
-        Option<(LocalDefId, &'tcx FxHashSet<ItemLocalId>)> {
+        Option<(LocalDefId, &'tcx StableSet<ItemLocalId>)> {
         desc { "testing if a region is late bound" }
     }
     /// For a given item (like a struct), gets the default lifetimes to be used
@@ -1645,7 +1645,7 @@ rustc_queries! {
     query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
         desc { "looking up all possibly unused extern crates" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
+    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx StableSet<Symbol> {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 

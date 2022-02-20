@@ -24,6 +24,7 @@
 #[macro_use]
 extern crate tracing;
 
+use rustc_data_structures::stable_set::StableSet;
 pub use rustc_hir::def::{Namespace, PerNS};
 
 use Determinacy::*;
@@ -975,7 +976,7 @@ pub struct Resolver<'a> {
     underscore_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
-    glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    glob_map: FxHashMap<LocalDefId, StableSet<Symbol>>,
     /// Visibilities in "lowered" form, for all entities that have them.
     visibilities: FxHashMap<LocalDefId, ty::Visibility>,
     used_imports: FxHashSet<NodeId>,

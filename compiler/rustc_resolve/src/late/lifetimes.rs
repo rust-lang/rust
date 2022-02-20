@@ -8,6 +8,7 @@
 
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc_ast::walk_list;
+use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
@@ -468,14 +469,14 @@ fn do_resolve(
     named_region_map
 }
 
-fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetimes {
+fn convert_named_region_map(named_region_map: NamedRegionMap, tcx: TyCtxt<'_>) -> ResolveLifetimes {
     let mut rl = ResolveLifetimes::default();
-
+    let hcx = tcx.create_stable_hashing_context();
     for (hir_id, v) in named_region_map.defs {
         let map = rl.defs.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id, v);
     }
-    for hir_id in named_region_map.late_bound {
+    for hir_id in named_region_map.late_bound.sorted_vector(&hcx) {
         let map = rl.late_bound.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id);
     }

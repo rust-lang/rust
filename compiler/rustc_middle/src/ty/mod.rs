@@ -18,6 +18,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_set::StableSet;
 pub use vtable::*;
 
 use crate::metadata::ModChild;
@@ -135,7 +136,7 @@ pub struct ResolverOutputs {
     pub maybe_unused_trait_imports: FxHashSet<LocalDefId>,
     pub maybe_unused_extern_crates: Vec<(LocalDefId, Span)>,
     pub reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
-    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    pub glob_map: FxHashMap<LocalDefId, StableSet<Symbol>>,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.
     pub extern_prelude: FxHashMap<Symbol, bool>,

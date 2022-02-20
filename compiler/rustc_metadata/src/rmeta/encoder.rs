@@ -1742,7 +1742,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let lib_features = tcx.lib_features(());
-        self.lazy(lib_features.to_vec())
+        self.lazy(lib_features.to_vec(tcx))
     }
 
     fn encode_diagnostic_items(&mut self) -> Lazy<[(Symbol, DefIndex)]> {

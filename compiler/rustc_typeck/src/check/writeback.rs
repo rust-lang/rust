@@ -425,8 +425,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         let fcx_coercion_casts = fcx_typeck_results.coercion_casts();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        let hcx = self.tcx().create_stable_hashing_context();
 
-        for local_id in fcx_coercion_casts {
+        for local_id in fcx_coercion_casts.sorted_vector(&hcx) {
             self.typeck_results.set_coercion_cast(*local_id);
         }
     }

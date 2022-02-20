@@ -910,7 +910,7 @@ pub fn provide(providers: &mut Providers) {
         };
 
         let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
-        for id in &*defids {
+        for id in defids.sorted_vector() {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {
                 attr::OptimizeAttr::None => continue,

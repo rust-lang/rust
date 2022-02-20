@@ -33,10 +33,13 @@ use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{self, AdtSizedConstraint, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::{
+    fx::{FxHashMap, FxIndexMap},
+    stable_set::StableSet,
+};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

@@ -2,7 +2,8 @@
 
 use crate::ty;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_set::StableSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::ItemLocalId;
 use rustc_macros::HashStable;
@@ -63,7 +64,7 @@ pub struct ResolveLifetimes {
     /// Set of lifetime def ids that are late-bound; a region can
     /// be late-bound if (a) it does NOT appear in a where-clause and
     /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
+    pub late_bound: FxHashMap<LocalDefId, StableSet<ItemLocalId>>,
 
     pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }
