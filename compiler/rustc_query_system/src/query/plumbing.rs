@@ -33,18 +33,8 @@ fn hash_for_shard<K: Hash>(key: &K) -> u64 {
     hasher.finish()
 }
 
-struct QueryStateShard<K> {
-    active: FxHashMap<K, QueryResult>,
-}
-
-impl<K> Default for QueryStateShard<K> {
-    fn default() -> QueryStateShard<K> {
-        QueryStateShard { active: Default::default() }
-    }
-}
-
 pub struct QueryState<K> {
-    shards: Sharded<QueryStateShard<K>>,
+    shards: Sharded<FxHashMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -63,7 +53,7 @@ where
 {
     pub fn all_inactive(&self) -> bool {
         let shards = self.shards.lock_shards();
-        shards.iter().all(|shard| shard.active.is_empty())
+        shards.iter().all(|shard| shard.is_empty())
     }
 
     pub fn try_collect_active_jobs<CTX: Copy>(
@@ -76,7 +66,7 @@ where
         // deadlock handler, and this shouldn't be locked.
         let shards = self.shards.try_lock_shards()?;
         for shard in shards.iter() {
-            for (k, v) in shard.active.iter() {
+            for (k, v) in shard.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let query = make_query(tcx, k.clone());
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
@@ -148,7 +138,7 @@ where
         let mut state_lock = state.shards.get_shard_by_value(&key).lock();
         let lock = &mut *state_lock;
 
-        match lock.active.entry(key) {
+        match lock.entry(key) {
             Entry::Vacant(entry) => {
                 let id = tcx.next_job_id();
                 let job = tcx.current_query_job();
@@ -220,7 +210,7 @@ where
             let shard = get_shard_index_by_hash(key_hash);
             let job = {
                 let mut lock = state.shards.get_shard_by_index(shard).lock();
-                match lock.active.remove(&key).unwrap() {
+                match lock.remove(&key).unwrap() {
                     QueryResult::Started(job) => job,
                     QueryResult::Poisoned => panic!(),
                 }
@@ -246,11 +236,11 @@ where
         let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
             let mut shard = shard.lock();
-            let job = match shard.active.remove(&self.key).unwrap() {
+            let job = match shard.remove(&self.key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            shard.active.insert(self.key.clone(), QueryResult::Poisoned);
+            shard.insert(self.key.clone(), QueryResult::Poisoned);
             job
         };
         // Also signal the completion of the job, so waiters
