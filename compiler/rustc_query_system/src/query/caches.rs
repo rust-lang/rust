@@ -2,7 +2,11 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::sharded;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sharded::Sharded;
+#[cfg(not(parallel_compiler))]
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::fmt::Debug;
@@ -50,12 +54,15 @@ impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
 }
 
 pub struct DefaultCache<K, V> {
-    shards: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    #[cfg(parallel_compiler)]
+    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<FxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache { shards: Default::default() }
+        DefaultCache { cache: Default::default() }
     }
 }
 
@@ -83,8 +90,10 @@ where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
         let key_hash = sharded::make_hash(key);
-        let shard = sharded::get_shard_index_by_hash(key_hash);
-        let lock = self.shards.get_shard_by_index(shard).lock();
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
@@ -97,14 +106,28 @@ where
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
-        self.shards.get_shard_by_value(&key).lock().insert(key, (value.clone(), index));
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, (value.clone(), index));
         value
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.shards.lock_shards();
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    f(k, &v.0, v.1);
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter() {
                 f(k, &v.0, v.1);
             }
         }
@@ -119,15 +142,15 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tc
 
 pub struct ArenaCache<'tcx, K, V> {
     arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
-    shards: Sharded<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
+    #[cfg(parallel_compiler)]
+    cache: Sharded<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
 }
 
 impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     fn default() -> Self {
-        ArenaCache {
-            arena: WorkerLocal::new(|_| TypedArena::default()),
-            shards: Default::default(),
-        }
+        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), cache: Default::default() }
     }
 }
 
@@ -156,8 +179,10 @@ where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
         let key_hash = sharded::make_hash(key);
-        let shard = sharded::get_shard_index_by_hash(key_hash);
-        let lock = self.shards.get_shard_by_index(shard).lock();
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
@@ -172,14 +197,28 @@ where
     fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
         let value = self.arena.alloc((value, index));
         let value = unsafe { &*(value as *const _) };
-        self.shards.get_shard_by_value(&key).lock().insert(key, value);
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, value);
         &value.0
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        let shards = self.shards.lock_shards();
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    f(k, &v.0, v.1);
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter() {
                 f(k, &v.0, v.1);
             }
         }
