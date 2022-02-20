@@ -1,5 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{RelocModel, Target};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
@@ -67,11 +67,12 @@ fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> 
 
 fn frame_pointer_r11(
     arch: InlineAsmArch,
+    reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
     is_clobber: bool,
 ) -> Result<(), &'static str> {
-    not_thumb1(arch, target_features, target, is_clobber)?;
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
 
     if !frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
@@ -82,6 +83,7 @@ fn frame_pointer_r11(
 
 fn frame_pointer_r7(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
     _is_clobber: bool,
@@ -95,6 +97,7 @@ fn frame_pointer_r7(
 
 fn not_thumb1(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
     is_clobber: bool,
@@ -111,18 +114,18 @@ fn not_thumb1(
 
 fn reserved_r9(
     arch: InlineAsmArch,
+    reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
     is_clobber: bool,
 ) -> Result<(), &'static str> {
-    not_thumb1(arch, target_features, target, is_clobber)?;
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
 
-    // We detect this using the reserved-r9 feature instead of using the target
-    // because the relocation model can be changed with compiler options.
-    if target_features.contains(&sym::reserved_r9) {
-        Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
-    } else {
-        Ok(())
+    match reloc_model {
+        RelocModel::Rwpi | RelocModel::RopiRwpi => {
+            Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
+        }
+        _ => Ok(()),
     }
 }
 

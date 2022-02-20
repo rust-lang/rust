@@ -1,5 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{RelocModel, Target};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
@@ -54,6 +54,7 @@ impl RiscVInlineAsmRegClass {
 
 fn not_e(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
     _is_clobber: bool,
