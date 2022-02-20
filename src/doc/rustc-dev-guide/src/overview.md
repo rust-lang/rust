@@ -289,7 +289,7 @@ on [`ty::Ty`][ty], but for now, we just want to mention that it exists and is th
 
 Also note that the `rustc_middle::ty` module defines the `TyCtxt` struct we mentioned before.
 
-[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
+[ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 
 ### Parallelism
 

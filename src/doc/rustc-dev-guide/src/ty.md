@@ -16,7 +16,7 @@ The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and no
 [`rustc_hir::Ty`][hir_ty]). The distinction is important, so we will discuss it first before going
 into the details of `ty::Ty`.
 
-[ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.Ty.html
+[ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Ty.html
 
 ## `rustc_hir::Ty` vs `ty::Ty`
