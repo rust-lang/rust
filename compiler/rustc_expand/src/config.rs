@@ -165,6 +165,7 @@ fn get_features(
             if let Some(Feature { since, .. }) = ACCEPTED_FEATURES.iter().find(|f| name == f.name) {
                 let since = Some(Symbol::intern(since));
                 features.declared_lang_features.push((name, mi.span(), since));
+                features.active_features.insert(name);
                 continue;
             }
 
@@ -185,10 +186,12 @@ fn get_features(
             if let Some(f) = ACTIVE_FEATURES.iter().find(|f| name == f.name) {
                 f.set(&mut features, mi.span());
                 features.declared_lang_features.push((name, mi.span(), None));
+                features.active_features.insert(name);
                 continue;
             }
 
             features.declared_lib_features.push((name, mi.span()));
+            features.active_features.insert(name);
         }
     }
 

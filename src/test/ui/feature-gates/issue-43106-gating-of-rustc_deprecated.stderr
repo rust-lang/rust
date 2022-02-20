@@ -1,51 +1,94 @@
 error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:7:1
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:16:9
    |
-LL | #![rustc_deprecated()]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL |         #![rustc_deprecated()]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:10:1
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:21:5
    |
-LL | #[rustc_deprecated()]
-   | ^^^^^^^^^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:13:17
-   |
-LL |     mod inner { #![rustc_deprecated()] }
-   |                 ^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:16:5
-   |
-LL |     #[rustc_deprecated()] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:19:5
-   |
-LL |     #[rustc_deprecated()] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:19:5
-   |
-LL |     #[rustc_deprecated()] struct S;
-   |     ^^^^^^^^^^^^^^^^^^^^^
-
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:23:5
-   |
-LL |     #[rustc_deprecated()] type T = S;
+LL |     #[rustc_deprecated()]
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0734]: stability attributes may not be used outside of the standard library
   --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
    |
-LL |     #[rustc_deprecated()] impl S { }
+LL |     #[rustc_deprecated()]
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:32:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0734`.
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:37:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:11:1
+   |
+LL | #[rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0734]: stability attributes may not be used outside of the standard library
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:7:1
+   |
+LL | #![rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:7:1
+   |
+LL | #![rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:11:1
+   |
+LL | #[rustc_deprecated()]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:16:9
+   |
+LL |         #![rustc_deprecated()]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:21:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:26:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:32:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0542]: missing 'since'
+  --> $DIR/issue-43106-gating-of-rustc_deprecated.rs:37:5
+   |
+LL |     #[rustc_deprecated()]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+Some errors have detailed explanations: E0542, E0734.
+For more information about an error, try `rustc --explain E0542`.

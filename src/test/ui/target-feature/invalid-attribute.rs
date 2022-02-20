@@ -12,7 +12,6 @@
 // ignore-sparc
 // ignore-sparc64
 
-#![feature(target_feature)]
 #![warn(unused_attributes)]
 
 #[target_feature = "+sse2"]

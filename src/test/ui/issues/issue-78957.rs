@@ -1,5 +1,4 @@
 #![deny(unused_attributes)]
-#![feature(min_const_generics)]
 
 use std::marker::PhantomData;
 
