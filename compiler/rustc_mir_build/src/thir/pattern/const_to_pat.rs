@@ -121,7 +121,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
         traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
-            with_no_trimmed_paths(|| match non_sm_ty {
+            with_no_trimmed_paths!(match non_sm_ty {
                 traits::NonStructuralMatchTy::Adt(adt) => self.adt_derive_msg(adt),
                 traits::NonStructuralMatchTy::Dynamic => {
                     "trait objects cannot be used in patterns".to_string()

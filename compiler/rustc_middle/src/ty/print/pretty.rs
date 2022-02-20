@@ -63,66 +63,59 @@ thread_local! {
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
 
-/// Avoids running any queries during any prints that occur
-/// during the closure. This may alter the appearance of some
-/// types (e.g. forcing verbose printing for opaque types).
-/// This method is used during some queries (e.g. `explicit_item_bounds`
-/// for opaque types), to ensure that any debug printing that
-/// occurs during the query computation does not end up recursively
-/// calling the same query.
-pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
-    NO_QUERIES.with(|no_queries| {
-        let old = no_queries.replace(true);
-        let result = f();
-        no_queries.set(old);
-        result
-    })
+macro_rules! define_helper {
+    ($($(#[$a:meta])* fn $name:ident($helper:ident, $tl:ident);)+) => {
+        $(
+            #[must_use]
+            pub struct $helper(bool);
+
+            impl $helper {
+                pub fn new() -> $helper {
+                    $helper($tl.with(|c| c.replace(true)))
+                }
+            }
+
+            $(#[$a])*
+            pub macro $name($e:expr) {
+                {
+                    let _guard = $helper::new();
+                    $e
+                }
+            }
+
+            impl Drop for $helper {
+                fn drop(&mut self) {
+                    $tl.with(|c| c.set(self.0))
+                }
+            }
+        )+
+    }
 }
 
-/// Force us to name impls with just the filename/line number. We
-/// normally try to use types. But at some points, notably while printing
-/// cycle errors, this can result in extra or suboptimal error output,
-/// so this variable disables that check.
-pub fn with_forced_impl_filename_line<F: FnOnce() -> R, R>(f: F) -> R {
-    FORCE_IMPL_FILENAME_LINE.with(|force| {
-        let old = force.replace(true);
-        let result = f();
-        force.set(old);
-        result
-    })
-}
-
-/// Adds the `crate::` prefix to paths where appropriate.
-pub fn with_crate_prefix<F: FnOnce() -> R, R>(f: F) -> R {
-    SHOULD_PREFIX_WITH_CRATE.with(|flag| {
-        let old = flag.replace(true);
-        let result = f();
-        flag.set(old);
-        result
-    })
-}
-
-/// Prevent path trimming if it is turned on. Path trimming affects `Display` impl
-/// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
-/// if no other `Vec` is found.
-pub fn with_no_trimmed_paths<F: FnOnce() -> R, R>(f: F) -> R {
-    NO_TRIMMED_PATH.with(|flag| {
-        let old = flag.replace(true);
-        let result = f();
-        flag.set(old);
-        result
-    })
-}
-
-/// Prevent selection of visible paths. `Display` impl of DefId will prefer visible (public) reexports of types as paths.
-pub fn with_no_visible_paths<F: FnOnce() -> R, R>(f: F) -> R {
-    NO_VISIBLE_PATH.with(|flag| {
-        let old = flag.replace(true);
-        let result = f();
-        flag.set(old);
-        result
-    })
-}
+define_helper!(
+    /// Avoids running any queries during any prints that occur
+    /// during the closure. This may alter the appearance of some
+    /// types (e.g. forcing verbose printing for opaque types).
+    /// This method is used during some queries (e.g. `explicit_item_bounds`
+    /// for opaque types), to ensure that any debug printing that
+    /// occurs during the query computation does not end up recursively
+    /// calling the same query.
+    fn with_no_queries(NoQueriesGuard, NO_QUERIES);
+    /// Force us to name impls with just the filename/line number. We
+    /// normally try to use types. But at some points, notably while printing
+    /// cycle errors, this can result in extra or suboptimal error output,
+    /// so this variable disables that check.
+    fn with_forced_impl_filename_line(ForcedImplGuard, FORCE_IMPL_FILENAME_LINE);
+    /// Adds the `crate::` prefix to paths where appropriate.
+    fn with_crate_prefix(CratePrefixGuard, SHOULD_PREFIX_WITH_CRATE);
+    /// Prevent path trimming if it is turned on. Path trimming affects `Display` impl
+    /// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
+    /// if no other `Vec` is found.
+    fn with_no_trimmed_paths(NoTrimmedGuard, NO_TRIMMED_PATH);
+    /// Prevent selection of visible paths. `Display` impl of DefId will prefer
+    /// visible (public) reexports of types as paths.
+    fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+);
 
 /// The "region highlights" are used to control region printing during
 /// specific error messages. When a "region highlight" is enabled, it
@@ -379,7 +372,7 @@ pub trait PrettyPrinter<'tcx>:
                         // in cases where the `extern crate foo` has non-trivial
                         // parents, e.g. it's nested in `impl foo::Trait for Bar`
                         // (see also issues #55779 and #87932).
-                        self = with_no_visible_paths(|| self.print_def_path(def_id, &[]))?;
+                        self = with_no_visible_paths!(self.print_def_path(def_id, &[])?);
 
                         return Ok((self, true));
                     }
@@ -654,7 +647,7 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                return with_no_queries(|| {
+                return with_no_queries!({
                     let def_key = self.tcx().def_key(def_id);
                     if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
                         p!(write("{}", name));

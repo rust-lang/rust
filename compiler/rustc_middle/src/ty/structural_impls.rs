@@ -22,9 +22,9 @@ use std::sync::Arc;
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths(|| {
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])
-            })?;
+            with_no_trimmed_paths!(
+                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])?
+            );
             Ok(())
         })
     }
@@ -33,9 +33,9 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths(|| {
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])
-            })?;
+            with_no_trimmed_paths!(
+                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])?
+            );
             Ok(())
         })
     }
@@ -50,7 +50,7 @@ impl fmt::Debug for ty::UpvarId {
 
 impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 
@@ -126,13 +126,13 @@ impl fmt::Debug for ty::RegionVid {
 
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 

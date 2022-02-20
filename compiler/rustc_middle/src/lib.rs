@@ -55,6 +55,7 @@
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
 #![feature(unwrap_infallible)]
+#![feature(decl_macro)]
 #![recursion_limit = "512"]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 

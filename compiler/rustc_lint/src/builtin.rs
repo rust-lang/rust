@@ -2634,7 +2634,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some((msg, span)) =
-                with_no_trimmed_paths(|| ty_find_init_error(cx.tcx, conjured_ty, init))
+                with_no_trimmed_paths!(ty_find_init_error(cx.tcx, conjured_ty, init))
             {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(

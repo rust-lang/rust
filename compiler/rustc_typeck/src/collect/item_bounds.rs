@@ -59,7 +59,7 @@ fn opaque_type_bounds<'tcx>(
     ast_bounds: &'tcx [hir::GenericBound<'tcx>],
     span: Span,
 ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-    ty::print::with_no_queries(|| {
+    ty::print::with_no_queries!({
         let item_ty =
             tcx.mk_opaque(opaque_def_id, InternalSubsts::identity_for_item(tcx, opaque_def_id));
 

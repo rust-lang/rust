@@ -272,11 +272,12 @@ macro_rules! define_queries {
                 let name = stringify!($name);
                 // Disable visible paths printing for performance reasons.
                 // Showing visible path instead of any path is not that important in production.
-                let description = ty::print::with_no_visible_paths(
-                    || ty::print::with_forced_impl_filename_line(
+                let description = ty::print::with_no_visible_paths!(
                     // Force filename-line mode to avoid invoking `type_of` query.
-                    || queries::$name::describe(tcx, key)
-                ));
+                    ty::print::with_forced_impl_filename_line!(
+                        queries::$name::describe(tcx, key)
+                    )
+                );
                 let description = if tcx.sess.verbose() {
                     format!("{} [{}]", description, name)
                 } else {

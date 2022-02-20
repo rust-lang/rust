@@ -43,8 +43,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         // in problematically distinct types due to HRTB and subtyping (see #47638).
         // ty::Dynamic(..) |
         ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str => {
-            let mut name =
-                with_no_visible_paths(|| with_no_trimmed_paths(|| layout.ty.to_string()));
+            let mut name = with_no_visible_paths!(with_no_trimmed_paths!(layout.ty.to_string()));
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {

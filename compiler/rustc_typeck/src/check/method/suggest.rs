@@ -1346,7 +1346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let additional_newline = if found_use { "" } else { "\n" };
                 format!(
                     "use {};\n{}",
-                    with_crate_prefix(|| self.tcx.def_path_str(*trait_did)),
+                    with_crate_prefix!(self.tcx.def_path_str(*trait_did)),
                     additional_newline
                 )
             });
@@ -1359,7 +1359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let additional_newline = if found_use { "" } else { "\n" };
                 format!(
                     "use {}::*; // trait {}\n{}",
-                    with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                    with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
                     self.tcx.item_name(*trait_did),
                     additional_newline
                 )
@@ -1378,12 +1378,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     msg.push_str(&format!(
                         "\ncandidate #{}: `use {};`",
                         i + 1,
-                        with_crate_prefix(|| self.tcx.def_path_str(*trait_did))
+                        with_crate_prefix!(self.tcx.def_path_str(*trait_did))
                     ));
                 } else {
                     msg.push_str(&format!(
                         "\n`use {};`",
-                        with_crate_prefix(|| self.tcx.def_path_str(*trait_did))
+                        with_crate_prefix!(self.tcx.def_path_str(*trait_did))
                     ));
                 }
             }
@@ -1396,13 +1396,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     msg.push_str(&format!(
                         "\ncandidate #{}: `use {}::*; // trait {}`",
                         candidates.len() + i + 1,
-                        with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                        with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
                         self.tcx.item_name(*trait_did),
                     ));
                 } else {
                     msg.push_str(&format!(
                         "\n`use {}::*; // trait {}`",
-                        with_crate_prefix(|| self.tcx.def_path_str(*parent_did)),
+                        with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
                         self.tcx.item_name(*trait_did),
                     ));
                 }
@@ -1442,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(did) = edition_fix {
                 err.note(&format!(
                     "'{}' is included in the prelude starting in Edition 2021",
-                    with_crate_prefix(|| self.tcx.def_path_str(did))
+                    with_crate_prefix!(self.tcx.def_path_str(did))
                 ));
             }
 

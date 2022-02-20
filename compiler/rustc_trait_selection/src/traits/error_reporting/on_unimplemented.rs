@@ -161,7 +161,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         // Add all types without trimmed paths.
-        ty::print::with_no_trimmed_paths(|| {
+        ty::print::with_no_trimmed_paths!({
             let generics = self.tcx.generics_of(def_id);
             let self_ty = trait_ref.self_ty();
             // This is also included through the generics list as `Self`,

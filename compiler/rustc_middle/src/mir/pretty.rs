@@ -92,10 +92,8 @@ pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> 
     let Some(ref filters) = tcx.sess.opts.debugging_opts.dump_mir else {
         return false;
     };
-    let node_path = ty::print::with_forced_impl_filename_line(|| {
-        // see notes on #41697 below
-        tcx.def_path_str(def_id)
-    });
+    // see notes on #41697 below
+    let node_path = ty::print::with_forced_impl_filename_line!(tcx.def_path_str(def_id));
     filters.split('|').any(|or_filter| {
         or_filter.split('&').all(|and_filter| {
             let and_filter_trimmed = and_filter.trim();
@@ -123,10 +121,9 @@ fn dump_matched_mir_node<'tcx, F>(
     let _: io::Result<()> = try {
         let mut file =
             create_dump_file(tcx, "mir", pass_num, pass_name, disambiguator, body.source)?;
-        let def_path = ty::print::with_forced_impl_filename_line(|| {
-            // see notes on #41697 above
-            tcx.def_path_str(body.source.def_id())
-        });
+        // see notes on #41697 above
+        let def_path =
+            ty::print::with_forced_impl_filename_line!(tcx.def_path_str(body.source.def_id()));
         write!(file, "// MIR for `{}", def_path)?;
         match body.source.promoted {
             None => write!(file, "`")?,
@@ -969,10 +966,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
-    ty::print::with_forced_impl_filename_line(|| {
+    ty::print::with_forced_impl_filename_line! {
         // see notes on #41697 elsewhere
-        write!(w, "{}", tcx.def_path_str(def_id))
-    })?;
+        write!(w, "{}", tcx.def_path_str(def_id))?
+    }
 
     if body.source.promoted.is_none() && is_function {
         write!(w, "(")?;
