@@ -38,7 +38,7 @@ _compiler-flags/instrument-coverage_)][unstable-book-instrument-coverage].
 ## Rust symbol mangling
 
 `-Z instrument-coverage` automatically enables Rust symbol mangling `v0` (as
-if the user specified `-Z symbol-mangling-version=v0` option when invoking
+if the user specified `-C symbol-mangling-version=v0` option when invoking
 `rustc`) to ensure consistent and reversible name mangling. This has two
 important benefits:
 
