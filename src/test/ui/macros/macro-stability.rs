@@ -2,7 +2,10 @@
 
 #![feature(decl_macro)]
 #![feature(staged_api)]
-#[macro_use] extern crate unstable_macros;
+#![stable(feature = "rust1", since = "1.0.0")]
+
+#[macro_use]
+extern crate unstable_macros;
 
 #[unstable(feature = "local_unstable", issue = "none")]
 macro_rules! local_unstable { () => () }
