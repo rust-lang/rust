@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Binder, Predicate, PredicateKind, ToPredicate, Ty, TyCtxt};
 use rustc_span::{sym, Span};
@@ -356,6 +358,50 @@ fn param_env_reveal_all_normalized(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamE
     tcx.param_env(def_id).with_reveal_all_normalized(tcx)
 }
 
+fn reveal_all_and_erase_trivial_caller_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> ty::ParamEnv<'tcx> {
+    let mut old_caller_bounds = param_env.caller_bounds();
+    loop {
+        // The caller bounds that we must continue to include in our ParamEnv,
+        // because they cause errors without them...
+        let mut needed_caller_bounds = vec![];
+        for (idx, bound) in old_caller_bounds.iter().enumerate() {
+            let new_param_env = param_env.with_caller_bounds(tcx.mk_predicates(
+                needed_caller_bounds.iter().chain(old_caller_bounds[idx + 1..].iter()).copied(),
+            ));
+            // a bound is trivial if it does not have const projections
+            // (which might induce cycles), and if we can prove that bound
+            // given a copy of our param-env that has the bound removed.
+            let is_bound_trivial = tcx.infer_ctxt().enter(|infcx| {
+                let mut fulfillcx = traits::FulfillmentContext::new_in_snapshot();
+                fulfillcx.register_predicate_obligation(
+                    &infcx,
+                    traits::Obligation::new(traits::ObligationCause::dummy(), new_param_env, bound),
+                );
+                let errors = fulfillcx.select_all_or_error(&infcx);
+                if !errors.is_empty() {
+                    info!("{:?} is NOT trivial: {:?}", bound, errors);
+                } else {
+                    info!("{:?} is trivial", bound);
+                }
+                // is trivial iff there are no errors when fulfilling this bound
+                errors.is_empty()
+            });
+            if !is_bound_trivial {
+                needed_caller_bounds.push(bound);
+            }
+        }
+        let new_caller_bounds = tcx.mk_predicates(needed_caller_bounds.into_iter());
+        if new_caller_bounds == old_caller_bounds {
+            return param_env.with_caller_bounds(new_caller_bounds).with_reveal_all_normalized(tcx);
+        } else {
+            old_caller_bounds = new_caller_bounds;
+        }
+    }
+}
+
 fn instance_def_size_estimate<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance_def: ty::InstanceDef<'tcx>,
@@ -495,6 +541,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         def_ident_span,
         param_env,
         param_env_reveal_all_normalized,
+        reveal_all_and_erase_trivial_caller_bounds,
         instance_def_size_estimate,
         issue33140_self_ty,
         impl_defaultness,

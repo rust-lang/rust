@@ -1152,6 +1152,16 @@ rustc_queries! {
         desc { |tcx| "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// Like `ty::ParamEnv::reveal_all_normalized`, but returns the `ParamEnv` with any
+    /// where clause bounds removed if they hold "trivially" -- that is, if they are
+    /// satisfied by the input param-env with that bound removed, such as if they match a
+    /// global `impl` or are a duplicated bound in the where clause.
+    ///
+    /// This is a query because it is computationally expensive, and we want to cache it.
+    query reveal_all_and_erase_trivial_caller_bounds(key: ty::ParamEnv<'tcx>) -> ty::ParamEnv<'tcx> {
+        desc { |tcx| "normalizing and erasing trivial predicates of `{:?}`", key }
+    }
+
     /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
     query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {

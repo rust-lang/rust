@@ -171,9 +171,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return true;
         }
         // Normalize projections and things like that.
-        // FIXME: We need to reveal_all, as some optimizations change types in ways
-        // that require unfolding opaque types.
-        let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
+        // FIXME: We need to reveal_all and erase any trivial caller bounds (see query description)
+        // due to the fact that certain optimizations (e.g. inlining) change the way that types are
+        // normalized.
+        let param_env = self.tcx.reveal_all_and_erase_trivial_caller_bounds(self.param_env);
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);
 

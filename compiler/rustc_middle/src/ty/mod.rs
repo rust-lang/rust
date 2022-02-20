@@ -1455,6 +1455,12 @@ impl<'tcx> ParamEnv<'tcx> {
         Self::new(List::empty(), self.reveal(), self.constness())
     }
 
+    /// Returns this same environment but with new caller bounds.
+    #[inline]
+    pub fn with_caller_bounds(self, caller_bounds: &'tcx List<Predicate<'tcx>>) -> Self {
+        Self::new(caller_bounds, self.reveal(), self.constness())
+    }
+
     /// Creates a suitable environment in which to perform trait
     /// queries on the given value. When type-checking, this is simply
     /// the pair of the environment plus value. But when reveal is set to
