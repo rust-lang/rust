@@ -811,6 +811,21 @@ mod parse {
         }
     }
 
+    crate fn parse_debug_name_table_kind(slot: &mut DebugNameTableKind, v: Option<&str>) -> bool {
+        match v {
+            None => false,
+            Some(s) => {
+                *slot = match s {
+                    "none" => DebugNameTableKind::None,
+                    "gnu" => DebugNameTableKind::Gnu,
+                    _ => DebugNameTableKind::Default,
+                };
+                true
+            }
+            _ => false,
+        }
+    }
+
     crate fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
@@ -1151,6 +1166,8 @@ options! {
         "inject the given attribute in the crate"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
+    debug_name_table_kind: DebugNameTableKind = (DebugNameTableKind::Default, parse_debug_name_table_kind, [TRACKED],
+        "emit .debug_pubnames .debug_pubtypes(default: default)"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
         "emit line numbers debug info inside macros (default: no)"),
     deduplicate_diagnostics: bool = (true, parse_bool, [UNTRACKED],

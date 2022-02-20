@@ -682,6 +682,25 @@ static DICompileUnit::DebugEmissionKind fromRust(LLVMRustDebugEmissionKind Kind)
   }
 }
 
+enum class LLVMRustDebugNameTableKind {
+    Default,
+    None,
+    Gnu,
+};
+
+static DICompileUnit::DebugNameTableKind fromRust(LLVMRustDebugNameTableKind Kind) {
+  switch (Kind) {
+  case LLVMRustDebugNameTableKind::Default:
+    return DICompileUnit::DebugNameTableKind::Default;
+  case LLVMRustDebugNameTableKind::None:
+    return DICompileUnit::DebugNameTableKind::None;
+  case LLVMRustDebugNameTableKind::Gnu:
+    return DICompileUnit::DebugNameTableKind::Gnu;
+  default:
+    report_fatal_error("bad DebugNameTableKind.");
+  }
+}
+
 enum class LLVMRustChecksumKind {
   None,
   MD5,
@@ -749,13 +768,16 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     const char *Flags, unsigned RuntimeVer,
     const char *SplitName, size_t SplitNameLen,
     LLVMRustDebugEmissionKind Kind,
-    uint64_t DWOId, bool SplitDebugInlining) {
+    uint64_t DWOId, bool SplitDebugInlining,
+    LLVMRustDebugNameTableKind TableKind) {
   auto *File = unwrapDI<DIFile>(FileRef);
+  bool DebugInfoForProfiling = false;
 
   return wrap(Builder->createCompileUnit(Lang, File, StringRef(Producer, ProducerLen),
                                          isOptimized, Flags, RuntimeVer,
                                          StringRef(SplitName, SplitNameLen),
-                                         fromRust(Kind), DWOId, SplitDebugInlining));
+                                         fromRust(Kind), DWOId, SplitDebugInlining,
+                                         DebugInfoForProfiling, fromRust(TableKind));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(

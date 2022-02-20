@@ -7,7 +7,7 @@ use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
     DISPFlags, DIScope, DISubprogram, DISubrange, DITemplateTypeParameter, DIType, DIVariable,
-    DebugEmissionKind,
+    DebugEmissionKind, DebugNameTableKind,
 };
 
 use libc::{c_char, c_int, c_uint, size_t};
@@ -952,6 +952,26 @@ pub mod debuginfo {
                 DebugInfo::None => DebugEmissionKind::NoDebug,
                 DebugInfo::Limited => DebugEmissionKind::LineTablesOnly,
                 DebugInfo::Full => DebugEmissionKind::FullDebug,
+            }
+        }
+    }
+
+    /// LLVMRustDebugNameTableKind
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub enum DebugNameTableKind {
+        Default,
+        None,
+        Gnu,
+    }
+
+    impl DebugNameTableKind {
+        pub fn from_generic(kind: rustc_session::config::DebugNameTableKind) -> DebugNameTableKind {
+            use rustc_session::config;
+            match kind {
+                config::DebugNameTableKind::None => DebugNameTableKind::None,
+                config::DebugNameTableKind::Default => DebugNameTableKind::Default,
+                config::DebugNameTableKind::Gnu => DebugNameTableKind::Gnu,
             }
         }
     }
@@ -1919,6 +1939,7 @@ extern "C" {
         kind: DebugEmissionKind,
         DWOId: u64,
         SplitDebugInlining: bool,
+        DebugNameTableKind: DebugNameTableKind,
     ) -> &'a DIDescriptor;
 
     pub fn LLVMRustDIBuilderCreateFile<'a>(
