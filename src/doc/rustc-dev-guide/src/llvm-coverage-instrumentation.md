@@ -3,7 +3,7 @@
 <!-- toc -->
 
 `rustc` supports detailed source-based code and test coverage analysis
-with a command line option (`-Z instrument-coverage`) that instruments Rust
+with a command line option (`-C instrument-coverage`) that instruments Rust
 libraries and binaries with additional instructions and data, at compile time.
 
 The coverage instrumentation injects calls to the LLVM intrinsic instruction
@@ -28,16 +28,15 @@ them), and generate various reports for analysis, for example:
 <br/>
 
 Detailed instructions and examples are documented in the
-[Rust Unstable Book (under
-_compiler-flags/instrument-coverage_)][unstable-book-instrument-coverage].
+[Rustc Book][rustc-book-instrument-coverage].
 
 [llvm-instrprof-increment]: https://llvm.org/docs/LangRef.html#llvm-instrprof-increment-intrinsic
 [coverage map]: https://llvm.org/docs/CoverageMappingFormat.html
-[unstable-book-instrument-coverage]: https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/instrument-coverage.html
+[rustc-book-instrument-coverage]: https://doc.rust-lang.org/nightly/rustc/instrument-coverage.html
 
 ## Rust symbol mangling
 
-`-Z instrument-coverage` automatically enables Rust symbol mangling `v0` (as
+`-C instrument-coverage` automatically enables Rust symbol mangling `v0` (as
 if the user specified `-C symbol-mangling-version=v0` option when invoking
 `rustc`) to ensure consistent and reversible name mangling. This has two
 important benefits:
@@ -62,7 +61,7 @@ In the `rustc` source tree, `library/profiler_builtins` bundles the LLVM
 `profiler_builtins` library is only included when `profiler = true` is set
 in `rustc`'s `config.toml`.)
 
-When compiling with `-Z instrument-coverage`,
+When compiling with `-C instrument-coverage`,
 [`CrateLoader::postprocess()`][crate-loader-postprocess] dynamically loads the
 `profiler_builtins` library by calling `inject_profiler_runtime()`.
 
@@ -287,7 +286,7 @@ instrumented) in the [`coverage`][coverage-test-samples] directory, and the
 actual tests and expected results in [`coverage-reports`].
 
 Finally, the [`coverage-llvmir`] test compares compiles a simple Rust program
-with `-Z instrument-coverage` and compares the compiled program's LLVM IR to
+with `-C instrument-coverage` and compares the compiled program's LLVM IR to
 expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
 intrinsic calls to increment the runtime counters.
@@ -424,7 +423,7 @@ theme in your development environment, you will probably want to use this
 option so you can review the graphviz output without straining your vision.
 
 ```shell
-$ rustc -Z instrument-coverage -Z dump-mir=InstrumentCoverage \
+$ rustc -C instrument-coverage -Z dump-mir=InstrumentCoverage \
     -Z dump-mir-graphviz some_rust_source.rs
 ```
 
@@ -497,7 +496,7 @@ An visual, interactive representation of the final `CoverageSpan`s can be
 generated with the following `rustc` flags:
 
 ```shell
-$ rustc -Z instrument-coverage -Z dump-mir=InstrumentCoverage \
+$ rustc -C instrument-coverage -Z dump-mir=InstrumentCoverage \
     -Z dump-mir-spanview some_rust_source.rs
 ```
 

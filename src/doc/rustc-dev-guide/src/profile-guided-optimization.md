@@ -49,7 +49,7 @@ workflow to see how they interact.
 
 [^note-instrument-coverage]: Note: `rustc` now supports front-end-based coverage
 instrumentation, via the experimental option
-[`-Z instrument-coverage`](./llvm-coverage-instrumentation.md), but using these
+[`-C instrument-coverage`](./llvm-coverage-instrumentation.md), but using these
 coverage results for PGO has not been attempted at this time.
 
 ### Overall Workflow
