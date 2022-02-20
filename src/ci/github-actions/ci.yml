@@ -691,9 +691,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            <<: *job-linux-xl
+          - name: dist-x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-msvc
+                --host=x86_64-pc-windows-msvc
+                --target=x86_64-pc-windows-msvc
+                --enable-full-tools
+                --enable-profiler
+              SCRIPT: python x.py dist
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-xl
+          - name: dist-x86_64-msvc-alt
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
+              SCRIPT: python x.py dist
+            <<: *job-windows-xl
 
   master:
     name: master
