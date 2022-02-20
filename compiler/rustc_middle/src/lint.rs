@@ -202,6 +202,77 @@ impl<'a> LintDiagnosticBuilder<'a> {
     }
 }
 
+pub fn explain_lint_level_source<'s>(
+    sess: &'s Session,
+    lint: &'static Lint,
+    level: Level,
+    src: LintLevelSource,
+    err: &mut DiagnosticBuilder<'s>,
+) {
+    let name = lint.name_lower();
+    match src {
+        LintLevelSource::Default => {
+            sess.diag_note_once(
+                err,
+                DiagnosticMessageId::from(lint),
+                &format!("`#[{}({})]` on by default", level.as_str(), name),
+            );
+        }
+        LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
+            let flag = match orig_level {
+                Level::Warn => "-W",
+                Level::Deny => "-D",
+                Level::Forbid => "-F",
+                Level::Allow => "-A",
+                Level::ForceWarn => "--force-warn",
+            };
+            let hyphen_case_lint_name = name.replace('_', "-");
+            if lint_flag_val.as_str() == name {
+                sess.diag_note_once(
+                    err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "requested on the command line with `{} {}`",
+                        flag, hyphen_case_lint_name
+                    ),
+                );
+            } else {
+                let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
+                sess.diag_note_once(
+                    err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "`{} {}` implied by `{} {}`",
+                        flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
+                    ),
+                );
+            }
+        }
+        LintLevelSource::Node(lint_attr_name, src, reason) => {
+            if let Some(rationale) = reason {
+                err.note(rationale.as_str());
+            }
+            sess.diag_span_note_once(
+                err,
+                DiagnosticMessageId::from(lint),
+                src,
+                "the lint level is defined here",
+            );
+            if lint_attr_name.as_str() != name {
+                let level_str = level.as_str();
+                sess.diag_note_once(
+                    err,
+                    DiagnosticMessageId::from(lint),
+                    &format!(
+                        "`#[{}({})]` implied by `#[{}({})]`",
+                        level_str, name, level_str, lint_attr_name
+                    ),
+                );
+            }
+        }
+    }
+}
+
 pub fn struct_lint_level<'s, 'd>(
     sess: &'s Session,
     lint: &'static Lint,
@@ -277,69 +348,9 @@ pub fn struct_lint_level<'s, 'd>(
             }
         }
 
-        let name = lint.name_lower();
-        match src {
-            LintLevelSource::Default => {
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!("`#[{}({})]` on by default", level.as_str(), name),
-                );
-            }
-            LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
-                let flag = match orig_level {
-                    Level::Warn => "-W",
-                    Level::Deny => "-D",
-                    Level::Forbid => "-F",
-                    Level::Allow => "-A",
-                    Level::ForceWarn => "--force-warn",
-                };
-                let hyphen_case_lint_name = name.replace('_', "-");
-                if lint_flag_val.as_str() == name {
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "requested on the command line with `{} {}`",
-                            flag, hyphen_case_lint_name
-                        ),
-                    );
-                } else {
-                    let hyphen_case_flag_val = lint_flag_val.as_str().replace('_', "-");
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "`{} {}` implied by `{} {}`",
-                            flag, hyphen_case_lint_name, flag, hyphen_case_flag_val
-                        ),
-                    );
-                }
-            }
-            LintLevelSource::Node(lint_attr_name, src, reason) => {
-                if let Some(rationale) = reason {
-                    err.note(rationale.as_str());
-                }
-                sess.diag_span_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    src,
-                    "the lint level is defined here",
-                );
-                if lint_attr_name.as_str() != name {
-                    let level_str = level.as_str();
-                    sess.diag_note_once(
-                        &mut err,
-                        DiagnosticMessageId::from(lint),
-                        &format!(
-                            "`#[{}({})]` implied by `#[{}({})]`",
-                            level_str, name, level_str, lint_attr_name
-                        ),
-                    );
-                }
-            }
-        }
+        explain_lint_level_source(sess, lint, level, src, &mut err);
 
+        let name = lint.name_lower();
         let is_force_warn = matches!(level, Level::ForceWarn);
         err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn });
 

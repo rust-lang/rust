@@ -2,7 +2,7 @@
 
 use crate::mir::{Body, Promoted};
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_errors::ErrorReported;
 use rustc_hir as hir;
@@ -114,13 +114,44 @@ pub struct UnsafetyViolation {
     pub details: UnsafetyViolationDetails,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+pub enum UnusedUnsafe {
+    /// `unsafe` block contains no unsafe operations
+    /// > ``unnecessary `unsafe` block``
+    Unused,
+    /// `unsafe` block nested under another (used) `unsafe` block
+    /// > ``… because it's nested under this `unsafe` block``
+    InUnsafeBlock(hir::HirId),
+    /// `unsafe` block nested under `unsafe fn`
+    /// > ``… because it's nested under this `unsafe fn` ``
+    ///
+    /// the second HirId here indicates the first usage of the `unsafe` block,
+    /// which allows retrival of the LintLevelSource for why that operation would
+    /// have been permitted without the block
+    InUnsafeFn(hir::HirId, hir::HirId),
+}
+
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+pub enum UsedUnsafeBlockData {
+    SomeDisallowedInUnsafeFn,
+    // the HirId here indicates the first usage of the `unsafe` block
+    // (i.e. the one that's first encountered in the MIR traversal of the unsafety check)
+    AllAllowedInUnsafeFn(hir::HirId),
+}
+
+#[derive(TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function.
-    pub violations: Lrc<[UnsafetyViolation]>,
-    /// `unsafe` blocks in this function, along with whether they are used. This is
-    /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
+    pub violations: Vec<UnsafetyViolation>,
+
+    /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
+    ///
+    /// The keys are the used `unsafe` blocks, the UnusedUnsafeKind indicates whether
+    /// or not any of the usages happen at a place that doesn't allow `unsafe_op_in_unsafe_fn`.
+    pub used_unsafe_blocks: FxHashMap<hir::HirId, UsedUnsafeBlockData>,
+
+    /// This is `Some` iff the item is not a closure.
+    pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
 }
 
 rustc_index::newtype_index! {
