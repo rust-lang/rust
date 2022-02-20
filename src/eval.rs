@@ -57,6 +57,16 @@ pub enum IsolatedOp {
     Allow,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum BacktraceStyle {
+    /// Prints a terser backtrace which ideally only contains relevant information.
+    Short,
+    /// Prints a backtrace with all possible information.
+    Full,
+    /// Prints only the frame that the error occurs in.
+    Off,
+}
+
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
 pub struct MiriConfig {
@@ -98,6 +108,7 @@ pub struct MiriConfig {
     pub measureme_out: Option<String>,
     /// Panic when unsupported functionality is encountered
     pub panic_on_unsupported: bool,
+    pub backtrace_style: BacktraceStyle,
 }
 
 impl Default for MiriConfig {
@@ -121,6 +132,7 @@ impl Default for MiriConfig {
             cmpxchg_weak_failure_rate: 0.8,
             measureme_out: None,
             panic_on_unsupported: false,
+            backtrace_style: BacktraceStyle::Short,
         }
     }
 }
