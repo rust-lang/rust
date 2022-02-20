@@ -23,7 +23,7 @@ use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Ta
 use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
-use super::metadata::create_rmeta_file;
+use super::metadata::{create_rmeta_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
     looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
@@ -267,6 +267,28 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
 
+    let trailing_metadata = match flavor {
+        RlibFlavor::Normal => {
+            let (metadata, metadata_position) =
+                create_rmeta_file(sess, codegen_results.metadata.raw_data());
+            let metadata = emit_metadata(sess, &metadata, tmpdir);
+            match metadata_position {
+                MetadataPosition::First => {
+                    // Most of the time metadata in rlib files is wrapped in a "dummy" object
+                    // file for the target platform so the rlib can be processed entirely by
+                    // normal linkers for the platform. Sometimes this is not possible however.
+                    // If it is possible however, placing the metadata object first improves
+                    // performance of getting metadata from rlibs.
+                    ab.add_file(&metadata);
+                    None
+                }
+                MetadataPosition::Last => Some(metadata),
+            }
+        }
+
+        RlibFlavor::StaticlibBase => None,
+    };
+
     for m in &codegen_results.modules {
         if let Some(obj) = m.object.as_ref() {
             ab.add_file(obj);
@@ -274,6 +296,16 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
             ab.add_file(dwarf_obj);
+        }
+    }
+
+    match flavor {
+        RlibFlavor::Normal => {}
+        RlibFlavor::StaticlibBase => {
+            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+            if let Some(obj) = obj {
+                ab.add_file(obj);
+            }
         }
     }
 
@@ -334,42 +366,33 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
     }
 
-    // Note that it is important that we add all of our non-object "magical
-    // files" *after* all of the object files in the archive. The reason for
-    // this is as follows:
-    //
-    // * When performing LTO, this archive will be modified to remove
-    //   objects from above. The reason for this is described below.
-    //
-    // * When the system linker looks at an archive, it will attempt to
-    //   determine the architecture of the archive in order to see whether its
-    //   linkable.
-    //
-    //   The algorithm for this detection is: iterate over the files in the
-    //   archive. Skip magical SYMDEF names. Interpret the first file as an
-    //   object file. Read architecture from the object file.
-    //
-    // * As one can probably see, if "metadata" and "foo.bc" were placed
-    //   before all of the objects, then the architecture of this archive would
-    //   not be correctly inferred once 'foo.o' is removed.
-    //
-    // Basically, all this means is that this code should not move above the
-    // code above.
-    match flavor {
-        RlibFlavor::Normal => {
-            // metadata in rlib files is wrapped in a "dummy" object file for
-            // the target platform so the rlib can be processed entirely by
-            // normal linkers for the platform.
-            let metadata = create_rmeta_file(sess, codegen_results.metadata.raw_data());
-            ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
-        }
-
-        RlibFlavor::StaticlibBase => {
-            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-            if let Some(obj) = obj {
-                ab.add_file(obj);
-            }
-        }
+    if let Some(trailing_metadata) = trailing_metadata {
+        // Note that it is important that we add all of our non-object "magical
+        // files" *after* all of the object files in the archive. The reason for
+        // this is as follows:
+        //
+        // * When performing LTO, this archive will be modified to remove
+        //   objects from above. The reason for this is described below.
+        //
+        // * When the system linker looks at an archive, it will attempt to
+        //   determine the architecture of the archive in order to see whether its
+        //   linkable.
+        //
+        //   The algorithm for this detection is: iterate over the files in the
+        //   archive. Skip magical SYMDEF names. Interpret the first file as an
+        //   object file. Read architecture from the object file.
+        //
+        // * As one can probably see, if "metadata" and "foo.bc" were placed
+        //   before all of the objects, then the architecture of this archive would
+        //   not be correctly inferred once 'foo.o' is removed.
+        //
+        // * Most of the time metadata in rlib files is wrapped in a "dummy" object
+        //   file for the target platform so the rlib can be processed entirely by
+        //   normal linkers for the platform. Sometimes this is not possible however.
+        //
+        // Basically, all this means is that this code should not move above the
+        // code above.
+        ab.add_file(&trailing_metadata);
     }
 
     return Ok(ab);
