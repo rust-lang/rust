@@ -1,0 +1,42 @@
+- // MIR for `match_nested_if` before MatchBranchSimplification
++ // MIR for `match_nested_if` after MatchBranchSimplification
+  
+  fn match_nested_if() -> bool {
+      let mut _0: bool;                    // return place in scope 0 at $DIR/const_goto.rs:16:25: 16:29
+      let _1: bool;                        // in scope 0 at $DIR/const_goto.rs:17:9: 17:12
+      let mut _2: bool;                    // in scope 0 at $DIR/const_goto.rs:18:24: 18:28
++     let mut _3: bool;                    // in scope 0 at $DIR/const_goto.rs:18:24: 18:28
+      scope 1 {
+          debug val => _1;                 // in scope 1 at $DIR/const_goto.rs:17:9: 17:12
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/const_goto.rs:17:9: 17:12
+          StorageLive(_2);                 // scope 0 at $DIR/const_goto.rs:18:24: 18:28
+          _2 = const true;                 // scope 0 at $DIR/const_goto.rs:18:24: 18:28
+-         switchInt(move _2) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto.rs:18:24: 18:28
+-     }
+- 
+-     bb1: {
++         StorageLive(_3);                 // scope 0 at $DIR/const_goto.rs:18:24: 18:28
++         _3 = move _2;                    // scope 0 at $DIR/const_goto.rs:18:24: 18:28
+          StorageDead(_2);                 // scope 0 at $DIR/const_goto.rs:18:51: 18:52
+-         _1 = const true;                 // scope 0 at $DIR/const_goto.rs:24:13: 24:17
+-         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:24:13: 24:17
+-     }
+- 
+-     bb2: {
+-         StorageDead(_2);                 // scope 0 at $DIR/const_goto.rs:18:51: 18:52
+-         _1 = const false;                // scope 0 at $DIR/const_goto.rs:26:14: 26:19
+-         goto -> bb3;                     // scope 0 at $DIR/const_goto.rs:26:14: 26:19
+-     }
+- 
+-     bb3: {
++         _1 = Ne(_3, const false);        // scope 0 at $DIR/const_goto.rs:26:14: 26:19
++         StorageDead(_3);                 // scope 0 at $DIR/const_goto.rs:18:24: 18:28
+          _0 = _1;                         // scope 1 at $DIR/const_goto.rs:28:5: 28:8
+          StorageDead(_1);                 // scope 0 at $DIR/const_goto.rs:29:1: 29:2
+          return;                          // scope 0 at $DIR/const_goto.rs:29:2: 29:2
+      }
+  }
+  

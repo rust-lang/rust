@@ -36,12 +36,12 @@ fn bar(i: i32) -> (bool, bool, bool, bool) {
     (a, b, c, d)
 }
 
-fn match_nested_if() -> bool {
+fn match_nested_if(flag0: bool, flag1: bool) -> bool {
     let val = match () {
-        () if if if if true { true } else { false } { true } else { false } {
-            true
+        () if if if if true { flag0 } else { flag1 } { flag1 } else { flag0 } {
+            flag0 & flag1
         } else {
-            false
+            flag0 | flag1
         } =>
         {
             true
@@ -55,5 +55,5 @@ fn main() {
     let _ = foo(None);
     let _ = foo(Some(()));
     let _ = bar(0);
-    let _ = match_nested_if();
+    let _ = match_nested_if(false, true);
 }

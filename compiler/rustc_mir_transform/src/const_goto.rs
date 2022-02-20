@@ -43,6 +43,13 @@ impl<'tcx> MirPass<'tcx> for ConstGoto {
             let new_goto = TerminatorKind::Goto { target: opt.target_to_use_in_goto };
             debug!("SUCCESS: replacing `{:?}` with `{:?}`", terminator.kind, new_goto);
             terminator.kind = new_goto;
+
+            let bridge_bb_statement = &body.basic_blocks()[opt.bridge_bb].statements;
+            if !bridge_bb_statement.is_empty() {
+                let storagedeads = bridge_bb_statement.clone();
+                body.basic_blocks_mut()[opt.bb_with_goto].statements.extend(storagedeads);
+                debug!("SUCCESS: extending terminator's basic block with briding basic block.");
+            }
         }
 
         // if we applied optimizations, we potentially have some cfg to cleanup to
@@ -67,12 +74,13 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                 // We found a constant being assigned to `place`.
                 // Now check that the target of this Goto switches on this place.
                 let target_bb = &self.body.basic_blocks()[target];
-
-                // FIXME(simonvandel): We are conservative here when we don't allow
-                // any statements in the target basic block.
-                // This could probably be relaxed to allow `StorageDead`s which could be
-                // copied to the predecessor of this block.
-                if !target_bb.statements.is_empty() {
+                let target_bb_statements = &target_bb.statements;
+                if !target_bb_statements.is_empty()
+                    && !target_bb_statements.iter().all(|statement| match statement.kind {
+                        StatementKind::StorageDead(_) => true,
+                        _ => false,
+                    })
+                {
                     None?
                 }
 
@@ -86,6 +94,7 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
                     let target_to_use_in_goto = targets.target_for_value(const_value);
                     self.optimizations.push(OptimizationToApply {
                         bb_with_goto: location.block,
+                        bridge_bb: target,
                         target_to_use_in_goto,
                     });
                 }
@@ -99,6 +108,7 @@ impl<'tcx> Visitor<'tcx> for ConstGotoOptimizationFinder<'_, 'tcx> {
 
 struct OptimizationToApply {
     bb_with_goto: BasicBlock,
+    bridge_bb: BasicBlock,
     target_to_use_in_goto: BasicBlock,
 }
 
