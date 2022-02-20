@@ -8,10 +8,11 @@ use crate::query::config::{QueryDescription, QueryVtable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHasher};
+use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::profiling::TimingGuard;
-use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, FatalError};
@@ -20,21 +21,15 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::mem;
 use std::ptr;
 
-// We compute the key's hash once and then use it for both the
-// shard lookup and the hashmap lookup. This relies on the fact
-// that both of them use `FxHasher`.
-fn hash_for_shard<K: Hash>(key: &K) -> u64 {
-    let mut hasher = FxHasher::default();
-    key.hash(&mut hasher);
-    hasher.finish()
-}
-
 pub struct QueryState<K> {
-    shards: Sharded<FxHashMap<K, QueryResult>>,
+    #[cfg(parallel_compiler)]
+    active: Sharded<FxHashMap<K, QueryResult>>,
+    #[cfg(not(parallel_compiler))]
+    active: Lock<FxHashMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -52,8 +47,15 @@ where
     K: Eq + Hash + Clone + Debug,
 {
     pub fn all_inactive(&self) -> bool {
-        let shards = self.shards.lock_shards();
-        shards.iter().all(|shard| shard.is_empty())
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.active.lock_shards();
+            shards.iter().all(|shard| shard.is_empty())
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            self.active.lock().is_empty()
+        }
     }
 
     pub fn try_collect_active_jobs<CTX: Copy>(
@@ -62,11 +64,27 @@ where
         make_query: fn(CTX, K) -> QueryStackFrame,
         jobs: &mut QueryMap,
     ) -> Option<()> {
-        // We use try_lock_shards here since we are called from the
-        // deadlock handler, and this shouldn't be locked.
-        let shards = self.shards.try_lock_shards()?;
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+        #[cfg(parallel_compiler)]
+        {
+            // We use try_lock_shards here since we are called from the
+            // deadlock handler, and this shouldn't be locked.
+            let shards = self.active.try_lock_shards()?;
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    if let QueryResult::Started(ref job) = *v {
+                        let query = make_query(tcx, k.clone());
+                        jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
+                    }
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            // We use try_lock here since we are called from the
+            // deadlock handler, and this shouldn't be locked.
+            // (FIXME: Is this relevant for non-parallel compilers? It doesn't
+            // really hurt much.)
+            for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let query = make_query(tcx, k.clone());
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
@@ -80,7 +98,7 @@ where
 
 impl<K> Default for QueryState<K> {
     fn default() -> QueryState<K> {
-        QueryState { shards: Default::default() }
+        QueryState { active: Default::default() }
     }
 }
 
@@ -135,7 +153,10 @@ where
     where
         CTX: QueryContext,
     {
-        let mut state_lock = state.shards.get_shard_by_value(&key).lock();
+        #[cfg(parallel_compiler)]
+        let mut state_lock = state.active.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut state_lock = state.active.lock();
         let lock = &mut *state_lock;
 
         match lock.entry(key) {
@@ -206,10 +227,11 @@ where
         mem::forget(self);
 
         let (job, result) = {
-            let key_hash = hash_for_shard(&key);
-            let shard = get_shard_index_by_hash(key_hash);
             let job = {
-                let mut lock = state.shards.get_shard_by_index(shard).lock();
+                #[cfg(parallel_compiler)]
+                let mut lock = state.active.get_shard_by_value(&key).lock();
+                #[cfg(not(parallel_compiler))]
+                let mut lock = state.active.lock();
                 match lock.remove(&key).unwrap() {
                     QueryResult::Started(job) => job,
                     QueryResult::Poisoned => panic!(),
@@ -233,9 +255,11 @@ where
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
-        let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
-            let mut shard = shard.lock();
+            #[cfg(parallel_compiler)]
+            let mut shard = state.active.get_shard_by_value(&self.key).lock();
+            #[cfg(not(parallel_compiler))]
+            let mut shard = state.active.lock();
             let job = match shard.remove(&self.key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
