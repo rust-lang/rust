@@ -64,12 +64,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(
-                    asm_arch,
-                    &self.sess.target_features,
-                    &self.sess.target,
-                    *abi_name,
-                ) {
+                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, *abi_name) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
@@ -129,17 +124,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .operands
             .iter()
             .map(|(op, op_sp)| {
-                let lower_reg = |reg, is_clobber| match reg {
+                let lower_reg = |reg| match reg {
                     InlineAsmRegOrRegClass::Reg(s) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmReg::parse(
-                                asm_arch,
-                                &sess.target_features,
-                                &sess.target,
-                                is_clobber,
-                                s,
-                            )
-                            .unwrap_or_else(|e| {
+                            asm::InlineAsmReg::parse(asm_arch, s).unwrap_or_else(|e| {
                                 let msg = format!("invalid register `{}`: {}", s.as_str(), e);
                                 sess.struct_span_err(*op_sp, &msg).emit();
                                 asm::InlineAsmReg::Err
@@ -163,24 +151,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                 let op = match *op {
                     InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
-                        reg: lower_reg(reg, false),
+                        reg: lower_reg(reg),
                         expr: self.lower_expr_mut(expr),
                     },
                     InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
-                        reg: lower_reg(reg, expr.is_none()),
+                        reg: lower_reg(reg),
                         late,
                         expr: expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
                     },
                     InlineAsmOperand::InOut { reg, late, ref expr } => {
                         hir::InlineAsmOperand::InOut {
-                            reg: lower_reg(reg, false),
+                            reg: lower_reg(reg),
                             late,
                             expr: self.lower_expr_mut(expr),
                         }
                     }
                     InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
-                            reg: lower_reg(reg, false),
+                            reg: lower_reg(reg),
                             late,
                             in_expr: self.lower_expr_mut(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr_mut(expr)),
