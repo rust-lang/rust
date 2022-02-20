@@ -1841,7 +1841,7 @@ static_assert_size!(PlaceElem<'_>, 24);
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
 rustc_index::newtype_index! {
-    /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
+    /// A [newtype][wrapper] index type in the MIR [control-flow graph][CFG]
     ///
     /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
     /// rustc can identify that a field projection refers to either two different regions of memory
