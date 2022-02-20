@@ -538,12 +538,11 @@ macro_rules! define_queries_struct {
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
-                lookup: QueryLookup,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>> {
                 opt_remap_env_constness!([$($modifiers)*][key]);
                 let qcx = QueryCtxt { tcx, queries: self };
-                get_query::<queries::$name<$tcx>, _>(qcx, span, key, lookup, mode)
+                get_query::<queries::$name<$tcx>, _>(qcx, span, key, mode)
             })*
         }
     };

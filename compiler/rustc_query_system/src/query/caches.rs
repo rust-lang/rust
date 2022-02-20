@@ -1,5 +1,4 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::QueryLookup;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
@@ -35,7 +34,7 @@ pub trait QueryCache: QueryStorage + Sized {
         key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    ) -> Result<R, ()>
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
@@ -79,21 +78,20 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
         let key_hash = sharded::make_hash(key);
         let shard = sharded::get_shard_index_by_hash(key_hash);
         let lock = self.shards.get_shard_by_index(shard).lock();
-        let lookup = QueryLookup { key_hash, shard };
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
             Ok(hit_result)
         } else {
-            Err(lookup)
+            Err(())
         }
     }
 
@@ -153,21 +151,20 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
         let key_hash = sharded::make_hash(key);
         let shard = sharded::get_shard_index_by_hash(key_hash);
         let lock = self.shards.get_shard_by_index(shard).lock();
-        let lookup = QueryLookup { key_hash, shard };
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);
             Ok(hit_result)
         } else {
-            Err(lookup)
+            Err(())
         }
     }
 

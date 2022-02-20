@@ -24,12 +24,6 @@ use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ptr;
 
-/// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub struct QueryLookup {
-    pub(super) key_hash: u64,
-    pub(super) shard: usize,
-}
-
 // We compute the key's hash once and then use it for both the
 // shard lookup and the hashmap lookup. This relies on the fact
 // that both of them use `FxHasher`.
@@ -147,13 +141,11 @@ where
         state: &'b QueryState<K>,
         span: Span,
         key: K,
-        lookup: QueryLookup,
     ) -> TryGetJob<'b, K>
     where
         CTX: QueryContext,
     {
-        let shard = lookup.shard;
-        let mut state_lock = state.shards.get_shard_by_index(shard).lock();
+        let mut state_lock = state.shards.get_shard_by_value(&key).lock();
         let lock = &mut *state_lock;
 
         match lock.active.entry(key) {
@@ -303,7 +295,7 @@ pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
-) -> Result<R, QueryLookup>
+) -> Result<R, ()>
 where
     C: QueryCache,
     CTX: DepContext,
@@ -324,7 +316,6 @@ fn try_execute_query<CTX, C>(
     cache: &C,
     span: Span,
     key: C::Key,
-    lookup: QueryLookup,
     dep_node: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
@@ -333,7 +324,7 @@ where
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone(), lookup) {
+    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id);
             let result = job.complete(cache, result, dep_node_index);
@@ -675,13 +666,7 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(
-    tcx: CTX,
-    span: Span,
-    key: Q::Key,
-    lookup: QueryLookup,
-    mode: QueryMode,
-) -> Option<Q::Stored>
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
@@ -705,7 +690,6 @@ where
         Q::query_cache(tcx),
         span,
         key,
-        lookup,
         dep_node,
         &query,
     );
@@ -730,14 +714,14 @@ where
         }
     });
 
-    let lookup = match cached {
+    match cached {
         Ok(()) => return,
-        Err(lookup) => lookup,
-    };
+        Err(()) => {}
+    }
 
     let query = Q::make_vtable(tcx, &key);
     let state = Q::query_state(tcx);
     debug_assert!(!query.anon);
 
-    try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), &query);
+    try_execute_query(tcx, state, cache, DUMMY_SP, key, Some(dep_node), &query);
 }
