@@ -544,19 +544,6 @@ where
     }
 }
 
-impl<K, R, HCX> HashStable<HCX> for ::std::collections::HashSet<K, R>
-where
-    K: ToStableHashKey<HCX> + Eq,
-    R: BuildHasher,
-{
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, key| {
-            let key = key.to_stable_hash_key(hcx);
-            key.hash_stable(hcx, hasher);
-        });
-    }
-}
-
 impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
 where
     K: ToStableHashKey<HCX>,
@@ -583,7 +570,7 @@ where
     }
 }
 
-fn stable_hash_reduce<HCX, I, C, F>(
+pub fn stable_hash_reduce<HCX, I, C, F>(
     hcx: &mut HCX,
     hasher: &mut StableHasher,
     mut collection: C,
