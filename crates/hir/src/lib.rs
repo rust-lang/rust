@@ -649,6 +649,7 @@ fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag:
                             })
                             .group_by(|t| t.kind() == T![,])
                             .into_iter()
+                            .filter(|&(comma, _)| !comma)
                             .nth(*derive_index as usize)
                             .and_then(|(_, mut g)| g.find(|t| t.kind() == T![ident]))
                     })();
