@@ -160,20 +160,12 @@ fn overlap<'cx, 'tcx>(
     );
 
     selcx.infcx().probe_maybe_skip_leak_check(skip_leak_check.is_yes(), |snapshot| {
-        overlap_within_probe(
-            selcx,
-            skip_leak_check,
-            impl1_def_id,
-            impl2_def_id,
-            overlap_mode,
-            snapshot,
-        )
+        overlap_within_probe(selcx, impl1_def_id, impl2_def_id, overlap_mode, snapshot)
     })
 }
 
 fn overlap_within_probe<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
-    skip_leak_check: SkipLeakCheck,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     overlap_mode: OverlapMode,
@@ -207,11 +199,11 @@ fn overlap_within_probe<'cx, 'tcx>(
         }
     }
 
-    if !skip_leak_check.is_yes() {
-        if infcx.leak_check(true, snapshot).is_err() {
-            debug!("overlap: leak check failed");
-            return None;
-        }
+    // We disable the leak when when creating the `snapshot` by using
+    // `infcx.probe_maybe_disable_leak_check`.
+    if infcx.leak_check(true, snapshot).is_err() {
+        debug!("overlap: leak check failed");
+        return None;
     }
 
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
