@@ -109,7 +109,7 @@ fn external_generic_args(
 
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
         let inputs = match ty_kind.unwrap() {
-            ty::Tuple(tys) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
+            ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
             _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
         };
         let output = None;

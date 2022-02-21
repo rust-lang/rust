@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| match flds {
             Some(fs) if i < fs.len() => {
-                let ety = fs[i].expect_ty();
+                let ety = fs[i];
                 self.check_expr_coercable_to_type(&e, ety, None);
                 ety
             }
@@ -1877,13 +1877,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fstr = field.as_str();
                     if let Ok(index) = fstr.parse::<usize>() {
                         if fstr == index.to_string() {
-                            if let Some(field_ty) = tys.get(index) {
+                            if let Some(&field_ty) = tys.get(index) {
                                 let adjustments = self.adjust_steps(&autoderef);
                                 self.apply_adjustments(base, adjustments);
                                 self.register_predicates(autoderef.into_obligations());
 
                                 self.write_field_index(expr.hir_id, index);
-                                return field_ty.expect_ty();
+                                return field_ty;
                             }
                         }
                     }

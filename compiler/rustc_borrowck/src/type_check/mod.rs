@@ -832,9 +832,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     return match substs
                         .as_closure()
                         .tupled_upvars_ty()
-                        .tuple_element_ty(field.index())
+                        .tuple_fields()
+                        .get(field.index())
                     {
-                        Some(ty) => Ok(ty),
+                        Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: substs.as_closure().upvar_tys().count(),
                         }),
@@ -852,7 +853,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 ty::Tuple(tys) => {
                     return match tys.get(field.index()) {
-                        Some(&ty) => Ok(ty.expect_ty()),
+                        Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange { field_count: tys.len() }),
                     };
                 }

@@ -845,7 +845,7 @@ pub trait PrettyPrinter<'tcx>:
                         write("{}{}(", if paren_needed { "(" } else { "" }, name)
                     );
 
-                    for (idx, ty) in arg_tys.tuple_fields().enumerate() {
+                    for (idx, ty) in arg_tys.tuple_fields().iter().enumerate() {
                         if idx > 0 {
                             p!(", ");
                         }
@@ -1032,12 +1032,11 @@ pub trait PrettyPrinter<'tcx>:
                 // Special-case `Fn(...) -> ...` and resugar it.
                 let fn_trait_kind = cx.tcx().fn_trait_kind_from_lang_item(principal.def_id);
                 if !cx.tcx().sess.verbose() && fn_trait_kind.is_some() {
-                    if let ty::Tuple(ref args) = principal.substs.type_at(0).kind() {
+                    if let ty::Tuple(tys) = principal.substs.type_at(0).kind() {
                         let mut projections = predicates.projection_bounds();
                         if let (Some(proj), None) = (projections.next(), projections.next()) {
-                            let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
                             p!(pretty_fn_sig(
-                                &tys,
+                                tys,
                                 false,
                                 proj.skip_binder().term.ty().expect("Return type was a const")
                             ));

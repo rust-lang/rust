@@ -326,7 +326,9 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Generator(_def_id, _substs, _) => unimplemented!(),
             ty::GeneratorWitness(_) => unimplemented!(),
             ty::Never => chalk_ir::TyKind::Never,
-            ty::Tuple(substs) => chalk_ir::TyKind::Tuple(substs.len(), substs.lower_into(interner)),
+            ty::Tuple(types) => {
+                chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
+            }
             ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
             ty::Opaque(def_id, substs) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
@@ -398,7 +400,9 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
             TyKind::Generator(..) => unimplemented!(),
             TyKind::GeneratorWitness(..) => unimplemented!(),
             TyKind::Never => ty::Never,
-            TyKind::Tuple(_len, substitution) => ty::Tuple(substitution.lower_into(interner)),
+            TyKind::Tuple(_len, substitution) => {
+                ty::Tuple(substitution.lower_into(interner).try_as_type_list().unwrap())
+            }
             TyKind::Slice(ty) => ty::Slice(ty.lower_into(interner)),
             TyKind::Raw(mutbl, ty) => ty::RawPtr(ty::TypeAndMut {
                 ty: ty.lower_into(interner),

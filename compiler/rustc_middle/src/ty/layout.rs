@@ -712,9 +712,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
                 univariant(
-                    &tys.iter()
-                        .map(|k| self.layout_of(k.expect_ty()))
-                        .collect::<Result<Vec<_>, _>>()?,
+                    &tys.iter().map(|k| self.layout_of(k)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
                     kind,
                 )?
@@ -2382,7 +2380,7 @@ where
                     }
                 },
 
-                ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i].expect_ty()),
+                ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 
                 // ADTs.
                 ty::Adt(def, substs) => {
@@ -3012,7 +3010,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             if let Some(input) = sig.inputs().last() {
                 if let ty::Tuple(tupled_arguments) = input.kind() {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                    tupled_arguments.iter().map(|k| k.expect_ty()).collect()
+                    tupled_arguments
                 } else {
                     bug!(
                         "argument to function with \"rust-call\" ABI \
@@ -3027,7 +3025,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             }
         } else {
             assert!(sig.c_variadic || extra_args.is_empty());
-            extra_args.to_vec()
+            extra_args
         };
 
         let target = &self.tcx.sess.target;
@@ -3155,8 +3153,8 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             ret: arg_of(sig.output(), None)?,
             args: inputs
                 .iter()
-                .cloned()
-                .chain(extra_args)
+                .copied()
+                .chain(extra_args.iter().copied())
                 .chain(caller_location)
                 .enumerate()
                 .map(|(i, ty)| arg_of(ty, Some(i)))

@@ -148,8 +148,8 @@ fn is_needs_drop_and_init<'tcx>(
             })
         }
 
-        ty::Tuple(_) => ty
-            .tuple_fields()
+        ty::Tuple(fields) => fields
+            .iter()
             .enumerate()
             .map(|(f, f_ty)| (Field::from_usize(f), f_ty, mpi))
             .any(field_needs_drop_and_init),

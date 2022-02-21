@@ -1015,9 +1015,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
-                let new_tuple = tcx.mk_tup(
-                    a_mid.iter().map(|k| k.expect_ty()).chain(iter::once(b_last.expect_ty())),
-                );
+                let new_tuple = tcx.mk_tup(a_mid.iter().copied().chain(iter::once(b_last)));
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
@@ -1033,8 +1031,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.cause.clone(),
                         obligation.predicate.def_id(),
                         obligation.recursion_depth + 1,
-                        a_last.expect_ty(),
-                        &[b_last],
+                        a_last,
+                        &[b_last.into()],
                     )
                 }));
             }
@@ -1097,7 +1095,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     stack.push(ty);
                 }
                 ty::Tuple(tys) => {
-                    stack.extend(tys.iter().map(|ty| ty.expect_ty()));
+                    stack.extend(tys.iter());
                 }
                 ty::Closure(_, substs) => {
                     stack.push(substs.as_closure().tupled_upvars_ty());

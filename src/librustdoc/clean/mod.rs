@@ -1543,7 +1543,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
                 DynTrait(bounds, lifetime)
             }
-            ty::Tuple(t) => Tuple(t.iter().map(|t| t.expect_ty().clean(cx)).collect()),
+            ty::Tuple(t) => Tuple(t.iter().map(|t| t.clean(cx)).collect()),
 
             ty::Projection(ref data) => data.clean(cx),
 

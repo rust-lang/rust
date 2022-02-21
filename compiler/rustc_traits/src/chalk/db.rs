@@ -565,7 +565,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // FIXME(chalk): actually get hidden ty
         self.interner
             .tcx
-            .mk_ty(ty::Tuple(self.interner.tcx.intern_substs(&[])))
+            .mk_ty(ty::Tuple(self.interner.tcx.intern_type_list(&[])))
             .lower_into(self.interner)
     }
 

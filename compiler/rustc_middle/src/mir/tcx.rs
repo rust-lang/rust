@@ -46,7 +46,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 let field_def = &variant_def.fields[f.index()];
                 field_def.ty(tcx, substs)
             }
-            ty::Tuple(ref tys) => tys[f.index()].expect_ty(),
+            ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
         };
         debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);

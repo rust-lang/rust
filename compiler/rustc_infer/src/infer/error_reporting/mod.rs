@@ -69,7 +69,7 @@ use rustc_middle::ty::{
     self,
     error::TypeError,
     subst::{GenericArgKind, Subst, SubstsRef},
-    Binder, Region, Ty, TyCtxt, TypeFoldable,
+    Binder, List, Region, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::{sym, BytePos, DesugaringKind, MultiSpan, Pos, Span};
 use rustc_target::spec::abi;
@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut values =
                     (DiagnosticStyledString::normal("("), DiagnosticStyledString::normal("("));
                 let len = substs1.len();
-                for (i, (left, right)) in substs1.types().zip(substs2.types()).enumerate() {
+                for (i, (left, right)) in substs1.iter().zip(substs2).enumerate() {
                     let (x1, x2) = self.cmp(left, right);
                     (values.0).0.extend(x1.0);
                     (values.1).0.extend(x2.0);
@@ -2042,8 +2042,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // If a tuple of length one was expected and the found expression has
                         // parentheses around it, perhaps the user meant to write `(expr,)` to
                         // build a tuple (issue #86100)
-                        (ty::Tuple(_), _) => {
-                            self.emit_tuple_wrap_err(&mut err, span, found, expected)
+                        (ty::Tuple(fields), _) => {
+                            self.emit_tuple_wrap_err(&mut err, span, found, fields)
                         }
                         // If a character was expected and the found expression is a string literal
                         // containing a single character, perhaps the user meant to write `'c'` to
@@ -2111,12 +2111,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err: &mut DiagnosticBuilder<'tcx>,
         span: Span,
         found: Ty<'tcx>,
-        expected: Ty<'tcx>,
+        expected_fields: &List<Ty<'tcx>>,
     ) {
-        let [expected_tup_elem] = &expected.tuple_fields().collect::<Vec<_>>()[..]
-            else { return };
+        let [expected_tup_elem] = expected_fields[..] else { return };
 
-        if !same_type_modulo_infer(*expected_tup_elem, found) {
+        if !same_type_modulo_infer(expected_tup_elem, found) {
             return;
         }
 

@@ -254,7 +254,9 @@ fn closure_args(fn_sig: &ty::PolyFnSig<'_>) -> String {
         .skip_binder()
         .iter()
         .next()
-        .map(|args| args.tuple_fields().map(|arg| arg.to_string()).collect::<Vec<_>>().join(", "))
+        .map(|args| {
+            args.tuple_fields().iter().map(|arg| arg.to_string()).collect::<Vec<_>>().join(", ")
+        })
         .unwrap_or_default()
 }
 

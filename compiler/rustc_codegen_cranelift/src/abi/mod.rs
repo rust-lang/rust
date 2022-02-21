@@ -117,7 +117,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
             .unzip();
         let return_layout = self.layout_of(return_ty);
         let return_tys = if let ty::Tuple(tup) = return_ty.kind() {
-            tup.types().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
+            tup.iter().map(|ty| AbiParam::new(self.clif_type(ty).unwrap())).collect()
         } else {
             vec![AbiParam::new(self.clif_type(return_ty).unwrap())]
         };
@@ -199,7 +199,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
                 };
 
                 let mut params = Vec::new();
-                for (i, _arg_ty) in tupled_arg_tys.types().enumerate() {
+                for (i, _arg_ty) in tupled_arg_tys.iter().enumerate() {
                     let arg_abi = arg_abis_iter.next().unwrap();
                     let param =
                         cvalue_for_param(fx, Some(local), Some(i), arg_abi, &mut block_params_iter);

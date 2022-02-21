@@ -428,7 +428,7 @@ fn use_verbose<'tcx>(ty: Ty<'tcx>, fn_def: bool) -> bool {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type
         ty::Tuple(g_args) if g_args.is_empty() => false,
-        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(g_arg.expect_ty(), fn_def)),
+        ty::Tuple(g_args) => g_args.iter().any(|g_arg| use_verbose(g_arg, fn_def)),
         ty::Array(ty, _) => use_verbose(ty, fn_def),
         ty::FnDef(..) => fn_def,
         _ => true,

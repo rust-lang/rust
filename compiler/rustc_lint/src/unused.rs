@@ -246,7 +246,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     } else {
                         vec![]
                     };
-                    for (i, ty) in tys.iter().map(|k| k.expect_ty()).enumerate() {
+                    for (i, ty) in tys.iter().enumerate() {
                         let descr_post = &format!(" in tuple element {}", i);
                         let span = *spans.get(i).unwrap_or(&span);
                         if check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, plural_len)

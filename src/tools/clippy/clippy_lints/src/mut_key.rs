@@ -142,7 +142,7 @@ fn is_interior_mutable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Sp
             size.try_eval_usize(cx.tcx, cx.param_env).map_or(true, |u| u != 0)
                 && is_interior_mutable_type(cx, inner_ty, span)
         },
-        Tuple(..) => ty.tuple_fields().any(|ty| is_interior_mutable_type(cx, ty, span)),
+        Tuple(fields) => fields.iter().any(|ty| is_interior_mutable_type(cx, ty, span)),
         Adt(def, substs) => {
             // Special case for collections in `std` who's impl of `Hash` or `Ord` delegates to
             // that of their type parameters.  Note: we don't include `HashSet` and `HashMap`

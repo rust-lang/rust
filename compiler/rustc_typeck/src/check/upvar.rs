@@ -1448,7 +1448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
 
-            ty::Tuple(..) => {
+            ty::Tuple(fields) => {
                 // Only Field projections can be applied to a tuple.
                 assert!(
                     captured_by_move_projs.iter().all(|projs| matches!(
@@ -1457,7 +1457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ))
                 );
 
-                base_path_ty.tuple_fields().enumerate().any(|(i, element_ty)| {
+                fields.iter().enumerate().any(|(i, element_ty)| {
                     let paths_using_field = captured_by_move_projs
                         .iter()
                         .filter_map(|projs| {

@@ -1209,7 +1209,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> Self {
         let ret = match constructor {
             Single | Variant(_) => match ty.kind() {
-                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter().map(|ty| ty.expect_ty())),
+                ty::Tuple(fs) => Fields::wildcards_from_tys(cx, fs.iter()),
                 ty::Ref(_, rty, _) => Fields::wildcards_from_tys(cx, once(*rty)),
                 ty::Adt(adt, substs) => {
                     if adt.is_box() {
@@ -1315,11 +1315,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Single;
-                        let mut wilds: SmallVec<[_; 2]> = fs
-                            .iter()
-                            .map(|ty| ty.expect_ty())
-                            .map(DeconstructedPat::wildcard)
-                            .collect();
+                        let mut wilds: SmallVec<[_; 2]> =
+                            fs.iter().map(DeconstructedPat::wildcard).collect();
                         for pat in subpatterns {
                             wilds[pat.field.index()] = mkpat(&pat.pattern);
                         }

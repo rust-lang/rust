@@ -70,9 +70,9 @@ fn are_inner_types_recursive<'tcx>(
 ) -> Representability {
     debug!("are_inner_types_recursive({:?}, {:?}, {:?})", ty, seen, shadow_seen);
     match ty.kind() {
-        ty::Tuple(..) => {
+        ty::Tuple(fields) => {
             // Find non representable
-            fold_repr(ty.tuple_fields().map(|ty| {
+            fold_repr(fields.iter().map(|ty| {
                 is_type_structurally_recursive(
                     tcx,
                     sp,

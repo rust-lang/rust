@@ -501,9 +501,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
 
         (&ty::Tuple(as_), &ty::Tuple(bs)) => {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup(
-                    iter::zip(as_, bs).map(|(a, b)| relation.relate(a.expect_ty(), b.expect_ty())),
-                )?)
+                Ok(tcx.mk_tup(iter::zip(as_, bs).map(|(a, b)| relation.relate(a, b)))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(expected_found(relation, as_.len(), bs.len())))
             } else {

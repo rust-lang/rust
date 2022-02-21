@@ -116,9 +116,10 @@ impl<'tcx> Ty<'tcx> {
                 }
                 _ => true,
             }),
-            Projection(ProjectionTy { substs: args, .. }) | Adt(_, args) | Tuple(args) => {
+            Projection(ProjectionTy { substs: args, .. }) | Adt(_, args) => {
                 args.iter().all(generic_arg_is_suggestible)
             }
+            Tuple(args) => args.iter().all(|ty| ty.is_suggestable()),
             Slice(ty) | RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => ty.is_suggestable(),
             Array(ty, c) => ty.is_suggestable() && const_is_suggestable(c.val()),
             _ => true,

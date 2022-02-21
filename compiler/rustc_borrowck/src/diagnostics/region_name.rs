@@ -480,7 +480,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let search_stack: &mut Vec<(Ty<'tcx>, &hir::Ty<'_>)> = &mut vec![(ty, hir_ty)];
 
         while let Some((ty, hir_ty)) = search_stack.pop() {
-            match (&ty.kind(), &hir_ty.kind) {
+            match (ty.kind(), &hir_ty.kind) {
                 // Check if the `ty` is `&'X ..` where `'X`
                 // is the region we are looking for -- if so, and we have a `&T`
                 // on the RHS, then we want to highlight the `&` like so:
@@ -532,9 +532,8 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 // The following cases don't have lifetimes, so we
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
-                (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack
-                        .extend(iter::zip(elem_tys.iter().map(|k| k.expect_ty()), *elem_hir_tys));
+                (&ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
+                    search_stack.extend(iter::zip(elem_tys, *elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))

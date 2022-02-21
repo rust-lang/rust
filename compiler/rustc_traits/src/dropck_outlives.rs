@@ -198,14 +198,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
-                dtorck_constraint_for_ty(
-                    tcx,
-                    span,
-                    for_ty,
-                    depth + 1,
-                    ty.expect_ty(),
-                    constraints,
-                )?;
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }
             Ok::<_, NoSolution>(())
         })?,
