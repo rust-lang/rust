@@ -19,6 +19,7 @@ use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
+use rustc_hir::def::DefKind;
 use rustc_span::Span;
 
 /// Description of a frame in the query stack.
@@ -29,37 +30,11 @@ pub struct QueryStackFrame {
     pub name: &'static str,
     pub description: String,
     span: Option<Span>,
-    /// The `DefKind` this query frame is associated with, if applicable.
-    ///
-    /// We can't use `rustc_hir::def::DefKind` because `rustc_hir` is not
-    /// available in `rustc_query_system`. Instead, we have a simplified
-    /// custom version of it, called [`SimpleDefKind`].
-    def_kind: Option<SimpleDefKind>,
+    def_kind: Option<DefKind>,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
     #[cfg(parallel_compiler)]
     hash: u64,
-}
-
-/// A simplified version of `rustc_hir::def::DefKind`.
-///
-/// It was added to help improve cycle errors caused by recursive type aliases.
-/// As of August 2021, `rustc_query_system` cannot depend on `rustc_hir`
-/// because it would create a dependency cycle. So, instead, a simplified
-/// version of `DefKind` was added to `rustc_query_system`.
-///
-/// `DefKind`s are converted to `SimpleDefKind`s in `rustc_query_impl`.
-#[derive(Debug, Copy, Clone)]
-pub enum SimpleDefKind {
-    Struct,
-    Enum,
-    Union,
-    Trait,
-    TyAlias,
-    TraitAlias,
-
-    // FIXME: add more from `rustc_hir::def::DefKind` and then remove `Other`
-    Other,
 }
 
 impl QueryStackFrame {
@@ -68,7 +43,7 @@ impl QueryStackFrame {
         name: &'static str,
         description: String,
         span: Option<Span>,
-        def_kind: Option<SimpleDefKind>,
+        def_kind: Option<DefKind>,
         _hash: impl FnOnce() -> u64,
     ) -> Self {
         Self {

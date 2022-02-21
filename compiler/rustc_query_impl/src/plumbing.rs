@@ -290,13 +290,11 @@ macro_rules! define_queries {
                 } else {
                     Some(key.default_span(*tcx))
                 };
-                let def_id = key.key_as_def_id();
-                let def_kind = def_id
+                // Use `tcx.hir().opt_def_kind()` to reduce the chance of
+                // accidentally triggering an infinite query loop.
+                let def_kind = key.key_as_def_id()
                     .and_then(|def_id| def_id.as_local())
-                    // Use `tcx.hir().opt_def_kind()` to reduce the chance of
-                    // accidentally triggering an infinite query loop.
-                    .and_then(|def_id| tcx.hir().opt_def_kind(def_id))
-                    .map(|def_kind| $crate::util::def_kind_to_simple_def_kind(def_kind));
+                    .and_then(|def_id| tcx.hir().opt_def_kind(def_id));
                 let hash = || {
                     let mut hcx = tcx.create_stable_hashing_context();
                     let mut hasher = StableHasher::new();
