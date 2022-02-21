@@ -262,16 +262,16 @@ impl HirFileId {
     }
 
     /// Indicate it is macro file generated for builtin derive
-    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Item>> {
+    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Attr>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                let item = match loc.def.kind {
+                let attr = match loc.def.kind {
                     MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
                     _ => return None,
                 };
-                Some(item.with_value(ast::Item::cast(item.value.clone())?))
+                Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
             }
         }
     }
@@ -383,10 +383,20 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } => {
-                ast_id.with_value(ast_id.to_node(db).syntax().clone())
+            MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
+                // FIXME: handle `cfg_attr`
+                ast_id.with_value(ast_id.to_node(db)).map(|it| {
+                    it.doc_comments_and_attrs()
+                        .nth(*derive_attr_index as usize)
+                        .and_then(|it| match it {
+                            Either::Left(attr) => Some(attr.syntax().clone()),
+                            Either::Right(_) => None,
+                        })
+                        .unwrap_or_else(|| it.syntax().clone())
+                })
             }
             MacroCallKind::Attr { ast_id, is_derive: true, invoc_attr_index, .. } => {
+                // FIXME: handle `cfg_attr`
                 ast_id.with_value(ast_id.to_node(db)).map(|it| {
                     it.doc_comments_and_attrs()
                         .nth(*invoc_attr_index as usize)
