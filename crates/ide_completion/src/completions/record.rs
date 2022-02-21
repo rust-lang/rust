@@ -63,11 +63,12 @@ pub(crate) fn complete_record_literal(
     }
 
     if let hir::Adt::Struct(strukt) = ctx.expected_type.as_ref()?.as_adt()? {
-        let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
+        if ctx.path_qual().is_none() {
+            let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
+            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
 
-        let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
-
-        acc.add_struct_literal(ctx, strukt, path, None);
+            acc.add_struct_literal(ctx, strukt, path, None);
+        }
     }
 
     Some(())
