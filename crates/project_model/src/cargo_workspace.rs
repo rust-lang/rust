@@ -210,6 +210,8 @@ pub struct TargetData {
     pub kind: TargetKind,
     /// Is this target a proc-macro
     pub is_proc_macro: bool,
+    /// Required features of the target without which it won't build
+    pub required_features: Vec<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -348,6 +350,7 @@ impl CargoWorkspace {
                     root: AbsPathBuf::assert(PathBuf::from(&meta_tgt.src_path)),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
                     is_proc_macro,
+                    required_features: meta_tgt.required_features.clone(),
                 });
                 pkg_data.targets.push(tgt);
             }

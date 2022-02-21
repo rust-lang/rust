@@ -1,5 +1,7 @@
 //! See `CargoTargetSpec`
 
+use std::mem;
+
 use cfg::{CfgAtom, CfgExpr};
 use ide::{FileId, RunnableKind, TestId};
 use project_model::{self, ManifestPath, TargetKind};
@@ -18,17 +20,22 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
+    pub(crate) required_features: Vec<String>,
 }
 
 impl CargoTargetSpec {
     pub(crate) fn runnable_args(
         snap: &GlobalStateSnapshot,
-        spec: Option<CargoTargetSpec>,
+        mut spec: Option<CargoTargetSpec>,
         kind: &RunnableKind,
         cfg: &Option<CfgExpr>,
     ) -> Result<(Vec<String>, Vec<String>)> {
         let mut args = Vec::new();
         let mut extra_args = Vec::new();
+
+        let target_required_features =
+            spec.as_mut().map(|spec| mem::take(&mut spec.required_features)).unwrap_or(Vec::new());
+
         match kind {
             RunnableKind::Test { test_id, attr } => {
                 args.push("test".to_string());
@@ -87,14 +94,20 @@ impl CargoTargetSpec {
         let cargo_config = snap.config.cargo();
         if cargo_config.all_features {
             args.push("--all-features".to_string());
+
+            for feature in target_required_features {
+                args.push("--features".to_string());
+                args.push(feature);
+            }
         } else {
             let mut features = Vec::new();
             if let Some(cfg) = cfg.as_ref() {
                 required_features(cfg, &mut features);
             }
-            for feature in cargo_config.features {
-                features.push(feature.clone());
-            }
+
+            features.extend(cargo_config.features);
+            features.extend(target_required_features);
+
             features.dedup();
             for feature in features {
                 args.push("--features".to_string());
@@ -126,6 +139,7 @@ impl CargoTargetSpec {
             package: cargo_ws.package_flag(package_data),
             target: target_data.name.clone(),
             target_kind: target_data.kind,
+            required_features: target_data.required_features.clone(),
         };
 
         Ok(Some(res))
