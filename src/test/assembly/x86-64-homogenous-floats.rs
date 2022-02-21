@@ -32,7 +32,7 @@ pub fn sum_f32x2(a: [f32; 2], b: [f32; 2]) -> [f32; 2] {
 // CHECK-NEXT: movups  [[XMMA:xmm[0-9]]], xmmword ptr [rsi]
 // CHECK-NEXT: movups  [[XMMB:xmm[0-9]]], xmmword ptr [rdx]
 // CHECK-NEXT: addps   [[XMMB]], [[XMMA]]
-// CHECK-NEXT: movups  xmmword ptr [[[PTR_IN]]], [[XMMB]]
+// CHECK-NEXT: movups  xmmword ptr {{\[}}[[PTR_IN]]{{\]}}, [[XMMB]]
 // CHECK-NEXT: ret
 #[no_mangle]
 pub fn sum_f32x4(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
