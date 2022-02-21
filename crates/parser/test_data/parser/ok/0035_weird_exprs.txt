@@ -280,21 +280,20 @@ SOURCE_FILE
                   WHILE_EXPR
                     WHILE_KW "while"
                     WHITESPACE " "
-                    CONDITION
-                      PREFIX_EXPR
-                        BANG "!"
-                        METHOD_CALL_EXPR
-                          PATH_EXPR
-                            PATH
-                              PATH_SEGMENT
-                                NAME_REF
-                                  IDENT "x"
-                          DOT "."
-                          NAME_REF
-                            IDENT "get"
-                          ARG_LIST
-                            L_PAREN "("
-                            R_PAREN ")"
+                    PREFIX_EXPR
+                      BANG "!"
+                      METHOD_CALL_EXPR
+                        PATH_EXPR
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "x"
+                        DOT "."
+                        NAME_REF
+                          IDENT "get"
+                        ARG_LIST
+                          L_PAREN "("
+                          R_PAREN ")"
                     WHITESPACE " "
                     BLOCK_EXPR
                       STMT_LIST
@@ -443,12 +442,11 @@ SOURCE_FILE
                 WHILE_EXPR
                   WHILE_KW "while"
                   WHITESPACE " "
-                  CONDITION
-                    PAREN_EXPR
-                      L_PAREN "("
-                      RETURN_EXPR
-                        RETURN_KW "return"
-                      R_PAREN ")"
+                  PAREN_EXPR
+                    L_PAREN "("
+                    RETURN_EXPR
+                      RETURN_KW "return"
+                    R_PAREN ")"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -457,12 +455,11 @@ SOURCE_FILE
                       IF_EXPR
                         IF_KW "if"
                         WHITESPACE " "
-                        CONDITION
-                          PAREN_EXPR
-                            L_PAREN "("
-                            RETURN_EXPR
-                              RETURN_KW "return"
-                            R_PAREN ")"
+                        PAREN_EXPR
+                          L_PAREN "("
+                          RETURN_EXPR
+                            RETURN_KW "return"
+                          R_PAREN ")"
                         WHITESPACE " "
                         BLOCK_EXPR
                           STMT_LIST
@@ -495,12 +492,11 @@ SOURCE_FILE
                                         IF_EXPR
                                           IF_KW "if"
                                           WHITESPACE " "
-                                          CONDITION
-                                            PAREN_EXPR
-                                              L_PAREN "("
-                                              RETURN_EXPR
-                                                RETURN_KW "return"
-                                              R_PAREN ")"
+                                          PAREN_EXPR
+                                            L_PAREN "("
+                                            RETURN_EXPR
+                                              RETURN_KW "return"
+                                            R_PAREN ")"
                                           WHITESPACE " "
                                           BLOCK_EXPR
                                             STMT_LIST
@@ -549,12 +545,11 @@ SOURCE_FILE
                         IF_EXPR
                           IF_KW "if"
                           WHITESPACE " "
-                          CONDITION
-                            PAREN_EXPR
-                              L_PAREN "("
-                              RETURN_EXPR
-                                RETURN_KW "return"
-                              R_PAREN ")"
+                          PAREN_EXPR
+                            L_PAREN "("
+                            RETURN_EXPR
+                              RETURN_KW "return"
+                            R_PAREN ")"
                           WHITESPACE " "
                           BLOCK_EXPR
                             STMT_LIST
@@ -572,12 +567,11 @@ SOURCE_FILE
               IF_EXPR
                 IF_KW "if"
                 WHITESPACE " "
-                CONDITION
-                  PAREN_EXPR
-                    L_PAREN "("
-                    RETURN_EXPR
-                      RETURN_KW "return"
-                    R_PAREN ")"
+                PAREN_EXPR
+                  L_PAREN "("
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  R_PAREN ")"
                 WHITESPACE " "
                 BLOCK_EXPR
                   STMT_LIST
@@ -1037,9 +1031,8 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    BREAK_EXPR
-                      BREAK_KW "break"
+                  BREAK_EXPR
+                    BREAK_KW "break"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -1089,18 +1082,17 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    BIN_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "i"
-                      WHITESPACE " "
-                      EQ2 "=="
-                      WHITESPACE " "
-                      LITERAL
-                        INT_NUMBER "1"
+                  BIN_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "i"
+                    WHITESPACE " "
+                    EQ2 "=="
+                    WHITESPACE " "
+                    LITERAL
+                      INT_NUMBER "1"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -1344,18 +1336,17 @@ SOURCE_FILE
         IF_EXPR
           IF_KW "if"
           WHITESPACE " "
-          CONDITION
-            BIN_EXPR
-              PATH_EXPR
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "u8"
-              WHITESPACE " "
-              NEQ "!="
-              WHITESPACE " "
-              LITERAL
-                INT_NUMBER "0u8"
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u8"
+            WHITESPACE " "
+            NEQ "!="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "0u8"
           WHITESPACE " "
           BLOCK_EXPR
             STMT_LIST

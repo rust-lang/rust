@@ -49,19 +49,20 @@ SOURCE_FILE
               MATCH_GUARD
                 IF_KW "if"
                 WHITESPACE " "
-                LET_KW "let"
-                WHITESPACE " "
-                IDENT_PAT
-                  NAME
-                    IDENT "foo"
-                WHITESPACE " "
-                EQ "="
-                WHITESPACE " "
-                PATH_EXPR
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "bar"
+                LET_EXPR
+                  LET_KW "let"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "foo"
+                  WHITESPACE " "
+                  EQ "="
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "bar"
               WHITESPACE " "
               FAT_ARROW "=>"
               WHITESPACE " "

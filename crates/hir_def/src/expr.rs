@@ -59,6 +59,10 @@ pub enum Expr {
         then_branch: ExprId,
         else_branch: Option<ExprId>,
     },
+    Let {
+        pat: PatId,
+        expr: ExprId,
+    },
     Block {
         id: BlockId,
         statements: Box<[Statement]>,
@@ -189,15 +193,8 @@ pub enum Array {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
     pub pat: PatId,
-    pub guard: Option<MatchGuard>,
+    pub guard: Option<ExprId>,
     pub expr: ExprId,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum MatchGuard {
-    If { expr: ExprId },
-
-    IfLet { pat: PatId, expr: ExprId },
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -231,6 +228,9 @@ impl Expr {
                 if let &Some(else_branch) = else_branch {
                     f(else_branch);
                 }
+            }
+            Expr::Let { expr, .. } => {
+                f(*expr);
             }
             Expr::Block { statements, tail, .. } => {
                 for stmt in statements.iter() {

@@ -20,6 +20,9 @@ SOURCE_FILE
               IDENT "foo"
           WHITESPACE " "
           EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "11"
         WHITESPACE "\n    "
         LET_STMT
           LET_KW "let"
@@ -57,9 +60,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -73,9 +75,8 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -95,13 +96,12 @@ SOURCE_FILE
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
-error 24: expected expression
-error 24: expected SEMICOLON
-error 49: expected pattern
-error 49: expected SEMICOLON
-error 75: expected pattern
-error 75: expected SEMICOLON
-error 98: expected pattern
-error 98: expected SEMICOLON
-error 124: expected pattern
-error 124: expected SEMICOLON
+error 27: expected SEMICOLON
+error 52: expected pattern
+error 52: expected SEMICOLON
+error 78: expected pattern
+error 78: expected SEMICOLON
+error 101: expected pattern
+error 101: expected SEMICOLON
+error 127: expected pattern
+error 127: expected SEMICOLON

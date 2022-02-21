@@ -243,7 +243,7 @@ fn is_named_constructor(
     let expr = match_ast! {
         match let_node {
             ast::LetStmt(it) => it.initializer(),
-            ast::Condition(it) => it.expr(),
+            ast::LetExpr(it) => it.expr(),
             _ => None,
         }
     }?;
@@ -372,15 +372,10 @@ fn should_not_display_type_hint(
             match node {
                 ast::LetStmt(it) => return it.ty().is_some(),
                 ast::Param(it) => return it.ty().is_some(),
-                ast::MatchArm(_it) => return pat_is_enum_variant(db, bind_pat, pat_ty),
-                ast::IfExpr(it) => {
-                    return it.condition().and_then(|condition| condition.pat()).is_some()
-                        && pat_is_enum_variant(db, bind_pat, pat_ty);
-                },
-                ast::WhileExpr(it) => {
-                    return it.condition().and_then(|condition| condition.pat()).is_some()
-                        && pat_is_enum_variant(db, bind_pat, pat_ty);
-                },
+                ast::MatchArm(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
+                ast::LetExpr(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
+                ast::IfExpr(_) => return false,
+                ast::WhileExpr(_) => return false,
                 ast::ForExpr(it) => {
                     // We *should* display hint only if user provided "in {expr}" and we know the type of expr (and it's not unit).
                     // Type of expr should be iterable.

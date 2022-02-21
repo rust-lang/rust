@@ -190,7 +190,6 @@ fn expr_macro_def_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            !0..6 '1isize': isize
             39..442 '{     ...!(); }': ()
             73..94 'spam!(...am!())': {unknown}
             100..119 'for _ ...!() {}': ()
@@ -198,6 +197,7 @@ fn expr_macro_def_expanded_in_various_places() {
             117..119 '{}': ()
             124..134 '|| spam!()': || -> isize
             140..156 'while ...!() {}': ()
+            146..153 'spam!()': bool
             154..156 '{}': ()
             161..174 'break spam!()': !
             180..194 'return spam!()': !
@@ -271,7 +271,6 @@ fn expr_macro_rules_expanded_in_various_places() {
             !0..6 '1isize': isize
             !0..6 '1isize': isize
             !0..6 '1isize': isize
-            !0..6 '1isize': isize
             53..456 '{     ...!(); }': ()
             87..108 'spam!(...am!())': {unknown}
             114..133 'for _ ...!() {}': ()
@@ -279,6 +278,7 @@ fn expr_macro_rules_expanded_in_various_places() {
             131..133 '{}': ()
             138..148 '|| spam!()': || -> isize
             154..170 'while ...!() {}': ()
+            160..167 'spam!()': bool
             168..170 '{}': ()
             175..188 'break spam!()': !
             194..208 'return spam!()': !

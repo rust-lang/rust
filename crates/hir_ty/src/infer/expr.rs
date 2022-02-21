@@ -8,10 +8,7 @@ use std::{
 
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
-    expr::{
-        ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, MatchGuard, Ordering, Statement,
-        UnaryOp,
-    },
+    expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Ordering, Statement, UnaryOp},
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
     FieldId, FunctionId, ItemContainerId, Lookup,
@@ -157,6 +154,11 @@ impl<'a> InferenceContext<'a> {
                 self.diverges = condition_diverges | both_arms_diverge;
 
                 coerce.complete()
+            }
+            &Expr::Let { pat, expr } => {
+                let input_ty = self.infer_expr(expr, &Expectation::none());
+                self.infer_pat(pat, &input_ty, BindingMode::default());
+                TyKind::Scalar(Scalar::Bool).intern(Interner)
             }
             Expr::Block { statements, tail, label, id: _ } => {
                 let old_resolver = mem::replace(
@@ -378,20 +380,11 @@ impl<'a> InferenceContext<'a> {
                 for arm in arms.iter() {
                     self.diverges = Diverges::Maybe;
                     let _pat_ty = self.infer_pat(arm.pat, &input_ty, BindingMode::default());
-                    match arm.guard {
-                        Some(MatchGuard::If { expr: guard_expr }) => {
-                            self.infer_expr(
-                                guard_expr,
-                                &Expectation::has_type(
-                                    TyKind::Scalar(Scalar::Bool).intern(Interner),
-                                ),
-                            );
-                        }
-                        Some(MatchGuard::IfLet { expr, pat }) => {
-                            let input_ty = self.infer_expr(expr, &Expectation::none());
-                            let _pat_ty = self.infer_pat(pat, &input_ty, BindingMode::default());
-                        }
-                        _ => {}
+                    if let Some(guard_expr) = arm.guard {
+                        self.infer_expr(
+                            guard_expr,
+                            &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
+                        );
                     }
 
                     let arm_ty = self.infer_expr_inner(arm.expr, &expected);

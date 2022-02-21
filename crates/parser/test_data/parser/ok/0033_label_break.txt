@@ -51,16 +51,15 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    CALL_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "condition_not_met"
-                      ARG_LIST
-                        L_PAREN "("
-                        R_PAREN ")"
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "condition_not_met"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -92,16 +91,15 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    CALL_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "condition_not_met"
-                      ARG_LIST
-                        L_PAREN "("
-                        R_PAREN ")"
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "condition_not_met"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -153,16 +151,15 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    CALL_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "foo"
-                      ARG_LIST
-                        L_PAREN "("
-                        R_PAREN ")"
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "foo"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST
@@ -187,16 +184,15 @@ SOURCE_FILE
                 IF_EXPR
                   IF_KW "if"
                   WHITESPACE " "
-                  CONDITION
-                    CALL_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "bar"
-                      ARG_LIST
-                        L_PAREN "("
-                        R_PAREN ")"
+                  CALL_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "bar"
+                    ARG_LIST
+                      L_PAREN "("
+                      R_PAREN ")"
                   WHITESPACE " "
                   BLOCK_EXPR
                     STMT_LIST

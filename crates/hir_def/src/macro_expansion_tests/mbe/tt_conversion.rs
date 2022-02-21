@@ -108,18 +108,18 @@ fn expansion_does_not_parse_as_expression() {
     check(
         r#"
 macro_rules! stmts {
-    () => { let _ = 0; }
+    () => { fn foo() {} }
 }
 
 fn f() { let _ = stmts!/*+errors*/(); }
 "#,
         expect![[r#"
 macro_rules! stmts {
-    () => { let _ = 0; }
+    () => { fn foo() {} }
 }
 
 fn f() { let _ = /* parse error: expected expression */
-let _ = 0;; }
+fn foo() {}; }
 "#]],
     )
 }

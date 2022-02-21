@@ -30,7 +30,7 @@ rayon = "1"
 expect-test = "1.2.0-pre.1"
 proc-macro2 = "1.0.8"
 quote = "1.0.2"
-ungrammar = "=1.14.9"
+ungrammar = "=1.15.0"
 
 test_utils = { path = "../test_utils" }
 sourcegen = { path = "../sourcegen" }

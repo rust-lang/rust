@@ -180,116 +180,118 @@ SOURCE_FILE
         ERROR
           PLUS "+"
         WHITESPACE " "
-        EXPR_STMT
-          TUPLE_EXPR
-            L_PAREN "("
-            FOR_EXPR
-              FOR_KW "for"
-              PATH_PAT
-                PATH
-                  PATH_SEGMENT
-                    L_ANGLE "<"
-                    ERROR
-                      LIFETIME_IDENT "'a"
-                    R_ANGLE ">"
-              WHITESPACE " "
+        TUPLE_EXPR
+          L_PAREN "("
+          FOR_EXPR
+            FOR_KW "for"
+            PATH_PAT
+              PATH
+                PATH_SEGMENT
+                  L_ANGLE "<"
+                  ERROR
+                    LIFETIME_IDENT "'a"
+                  R_ANGLE ">"
+            WHITESPACE " "
+            BIN_EXPR
               BIN_EXPR
                 BIN_EXPR
                   BIN_EXPR
-                    BIN_EXPR
-                      PATH_EXPR
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "Trait"
-                      L_ANGLE "<"
-                      ERROR
-                        LIFETIME_IDENT "'a"
-                    R_ANGLE ">"
-                    ERROR
-                      R_PAREN ")"
-                  WHITESPACE " "
-                  PLUS "+"
-                  WHITESPACE " "
-                  PAREN_EXPR
-                    L_PAREN "("
                     PATH_EXPR
                       PATH
                         PATH_SEGMENT
                           NAME_REF
-                            IDENT "Copy"
+                            IDENT "Trait"
+                    L_ANGLE "<"
+                    ERROR
+                      LIFETIME_IDENT "'a"
+                  R_ANGLE ">"
+                  ERROR
                     R_PAREN ")"
-                R_ANGLE ">"
-                ERROR
-                  SEMICOLON ";"
-        WHITESPACE "\n    "
-        LET_STMT
-          LET_KW "let"
+                WHITESPACE " "
+                PLUS "+"
+                WHITESPACE " "
+                PAREN_EXPR
+                  L_PAREN "("
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Copy"
+                  R_PAREN ")"
+              R_ANGLE ">"
+              ERROR
+                SEMICOLON ";"
+          WHITESPACE "\n    "
+          LET_EXPR
+            LET_KW "let"
+            WHITESPACE " "
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            ERROR
+              COLON ":"
           WHITESPACE " "
-          WILDCARD_PAT
-            UNDERSCORE "_"
-          COLON ":"
-          WHITESPACE " "
-          DYN_TRAIT_TYPE
-            TYPE_BOUND_LIST
-              TYPE_BOUND
-                PATH_TYPE
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "Box"
-                      GENERIC_ARG_LIST
+          BIN_EXPR
+            BIN_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Box"
+              L_ANGLE "<"
+              TUPLE_EXPR
+                L_PAREN "("
+                FOR_EXPR
+                  FOR_KW "for"
+                  PATH_PAT
+                    PATH
+                      PATH_SEGMENT
                         L_ANGLE "<"
-                        TYPE_ARG
-                          PAREN_TYPE
-                            L_PAREN "("
-                            FOR_TYPE
-                              FOR_KW "for"
-                              GENERIC_PARAM_LIST
-                                L_ANGLE "<"
-                                LIFETIME_PARAM
-                                  LIFETIME
-                                    LIFETIME_IDENT "'a"
-                                R_ANGLE ">"
-                              WHITESPACE " "
-                              PATH_TYPE
-                                PATH
-                                  PATH_SEGMENT
-                                    NAME_REF
-                                      IDENT "Trait"
-                                    GENERIC_ARG_LIST
-                                      L_ANGLE "<"
-                                      LIFETIME_ARG
-                                        LIFETIME
-                                          LIFETIME_IDENT "'a"
-                                      R_ANGLE ">"
-                            R_PAREN ")"
-              WHITESPACE " "
-              PLUS "+"
-              WHITESPACE " "
-              TYPE_BOUND
-                L_PAREN "("
-                PATH_TYPE
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "Copy"
-                R_PAREN ")"
-              WHITESPACE " "
-              PLUS "+"
-              WHITESPACE " "
-              TYPE_BOUND
-                L_PAREN "("
-                QUESTION "?"
-                PATH_TYPE
+                        ERROR
+                          LIFETIME_IDENT "'a"
+                        R_ANGLE ">"
+                  WHITESPACE " "
+                  BIN_EXPR
+                    BIN_EXPR
+                      BIN_EXPR
+                        BIN_EXPR
+                          PATH_EXPR
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Trait"
+                          L_ANGLE "<"
+                          ERROR
+                            LIFETIME_IDENT "'a"
+                        R_ANGLE ">"
+                        ERROR
+                          R_PAREN ")"
+                      WHITESPACE " "
+                      PLUS "+"
+                      WHITESPACE " "
+                      PAREN_EXPR
+                        L_PAREN "("
+                        PATH_EXPR
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "Copy"
+                        R_PAREN ")"
+                    WHITESPACE " "
+                    PLUS "+"
+                    WHITESPACE " "
+                    PAREN_EXPR
+                      L_PAREN "("
+                      ERROR
+                        QUESTION "?"
+                PATH_EXPR
                   PATH
                     PATH_SEGMENT
                       NAME_REF
                         IDENT "Sized"
                 R_PAREN ")"
-        ERROR
-          R_ANGLE ">"
-        SEMICOLON ";"
+            R_ANGLE ">"
+            ERROR
+              SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
@@ -312,10 +314,18 @@ error 168: expected expression
 error 179: expected expression
 error 180: expected a block
 error 180: expected COMMA
-error 180: expected expression
-error 180: expected R_PAREN
-error 180: expected SEMICOLON
-error 215: expected COMMA
-error 215: expected R_ANGLE
-error 235: expected SEMICOLON
-error 235: expected expression
+error 190: expected EQ
+error 190: expected expression
+error 191: expected COMMA
+error 201: expected type
+error 204: expected IN_KW
+error 211: expected expression
+error 214: expected expression
+error 228: expected expression
+error 229: expected R_PAREN
+error 229: expected a block
+error 229: expected COMMA
+error 236: expected expression
+error 237: expected COMMA
+error 237: expected expression
+error 237: expected R_PAREN

@@ -15,47 +15,46 @@ SOURCE_FILE
         IF_EXPR
           IF_KW "if"
           WHITESPACE " "
-          CONDITION
-            BIN_EXPR
-              CAST_EXPR
-                METHOD_CALL_EXPR
-                  LITERAL
-                    FLOAT_NUMBER "1.0f32"
-                  DOT "."
-                  NAME_REF
-                    IDENT "floor"
-                  ARG_LIST
-                    L_PAREN "("
-                    R_PAREN ")"
-                WHITESPACE " "
-                AS_KW "as"
-                WHITESPACE " "
-                PATH_TYPE
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "i64"
+          BIN_EXPR
+            CAST_EXPR
+              METHOD_CALL_EXPR
+                LITERAL
+                  FLOAT_NUMBER "1.0f32"
+                DOT "."
+                NAME_REF
+                  IDENT "floor"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
               WHITESPACE " "
-              NEQ "!="
+              AS_KW "as"
               WHITESPACE " "
-              CAST_EXPR
-                METHOD_CALL_EXPR
-                  LITERAL
-                    FLOAT_NUMBER "1.0f32"
-                  DOT "."
-                  NAME_REF
-                    IDENT "floor"
-                  ARG_LIST
-                    L_PAREN "("
-                    R_PAREN ")"
-                WHITESPACE " "
-                AS_KW "as"
-                WHITESPACE " "
-                PATH_TYPE
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "i64"
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i64"
+            WHITESPACE " "
+            NEQ "!="
+            WHITESPACE " "
+            CAST_EXPR
+              METHOD_CALL_EXPR
+                LITERAL
+                  FLOAT_NUMBER "1.0f32"
+                DOT "."
+                NAME_REF
+                  IDENT "floor"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+              WHITESPACE " "
+              AS_KW "as"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i64"
           WHITESPACE " "
           BLOCK_EXPR
             STMT_LIST

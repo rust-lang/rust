@@ -397,7 +397,7 @@ pub fn expr_match(expr: ast::Expr, match_arm_list: ast::MatchArmList) -> ast::Ex
     expr_from_text(&format!("match {} {}", expr, match_arm_list))
 }
 pub fn expr_if(
-    condition: ast::Condition,
+    condition: ast::Expr,
     then_branch: ast::BlockExpr,
     else_branch: Option<ast::ElseBranch>,
 ) -> ast::Expr {
@@ -456,14 +456,8 @@ pub fn expr_assignment(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
 fn expr_from_text(text: &str) -> ast::Expr {
     ast_from_text(&format!("const C: () = {};", text))
 }
-
-pub fn condition(expr: ast::Expr, pattern: Option<ast::Pat>) -> ast::Condition {
-    match pattern {
-        None => ast_from_text(&format!("const _: () = while {} {{}};", expr)),
-        Some(pattern) => {
-            ast_from_text(&format!("const _: () = while let {} = {} {{}};", pattern, expr))
-        }
-    }
+pub fn expr_let(pattern: ast::Pat, expr: ast::Expr) -> ast::LetExpr {
+    ast_from_text(&format!("const _: () = while let {} = {} {{}};", pattern, expr))
 }
 
 pub fn arg_list(args: impl IntoIterator<Item = ast::Expr>) -> ast::ArgList {

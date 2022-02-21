@@ -1,3 +1,4 @@
+use ide_db::helpers::node_ext::is_pattern_cond;
 use syntax::{
     ast::{self, AstNode},
     T,
@@ -34,12 +35,12 @@ pub(crate) fn invert_if(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         return None;
     }
 
+    let cond = expr.condition()?;
     // This assist should not apply for if-let.
-    if expr.condition()?.is_pattern_cond() {
+    if is_pattern_cond(cond.clone()) {
         return None;
     }
 
-    let cond = expr.condition()?.expr()?;
     let then_node = expr.then_branch()?.syntax().clone();
     let else_block = match expr.else_branch()? {
         ast::ElseBranch::Block(it) => it,

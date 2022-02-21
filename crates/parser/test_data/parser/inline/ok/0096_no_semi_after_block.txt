@@ -16,9 +16,8 @@ SOURCE_FILE
           IF_EXPR
             IF_KW "if"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST
@@ -50,9 +49,8 @@ SOURCE_FILE
           WHILE_EXPR
             WHILE_KW "while"
             WHITESPACE " "
-            CONDITION
-              LITERAL
-                TRUE_KW "true"
+            LITERAL
+              TRUE_KW "true"
             WHITESPACE " "
             BLOCK_EXPR
               STMT_LIST

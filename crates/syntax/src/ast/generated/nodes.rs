@@ -884,7 +884,7 @@ pub struct IfExpr {
 impl ast::HasAttrs for IfExpr {}
 impl IfExpr {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
-    pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
+    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
     pub fn else_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![else]) }
 }
 
@@ -1038,7 +1038,7 @@ impl ast::HasAttrs for WhileExpr {}
 impl ast::HasLoopBody for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
-    pub fn condition(&self) -> Option<Condition> { support::child(&self.syntax) }
+    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1048,6 +1048,18 @@ pub struct YieldExpr {
 impl ast::HasAttrs for YieldExpr {}
 impl YieldExpr {
     pub fn yield_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yield]) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct LetExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasAttrs for LetExpr {}
+impl LetExpr {
+    pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
+    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
@@ -1107,17 +1119,6 @@ impl ArgList {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Condition {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Condition {
-    pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
-    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1147,10 +1148,7 @@ pub struct MatchGuard {
 }
 impl MatchGuard {
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
-    pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
-    pub fn pat(&self) -> Option<Pat> { support::child(&self.syntax) }
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1524,6 +1522,7 @@ pub enum Expr {
     TupleExpr(TupleExpr),
     WhileExpr(WhileExpr),
     YieldExpr(YieldExpr),
+    LetExpr(LetExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2664,6 +2663,17 @@ impl AstNode for YieldExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for LetExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == LET_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for StmtList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STMT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -2710,17 +2720,6 @@ impl AstNode for RecordExprField {
 }
 impl AstNode for ArgList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == ARG_LIST }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) {
-            Some(Self { syntax })
-        } else {
-            None
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl AstNode for Condition {
-    fn can_cast(kind: SyntaxKind) -> bool { kind == CONDITION }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
             Some(Self { syntax })
@@ -3336,6 +3335,9 @@ impl From<WhileExpr> for Expr {
 impl From<YieldExpr> for Expr {
     fn from(node: YieldExpr) -> Expr { Expr::YieldExpr(node) }
 }
+impl From<LetExpr> for Expr {
+    fn from(node: LetExpr) -> Expr { Expr::LetExpr(node) }
+}
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3344,7 +3346,7 @@ impl AstNode for Expr {
             | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
-            | YIELD_EXPR => true,
+            | YIELD_EXPR | LET_EXPR => true,
             _ => false,
         }
     }
@@ -3381,6 +3383,7 @@ impl AstNode for Expr {
             TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
             WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
             YIELD_EXPR => Expr::YieldExpr(YieldExpr { syntax }),
+            LET_EXPR => Expr::LetExpr(LetExpr { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3418,6 +3421,7 @@ impl AstNode for Expr {
             Expr::TupleExpr(it) => &it.syntax,
             Expr::WhileExpr(it) => &it.syntax,
             Expr::YieldExpr(it) => &it.syntax,
+            Expr::LetExpr(it) => &it.syntax,
         }
     }
 }
@@ -3883,6 +3887,7 @@ impl AstNode for AnyHasAttrs {
             | TUPLE_EXPR
             | WHILE_EXPR
             | YIELD_EXPR
+            | LET_EXPR
             | STMT_LIST
             | RECORD_EXPR_FIELD_LIST
             | RECORD_EXPR_FIELD
@@ -4537,6 +4542,11 @@ impl std::fmt::Display for YieldExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for LetExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for StmtList {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -4558,11 +4568,6 @@ impl std::fmt::Display for RecordExprField {
     }
 }
 impl std::fmt::Display for ArgList {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
-impl std::fmt::Display for Condition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

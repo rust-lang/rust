@@ -18,7 +18,7 @@ use syntax::{
     algo, ast,
     display::{fn_as_proc_macro_label, macro_label},
     match_ast, AstNode, Direction,
-    SyntaxKind::{CONDITION, LET_STMT},
+    SyntaxKind::{LET_EXPR, LET_STMT},
     SyntaxToken, T,
 };
 
@@ -484,7 +484,7 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
             let let_kw = if ident
                 .syntax()
                 .parent()
-                .map_or(false, |p| p.kind() == LET_STMT || p.kind() == CONDITION)
+                .map_or(false, |p| p.kind() == LET_STMT || p.kind() == LET_EXPR)
             {
                 "let "
             } else {

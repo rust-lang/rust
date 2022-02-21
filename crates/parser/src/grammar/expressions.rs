@@ -29,6 +29,15 @@ fn expr_no_struct(p: &mut Parser) {
     expr_bp(p, None, r, 1);
 }
 
+/// Parses the expression in `let pattern = expression`.
+/// It needs to be parsed with lower precedence than `&&`, so that
+/// `if let true = true && false` is parsed as `if (let true = true) && (true)`
+/// and not `if let true = (true && true)`.
+fn expr_let(p: &mut Parser) {
+    let r = Restrictions { forbid_structs: true, prefer_stmt: false };
+    expr_bp(p, None, r, 5);
+}
+
 pub(super) fn stmt(p: &mut Parser, semicolon: Semicolon) {
     if p.eat(T![;]) {
         return;
@@ -185,6 +194,7 @@ fn current_op(p: &Parser) -> (u8, SyntaxKind) {
         T![%] if p.at(T![%=])  => (1,  T![%=]),
         T![%]                  => (11, T![%]),
         T![&] if p.at(T![&=])  => (1,  T![&=]),
+        // If you update this, remember to update `expr_let()` too.
         T![&] if p.at(T![&&])  => (4,  T![&&]),
         T![&]                  => (8,  T![&]),
         T![/] if p.at(T![/=])  => (1,  T![/=]),

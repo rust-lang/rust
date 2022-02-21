@@ -528,12 +528,6 @@ impl ast::Item {
     }
 }
 
-impl ast::Condition {
-    pub fn is_pattern_cond(&self) -> bool {
-        self.let_token().is_some()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldKind {
     Name(ast::NameRef),

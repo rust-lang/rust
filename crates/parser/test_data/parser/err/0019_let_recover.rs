@@ -1,5 +1,5 @@
 fn foo() {
-    let foo =
+    let foo = 11
     let bar = 1;
     let
     let baz = 92;

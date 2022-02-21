@@ -49,9 +49,8 @@ SOURCE_FILE@0..350
           IF_EXPR@134..257
             IF_KW@134..136 "if"
             WHITESPACE@136..137 " "
-            CONDITION@137..141
-              LITERAL@137..141
-                TRUE_KW@137..141 "true"
+            LITERAL@137..141
+              TRUE_KW@137..141 "true"
             WHITESPACE@141..142 " "
             BLOCK_EXPR@142..257
               STMT_LIST@142..257
@@ -94,9 +93,8 @@ SOURCE_FILE@0..350
         WHILE_EXPR@262..347
           WHILE_KW@262..267 "while"
           WHITESPACE@267..268 " "
-          CONDITION@268..272
-            LITERAL@268..272
-              TRUE_KW@268..272 "true"
+          LITERAL@268..272
+            TRUE_KW@268..272 "true"
           WHITESPACE@272..273 " "
           BLOCK_EXPR@273..347
             STMT_LIST@273..347
