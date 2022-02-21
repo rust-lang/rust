@@ -123,7 +123,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         }
         Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
         Literal { literal, user_ty: _, const_id: _ } => visitor.visit_const(literal),
-        StaticRef { .. } => {}
+        StaticRef { literal, def_id: _ } => visitor.visit_const(literal),
         InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
             for op in &**operands {
                 use InlineAsmOperand::*;
