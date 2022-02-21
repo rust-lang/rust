@@ -63,8 +63,8 @@ use hir_expand::{
     ast_id_map::FileAstId,
     eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
-    AstId, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
-    UnresolvedMacro,
+    AstId, ExpandError, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
+    MacroDefKind, UnresolvedMacro,
 };
 use item_tree::ExternBlock;
 use la_arena::Idx;
@@ -662,7 +662,7 @@ pub trait AsMacroCall {
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        error_sink: &mut dyn FnMut(mbe::ExpandError),
+        error_sink: &mut dyn FnMut(ExpandError),
     ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro>;
 }
 
@@ -672,7 +672,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         db: &dyn db::DefDatabase,
         krate: CrateId,
         resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-        mut error_sink: &mut dyn FnMut(mbe::ExpandError),
+        mut error_sink: &mut dyn FnMut(ExpandError),
     ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
@@ -681,7 +681,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             self.value.path().and_then(|path| path::ModPath::from_src(db.upcast(), path, &h));
 
         let path = match error_sink
-            .option(path, || mbe::ExpandError::Other("malformed macro invocation".into()))
+            .option(path, || ExpandError::Other("malformed macro invocation".into()))
         {
             Ok(path) => path,
             Err(error) => {
@@ -719,7 +719,7 @@ fn macro_call_as_call_id(
     db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
-    error_sink: &mut dyn FnMut(mbe::ExpandError),
+    error_sink: &mut dyn FnMut(ExpandError),
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
     let def: MacroDefId =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;

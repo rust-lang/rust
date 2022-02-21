@@ -17,7 +17,7 @@ impl Bindings {
 
     fn get(&self, name: &str, nesting: &mut [NestingState]) -> Result<&Fragment, ExpandError> {
         macro_rules! binding_err {
-            ($($arg:tt)*) => { ExpandError::BindingError(format!($($arg)*).into()) };
+            ($($arg:tt)*) => { ExpandError::binding_error(format!($($arg)*)) };
         }
 
         let mut b: &Binding =
@@ -178,7 +178,7 @@ fn expand_repeat(
             );
             return ExpandResult {
                 value: Fragment::Tokens(Subtree::default().into()),
-                err: Some(ExpandError::Other("Expand exceed limit".into())),
+                err: Some(ExpandError::LimitExceeded),
             };
         }
 

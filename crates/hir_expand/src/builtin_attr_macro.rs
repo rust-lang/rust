@@ -1,9 +1,10 @@
 //! Builtin attributes.
 
-use mbe::ExpandResult;
 use syntax::ast;
 
-use crate::{db::AstDatabase, name, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind};
+use crate::{
+    db::AstDatabase, name, AstId, CrateId, ExpandResult, MacroCallId, MacroDefId, MacroDefKind,
+};
 
 macro_rules! register_builtin {
     ( $(($name:ident, $variant:ident) => $expand:ident),* ) => {

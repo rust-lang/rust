@@ -21,7 +21,6 @@
 use std::sync::Arc;
 
 use base_db::CrateId;
-use mbe::ExpandResult;
 use syntax::{ted, SyntaxNode};
 
 use crate::{
@@ -29,8 +28,8 @@ use crate::{
     db::AstDatabase,
     hygiene::Hygiene,
     mod_path::ModPath,
-    EagerCallInfo, ExpandTo, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind, UnresolvedMacro,
+    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, InFile, MacroCallId, MacroCallKind,
+    MacroCallLoc, MacroDefId, MacroDefKind, UnresolvedMacro,
 };
 
 #[derive(Debug)]
@@ -39,12 +38,12 @@ pub struct ErrorEmitted {
 }
 
 pub trait ErrorSink {
-    fn emit(&mut self, err: mbe::ExpandError);
+    fn emit(&mut self, err: ExpandError);
 
     fn option<T>(
         &mut self,
         opt: Option<T>,
-        error: impl FnOnce() -> mbe::ExpandError,
+        error: impl FnOnce() -> ExpandError,
     ) -> Result<T, ErrorEmitted> {
         match opt {
             Some(it) => Ok(it),
@@ -58,12 +57,12 @@ pub trait ErrorSink {
     fn option_with<T>(
         &mut self,
         opt: impl FnOnce() -> Option<T>,
-        error: impl FnOnce() -> mbe::ExpandError,
+        error: impl FnOnce() -> ExpandError,
     ) -> Result<T, ErrorEmitted> {
         self.option(opt(), error)
     }
 
-    fn result<T>(&mut self, res: Result<T, mbe::ExpandError>) -> Result<T, ErrorEmitted> {
+    fn result<T>(&mut self, res: Result<T, ExpandError>) -> Result<T, ErrorEmitted> {
         match res {
             Ok(it) => Ok(it),
             Err(e) => {
@@ -90,8 +89,8 @@ pub trait ErrorSink {
     }
 }
 
-impl ErrorSink for &'_ mut dyn FnMut(mbe::ExpandError) {
-    fn emit(&mut self, err: mbe::ExpandError) {
+impl ErrorSink for &'_ mut dyn FnMut(ExpandError) {
+    fn emit(&mut self, err: ExpandError) {
         self(err);
     }
 }
@@ -102,7 +101,7 @@ pub fn expand_eager_macro(
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
-    diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
+    diagnostic_sink: &mut dyn FnMut(ExpandError),
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
     let hygiene = Hygiene::new(db, macro_call.file_id);
     let parsed_args = macro_call
@@ -147,7 +146,7 @@ pub fn expand_eager_macro(
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
         if let Some(err) = res.err {
-            diagnostic_sink(err);
+            diagnostic_sink(err.into());
         }
 
         let loc = MacroCallLoc {
@@ -199,7 +198,7 @@ fn eager_macro_recur(
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
-    mut diagnostic_sink: &mut dyn FnMut(mbe::ExpandError),
+    mut diagnostic_sink: &mut dyn FnMut(ExpandError),
 ) -> Result<Result<SyntaxNode, ErrorEmitted>, UnresolvedMacro> {
     let original = curr.value.clone_for_update();
 
@@ -211,7 +210,7 @@ fn eager_macro_recur(
         let def = match child.path().and_then(|path| ModPath::from_src(db, path, &hygiene)) {
             Some(path) => macro_resolver(path.clone()).ok_or_else(|| UnresolvedMacro { path })?,
             None => {
-                diagnostic_sink(mbe::ExpandError::Other("malformed macro invocation".into()));
+                diagnostic_sink(ExpandError::Other("malformed macro invocation".into()));
                 continue;
             }
         };

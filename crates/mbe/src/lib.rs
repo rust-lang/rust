@@ -67,18 +67,17 @@ impl fmt::Display for ParseError {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExpandError {
+    BindingError(Box<Box<str>>),
+    LeftoverTokens,
+    ConversionError,
+    LimitExceeded,
     NoMatchingRule,
     UnexpectedToken,
-    BindingError(Box<str>),
-    ConversionError,
-    // FIXME: no way mbe should know about proc macros.
-    UnresolvedProcMacro,
-    Other(Box<str>),
 }
 
 impl ExpandError {
-    fn binding_error(e: &str) -> ExpandError {
-        ExpandError::BindingError(e.into())
+    fn binding_error(e: impl Into<Box<str>>) -> ExpandError {
+        ExpandError::BindingError(Box::new(e.into()))
     }
 }
 
@@ -89,8 +88,8 @@ impl fmt::Display for ExpandError {
             ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
             ExpandError::BindingError(e) => f.write_str(e),
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
-            ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc macro"),
-            ExpandError::Other(e) => f.write_str(e),
+            ExpandError::LimitExceeded => f.write_str("Expand exceed limit"),
+            ExpandError::LeftoverTokens => f.write_str("leftover tokens"),
         }
     }
 }
@@ -311,42 +310,41 @@ fn validate(pattern: &MetaTemplate) -> Result<(), ParseError> {
     Ok(())
 }
 
+pub type ExpandResult<T> = ValueResult<T, ExpandError>;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ExpandResult<T> {
+pub struct ValueResult<T, E> {
     pub value: T,
-    pub err: Option<ExpandError>,
+    pub err: Option<E>,
 }
 
-impl<T> ExpandResult<T> {
+impl<T, E> ValueResult<T, E> {
     pub fn ok(value: T) -> Self {
         Self { value, err: None }
     }
 
-    pub fn only_err(err: ExpandError) -> Self
+    pub fn only_err(err: E) -> Self
     where
         T: Default,
     {
         Self { value: Default::default(), err: Some(err) }
     }
 
-    pub fn str_err(err: String) -> Self
-    where
-        T: Default,
-    {
-        Self::only_err(ExpandError::Other(err.into()))
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ValueResult<U, E> {
+        ValueResult { value: f(self.value), err: self.err }
     }
 
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ExpandResult<U> {
-        ExpandResult { value: f(self.value), err: self.err }
+    pub fn map_err<E2>(self, f: impl FnOnce(E) -> E2) -> ValueResult<T, E2> {
+        ValueResult { value: self.value, err: self.err.map(f) }
     }
 
-    pub fn result(self) -> Result<T, ExpandError> {
+    pub fn result(self) -> Result<T, E> {
         self.err.map_or(Ok(self.value), Err)
     }
 }
 
-impl<T: Default> From<Result<T, ExpandError>> for ExpandResult<T> {
-    fn from(result: Result<T, ExpandError>) -> Self {
+impl<T: Default, E> From<Result<T, E>> for ValueResult<T, E> {
+    fn from(result: Result<T, E>) -> Self {
         result.map_or_else(Self::only_err, Self::ok)
     }
 }
