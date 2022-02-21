@@ -386,6 +386,17 @@ impl MacroCallKind {
             MacroCallKind::Derive { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
+            MacroCallKind::Attr { ast_id, is_derive: true, invoc_attr_index, .. } => {
+                ast_id.with_value(ast_id.to_node(db)).map(|it| {
+                    it.doc_comments_and_attrs()
+                        .nth(*invoc_attr_index as usize)
+                        .and_then(|it| match it {
+                            Either::Left(attr) => Some(attr.syntax().clone()),
+                            Either::Right(_) => None,
+                        })
+                        .unwrap_or_else(|| it.syntax().clone())
+                })
+            }
             MacroCallKind::Attr { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }

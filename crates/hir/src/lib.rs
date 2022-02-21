@@ -1792,6 +1792,13 @@ impl MacroDef {
         }
     }
 
+    pub fn is_builtin_derive(&self) -> bool {
+        match self.id.kind {
+            MacroDefKind::BuiltInAttr(exp, _) => exp.is_derive(),
+            _ => false,
+        }
+    }
+
     pub fn is_attr(&self) -> bool {
         matches!(self.kind(), MacroKind::Attr)
     }

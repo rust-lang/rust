@@ -1,13 +1,13 @@
-use hir::ModuleDef;
-use ide_db::helpers::insert_whitespace_into_node::insert_ws_into;
-use ide_db::helpers::{
-    get_path_at_cursor_in_tt, import_assets::NameToImport, mod_path_to_ast,
-    parse_tt_as_comma_sep_paths,
+use hir::{InFile, ModuleDef};
+use ide_db::{
+    helpers::{
+        import_assets::NameToImport, insert_whitespace_into_node::insert_ws_into, mod_path_to_ast,
+    },
+    items_locator,
 };
-use ide_db::items_locator;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AstToken, HasName},
+    ast::{self, AstNode, HasName},
     SyntaxKind::WHITESPACE,
 };
 
@@ -25,6 +25,7 @@ use crate::{
 // Converts a `derive` impl into a manual one.
 //
 // ```
+// # //- minicore: derive
 // # trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
 // #[derive(Deb$0ug, Display)]
 // struct S;
@@ -45,20 +46,30 @@ pub(crate) fn replace_derive_with_manual_impl(
     acc: &mut Assists,
     ctx: &AssistContext,
 ) -> Option<()> {
-    let attr = ctx.find_node_at_offset::<ast::Attr>()?;
-    let (name, args) = attr.as_simple_call()?;
-    if name != "derive" {
+    let attr = ctx.find_node_at_offset_with_descend::<ast::Attr>()?;
+    let path = attr.path()?;
+    let hir_file = ctx.sema.hir_file_for(attr.syntax());
+    if !hir_file.is_derive_attr_macro(ctx.db()) {
         return None;
     }
 
-    if !args.syntax().text_range().contains(ctx.offset()) {
-        cov_mark::hit!(outside_of_attr_args);
+    let InFile { file_id, value } = hir_file.call_node(ctx.db())?;
+    if file_id.is_macro() {
+        // FIXME: make this work in macro files
         return None;
     }
+    // collect the derive paths from the #[derive] expansion
+    let current_derives = ctx
+        .sema
+        .parse_or_expand(hir_file)?
+        .descendants()
+        .filter_map(ast::Attr::cast)
+        .filter_map(|attr| attr.path())
+        .collect::<Vec<_>>();
 
-    let ident = args.syntax().token_at_offset(ctx.offset()).find_map(ast::Ident::cast)?;
-    let trait_path = get_path_at_cursor_in_tt(&ident)?;
-    let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    let adt = value.parent().and_then(ast::Adt::cast)?;
+    let attr = ast::Attr::cast(value)?;
+    let args = attr.token_tree()?;
 
     let current_module = ctx.sema.scope(adt.syntax()).module()?;
     let current_crate = current_module.krate();
@@ -66,7 +77,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let found_traits = items_locator::items_with_name(
         &ctx.sema,
         current_crate,
-        NameToImport::exact_case_sensitive(trait_path.segments().last()?.to_string()),
+        NameToImport::exact_case_sensitive(path.segments().last()?.to_string()),
         items_locator::AssocItemSearch::Exclude,
         Some(items_locator::DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
@@ -83,8 +94,6 @@ pub(crate) fn replace_derive_with_manual_impl(
     });
 
     let mut no_traits_found = true;
-    let current_derives = parse_tt_as_comma_sep_paths(args.clone())?;
-    let current_derives = current_derives.as_slice();
     for (replace_trait_path, trait_) in found_traits.inspect(|_| no_traits_found = false) {
         add_assist(
             acc,
@@ -92,14 +101,14 @@ pub(crate) fn replace_derive_with_manual_impl(
             &attr,
             &current_derives,
             &args,
-            &trait_path,
+            &path,
             &replace_trait_path,
             Some(trait_),
             &adt,
         )?;
     }
     if no_traits_found {
-        add_assist(acc, ctx, &attr, &current_derives, &args, &trait_path, &trait_path, None, &adt)?;
+        add_assist(acc, ctx, &attr, &current_derives, &args, &path, &path, None, &adt)?;
     }
     Some(())
 }
@@ -128,7 +137,7 @@ fn add_assist(
             let impl_def_with_items =
                 impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
             update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
-            let trait_path = format!("{}", replace_trait_path);
+            let trait_path = replace_trait_path.to_string();
             match (ctx.config.snippet_cap, impl_def_with_items) {
                 (None, _) => {
                     builder.insert(insert_pos, generate_trait_impl_text(adt, &trait_path, ""))
@@ -258,7 +267,7 @@ mod tests {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 struct Foo {
     bar: String,
@@ -282,7 +291,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 struct Foo(String, usize);
 "#,
@@ -301,7 +310,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 struct Foo;
 "#,
@@ -321,7 +330,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 enum Foo {
     Bar,
@@ -351,7 +360,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 enum Foo {
     Bar(usize, usize),
@@ -380,7 +389,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(Debu$0g)]
 enum Foo {
     Bar {
@@ -415,7 +424,7 @@ impl core::fmt::Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: default
+//- minicore: default, derive
 #[derive(Defau$0lt)]
 struct Foo {
     foo: usize,
@@ -439,7 +448,7 @@ impl Default for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: default
+//- minicore: default, derive
 #[derive(Defau$0lt)]
 struct Foo(usize);
 "#,
@@ -459,7 +468,7 @@ impl Default for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: default
+//- minicore: default, derive
 #[derive(Defau$0lt)]
 struct Foo;
 "#,
@@ -480,7 +489,7 @@ impl Default for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: hash
+//- minicore: hash, derive
 #[derive(Has$0h)]
 struct Foo {
     bin: usize,
@@ -508,7 +517,7 @@ impl core::hash::Hash for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: hash
+//- minicore: hash, derive
 #[derive(Has$0h)]
 struct Foo(usize, usize);
 "#,
@@ -530,7 +539,7 @@ impl core::hash::Hash for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: hash
+//- minicore: hash, derive
 #[derive(Has$0h)]
 enum Foo {
     Bar,
@@ -557,7 +566,7 @@ impl core::hash::Hash for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 struct Foo {
     bin: usize,
@@ -584,7 +593,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 struct Foo(usize, usize);
 "#,
@@ -605,7 +614,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 struct Foo;
 "#,
@@ -626,7 +635,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 enum Foo {
     Bar,
@@ -656,7 +665,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 enum Foo {
     Bar(String),
@@ -686,7 +695,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 enum Foo {
     Bar {
@@ -720,7 +729,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: ord
+//- minicore: ord, derive
 #[derive(Partial$0Ord)]
 struct Foo {
     bin: usize,
@@ -745,7 +754,7 @@ impl PartialOrd for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: ord
+//- minicore: ord, derive
 #[derive(Partial$0Ord)]
 struct Foo {
     bin: usize,
@@ -782,7 +791,7 @@ impl PartialOrd for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: ord
+//- minicore: ord, derive
 #[derive(Partial$0Ord)]
 struct Foo(usize, usize, usize);
 "#,
@@ -811,7 +820,7 @@ impl PartialOrd for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 struct Foo {
     bin: usize,
@@ -838,7 +847,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 struct Foo(usize, usize);
 "#,
@@ -859,7 +868,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 struct Foo;
 "#,
@@ -880,7 +889,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 enum Foo {
     Bar,
@@ -907,7 +916,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 enum Foo {
     Bar(String),
@@ -937,7 +946,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: eq
+//- minicore: eq, derive
 #[derive(Partial$0Eq)]
 enum Foo {
     Bar {
@@ -981,6 +990,7 @@ impl PartialEq for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 mod foo {
     pub trait Bar {
         type Qux;
@@ -1026,10 +1036,11 @@ impl foo::Bar for Foo {
         )
     }
     #[test]
-    fn add_custom_impl_for_unique_input() {
+    fn add_custom_impl_for_unique_input_unknown() {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 #[derive(Debu$0g)]
 struct Foo {
     bar: String,
@@ -1052,6 +1063,7 @@ impl Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 #[derive(Debug$0)]
 pub struct Foo {
     bar: String,
@@ -1074,6 +1086,7 @@ impl Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 #[derive(Display, Debug$0, Serialize)]
 struct Foo {}
             "#,
@@ -1093,7 +1106,7 @@ impl Debug for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: default
+//- minicore: default, derive
 #[derive(Defau$0lt)]
 struct Foo<T, U> {
     foo: T,
@@ -1120,7 +1133,7 @@ impl<T, U> Default for Foo<T, U> {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(Clo$0ne)]
 struct Foo<T: Clone>(T, usize);
 "#,
@@ -1141,6 +1154,7 @@ impl<T: Clone> Clone for Foo<T> {
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 #[derive($0)]
 struct Foo {}
             "#,
@@ -1152,6 +1166,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive, fmt
 #[derive$0(Debug)]
 struct Foo {}
             "#,
@@ -1160,6 +1175,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive, fmt
 #[derive(Debug)$0]
 struct Foo {}
             "#,
@@ -1171,6 +1187,7 @@ struct Foo {}
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive
 #[allow(non_camel_$0case_types)]
 struct Foo {}
             "#,
@@ -1179,10 +1196,10 @@ struct Foo {}
 
     #[test]
     fn works_at_start_of_file() {
-        cov_mark::check!(outside_of_attr_args);
         check_assist_not_applicable(
             replace_derive_with_manual_impl,
             r#"
+//- minicore: derive, fmt
 $0#[derive(Debug)]
 struct S;
             "#,
@@ -1194,7 +1211,7 @@ struct S;
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: clone
+//- minicore: clone, derive
 #[derive(std::fmt::Debug, Clo$0ne)]
 pub struct Foo;
 "#,
@@ -1216,7 +1233,7 @@ impl Clone for Foo {
         check_assist(
             replace_derive_with_manual_impl,
             r#"
-//- minicore: fmt
+//- minicore: fmt, derive
 #[derive(core::fmt::Deb$0ug, Clone)]
 pub struct Foo;
 "#,

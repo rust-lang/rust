@@ -8,11 +8,10 @@ use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, HasName},
     utils::path_to_string_stripping_turbo_fish,
-    AstNode, AstToken, SyntaxNode,
+    AstNode, SyntaxNode,
 };
 
 use crate::{
-    helpers::get_path_in_derive_attr,
     items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
@@ -134,23 +133,6 @@ impl ImportAssets {
         let candidate_node = pat.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::for_name(sema, &name)?,
-            module_with_candidate: sema.scope(&candidate_node).module()?,
-            candidate_node,
-        })
-    }
-
-    pub fn for_derive_ident(sema: &Semantics<RootDatabase>, ident: &ast::Ident) -> Option<Self> {
-        let attr = ident.syntax().ancestors().find_map(ast::Attr::cast)?;
-        let path = get_path_in_derive_attr(sema, &attr, ident)?;
-
-        if let Some(_) = path.qualifier() {
-            return None;
-        }
-
-        let name = NameToImport::exact_case_sensitive(path.segment()?.name_ref()?.to_string());
-        let candidate_node = attr.syntax().clone();
-        Some(Self {
-            import_candidate: ImportCandidate::Path(PathImportCandidate { qualifier: None, name }),
             module_with_candidate: sema.scope(&candidate_node).module()?,
             candidate_node,
         })

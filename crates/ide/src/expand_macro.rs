@@ -3,8 +3,7 @@ use ide_db::{
     helpers::{insert_whitespace_into_node::insert_ws_into, pick_best_token},
     RootDatabase,
 };
-use itertools::Itertools;
-use syntax::{ast, ted, AstNode, SyntaxKind, SyntaxNode};
+use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
 use crate::FilePosition;
 
@@ -52,7 +51,17 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         let token = hir::InFile::new(hir_file, descended).upmap(db)?.value;
         let attr = token.ancestors().find_map(ast::Attr::cast)?;
         let expansions = sema.expand_derive_macro(&attr)?;
-        Some(ExpandedMacro { name, expansion: expansions.into_iter().map(insert_ws_into).join("") })
+        let idx = attr
+            .token_tree()?
+            .token_trees_and_tokens()
+            .filter_map(NodeOrToken::into_token)
+            .take_while(|it| it == &token)
+            .filter(|it| it.kind() == T![,])
+            .count();
+        Some(ExpandedMacro {
+            name,
+            expansion: expansions.get(idx).cloned().map(insert_ws_into)?.to_string(),
+        })
     });
 
     if derive.is_some() {
@@ -370,10 +379,8 @@ struct Foo {}
 struct Foo {}
 "#,
             expect![[r#"
-                Copy, Clone
+                Copy
                 impl < >core::marker::Copy for Foo< >{}
-
-                impl < >core::clone::Clone for Foo< >{}
 
             "#]],
         );
