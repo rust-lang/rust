@@ -50,7 +50,7 @@ where
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TreatParams {
-    /// Treat parametes as bound types in the given environment.
+    /// Treat parameters as bound types in the given environment.
     ///
     /// For this to be correct the input has to be fully normalized
     /// in its param env as it may otherwise cause us to ignore
