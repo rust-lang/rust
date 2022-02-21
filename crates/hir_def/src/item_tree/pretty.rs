@@ -493,14 +493,14 @@ impl<'a> Printer<'a> {
                 w!(self, "]");
             }
             TypeRef::Fn(args_and_ret, varargs) => {
-                let (ret, args) =
+                let ((_, return_type), args) =
                     args_and_ret.split_last().expect("TypeRef::Fn is missing return type");
                 w!(self, "fn(");
-                for (i, arg) in args.iter().enumerate() {
+                for (i, (_, typeref)) in args.iter().enumerate() {
                     if i != 0 {
                         w!(self, ", ");
                     }
-                    self.print_type_ref(arg);
+                    self.print_type_ref(&typeref);
                 }
                 if *varargs {
                     if !args.is_empty() {
@@ -509,7 +509,7 @@ impl<'a> Printer<'a> {
                     w!(self, "...");
                 }
                 w!(self, ") -> ");
-                self.print_type_ref(ret);
+                self.print_type_ref(&return_type);
             }
             TypeRef::Macro(_ast_id) => {
                 w!(self, "<macro>");

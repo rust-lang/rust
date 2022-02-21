@@ -201,7 +201,7 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
             TypeRef::Fn(params, is_varargs) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    Substitution::from_iter(Interner, params.iter().map(|tr| ctx.lower_ty(tr)))
+                    Substitution::from_iter(Interner, params.iter().map(|(_, tr)| ctx.lower_ty(tr)))
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly

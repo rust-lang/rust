@@ -1,9 +1,12 @@
 //! HIR for references to types. Paths in these are not yet resolved. They can
 //! be directly created from an ast::TypeRef, without further queries.
 
-use hir_expand::{name::Name, AstId, InFile};
+use hir_expand::{
+    name::{AsName, Name},
+    AstId, InFile,
+};
 use std::convert::TryInto;
-use syntax::ast;
+use syntax::ast::{self, HasName};
 
 use crate::{body::LowerCtx, intern::Interned, path::Path};
 
@@ -89,7 +92,7 @@ pub enum TypeRef {
     Array(Box<TypeRef>, ConstScalar),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(Vec<TypeRef>, bool /*varargs*/),
+    Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/),
     // For
     ImplTrait(Vec<Interned<TypeBound>>),
     DynTrait(Vec<Interned<TypeBound>>),
@@ -188,11 +191,22 @@ impl TypeRef {
                         is_varargs = param.dotdotdot_token().is_some();
                     }
 
-                    pl.params().map(|p| p.ty()).map(|it| TypeRef::from_ast_opt(ctx, it)).collect()
+                    pl.params()
+                        .map(|it| {
+                            let type_ref = TypeRef::from_ast_opt(ctx, it.ty());
+                            let name = match it.pat() {
+                                Some(ast::Pat::IdentPat(it)) => Some(
+                                    it.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing),
+                                ),
+                                _ => None,
+                            };
+                            (name, type_ref)
+                        })
+                        .collect()
                 } else {
                     Vec::new()
                 };
-                params.push(ret_ty);
+                params.push((None, ret_ty));
                 TypeRef::Fn(params, is_varargs)
             }
             // for types are close enough for our purposes to the inner type for now...
@@ -230,9 +244,10 @@ impl TypeRef {
         fn go(type_ref: &TypeRef, f: &mut impl FnMut(&TypeRef)) {
             f(type_ref);
             match type_ref {
-                TypeRef::Fn(types, _) | TypeRef::Tuple(types) => {
-                    types.iter().for_each(|t| go(t, f))
+                TypeRef::Fn(params, _) => {
+                    params.iter().for_each(|(_, param_type)| go(&param_type, f))
                 }
+                TypeRef::Tuple(types) => types.iter().for_each(|t| go(t, f)),
                 TypeRef::RawPtr(type_ref, _)
                 | TypeRef::Reference(type_ref, ..)
                 | TypeRef::Array(type_ref, _)
