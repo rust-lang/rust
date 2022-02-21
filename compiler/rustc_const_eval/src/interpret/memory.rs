@@ -1047,7 +1047,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
         let Some((dest_alloc_id, dest_offset, dest)) = dest_parts else {
-            // Zero-sized *destiantion*.
+            // Zero-sized *destination*.
             return Ok(());
         };
 
