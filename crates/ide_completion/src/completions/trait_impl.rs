@@ -58,15 +58,15 @@ pub(crate) fn complete_trait_impl(acc: &mut Completions, ctx: &CompletionContext
                     (
                         hir::AssocItem::Function(fn_item),
                         ImplCompletionKind::All | ImplCompletionKind::Fn,
-                    ) => add_function_impl(&trigger, acc, ctx, fn_item, hir_impl),
+                    ) => add_function_impl(acc, ctx, &trigger, fn_item, hir_impl),
                     (
                         hir::AssocItem::TypeAlias(type_item),
                         ImplCompletionKind::All | ImplCompletionKind::TypeAlias,
-                    ) => add_type_alias_impl(&trigger, acc, ctx, type_item),
+                    ) => add_type_alias_impl(acc, ctx, &trigger, type_item),
                     (
                         hir::AssocItem::Const(const_item),
                         ImplCompletionKind::All | ImplCompletionKind::Const,
-                    ) => add_const_impl(&trigger, acc, ctx, const_item, hir_impl),
+                    ) => add_const_impl(acc, ctx, &trigger, const_item, hir_impl),
                     _ => {}
                 }
             });
@@ -126,9 +126,9 @@ fn completion_match(mut token: SyntaxToken) -> Option<(ImplCompletionKind, Synta
 }
 
 fn add_function_impl(
-    fn_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
+    fn_def_node: &SyntaxNode,
     func: hir::Function,
     impl_def: hir::Impl,
 ) {
@@ -199,9 +199,9 @@ fn get_transformed_assoc_item(
 }
 
 fn add_type_alias_impl(
-    type_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
+    type_def_node: &SyntaxNode,
     type_alias: hir::TypeAlias,
 ) {
     let alias_name = type_alias.name(ctx.db).to_smol_str();
@@ -217,9 +217,9 @@ fn add_type_alias_impl(
 }
 
 fn add_const_impl(
-    const_def_node: &SyntaxNode,
     acc: &mut Completions,
     ctx: &CompletionContext,
+    const_def_node: &SyntaxNode,
     const_: hir::Const,
     impl_def: hir::Impl,
 ) {

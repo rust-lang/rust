@@ -1055,9 +1055,9 @@ impl DefCollector<'_> {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
                     let call_id = macro_call_as_call_id(
+                        self.db,
                         ast_id,
                         *expand_to,
-                        self.db,
                         self.def_map.krate,
                         &resolver,
                         &mut |_err| (),
@@ -1070,10 +1070,10 @@ impl DefCollector<'_> {
                 }
                 MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
                     let call_id = derive_macro_as_call_id(
+                        self.db,
                         ast_id,
                         *derive_attr,
                         *derive_pos as u32,
-                        self.db,
                         self.def_map.krate,
                         &resolver,
                     );
@@ -1170,9 +1170,17 @@ impl DefCollector<'_> {
                                     len = idx;
                                 }
 
+                                let call_id = attr_macro_as_call_id(
+                                    self.db,
+                                    file_ast_id,
+                                    attr,
+                                    self.def_map.krate,
+                                    def,
+                                    true,
+                                );
                                 self.def_map.modules[directive.module_id]
                                     .scope
-                                    .init_derive_attribute(ast_id, attr.id, len + 1);
+                                    .init_derive_attribute(ast_id, attr.id, call_id, len + 1);
                             }
                             None => {
                                 let diag = DefDiagnostic::malformed_derive(
@@ -1192,8 +1200,14 @@ impl DefCollector<'_> {
                     }
 
                     // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
-                    let call_id =
-                        attr_macro_as_call_id(file_ast_id, attr, self.db, self.def_map.krate, def);
+                    let call_id = attr_macro_as_call_id(
+                        self.db,
+                        file_ast_id,
+                        attr,
+                        self.def_map.krate,
+                        def,
+                        false,
+                    );
                     let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
@@ -1310,9 +1324,9 @@ impl DefCollector<'_> {
             match &directive.kind {
                 MacroDirectiveKind::FnLike { ast_id, expand_to } => {
                     let macro_call_as_call_id = macro_call_as_call_id(
+                        self.db,
                         ast_id,
                         *expand_to,
-                        self.db,
                         self.def_map.krate,
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
@@ -1959,9 +1973,9 @@ impl ModCollector<'_, '_> {
         // Case 1: try to resolve in legacy scope and expand macro_rules
         let mut error = None;
         match macro_call_as_call_id(
+            self.def_collector.db,
             &ast_id,
             mac.expand_to,
-            self.def_collector.db,
             self.def_collector.def_map.krate,
             |path| {
                 path.as_ident().and_then(|name| {

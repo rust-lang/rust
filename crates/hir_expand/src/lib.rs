@@ -166,6 +166,7 @@ pub enum MacroCallKind {
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
         invoc_attr_index: u32,
+        is_derive: bool,
     },
 }
 
@@ -431,6 +432,7 @@ impl MacroCallKind {
         match self {
             MacroCallKind::FnLike { expand_to, .. } => *expand_to,
             MacroCallKind::Derive { .. } => ExpandTo::Items,
+            MacroCallKind::Attr { is_derive: true, .. } => ExpandTo::Statements,
             MacroCallKind::Attr { .. } => ExpandTo::Items, // is this always correct?
         }
     }
@@ -497,7 +499,7 @@ impl ExpansionInfo {
 
             let token_range = token.value.text_range();
             match &loc.kind {
-                MacroCallKind::Attr { attr_args, invoc_attr_index, .. } => {
+                MacroCallKind::Attr { attr_args, invoc_attr_index, is_derive, .. } => {
                     let attr = item
                         .doc_comments_and_attrs()
                         .nth(*invoc_attr_index as usize)
@@ -511,9 +513,13 @@ impl ExpansionInfo {
                             let relative_range =
                                 token.value.text_range().checked_sub(attr_input_start)?;
                             // shift by the item's tree's max id
-                            let token_id = self
-                                .macro_arg_shift
-                                .shift(attr_args.1.token_by_range(relative_range)?);
+                            let token_id = attr_args.1.token_by_range(relative_range)?;
+                            let token_id = if *is_derive {
+                                // we do not shift for `#[derive]`, as we only need to downmap the derive attribute tokens
+                                token_id
+                            } else {
+                                self.macro_arg_shift.shift(token_id)
+                            };
                             Some(token_id)
                         }
                         _ => None,

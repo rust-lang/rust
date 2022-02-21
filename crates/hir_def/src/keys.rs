@@ -34,7 +34,8 @@ pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
 pub const MACRO: Key<ast::Macro, MacroDefId> = Key::new();
 pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
-pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, Box<[Option<MacroCallId>]>)> = Key::new();
+pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, MacroCallId, Box<[Option<MacroCallId>]>)> =
+    Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.

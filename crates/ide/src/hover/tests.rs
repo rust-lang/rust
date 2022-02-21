@@ -15,6 +15,7 @@ fn check_hover_no_result(ra_fixture: &str) {
     assert!(hover.is_none(), "hover not expected but found: {:?}", hover.unwrap());
 }
 
+#[track_caller]
 fn check(ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis

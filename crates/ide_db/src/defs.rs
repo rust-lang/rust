@@ -14,7 +14,7 @@ use hir::{
 use stdx::impl_from;
 use syntax::{
     ast::{self, AstNode},
-    match_ast, AstToken, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
 use crate::RootDatabase;
@@ -142,16 +142,6 @@ impl IdentClass {
         token: &SyntaxToken,
     ) -> Option<IdentClass> {
         let parent = token.parent()?;
-        // resolve derives if possible
-        if let Some(ident) = ast::Ident::cast(token.clone()) {
-            let attr = ast::TokenTree::cast(parent.clone())
-                .and_then(|tt| tt.parent_meta())
-                .and_then(|meta| meta.parent_attr());
-            if let Some(attr) = attr {
-                return NameRefClass::classify_derive(sema, &attr, &ident)
-                    .map(IdentClass::NameRefClass);
-            }
-        }
         Self::classify_node(sema, &parent)
     }
 
@@ -460,14 +450,6 @@ impl NameRefClass {
             }
             _ => None,
         }
-    }
-
-    pub fn classify_derive(
-        sema: &Semantics<RootDatabase>,
-        attr: &ast::Attr,
-        ident: &ast::Ident,
-    ) -> Option<NameRefClass> {
-        sema.resolve_derive_ident(&attr, &ident).map(Definition::from).map(NameRefClass::Definition)
     }
 }
 

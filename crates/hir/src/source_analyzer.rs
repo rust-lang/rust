@@ -371,10 +371,10 @@ impl SourceAnalyzer {
                 return builtin.map(PathResolution::BuiltinAttr);
             }
             return match resolve_hir_path_as_macro(db, &self.resolver, &hir_path) {
-                res @ Some(m) if m.is_attr() => res.map(PathResolution::Macro),
+                Some(m) => Some(PathResolution::Macro(m)),
                 // this labels any path that starts with a tool module as the tool itself, this is technically wrong
                 // but there is no benefit in differentiating these two cases for the time being
-                _ => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
+                None => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
                     match self.resolver.krate() {
                         Some(krate) => ToolModule::by_name(db, krate.into(), &name_ref.text()),
                         None => ToolModule::builtin(&name_ref.text()),

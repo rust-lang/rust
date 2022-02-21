@@ -342,6 +342,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                     .map(|it| it.syntax().clone())
                     .collect()
             }
+            MacroCallKind::Attr { is_derive: true, .. } => return None,
             MacroCallKind::Attr { invoc_attr_index, .. } => {
                 cov_mark::hit!(attribute_macro_attr_censoring);
                 ast::Item::cast(node.clone())?

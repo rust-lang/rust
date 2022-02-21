@@ -66,8 +66,10 @@ pub struct ItemScope {
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
-    derive_macros:
-        FxHashMap<AstId<ast::Adt>, SmallVec<[(AttrId, SmallVec<[Option<MacroCallId>; 1]>); 1]>>,
+    derive_macros: FxHashMap<
+        AstId<ast::Adt>,
+        SmallVec<[(AttrId, MacroCallId, SmallVec<[Option<MacroCallId>; 1]>); 1]>,
+    >,
 }
 
 pub(crate) static BUILTIN_SCOPE: Lazy<FxHashMap<Name, PerNs>> = Lazy::new(|| {
@@ -210,7 +212,7 @@ impl ItemScope {
         idx: usize,
     ) {
         if let Some(derives) = self.derive_macros.get_mut(&adt) {
-            if let Some((_, invocs)) = derives.iter_mut().find(|&&mut (id, _)| id == attr_id) {
+            if let Some((.., invocs)) = derives.iter_mut().find(|&&mut (id, ..)| id == attr_id) {
                 invocs[idx] = Some(call);
             }
         }
@@ -223,19 +225,23 @@ impl ItemScope {
         &mut self,
         adt: AstId<ast::Adt>,
         attr_id: AttrId,
+        call_id: MacroCallId,
         len: usize,
     ) {
-        self.derive_macros.entry(adt).or_default().push((attr_id, smallvec![None; len]));
+        self.derive_macros.entry(adt).or_default().push((attr_id, call_id, smallvec![None; len]));
     }
 
     pub(crate) fn derive_macro_invocs(
         &self,
     ) -> impl Iterator<
-        Item = (AstId<ast::Adt>, impl Iterator<Item = (AttrId, &[Option<MacroCallId>])>),
+        Item = (
+            AstId<ast::Adt>,
+            impl Iterator<Item = (AttrId, MacroCallId, &[Option<MacroCallId>])>,
+        ),
     > + '_ {
-        self.derive_macros
-            .iter()
-            .map(|(k, v)| (*k, v.iter().map(|(attr_id, invocs)| (*attr_id, &**invocs))))
+        self.derive_macros.iter().map(|(k, v)| {
+            (*k, v.iter().map(|&(attr_id, call_id, ref invocs)| (attr_id, call_id, &**invocs)))
+        })
     }
 
     pub(crate) fn unnamed_trait_vis(&self, tr: TraitId) -> Option<Visibility> {

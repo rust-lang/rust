@@ -361,7 +361,7 @@ fn traverse(
                 syntactic_name_ref_highlighting,
                 node,
             ),
-            NodeOrToken::Token(token) => highlight::token(sema, krate, token).zip(Some(None)),
+            NodeOrToken::Token(token) => highlight::token(sema, token).zip(Some(None)),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if inside_attribute {

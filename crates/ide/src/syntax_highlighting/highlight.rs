@@ -18,11 +18,7 @@ use crate::{
     Highlight, HlMod, HlTag,
 };
 
-pub(super) fn token(
-    sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
-    token: SyntaxToken,
-) -> Option<Highlight> {
+pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Option<Highlight> {
     if let Some(comment) = ast::Comment::cast(token.clone()) {
         let h = HlTag::Comment;
         return Some(match comment.kind().doc {
@@ -39,17 +35,10 @@ pub(super) fn token(
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
-        IDENT => {
-            let tt = ast::TokenTree::cast(token.parent()?)?;
-            let ident = ast::Ident::cast(token)?;
+        IDENT if token.parent().and_then(ast::TokenTree::cast).is_some() => {
             // from this point on we are inside a token tree, this only happens for identifiers
             // that were not mapped down into macro invocations
-            (|| {
-                let attr = tt.parent_meta()?.parent_attr()?;
-                let res = sema.resolve_derive_ident(&attr, &ident)?;
-                Some(highlight_def(sema, krate, Definition::from(res)))
-            })()
-            .unwrap_or_else(|| HlTag::None.into())
+            HlTag::None.into()
         }
         p if p.is_punct() => punctuation(sema, token, p),
         k if k.is_keyword() => keyword(sema, token, k)?,
