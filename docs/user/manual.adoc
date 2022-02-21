@@ -361,22 +361,19 @@ if executable('rust-analyzer')
 endif
 ----
 
-=== Sublime Text 3
+=== Sublime Text
 
-Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+==== Sublime Text 4:
+* Follow the instructions in link:https://github.com/sublimelsp/LSP-rust-analyzer[LSP-rust-analyzer].
 
-You also need the `LSP` package.
-To install it:
+NOTE: Install link:https://packagecontrol.io/packages/LSP-file-watcher-chokidar[LSP-file-watcher-chokidar] to enable file watching (`workspace/didChangeWatchedFiles`).
 
-1. If you've never installed a Sublime Text package, install Package Control:
-   * Open the command palette (Win/Linux: `ctrl+shift+p`, Mac: `cmd+shift+p`)
-   * Type `Install Package Control`, press enter
-2. In the command palette, run `Package control: Install package`, and in the list that pops up, type `LSP` and press enter.
+==== Sublime Text 3:
+* Install the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+* Install the link:https://packagecontrol.io/packages/LSP[LSP package].
+* From the command palette, run `LSP: Enable Language Server Globally` and select `rust-analyzer`.
 
-Finally, with your Rust project open, in the command palette, run `LSP: Enable Language Server In Project` or `LSP: Enable Language Server Globally`, then select `rust-analyzer` in the list that pops up to enable the rust-analyzer LSP.
-The latter means that rust-analyzer is enabled by default in Rust projects.
-
-If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side of the bottom bar, and after waiting a bit, functionality like tooltips on hovering over variables should become available.
+If it worked, you should see "rust-analyzer, Line X, Column Y" on the left side of the status bar, and after waiting a bit, functionalities like tooltips on hovering over variables should become available.
 
 If you get an error saying `No such file or directory: 'rust-analyzer'`, see the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>> section on installing the language server binary.
 
