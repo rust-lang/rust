@@ -65,10 +65,10 @@ pub(crate) fn annotations(
     visit_file_defs(&Semantics::new(db), file_id, &mut |def| {
         let range = match def {
             Definition::Const(konst) if config.annotate_references => {
-                konst.source(db).and_then(|node| name_range(&node, file_id))
+                konst.source(db).and_then(|node| name_range(db, node, file_id))
             }
             Definition::Trait(trait_) if config.annotate_references || config.annotate_impls => {
-                trait_.source(db).and_then(|node| name_range(&node, file_id))
+                trait_.source(db).and_then(|node| name_range(db, node, file_id))
             }
             Definition::Adt(adt) => match adt {
                 hir::Adt::Enum(enum_) => {
@@ -77,7 +77,7 @@ pub(crate) fn annotations(
                             .variants(db)
                             .into_iter()
                             .map(|variant| {
-                                variant.source(db).and_then(|node| name_range(&node, file_id))
+                                variant.source(db).and_then(|node| name_range(db, node, file_id))
                             })
                             .filter_map(std::convert::identity)
                             .for_each(|range| {
@@ -91,14 +91,14 @@ pub(crate) fn annotations(
                             })
                     }
                     if config.annotate_references || config.annotate_impls {
-                        enum_.source(db).and_then(|node| name_range(&node, file_id))
+                        enum_.source(db).and_then(|node| name_range(db, node, file_id))
                     } else {
                         None
                     }
                 }
                 _ => {
                     if config.annotate_references || config.annotate_impls {
-                        adt.source(db).and_then(|node| name_range(&node, file_id))
+                        adt.source(db).and_then(|node| name_range(db, node, file_id))
                     } else {
                         None
                     }
@@ -131,13 +131,17 @@ pub(crate) fn annotations(
             });
         }
 
-        fn name_range<T: HasName>(node: &InFile<T>, file_id: FileId) -> Option<TextRange> {
-            if node.file_id == file_id.into() {
-                node.value.name().map(|it| it.syntax().text_range())
-            } else {
-                // Node is outside the file we are adding annotations to (e.g. macros).
-                None
+        fn name_range<T: HasName>(
+            db: &RootDatabase,
+            node: InFile<T>,
+            source_file_id: FileId,
+        ) -> Option<TextRange> {
+            if let Some(InFile { file_id, value }) = node.original_ast_node(db) {
+                if file_id == source_file_id.into() {
+                    return value.name().map(|it| it.syntax().text_range());
+                }
             }
+            None
         }
     });
 
