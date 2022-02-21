@@ -17,7 +17,6 @@ use rustc_index::newtype_index;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{
     BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
 };
@@ -420,8 +419,7 @@ pub enum ExprKind<'tcx> {
     /// This is only distinguished from `Literal` so that we can register some
     /// info for diagnostics.
     StaticRef {
-        alloc_id: AllocId,
-        ty: Ty<'tcx>,
+        literal: Const<'tcx>,
         def_id: DefId,
     },
     /// Inline assembly, i.e. `asm!()`.

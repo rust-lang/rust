@@ -8,6 +8,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
+use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
@@ -940,8 +941,15 @@ impl<'tcx> Cx<'tcx> {
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
-                    let alloc_id = self.tcx.create_static_alloc(id);
-                    ExprKind::StaticRef { alloc_id, ty, def_id: id }
+                    let ptr = self.tcx.create_static_alloc(id);
+                    ExprKind::StaticRef {
+                        literal: ty::Const::from_scalar(
+                            self.tcx,
+                            Scalar::from_pointer(ptr.into(), &self.tcx),
+                            ty,
+                        ),
+                        def_id: id,
+                    }
                 };
                 ExprKind::Deref {
                     arg: self.thir.exprs.push(Expr { ty, temp_lifetime, span: expr.span, kind }),

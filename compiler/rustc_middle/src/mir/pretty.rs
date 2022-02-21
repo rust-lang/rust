@@ -17,8 +17,9 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_target::abi::Size;
+use std::ops::ControlFlow;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -663,7 +664,6 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(alloc: &Allocation) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
         alloc.relocations().values().map(|id| *id)
     }
-
     fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _size)) => {
@@ -677,29 +677,17 @@ pub fn write_allocations<'tcx>(
             }
         }
     }
-
     struct CollectAllocIds(BTreeSet<AllocId>);
-
-    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
+    impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
+        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
             if let ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
-        }
-
-        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
-            match c.literal {
-                ConstantKind::Ty(c) => self.visit_const(c, loc),
-                ConstantKind::Val(val, _) => {
-                    self.0.extend(alloc_ids_from_const(val));
-                }
-            }
+            c.super_visit_with(self)
         }
     }
-
     let mut visitor = CollectAllocIds(Default::default());
-    visitor.visit_body(body);
-
+    body.visit_with(&mut visitor);
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.

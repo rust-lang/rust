@@ -1,7 +1,6 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::Builder;
-use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
@@ -27,12 +26,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 assert_eq!(literal.ty(), ty);
                 Constant { span, user_ty, literal: literal.into() }
             }
-            ExprKind::StaticRef { alloc_id, ty, .. } => {
-                let const_val =
-                    ConstValue::Scalar(Scalar::from_pointer(alloc_id.into(), &this.tcx));
-                let literal = ConstantKind::Val(const_val, ty);
-
-                Constant { span, user_ty: None, literal }
+            ExprKind::StaticRef { literal, .. } => {
+                Constant { span, user_ty: None, literal: literal.into() }
             }
             ExprKind::ConstBlock { value } => {
                 Constant { span: span, user_ty: None, literal: value.into() }

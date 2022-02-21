@@ -20,7 +20,9 @@
 -         StorageLive(_5);                 // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 -         _5 = const {alloc3: *const i32}; // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 +         _6 = const FOO::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
-+                                          // ty::Const
+                                           // ty::Const
+-                                          // + ty: *const i32
+-                                          // + val: Value(Scalar(alloc3))
 +                                          // + ty: &[&i32; 1]
 +                                          // + val: Unevaluated(FOO, [], Some(promoted[0]))
                                            // mir::Constant
