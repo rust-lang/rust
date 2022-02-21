@@ -370,7 +370,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             InvalidChar(c) => {
                 write!(f, "interpreting an invalid 32-bit value as a char: 0x{:08x}", c)
             }
-            InvalidTag(val) => write!(f, "enum value has invalid tag: {}", val),
+            InvalidTag(val) => write!(f, "enum value has invalid tag: {:x}", val),
             InvalidFunctionPointer(p) => {
                 write!(f, "using {:?} as function pointer but it does not point to a function", p)
             }
