@@ -1,4 +1,4 @@
-#![feature(generic_const_exprs, array_map)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 pub struct ConstCheck<const CHECK: bool>;

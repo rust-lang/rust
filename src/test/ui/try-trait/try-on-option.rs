@@ -1,5 +1,3 @@
-#![feature(try_trait)]
-
 fn main() {}
 
 fn foo() -> Result<u32, ()> {

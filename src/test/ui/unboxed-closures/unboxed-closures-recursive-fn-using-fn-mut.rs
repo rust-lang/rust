@@ -1,4 +1,4 @@
-#![feature(core, fn_traits, unboxed_closures)]
+#![feature(fn_traits, unboxed_closures)]
 
 use std::marker::PhantomData;
 

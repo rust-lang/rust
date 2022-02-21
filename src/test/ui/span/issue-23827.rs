@@ -1,6 +1,6 @@
 // Regression test for #23827
 
-#![feature(core, fn_traits, unboxed_closures)]
+#![feature(fn_traits, unboxed_closures)]
 
 pub struct Prototype {
     pub target: u32

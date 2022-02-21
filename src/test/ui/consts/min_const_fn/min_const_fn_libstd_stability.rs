@@ -15,7 +15,7 @@ const fn foo() -> u32 { 42 }
 // can't call non-min_const_fn
 const fn bar() -> u32 { foo() } //~ ERROR not yet stable as a const fn
 
-#[unstable(feature = "rust1", issue = "none")]
+#[unstable(feature = "foo2", issue = "none")]
 const fn foo2() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

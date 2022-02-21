@@ -1,4 +1,3 @@
-#![feature(dyn_trait)]
 #![feature(rustc_attrs)]
 
 trait Trait<'x, 's, T> where T: 'x,

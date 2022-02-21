@@ -1,16 +1,16 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/issue-75777.rs:13:14
+  --> $DIR/issue-75777.rs:11:14
    |
 LL |     Box::new(move |_| fut)
    |              ^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/issue-75777.rs:11:11
+  --> $DIR/issue-75777.rs:9:11
    |
 LL | fn inject<'a, Env: 'a, A: 'a + Send>(v: A) -> Box<dyn FnOnce(&'a Env) -> BoxFuture<'a, A>> {
    |           ^^
 note: ...so that the types are compatible
-  --> $DIR/issue-75777.rs:13:14
+  --> $DIR/issue-75777.rs:11:14
    |
 LL |     Box::new(move |_| fut)
    |              ^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     Box::new(move |_| fut)
               found `(Pin<Box<(dyn Future<Output = A> + Send + 'a)>>,)`
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the types are compatible
-  --> $DIR/issue-75777.rs:13:5
+  --> $DIR/issue-75777.rs:11:5
    |
 LL |     Box::new(move |_| fut)
    |     ^^^^^^^^^^^^^^^^^^^^^^
