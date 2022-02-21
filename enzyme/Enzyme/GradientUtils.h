@@ -887,7 +887,7 @@ private:
 
 public:
   BasicBlock *addReverseBlock(BasicBlock *currentBlock, Twine name,
-                              bool forkCache = true) {
+                              bool forkCache = true, bool push = true) {
     assert(reverseBlocks.size());
     auto found = reverseBlockToPrimal.find(currentBlock);
     assert(found != reverseBlockToPrimal.end());
@@ -899,7 +899,8 @@ public:
     BasicBlock *rev =
         BasicBlock::Create(currentBlock->getContext(), name, newFunc);
     rev->moveAfter(currentBlock);
-    vec.push_back(rev);
+    if (push)
+      vec.push_back(rev);
     reverseBlockToPrimal[rev] = found->second;
     if (forkCache) {
       for (auto pair : unwrap_cache[currentBlock])

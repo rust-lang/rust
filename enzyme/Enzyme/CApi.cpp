@@ -555,4 +555,18 @@ void EnzymeAddAttributorLegacyPass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createAttributorLegacyPass());
 }
 #endif
+LLVMMetadataRef EnzymeMakeNonConstTBAA(LLVMMetadataRef MD) {
+  auto M = cast<MDNode>(unwrap(MD));
+  if (M->getNumOperands() != 4)
+    return MD;
+  auto CAM = dyn_cast<ConstantAsMetadata>(M->getOperand(3));
+  if (!CAM)
+    return MD;
+  if (!CAM->getValue()->isOneValue())
+    return MD;
+  SmallVector<Metadata *, 4> MDs(M->operands());
+  MDs[3] =
+      ConstantAsMetadata::get(ConstantInt::get(CAM->getValue()->getType(), 0));
+  return wrap(MDNode::get(M->getContext(), MDs));
+}
 }

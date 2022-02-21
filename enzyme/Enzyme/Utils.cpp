@@ -455,13 +455,26 @@ llvm::Function *getOrInsertDifferentialMPI_Wait(llvm::Module &M,
   Value *d_req = buff + 7;
   d_req->setName("d_req");
 
+  bool pmpi = true;
   auto isendfn = M.getFunction("PMPI_Isend");
-  if (!isendfn)
+  if (!isendfn) {
     isendfn = M.getFunction("MPI_Isend");
+    pmpi = false;
+  }
   assert(isendfn);
   auto irecvfn = M.getFunction("PMPI_Irecv");
   if (!irecvfn)
     irecvfn = M.getFunction("MPI_Irecv");
+  if (!irecvfn) {
+    FunctionType *FuT = isendfn->getFunctionType();
+    std::string name = pmpi ? "PMPI_Irecv" : "MPI_Irecv";
+#if LLVM_VERSION_MAJOR >= 9
+    irecvfn = cast<Function>(M.getOrInsertFunction(name, FuT).getCallee());
+
+#else
+    irecvfn = cast<Function>(M.getOrInsertFunction(name, FuT));
+#endif
+  }
   assert(irecvfn);
 
   IRBuilder<> B(entry);

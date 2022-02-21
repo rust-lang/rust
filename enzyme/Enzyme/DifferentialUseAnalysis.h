@@ -306,6 +306,17 @@ static inline bool is_value_needed_in_reverse(
       }
 
       if (auto CI = dyn_cast<CallInst>(user)) {
+        {
+          SmallVector<OperandBundleDef, 2> OrigDefs;
+          CI->getOperandBundlesAsDefs(OrigDefs);
+          SmallVector<OperandBundleDef, 2> Defs;
+          for (auto bund : OrigDefs) {
+            for (auto inp : bund.inputs()) {
+              if (inp == inst)
+                return seen[idx] = true;
+            }
+          }
+        }
         if (auto F = getFunctionFromCall(const_cast<CallInst *>(CI))) {
           StringRef funcName = F->getName();
           if (F->hasFnAttribute("enzyme_math"))
@@ -331,9 +342,8 @@ static inline bool is_value_needed_in_reverse(
             if (inst == CI->getArgOperand(6))
               return seen[idx] = true;
             // Need shadow buffer in reverse pass or forward mode
-            if (mode != DerivativeMode::ReverseModePrimal)
-              if (inst == CI->getArgOperand(0))
-                return seen[idx] = true;
+            if (inst == CI->getArgOperand(0))
+              return seen[idx] = true;
             continue;
           }
 
@@ -342,7 +352,7 @@ static inline bool is_value_needed_in_reverse(
           if (funcName == "MPI_Wait" || funcName == "PMPI_Wait") {
             if (gutils->isConstantInstruction(const_cast<Instruction *>(user)))
               continue;
-            // Need shadow request in forward pass
+            // Need shadow request in forward pass only
             if (mode != DerivativeMode::ReverseModeGradient)
               if (inst == CI->getArgOperand(0))
                 return seen[idx] = true;
