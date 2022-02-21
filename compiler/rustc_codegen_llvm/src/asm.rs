@@ -1,3 +1,4 @@
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
@@ -18,6 +19,7 @@ use rustc_target::abi::*;
 use rustc_target::asm::*;
 
 use libc::{c_char, c_uint};
+use smallvec::SmallVec;
 use tracing::debug;
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
@@ -273,19 +275,20 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         )
         .unwrap_or_else(|| span_bug!(line_spans[0], "LLVM asm constraint validation failed"));
 
+        let mut attrs = SmallVec::<[_; 2]>::new();
         if options.contains(InlineAsmOptions::PURE) {
             if options.contains(InlineAsmOptions::NOMEM) {
-                llvm::Attribute::ReadNone.apply_callsite(llvm::AttributePlace::Function, result);
+                attrs.push(llvm::AttributeKind::ReadNone.create_attr(self.cx.llcx));
             } else if options.contains(InlineAsmOptions::READONLY) {
-                llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
+                attrs.push(llvm::AttributeKind::ReadOnly.create_attr(self.cx.llcx));
             }
-            llvm::Attribute::WillReturn.apply_callsite(llvm::AttributePlace::Function, result);
+            attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
-            llvm::Attribute::InaccessibleMemOnly
-                .apply_callsite(llvm::AttributePlace::Function, result);
+            attrs.push(llvm::AttributeKind::InaccessibleMemOnly.create_attr(self.cx.llcx));
         } else {
             // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
         }
+        attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
         // Write results to outputs
         for (idx, op) in operands.iter().enumerate() {

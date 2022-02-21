@@ -64,7 +64,8 @@ pub(crate) unsafe fn codegen(
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
-            attributes::emit_uwtable(llfn);
+            let uwtable = attributes::uwtable_attr(llcx);
+            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
         }
 
         let callee = kind.fn_name(method.name);
@@ -105,20 +106,22 @@ pub(crate) unsafe fn codegen(
     let name = "__rust_alloc_error_handler";
     let llfn = llvm::LLVMRustGetOrInsertFunction(llmod, name.as_ptr().cast(), name.len(), ty);
     // -> ! DIFlagNoReturn
-    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
+    let no_return = llvm::AttributeKind::NoReturn.create_attr(llcx);
+    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[no_return]);
 
     if tcx.sess.target.default_hidden_visibility {
         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
     }
     if tcx.sess.must_emit_unwind_tables() {
-        attributes::emit_uwtable(llfn);
+        let uwtable = attributes::uwtable_attr(llcx);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
     }
 
     let kind = if has_alloc_error_handler { AllocatorKind::Global } else { AllocatorKind::Default };
     let callee = kind.fn_name(sym::oom);
     let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
     // -> ! DIFlagNoReturn
-    llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, callee);
+    attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
     llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
     let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());

@@ -18,8 +18,8 @@ use crate::llvm;
 use crate::llvm::AttributePlace::Function;
 use crate::type_::Type;
 use crate::value::Value;
-use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::Ty;
+use smallvec::SmallVec;
 use tracing::debug;
 
 /// Declare a function.
@@ -41,12 +41,21 @@ fn declare_raw_fn<'ll>(
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
 
+    let mut attrs_to_remove = SmallVec::<[_; 4]>::new();
+    let mut attrs_to_add = SmallVec::<[_; 4]>::new();
+
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
-        llvm::Attribute::NoRedZone.apply_llfn(Function, llfn);
+        attrs_to_add.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
     }
 
-    attributes::default_optimisation_attrs(cx.tcx.sess, llfn);
-    attributes::non_lazy_bind(cx.sess(), llfn);
+    let (to_remove, to_add) = attributes::default_optimisation_attrs(cx);
+    attrs_to_remove.extend(to_remove);
+    attrs_to_add.extend(to_add);
+
+    attrs_to_add.extend(attributes::non_lazy_bind_attr(cx));
+
+    attributes::remove_from_llfn(llfn, Function, &attrs_to_remove);
+    attributes::apply_to_llfn(llfn, Function, &attrs_to_add);
 
     llfn
 }

@@ -31,24 +31,58 @@ impl LLVMRustResult {
     }
 }
 
-pub fn EmitUWTableAttr(llfn: &Value, async_: bool) {
-    unsafe { LLVMRustEmitUWTableAttr(llfn, async_) }
-}
-
-pub fn AddFunctionAttrStringValue(llfn: &Value, idx: AttributePlace, attr: &CStr, value: &CStr) {
+pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: &[&'ll Attribute]) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), value.as_ptr())
+        LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
 }
 
-pub fn AddFunctionAttrString(llfn: &Value, idx: AttributePlace, attr: &CStr) {
+pub fn RemoveFunctionAttributes(llfn: &Value, idx: AttributePlace, attrs: &[AttributeKind]) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), std::ptr::null())
+        LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
 }
 
-pub fn AddCallSiteAttrString(callsite: &Value, idx: AttributePlace, attr: &CStr) {
-    unsafe { LLVMRustAddCallSiteAttrString(callsite, idx.as_uint(), attr.as_ptr()) }
+pub fn AddCallSiteAttributes<'ll>(
+    callsite: &'ll Value,
+    idx: AttributePlace,
+    attrs: &[&'ll Attribute],
+) {
+    unsafe {
+        LLVMRustAddCallSiteAttributes(callsite, idx.as_uint(), attrs.as_ptr(), attrs.len());
+    }
+}
+
+pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &CStr, value: &CStr) -> &'ll Attribute {
+    unsafe { LLVMRustCreateAttrStringValue(llcx, attr.as_ptr(), value.as_ptr()) }
+}
+
+pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &CStr) -> &'ll Attribute {
+    unsafe { LLVMRustCreateAttrStringValue(llcx, attr.as_ptr(), std::ptr::null()) }
+}
+
+pub fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateAlignmentAttr(llcx, bytes) }
+}
+
+pub fn CreateDereferenceableAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateDereferenceableAttr(llcx, bytes) }
+}
+
+pub fn CreateDereferenceableOrNullAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateDereferenceableOrNullAttr(llcx, bytes) }
+}
+
+pub fn CreateByValAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+    unsafe { LLVMRustCreateByValAttr(llcx, ty) }
+}
+
+pub fn CreateStructRetAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+    unsafe { LLVMRustCreateStructRetAttr(llcx, ty) }
+}
+
+pub fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
+    unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
 }
 
 #[derive(Copy, Clone)]
@@ -132,25 +166,10 @@ pub fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
     }
 }
 
-impl Attribute {
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: &Value) {
-        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), *self) }
-    }
-
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: &Value) {
-        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), *self) }
-    }
-
-    pub fn unapply_llfn(&self, idx: AttributePlace, llfn: &Value) {
-        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), *self) }
-    }
-
-    pub fn toggle_llfn(&self, idx: AttributePlace, llfn: &Value, set: bool) {
-        if set {
-            self.apply_llfn(idx, llfn);
-        } else {
-            self.unapply_llfn(idx, llfn);
-        }
+impl AttributeKind {
+    /// Create an LLVM Attribute with no associated value.
+    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+        unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
     }
 }
 
