@@ -103,6 +103,16 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
             }?;
+            if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
+                let bl = self.parse_block()?;
+                // Destructuring assignment ... else.
+                // This is not allowed, but point it out in a nice way.
+                let mut err = self.struct_span_err(
+                    e.span.to(bl.span),
+                    "<assignment> ... else { ... } is not allowed",
+                );
+                err.emit();
+            }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
             self.error_outer_attrs(&attrs.take_for_recovery());
