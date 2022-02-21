@@ -31,12 +31,12 @@ impl ProcMacroKind {
 impl Attrs {
     #[rustfmt::skip]
     pub(super) fn parse_proc_macro_decl(&self, func_name: &Name) -> Option<ProcMacroDef> {
-        if self.by_key("proc_macro").exists() {
+        if self.is_proc_macro() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::FnLike })
-        } else if self.by_key("proc_macro_attribute").exists() {
+        } else if self.is_proc_macro_attribute() {
             Some(ProcMacroDef { name: func_name.clone(), kind: ProcMacroKind::Attr })
         } else if self.by_key("proc_macro_derive").exists() {
-            let derive = self.by_key("proc_macro_derive").tt_values().next().unwrap();
+            let derive = self.by_key("proc_macro_derive").tt_values().next()?;
 
             match &*derive.token_trees {
                 // `#[proc_macro_derive(Trait)]`

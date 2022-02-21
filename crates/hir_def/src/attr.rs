@@ -236,7 +236,9 @@ impl Attrs {
     pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
+}
 
+impl Attrs {
     pub fn cfg(&self) -> Option<CfgExpr> {
         let mut cfgs = self.by_key("cfg").tt_values().map(CfgExpr::parse).collect::<Vec<_>>();
         match cfgs.len() {
@@ -297,6 +299,18 @@ impl Attrs {
             tt.delimiter_kind() == Some(DelimiterKind::Parenthesis) &&
                 matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "hidden")
         })
+    }
+
+    pub fn is_proc_macro(&self) -> bool {
+        self.by_key("proc_macro").exists()
+    }
+
+    pub fn is_proc_macro_attribute(&self) -> bool {
+        self.by_key("proc_macro_attribute").exists()
+    }
+
+    pub fn is_proc_macro_derive(&self) -> bool {
+        self.by_key("proc_macro_derive").exists()
     }
 }
 

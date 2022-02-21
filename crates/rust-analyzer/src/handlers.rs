@@ -275,9 +275,7 @@ pub(crate) fn handle_on_type_formatting(
     let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     let text = snap.analysis.file_text(position.file_id)?;
-    if !text[usize::from(position.offset)..].starts_with(char_typed) {
-        // Add `always!` here once VS Code bug is fixed:
-        //   https://github.com/rust-analyzer/rust-analyzer/issues/10002
+    if stdx::never!(!text[usize::from(position.offset)..].starts_with(char_typed)) {
         return Ok(None);
     }
 

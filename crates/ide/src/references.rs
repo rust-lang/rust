@@ -57,8 +57,6 @@ pub(crate) fn find_all_refs(
     let syntax = sema.parse(position.file_id).syntax().clone();
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
-            let mut usages =
-                def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
             let declaration = match def {
                 Definition::Module(module) => {
                     Some(NavigationTarget::from_module_to_decl(sema.db, module))
@@ -72,6 +70,8 @@ pub(crate) fn find_all_refs(
                     nav,
                 }
             });
+            let mut usages =
+                def.usages(sema).set_scope(search_scope.clone()).include_self_refs().all();
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
@@ -1533,6 +1533,49 @@ trait Trait {
 
                 FileId(0) 74..78
             "#]],
+        )
+    }
+
+    #[test]
+    fn attr() {
+        check(
+            r#"
+//- proc_macros: identity
+
+#[proc_macros::$0identity]
+fn func() {}
+"#,
+            expect![[r#"
+                identity Attribute FileId(1) 1..107 32..40
+
+                FileId(0) 16..24
+            "#]],
+        );
+        check(
+            r#"
+#[proc_macro_attribute]
+fn func$0() {}
+"#,
+            expect![[r#"
+                func Attribute FileId(0) 0..36 27..31
+
+                (no references)
+            "#]],
+        );
+    }
+
+    // FIXME
+    #[test]
+    fn derive() {
+        check(
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive
+
+#[derive(proc_macros::DeriveIdentity$0)]
+struct Foo;
+"#,
+            expect![[r#""#]],
         )
     }
 }

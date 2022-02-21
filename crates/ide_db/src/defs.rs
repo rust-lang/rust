@@ -225,7 +225,12 @@ impl NameClass {
                     Definition::Macro(sema.to_def(&ast::Macro::MacroDef(it))?)
                 }
                 ast::Item::Const(it) => Definition::Const(sema.to_def(&it)?),
-                ast::Item::Fn(it) => Definition::Function(sema.to_def(&it)?),
+                ast::Item::Fn(it) => {
+                    let def = sema.to_def(&it)?;
+                    def.as_proc_macro(sema.db)
+                        .map(Definition::Macro)
+                        .unwrap_or(Definition::Function(def))
+                }
                 ast::Item::Module(it) => Definition::Module(sema.to_def(&it)?),
                 ast::Item::Static(it) => Definition::Static(sema.to_def(&it)?),
                 ast::Item::Trait(it) => Definition::Trait(sema.to_def(&it)?),

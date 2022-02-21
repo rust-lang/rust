@@ -82,6 +82,9 @@ pub fn pick_best_token(
 ) -> Option<SyntaxToken> {
     tokens.max_by_key(move |t| f(t.kind()))
 }
+pub fn pick_token<T: AstToken>(mut tokens: TokenAtOffset<SyntaxToken>) -> Option<T> {
+    tokens.find_map(T::cast)
+}
 
 /// Converts the mod path struct into its ast representation.
 pub fn mod_path_to_ast(path: &hir::ModPath) -> ast::Path {
