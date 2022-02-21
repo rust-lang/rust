@@ -77,20 +77,6 @@ impl<I: fmt::Debug, F> fmt::Debug for Map<I, F> {
     }
 }
 
-fn map_fold<T, B, Acc>(
-    mut f: impl FnMut(T) -> B,
-    mut g: impl FnMut(Acc, B) -> Acc,
-) -> impl FnMut(Acc, T) -> Acc {
-    move |acc, elt| g(acc, f(elt))
-}
-
-fn map_try_fold<'a, T, B, Acc, R>(
-    f: &'a mut impl FnMut(T) -> B,
-    mut g: impl FnMut(Acc, B) -> R + 'a,
-) -> impl FnMut(Acc, T) -> R + 'a {
-    move |acc, elt| g(acc, f(elt))
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B, I: Iterator, F> Iterator for Map<I, F>
 where
@@ -108,20 +94,20 @@ where
         self.iter.size_hint()
     }
 
-    fn try_fold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
+    fn try_fold<Acc, G, R>(&mut self, init: Acc, mut g: G) -> R
     where
         Self: Sized,
         G: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
-        self.iter.try_fold(init, map_try_fold(&mut self.f, g))
+        self.iter.try_fold(init, |acc, elt| g(acc, (self.f)(elt)))
     }
 
-    fn fold<Acc, G>(self, init: Acc, g: G) -> Acc
+    fn fold<Acc, G>(mut self, init: Acc, mut g: G) -> Acc
     where
         G: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.iter.fold(init, map_fold(self.f, g))
+        self.iter.fold(init, move |acc, elt| g(acc, (self.f)(elt)))
     }
 
     #[doc(hidden)]
@@ -145,20 +131,20 @@ where
         self.iter.next_back().map(&mut self.f)
     }
 
-    fn try_rfold<Acc, G, R>(&mut self, init: Acc, g: G) -> R
+    fn try_rfold<Acc, G, R>(&mut self, init: Acc, mut g: G) -> R
     where
         Self: Sized,
         G: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
-        self.iter.try_rfold(init, map_try_fold(&mut self.f, g))
+        self.iter.try_rfold(init, |acc, elt| g(acc, (self.f)(elt)))
     }
 
-    fn rfold<Acc, G>(self, init: Acc, g: G) -> Acc
+    fn rfold<Acc, G>(mut self, init: Acc, mut g: G) -> Acc
     where
         G: FnMut(Acc, Self::Item) -> Acc,
     {
-        self.iter.rfold(init, map_fold(self.f, g))
+        self.iter.rfold(init, move |acc, elt| g(acc, (self.f)(elt)))
     }
 }
 
