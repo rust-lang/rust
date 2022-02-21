@@ -697,7 +697,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 this.ecx.read_discriminant(op),
                 this.path,
                 err_ub!(InvalidTag(val)) =>
-                    { "{}", val } expected { "a valid enum tag" },
+                    { "{:x}", val } expected { "a valid enum tag" },
                 err_ub!(InvalidUninitBytes(None)) =>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
                 err_unsup!(ReadPointerAsBytes) =>

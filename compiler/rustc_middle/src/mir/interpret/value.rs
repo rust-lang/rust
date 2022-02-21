@@ -153,7 +153,16 @@ impl<Tag: Provenance> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:?}", int),
+            Scalar::Int(int) => write!(f, "{}", int),
+        }
+    }
+}
+
+impl<Tag: Provenance> fmt::LowerHex for Scalar<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
+            Scalar::Int(int) => write!(f, "0x{:x}", int),
         }
     }
 }
@@ -456,11 +465,6 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
     }
-
-    // FIXME: Replace current `impl Display for Scalar` with `impl LowerHex`.
-    pub fn rustdoc_display(&self) -> String {
-        if let Scalar::Int(int) = self { int.to_string() } else { self.to_string() }
-    }
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, TyEncodable, TyDecodable, HashStable, Hash)]
@@ -494,7 +498,7 @@ impl<Tag: Provenance> fmt::Display for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
-            ScalarMaybeUninit::Scalar(s) => write!(f, "{}", s),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{:x}", s),
         }
     }
 }
