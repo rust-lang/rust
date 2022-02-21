@@ -366,6 +366,7 @@ extern crate unwind;
 
 #[doc(masked)]
 #[allow(unused_extern_crates)]
+#[cfg(feature = "miniz_oxide")]
 extern crate miniz_oxide;
 
 // During testing, this crate is not actually the "real" std library, but rather
