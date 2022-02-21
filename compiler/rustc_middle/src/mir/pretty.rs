@@ -682,7 +682,7 @@ pub fn write_allocations<'tcx>(
 
     impl<'tcx> Visitor<'tcx> for CollectAllocIds {
         fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
-            if let ty::ConstKind::Value(val) = c.val() {
+            if let &ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
         }

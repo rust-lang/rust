@@ -21,7 +21,6 @@ pub use valtree::*;
 
 /// Use this rather than `ConstS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
 pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
 
 impl<'tcx> fmt::Debug for Const<'tcx> {
@@ -48,8 +47,8 @@ impl<'tcx> Const<'tcx> {
         self.0.ty
     }
 
-    pub fn val(self) -> ConstKind<'tcx> {
-        self.0.val
+    pub fn val(&self) -> &ConstKind<'tcx> {
+        &self.0.val
     }
 
     /// Literals and const generic parameters are eagerly converted to a constant, everything else

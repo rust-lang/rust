@@ -507,10 +507,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Const<RustInterner<'tcx>>> for ty::Const<'t
     fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::Const<RustInterner<'tcx>> {
         let ty = self.ty().lower_into(interner);
         let value = match self.val() {
-            ty::ConstKind::Value(val) => {
+            &ty::ConstKind::Value(val) => {
                 chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst { interned: val })
             }
-            ty::ConstKind::Bound(db, bound) => chalk_ir::ConstValue::BoundVar(
+            &ty::ConstKind::Bound(db, bound) => chalk_ir::ConstValue::BoundVar(
                 chalk_ir::BoundVar::new(chalk_ir::DebruijnIndex::new(db.as_u32()), bound.index()),
             ),
             _ => unimplemented!("Const not implemented. {:?}", self),

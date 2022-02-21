@@ -85,7 +85,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
                 // Constant expressions are not injective
                 return c.ty().visit_with(self);
             }
-            ty::ConstKind::Param(data) => {
+            &ty::ConstKind::Param(data) => {
                 self.parameters.push(Parameter::from(data));
             }
             _ => {}

@@ -289,7 +289,7 @@ impl FlagComputation {
     fn add_const(&mut self, c: ty::Const<'_>) {
         self.add_ty(c.ty());
         match c.val() {
-            ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
+            &ty::ConstKind::Unevaluated(unevaluated) => self.add_unevaluated_const(unevaluated),
             ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE);
                 match infer {
@@ -297,7 +297,7 @@ impl FlagComputation {
                     InferConst::Var(_) => self.add_flags(TypeFlags::HAS_CT_INFER),
                 }
             }
-            ty::ConstKind::Bound(debruijn, _) => {
+            &ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
             }
             ty::ConstKind::Param(_) => {

@@ -223,7 +223,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.val() {
-            ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
+            &ty::ConstKind::Infer(ty::InferConst::Var(v)) => {
                 let opt_ct = self
                     .infcx
                     .inner
@@ -239,7 +239,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                     ct.ty(),
                 );
             }
-            ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
+            &ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
                     bug!(
                         "Encountered a freshend const with id {} \

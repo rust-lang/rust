@@ -652,7 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let &ty::ConstKind::Unevaluated(unevaluated) = c.val() {
                             self.infcx
                                 .const_eval_resolve(
                                     obligation.param_env,

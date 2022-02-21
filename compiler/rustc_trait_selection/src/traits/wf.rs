@@ -42,7 +42,7 @@ pub fn obligations<'a, 'tcx>(
         }
         GenericArgKind::Const(ct) => {
             match ct.val() {
-                ty::ConstKind::Infer(infer) => {
+                &ty::ConstKind::Infer(infer) => {
                     let resolved = infcx.shallow_resolve(infer);
                     if resolved == infer {
                         // No progress.
@@ -460,7 +460,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                                 predicate,
                             ));
                         }
-                        ty::ConstKind::Infer(infer) => {
+                        &ty::ConstKind::Infer(infer) => {
                             let resolved = self.infcx.shallow_resolve(infer);
                             // the `InferConst` changed, meaning that we made progress.
                             if resolved != infer {

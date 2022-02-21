@@ -580,7 +580,7 @@ pub fn super_relate_consts<'tcx, R: TypeRelation<'tcx>>(
 
         (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) => a_p.index == b_p.index,
         (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) => p1 == p2,
-        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
+        (&ty::ConstKind::Value(a_val), &ty::ConstKind::Value(b_val)) => {
             check_const_value_eq(relation, a_val, b_val, a, b)?
         }
 

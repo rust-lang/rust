@@ -76,7 +76,7 @@ impl<'tcx> Ty<'tcx> {
             }
         }
 
-        fn const_is_suggestable(kind: ConstKind<'_>) -> bool {
+        fn const_is_suggestable(kind: &ConstKind<'_>) -> bool {
             match kind {
                 ConstKind::Infer(..)
                 | ConstKind::Bound(..)

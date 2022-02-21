@@ -810,7 +810,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
                     let evaluate = |c: ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let &ty::ConstKind::Unevaluated(unevaluated) = c.val() {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,

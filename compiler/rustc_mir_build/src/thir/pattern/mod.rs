@@ -792,8 +792,8 @@ crate fn compare_const_vals<'tcx>(
 
     if let ty::Str = ty.kind() {
         if let (
-            ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
-            ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
+            &ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+            &ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
         ) = (a.val(), b.val())
         {
             let a_bytes = get_slice_bytes(&tcx, a_val);

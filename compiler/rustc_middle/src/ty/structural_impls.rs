@@ -1159,7 +1159,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Const<'tcx> {
     ) -> Result<Self, F::Error> {
         let ty = self.ty().try_fold_with(folder)?;
         let val = self.val().try_fold_with(folder)?;
-        if ty != self.ty() || val != self.val() {
+        if ty != self.ty() || val != *self.val() {
             Ok(folder.tcx().mk_const(ty::ConstS { ty, val }))
         } else {
             Ok(self)

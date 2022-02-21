@@ -30,7 +30,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::ConstantKind::Val(val, _) => return Ok(val),
         };
         match ct.val() {
-            ty::ConstKind::Unevaluated(ct) => self
+            &ty::ConstKind::Unevaluated(ct) => self
                 .cx
                 .tcx()
                 .const_eval_resolve(ty::ParamEnv::reveal_all(), ct, None)
@@ -38,7 +38,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
                     err
                 }),
-            ty::ConstKind::Value(value) => Ok(value),
+            &ty::ConstKind::Value(value) => Ok(value),
             err => span_bug!(
                 constant.span,
                 "encountered bad ConstKind after monomorphizing: {:?}",

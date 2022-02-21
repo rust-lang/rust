@@ -141,8 +141,8 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
 
         match (a.val(), b.val()) {
             (
-                ty::ConstKind::Infer(InferConst::Var(a_vid)),
-                ty::ConstKind::Infer(InferConst::Var(b_vid)),
+                &ty::ConstKind::Infer(InferConst::Var(a_vid)),
+                &ty::ConstKind::Infer(InferConst::Var(b_vid)),
             ) => {
                 self.inner
                     .borrow_mut()
@@ -158,11 +158,11 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
                 bug!("tried to combine ConstKind::Infer/ConstKind::Infer(InferConst::Var)")
             }
 
-            (ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
+            (&ty::ConstKind::Infer(InferConst::Var(vid)), _) => {
                 return self.unify_const_variable(relation.param_env(), vid, b, a_is_expected);
             }
 
-            (_, ty::ConstKind::Infer(InferConst::Var(vid))) => {
+            (_, &ty::ConstKind::Infer(InferConst::Var(vid))) => {
                 return self.unify_const_variable(relation.param_env(), vid, a, !a_is_expected);
             }
             (ty::ConstKind::Unevaluated(..), _) if self.tcx.lazy_normalization() => {
@@ -722,7 +722,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
         assert_eq!(c, c2); // we are abusing TypeRelation here; both LHS and RHS ought to be ==
 
         match c.val() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);
@@ -744,7 +744,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
+            &ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
                 if self.tcx().lazy_normalization() =>
             {
                 assert_eq!(promoted, None);
@@ -952,7 +952,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
         debug!("ConstInferUnifier: c={:?}", c);
 
         match c.val() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 // Check if the current unification would end up
                 // unifying `target_vid` with a const which contains
                 // an inference variable which is unioned with `target_vid`.
@@ -990,7 +990,7 @@ impl<'tcx> TypeRelation<'tcx> for ConstInferUnifier<'_, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
+            &ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
                 if self.tcx().lazy_normalization() =>
             {
                 assert_eq!(promoted, None);

@@ -689,7 +689,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.val() {
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
+            &ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
                 if let Some(fld_c) = self.fld_c.as_mut() {
                     let ct = fld_c(bound_const, ct.ty());
                     return ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32());
@@ -1083,7 +1083,7 @@ impl<'tcx> TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Bound(debruijn, bound_ct) = ct.val() {
+        if let &ty::ConstKind::Bound(debruijn, bound_ct) = ct.val() {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
@@ -1200,7 +1200,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // const, as it has types/regions embedded in a lot of other
         // places.
         match ct.val() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
+            &ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
                 ControlFlow::Break(FoundEscapingVars)
             }
             _ => ct.super_visit_with(self),

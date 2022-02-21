@@ -410,7 +410,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             GenericArgKind::Const(ct) => {
                 match ct.val() {
-                    ty::ConstKind::Infer(InferConst::Var(vid)) => {
+                    &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                         let origin = self
                             .inner
                             .borrow_mut()

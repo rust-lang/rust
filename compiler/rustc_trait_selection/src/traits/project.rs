@@ -631,7 +631,7 @@ impl<'tcx> TypeFolder<'tcx> for BoundVarReplacer<'_, 'tcx> {
             {
                 bug!("Bound vars outside of `self.universe_indices`");
             }
-            ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
+            &ty::ConstKind::Bound(debruijn, bound_const) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderConst {
                     universe,

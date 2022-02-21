@@ -176,7 +176,7 @@ where
     V: snapshot_vec::VecLike<unify::Delegate<ty::ConstVid<'tcx>>>,
     L: UndoLogs<snapshot_vec::UndoLog<unify::Delegate<ty::ConstVid<'tcx>>>>,
 {
-    if let ty::ConstKind::Infer(InferConst::Var(vid)) = c.val() {
+    if let &ty::ConstKind::Infer(InferConst::Var(vid)) = c.val() {
         match table.probe_value(vid).val.known() {
             Some(c) => c,
             None => c,

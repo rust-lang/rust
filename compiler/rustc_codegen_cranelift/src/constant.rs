@@ -48,7 +48,7 @@ pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
         };
         match const_.val() {
             ConstKind::Value(_) => {}
-            ConstKind::Unevaluated(unevaluated) => {
+            &ConstKind::Unevaluated(unevaluated) => {
                 if let Err(err) =
                     fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None)
                 {
@@ -128,7 +128,7 @@ pub(crate) fn codegen_constant<'tcx>(
         ConstantKind::Val(val, ty) => return codegen_const_value(fx, val, ty),
     };
     let const_val = match const_.val() {
-        ConstKind::Value(const_val) => const_val,
+        &ConstKind::Value(const_val) => const_val,
         ConstKind::Unevaluated(ty::Unevaluated { def, substs, promoted })
             if fx.tcx.is_static(def.did) =>
         {
@@ -137,7 +137,7 @@ pub(crate) fn codegen_constant<'tcx>(
 
             return codegen_static_ref(fx, def.did, fx.layout_of(const_.ty())).to_cvalue(fx);
         }
-        ConstKind::Unevaluated(unevaluated) => {
+        &ConstKind::Unevaluated(unevaluated) => {
             match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
                 Ok(const_val) => const_val,
                 Err(_) => {

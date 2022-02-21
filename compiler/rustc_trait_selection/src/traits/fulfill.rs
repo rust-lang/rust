@@ -573,7 +573,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                     let stalled_on = &mut pending_obligation.stalled_on;
 
                     let mut evaluate = |c: Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
+                        if let &ty::ConstKind::Unevaluated(unevaluated) = c.val() {
                             match self.selcx.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,

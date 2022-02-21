@@ -477,7 +477,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         match ct.val() {
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 debug!("canonical: const var found with vid {:?}", vid);
                 match self.infcx.probe_const_var(vid) {
                     Ok(c) => {
@@ -502,14 +502,14 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ty::ConstKind::Bound(debruijn, _) => {
+            &ty::ConstKind::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
                     return ct;
                 }
             }
-            ty::ConstKind::Placeholder(placeholder) => {
+            &ty::ConstKind::Placeholder(placeholder) => {
                 return self.canonicalize_const_var(
                     CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderConst(placeholder) },
                     ct,

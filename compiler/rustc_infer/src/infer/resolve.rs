@@ -224,7 +224,7 @@ impl<'a, 'tcx> FallibleTypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val() {
-                ty::ConstKind::Infer(InferConst::Var(vid)) => {
+                &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     return Err(FixupError::UnresolvedConst(vid));
                 }
                 ty::ConstKind::Infer(InferConst::Fresh(_)) => {

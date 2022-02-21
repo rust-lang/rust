@@ -1199,7 +1199,7 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            ty::ConstKind::Infer(infer_ct) => {
+            &ty::ConstKind::Infer(infer_ct) => {
                 match infer_ct {
                     ty::InferConst::Var(ct_vid)
                         if let Some(name) = self.const_infer_name(ct_vid) =>
@@ -1208,11 +1208,11 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
-            ty::ConstKind::Value(value) => {
+            &ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_value(value, ct.ty(), print_ty);
             }
 
-            ty::ConstKind::Bound(debruijn, bound_var) => {
+            &ty::ConstKind::Bound(debruijn, bound_var) => {
                 self.pretty_print_bound_var(debruijn, bound_var)?
             }
             ty::ConstKind::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),

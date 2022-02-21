@@ -999,7 +999,7 @@ where
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
-            ty::ConstKind::Infer(InferConst::Var(vid)) => {
+            &ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut inner = self.infcx.inner.borrow_mut();
                 let variable_table = &mut inner.const_unification_table();
                 let var_value = variable_table.probe_value(vid);

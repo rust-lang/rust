@@ -628,7 +628,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
                 self.push("R");
                 match ct.val() {
-                    ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
+                    &ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
                         // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
                         // The `inspect` here is okay since we checked the bounds, and there are no
                         // relocations (we have an active `str` reference here). We don't use this
