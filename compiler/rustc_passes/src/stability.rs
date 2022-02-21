@@ -2,7 +2,7 @@
 //! propagating default levels lexically from parent to children ast nodes.
 
 use rustc_attr::{self as attr, ConstStability, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -854,7 +854,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;
-    let mut remaining_lib_features = FxHashMap::default();
+    let mut remaining_lib_features = FxIndexMap::default();
     for (feature, span) in declared_lib_features {
         if !tcx.sess.opts.unstable_features.is_nightly_build() {
             struct_span_err!(
@@ -881,7 +881,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
-    let check_features = |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &[_]| {
+    let check_features = |remaining_lib_features: &mut FxIndexMap<_, _>, defined_features: &[_]| {
         for &(feature, since) in defined_features {
             if let Some(since) = since {
                 if let Some(span) = remaining_lib_features.get(&feature) {
