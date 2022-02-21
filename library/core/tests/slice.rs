@@ -410,6 +410,50 @@ fn test_chunks_mut_zip() {
 }
 
 #[test]
+fn test_chunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_chunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.chunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [0, 1][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
+}
+
+#[test]
+fn test_rchunks_exact_mut_zip_aliasing() {
+    let v1: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let v2: &[i32] = &[6, 7, 8, 9, 10];
+
+    let mut it = v1.rchunks_exact_mut(2).zip(v2.chunks(2));
+    let first = it.next().unwrap();
+    let _ = it.next().unwrap();
+    assert_eq!(first, (&mut [3, 4][..], &[6, 7][..]));
+}
+
+#[test]
 fn test_chunks_exact_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
     let c = v.chunks_exact(3);
