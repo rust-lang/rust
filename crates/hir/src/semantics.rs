@@ -160,6 +160,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.is_attr_macro_call(item)
     }
 
+    pub fn is_derive_annotated(&self, item: &ast::Adt) -> bool {
+        self.imp.is_derive_annotated(item)
+    }
+
     pub fn speculative_expand(
         &self,
         actual_macro_call: &ast::MacroCall,
@@ -468,6 +472,12 @@ impl<'db> SemanticsImpl<'db> {
             let (.., res) = ctx.attr_to_derive_macro_call(adt, src)?;
             Some(res.to_vec())
         })
+    }
+
+    fn is_derive_annotated(&self, adt: &ast::Adt) -> bool {
+        let file_id = self.find_file(adt.syntax()).file_id;
+        let adt = InFile::new(file_id, adt);
+        self.with_ctx(|ctx| ctx.has_derives(adt))
     }
 
     fn is_attr_macro_call(&self, item: &ast::Item) -> bool {

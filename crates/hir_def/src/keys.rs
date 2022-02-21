@@ -61,4 +61,7 @@ impl<AST: AstNode + 'static, ID: 'static> Policy for AstPtrPolicy<AST, ID> {
         let key = AstPtr::new(key);
         map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(&key)
     }
+    fn is_empty(map: &DynMap) -> bool {
+        map.map.get::<FxHashMap<AstPtr<AST>, ID>>().map_or(true, |it| it.is_empty())
+    }
 }
