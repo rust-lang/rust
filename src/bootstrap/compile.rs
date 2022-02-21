@@ -17,7 +17,6 @@ use std::process::{exit, Command, Stdio};
 use std::str;
 
 use build_helper::{output, t, up_to_date};
-use filetime::FileTime;
 use serde::Deserialize;
 
 use crate::builder::Cargo;
@@ -1334,8 +1333,9 @@ pub fn run_cargo(
                     .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
                     .unwrap_or(false)
         });
-        let max = candidates
-            .max_by_key(|&&(_, _, ref metadata)| FileTime::from_last_modification_time(metadata));
+        let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
+            metadata.modified().expect("mtime should be available on all relevant OSes")
+        });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
             None => panic!("no output generated for {:?} {:?}", prefix, extension),

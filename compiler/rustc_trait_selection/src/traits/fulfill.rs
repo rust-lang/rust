@@ -314,7 +314,7 @@ impl<'a, 'b, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'tcx> {
             return ProcessResult::Unchanged;
         }
 
-        self.progress_changed_obligations(pending_obligation)
+        self.process_changed_obligations(pending_obligation)
     }
 
     fn process_backedge<'c, I>(
@@ -338,7 +338,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
     // actually uses this, so move this part of the code
     // out of that loop.
     #[inline(never)]
-    fn progress_changed_obligations(
+    fn process_changed_obligations(
         &mut self,
         pending_obligation: &mut PendingPredicateObligation<'tcx>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {

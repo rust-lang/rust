@@ -291,21 +291,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             );
         }
 
-        let (alloc_kind, mut alloc) = match self.alloc_map.remove(&alloc_id) {
-            Some(alloc) => alloc,
-            None => {
-                // Deallocating global memory -- always an error
-                return Err(match self.tcx.get_global_alloc(alloc_id) {
-                    Some(GlobalAlloc::Function(..)) => {
-                        err_ub_format!("deallocating {}, which is a function", alloc_id)
-                    }
-                    Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
-                        err_ub_format!("deallocating {}, which is static memory", alloc_id)
-                    }
-                    None => err_ub!(PointerUseAfterFree(alloc_id)),
+        let Some((alloc_kind, mut alloc)) = self.alloc_map.remove(&alloc_id) else {
+            // Deallocating global memory -- always an error
+            return Err(match self.tcx.get_global_alloc(alloc_id) {
+                Some(GlobalAlloc::Function(..)) => {
+                    err_ub_format!("deallocating {}, which is a function", alloc_id)
                 }
-                .into());
+                Some(GlobalAlloc::Static(..) | GlobalAlloc::Memory(..)) => {
+                    err_ub_format!("deallocating {}, which is static memory", alloc_id)
+                }
+                None => err_ub!(PointerUseAfterFree(alloc_id)),
             }
+            .into());
         };
 
         if alloc.mutability == Mutability::Not {
@@ -957,9 +954,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
         size: Size,
     ) -> InterpResult<'tcx, &[u8]> {
-        let alloc_ref = match self.get(ptr, size, Align::ONE)? {
-            Some(a) => a,
-            None => return Ok(&[]), // zero-sized access
+        let Some(alloc_ref) = self.get(ptr, size, Align::ONE)? else {
+            // zero-sized access
+            return Ok(&[]);
         };
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
         // (We are staying inside the bounds here so all is good.)
@@ -983,17 +980,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         assert_eq!(lower, len, "can only write iterators with a precise length");
 
         let size = Size::from_bytes(len);
-        let alloc_ref = match self.get_mut(ptr, size, Align::ONE)? {
-            Some(alloc_ref) => alloc_ref,
-            None => {
-                // zero-sized access
-                assert_matches!(
-                    src.next(),
-                    None,
-                    "iterator said it was empty but returned an element"
-                );
-                return Ok(());
-            }
+        let Some(alloc_ref) = self.get_mut(ptr, size, Align::ONE)? else {
+            // zero-sized access
+            assert_matches!(
+                src.next(),
+                None,
+                "iterator said it was empty but returned an element"
+            );
+            return Ok(());
         };
 
         // Side-step AllocRef and directly access the underlying bytes more efficiently.
@@ -1043,18 +1037,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // and once below to get the underlying `&[mut] Allocation`.
 
         // Source alloc preparations and access hooks.
-        let (src_alloc_id, src_offset, src) = match src_parts {
-            None => return Ok(()), // Zero-sized *source*, that means dst is also zero-sized and we have nothing to do.
-            Some(src_ptr) => src_ptr,
+        let Some((src_alloc_id, src_offset, src)) = src_parts else {
+            // Zero-sized *source*, that means dst is also zero-sized and we have nothing to do.
+            return Ok(());
         };
         let src_alloc = self.get_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
         M::memory_read(&self.extra, &src_alloc.extra, src.provenance, src_range)?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
-        let (dest_alloc_id, dest_offset, dest) = match dest_parts {
-            None => return Ok(()), // Zero-sized *destiantion*.
-            Some(dest_ptr) => dest_ptr,
+        let Some((dest_alloc_id, dest_offset, dest)) = dest_parts else {
+            // Zero-sized *destination*.
+            return Ok(());
         };
 
         // This checks relocation edges on the src, which needs to happen before

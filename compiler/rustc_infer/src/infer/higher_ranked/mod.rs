@@ -123,7 +123,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         result
     }
 
-    /// See `infer::region_constraints::RegionConstraintCollector::leak_check`.
+    /// See [RegionConstraintCollector::leak_check][1].
+    ///
+    /// [1]: crate::infer::region_constraints::RegionConstraintCollector::leak_check
     pub fn leak_check(
         &self,
         overly_polymorphic: bool,

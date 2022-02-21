@@ -697,7 +697,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 this.ecx.read_discriminant(op),
                 this.path,
                 err_ub!(InvalidTag(val)) =>
-                    { "{}", val } expected { "a valid enum tag" },
+                    { "{:x}", val } expected { "a valid enum tag" },
                 err_ub!(InvalidUninitBytes(None)) =>
                     { "uninitialized bytes" } expected { "a valid enum tag" },
                 err_unsup!(ReadPointerAsBytes) =>
@@ -851,12 +851,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept uninit, for consistency with the slow path.
-                let alloc = match self.ecx.memory.get(mplace.ptr, size, mplace.align)? {
-                    Some(a) => a,
-                    None => {
-                        // Size 0, nothing more to check.
-                        return Ok(());
-                    }
+                let Some(alloc) = self.ecx.memory.get(mplace.ptr, size, mplace.align)? else {
+                    // Size 0, nothing more to check.
+                    return Ok(());
                 };
 
                 let allow_uninit_and_ptr = !M::enforce_number_validity(self.ecx);

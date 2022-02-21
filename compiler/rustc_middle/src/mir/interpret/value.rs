@@ -153,7 +153,16 @@ impl<Tag: Provenance> fmt::Display for Scalar<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:?}", int),
+            Scalar::Int(int) => write!(f, "{}", int),
+        }
+    }
+}
+
+impl<Tag: Provenance> fmt::LowerHex for Scalar<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
+            Scalar::Int(int) => write!(f, "0x{:x}", int),
         }
     }
 }
@@ -370,78 +379,82 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         }
     }
 
+    /// Converts the scalar to produce an unsigned integer of the given size.
+    /// Fails if the scalar is a pointer.
     #[inline]
-    fn to_unsigned_with_bit_width(self, bits: u64) -> InterpResult<'static, u128> {
-        let sz = Size::from_bits(bits);
-        self.to_bits(sz)
+    pub fn to_uint(self, size: Size) -> InterpResult<'static, u128> {
+        self.to_bits(size)
     }
 
     /// Converts the scalar to produce a `u8`. Fails if the scalar is a pointer.
     pub fn to_u8(self) -> InterpResult<'static, u8> {
-        self.to_unsigned_with_bit_width(8).map(|v| u8::try_from(v).unwrap())
+        self.to_uint(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u16`. Fails if the scalar is a pointer.
     pub fn to_u16(self) -> InterpResult<'static, u16> {
-        self.to_unsigned_with_bit_width(16).map(|v| u16::try_from(v).unwrap())
+        self.to_uint(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u32`. Fails if the scalar is a pointer.
     pub fn to_u32(self) -> InterpResult<'static, u32> {
-        self.to_unsigned_with_bit_width(32).map(|v| u32::try_from(v).unwrap())
+        self.to_uint(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u64`. Fails if the scalar is a pointer.
     pub fn to_u64(self) -> InterpResult<'static, u64> {
-        self.to_unsigned_with_bit_width(64).map(|v| u64::try_from(v).unwrap())
+        self.to_uint(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce a `u128`. Fails if the scalar is a pointer.
     pub fn to_u128(self) -> InterpResult<'static, u128> {
-        self.to_unsigned_with_bit_width(128)
+        self.to_uint(Size::from_bits(128))
     }
 
+    /// Converts the scalar to produce a machine-pointer-sized unsigned integer.
+    /// Fails if the scalar is a pointer.
     pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
-        let b = self.to_bits(cx.data_layout().pointer_size)?;
+        let b = self.to_uint(cx.data_layout().pointer_size)?;
         Ok(u64::try_from(b).unwrap())
     }
 
+    /// Converts the scalar to produce a signed integer of the given size.
+    /// Fails if the scalar is a pointer.
     #[inline]
-    fn to_signed_with_bit_width(self, bits: u64) -> InterpResult<'static, i128> {
-        let sz = Size::from_bits(bits);
-        let b = self.to_bits(sz)?;
-        Ok(sz.sign_extend(b) as i128)
+    pub fn to_int(self, size: Size) -> InterpResult<'static, i128> {
+        let b = self.to_bits(size)?;
+        Ok(size.sign_extend(b) as i128)
     }
 
     /// Converts the scalar to produce an `i8`. Fails if the scalar is a pointer.
     pub fn to_i8(self) -> InterpResult<'static, i8> {
-        self.to_signed_with_bit_width(8).map(|v| i8::try_from(v).unwrap())
+        self.to_int(Size::from_bits(8)).map(|v| i8::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i16`. Fails if the scalar is a pointer.
     pub fn to_i16(self) -> InterpResult<'static, i16> {
-        self.to_signed_with_bit_width(16).map(|v| i16::try_from(v).unwrap())
+        self.to_int(Size::from_bits(16)).map(|v| i16::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i32`. Fails if the scalar is a pointer.
     pub fn to_i32(self) -> InterpResult<'static, i32> {
-        self.to_signed_with_bit_width(32).map(|v| i32::try_from(v).unwrap())
+        self.to_int(Size::from_bits(32)).map(|v| i32::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i64`. Fails if the scalar is a pointer.
     pub fn to_i64(self) -> InterpResult<'static, i64> {
-        self.to_signed_with_bit_width(64).map(|v| i64::try_from(v).unwrap())
+        self.to_int(Size::from_bits(64)).map(|v| i64::try_from(v).unwrap())
     }
 
     /// Converts the scalar to produce an `i128`. Fails if the scalar is a pointer.
     pub fn to_i128(self) -> InterpResult<'static, i128> {
-        self.to_signed_with_bit_width(128)
+        self.to_int(Size::from_bits(128))
     }
 
+    /// Converts the scalar to produce a machine-pointer-sized signed integer.
+    /// Fails if the scalar is a pointer.
     pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
-        let sz = cx.data_layout().pointer_size;
-        let b = self.to_bits(sz)?;
-        let b = sz.sign_extend(b) as i128;
+        let b = self.to_int(cx.data_layout().pointer_size)?;
         Ok(i64::try_from(b).unwrap())
     }
 
@@ -455,11 +468,6 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
     pub fn to_f64(self) -> InterpResult<'static, Double> {
         // Going through `u64` to check size and truncation.
         Ok(Double::from_bits(self.to_u64()?.into()))
-    }
-
-    // FIXME: Replace current `impl Display for Scalar` with `impl LowerHex`.
-    pub fn rustdoc_display(&self) -> String {
-        if let Scalar::Int(int) = self { int.to_string() } else { self.to_string() }
     }
 }
 
@@ -494,7 +502,7 @@ impl<Tag: Provenance> fmt::Display for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
-            ScalarMaybeUninit::Scalar(s) => write!(f, "{}", s),
+            ScalarMaybeUninit::Scalar(s) => write!(f, "{:x}", s),
         }
     }
 }

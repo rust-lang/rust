@@ -420,9 +420,8 @@ where
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let stride = match base.layout.fields {
-            FieldsShape::Array { stride, .. } => stride,
-            _ => span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout"),
+        let FieldsShape::Array { stride, .. } = base.layout.fields else {
+            span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout");
         };
         let layout = base.layout.field(self, 0);
         let dl = &self.tcx.data_layout;
@@ -747,9 +746,9 @@ where
 
         // Invalid places are a thing: the return place of a diverging function
         let tcx = *self.tcx;
-        let mut alloc = match self.get_alloc_mut(dest)? {
-            Some(a) => a,
-            None => return Ok(()), // zero-sized access
+        let Some(mut alloc) = self.get_alloc_mut(dest)? else {
+            // zero-sized access
+            return Ok(());
         };
 
         // FIXME: We should check that there are dest.layout.size many bytes available in
