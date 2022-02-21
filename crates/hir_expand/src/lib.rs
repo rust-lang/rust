@@ -219,9 +219,18 @@ impl HirFileId {
 
                 let arg_tt = loc.kind.arg(db)?;
 
+                let macro_def = db.macro_def(loc.def).ok()?;
+                let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
+                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
+
                 let def = loc.def.ast_id().left().and_then(|id| {
                     let def_tt = match id.to_node(db) {
                         ast::Macro::MacroRules(mac) => mac.token_tree()?,
+                        ast::Macro::MacroDef(_)
+                            if matches!(*macro_def, TokenExpander::BuiltinAttr(_)) =>
+                        {
+                            return None
+                        }
                         ast::Macro::MacroDef(mac) => mac.body()?,
                     };
                     Some(InFile::new(id.file_id, def_tt))
@@ -238,10 +247,6 @@ impl HirFileId {
                     }
                     _ => None,
                 });
-
-                let macro_def = db.macro_def(loc.def).ok()?;
-                let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
-                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 Some(ExpansionInfo {
                     expanded: InFile::new(self, parse.syntax_node()),
@@ -292,12 +297,23 @@ impl HirFileId {
         }
     }
 
-    /// Return whether this file is an include macro
+    /// Return whether this file is an attr macro
     pub fn is_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.kind, MacroCallKind::Attr { .. })
+            }
+            _ => false,
+        }
+    }
+
+    /// Return whether this file is the pseudo expansion of the derive attribute.
+    pub fn is_derive_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
+        match self.0 {
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+                matches!(loc.kind, MacroCallKind::Attr { is_derive: true, .. })
             }
             _ => false,
         }
@@ -567,6 +583,9 @@ impl ExpansionInfo {
 
         // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.
         let (token_map, tt) = match &loc.kind {
+            MacroCallKind::Attr { attr_args, is_derive: true, .. } => {
+                (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+            }
             MacroCallKind::Attr { attr_args, .. } => {
                 // try unshifting the the token id, if unshifting fails, the token resides in the non-item attribute input
                 // note that the `TokenExpander::map_id_up` earlier only unshifts for declarative macros, so we don't double unshift with this
@@ -719,6 +738,13 @@ impl<'a> InFile<&'a SyntaxNode> {
             }),
             _ => None,
         }
+    }
+}
+
+impl InFile<SyntaxToken> {
+    pub fn upmap(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxToken>> {
+        let expansion = self.file_id.expansion_info(db)?;
+        expansion.map_token_up(db, self.as_ref()).map(|(it, _)| it)
     }
 }
 
