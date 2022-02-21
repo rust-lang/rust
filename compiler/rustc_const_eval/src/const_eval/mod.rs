@@ -172,6 +172,40 @@ pub(crate) fn try_destructure_const<'tcx>(
     Ok(mir::DestructuredConst { variant, fields })
 }
 
+pub(crate) fn destructure_mir_constant<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    val: mir::ConstantKind<'tcx>,
+) -> mir::DestructuredMirConstant<'tcx> {
+    trace!("destructure_const: {:?}", val);
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let op = ecx.mir_const_to_op(&val, None).unwrap();
+
+    // We go to `usize` as we cannot allocate anything bigger anyway.
+    let (field_count, variant, down) = match val.ty().kind() {
+        ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
+        ty::Adt(def, _) if def.variants.is_empty() => {
+            return mir::DestructuredMirConstant { variant: None, fields: &[] };
+        }
+        ty::Adt(def, _) => {
+            let variant = ecx.read_discriminant(&op).unwrap().1;
+            let down = ecx.operand_downcast(&op, variant).unwrap();
+            (def.variants[variant].fields.len(), Some(variant), down)
+        }
+        ty::Tuple(substs) => (substs.len(), None, op),
+        _ => bug!("cannot destructure constant {:?}", val),
+    };
+
+    let fields_iter = (0..field_count).map(|i| {
+        let field_op = ecx.operand_field(&down, i).unwrap();
+        let val = op_to_const(&ecx, &field_op);
+        mir::ConstantKind::Val(val, field_op.layout.ty)
+    });
+    let fields = tcx.arena.alloc_from_iter(fields_iter);
+
+    mir::DestructuredMirConstant { variant, fields }
+}
+
 pub(crate) fn deref_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -206,4 +240,40 @@ pub(crate) fn deref_const<'tcx>(
     };
 
     tcx.mk_const(ty::ConstS { val: ty::ConstKind::Value(op_to_const(&ecx, &mplace.into())), ty })
+}
+
+#[instrument(skip(tcx), level = "debug")]
+pub(crate) fn deref_mir_constant<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    val: mir::ConstantKind<'tcx>,
+) -> mir::ConstantKind<'tcx> {
+    let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+    let op = ecx.mir_const_to_op(&val, None).unwrap();
+    let mplace = ecx.deref_operand(&op).unwrap();
+    if let Some(alloc_id) = mplace.ptr.provenance {
+        assert_eq!(
+            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().mutability,
+            Mutability::Not,
+            "deref_const cannot be used with mutable allocations as \
+            that could allow pattern matching to observe mutable statics",
+        );
+    }
+
+    let ty = match mplace.meta {
+        MemPlaceMeta::None => mplace.layout.ty,
+        MemPlaceMeta::Poison => bug!("poison metadata in `deref_const`: {:#?}", mplace),
+        // In case of unsized types, figure out the real type behind.
+        MemPlaceMeta::Meta(scalar) => match mplace.layout.ty.kind() {
+            ty::Str => bug!("there's no sized equivalent of a `str`"),
+            ty::Slice(elem_ty) => tcx.mk_array(*elem_ty, scalar.to_machine_usize(&tcx).unwrap()),
+            _ => bug!(
+                "type {} should not have metadata, but had {:?}",
+                mplace.layout.ty,
+                mplace.meta
+            ),
+        },
+    };
+
+    mir::ConstantKind::Val(op_to_const(&ecx, &mplace.into()), ty)
 }

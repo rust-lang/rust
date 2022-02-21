@@ -662,8 +662,8 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
 impl<'tcx> Ty<'tcx> {
     /// Returns the maximum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<Const<'tcx>> {
-        let val = match self.kind() {
+    pub fn numeric_max_val(self, tcx: TyCtxt<'tcx>) -> Option<u128> {
+        match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val =
@@ -676,14 +676,13 @@ impl<'tcx> Ty<'tcx> {
                 ty::FloatTy::F64 => rustc_apfloat::ieee::Double::INFINITY.to_bits(),
             }),
             _ => None,
-        };
-        val.map(|v| Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        }
     }
 
     /// Returns the minimum value for the given numeric type (including `char`s)
     /// or returns `None` if the type is not numeric.
-    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<Const<'tcx>> {
-        let val = match self.kind() {
+    pub fn numeric_min_val(self, tcx: TyCtxt<'tcx>) -> Option<u128> {
+        match self.kind() {
             ty::Int(_) | ty::Uint(_) => {
                 let (size, signed) = int_size_and_signed(tcx, self);
                 let val = if signed { size.truncate(size.signed_int_min() as u128) } else { 0 };
@@ -695,8 +694,7 @@ impl<'tcx> Ty<'tcx> {
                 ty::FloatTy::F64 => (-::rustc_apfloat::ieee::Double::INFINITY).to_bits(),
             }),
             _ => None,
-        };
-        val.map(|v| Const::from_bits(tcx, v, ty::ParamEnv::empty().and(self)))
+        }
     }
 
     /// Checks whether values of this type `T` are *moved* or *copied*

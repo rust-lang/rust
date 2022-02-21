@@ -22,7 +22,7 @@ pub enum CastKind {
 /// A node of an `AbstractConst`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum Node<'tcx> {
-    Leaf(ty::Const<'tcx>),
+    Leaf(mir::ConstantKind<'tcx>),
     Binop(mir::BinOp, NodeId, NodeId),
     UnaryOp(mir::UnOp, NodeId),
     FunctionCall(NodeId, &'tcx [NodeId]),

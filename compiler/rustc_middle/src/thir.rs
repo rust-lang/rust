@@ -19,11 +19,11 @@ use rustc_middle::infer::canonical::Canonical;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{
-    BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
+    self, BinOp, BorrowKind, FakeReadCause, Field, Mutability, UnOp, UserTypeProjection,
 };
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, Const, Ty, UpvarSubsts, UserType};
+use rustc_middle::ty::{self, AdtDef, Ty, UpvarSubsts, UserType};
 use rustc_middle::ty::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
 };
@@ -193,7 +193,7 @@ pub enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 104);
+rustc_data_structures::static_assert_size!(Expr<'_>, 144);
 
 /// A THIR expression.
 #[derive(Debug, HashStable)]
@@ -375,7 +375,7 @@ pub enum ExprKind<'tcx> {
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
         value: ExprId,
-        count: Const<'tcx>,
+        count: ty::Const<'tcx>,
     },
     /// An array, e.g. `[a, b, c, d]`.
     Array {
@@ -522,7 +522,7 @@ pub enum InlineAsmOperand<'tcx> {
         out_expr: Option<ExprId>,
     },
     Const {
-        value: Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
         span: Span,
     },
     SymFn {
@@ -661,7 +661,7 @@ pub enum PatKind<'tcx> {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: ty::Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
     },
 
     Range(PatRange<'tcx>),
@@ -691,8 +691,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: ty::Const<'tcx>,
-    pub hi: ty::Const<'tcx>,
+    pub lo: mir::ConstantKind<'tcx>,
+    pub hi: mir::ConstantKind<'tcx>,
     pub end: RangeEnd,
 }
 

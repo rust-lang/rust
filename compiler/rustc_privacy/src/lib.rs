@@ -19,6 +19,7 @@ use rustc_hir::{AssocItemKind, HirIdSet, Node, PatKind};
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{AccessLevel, AccessLevels};
+use rustc_middle::mir::ConstantKind;
 use rustc_middle::span_bug;
 use rustc_middle::thir::abstract_const::Node as ACNode;
 use rustc_middle::ty::fold::TypeVisitor;
@@ -156,7 +157,10 @@ where
         ct: AbstractConst<'tcx>,
     ) -> ControlFlow<V::BreakTy> {
         const_evaluatable::walk_abstract_const(tcx, ct, |node| match node.root(tcx) {
-            ACNode::Leaf(leaf) => self.visit_const(leaf),
+            ACNode::Leaf(leaf) => match leaf {
+                ConstantKind::Ty(c) => self.visit_const(c),
+                ConstantKind::Val(_, ty) => self.visit_ty(ty),
+            },
             ACNode::Cast(_, _, ty) => self.visit_ty(ty),
             ACNode::Binop(..) | ACNode::UnaryOp(..) | ACNode::FunctionCall(_, _) => {
                 ControlFlow::CONTINUE
@@ -284,7 +288,7 @@ where
     fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
-        if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
+        if let Ok(Some(ct)) = AbstractConst::from_constant(tcx, ConstantKind::Ty(c)) {
             self.visit_abstract_const_expr(tcx, ct)?;
         }
         ControlFlow::CONTINUE

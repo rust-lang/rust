@@ -1,6 +1,8 @@
 use super::{
     Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
 };
+use crate::mir::ConstantKind;
+use crate::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn thir(&self) -> &'a Thir<'tcx>;
@@ -24,6 +26,8 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn visit_pat(&mut self, pat: &Pat<'tcx>) {
         walk_pat(self, pat);
     }
+
+    fn visit_constant(&mut self, _constant: ConstantKind<'tcx>) {}
 }
 
 pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {
@@ -90,8 +94,13 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
+<<<<<<< HEAD
         ConstBlock { did: _, substs: _ } => {}
         Repeat { value, count: _ } => {
+=======
+        ConstBlock { value } => visitor.visit_constant(value),
+        Repeat { value, count } => {
+>>>>>>> 6064f16d846 (change thir to use mir::ConstantKind instead of ty::Const)
             visitor.visit_expr(&visitor.thir()[value]);
         }
         Array { ref fields } | Tuple { ref fields } => {

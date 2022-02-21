@@ -37,9 +37,14 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
+<<<<<<< HEAD
     let tcx = infcx.tcx;
 
     if tcx.features().generic_const_exprs {
+=======
+    if infcx.tcx.features().generic_const_exprs {
+        let tcx = infcx.tcx;
+>>>>>>> 6064f16d846 (change thir to use mir::ConstantKind instead of ty::Const)
         match AbstractConst::new(tcx, uv)? {
             // We are looking at a generic abstract constant.
             Some(ct) => {
@@ -244,7 +249,7 @@ impl<'tcx> AbstractConst<'tcx> {
         Ok(inner.map(|inner| AbstractConst { inner, substs: uv.substs }))
     }
 
-    pub fn from_const(
+    pub fn from_constant(
         tcx: TyCtxt<'tcx>,
         ct: ty::Const<'tcx>,
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
@@ -376,6 +381,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     visit::walk_pat(self, pat);
                 }
             }
+
+            fn visit_constant(&mut self, ct: mir::ConstantKind<'tcx>) {
+                self.is_poly |= ct.has_param_types_or_consts();
+            }
         }
 
         let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
@@ -414,10 +423,10 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const(Interned(
+            if let Node::Leaf(mir::ConstantKind::Ty(ty::Const(Interned(
                 ty::ConstS { val: ty::ConstKind::Unevaluated(ct), ty: _ },
                 _,
-            ))) = n
+            )))) = n
             {
                 // `AbstractConst`s should not contain any promoteds as they require references which
                 // are not allowed.
@@ -637,6 +646,7 @@ pub(super) fn thir_abstract_const<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
@@ -806,3 +816,51 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
         }
     }
 }
+
+/* Think I need these changes
+=======
+            match (a_ct, b_ct) {
+                (mir::ConstantKind::Ty(a_ct), mir::ConstantKind::Ty(b_ct)) => {
+                    match (a_ct.val(), b_ct.val()) {
+                        // We can just unify errors with everything to reduce the amount of
+                        // emitted errors here.
+                        (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,
+                        (ty::ConstKind::Param(a_param), ty::ConstKind::Param(b_param)) => {
+                            a_param == b_param
+                        }
+                        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
+                            a_val == b_val
+                        }
+
+                        // If we have `fn a<const N: usize>() -> [u8; N + 1]` and `fn b<const M: usize>() -> [u8; 1 + M]`
+                        // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
+                        // means that we only allow inference variables if they are equal.
+                        (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => {
+                            a_val == b_val
+                        }
+                        // We expand generic anonymous constants at the start of this function, so this
+                        // branch should only be taking when dealing with associated constants, at
+                        // which point directly comparing them seems like the desired behavior.
+                        //
+                        // FIXME(generic_const_exprs): This isn't actually the case.
+                        // We also take this branch for concrete anonymous constants and
+                        // expand generic anonymous constants with concrete substs.
+                        (ty::ConstKind::Unevaluated(a_uv), ty::ConstKind::Unevaluated(b_uv)) => {
+                            a_uv == b_uv
+                        }
+                        // FIXME(generic_const_exprs): We may want to either actually try
+                        // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
+                        // this, for now we just return false here.
+                        _ => false,
+                    }
+                }
+                (mir::ConstantKind::Val(a_val, a_ty), mir::ConstantKind::Val(b_val, b_ty)) => {
+                    a_val == b_val && a_ty == b_ty
+                }
+                _ => {
+                    // FIXME Can it happen that we need to compare ConstantKind::Ty(ConstKind::Value)
+                    // with a ConstantKind::Val and vice versa?
+                    false
+>>>>>>> 6064f16d846 (change thir to use mir::ConstantKind instead of ty::Const)
+
+ */

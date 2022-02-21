@@ -3,6 +3,7 @@ use rustc_ast as ast;
 use rustc_middle::mir::interpret::{
     Allocation, ConstValue, LitToConstError, LitToConstInput, Scalar,
 };
+use rustc_middle::mir::ConstantKind;
 use rustc_middle::ty::{self, ParamEnv, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::Size;
