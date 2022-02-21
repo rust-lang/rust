@@ -426,8 +426,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                             ty_args.format_with(", ", |ty, cb| cb(&ty.display(db)))
                         );
                     }
-                    format_to!(path, "::{}\"", def_name);
-                    return Some(format!("\"{}", path));
+                    return Some(format!(r#""{}::{}""#, path, def_name));
                 }
             }
         }
