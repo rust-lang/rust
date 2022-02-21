@@ -8,9 +8,6 @@ promoted[0] in FOO: &[&i32; 1] = {
 
     bb0: {
         _3 = const {alloc3: *const i32}; // scope 0 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
-                                         // ty::Const
-                                         // + ty: *const i32
-                                         // + val: Value(Scalar(alloc3))
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
                                          // + literal: Const { ty: *const i32, val: Value(Scalar(alloc3)) }

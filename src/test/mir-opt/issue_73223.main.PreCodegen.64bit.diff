@@ -61,12 +61,9 @@
           _7 = &_1;                        // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           StorageLive(_8);                 // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           _20 = const main::promoted[0];   // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // ty::Const
-                                           // + ty: &i32
-                                           // + val: Unevaluated(main, [], Some(promoted[0]))
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: &i32, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:3 ~ issue_73223[9565]::main), const_param_did: None }, substs: [], promoted: Some(promoted[0]) }) }
+                                           // + literal: Const { ty: &i32, val: Unevaluated(main, [], Some(promoted[0])) }
           _8 = _20;                        // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_6.0: &i32) = move _7;          // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
           (_6.1: &i32) = move _8;          // scope 3 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -103,10 +100,7 @@
           core::panicking::assert_failed::<i32, i32>(const core::panicking::AssertKind::Eq, move _15, move _17, move _19); // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                           // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r i32, &'s i32, std::option::Option<std::fmt::Arguments<'t0>>) -> ! {core::panicking::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
-                                           // ty::Const
-                                           // + ty: core::panicking::AssertKind
-                                           // + val: Value(Scalar(0x00))
+                                           // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r i32, &'s i32, Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<i32, i32>}, val: Value(Scalar(<ZST>)) }
                                            // mir::Constant
                                            // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                            // + literal: Const { ty: core::panicking::AssertKind, val: Value(Scalar(0x00)) }

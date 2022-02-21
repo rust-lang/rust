@@ -47,7 +47,7 @@ fn main() -> () {
         _6 = std::mem::drop::<Box<S>>(move _7) -> [return: bb4, unwind: bb6]; // scope 1 at $DIR/box_expr.rs:8:5: 8:12
                                          // mir::Constant
                                          // + span: $DIR/box_expr.rs:8:5: 8:9
-                                         // + literal: Const { ty: fn(std::boxed::Box<S>) {std::mem::drop::<std::boxed::Box<S>>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: fn(Box<S>) {std::mem::drop::<Box<S>>}, val: Value(Scalar(<ZST>)) }
     }
 
     bb4: {
