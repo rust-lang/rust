@@ -100,6 +100,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 struct LeakCheck<'me, 'tcx> {
     tcx: TyCtxt<'tcx>,
     universe_at_start_of_snapshot: ty::UniverseIndex,
+    /// Only used when reporting region errors.
     overly_polymorphic: bool,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
