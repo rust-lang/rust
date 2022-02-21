@@ -18,6 +18,21 @@ Compiler
 - [Warn when a `#[test]`-like built-in attribute macro is present multiple times.][91172]
 - [Add support for riscv64gc-unknown-freebsd][91284]
 - [Stabilize `-Z emit-future-incompat` as `--json future-incompat`][91535]
+- [Soft disable incremental compilation][94124]
+
+This release disables incremental compilation, unless the user has explicitly
+opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
+This is due to a known and relatively frequently occurring bug in incremental
+compilation, which causes builds to issue internal compiler errors. This
+particular bug is already fixed on nightly, but that fix has not yet rolled out
+to stable and is deemed too risky for a direct stable backport.
+
+As always, we encourage users to test with nightly and report bugs so that we
+can track failures and fix issues earlier.
+
+See [94124] for more details.
+
+[94124]: https://github.com/rust-lang/rust/issues/94124
 
 Libraries
 ---------

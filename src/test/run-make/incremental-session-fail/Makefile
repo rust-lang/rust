@@ -8,6 +8,7 @@ all:
 	# Make it so that rustc will fail to create a session directory.
 	touch $(SESSION_DIR)
 	# Check exit code is 1 for an error, and not 101 for ICE.
+	RUSTC_FORCE_INCREMENTAL=1 \
 	$(RUSTC) foo.rs --crate-type=rlib -C incremental=$(SESSION_DIR) > $(OUTPUT_FILE) 2>&1; [ $$? -eq 1 ]
 	$(CGREP) "Could not create incremental compilation crate directory" < $(OUTPUT_FILE)
 	# -v tests are fragile, hopefully this text won't change

@@ -160,6 +160,9 @@ to save information after compiling a crate to be reused when recompiling the
 crate, improving re-compile times. This takes a path to a directory where
 incremental files will be stored.
 
+Note that this option currently does not take effect unless
+`RUSTC_FORCE_INCREMENTAL=1` in the environment.
+
 ## inline-threshold
 
 This option lets you set the default threshold for inlining a function. It
