@@ -84,22 +84,19 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
     trace!("intern_shallow {:?} with {:?}", alloc_id, mode);
     // remove allocation
     let tcx = ecx.tcx;
-    let (kind, mut alloc) = match ecx.memory.alloc_map.remove(&alloc_id) {
-        Some(entry) => entry,
-        None => {
-            // Pointer not found in local memory map. It is either a pointer to the global
-            // map, or dangling.
-            // If the pointer is dangling (neither in local nor global memory), we leave it
-            // to validation to error -- it has the much better error messages, pointing out where
-            // in the value the dangling reference lies.
-            // The `delay_span_bug` ensures that we don't forget such a check in validation.
-            if tcx.get_global_alloc(alloc_id).is_none() {
-                tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
-            }
-            // treat dangling pointers like other statics
-            // just to stop trying to recurse into them
-            return Some(IsStaticOrFn);
+    let Some((kind, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
+        // Pointer not found in local memory map. It is either a pointer to the global
+        // map, or dangling.
+        // If the pointer is dangling (neither in local nor global memory), we leave it
+        // to validation to error -- it has the much better error messages, pointing out where
+        // in the value the dangling reference lies.
+        // The `delay_span_bug` ensures that we don't forget such a check in validation.
+        if tcx.get_global_alloc(alloc_id).is_none() {
+            tcx.sess.delay_span_bug(ecx.tcx.span, "tried to intern dangling pointer");
         }
+        // treat dangling pointers like other statics
+        // just to stop trying to recurse into them
+        return Some(IsStaticOrFn);
     };
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.

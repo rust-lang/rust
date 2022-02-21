@@ -258,15 +258,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let alloc = match self.get_alloc(mplace)? {
-            Some(ptr) => ptr,
-            None => {
-                return Ok(Some(ImmTy {
-                    // zero-sized type
-                    imm: Scalar::ZST.into(),
-                    layout: mplace.layout,
-                }));
-            }
+        let Some(alloc) = self.get_alloc(mplace)? else {
+            return Ok(Some(ImmTy {
+                // zero-sized type
+                imm: Scalar::ZST.into(),
+                layout: mplace.layout,
+            }));
         };
 
         match mplace.layout.abi {

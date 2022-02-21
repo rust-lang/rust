@@ -134,11 +134,8 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             .find(|(_, block)| matches!(block.terminator().kind, TerminatorKind::Return))
             .map(|(bb, _)| bb);
 
-        let return_block = match return_block {
-            None => {
-                return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), tainted_by_errors);
-            }
-            Some(bb) => bb,
+        let Some(return_block) = return_block else {
+            return qualifs::in_any_value_of_ty(ccx, ccx.body.return_ty(), tainted_by_errors);
         };
 
         let return_loc = ccx.body.terminator_loc(return_block);
