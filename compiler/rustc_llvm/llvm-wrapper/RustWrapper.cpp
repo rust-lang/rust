@@ -250,36 +250,10 @@ template<typename T> static inline void AddAttributes(T *t, unsigned Index,
   t->setAttributes(PALNew);
 }
 
-template<typename T> static inline void RemoveAttributes(T *t, unsigned Index,
-                                                         LLVMRustAttribute *RustAttrs,
-                                                         size_t RustAttrsLen) {
-  AttributeList PAL = t->getAttributes();
-  AttributeList PALNew;
-#if LLVM_VERSION_LT(14, 0)
-  AttrBuilder B;
-  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
-    B.addAttribute(fromRust(RustAttr));
-  PALNew = PAL.removeAttributes(t->getContext(), Index, B);
-#else
-  AttributeMask Mask;
-  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
-    Mask.addAttribute(fromRust(RustAttr));
-  PALNew = PAL.removeAttributesAtIndex(t->getContext(), Index, Mask);
-#endif
-  t->setAttributes(PALNew);
-}
-
 extern "C" void LLVMRustAddFunctionAttributes(LLVMValueRef Fn, unsigned Index,
                                               LLVMAttributeRef *Attrs, size_t AttrsLen) {
   Function *F = unwrap<Function>(Fn);
   AddAttributes(F, Index, Attrs, AttrsLen);
-}
-
-extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn, unsigned Index,
-                                                 LLVMRustAttribute *RustAttrs,
-                                                 size_t RustAttrsLen) {
-  Function *F = unwrap<Function>(Fn);
-  RemoveAttributes(F, Index, RustAttrs, RustAttrsLen);
 }
 
 extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr, unsigned Index,

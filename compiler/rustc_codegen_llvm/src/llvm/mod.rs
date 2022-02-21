@@ -37,12 +37,6 @@ pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: 
     }
 }
 
-pub fn RemoveFunctionAttributes(llfn: &Value, idx: AttributePlace, attrs: &[AttributeKind]) {
-    unsafe {
-        LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
-    }
-}
-
 pub fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,

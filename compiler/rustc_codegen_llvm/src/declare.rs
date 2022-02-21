@@ -41,21 +41,15 @@ fn declare_raw_fn<'ll>(
     llvm::SetFunctionCallConv(llfn, callconv);
     llvm::SetUnnamedAddress(llfn, unnamed);
 
-    let mut attrs_to_remove = SmallVec::<[_; 4]>::new();
-    let mut attrs_to_add = SmallVec::<[_; 4]>::new();
+    let mut attrs = SmallVec::<[_; 4]>::new();
 
     if cx.tcx.sess.opts.cg.no_redzone.unwrap_or(cx.tcx.sess.target.disable_redzone) {
-        attrs_to_add.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
+        attrs.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
     }
 
-    let (to_remove, to_add) = attributes::default_optimisation_attrs(cx);
-    attrs_to_remove.extend(to_remove);
-    attrs_to_add.extend(to_add);
+    attrs.extend(attributes::non_lazy_bind_attr(cx));
 
-    attrs_to_add.extend(attributes::non_lazy_bind_attr(cx));
-
-    attributes::remove_from_llfn(llfn, Function, &attrs_to_remove);
-    attributes::apply_to_llfn(llfn, Function, &attrs_to_add);
+    attributes::apply_to_llfn(llfn, Function, &attrs);
 
     llfn
 }
