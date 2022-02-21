@@ -1,7 +1,12 @@
 use std::iter::{self, successors};
 
 use either::Either;
-use ide_db::{defs::NameClass, ty_filter::TryEnum, RootDatabase};
+use ide_db::{
+    defs::NameClass,
+    helpers::node_ext::{is_pattern_cond, single_let},
+    ty_filter::TryEnum,
+    RootDatabase,
+};
 use syntax::{
     ast::{
         self,
@@ -61,7 +66,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
         }
     });
     let scrutinee_to_be_expr = if_expr.condition()?;
-    let scrutinee_to_be_expr = match scrutinee_to_be_expr.single_let() {
+    let scrutinee_to_be_expr = match single_let(scrutinee_to_be_expr.clone()) {
         Some(cond) => cond.expr()?,
         None => scrutinee_to_be_expr,
     };
@@ -70,7 +75,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
     let mut cond_bodies = Vec::new();
     for if_expr in if_exprs {
         let cond = if_expr.condition()?;
-        let cond = match cond.single_let() {
+        let cond = match single_let(cond.clone()) {
             Some(let_) => {
                 let pat = let_.pat()?;
                 let expr = let_.expr()?;
@@ -84,7 +89,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext) 
                 Either::Left(pat)
             }
             // Multiple `let`, unsupported.
-            None if cond.is_pattern_cond() => return None,
+            None if is_pattern_cond(cond.clone()) => return None,
             None => Either::Right(cond),
         };
         let body = if_expr.then_branch()?;

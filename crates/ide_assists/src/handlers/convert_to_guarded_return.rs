@@ -1,5 +1,6 @@
 use std::iter::once;
 
+use ide_db::helpers::node_ext::{is_pattern_cond, single_let};
 use syntax::{
     ast::{
         self,
@@ -48,8 +49,8 @@ pub(crate) fn convert_to_guarded_return(acc: &mut Assists, ctx: &AssistContext) 
     let cond = if_expr.condition()?;
 
     // Check if there is an IfLet that we can handle.
-    let (if_let_pat, cond_expr) = if cond.is_pattern_cond() {
-        let let_ = cond.single_let()?;
+    let (if_let_pat, cond_expr) = if is_pattern_cond(cond.clone()) {
+        let let_ = single_let(cond)?;
         match let_.pat() {
             Some(ast::Pat::TupleStructPat(pat)) if pat.fields().count() == 1 => {
                 let path = pat.path()?;

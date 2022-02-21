@@ -216,3 +216,29 @@ pub fn vis_eq(this: &ast::Visibility, other: &ast::Visibility) -> bool {
         _ => false,
     }
 }
+
+/// Returns the `let` only if there is exactly one (that is, `let pat = expr`
+/// or `((let pat = expr))`, but not `let pat = expr && expr` or `non_let_expr`).
+pub fn single_let(expr: ast::Expr) -> Option<ast::LetExpr> {
+    match expr {
+        ast::Expr::ParenExpr(expr) => expr.expr().and_then(single_let),
+        ast::Expr::LetExpr(expr) => Some(expr),
+        _ => None,
+    }
+}
+
+pub fn is_pattern_cond(expr: ast::Expr) -> bool {
+    match expr {
+        ast::Expr::BinExpr(expr)
+            if expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And)) =>
+        {
+            expr.lhs()
+                .map(is_pattern_cond)
+                .or_else(|| expr.rhs().map(is_pattern_cond))
+                .unwrap_or(false)
+        }
+        ast::Expr::ParenExpr(expr) => expr.expr().map_or(false, is_pattern_cond),
+        ast::Expr::LetExpr(_) => true,
+        _ => false,
+    }
+}
