@@ -1,5 +1,5 @@
 error: unused variable: `x`
-  --> $DIR/let-else-check.rs:13:9
+  --> $DIR/let-else-check.rs:18:9
    |
 LL |     let x = 1;
    |         ^ help: if this is intentional, prefix it with an underscore: `_x`
@@ -10,5 +10,11 @@ note: the lint level is defined here
 LL | #![deny(unused_variables)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: unused variable: `x`
+  --> $DIR/let-else-check.rs:14:13
+   |
+LL |         let x = 1;
+   |             ^ help: if this is intentional, prefix it with an underscore: `_x`
+
+error: aborting due to 2 previous errors
 
