@@ -453,7 +453,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
 
-    ungated!(feature, CrateLevel, template!(List: "name1, name1, ..."), DuplicatesOk),
+    ungated!(feature, CrateLevel, template!(List: "name1, name2, ..."), DuplicatesOk),
     // DuplicatesOk since it has its own validation
     ungated!(
         rustc_deprecated, Normal,
