@@ -1550,14 +1550,27 @@ fn func() {}
 
                 FileId(0) 16..24
             "#]],
-        )
+        );
+        check(
+            r#"
+#[proc_macro_attribute]
+fn func$0() {}
+"#,
+            expect![[r#"
+                func Attribute FileId(0) 0..36 27..31
+
+                (no references)
+            "#]],
+        );
     }
 
+    // FIXME
     #[test]
     fn derive() {
         check(
             r#"
 //- proc_macros: derive_identity
+//- minicore: derive
 
 #[derive(proc_macros::DeriveIdentity$0)]
 struct Foo;
