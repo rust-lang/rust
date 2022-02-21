@@ -240,7 +240,6 @@ The are several LSP client implementations for vim or neovim:
    * same configurations as VSCode extension, `rust-analyzer.server.path`, `rust-analyzer.cargo.features` etc.
    * same commands too, `rust-analyzer.analyzerStatus`, `rust-analyzer.ssr` etc.
    * inlay hints for variables and method chaining, _Neovim Only_
-   * semantic highlighting is not implemented yet
 
 Note: for code actions, use `coc-codeaction-cursor` and `coc-codeaction-selected`; `coc-codeaction` and `coc-codeaction-line` are unlikely to be useful.
 
