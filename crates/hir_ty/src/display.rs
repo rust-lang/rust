@@ -1097,29 +1097,28 @@ impl HirDisplay for TypeRef {
             TypeRef::Fn(parameters, is_varargs) => {
                 // FIXME: Function pointer qualifiers.
                 write!(f, "fn(")?;
-                for index in 0..parameters.len() - 1 {
-                    let (param_name, param_type) = &parameters[index];
-                    if let Some(name) = param_name {
-                        write!(f, "{}: ", name)?;
-                    }
+                if let Some(((_, return_type), function_parameters)) = parameters.split_last() {
+                    for index in 0..function_parameters.len() {
+                        let (param_name, param_type) = &function_parameters[index];
+                        if let Some(name) = param_name {
+                            write!(f, "{}: ", name)?;
+                        }
 
-                    param_type.hir_fmt(f)?;
+                        param_type.hir_fmt(f)?;
 
-                    // Last index contains the return type so we stop writing commas on the second-to-last index
-                    if index != parameters.len() - 2 {
-                        write!(f, ", ")?;
+                        if index != function_parameters.len() - 1 {
+                            write!(f, ", ")?;
+                        }
                     }
-                }
-                if *is_varargs {
-                    write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
-                }
-                write!(f, ")")?;
-                if let Some((_, ret_ty)) = &parameters.last() {
-                    match ret_ty {
+                    if *is_varargs {
+                        write!(f, "{}...", if parameters.len() == 1 { "" } else { ", " })?;
+                    }
+                    write!(f, ")")?;
+                    match &return_type {
                         TypeRef::Tuple(tup) if tup.is_empty() => {}
                         _ => {
                             write!(f, " -> ")?;
-                            ret_ty.hir_fmt(f)?;
+                            return_type.hir_fmt(f)?;
                         }
                     }
                 }
