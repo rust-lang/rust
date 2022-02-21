@@ -164,9 +164,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %6 = bitcast i8* %malloccall3 to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*
 ; CHECK-NEXT:   %7 = bitcast %struct.ompi_request_t** %"r1'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }**
 ; CHECK-NEXT:   %8 = load { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %7
-; CHECK-NEXT:   %9 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 7
-; CHECK-NEXT:   %10 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %8 to i8*
-; CHECK-NEXT:   store i8* %10, i8** %9
+; CHECK-DAG:    %[[a9:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 7
+; CHECK-DAG:    %[[a10:.+]] = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %8 to i8*
+; CHECK-NEXT:   store i8* %[[a10]], i8** %[[a9]]
 ; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %7
 ; CHECK-NEXT:   %11 = call i32 @MPI_Type_size(i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i32* %2)
 ; CHECK-NEXT:   %12 = load i32, i32* %2
@@ -178,12 +178,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 1, i64* %15
 ; CHECK-NEXT:   %16 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 2
 ; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %16
-; CHECK-NEXT:   %17 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 3
-; CHECK-NEXT:   %18 = zext i32 %numprocsuiv to i64
-; CHECK-NEXT:   store i64 %18, i64* %17
-; CHECK-NEXT:   %19 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 4
-; CHECK-NEXT:   %20 = zext i32 %etiquette to i64
-; CHECK-NEXT:   store i64 %20, i64* %19
+; CHECK-DAG:    %[[a17:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 3
+; CHECK-DAG:    %[[a18:.+]] = zext i32 %numprocsuiv to i64
+; CHECK-NEXT:   store i64 %[[a18]], i64* %[[a17]]
+; CHECK-DAG:    %[[a19:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 4
+; CHECK-DAG:    %[[a20:.+]] = zext i32 %etiquette to i64
+; CHECK-NEXT:   store i64 %[[a20]], i64* %[[a19]]
 ; CHECK-NEXT:   %21 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 5
 ; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %21
 ; CHECK-NEXT:   %22 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %6, i64 0, i32 6
@@ -198,9 +198,9 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %26 = bitcast i8* %malloccall to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*
 ; CHECK-NEXT:   %27 = bitcast %struct.ompi_request_t** %"r2'ipa" to { i8*, i64, i8*, i64, i64, i8*, i8, i8* }**
 ; CHECK-NEXT:   %28 = load { i8*, i64, i8*, i64, i64, i8*, i8, i8* }*, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %27
-; CHECK-NEXT:   %29 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 7
-; CHECK-NEXT:   %30 = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %28 to i8*
-; CHECK-NEXT:   store i8* %30, i8** %29
+; CHECK-DAG:    %[[a29:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 7
+; CHECK-DAG:    %[[a30:.+]] = bitcast { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %28 to i8*
+; CHECK-NEXT:   store i8* %[[a30]], i8** %[[a29]]
 ; CHECK-NEXT:   store { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }** %27
 ; CHECK-NEXT:   %31 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 0
 ; CHECK-NEXT:   store i8* %"'ipc", i8** %31
@@ -208,12 +208,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   store i64 1, i64* %32
 ; CHECK-NEXT:   %33 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 2
 ; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_datatype_t* @ompi_mpi_real to i8*), i8** %33
-; CHECK-NEXT:   %34 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 3
-; CHECK-NEXT:   %35 = zext i32 %numprocprec to i64
-; CHECK-NEXT:   store i64 %35, i64* %34
-; CHECK-NEXT:   %36 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 4
-; CHECK-NEXT:   %37 = zext i32 %etiquette to i64
-; CHECK-NEXT:   store i64 %37, i64* %36
+; CHECK-DAG:    %[[a34:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 3
+; CHECK-DAG:    %[[a35:.+]] = zext i32 %numprocprec to i64
+; CHECK-NEXT:   store i64 %[[a35]], i64* %[[a34]]
+; CHECK-DAG:    %[[a36:.+]] = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 4
+; CHECK-DAG:    %[[a37:.+]] = zext i32 %etiquette to i64
+; CHECK-NEXT:   store i64 %[[a37]], i64* %[[a36]]
 ; CHECK-NEXT:   %38 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 5
 ; CHECK-NEXT:   store i8* bitcast (%struct.ompi_predefined_communicator_t* @ompi_mpi_comm_world to i8*), i8** %38
 ; CHECK-NEXT:   %39 = getelementptr inbounds { i8*, i64, i8*, i64, i64, i8*, i8, i8* }, { i8*, i64, i8*, i64, i64, i8*, i8, i8* }* %26, i64 0, i32 6
