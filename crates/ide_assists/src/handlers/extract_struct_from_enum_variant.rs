@@ -109,22 +109,8 @@ pub(crate) fn extract_struct_from_enum_variant(
             let indent = enum_ast.indent_level();
             let generic_params = enum_ast
                 .generic_param_list()
-                .map(|known_generics| extract_generic_params(&known_generics, &field_list));
-            let generics =
-                generic_params.as_ref().filter(|generics| !generics.all_empty()).map(|generics| {
-                    make::generic_param_list(
-                        generics
-                            .lifetimes
-                            .iter()
-                            .cloned()
-                            .map(ast::GenericParam::LifetimeParam)
-                            .chain(generics.types.iter().cloned().map(ast::GenericParam::TypeParam))
-                            .chain(
-                                generics.consts.iter().cloned().map(ast::GenericParam::ConstParam),
-                            ),
-                    )
-                    .clone_for_update()
-                });
+                .and_then(|known_generics| extract_generic_params(&known_generics, &field_list));
+            let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
             let def =
                 create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
             def.reindent_to(indent);
@@ -138,7 +124,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                 ],
             );
 
-            update_variant(&variant, generic_params);
+            update_variant(&variant, generic_params.map(|g| g.clone_for_update()));
         },
     )
 }
@@ -179,83 +165,70 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
         .any(|(name, _)| name.to_string() == variant_name.to_string())
 }
 
-struct ExtractedGenerics {
-    lifetimes: Vec<ast::LifetimeParam>,
-    types: Vec<ast::TypeParam>,
-    consts: Vec<ast::ConstParam>,
-}
-
-impl ExtractedGenerics {
-    fn all_empty(&self) -> bool {
-        self.lifetimes.is_empty() && self.types.is_empty() && self.consts.is_empty()
-    }
-}
-
 fn extract_generic_params(
     known_generics: &ast::GenericParamList,
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
-) -> ExtractedGenerics {
-    let mut lifetimes = known_generics.lifetime_params().map(|x| (x, false)).collect_vec();
-    let mut types = known_generics.type_params().map(|x| (x, false)).collect_vec();
-    let mut consts = known_generics.const_params().map(|x| (x, false)).collect_vec();
+) -> Option<ast::GenericParamList> {
+    let mut generics = known_generics.generic_params().map(|param| (param, false)).collect_vec();
 
-    match field_list {
+    let tagged_one = match field_list {
         Either::Left(field_list) => field_list
             .fields()
             .filter_map(|f| f.ty())
-            .for_each(|ty| tag_generics_in_variant(&ty, &mut lifetimes, &mut types, &mut consts)),
+            .fold(false, |tagged, ty| tag_generics_in_variant(&ty, &mut generics) || tagged),
         Either::Right(field_list) => field_list
             .fields()
             .filter_map(|f| f.ty())
-            .for_each(|ty| tag_generics_in_variant(&ty, &mut lifetimes, &mut types, &mut consts)),
-    }
+            .fold(false, |tagged, ty| tag_generics_in_variant(&ty, &mut generics) || tagged),
+    };
 
-    let lifetimes = lifetimes.into_iter().filter_map(|(x, present)| present.then(|| x)).collect();
-    let types = types.into_iter().filter_map(|(x, present)| present.then(|| x)).collect();
-    let consts = consts.into_iter().filter_map(|(x, present)| present.then(|| x)).collect();
-
-    ExtractedGenerics { lifetimes, types, consts }
+    let generics = generics.into_iter().filter_map(|(param, tag)| tag.then(|| param));
+    tagged_one.then(|| make::generic_param_list(generics))
 }
 
-fn tag_generics_in_variant(
-    ty: &ast::Type,
-    lifetimes: &mut [(ast::LifetimeParam, bool)],
-    types: &mut [(ast::TypeParam, bool)],
-    consts: &mut [(ast::ConstParam, bool)],
-) {
+fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, bool)]) -> bool {
+    let mut tagged_one = false;
+
     for token in ty.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token) {
-        match token.kind() {
-            T![lifetime_ident] => {
-                for (lt, present) in lifetimes.iter_mut() {
+        for (param, tag) in generics.iter_mut().filter(|(_, tag)| !tag) {
+            match param {
+                ast::GenericParam::LifetimeParam(lt)
+                    if matches!(token.kind(), T![lifetime_ident]) =>
+                {
                     if let Some(lt) = lt.lifetime() {
                         if lt.text().as_str() == token.text() {
-                            *present = true;
+                            *tag = true;
+                            tagged_one = true;
                             break;
                         }
                     }
                 }
+                param if matches!(token.kind(), T![ident]) => {
+                    if match param {
+                        ast::GenericParam::ConstParam(konst) => konst
+                            .name()
+                            .map(|name| name.text().as_str() == token.text())
+                            .unwrap_or_default(),
+                        ast::GenericParam::TypeParam(ty) => ty
+                            .name()
+                            .map(|name| name.text().as_str() == token.text())
+                            .unwrap_or_default(),
+                        ast::GenericParam::LifetimeParam(lt) => lt
+                            .lifetime()
+                            .map(|lt| lt.text().as_str() == token.text())
+                            .unwrap_or_default(),
+                    } {
+                        *tag = true;
+                        tagged_one = true;
+                        break;
+                    }
+                }
+                _ => (),
             }
-            T![ident] => {
-                for (ty, present) in types.iter_mut() {
-                    if let Some(name) = ty.name() {
-                        if name.text().as_str() == token.text() {
-                            *present = true;
-                            break;
-                        }
-                    }
-                }
-                for (cnst, present) in consts.iter_mut() {
-                    if let Some(name) = cnst.name() {
-                        if name.text().as_str() == token.text() {
-                            *present = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            _ => (),
         }
     }
+
+    tagged_one
 }
 
 fn create_struct_def(
@@ -341,21 +314,43 @@ fn create_struct_def(
     strukt
 }
 
-fn update_variant(variant: &ast::Variant, generics: Option<ExtractedGenerics>) -> Option<()> {
+fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList>) -> Option<()> {
     let name = variant.name()?;
     let ty = generics
-        .filter(|generics| !generics.all_empty())
+        .filter(|generics| generics.generic_params().count() > 0)
         .map(|generics| {
-            let generics_str = [
-                generics.lifetimes.iter().filter_map(|lt| lt.lifetime()).join(", "),
-                generics.types.iter().filter_map(|ty| ty.name()).join(", "),
-                generics.consts.iter().filter_map(|cnst| cnst.name()).join(", "),
-            ]
-            .iter()
-            .filter(|s| !s.is_empty())
-            .join(", ");
+            let generic_str = generics
+                .generic_params()
+                .with_position()
+                .map(|p| match p {
+                    itertools::Position::First(p) | itertools::Position::Middle(p) => (p, true),
+                    itertools::Position::Last(p) | itertools::Position::Only(p) => (p, false),
+                })
+                .fold(String::with_capacity(8), |mut s, (p, more)| {
+                    match p {
+                        ast::GenericParam::ConstParam(konst) => {
+                            if let Some(name) = konst.name() {
+                                s.push_str(name.text().as_str());
+                            }
+                        }
+                        ast::GenericParam::LifetimeParam(lt) => {
+                            if let Some(lt) = lt.lifetime() {
+                                s.push_str(lt.text().as_str());
+                            }
+                        }
+                        ast::GenericParam::TypeParam(ty) => {
+                            if let Some(name) = ty.name() {
+                                s.push_str(name.text().as_str());
+                            }
+                        }
+                    }
+                    if more {
+                        s.push_str(", ");
+                    }
+                    s
+                });
 
-            make::ty(&format!("{}<{}>", &name.text(), &generics_str))
+            make::ty(&format!("{}<{}>", &name.text(), &generic_str))
         })
         .unwrap_or_else(|| make::ty(&name.text()));
 
