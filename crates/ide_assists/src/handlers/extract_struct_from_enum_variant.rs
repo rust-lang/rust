@@ -20,6 +20,7 @@ use syntax::{
     },
     match_ast,
     ted::{self, Position},
+    SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
 };
@@ -222,12 +223,7 @@ fn tag_generics_in_variant(
     types: &mut [(ast::TypeParam, bool)],
     consts: &mut [(ast::ConstParam, bool)],
 ) {
-    for token in
-        ty.syntax().preorder_with_tokens().filter_map(|node_or_token| match node_or_token {
-            syntax::WalkEvent::Enter(syntax::NodeOrToken::Token(token)) => Some(token),
-            _ => None,
-        })
-    {
+    for token in ty.syntax().descendants_with_tokens().filter_map(SyntaxElement::into_token) {
         match token.kind() {
             T![lifetime_ident] => {
                 for (lt, present) in lifetimes.iter_mut() {
