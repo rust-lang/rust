@@ -1564,7 +1564,6 @@ fn func$0() {}
         );
     }
 
-    // FIXME
     #[test]
     fn derive() {
         check(
@@ -1575,7 +1574,11 @@ fn func$0() {}
 #[derive(proc_macros::DeriveIdentity$0)]
 struct Foo;
 "#,
-            expect![[r#""#]],
+            expect![[r#"
+                derive_identity Derive FileId(2) 1..107 45..60
+
+                FileId(0) 23..37
+            "#]],
         )
     }
 }
