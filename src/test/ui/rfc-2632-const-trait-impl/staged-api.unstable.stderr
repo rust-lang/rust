@@ -1,12 +1,18 @@
-error: implementation has missing const stability attribute
-  --> $DIR/staged-api.rs:18:1
+error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:34:5
    |
-LL | / impl const MyTrait for Stable {
-LL | |
-LL | |
-LL | |     fn func() {}
-LL | | }
-   | |_^
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
+  --> $DIR/staged-api.rs:42:5
+   |
+LL |     Foo::func();
+   |     ^^^^^^^^^^^
+   |
+   = help: add `#![feature(foo)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
