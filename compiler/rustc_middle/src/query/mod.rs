@@ -1046,6 +1046,10 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
+    query asm_target_features(def_id: DefId) -> &'tcx FxHashSet<Symbol> {
+        desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
+    }
+
     query fn_arg_names(def_id: DefId) -> &'tcx [rustc_span::symbol::Ident] {
         desc { |tcx| "looking up function parameter names for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern

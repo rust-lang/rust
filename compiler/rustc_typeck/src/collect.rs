@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! "Collection" is the process of determining the type and other external
 //! details of each item in Rust. Collection is specifically concerned
 //! with *inter-procedural* things -- for example, for a function
@@ -87,6 +88,7 @@ pub fn provide(providers: &mut Providers) {
         static_mutability,
         generator_kind,
         codegen_fn_attrs,
+        asm_target_features,
         collect_mod_item_types,
         should_inherit_track_caller,
         ..*providers
@@ -3253,6 +3255,24 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
     }
 
     codegen_fn_attrs
+}
+
+/// Computes the set of target features used in a function for the purposes of
+/// inline assembly.
+fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, id: DefId) -> &'tcx FxHashSet<Symbol> {
+    let mut target_features = tcx.sess.target_features.clone();
+    let attrs = tcx.codegen_fn_attrs(id);
+    target_features.extend(&attrs.target_features);
+    match attrs.instruction_set {
+        None => {}
+        Some(InstructionSetAttr::ArmA32) => {
+            target_features.remove(&sym::thumb_mode);
+        }
+        Some(InstructionSetAttr::ArmT32) => {
+            target_features.insert(sym::thumb_mode);
+        }
+    }
+    tcx.arena.alloc(target_features)
 }
 
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller

@@ -1,7 +1,6 @@
-use super::{InlineAsmArch, InlineAsmType, Target};
-use rustc_data_structures::stable_set::FxHashSet;
+use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
-use rustc_span::{sym, Symbol};
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -43,19 +42,6 @@ impl BpfInlineAsmRegClass {
     }
 }
 
-fn only_alu32(
-    _arch: InlineAsmArch,
-    target_features: &FxHashSet<Symbol>,
-    _target: &Target,
-    _is_clobber: bool,
-) -> Result<(), &'static str> {
-    if !target_features.contains(&sym::alu32) {
-        Err("register can't be used without the `alu32` target feature")
-    } else {
-        Ok(())
-    }
-}
-
 def_regs! {
     Bpf BpfInlineAsmReg BpfInlineAsmRegClass {
         r0: reg = ["r0"],
@@ -68,16 +54,16 @@ def_regs! {
         r7: reg = ["r7"],
         r8: reg = ["r8"],
         r9: reg = ["r9"],
-        w0: wreg = ["w0"] % only_alu32,
-        w1: wreg = ["w1"] % only_alu32,
-        w2: wreg = ["w2"] % only_alu32,
-        w3: wreg = ["w3"] % only_alu32,
-        w4: wreg = ["w4"] % only_alu32,
-        w5: wreg = ["w5"] % only_alu32,
-        w6: wreg = ["w6"] % only_alu32,
-        w7: wreg = ["w7"] % only_alu32,
-        w8: wreg = ["w8"] % only_alu32,
-        w9: wreg = ["w9"] % only_alu32,
+        w0: wreg = ["w0"],
+        w1: wreg = ["w1"],
+        w2: wreg = ["w2"],
+        w3: wreg = ["w3"],
+        w4: wreg = ["w4"],
+        w5: wreg = ["w5"],
+        w6: wreg = ["w6"],
+        w7: wreg = ["w7"],
+        w8: wreg = ["w8"],
+        w9: wreg = ["w9"],
 
         #error = ["r10", "w10"] =>
             "the stack pointer cannot be used as an operand for inline asm",
