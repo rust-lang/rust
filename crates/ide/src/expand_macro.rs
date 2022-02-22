@@ -42,7 +42,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
     let derive = sema.descend_into_macros(tok.clone()).into_iter().find_map(|descended| {
         let hir_file = sema.hir_file_for(&descended.parent()?);
-        if !hir_file.is_derive_attr_macro(db) {
+        if !hir_file.is_derive_attr_pseudo_expansion(db) {
             return None;
         }
 
@@ -55,7 +55,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .token_tree()?
             .token_trees_and_tokens()
             .filter_map(NodeOrToken::into_token)
-            .take_while(|it| it == &token)
+            .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
         Some(ExpandedMacro {
@@ -381,6 +381,19 @@ struct Foo {}
             expect![[r#"
                 Copy
                 impl < >core::marker::Copy for Foo< >{}
+
+            "#]],
+        );
+        check(
+            r#"
+//- minicore: copy, clone, derive
+
+#[derive(Copy, Cl$0one)]
+struct Foo {}
+"#,
+            expect![[r#"
+                Clone
+                impl < >core::clone::Clone for Foo< >{}
 
             "#]],
         );
