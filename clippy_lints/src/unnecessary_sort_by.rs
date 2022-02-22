@@ -239,7 +239,7 @@ impl LateLintPass<'_> for UnnecessarySortBy {
                     if trigger.unstable { "_unstable" } else { "" },
                     trigger.closure_arg,
                     if trigger.reverse {
-                        format!("Reverse({})", trigger.closure_body)
+                        format!("std::cmp::Reverse({})", trigger.closure_body)
                     } else {
                         trigger.closure_body.to_string()
                     },
