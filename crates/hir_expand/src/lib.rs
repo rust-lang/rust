@@ -310,7 +310,8 @@ impl HirFileId {
     }
 
     /// Return whether this file is the pseudo expansion of the derive attribute.
-    pub fn is_derive_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
+    /// See [`crate::builtin_attr_macro::derive_attr_expand`].
+    pub fn is_derive_attr_pseudo_expansion(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);

@@ -49,7 +49,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let attr = ctx.find_node_at_offset_with_descend::<ast::Attr>()?;
     let path = attr.path()?;
     let hir_file = ctx.sema.hir_file_for(attr.syntax());
-    if !hir_file.is_derive_attr_macro(ctx.db()) {
+    if !hir_file.is_derive_attr_pseudo_expansion(ctx.db()) {
         return None;
     }
 
