@@ -549,19 +549,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 v.insert(local_id);
                 self.item_local_id_counter.increment_by(1);
 
-                if local_id != hir::ItemLocalId::new(0) {
-                    if let Some(def_id) = self.resolver.opt_local_def_id(ast_node_id) {
-                        self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
-                        if let o @ hir::MaybeOwner::Phantom = &mut self.owners[def_id] {
-                            // Do not override a `MaybeOwner::Owner` that may already here.
-                            *o = hir::MaybeOwner::NonOwner(hir_id);
-                        }
-                        self.local_id_to_def_id.insert(local_id, def_id);
+                assert_ne!(local_id, hir::ItemLocalId::new(0));
+                if let Some(def_id) = self.resolver.opt_local_def_id(ast_node_id) {
+                    self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
+                    if let o @ hir::MaybeOwner::Phantom = &mut self.owners[def_id] {
+                        // Do not override a `MaybeOwner::Owner` that may already here.
+                        *o = hir::MaybeOwner::NonOwner(hir_id);
                     }
+                    self.local_id_to_def_id.insert(local_id, def_id);
+                }
 
-                    if let Some(traits) = self.resolver.take_trait_map(ast_node_id) {
-                        self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
-                    }
+                if let Some(traits) = self.resolver.take_trait_map(ast_node_id) {
+                    self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
                 }
 
                 hir_id
