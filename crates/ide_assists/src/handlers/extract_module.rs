@@ -779,12 +779,8 @@ fn get_replacements_for_visibilty_change(
             ast::Item::Enum(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Impl(it) => {
-                //Associated item's visibility should not be changed
-                if let None = it.for_token() {
-                    impls.push(it);
-                }
-            }
+            //Associated item's visibility should not be changed
+            ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it),
             ast::Item::MacroRules(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
