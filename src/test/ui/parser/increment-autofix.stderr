@@ -8,8 +8,6 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = i; i += 1; tmp };
    |     +++++++++++  ~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     i++;
 LL +     i += 1;
    | 
@@ -24,8 +22,6 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp = i; i += 1; tmp } < 5 {
    |           +++++++++++  ~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     while i++ < 5 {
 LL +     while i += 1 < 5 {
    | 
@@ -40,8 +36,6 @@ help: use `+= 1` instead
    |
 LL |     { let tmp_ = tmp; tmp += 1; tmp_ };
    |     ++++++++++++    ~~~~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     tmp++;
 LL +     tmp += 1;
    | 
@@ -56,8 +50,6 @@ help: use `+= 1` instead
    |
 LL |     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
    |           ++++++++++++    ~~~~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     while tmp++ < 5 {
 LL +     while tmp += 1 < 5 {
    | 

@@ -8,8 +8,6 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = foo.bar.qux; foo.bar.qux += 1; tmp };
    |     +++++++++++            ~~~~~~~~~~~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     foo.bar.qux++;
 LL +     foo.bar.qux += 1;
    | 
@@ -24,8 +22,6 @@ help: use `+= 1` instead
    |
 LL |     { let tmp = s.tmp; s.tmp += 1; tmp };
    |     +++++++++++      ~~~~~~~~~~~~~~~~~~~
-help: or, if you don't need to use it as an expression, change it to this
-   |
 LL -     s.tmp++;
 LL +     s.tmp += 1;
    | 

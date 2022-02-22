@@ -218,6 +218,27 @@ impl std::fmt::Display for UnaryFixity {
     }
 }
 
+struct MultiSugg {
+    msg: String,
+    patches: Vec<(Span, String)>,
+    applicability: Applicability,
+}
+
+impl MultiSugg {
+    fn emit(self, err: &mut DiagnosticBuilder<'_>) {
+        err.multipart_suggestion(&self.msg, self.patches, self.applicability);
+    }
+
+    /// Overrides individual messages and applicabilities.
+    fn emit_many(
+        err: &mut DiagnosticBuilder<'_>,
+        msg: &str,
+        applicability: Applicability,
+        suggestions: impl Iterator<Item = Self>,
+    ) {
+        err.multipart_suggestions(msg, suggestions.map(|s| s.patches), applicability);
+    }
+}
 // SnapshotParser is used to create a snapshot of the parser
 // without causing duplicate errors being emitted when the `Parser`
 // is dropped.
@@ -1281,33 +1302,33 @@ impl<'a> Parser<'a> {
         };
 
         match kind.standalone {
-            IsStandalone::Standalone => {
-                self.inc_dec_standalone_recovery(&mut err, kind, spans, false)
-            }
+            IsStandalone::Standalone => self.inc_dec_standalone_suggest(kind, spans).emit(&mut err),
             IsStandalone::Subexpr => {
                 let Ok(base_src) = self.span_to_snippet(base.span)
                     else { return help_base_case(err, base) };
                 match kind.fixity {
                     UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                        self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
                     }
                     UnaryFixity::Post => {
-                        self.postfix_inc_dec_suggest(base_src, &mut err, kind, spans)
+                        self.postfix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
                     }
                 }
             }
             IsStandalone::Maybe => {
                 let Ok(base_src) = self.span_to_snippet(base.span)
                     else { return help_base_case(err, base) };
-                match kind.fixity {
-                    UnaryFixity::Pre => {
-                        self.prefix_inc_dec_suggest(base_src, &mut err, kind, spans)
-                    }
-                    UnaryFixity::Post => {
-                        self.postfix_inc_dec_suggest(base_src, &mut err, kind, spans)
-                    }
-                }
-                self.inc_dec_standalone_recovery(&mut err, kind, spans, true)
+                let sugg1 = match kind.fixity {
+                    UnaryFixity::Pre => self.prefix_inc_dec_suggest(base_src, kind, spans),
+                    UnaryFixity::Post => self.postfix_inc_dec_suggest(base_src, kind, spans),
+                };
+                let sugg2 = self.inc_dec_standalone_suggest(kind, spans);
+                MultiSugg::emit_many(
+                    &mut err,
+                    "use `+= 1` instead",
+                    Applicability::MaybeIncorrect,
+                    [sugg1, sugg2].into_iter(),
+                )
             }
         }
         Err(err)
@@ -1316,61 +1337,46 @@ impl<'a> Parser<'a> {
     fn prefix_inc_dec_suggest(
         &mut self,
         base_src: String,
-        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-    ) {
-        err.multipart_suggestion(
-            &format!("use `{}= 1` instead", kind.op.chr()),
-            vec![
+    ) -> MultiSugg {
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![
                 (pre_span, "{ ".to_string()),
                 (post_span, format!(" {}= 1; {} }}", kind.op.chr(), base_src)),
             ],
-            Applicability::MachineApplicable,
-        );
+            applicability: Applicability::MachineApplicable,
+        }
     }
 
     fn postfix_inc_dec_suggest(
         &mut self,
         base_src: String,
-        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-    ) {
+    ) -> MultiSugg {
         let tmp_var = if base_src.trim() == "tmp" { "tmp_" } else { "tmp" };
-        err.multipart_suggestion(
-            &format!("use `{}= 1` instead", kind.op.chr()),
-            vec![
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![
                 (pre_span, format!("{{ let {} = ", tmp_var)),
                 (post_span, format!("; {} {}= 1; {} }}", base_src, kind.op.chr(), tmp_var)),
             ],
-            Applicability::HasPlaceholders,
-        );
+            applicability: Applicability::HasPlaceholders,
+        }
     }
 
-    fn inc_dec_standalone_recovery(
+    fn inc_dec_standalone_suggest(
         &mut self,
-        err: &mut DiagnosticBuilder<'a>,
         kind: IncDecRecovery,
         (pre_span, post_span): (Span, Span),
-        maybe_not_standalone: bool,
-    ) {
-        let msg = if maybe_not_standalone {
-            "or, if you don't need to use it as an expression, change it to this".to_owned()
-        } else {
-            format!("use `{}= 1` instead", kind.op.chr())
-        };
-        let applicability = if maybe_not_standalone {
-            // FIXME: Unspecified isn't right, but it's the least wrong option
-            Applicability::Unspecified
-        } else {
-            Applicability::MachineApplicable
-        };
-        err.multipart_suggestion(
-            &msg,
-            vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
-            applicability,
-        );
+    ) -> MultiSugg {
+        MultiSugg {
+            msg: format!("use `{}= 1` instead", kind.op.chr()),
+            patches: vec![(pre_span, String::new()), (post_span, format!(" {}= 1", kind.op.chr()))],
+            applicability: Applicability::MachineApplicable,
+        }
     }
 
     /// Tries to recover from associated item paths like `[T]::AssocItem` / `(T, U)::AssocItem`.
