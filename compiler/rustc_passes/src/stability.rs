@@ -9,7 +9,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -606,44 +605,6 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     // stable (assuming they have not inherited instability from their parent).
 }
 
-struct CheckStableConstImplTrait<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
-impl<'tcx> ItemLikeVisitor<'tcx> for CheckStableConstImplTrait<'tcx> {
-    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
-        if !matches!(
-            item.kind,
-            hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(_),
-                constness: hir::Constness::Const,
-                ..
-            })
-        ) {
-            return;
-        }
-
-        if self.tcx.lookup_const_stability(item.def_id).map_or(false, |stab| stab.is_const_stable())
-        {
-            self.tcx
-                .sess
-                .struct_span_err(item.span, "trait implementations cannot be const stable yet")
-                .note("see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information")
-                .emit();
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {
-        // Nothing to do here.
-    }
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {
-        // Nothing to do here.
-    }
-    fn visit_foreign_item(&mut self, _foreign_item: &'tcx hir::ForeignItem<'tcx>) {
-        // Nothing to do here.
-    }
-}
-
 fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
     let mut index = Index {
         stab_map: Default::default(),
@@ -748,16 +709,23 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref t), self_ty, items, .. }) => {
-                if self.tcx.features().staged_api {
+            hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(ref t),
+                self_ty,
+                items,
+                constness,
+                ..
+            }) => {
+                let features = self.tcx.features();
+                if features.staged_api {
+                    let attrs = self.tcx.hir().attrs(item.hir_id());
+                    let (stab, const_stab) = attr::find_stability(&self.tcx.sess, attrs, item.span);
+
                     // If this impl block has an #[unstable] attribute, give an
                     // error if all involved types and traits are stable, because
                     // it will have no effect.
                     // See: https://github.com/rust-lang/rust/issues/55436
-                    let attrs = self.tcx.hir().attrs(item.hir_id());
-                    if let (Some((Stability { level: attr::Unstable { .. }, .. }, span)), _) =
-                        attr::find_stability(&self.tcx.sess, attrs, item.span)
-                    {
+                    if let Some((Stability { level: attr::Unstable { .. }, .. }, span)) = stab {
                         let mut c = CheckTraitImplStable { tcx: self.tcx, fully_stable: true };
                         c.visit_ty(self_ty);
                         c.visit_trait_ref(t);
@@ -772,6 +740,19 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     .emit();}
                             );
                         }
+                    }
+
+                    // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
+                    // needs to have an error emitted.
+                    if features.const_trait_impl
+                        && constness == hir::Constness::Const
+                        && const_stab.map_or(false, |(stab, _)| stab.is_const_stable())
+                    {
+                        self.tcx
+                            .sess
+                            .struct_span_err(item.span, "trait implementations cannot be const stable yet")
+                            .note("see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information")
+                            .emit();
                     }
                 }
 
@@ -862,17 +843,6 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         }
         intravisit::walk_ty(self, t)
     }
-}
-
-pub fn check_const_impl_trait(tcx: TyCtxt<'_>) {
-    let features = tcx.features(); // FIXME How cheap is this call?
-    // Both feature gates have to be enabled for this check to have any effect.
-    if !features.staged_api || !features.const_trait_impl {
-        return;
-    }
-
-    let mut visitor = CheckStableConstImplTrait { tcx };
-    tcx.hir().visit_all_item_likes(&mut visitor);
 }
 
 /// Given the list of enabled features that were not language features (i.e., that

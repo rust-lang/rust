@@ -1,22 +1,11 @@
-error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:31:5
-   |
-LL |     Unstable::func();
-   |     ^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(unstable)]` to the crate attributes to enable
-
-error: trait implementations cannot be const stable yet
+error: implementation has missing const stability attribute
   --> $DIR/staged-api.rs:18:1
    |
-LL | / impl const MyTrait for Stable {
-LL | |
+LL | / impl const MyTrait for Foo {
 LL | |
 LL | |     fn func() {}
 LL | | }
    | |_^
-   |
-   = note: see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
