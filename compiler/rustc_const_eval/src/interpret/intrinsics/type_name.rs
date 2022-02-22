@@ -149,7 +149,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for AbsolutePathPrinter<'tcx> {
-    fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
+    fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>
