@@ -54,6 +54,7 @@ pub trait Policy {
 
     fn insert(map: &mut DynMap, key: Self::K, value: Self::V);
     fn get<'a>(map: &'a DynMap, key: &Self::K) -> Option<&'a Self::V>;
+    fn is_empty(map: &DynMap) -> bool;
 }
 
 impl<K: Hash + Eq + 'static, V: 'static> Policy for (K, V) {
@@ -64,6 +65,9 @@ impl<K: Hash + Eq + 'static, V: 'static> Policy for (K, V) {
     }
     fn get<'a>(map: &'a DynMap, key: &K) -> Option<&'a V> {
         map.map.get::<FxHashMap<K, V>>()?.get(key)
+    }
+    fn is_empty(map: &DynMap) -> bool {
+        map.map.get::<FxHashMap<K, V>>().map_or(true, |it| it.is_empty())
     }
 }
 
@@ -89,6 +93,10 @@ impl<P: Policy> KeyMap<Key<P::K, P::V, P>> {
     }
     pub fn get(&self, key: &P::K) -> Option<&P::V> {
         P::get(&self.map, key)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        P::is_empty(&self.map)
     }
 }
 

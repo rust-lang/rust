@@ -705,6 +705,15 @@ impl ast::RangePat {
 }
 
 impl ast::TokenTree {
+    pub fn token_trees_and_tokens(
+        &self,
+    ) -> impl Iterator<Item = NodeOrToken<ast::TokenTree, SyntaxToken>> {
+        self.syntax().children_with_tokens().filter_map(|not| match not {
+            NodeOrToken::Node(node) => ast::TokenTree::cast(node).map(NodeOrToken::Node),
+            NodeOrToken::Token(t) => Some(NodeOrToken::Token(t)),
+        })
+    }
+
     pub fn left_delimiter_token(&self) -> Option<SyntaxToken> {
         self.syntax()
             .first_child_or_token()?

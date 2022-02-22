@@ -1792,6 +1792,10 @@ impl MacroDef {
         }
     }
 
+    pub fn is_builtin_derive(&self) -> bool {
+        matches!(self.id.kind, MacroDefKind::BuiltInAttr(exp, _) if exp.is_derive())
+    }
+
     pub fn is_attr(&self) -> bool {
         matches!(self.kind(), MacroKind::Attr)
     }
@@ -2426,24 +2430,7 @@ impl Impl {
 
     pub fn is_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
-        let item = src.file_id.is_builtin_derive(db.upcast())?;
-        let hygenic = hir_expand::hygiene::Hygiene::new(db.upcast(), item.file_id);
-
-        // FIXME: handle `cfg_attr`
-        let attr = item
-            .value
-            .attrs()
-            .filter_map(|it| {
-                let path = ModPath::from_src(db.upcast(), it.path()?, &hygenic)?;
-                if path.as_ident()?.to_smol_str() == "derive" {
-                    Some(it)
-                } else {
-                    None
-                }
-            })
-            .last()?;
-
-        Some(item.with_value(attr))
+        src.file_id.is_builtin_derive(db.upcast())
     }
 }
 

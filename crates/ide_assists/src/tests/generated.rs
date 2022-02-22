@@ -1766,6 +1766,7 @@ fn doctest_replace_derive_with_manual_impl() {
     check_doc_test(
         "replace_derive_with_manual_impl",
         r#####"
+//- minicore: derive
 trait Debug { fn fmt(&self, f: &mut Formatter) -> Result<()>; }
 #[derive(Deb$0ug, Display)]
 struct S;

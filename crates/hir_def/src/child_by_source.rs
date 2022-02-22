@@ -116,11 +116,11 @@ impl ChildBySource for ItemScope {
         self.derive_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db.upcast());
-                calls.for_each(|(attr_id, calls)| {
+                calls.for_each(|(attr_id, call_id, calls)| {
                     if let Some(Either::Left(attr)) =
                         adt.doc_comments_and_attrs().nth(attr_id.ast_index as usize)
                     {
-                        res[keys::DERIVE_MACRO_CALL].insert(attr, (attr_id, calls.into()));
+                        res[keys::DERIVE_MACRO_CALL].insert(attr, (attr_id, call_id, calls.into()));
                     }
                 });
             },

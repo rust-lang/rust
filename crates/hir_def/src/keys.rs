@@ -34,7 +34,8 @@ pub const CONST_PARAM: Key<ast::ConstParam, ConstParamId> = Key::new();
 
 pub const MACRO: Key<ast::Macro, MacroDefId> = Key::new();
 pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
-pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, Box<[Option<MacroCallId>]>)> = Key::new();
+pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, MacroCallId, Box<[Option<MacroCallId>]>)> =
+    Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.
@@ -59,5 +60,8 @@ impl<AST: AstNode + 'static, ID: 'static> Policy for AstPtrPolicy<AST, ID> {
     fn get<'a>(map: &'a DynMap, key: &AST) -> Option<&'a ID> {
         let key = AstPtr::new(key);
         map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(&key)
+    }
+    fn is_empty(map: &DynMap) -> bool {
+        map.map.get::<FxHashMap<AstPtr<AST>, ID>>().map_or(true, |it| it.is_empty())
     }
 }

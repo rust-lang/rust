@@ -9,15 +9,14 @@ pub mod node_ext;
 pub mod rust_doc;
 pub mod format_string;
 
-use std::{collections::VecDeque, iter};
+use std::collections::VecDeque;
 
 use base_db::FileId;
-use hir::{ItemInNs, MacroDef, ModuleDef, Name, PathResolution, Semantics};
+use hir::{ItemInNs, MacroDef, ModuleDef, Name, Semantics};
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, HasLoopBody},
-    AstNode, AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent,
-    T,
+    AstNode, AstToken, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
 };
 
 use crate::{defs::Definition, RootDatabase};
@@ -30,49 +29,6 @@ pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
         ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
         ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).name(db),
     }
-}
-
-/// Parses and returns the derive path at the cursor position in the given attribute, if it is a derive.
-/// This special case is required because the derive macro is a compiler builtin that discards the input derives.
-///
-/// The returned path is synthesized from TokenTree tokens and as such cannot be used with the [`Semantics`].
-pub fn get_path_in_derive_attr(
-    sema: &hir::Semantics<RootDatabase>,
-    attr: &ast::Attr,
-    cursor: &ast::Ident,
-) -> Option<ast::Path> {
-    let path = attr.path()?;
-    let tt = attr.token_tree()?;
-    if !tt.syntax().text_range().contains_range(cursor.syntax().text_range()) {
-        return None;
-    }
-    let scope = sema.scope(attr.syntax());
-    let resolved_attr = sema.resolve_path(&path)?;
-    let derive = FamousDefs(sema, scope.krate()).core_macros_builtin_derive()?;
-    if PathResolution::Macro(derive) != resolved_attr {
-        return None;
-    }
-    get_path_at_cursor_in_tt(cursor)
-}
-
-/// Parses the path the identifier is part of inside a token tree.
-pub fn get_path_at_cursor_in_tt(cursor: &ast::Ident) -> Option<ast::Path> {
-    let cursor = cursor.syntax();
-    let first = cursor
-        .siblings_with_tokens(Direction::Prev)
-        .filter_map(SyntaxElement::into_token)
-        .take_while(|tok| tok.kind() != T!['('] && tok.kind() != T![,])
-        .last()?;
-    let path_tokens = first
-        .siblings_with_tokens(Direction::Next)
-        .filter_map(SyntaxElement::into_token)
-        .take_while(|tok| tok != cursor);
-
-    syntax::hacks::parse_expr_from_str(&path_tokens.chain(iter::once(cursor.clone())).join(""))
-        .and_then(|expr| match expr {
-            ast::Expr::PathExpr(it) => it.path(),
-            _ => None,
-        })
 }
 
 /// Picks the token with the highest rank returned by the passed in function.

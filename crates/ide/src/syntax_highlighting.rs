@@ -237,6 +237,20 @@ fn traverse(
                     continue;
                 }
                 Some(item) if sema.is_attr_macro_call(&item) => current_attr_call = Some(item),
+                Some(item) if current_attr_call.is_none() => {
+                    let adt = match item {
+                        ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                        ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                        ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                        _ => None,
+                    };
+                    match adt {
+                        Some(adt) if sema.is_derive_annotated(&adt) => {
+                            current_attr_call = Some(adt.into());
+                        }
+                        _ => (),
+                    }
+                }
                 None if ast::Attr::can_cast(node.kind()) => inside_attribute = true,
                 _ => (),
             },
@@ -361,7 +375,7 @@ fn traverse(
                 syntactic_name_ref_highlighting,
                 node,
             ),
-            NodeOrToken::Token(token) => highlight::token(sema, krate, token).zip(Some(None)),
+            NodeOrToken::Token(token) => highlight::token(sema, token).zip(Some(None)),
         };
         if let Some((mut highlight, binding_hash)) = element {
             if inside_attribute {

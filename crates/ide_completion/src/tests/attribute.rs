@@ -736,6 +736,26 @@ mod derive {
     }
 
     #[test]
+    fn derive_no_attrs() {
+        check_derive(
+            r#"
+//- proc_macros: identity
+//- minicore: derive
+#[derive($0)] struct Test;
+"#,
+            expect![[r#""#]],
+        );
+        check_derive(
+            r#"
+//- proc_macros: identity
+//- minicore: derive
+#[derive(i$0)] struct Test;
+"#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
     fn derive_flyimport() {
         check_derive(
             r#"

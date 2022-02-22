@@ -249,9 +249,14 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         item: InFile<&ast::Adt>,
         src: InFile<ast::Attr>,
-    ) -> Option<(AttrId, &[Option<MacroCallId>])> {
+    ) -> Option<(AttrId, MacroCallId, &[Option<MacroCallId>])> {
         let map = self.dyn_map(item)?;
-        map[keys::DERIVE_MACRO_CALL].get(&src.value).map(|(id, ids)| (*id, &**ids))
+        map[keys::DERIVE_MACRO_CALL]
+            .get(&src.value)
+            .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
+    }
+    pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
+        self.dyn_map(adt).as_ref().map_or(false, |map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(

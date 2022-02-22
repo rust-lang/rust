@@ -690,9 +690,9 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
         };
 
         macro_call_as_call_id(
+            db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
             expands_to,
-            db,
             krate,
             resolver,
             error_sink,
@@ -714,9 +714,9 @@ impl<T: ast::AstNode> AstIdWithPath<T> {
 }
 
 fn macro_call_as_call_id(
+    db: &dyn db::DefDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
     expand_to: ExpandTo,
-    db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     error_sink: &mut dyn FnMut(ExpandError),
@@ -739,10 +739,10 @@ fn macro_call_as_call_id(
 }
 
 fn derive_macro_as_call_id(
+    db: &dyn db::DefDatabase,
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr: AttrId,
     derive_pos: u32,
-    db: &dyn db::DefDatabase,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
 ) -> Result<MacroCallId, UnresolvedMacro> {
@@ -761,11 +761,12 @@ fn derive_macro_as_call_id(
 }
 
 fn attr_macro_as_call_id(
+    db: &dyn db::DefDatabase,
     item_attr: &AstIdWithPath<ast::Item>,
     macro_attr: &Attr,
-    db: &dyn db::DefDatabase,
     krate: CrateId,
     def: MacroDefId,
+    is_derive: bool,
 ) -> MacroCallId {
     let mut arg = match macro_attr.input.as_deref() {
         Some(attr::AttrInput::TokenTree(tt, map)) => (tt.clone(), map.clone()),
@@ -782,6 +783,7 @@ fn attr_macro_as_call_id(
             ast_id: item_attr.ast_id,
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id.ast_index,
+            is_derive,
         },
     );
     res

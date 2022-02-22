@@ -166,6 +166,8 @@ pub enum MacroCallKind {
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
         invoc_attr_index: u32,
+        /// Whether this attribute is the `#[derive]` attribute.
+        is_derive: bool,
     },
 }
 
@@ -218,9 +220,18 @@ impl HirFileId {
 
                 let arg_tt = loc.kind.arg(db)?;
 
+                let macro_def = db.macro_def(loc.def).ok()?;
+                let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
+                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
+
                 let def = loc.def.ast_id().left().and_then(|id| {
                     let def_tt = match id.to_node(db) {
                         ast::Macro::MacroRules(mac) => mac.token_tree()?,
+                        ast::Macro::MacroDef(_)
+                            if matches!(*macro_def, TokenExpander::BuiltinAttr(_)) =>
+                        {
+                            return None
+                        }
                         ast::Macro::MacroDef(mac) => mac.body()?,
                     };
                     Some(InFile::new(id.file_id, def_tt))
@@ -238,10 +249,6 @@ impl HirFileId {
                     _ => None,
                 });
 
-                let macro_def = db.macro_def(loc.def).ok()?;
-                let (parse, exp_map) = db.parse_macro_expansion(macro_file).value?;
-                let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
-
                 Some(ExpansionInfo {
                     expanded: InFile::new(self, parse.syntax_node()),
                     arg: InFile::new(loc.kind.file_id(), arg_tt),
@@ -256,16 +263,16 @@ impl HirFileId {
     }
 
     /// Indicate it is macro file generated for builtin derive
-    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Item>> {
+    pub fn is_builtin_derive(&self, db: &dyn db::AstDatabase) -> Option<InFile<ast::Attr>> {
         match self.0 {
             HirFileIdRepr::FileId(_) => None,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                let item = match loc.def.kind {
+                let attr = match loc.def.kind {
                     MacroDefKind::BuiltInDerive(..) => loc.kind.to_node(db),
                     _ => return None,
                 };
-                Some(item.with_value(ast::Item::cast(item.value.clone())?))
+                Some(attr.with_value(ast::Attr::cast(attr.value.clone())?))
             }
         }
     }
@@ -291,12 +298,23 @@ impl HirFileId {
         }
     }
 
-    /// Return whether this file is an include macro
+    /// Return whether this file is an attr macro
     pub fn is_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
         match self.0 {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 matches!(loc.kind, MacroCallKind::Attr { .. })
+            }
+            _ => false,
+        }
+    }
+
+    /// Return whether this file is the pseudo expansion of the derive attribute.
+    pub fn is_derive_attr_macro(&self, db: &dyn db::AstDatabase) -> bool {
+        match self.0 {
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+                matches!(loc.kind, MacroCallKind::Attr { is_derive: true, .. })
             }
             _ => false,
         }
@@ -366,8 +384,29 @@ impl MacroCallKind {
             MacroCallKind::FnLike { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
             }
-            MacroCallKind::Derive { ast_id, .. } => {
-                ast_id.with_value(ast_id.to_node(db).syntax().clone())
+            MacroCallKind::Derive { ast_id, derive_attr_index, .. } => {
+                // FIXME: handle `cfg_attr`
+                ast_id.with_value(ast_id.to_node(db)).map(|it| {
+                    it.doc_comments_and_attrs()
+                        .nth(*derive_attr_index as usize)
+                        .and_then(|it| match it {
+                            Either::Left(attr) => Some(attr.syntax().clone()),
+                            Either::Right(_) => None,
+                        })
+                        .unwrap_or_else(|| it.syntax().clone())
+                })
+            }
+            MacroCallKind::Attr { ast_id, is_derive: true, invoc_attr_index, .. } => {
+                // FIXME: handle `cfg_attr`
+                ast_id.with_value(ast_id.to_node(db)).map(|it| {
+                    it.doc_comments_and_attrs()
+                        .nth(*invoc_attr_index as usize)
+                        .and_then(|it| match it {
+                            Either::Left(attr) => Some(attr.syntax().clone()),
+                            Either::Right(_) => None,
+                        })
+                        .unwrap_or_else(|| it.syntax().clone())
+                })
             }
             MacroCallKind::Attr { ast_id, .. } => {
                 ast_id.with_value(ast_id.to_node(db).syntax().clone())
@@ -431,6 +470,7 @@ impl MacroCallKind {
         match self {
             MacroCallKind::FnLike { expand_to, .. } => *expand_to,
             MacroCallKind::Derive { .. } => ExpandTo::Items,
+            MacroCallKind::Attr { is_derive: true, .. } => ExpandTo::Statements,
             MacroCallKind::Attr { .. } => ExpandTo::Items, // is this always correct?
         }
     }
@@ -497,7 +537,7 @@ impl ExpansionInfo {
 
             let token_range = token.value.text_range();
             match &loc.kind {
-                MacroCallKind::Attr { attr_args, invoc_attr_index, .. } => {
+                MacroCallKind::Attr { attr_args, invoc_attr_index, is_derive, .. } => {
                     let attr = item
                         .doc_comments_and_attrs()
                         .nth(*invoc_attr_index as usize)
@@ -511,9 +551,13 @@ impl ExpansionInfo {
                             let relative_range =
                                 token.value.text_range().checked_sub(attr_input_start)?;
                             // shift by the item's tree's max id
-                            let token_id = self
-                                .macro_arg_shift
-                                .shift(attr_args.1.token_by_range(relative_range)?);
+                            let token_id = attr_args.1.token_by_range(relative_range)?;
+                            let token_id = if *is_derive {
+                                // we do not shift for `#[derive]`, as we only need to downmap the derive attribute tokens
+                                token_id
+                            } else {
+                                self.macro_arg_shift.shift(token_id)
+                            };
                             Some(token_id)
                         }
                         _ => None,
@@ -561,6 +605,9 @@ impl ExpansionInfo {
 
         // Attributes are a bit special for us, they have two inputs, the input tokentree and the annotated item.
         let (token_map, tt) = match &loc.kind {
+            MacroCallKind::Attr { attr_args, is_derive: true, .. } => {
+                (&attr_args.1, self.attr_input_or_mac_def.clone()?.syntax().cloned())
+            }
             MacroCallKind::Attr { attr_args, .. } => {
                 // try unshifting the the token id, if unshifting fails, the token resides in the non-item attribute input
                 // note that the `TokenExpander::map_id_up` earlier only unshifts for declarative macros, so we don't double unshift with this
@@ -713,6 +760,13 @@ impl<'a> InFile<&'a SyntaxNode> {
             }),
             _ => None,
         }
+    }
+}
+
+impl InFile<SyntaxToken> {
+    pub fn upmap(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxToken>> {
+        let expansion = self.file_id.expansion_info(db)?;
+        expansion.map_token_up(db, self.as_ref()).map(|(it, _)| it)
     }
 }
 
