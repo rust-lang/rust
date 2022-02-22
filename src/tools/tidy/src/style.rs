@@ -395,6 +395,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 );
             };
             suppressible_tidy_err!(err, skip_file_length, "");
+        } else if lines > (LINES * 7) / 10 {
+            // Just set it to something that doesn't trigger the "unneccessarily ignored" warning.
+            skip_file_length = Directive::Ignore(true);
         }
 
         if let Directive::Ignore(false) = skip_cr {
