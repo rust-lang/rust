@@ -10,5 +10,10 @@ fn main() {
         return;
     };
 
+    let Some(_): Option<u32> = Some(Default::default()) else {
+        let x = 1; //~ ERROR unused variable: `x`
+        return;
+    };
+
     let x = 1; //~ ERROR unused variable: `x`
 }
