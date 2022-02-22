@@ -11,16 +11,14 @@ use ide_db::{
     search::FileReference,
     RootDatabase,
 };
-use itertools::Itertools;
+use itertools::{Itertools, Position};
 use rustc_hash::FxHashSet;
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
         HasName, HasVisibility,
     },
-    match_ast,
-    ted::{self, Position},
-    SyntaxElement,
+    match_ast, ted, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
 };
@@ -304,11 +302,11 @@ fn create_struct_def(
             _ => tok,
         })
         .collect();
-    ted::insert_all(Position::first_child_of(strukt.syntax()), variant_attrs);
+    ted::insert_all(ted::Position::first_child_of(strukt.syntax()), variant_attrs);
 
     // copy attributes from enum
     ted::insert_all(
-        Position::first_child_of(strukt.syntax()),
+        ted::Position::first_child_of(strukt.syntax()),
         enum_.attrs().map(|it| it.syntax().clone_for_update().into()).collect(),
     );
     strukt
@@ -319,36 +317,33 @@ fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList
     let ty = generics
         .filter(|generics| generics.generic_params().count() > 0)
         .map(|generics| {
-            let generic_str = generics
-                .generic_params()
-                .with_position()
-                .map(|p| match p {
-                    itertools::Position::First(p) | itertools::Position::Middle(p) => (p, true),
-                    itertools::Position::Last(p) | itertools::Position::Only(p) => (p, false),
-                })
-                .fold(String::with_capacity(8), |mut s, (p, more)| {
-                    match p {
-                        ast::GenericParam::ConstParam(konst) => {
-                            if let Some(name) = konst.name() {
-                                s.push_str(name.text().as_str());
-                            }
-                        }
-                        ast::GenericParam::LifetimeParam(lt) => {
-                            if let Some(lt) = lt.lifetime() {
-                                s.push_str(lt.text().as_str());
-                            }
-                        }
-                        ast::GenericParam::TypeParam(ty) => {
-                            if let Some(name) = ty.name() {
-                                s.push_str(name.text().as_str());
-                            }
+            let mut generic_str = String::with_capacity(8);
+
+            for (p, more) in generics.generic_params().with_position().map(|p| match p {
+                Position::First(p) | Position::Middle(p) => (p, true),
+                Position::Last(p) | Position::Only(p) => (p, false),
+            }) {
+                match p {
+                    ast::GenericParam::ConstParam(konst) => {
+                        if let Some(name) = konst.name() {
+                            generic_str.push_str(name.text().as_str());
                         }
                     }
-                    if more {
-                        s.push_str(", ");
+                    ast::GenericParam::LifetimeParam(lt) => {
+                        if let Some(lt) = lt.lifetime() {
+                            generic_str.push_str(lt.text().as_str());
+                        }
                     }
-                    s
-                });
+                    ast::GenericParam::TypeParam(ty) => {
+                        if let Some(name) = ty.name() {
+                            generic_str.push_str(name.text().as_str());
+                        }
+                    }
+                }
+                if more {
+                    generic_str.push_str(", ");
+                }
+            }
 
             make::ty(&format!("{}<{}>", &name.text(), &generic_str))
         })
