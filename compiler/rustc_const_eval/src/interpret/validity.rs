@@ -503,7 +503,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     value.to_bool(),
                     self.path,
                     err_ub!(InvalidBool(..)) | err_ub!(InvalidUninitBytes(None)) =>
-                        { "{}", value } expected { "a boolean" },
+                        { "{:x}", value } expected { "a boolean" },
                 );
                 Ok(true)
             }
@@ -513,7 +513,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     value.to_char(),
                     self.path,
                     err_ub!(InvalidChar(..)) | err_ub!(InvalidUninitBytes(None)) =>
-                        { "{}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
+                        { "{:x}", value } expected { "a valid unicode scalar value (in `0..=0x10FFFF` but not in `0xD800..=0xDFFF`)" },
                 );
                 Ok(true)
             }
@@ -526,7 +526,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let is_bits = value.check_init().map_or(false, |v| v.try_to_int().is_ok());
                     if !is_bits {
                         throw_validation_failure!(self.path,
-                            { "{}", value } expected { "initialized plain (non-pointer) bytes" }
+                            { "{:x}", value } expected { "initialized plain (non-pointer) bytes" }
                         )
                     }
                 }
@@ -580,7 +580,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_ub!(DanglingIntPointer(..)) |
                     err_ub!(InvalidFunctionPointer(..)) |
                     err_ub!(InvalidUninitBytes(None)) =>
-                        { "{}", value } expected { "a function pointer" },
+                        { "{:x}", value } expected { "a function pointer" },
                 );
                 // FIXME: Check if the signature matches
                 Ok(true)
@@ -632,7 +632,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let value = try_validation!(
             value.check_init(),
             self.path,
-            err_ub!(InvalidUninitBytes(None)) => { "{}", value }
+            err_ub!(InvalidUninitBytes(None)) => { "{:x}", value }
                 expected { "something {}", wrapping_range_format(valid_range, max_value) },
         );
         let bits = match value.try_to_int() {

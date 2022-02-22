@@ -1122,7 +1122,6 @@ symbols! {
         repr_packed,
         repr_simd,
         repr_transparent,
-        reserved_r9: "reserved-r9",
         residual,
         result,
         rhs,

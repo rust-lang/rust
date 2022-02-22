@@ -1,4 +1,5 @@
 use rustc_ast::InlineAsmTemplatePiece;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -138,7 +139,7 @@ impl<'tcx> ExprVisitor<'tcx> {
         template: &[InlineAsmTemplatePiece],
         is_input: bool,
         tied_input: Option<(&hir::Expr<'tcx>, Option<InlineAsmType>)>,
-        target_features: &[Symbol],
+        target_features: &FxHashSet<Symbol>,
     ) -> Option<InlineAsmType> {
         // Check the type against the allowed types for inline asm.
         let ty = self.typeck_results.expr_ty_adjusted(expr);
@@ -285,9 +286,7 @@ impl<'tcx> ExprVisitor<'tcx> {
         // (!). In that case we still need the earlier check to verify that the
         // register class is usable at all.
         if let Some(feature) = feature {
-            if !self.tcx.sess.target_features.contains(&feature)
-                && !target_features.contains(&feature)
-            {
+            if !target_features.contains(&feature) {
                 let msg = &format!("`{}` target feature is not enabled", feature);
                 let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
                 err.note(&format!(
@@ -347,7 +346,8 @@ impl<'tcx> ExprVisitor<'tcx> {
         let hir = self.tcx.hir();
         let enclosing_id = hir.enclosing_body_owner(hir_id);
         let enclosing_def_id = hir.local_def_id(enclosing_id).to_def_id();
-        let attrs = self.tcx.codegen_fn_attrs(enclosing_def_id);
+        let target_features = self.tcx.asm_target_features(enclosing_def_id);
+        let asm_arch = self.tcx.sess.asm_arch.unwrap();
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
             // Validate register classes against currently enabled target
             // features. We check that at least one type is available for
@@ -360,16 +360,29 @@ impl<'tcx> ExprVisitor<'tcx> {
             // Note that this is only possible for explicit register
             // operands, which cannot be used in the asm string.
             if let Some(reg) = op.reg() {
+                // Some explicit registers cannot be used depending on the
+                // target. Reject those here.
+                if let InlineAsmRegOrRegClass::Reg(reg) = reg {
+                    if let Err(msg) = reg.validate(
+                        asm_arch,
+                        self.tcx.sess.relocation_model(),
+                        &target_features,
+                        &self.tcx.sess.target,
+                        op.is_clobber(),
+                    ) {
+                        let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
+                        self.tcx.sess.struct_span_err(*op_sp, &msg).emit();
+                        continue;
+                    }
+                }
+
                 if !op.is_clobber() {
                     let mut missing_required_features = vec![];
                     let reg_class = reg.reg_class();
-                    for &(_, feature) in reg_class.supported_types(self.tcx.sess.asm_arch.unwrap())
-                    {
+                    for &(_, feature) in reg_class.supported_types(asm_arch) {
                         match feature {
                             Some(feature) => {
-                                if self.tcx.sess.target_features.contains(&feature)
-                                    || attrs.target_features.contains(&feature)
-                                {
+                                if target_features.contains(&feature) {
                                     missing_required_features.clear();
                                     break;
                                 } else {
@@ -425,7 +438,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                         asm.template,
                         true,
                         None,
-                        &attrs.target_features,
+                        &target_features,
                     );
                 }
                 hir::InlineAsmOperand::Out { reg, late: _, ref expr } => {
@@ -437,7 +450,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                             asm.template,
                             false,
                             None,
-                            &attrs.target_features,
+                            &target_features,
                         );
                     }
                 }
@@ -449,7 +462,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                         asm.template,
                         false,
                         None,
-                        &attrs.target_features,
+                        &target_features,
                     );
                 }
                 hir::InlineAsmOperand::SplitInOut { reg, late: _, ref in_expr, ref out_expr } => {
@@ -460,7 +473,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                         asm.template,
                         true,
                         None,
-                        &attrs.target_features,
+                        &target_features,
                     );
                     if let Some(out_expr) = out_expr {
                         self.check_asm_operand_type(
@@ -470,7 +483,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                             asm.template,
                             false,
                             Some((in_expr, in_ty)),
-                            &attrs.target_features,
+                            &target_features,
                         );
                     }
                 }
