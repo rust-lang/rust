@@ -129,7 +129,7 @@ mod cross_crate {
             { .. } = x;
 
         let x = Deprecated2(1, 2, 3);
-        //~^ ERROR use of deprecated struct
+        //~^ ERROR use of deprecated tuple struct
 
         let _ = x.0;
         //~^ ERROR use of deprecated field
@@ -139,7 +139,7 @@ mod cross_crate {
         //~^ ERROR use of deprecated field
 
         let Deprecated2
-        //~^ ERROR use of deprecated struct
+        //~^ ERROR use of deprecated tuple struct
             (_,
              //~^ ERROR use of deprecated field
              _,
@@ -148,7 +148,7 @@ mod cross_crate {
              //~^ ERROR use of deprecated field
             = x;
         let Deprecated2
-        //~^ ERROR use of deprecated struct
+        //~^ ERROR use of deprecated tuple struct
             // the patterns are all fine:
             (..) = x;
     }
