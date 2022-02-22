@@ -130,6 +130,15 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
     }
     debug!("running {:?}", testpaths.file.display());
     let mut props = TestProps::from_file(&testpaths.file, revision, &config);
+
+    // Currently, incremental is soft disabled unless this environment
+    // variable is set. A bunch of our tests assume it's enabled, though - so
+    // just enable it for our tests.
+    //
+    // This is deemed preferable to ignoring those tests; we still want to test
+    // incremental somewhat, as users can opt in to it.
+    props.rustc_env.push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
+
     if props.incremental {
         props.incremental_dir = Some(incremental_dir(&config, testpaths));
     }
@@ -146,6 +155,12 @@ pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
         assert!(!props.revisions.is_empty(), "Incremental tests require revisions.");
         for revision in &props.revisions {
             let mut revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
+
+            // See above - need to enable it explicitly for now.
+            revision_props
+                .rustc_env
+                .push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
+
             revision_props.incremental_dir = props.incremental_dir.clone();
             let rev_cx = TestCx {
                 config: &config,
@@ -1630,7 +1645,17 @@ impl<'test> TestCx<'test> {
     /// Returns whether or not it is a dylib.
     fn build_auxiliary(&self, source_path: &str, aux_dir: &Path) -> bool {
         let aux_testpaths = self.compute_aux_test_paths(source_path);
-        let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+        let mut aux_props =
+            self.props.from_aux_file(&aux_testpaths.file, self.revision, self.config);
+
+        // Currently, incremental is soft disabled unless this environment
+        // variable is set. A bunch of our tests assume it's enabled, though - so
+        // just enable it for our tests.
+        //
+        // This is deemed preferable to ignoring those tests; we still want to test
+        // incremental somewhat, as users can opt in to it.
+        aux_props.rustc_env.push((String::from("RUSTC_FORCE_INCREMENTAL"), String::from("1")));
+
         let aux_output = TargetLocation::ThisDirectory(self.aux_output_dir_name());
         let aux_cx = TestCx {
             config: self.config,

@@ -5,7 +5,9 @@
 # Just verify that we successfully run and produce dep graphs when requested.
 
 all:
-	RUST_DEP_GRAPH=$(TMPDIR)/dep-graph $(RUSTC) \
+	RUST_DEP_GRAPH=$(TMPDIR)/dep-graph \
+    RUSTC_FORCE_INCREMENTAL=1 \
+    $(RUSTC) \
         -Cincremental=$(TMPDIR)/incr \
         -Zquery-dep-graph -Zdump-dep-graph foo.rs
 	test -f $(TMPDIR)/dep-graph.txt
