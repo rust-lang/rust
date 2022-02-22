@@ -779,7 +779,12 @@ fn get_replacements_for_visibilty_change(
             ast::Item::Enum(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
-            ast::Item::Impl(it) => impls.push(it),
+            ast::Item::Impl(it) => {
+                //Associated item's visibility should not be changed
+                if let None = it.for_token() {
+                    impls.push(it);
+                }
+            }
             ast::Item::MacroRules(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -825,11 +830,7 @@ fn add_change_vis(
     vis: Option<ast::Visibility>,
     node_or_token_opt: Option<syntax::SyntaxElement>,
 ) -> Option<()> {
-    if let Some(vis) = vis {
-        if vis.syntax().text() == "pub" {
-            ted::replace(vis.syntax(), make::visibility_pub_crate().syntax().clone_for_update());
-        }
-    } else {
+    if let None = vis {
         if let Some(node_or_token) = node_or_token_opt {
             let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
             if let Some(node) = node_or_token.as_node() {
@@ -962,8 +963,8 @@ mod modname {
         pub(crate) inner: SomeType,
     }
 
-    pub(crate) struct PrivateStruct1 {
-        pub(crate) inner: i32,
+    pub struct PrivateStruct1 {
+        pub inner: i32,
     }
 
     impl PrivateStruct {
@@ -1033,7 +1034,7 @@ mod modname {
     pub(crate) struct A {}
 
     impl A {
-        pub(crate) fn new_a() -> i32 {
+        pub fn new_a() -> i32 {
             2
         }
     }
@@ -1148,7 +1149,7 @@ mod modname {
                 pub struct PrivateStruct;
 
 $0struct Strukt {
-    field: PrivateStruct,
+   field: PrivateStruct,
 }$0
 
                 struct Strukt1 {
@@ -1164,7 +1165,7 @@ mod modname {
     use super::PrivateStruct;
 
     pub(crate) struct Strukt {
-        pub(crate) field: PrivateStruct,
+       pub(crate) field: PrivateStruct,
     }
 }
 
@@ -1203,7 +1204,7 @@ mod modname {
     use super::A;
 
     impl A {
-        pub(crate) fn new_a() -> i32 {
+        pub fn new_a() -> i32 {
             2
         }
     }
@@ -1251,7 +1252,7 @@ mod modname {
     use super::super::foo::A;
 
     impl A {
-        pub(crate) fn new_a() -> i32 {
+        pub fn new_a() -> i32 {
             2
         }
     }
@@ -1375,6 +1376,41 @@ mod modname {
                     }
                 }
             }
+            ",
+        )
+    }
+
+    #[test]
+    fn test_do_not_apply_visibility_modifier_to_trait_impl_items() {
+        check_assist(
+            extract_module,
+            r"
+            trait ATrait {
+                fn function();
+            }
+
+            struct A {}
+
+$0impl ATrait for A {
+    fn function() {}
+}$0
+            ",
+            r"
+            trait ATrait {
+                fn function();
+            }
+
+            struct A {}
+
+mod modname {
+    use super::A;
+
+    use super::ATrait;
+
+    impl ATrait for A {
+        fn function() {}
+    }
+}
             ",
         )
     }
