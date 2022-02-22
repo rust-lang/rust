@@ -81,19 +81,12 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
         let variants = enum_def.variants(ctx.db());
 
-        let is_non_exhaustive = match enum_def {
-            ExtendedEnum::Enum(e) => e.attrs(ctx.db()).by_key("non_exhaustive").exists(),
-            _ => false,
-        };
+        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db());
 
         let missing_pats = variants
             .into_iter()
             .filter_map(|variant| {
-                let is_hidden = match variant {
-                    ExtendedVariant::Variant(var) => var.attrs(ctx.db()).has_doc_hidden(),
-                    _ => false,
-                };
-                Some((build_pat(ctx.db(), module, variant)?, is_hidden))
+                Some((build_pat(ctx.db(), module, variant)?, variant.has_doc_hidden(ctx.db())))
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
@@ -108,10 +101,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         };
         (missing_pats.peekable(), is_non_exhaustive)
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
-        let is_non_exhaustive = enum_defs.iter().any(|enum_def| match enum_def {
-            ExtendedEnum::Enum(e) => e.attrs(ctx.db()).by_key("non_exhaustive").exists(),
-            _ => false,
-        });
+        let is_non_exhaustive =
+            enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db()));
 
         let mut n_arms = 1;
         let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
@@ -136,10 +127,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
             .multi_cartesian_product()
             .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
             .map(|variants| {
-                let is_hidden = variants.iter().any(|variant| match variant {
-                    ExtendedVariant::Variant(var) => var.attrs(ctx.db()).has_doc_hidden(),
-                    _ => false,
-                });
+                let is_hidden = variants.iter().any(|variant| variant.has_doc_hidden(ctx.db()));
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
 
@@ -293,11 +281,27 @@ enum ExtendedVariant {
     Variant(hir::Variant),
 }
 
+impl ExtendedVariant {
+    fn has_doc_hidden(self, db: &RootDatabase) -> bool {
+        match self {
+            ExtendedVariant::Variant(var) => var.attrs(db).has_doc_hidden(),
+            _ => false,
+        }
+    }
+}
+
 fn lift_enum(e: hir::Enum) -> ExtendedEnum {
     ExtendedEnum::Enum(e)
 }
 
 impl ExtendedEnum {
+    fn is_non_exhaustive(self, db: &RootDatabase) -> bool {
+        match self {
+            ExtendedEnum::Enum(e) => e.attrs(db).by_key("non_exhaustive").exists(),
+            _ => false,
+        }
+    }
+
     fn variants(self, db: &RootDatabase) -> Vec<ExtendedVariant> {
         match self {
             ExtendedEnum::Enum(e) => {
