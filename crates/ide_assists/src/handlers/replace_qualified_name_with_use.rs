@@ -84,7 +84,8 @@ pub(crate) fn replace_qualified_name_with_use(
                 ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
                 ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
             };
-            shorten_paths(scope.as_syntax_node(), &path.clone_for_update());
+            shorten_paths(scope.as_syntax_node(), &path);
+            let path = drop_generic_args(&path);
             // stick the found import in front of the to be replaced path
             let path = match path_to_qualifier.and_then(|it| mod_path_to_ast(&it).qualifier()) {
                 Some(qualifier) => make::path_concat(qualifier, path),
@@ -95,7 +96,17 @@ pub(crate) fn replace_qualified_name_with_use(
     )
 }
 
-/// Adds replacements to `re` that shorten `path` in all descendants of `node`.
+fn drop_generic_args(path: &ast::Path) -> ast::Path {
+    let path = path.clone_for_update();
+    if let Some(segment) = path.segment() {
+        if let Some(generic_args) = segment.generic_arg_list() {
+            ted::remove(generic_args.syntax());
+        }
+    }
+    path
+}
+
+/// Mutates `node` to shorten `path` in all descendants of `node`.
 fn shorten_paths(node: &SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
@@ -388,6 +399,37 @@ mod std {
 
 fn main() {
     drop(0);
+}
+",
+        );
+    }
+
+    #[test]
+    fn replace_should_drop_generic_args_in_use() {
+        check_assist(
+            replace_qualified_name_with_use,
+            r"
+mod std {
+    pub mod mem {
+        pub fn drop<T>(_: T) {}
+    }
+}
+
+fn main() {
+    std::mem::drop::<usize>$0(0);
+}
+",
+            r"
+use std::mem::drop;
+
+mod std {
+    pub mod mem {
+        pub fn drop<T>(_: T) {}
+    }
+}
+
+fn main() {
+    drop::<usize>(0);
 }
 ",
         );
