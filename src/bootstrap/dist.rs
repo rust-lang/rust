@@ -1023,6 +1023,12 @@ impl Step for Rls {
         let rls = builder
             .ensure(tool::Rls { compiler, target, extra_features: Vec::new() })
             .or_else(|| {
+                if builder.config.rustc_parallel {
+                    // FIXME: Disable RLS on parallel builds, cannot build due
+                    // to upstream trouble. See
+                    // https://github.com/racer-rust/racer/pull/1177.
+                    return None;
+                }
                 missing_tool("RLS", builder.build.config.missing_tools);
                 None
             })?;
