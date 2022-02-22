@@ -1482,7 +1482,7 @@ fn _assert_sync_and_send() {
 ///
 /// Parallelism is a resource. A given machine provides a certain capacity for
 /// parallelism, i.e., a bound on the number of computations it can perform
-/// simultaneously. This number often corresponds to the amount of CPUs or
+/// simultaneously. This number often corresponds to the amount of CPUs a
 /// computer has, but it may diverge in various cases.
 ///
 /// Host environments such as VMs or container orchestrators may want to
