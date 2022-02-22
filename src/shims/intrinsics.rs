@@ -324,7 +324,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_shl"
             | "simd_shr"
             | "simd_and"
-            | "simd_or" => {
+            | "simd_or"
+            | "simd_eq" => {
                 let &[ref left, ref right] = check_arg_count(args)?;
                 let (left, left_len) = this.operand_to_simd(left)?;
                 let (right, right_len) = this.operand_to_simd(right)?;
@@ -343,6 +344,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_shr" => mir::BinOp::Shr,
                     "simd_and" => mir::BinOp::BitAnd,
                     "simd_or" => mir::BinOp::BitOr,
+                    "simd_eq" => mir::BinOp::Eq,
                     _ => unreachable!(),
                 };
 
@@ -351,7 +353,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
                     let (val, overflowed, ty) = this.overflowing_binary_op(op, &left, &right)?;
-                    assert_eq!(ty, dest.layout.ty);
                     if matches!(op, mir::BinOp::Shl | mir::BinOp::Shr) {
                         // Shifts have extra UB as SIMD operations that the MIR binop does not have.
                         // See <https://github.com/rust-lang/rust/issues/91237>.
@@ -360,8 +361,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
                         }
                     }
-                    this.write_scalar(val, &dest.into())?;
+                    if matches!(op, mir::BinOp::Eq) {
+                        // Special handling for boolean-returning operations
+                        assert_eq!(ty, this.tcx.types.bool);
+                        let val = val.to_bool().unwrap();
+                        let val = if val { -1 } else { 0 }; // SIMD uses all-1 as pattern for "true"
+                        let val = Scalar::from_int(val, dest.layout.size);
+                        this.write_scalar(val, &dest.into())?;
+                    } else {
+                        assert_eq!(ty, dest.layout.ty);
+                        this.write_scalar(val, &dest.into())?;
+                    }
                 }
+            }
+            "simd_reduce_any" => {
+                let &[ref arg] = check_arg_count(args)?;
+                let (arg, arg_len) = this.operand_to_simd(arg)?;
+
+                let mut res = false; // the neutral element
+                for i in 0..arg_len {
+                    let op = this.read_immediate(&this.mplace_index(&arg, i)?.into())?;
+                    // We convert it to a *signed* integer and expect either 0 or -1 (the latter means all bits were set).
+                    let val = op.to_scalar()?.to_int(op.layout.size)?;
+                    let val = match val {
+                        0 => false,
+                        -1 => true,
+                        _ =>
+                            throw_ub_format!(
+                                "each element of a simd_reduce_any operand must be all-0-bits or all-1-bits"
+                            ),
+                    };
+                    res = res | val;
+                }
+
+                this.write_scalar(Scalar::from_bool(res), dest)?;
             }
 
             // Atomic operations
