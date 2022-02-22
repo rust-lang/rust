@@ -16,6 +16,7 @@ use rustc_target::abi::{Align, Size};
 
 use crate::*;
 use helpers::{check_arg_count, immty_from_int_checked, immty_from_uint_checked};
+use shims::os_str::os_str_to_bytes;
 use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
@@ -421,6 +422,22 @@ trait EvalContextExtPrivate<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, '
     }
 }
 
+/// An open directory, tracked by DirHandler.
+#[derive(Debug)]
+pub struct OpenDir {
+    /// The directory reader on the host.
+    read_dir: ReadDir,
+    /// The most recent entry returned by readdir()
+    entry: Pointer<Option<Tag>>,
+}
+
+impl OpenDir {
+    fn new(read_dir: ReadDir) -> Self {
+        // We rely on `free` being a NOP on null pointers.
+        Self { read_dir, entry: Pointer::null() }
+    }
+}
+
 #[derive(Debug)]
 pub struct DirHandler {
     /// Directory iterators used to emulate libc "directory streams", as used in opendir, readdir,
@@ -432,7 +449,7 @@ pub struct DirHandler {
     /// the corresponding ReadDir iterator from this map, and information from the next
     /// directory entry is returned. When closedir is called, the ReadDir iterator is removed from
     /// the map.
-    streams: FxHashMap<u64, ReadDir>,
+    streams: FxHashMap<u64, OpenDir>,
     /// ID number to be used by the next call to opendir
     next_id: u64,
 }
@@ -441,7 +458,7 @@ impl DirHandler {
     fn insert_new(&mut self, read_dir: ReadDir) -> u64 {
         let id = self.next_id;
         self.next_id += 1;
-        self.streams.try_insert(id, read_dir).unwrap();
+        self.streams.try_insert(id, OpenDir::new(read_dir)).unwrap();
         id
     }
 }
@@ -1207,32 +1224,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
     }
 
-    fn linux_readdir64_r(
-        &mut self,
-        dirp_op: &OpTy<'tcx, Tag>,
-        entry_op: &OpTy<'tcx, Tag>,
-        result_op: &OpTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, i32> {
+    fn linux_readdir64(&mut self, dirp_op: &OpTy<'tcx, Tag>) -> InterpResult<'tcx, Scalar<Tag>> {
         let this = self.eval_context_mut();
 
-        this.assert_target_os("linux", "readdir64_r");
+        this.assert_target_os("linux", "readdir64");
 
         let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
-            this.reject_in_isolation("`readdir64_r`", reject_with)?;
-            // Set error code as "EBADF" (bad fd)
-            return this.handle_not_found();
+            this.reject_in_isolation("`readdir`", reject_with)?;
+            let eacc = this.eval_libc("EBADF")?;
+            this.set_last_error(eacc)?;
+            return Ok(Scalar::null_ptr(this));
         }
 
-        let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
-            err_unsup_format!("the DIR pointer passed to readdir64_r did not come from opendir")
+        let open_dir = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
+            err_unsup_format!("the DIR pointer passed to readdir64 did not come from opendir")
         })?;
-        match dir_iter.next() {
+
+        let entry = match open_dir.read_dir.next() {
             Some(Ok(dir_entry)) => {
-                // Write into entry, write pointer to result, return 0 on success.
-                // The name is written with write_os_str_to_c_str, while the rest of the
+                // Write the directory entry into a newly allocated buffer.
+                // The name is written with write_bytes, while the rest of the
                 // dirent64 struct is written using write_packed_immediates.
 
                 // For reference:
@@ -1244,22 +1258,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 //     pub d_name: [c_char; 256],
                 // }
 
-                let entry_place = this.deref_operand(entry_op)?;
-                let name_place = this.mplace_field(&entry_place, 4)?;
+                let mut name = dir_entry.file_name(); // not a Path as there are no separators!
+                name.push("\0"); // Add a NUL terminator
+                let name_bytes = os_str_to_bytes(&name)?;
+                let name_len = u64::try_from(name_bytes.len()).unwrap();
 
-                let file_name = dir_entry.file_name(); // not a Path as there are no separators!
-                let (name_fits, _) = this.write_os_str_to_c_str(
-                    &file_name,
-                    name_place.ptr,
-                    name_place.layout.size.bytes(),
-                )?;
-                if !name_fits {
-                    throw_unsup_format!(
-                        "a directory entry had a name too large to fit in libc::dirent64"
-                    );
-                }
+                let dirent64_layout = this.libc_ty_layout("dirent64")?;
+                let d_name_offset = dirent64_layout.fields.offset(4 /* d_name */).bytes();
+                let size = d_name_offset.checked_add(name_len).unwrap();
 
-                let entry_place = this.deref_operand(entry_op)?;
+                let entry =
+                    this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::Runtime)?;
+
+                // FIXME: make use of dirent64_layout
                 let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
                 let off64_t_layout = this.libc_ty_layout("off64_t")?;
                 let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
@@ -1277,33 +1288,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let imms = [
                     immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
                     immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
-                    immty_from_uint_checked(0u128, c_ushort_layout)?, // d_reclen
+                    immty_from_uint_checked(size, c_ushort_layout)?, // d_reclen
                     immty_from_int_checked(file_type, c_uchar_layout)?, // d_type
                 ];
+                let entry_layout = this.layout_of(this.tcx.mk_array(this.tcx.types.u8, size))?;
+                let entry_place = MPlaceTy::from_aligned_ptr(entry, entry_layout);
                 this.write_packed_immediates(&entry_place, &imms)?;
 
-                let result_place = this.deref_operand(result_op)?;
-                this.write_scalar(this.read_scalar(entry_op)?, &result_place.into())?;
+                let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;
+                this.memory.write_bytes(name_ptr, name_bytes.iter().copied())?;
 
-                Ok(0)
+                entry
             }
             None => {
-                // end of stream: return 0, assign *result=NULL
-                this.write_null(&this.deref_operand(result_op)?.into())?;
-                Ok(0)
+                // end of stream: return NULL
+                Pointer::null()
             }
-            Some(Err(e)) =>
-                match e.raw_os_error() {
-                    // return positive error number on error
-                    Some(error) => Ok(error),
-                    None => {
-                        throw_unsup_format!(
-                            "the error {} couldn't be converted to a return value",
-                            e
-                        )
-                    }
-                },
-        }
+            Some(Err(e)) => {
+                this.set_last_error_from_io_error(e.kind())?;
+                Pointer::null()
+            }
+        };
+
+        let open_dir = this.machine.dir_handler.streams.get_mut(&dirp).unwrap();
+        let old_entry = std::mem::replace(&mut open_dir.entry, entry);
+        this.free(old_entry, MiriMemoryKind::Runtime)?;
+
+        Ok(Scalar::from_maybe_pointer(entry, this))
     }
 
     fn macos_readdir_r(
@@ -1325,10 +1336,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return this.handle_not_found();
         }
 
-        let dir_iter = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
+        let open_dir = this.machine.dir_handler.streams.get_mut(&dirp).ok_or_else(|| {
             err_unsup_format!("the DIR pointer passed to readdir_r did not come from opendir")
         })?;
-        match dir_iter.next() {
+        match open_dir.read_dir.next() {
             Some(Ok(dir_entry)) => {
                 // Write into entry, write pointer to result, return 0 on success.
                 // The name is written with write_os_str_to_c_str, while the rest of the
@@ -1419,8 +1430,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return this.handle_not_found();
         }
 
-        if let Some(dir_iter) = this.machine.dir_handler.streams.remove(&dirp) {
-            drop(dir_iter);
+        if let Some(open_dir) = this.machine.dir_handler.streams.remove(&dirp) {
+            this.free(open_dir.entry, MiriMemoryKind::Runtime)?;
+            drop(open_dir);
             Ok(0)
         } else {
             this.handle_not_found()

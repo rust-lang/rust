@@ -6,7 +6,9 @@
 extern crate libc;
 
 use std::ffi::CString;
-use std::fs::{create_dir, remove_dir, remove_dir_all, remove_file, rename, File, OpenOptions};
+use std::fs::{
+    create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename, File, OpenOptions,
+};
 use std::io::{Error, ErrorKind, Read, Result, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
@@ -374,19 +376,17 @@ fn test_directory() {
     let path_2 = dir_path.join("test_file_2");
     drop(File::create(&path_2).unwrap());
     // Test that the files are present inside the directory
-    /* FIXME(1966) disabled due to missing readdir support
     let dir_iter = read_dir(&dir_path).unwrap();
     let mut file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
     file_names.sort_unstable();
-    assert_eq!(file_names, vec!["test_file_1", "test_file_2"]); */
+    assert_eq!(file_names, vec!["test_file_1", "test_file_2"]);
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();
     // Now there should be nothing left in the directory.
-    /* FIXME(1966) disabled due to missing readdir support
-    dir_iter = read_dir(&dir_path).unwrap();
+    let dir_iter = read_dir(&dir_path).unwrap();
     let file_names = dir_iter.map(|e| e.unwrap().file_name()).collect::<Vec<_>>();
-    assert!(file_names.is_empty());*/
+    assert!(file_names.is_empty());
 
     // Deleting the directory should succeed.
     remove_dir(&dir_path).unwrap();

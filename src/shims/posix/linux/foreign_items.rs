@@ -43,11 +43,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let result = this.opendir(name)?;
                 this.write_scalar(result, dest)?;
             }
-            "readdir64_r" => {
-                let &[ref dirp, ref entry, ref result] =
+            "readdir64" => {
+                let &[ref dirp] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.linux_readdir64_r(dirp, entry, result)?;
-                this.write_scalar(Scalar::from_i32(result), dest)?;
+                let result = this.linux_readdir64(dirp)?;
+                this.write_scalar(result, dest)?;
             }
             "ftruncate64" => {
                 let &[ref fd, ref length] =
