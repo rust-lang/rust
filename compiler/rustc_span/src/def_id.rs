@@ -299,10 +299,7 @@ impl<E: Encoder> Encodable<E> for DefId {
 
 impl<D: Decoder> Decodable<D> for DefId {
     default fn decode(d: &mut D) -> DefId {
-        d.read_struct(|d| DefId {
-            krate: d.read_struct_field("krate", Decodable::decode),
-            index: d.read_struct_field("index", Decodable::decode),
-        })
+        DefId { krate: Decodable::decode(d), index: Decodable::decode(d) }
     }
 }
 

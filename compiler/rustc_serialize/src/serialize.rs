@@ -200,118 +200,6 @@ pub trait Decoder {
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> Cow<'_, str>;
     fn read_raw_bytes_into(&mut self, s: &mut [u8]);
-
-    // Compound types:
-    #[inline]
-    fn read_enum<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_enum_variant<T, F>(&mut self, _names: &[&str], mut f: F) -> T
-    where
-        F: FnMut(&mut Self, usize) -> T,
-    {
-        let disr = self.read_usize();
-        f(self, disr)
-    }
-
-    #[inline]
-    fn read_enum_variant_arg<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_struct<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_struct_field<T, F>(&mut self, _f_name: &str, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_tuple<T, F>(&mut self, _len: usize, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_tuple_arg<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    // Specialized types:
-    fn read_option<T, F>(&mut self, mut f: F) -> T
-    where
-        F: FnMut(&mut Self, bool) -> T,
-    {
-        self.read_enum(move |this| {
-            this.read_enum_variant(&["None", "Some"], move |this, idx| match idx {
-                0 => f(this, false),
-                1 => f(this, true),
-                _ => panic!("read_option: expected 0 for None or 1 for Some"),
-            })
-        })
-    }
-
-    fn read_seq<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self, usize) -> T,
-    {
-        let len = self.read_usize();
-        f(self, len)
-    }
-
-    #[inline]
-    fn read_seq_elt<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    fn read_map<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self, usize) -> T,
-    {
-        let len = self.read_usize();
-        f(self, len)
-    }
-
-    #[inline]
-    fn read_map_elt_key<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
-
-    #[inline]
-    fn read_map_elt_val<T, F>(&mut self, f: F) -> T
-    where
-        F: FnOnce(&mut Self) -> T,
-    {
-        f(self)
-    }
 }
 
 /// Trait for types that can be serialized
@@ -493,22 +381,18 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Vec<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
     default fn decode(d: &mut D) -> Vec<T> {
-        d.read_seq(|d, len| {
-            // SAFETY: we set the capacity in advance, only write elements, and
-            // only set the length at the end once the writing has succeeded.
-            let mut vec = Vec::with_capacity(len);
-            unsafe {
-                let ptr: *mut T = vec.as_mut_ptr();
-                for i in 0..len {
-                    std::ptr::write(
-                        ptr.offset(i as isize),
-                        d.read_seq_elt(|d| Decodable::decode(d)),
-                    );
-                }
-                vec.set_len(len);
+        let len = d.read_usize();
+        // SAFETY: we set the capacity in advance, only write elements, and
+        // only set the length at the end once the writing has succeeded.
+        let mut vec = Vec::with_capacity(len);
+        unsafe {
+            let ptr: *mut T = vec.as_mut_ptr();
+            for i in 0..len {
+                std::ptr::write(ptr.offset(i as isize), Decodable::decode(d));
             }
-            vec
-        })
+            vec.set_len(len);
+        }
+        vec
     }
 }
 
@@ -521,14 +405,13 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
 
 impl<D: Decoder, const N: usize> Decodable<D> for [u8; N] {
     fn decode(d: &mut D) -> [u8; N] {
-        d.read_seq(|d, len| {
-            assert!(len == N);
-            let mut v = [0u8; N];
-            for i in 0..len {
-                v[i] = d.read_seq_elt(|d| Decodable::decode(d));
-            }
-            v
-        })
+        let len = d.read_usize();
+        assert!(len == N);
+        let mut v = [0u8; N];
+        for i in 0..len {
+            v[i] = Decodable::decode(d);
+        }
+        v
     }
 }
 
@@ -563,7 +446,11 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Option<T> {
     fn decode(d: &mut D) -> Option<T> {
-        d.read_option(|d, b| if b { Some(Decodable::decode(d)) } else { None })
+        match d.read_usize() {
+            0 => None,
+            1 => Some(Decodable::decode(d)),
+            _ => panic!("Encountered invalid discriminant while decoding `Option`."),
+        }
     }
 }
 
@@ -582,13 +469,11 @@ impl<S: Encoder, T1: Encodable<S>, T2: Encodable<S>> Encodable<S> for Result<T1,
 
 impl<D: Decoder, T1: Decodable<D>, T2: Decodable<D>> Decodable<D> for Result<T1, T2> {
     fn decode(d: &mut D) -> Result<T1, T2> {
-        d.read_enum(|d| {
-            d.read_enum_variant(&["Ok", "Err"], |d, disr| match disr {
-                0 => Ok(d.read_enum_variant_arg(|d| T1::decode(d))),
-                1 => Err(d.read_enum_variant_arg(|d| T2::decode(d))),
-                _ => panic!("Encountered invalid discriminant while decoding `Result`."),
-            })
-        })
+        match d.read_usize() {
+            0 => Ok(T1::decode(d)),
+            1 => Err(T2::decode(d)),
+            _ => panic!("Encountered invalid discriminant while decoding `Result`."),
+        }
     }
 }
 
@@ -613,24 +498,16 @@ macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
         impl<D: Decoder, $($name: Decodable<D>),+> Decodable<D> for ($($name,)+) {
-            #[allow(non_snake_case)]
             fn decode(d: &mut D) -> ($($name,)+) {
-                let len: usize = count!($($name)+);
-                d.read_tuple(len, |d| {
-                    let ret = ($(d.read_tuple_arg(|d| -> $name {
-                        Decodable::decode(d)
-                    }),)+);
-                    ret
-                })
+                ($({ let element: $name = Decodable::decode(d); element },)+)
             }
         }
         impl<S: Encoder, $($name: Encodable<S>),+> Encodable<S> for ($($name,)+) {
             #[allow(non_snake_case)]
             fn encode(&self, s: &mut S) -> Result<(), S::Error> {
                 let ($(ref $name,)+) = *self;
-                let mut n = 0;
-                $(let $name = $name; n += 1;)+
-                s.emit_tuple(n, |s| {
+                let len: usize = count!($($name)+);
+                s.emit_tuple(len, |s| {
                     let mut i = 0;
                     $(s.emit_tuple_arg({ i+=1; i-1 }, |s| $name.encode(s))?;)+
                     Ok(())
