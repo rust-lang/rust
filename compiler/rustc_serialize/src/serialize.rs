@@ -181,7 +181,6 @@ pub trait Encoder {
 // concise.
 pub trait Decoder {
     // Primitive types:
-    fn read_unit(&mut self) -> ();
     fn read_usize(&mut self) -> usize;
     fn read_u128(&mut self) -> u128;
     fn read_u64(&mut self) -> u64;
@@ -324,9 +323,7 @@ impl<S: Encoder> Encodable<S> for () {
 }
 
 impl<D: Decoder> Decodable<D> for () {
-    fn decode(d: &mut D) -> () {
-        d.read_unit()
-    }
+    fn decode(_: &mut D) -> () {}
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
@@ -336,8 +333,7 @@ impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
 }
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
-    fn decode(d: &mut D) -> PhantomData<T> {
-        d.read_unit();
+    fn decode(_: &mut D) -> PhantomData<T> {
         PhantomData
     }
 }

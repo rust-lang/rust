@@ -465,8 +465,6 @@ macro_rules! implement_ty_decoder {
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 $crate::__impl_decoder_methods! {
-                    read_unit -> ();
-
                     read_u128 -> u128;
                     read_u64 -> u64;
                     read_u32 -> u32;

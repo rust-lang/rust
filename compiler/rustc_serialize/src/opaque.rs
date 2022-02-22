@@ -556,11 +556,6 @@ macro_rules! read_leb128 {
 
 impl<'a> serialize::Decoder for Decoder<'a> {
     #[inline]
-    fn read_unit(&mut self) -> () {
-        ()
-    }
-
-    #[inline]
     fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
     }
