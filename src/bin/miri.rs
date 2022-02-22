@@ -29,6 +29,8 @@ use rustc_middle::{
 };
 use rustc_session::{config::ErrorOutputType, search_paths::PathKind, CtfeBacktrace};
 
+use miri::BacktraceStyle;
+
 struct MiriCompilerCalls {
     miri_config: miri::MiriConfig,
 }
@@ -461,6 +463,14 @@ fn main() {
                 arg if arg.starts_with("-Zmiri-measureme=") => {
                     let measureme_out = arg.strip_prefix("-Zmiri-measureme=").unwrap();
                     miri_config.measureme_out = Some(measureme_out.to_string());
+                }
+                arg if arg.starts_with("-Zmiri-backtrace=") => {
+                    miri_config.backtrace_style = match arg.strip_prefix("-Zmiri-backtrace=") {
+                        Some("0") => BacktraceStyle::Off,
+                        Some("1") => BacktraceStyle::Short,
+                        Some("full") => BacktraceStyle::Full,
+                        _ => panic!("-Zmiri-backtrace may only be 0, 1, or full"),
+                    };
                 }
                 _ => {
                     // Forward to rustc.

@@ -60,7 +60,7 @@ pub use crate::diagnostics::{
     NonHaltingDiagnostic, TerminationInfo,
 };
 pub use crate::eval::{
-    create_ecx, eval_entry, AlignmentCheck, IsolatedOp, MiriConfig, RejectOpWith,
+    create_ecx, eval_entry, AlignmentCheck, BacktraceStyle, IsolatedOp, MiriConfig, RejectOpWith,
 };
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
