@@ -70,50 +70,44 @@ error: invalid register `k0`: the k0 AVX mask register cannot be used as an oper
 LL |         asm!("", in("k0") foo);
    |                  ^^^^^^^^^^^^
 
-error: invalid register `ah`: high byte registers cannot be used as an operand on x86_64
-  --> $DIR/bad-reg.rs:34:18
-   |
-LL |         asm!("", in("ah") foo);
-   |                  ^^^^^^^^^^^^
-
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:37:18
+  --> $DIR/bad-reg.rs:35:18
    |
 LL |         asm!("", in("st(2)") foo);
    |                  ^^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:39:18
+  --> $DIR/bad-reg.rs:37:18
    |
 LL |         asm!("", in("mm0") foo);
    |                  ^^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:43:20
+  --> $DIR/bad-reg.rs:41:20
    |
 LL |         asm!("{}", in(x87_reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:45:20
+  --> $DIR/bad-reg.rs:43:20
    |
 LL |         asm!("{}", in(mmx_reg) foo);
    |                    ^^^^^^^^^^^^^^^
 
 error: register class `x87_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:47:20
+  --> $DIR/bad-reg.rs:45:20
    |
 LL |         asm!("{}", out(x87_reg) _);
    |                    ^^^^^^^^^^^^^^
 
 error: register class `mmx_reg` can only be used as a clobber, not as an input or output
-  --> $DIR/bad-reg.rs:49:20
+  --> $DIR/bad-reg.rs:47:20
    |
 LL |         asm!("{}", out(mmx_reg) _);
    |                    ^^^^^^^^^^^^^^
 
 error: register `al` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:55:33
+  --> $DIR/bad-reg.rs:53:33
    |
 LL |         asm!("", in("eax") foo, in("al") bar);
    |                  -------------  ^^^^^^^^^^^^ register `al`
@@ -121,7 +115,7 @@ LL |         asm!("", in("eax") foo, in("al") bar);
    |                  register `ax`
 
 error: register `ax` conflicts with register `ax`
-  --> $DIR/bad-reg.rs:57:33
+  --> $DIR/bad-reg.rs:55:33
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  -------------  ^^^^^^^^^^^^^^ register `ax`
@@ -129,13 +123,13 @@ LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  register `ax`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:57:18
+  --> $DIR/bad-reg.rs:55:18
    |
 LL |         asm!("", in("rax") foo, out("rax") bar);
    |                  ^^^^^^^^^^^^^
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:60:34
+  --> $DIR/bad-reg.rs:58:34
    |
 LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^ register `ymm0`
@@ -143,7 +137,7 @@ LL |         asm!("", in("xmm0") foo, in("ymm0") bar);
    |                  register `xmm0`
 
 error: register `ymm0` conflicts with register `xmm0`
-  --> $DIR/bad-reg.rs:62:34
+  --> $DIR/bad-reg.rs:60:34
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  --------------  ^^^^^^^^^^^^^^^ register `ymm0`
@@ -151,10 +145,10 @@ LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  register `xmm0`
    |
 help: use `lateout` instead of `out` to avoid conflict
-  --> $DIR/bad-reg.rs:62:18
+  --> $DIR/bad-reg.rs:60:18
    |
 LL |         asm!("", in("xmm0") foo, out("ymm0") bar);
    |                  ^^^^^^^^^^^^^^
 
-error: aborting due to 21 previous errors
+error: aborting due to 20 previous errors
 
