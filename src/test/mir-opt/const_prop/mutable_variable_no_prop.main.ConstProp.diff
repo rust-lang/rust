@@ -24,9 +24,6 @@
           StorageLive(_3);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
           StorageLive(_4);                 // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
           _4 = const {alloc1: *mut u32};   // scope 2 at $DIR/mutable_variable_no_prop.rs:9:13: 9:19
-                                           // ty::Const
-                                           // + ty: *mut u32
-                                           // + val: Value(Scalar(alloc1))
                                            // mir::Constant
                                            // + span: $DIR/mutable_variable_no_prop.rs:9:13: 9:19
                                            // + literal: Const { ty: *mut u32, val: Value(Scalar(alloc1)) }

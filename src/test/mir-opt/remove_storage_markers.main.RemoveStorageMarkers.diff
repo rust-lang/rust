@@ -59,7 +59,7 @@
           _7 = <std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next(move _14) -> bb4; // scope 5 at $DIR/remove_storage_markers.rs:8:14: 8:19
                                            // mir::Constant
                                            // + span: $DIR/remove_storage_markers.rs:8:14: 8:19
-                                           // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> std::option::Option<<std::ops::Range<i32> as std::iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as std::iter::range::RangeIteratorImpl>::spec_next}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> Option<<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next}, val: Value(Scalar(<ZST>)) }
       }
   
       bb2: {

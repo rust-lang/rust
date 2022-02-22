@@ -33,7 +33,7 @@
 -         _3 = wrapping_add::<T>(move _4, move _5) -> bb1; // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:7:14: 7:44
--                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_add::<T>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {wrapping_add::<T>}, val: Value(Scalar(<ZST>)) }
 +         _3 = Add(move _4, move _5);      // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
 +         goto -> bb1;                     // scope 0 at $DIR/lower_intrinsics.rs:7:14: 7:50
       }
@@ -49,7 +49,7 @@
 -         _6 = wrapping_sub::<T>(move _7, move _8) -> bb2; // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:8:14: 8:44
--                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_sub::<T>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {wrapping_sub::<T>}, val: Value(Scalar(<ZST>)) }
 +         _6 = Sub(move _7, move _8);      // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
 +         goto -> bb2;                     // scope 1 at $DIR/lower_intrinsics.rs:8:14: 8:50
       }
@@ -65,7 +65,7 @@
 -         _9 = wrapping_mul::<T>(move _10, move _11) -> bb3; // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
 -                                          // mir::Constant
 -                                          // + span: $DIR/lower_intrinsics.rs:9:14: 9:44
--                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {std::intrinsics::wrapping_mul::<T>}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: extern "rust-intrinsic" fn(T, T) -> T {wrapping_mul::<T>}, val: Value(Scalar(<ZST>)) }
 +         _9 = Mul(move _10, move _11);    // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
 +         goto -> bb3;                     // scope 2 at $DIR/lower_intrinsics.rs:9:14: 9:50
       }

@@ -18,11 +18,6 @@
 -         StorageLive(_5);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 -         _5 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
 +         _6 = const BAR::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
-                                           // ty::Const
--                                          // + ty: &i32
--                                          // + val: Value(Scalar(alloc1))
-+                                          // + ty: &[&i32; 1]
-+                                          // + val: Unevaluated(BAR, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
 -                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }
@@ -30,7 +25,7 @@
 -         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:35
 -         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
 +                                          // + span: $DIR/const-promotion-extern-static.rs:9:31: 9:44
-+                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:6 ~ const_promotion_extern_static[e01c]::BAR), const_param_did: None }, substs: [], promoted: Some(promoted[0]) }) }
++                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(BAR, [], Some(promoted[0])) }
 +         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:9:31: 9:44
 -         StorageDead(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:9:34: 9:35

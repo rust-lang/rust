@@ -20,11 +20,6 @@
 -         StorageLive(_5);                 // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 -         _5 = const {alloc3: *const i32}; // scope 1 at $DIR/const-promotion-extern-static.rs:13:42: 13:43
 +         _6 = const FOO::promoted[0];     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
-                                           // ty::Const
--                                          // + ty: *const i32
--                                          // + val: Value(Scalar(alloc3))
-+                                          // + ty: &[&i32; 1]
-+                                          // + val: Unevaluated(FOO, [], Some(promoted[0]))
                                            // mir::Constant
 -                                          // + span: $DIR/const-promotion-extern-static.rs:13:42: 13:43
 -                                          // + literal: Const { ty: *const i32, val: Value(Scalar(alloc3)) }
@@ -32,7 +27,7 @@
 -         _3 = [move _4];                  // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:46
 -         _2 = &_3;                        // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
 +                                          // + span: $DIR/const-promotion-extern-static.rs:13:31: 13:55
-+                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:7 ~ const_promotion_extern_static[e01c]::FOO), const_param_did: None }, substs: [], promoted: Some(promoted[0]) }) }
++                                          // + literal: Const { ty: &[&i32; 1], val: Unevaluated(FOO, [], Some(promoted[0])) }
 +         _2 = &(*_6);                     // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
           _1 = move _2 as &[&i32] (Pointer(Unsize)); // scope 0 at $DIR/const-promotion-extern-static.rs:13:31: 13:55
 -         StorageDead(_4);                 // scope 0 at $DIR/const-promotion-extern-static.rs:13:45: 13:46

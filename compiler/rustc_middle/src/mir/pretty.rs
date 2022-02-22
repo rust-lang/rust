@@ -436,8 +436,7 @@ fn use_verbose<'tcx>(ty: Ty<'tcx>, fn_def: bool) -> bool {
 }
 
 impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
-        self.super_constant(constant, location);
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, _location: Location) {
         let Constant { span, user_ty, literal } = constant;
         if use_verbose(literal.ty(), true) {
             self.push("mir::Constant");
@@ -448,38 +447,30 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
             if let Some(user_ty) = user_ty {
                 self.push(&format!("+ user_ty: {:?}", user_ty));
             }
-            match literal {
-                ConstantKind::Ty(literal) => self.push(&format!("+ literal: {:?}", literal)),
-                ConstantKind::Val(val, ty) => {
-                    // To keep the diffs small, we render this almost like we render ty::Const
-                    self.push(&format!("+ literal: Const {{ ty: {}, val: Value({:?}) }}", ty, val))
-                }
-            }
-        }
-    }
 
-    fn visit_const(&mut self, constant: ty::Const<'tcx>, _: Location) {
-        self.super_const(constant);
-        let ty = constant.ty();
-        let val = constant.val();
-        if use_verbose(ty, false) {
-            self.push("ty::Const");
-            self.push(&format!("+ ty: {:?}", ty));
-            let val = match val {
-                ty::ConstKind::Param(p) => format!("Param({})", p),
-                ty::ConstKind::Infer(infer) => format!("Infer({:?})", infer),
-                ty::ConstKind::Bound(idx, var) => format!("Bound({:?}, {:?})", idx, var),
-                ty::ConstKind::Placeholder(ph) => format!("PlaceHolder({:?})", ph),
-                ty::ConstKind::Unevaluated(uv) => format!(
-                    "Unevaluated({}, {:?}, {:?})",
-                    self.tcx.def_path_str(uv.def.did),
-                    uv.substs,
-                    uv.promoted,
-                ),
-                ty::ConstKind::Value(val) => format!("Value({:?})", val),
-                ty::ConstKind::Error(_) => "Error".to_string(),
+            let val = match literal {
+                ConstantKind::Ty(ct) => match ct.val() {
+                    ty::ConstKind::Param(p) => format!("Param({})", p),
+                    ty::ConstKind::Unevaluated(uv) => format!(
+                        "Unevaluated({}, {:?}, {:?})",
+                        self.tcx.def_path_str(uv.def.did),
+                        uv.substs,
+                        uv.promoted,
+                    ),
+                    ty::ConstKind::Value(val) => format!("Value({:?})", val),
+                    ty::ConstKind::Error(_) => "Error".to_string(),
+                    // These variants shouldn't exist in the MIR.
+                    ty::ConstKind::Placeholder(_)
+                    | ty::ConstKind::Infer(_)
+                    | ty::ConstKind::Bound(..) => bug!("unexpected MIR constant: {:?}", literal),
+                },
+                // To keep the diffs small, we render this like we render `ty::Const::Value`.
+                //
+                // This changes once `ty::Const::Value` is represented using valtrees.
+                ConstantKind::Val(val, _) => format!("Value({:?})", val),
             };
-            self.push(&format!("+ val: {}", val));
+
+            self.push(&format!("+ literal: Const {{ ty: {}, val: {} }}", literal.ty(), val));
         }
     }
 

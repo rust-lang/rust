@@ -81,7 +81,7 @@ fn array_casts() -> () {
         _6 = ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> bb1; // scope 3 at $DIR/retag.rs:60:15: 60:23
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:60:17: 60:20
-                                         // + literal: Const { ty: unsafe fn(*mut usize, usize) -> *mut usize {std::ptr::mut_ptr::<impl *mut usize>::add}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(*mut usize, usize) -> *mut usize {ptr::mut_ptr::<impl *mut usize>::add}, val: Value(Scalar(<ZST>)) }
     }
 
     bb1: {
@@ -112,7 +112,7 @@ fn array_casts() -> () {
         _16 = ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> bb2; // scope 6 at $DIR/retag.rs:64:26: 64:34
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:64:28: 64:31
-                                         // + literal: Const { ty: unsafe fn(*const usize, usize) -> *const usize {std::ptr::const_ptr::<impl *const usize>::add}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: unsafe fn(*const usize, usize) -> *const usize {ptr::const_ptr::<impl *const usize>::add}, val: Value(Scalar(<ZST>)) }
     }
 
     bb2: {
@@ -122,12 +122,9 @@ fn array_casts() -> () {
         Retag(_14);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         StorageLive(_18);                // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _35 = const array_casts::promoted[0]; // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // ty::Const
-                                         // + ty: &usize
-                                         // + val: Unevaluated(array_casts, [], Some(promoted[0]))
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: &usize, val: Unevaluated(Unevaluated { def: WithOptConstParam { did: DefId(0:15 ~ retag[4622]::array_casts), const_param_did: None }, substs: [], promoted: Some(promoted[0]) }) }
+                                         // + literal: Const { ty: &usize, val: Unevaluated(array_casts, [], Some(promoted[0])) }
         Retag(_35);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         _18 = &(*_35);                   // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
         Retag(_18);                      // scope 5 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
@@ -177,7 +174,7 @@ fn array_casts() -> () {
         core::panicking::assert_failed::<usize, usize>(move _29, move _30, move _32, move _34); // scope 8 at $SRC_DIR/core/src/macros/mod.rs:LL:COL
                                          // mir::Constant
                                          // + span: $SRC_DIR/core/src/macros/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r usize, &'s usize, std::option::Option<std::fmt::Arguments<'t0>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(Scalar(<ZST>)) }
+                                         // + literal: Const { ty: for<'r, 's, 't0> fn(core::panicking::AssertKind, &'r usize, &'s usize, Option<Arguments<'t0>>) -> ! {core::panicking::assert_failed::<usize, usize>}, val: Value(Scalar(<ZST>)) }
     }
 
     bb4: {
