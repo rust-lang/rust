@@ -728,7 +728,7 @@ pub use macros::Debug;
 /// ```
 #[rustc_on_unimplemented(
     on(
-        _Self = "std::path::Path",
+        any(_Self = "std::path::Path", _Self = "std::path::PathBuf"),
         label = "`{Self}` cannot be formatted with the default formatter; call `.display()` on it",
         note = "call `.display()` or `.to_string_lossy()` to safely print paths, \
                 as they may contain non-Unicode data"
