@@ -148,6 +148,7 @@
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(const_slice_index_impls)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
