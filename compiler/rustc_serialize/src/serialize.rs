@@ -199,7 +199,7 @@ pub trait Decoder {
     fn read_f32(&mut self) -> f32;
     fn read_char(&mut self) -> char;
     fn read_str(&mut self) -> &str;
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]);
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8];
 }
 
 /// Trait for types that can be serialized
