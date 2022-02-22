@@ -498,7 +498,7 @@ impl<Tag: Provenance> fmt::Debug for ScalarMaybeUninit<Tag> {
     }
 }
 
-impl<Tag: Provenance> fmt::Display for ScalarMaybeUninit<Tag> {
+impl<Tag: Provenance> fmt::LowerHex for ScalarMaybeUninit<Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ScalarMaybeUninit::Uninit => write!(f, "uninitialized bytes"),
