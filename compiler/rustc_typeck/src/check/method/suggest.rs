@@ -1485,27 +1485,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
                 (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
-                if let Ok(pick) = self.lookup_probe(
+                match self.lookup_probe(
                     span,
                     item_name,
                     *rcvr_ty,
                     rcvr,
                     crate::check::method::probe::ProbeScope::AllTraits,
                 ) {
-                    // If the method is defined for the receiver we have, it likely wasn't `use`d.
-                    // We point at the method, but we just skip the rest of the check for arbitrary
-                    // self types and rely on the suggestion to `use` the trait from
-                    // `suggest_valid_traits`.
-                    let did = Some(pick.item.container.id());
-                    let skip = skippable.contains(&did);
-                    if pick.autoderefs == 0 && !skip {
-                        err.span_label(
-                            pick.item.ident(self.tcx).span,
-                            &format!("the method is available for `{}` here", rcvr_ty),
-                        );
+                    Ok(pick) => {
+                        // If the method is defined for the receiver we have, it likely wasn't `use`d.
+                        // We point at the method, but we just skip the rest of the check for arbitrary
+                        // self types and rely on the suggestion to `use` the trait from
+                        // `suggest_valid_traits`.
+                        let did = Some(pick.item.container.id());
+                        let skip = skippable.contains(&did);
+                        if pick.autoderefs == 0 && !skip {
+                            err.span_label(
+                                pick.item.ident(self.tcx).span,
+                                &format!("the method is available for `{}` here", rcvr_ty),
+                            );
+                        }
+                        break;
                     }
-                    break;
+                    Err(MethodError::Ambiguity(_)) => {
+                        // If the method is defined (but ambiguous) for the receiver we have, it is also
+                        // likely we haven't `use`d it. It may be possible that if we `Box`/`Pin`/etc.
+                        // the receiver, then it might disambiguate this method, but I think these
+                        // suggestions are generally misleading (see #94218).
+                        break;
+                    }
+                    _ => {}
                 }
+
                 for (rcvr_ty, pre) in &[
                     (self.tcx.mk_lang_item(*rcvr_ty, LangItem::OwnedBox), "Box::new"),
                     (self.tcx.mk_lang_item(*rcvr_ty, LangItem::Pin), "Pin::new"),
