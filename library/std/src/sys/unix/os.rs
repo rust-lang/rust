@@ -384,11 +384,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
     if let Ok(path) = crate::fs::read_link("/proc/self/path/a.out") {
         Ok(path)
     } else {
-        extern "C" {
-            fn getexecname() -> *const c_char;
-        }
         unsafe {
-            let path = getexecname();
+            let path = libc::getexecname();
             if path.is_null() {
                 Err(io::Error::last_os_error())
             } else {
