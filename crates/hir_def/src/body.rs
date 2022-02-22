@@ -97,9 +97,9 @@ impl Expander {
     ) -> Result<ExpandResult<Option<(Mark, T)>>, UnresolvedMacro> {
         if self.recursion_limit(db).check(self.recursion_limit + 1).is_err() {
             cov_mark::hit!(your_stack_belongs_to_me);
-            return Ok(ExpandResult::str_err(
+            return Ok(ExpandResult::only_err(ExpandError::Other(
                 "reached recursion limit during macro expansion".into(),
-            ));
+            )));
         }
 
         let macro_call = InFile::new(self.current_file_id, &macro_call);
@@ -151,7 +151,7 @@ impl Expander {
                 }
 
                 return ExpandResult::only_err(err.unwrap_or_else(|| {
-                    mbe::ExpandError::Other("failed to parse macro invocation".into())
+                    ExpandError::Other("failed to parse macro invocation".into())
                 }));
             }
         };

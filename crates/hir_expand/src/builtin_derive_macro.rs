@@ -2,13 +2,16 @@
 
 use tracing::debug;
 
-use mbe::ExpandResult;
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasModuleItem, HasName},
     match_ast,
 };
+use tt::TokenId;
 
-use crate::{db::AstDatabase, name, quote, AstId, CrateId, MacroCallId, MacroDefId, MacroDefKind};
+use crate::{
+    db::AstDatabase, name, quote, AstId, CrateId, ExpandError, ExpandResult, MacroCallId,
+    MacroDefId, MacroDefKind,
+};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -71,15 +74,15 @@ struct BasicAdtInfo {
     type_params: usize,
 }
 
-fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
-    let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MacroItems); // FragmentKind::Items doesn't parse attrs?
+fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
+    let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MacroItems);
     let macro_items = ast::MacroItems::cast(parsed.syntax_node()).ok_or_else(|| {
         debug!("derive node didn't parse");
-        mbe::ExpandError::UnexpectedToken
+        ExpandError::Other("invalid item definition".into())
     })?;
     let item = macro_items.items().next().ok_or_else(|| {
         debug!("no module item parsed");
-        mbe::ExpandError::NoMatchingRule
+        ExpandError::Other("no item found".into())
     })?;
     let node = item.syntax();
     let (name, params) = match_ast! {
@@ -89,18 +92,17 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
             ast::Union(it) => (it.name(), it.generic_param_list()),
             _ => {
                 debug!("unexpected node is {:?}", node);
-                return Err(mbe::ExpandError::ConversionError)
+                return Err(ExpandError::Other("expected struct, enum or union".into()))
             },
         }
     };
     let name = name.ok_or_else(|| {
         debug!("parsed item has no name");
-        mbe::ExpandError::NoMatchingRule
+        ExpandError::Other("missing name".into())
     })?;
-    let name_token_id = token_map.token_by_range(name.syntax().text_range()).ok_or_else(|| {
-        debug!("name token not found");
-        mbe::ExpandError::ConversionError
-    })?;
+    let name_token_id = token_map
+        .token_by_range(name.syntax().text_range())
+        .unwrap_or_else(|| TokenId::unspecified());
     let name_token = tt::Ident { id: name_token_id, text: name.text().into() };
     let type_params = params.map_or(0, |type_param_list| type_param_list.type_params().count());
     Ok(BasicAdtInfo { name: name_token, type_params })

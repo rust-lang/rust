@@ -599,7 +599,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
                 src = it;
                 res.unmatched_tts += src.len();
             }
-            res.add_err(ExpandError::binding_error("leftover tokens"));
+            res.add_err(ExpandError::LeftoverTokens);
 
             if let Some(error_reover_item) = error_recover_item {
                 res.bindings = bindings_builder.build(&error_reover_item);
@@ -658,7 +658,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
 fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter) -> Result<(), ExpandError> {
     let rhs = src
         .expect_leaf()
-        .map_err(|()| ExpandError::BindingError(format!("expected leaf: `{lhs}`").into()))?;
+        .map_err(|()| ExpandError::binding_error(format!("expected leaf: `{lhs}`")))?;
     match (lhs, rhs) {
         (
             tt::Leaf::Punct(tt::Punct { char: lhs, .. }),

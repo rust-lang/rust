@@ -17,9 +17,9 @@ pub mod eager;
 pub mod mod_path;
 mod fixup;
 
-pub use mbe::{ExpandError, ExpandResult, Origin};
+pub use mbe::{Origin, ValueResult};
 
-use std::{hash::Hash, iter, sync::Arc};
+use std::{fmt, hash::Hash, iter, sync::Arc};
 
 use base_db::{impl_intern_key, salsa, CrateId, FileId, FileRange, ProcMacroKind};
 use either::Either;
@@ -38,6 +38,31 @@ use crate::{
     mod_path::ModPath,
     proc_macro::ProcMacroExpander,
 };
+
+pub type ExpandResult<T> = ValueResult<T, ExpandError>;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum ExpandError {
+    UnresolvedProcMacro,
+    Mbe(mbe::ExpandError),
+    Other(Box<str>),
+}
+
+impl From<mbe::ExpandError> for ExpandError {
+    fn from(mbe: mbe::ExpandError) -> Self {
+        Self::Mbe(mbe)
+    }
+}
+
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExpandError::UnresolvedProcMacro => f.write_str("unresolved proc-macro"),
+            ExpandError::Mbe(it) => it.fmt(f),
+            ExpandError::Other(it) => f.write_str(it),
+        }
+    }
+}
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in

@@ -1,9 +1,8 @@
 //! Proc Macro Expander stub
 
 use base_db::{CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
-use mbe::ExpandResult;
 
-use crate::db::AstDatabase;
+use crate::{db::AstDatabase, ExpandError, ExpandResult};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct ProcMacroExpander {
@@ -37,7 +36,11 @@ impl ProcMacroExpander {
                 let krate_graph = db.crate_graph();
                 let proc_macro = match krate_graph[self.krate].proc_macro.get(id.0 as usize) {
                     Some(proc_macro) => proc_macro,
-                    None => return ExpandResult::str_err("No proc-macro found.".to_string()),
+                    None => {
+                        return ExpandResult::only_err(ExpandError::Other(
+                            "No proc-macro found.".into(),
+                        ))
+                    }
                 };
 
                 // Proc macros have access to the environment variables of the invoking crate.
@@ -51,17 +54,17 @@ impl ProcMacroExpander {
                         {
                             ExpandResult {
                                 value: tt.clone(),
-                                err: Some(mbe::ExpandError::Other(text.into())),
+                                err: Some(ExpandError::Other(text.into())),
                             }
                         }
                         ProcMacroExpansionError::System(text)
                         | ProcMacroExpansionError::Panic(text) => {
-                            ExpandResult::only_err(mbe::ExpandError::Other(text.into()))
+                            ExpandResult::only_err(ExpandError::Other(text.into()))
                         }
                     },
                 }
             }
-            None => ExpandResult::only_err(mbe::ExpandError::UnresolvedProcMacro),
+            None => ExpandResult::only_err(ExpandError::UnresolvedProcMacro),
         }
     }
 }

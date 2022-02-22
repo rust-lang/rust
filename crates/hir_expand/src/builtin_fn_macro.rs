@@ -1,14 +1,15 @@
 //! Builtin macro
-use crate::{
-    db::AstDatabase, name, quote, AstId, CrateId, MacroCallId, MacroCallLoc, MacroDefId,
-    MacroDefKind,
-};
 
 use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
-use mbe::{parse_exprs_with_sep, parse_to_token_tree, ExpandResult};
+use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use syntax::ast::{self, AstToken};
+
+use crate::{
+    db::AstDatabase, name, quote, AstId, CrateId, ExpandError, ExpandResult, MacroCallId,
+    MacroCallLoc, MacroDefId, MacroDefKind,
+};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
@@ -257,7 +258,7 @@ fn format_args_expand(
     let mut args = parse_exprs_with_sep(tt, ',');
 
     if args.is_empty() {
-        return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule);
+        return ExpandResult::only_err(mbe::ExpandError::NoMatchingRule.into());
     }
     for arg in &mut args {
         // Remove `key =`.
@@ -368,12 +369,12 @@ fn compile_error_expand(
             let text = it.text.as_str();
             if text.starts_with('"') && text.ends_with('"') {
                 // FIXME: does not handle raw strings
-                mbe::ExpandError::Other(text[1..text.len() - 1].into())
+                ExpandError::Other(text[1..text.len() - 1].into())
             } else {
-                mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into())
+                ExpandError::Other("`compile_error!` argument must be a string".into())
             }
         }
-        _ => mbe::ExpandError::BindingError("`compile_error!` argument must be a string".into()),
+        _ => ExpandError::Other("`compile_error!` argument must be a string".into()),
     };
 
     ExpandResult { value: ExpandedEager::new(quote! {}), err: Some(err) }
@@ -414,7 +415,7 @@ fn concat_expand(
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
-                err.get_or_insert(mbe::ExpandError::UnexpectedToken);
+                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
             }
         }
     }
@@ -435,7 +436,7 @@ fn concat_idents_expand(
             }
             tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
             _ => {
-                err.get_or_insert(mbe::ExpandError::UnexpectedToken);
+                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
             }
         }
     }
@@ -448,28 +449,28 @@ fn relative_file(
     call_id: MacroCallId,
     path_str: &str,
     allow_recursion: bool,
-) -> Result<FileId, mbe::ExpandError> {
+) -> Result<FileId, ExpandError> {
     let call_site = call_id.as_file().original_file(db);
     let path = AnchoredPath { anchor: call_site, path: path_str };
-    let res = db.resolve_path(path).ok_or_else(|| {
-        mbe::ExpandError::Other(format!("failed to load file `{path_str}`").into())
-    })?;
+    let res = db
+        .resolve_path(path)
+        .ok_or_else(|| ExpandError::Other(format!("failed to load file `{path_str}`").into()))?;
     // Prevent include itself
     if res == call_site && !allow_recursion {
-        Err(mbe::ExpandError::Other(format!("recursive inclusion of `{path_str}`").into()))
+        Err(ExpandError::Other(format!("recursive inclusion of `{path_str}`").into()))
     } else {
         Ok(res)
     }
 }
 
-fn parse_string(tt: &tt::Subtree) -> Result<String, mbe::ExpandError> {
+fn parse_string(tt: &tt::Subtree) -> Result<String, ExpandError> {
     tt.token_trees
         .get(0)
         .and_then(|tt| match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(it),
             _ => None,
         })
-        .ok_or(mbe::ExpandError::ConversionError)
+        .ok_or(mbe::ExpandError::ConversionError.into())
 }
 
 fn include_expand(
@@ -561,7 +562,7 @@ fn env_expand(
         // The only variable rust-analyzer ever sets is `OUT_DIR`, so only diagnose that to avoid
         // unnecessary diagnostics for eg. `CARGO_PKG_NAME`.
         if key == "OUT_DIR" {
-            err = Some(mbe::ExpandError::Other(
+            err = Some(ExpandError::Other(
                 r#"`OUT_DIR` not set, enable "run build scripts" to fix"#.into(),
             ));
         }

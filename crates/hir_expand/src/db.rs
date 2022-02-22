@@ -5,7 +5,7 @@ use std::sync::Arc;
 use base_db::{salsa, SourceDatabase};
 use either::Either;
 use limit::Limit;
-use mbe::{syntax_node_to_token_tree, ExpandError, ExpandResult};
+use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use syntax::{
     algo::diff,
@@ -15,8 +15,9 @@ use syntax::{
 
 use crate::{
     ast_id_map::AstIdMap, fixup, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
-    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
+    BuiltinFnLikeExpander, ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr,
+    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
+    ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -47,10 +48,10 @@ impl TokenExpander {
         db: &dyn AstDatabase,
         id: MacroCallId,
         tt: &tt::Subtree,
-    ) -> mbe::ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::Subtree> {
         match self {
-            TokenExpander::DeclarativeMacro { mac, .. } => mac.expand(tt),
-            TokenExpander::Builtin(it) => it.expand(db, id, tt),
+            TokenExpander::DeclarativeMacro { mac, .. } => mac.expand(tt).map_err(Into::into),
+            TokenExpander::Builtin(it) => it.expand(db, id, tt).map_err(Into::into),
             TokenExpander::BuiltinAttr(it) => it.expand(db, id, tt),
             TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
             TokenExpander::ProcMacro(_) => {
@@ -432,7 +433,11 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
 
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
-        None => return ExpandResult::str_err("Failed to lower macro args to token tree".into()),
+        None => {
+            return ExpandResult::only_err(ExpandError::Other(
+                "Failed to lower macro args to token tree".into(),
+            ))
+        }
     };
 
     let expander = match db.macro_def(loc.def) {
@@ -440,16 +445,23 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         // FIXME: This is weird -- we effectively report macro *definition*
         // errors lazily, when we try to expand the macro. Instead, they should
         // be reported at the definition site (when we construct a def map).
-        Err(err) => return ExpandResult::str_err(format!("invalid macro definition: {}", err)),
+        Err(err) => {
+            return ExpandResult::only_err(ExpandError::Other(
+                format!("invalid macro definition: {}", err).into(),
+            ))
+        }
     };
     let ExpandResult { value: mut tt, err } = expander.expand(db, id, &macro_arg.0);
     // Set a hard limit for the expanded tt
     let count = tt.count();
     if TOKEN_LIMIT.check(count).is_err() {
-        return ExpandResult::str_err(format!(
-            "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-            count,
-            TOKEN_LIMIT.inner(),
+        return ExpandResult::only_err(ExpandError::Other(
+            format!(
+                "macro invocation exceeds token limit: produced {} tokens, limit is {}",
+                count,
+                TOKEN_LIMIT.inner(),
+            )
+            .into(),
         ));
     }
 
@@ -466,7 +478,9 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     let macro_arg = match db.macro_arg(id) {
         Some(it) => it,
-        None => return ExpandResult::str_err("No arguments for proc-macro".to_string()),
+        None => {
+            return ExpandResult::only_err(ExpandError::Other("No arguments for proc-macro".into()))
+        }
     };
 
     let expander = match loc.def.kind {
