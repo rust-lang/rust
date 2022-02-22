@@ -82,28 +82,45 @@ fn dummy_attr_expand(
     ExpandResult::ok(tt.clone())
 }
 
+/// We generate a very specific expansion here, as we do not actually expand the `#[derive]` attribute
+/// itself in name res, but we do want to expand it to something for the IDE layer, so that the input
+/// derive attributes can be downmapped, and resolved as proper paths.
+/// This is basically a hack, that simplifies the hacks we need in a lot of ide layer places to
+/// somewhat inconsistently resolve derive attributes.
+///
+/// As such, we expand `#[derive(Foo, bar::Bar)]` into
+/// ```
+///  #[Foo]
+///  #[bar::Bar]
+///  ();
+/// ```
+/// which allows fallback path resolution in hir::Semantics to properly identify our derives.
+/// Since we do not expand the attribute in nameres though, we keep the original item.
+///
+/// The ideal expansion here would be for the `#[derive]` to re-emit the annotated item and somehow
+/// use the input paths in its output as well.
+/// But that would bring two problems with it, for one every derive would duplicate the item token tree
+/// wasting a lot of memory, and it would also require some way to use a path in a way that makes it
+/// always resolve as a derive without nameres recollecting them.
+/// So this hacky approach is a lot more friendly for us, though it does require a bit of support in
+/// [`hir::Semantics`] to make this work.
 fn derive_attr_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    // we generate a very specific expansion here, as we do not actually expand the `#[derive]` attribute
-    // itself in name res, but we do want to expand it to something for the IDE layer, so that the input
-    // derive attributes can be downmapped, and resolved
-    // This is basically a hack, to get rid of hacks in the IDE layer that slowly accumulate more and more
-    // in various places.
-
-    // we transform the token tree of `#[derive(Foo, bar::Bar)]` into
-    // ```
-    //  #[Foo]
-    //  #[bar::Bar]
-    //  ();
-    // ```
-    // which allows fallback path resolution in hir::Semantics to properly identify our derives
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
         MacroCallKind::Attr { attr_args, .. } => &attr_args.0,
         _ => return ExpandResult::ok(tt.clone()),
+    };
+
+    let mk_leaf = |char| {
+        tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
+            char,
+            spacing: tt::Spacing::Alone,
+            id: tt::TokenId::unspecified(),
+        }))
     };
 
     let mut token_trees = Vec::new();
@@ -119,38 +136,13 @@ fn derive_attr_expand(
         if comma {
             continue;
         }
-        let wrap = |leaf| tt::TokenTree::Leaf(tt::Leaf::Punct(leaf));
-        token_trees.push(wrap(tt::Punct {
-            char: '#',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
-        token_trees.push(wrap(tt::Punct {
-            char: '[',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
+        token_trees.push(mk_leaf('#'));
+        token_trees.push(mk_leaf('['));
         token_trees.extend(group.cloned().map(tt::TokenTree::Leaf));
-        token_trees.push(wrap(tt::Punct {
-            char: ']',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
-        token_trees.push(wrap(tt::Punct {
-            char: '(',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
-        token_trees.push(wrap(tt::Punct {
-            char: ')',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
-        token_trees.push(wrap(tt::Punct {
-            char: ';',
-            spacing: tt::Spacing::Alone,
-            id: tt::TokenId::unspecified(),
-        }));
+        token_trees.push(mk_leaf(']'));
     }
+    token_trees.push(mk_leaf('('));
+    token_trees.push(mk_leaf(')'));
+    token_trees.push(mk_leaf(';'));
     ExpandResult::ok(tt::Subtree { delimiter: tt.delimiter, token_trees })
 }

@@ -16,7 +16,7 @@ use hir::{ItemInNs, MacroDef, ModuleDef, Name, Semantics};
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, HasLoopBody},
-    AstNode, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
+    AstNode, AstToken, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
 };
 
 use crate::{defs::Definition, RootDatabase};

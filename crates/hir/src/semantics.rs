@@ -675,15 +675,24 @@ impl<'db> SemanticsImpl<'db> {
                             ast::MacroCall(mcall) => mcall,
                             // attribute we failed expansion for earlier, this might be a derive invocation
                             // so try downmapping the token into the pseudo derive expansion
+                            // see [hir_expand::builtin_attr_macro] for how the pseudo derive expansion works
                             ast::Meta(meta) => {
                                 let attr = meta.parent_attr()?;
                                 let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
                                 let call_id = self.with_ctx(|ctx| {
-                                    let (_, call_id, _) = ctx.attr_to_derive_macro_call(token.with_value(&adt), token.with_value(attr))?;
+                                    let (_, call_id, _) = ctx.attr_to_derive_macro_call(
+                                        token.with_value(&adt),
+                                        token.with_value(attr),
+                                    )?;
                                     Some(call_id)
                                 })?;
                                 let file_id = call_id.as_file();
-                                return process_expansion_for_token(&mut stack,file_id,Some(adt.into()),token.as_ref(),);
+                                return process_expansion_for_token(
+                                    &mut stack,
+                                    file_id,
+                                    Some(adt.into()),
+                                    token.as_ref(),
+                                );
                             },
                             _ => return None,
                         }

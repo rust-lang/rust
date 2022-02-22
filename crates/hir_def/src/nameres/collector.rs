@@ -1170,6 +1170,9 @@ impl DefCollector<'_> {
                                     len = idx;
                                 }
 
+                                // We treat the #[derive] macro as an attribute call, but we do not resolve it for nameres collection.
+                                // This is just a trick to be able to resolve the input to derives as proper paths.
+                                // Check the comment in [`builtin_attr_macro`].
                                 let call_id = attr_macro_as_call_id(
                                     self.db,
                                     file_ast_id,

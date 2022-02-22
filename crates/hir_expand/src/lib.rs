@@ -166,6 +166,7 @@ pub enum MacroCallKind {
         /// Outer attributes are counted first, then inner attributes. This does not support
         /// out-of-line modules, which may have attributes spread across 2 files!
         invoc_attr_index: u32,
+        /// Whether this attribute is the `#[derive]` attribute.
         is_derive: bool,
     },
 }
