@@ -3753,23 +3753,27 @@ pub struct ProcRes {
 
 impl ProcRes {
     pub fn print_info(&self) {
-        print!(
-            "\
-             status: {}\n\
-             command: {}\n\
-             stdout:\n\
-             ------------------------------------------\n\
-             {}\n\
-             ------------------------------------------\n\
-             stderr:\n\
-             ------------------------------------------\n\
-             {}\n\
-             ------------------------------------------\n\
-             \n",
+        fn render(name: &str, contents: &str) -> String {
+            let contents = json::extract_rendered(contents);
+            let contents = contents.trim();
+            if contents.is_empty() {
+                format!("{name}: none")
+            } else {
+                format!(
+                    "\
+                     --- {name} -------------------------------\n\
+                     {contents}\n\
+                     ------------------------------------------",
+                )
+            }
+        }
+
+        println!(
+            "status: {}\ncommand: {}\n{}\n{}\n",
             self.status,
             self.cmdline,
-            json::extract_rendered(&self.stdout),
-            json::extract_rendered(&self.stderr),
+            render("stdout", &self.stdout),
+            render("stderr", &self.stderr),
         );
     }
 
