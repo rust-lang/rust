@@ -1,6 +1,5 @@
 use crate::leb128::{self, max_leb128_len};
 use crate::serialize::{self, Encoder as _};
-use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
@@ -663,7 +662,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     #[inline]
-    fn read_str(&mut self) -> Cow<'_, str> {
+    fn read_str(&mut self) -> &str {
         let len = self.read_usize();
         let sentinel = self.data[self.position + len];
         assert!(sentinel == STR_SENTINEL);
@@ -671,7 +670,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
             std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
         };
         self.position += len + 1;
-        Cow::Borrowed(s)
+        s
     }
 
     #[inline]
