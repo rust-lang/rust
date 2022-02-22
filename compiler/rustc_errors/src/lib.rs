@@ -25,7 +25,6 @@ use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
-use rustc_data_structures::AtomicRef;
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -455,11 +454,6 @@ struct HandlerInner {
 pub enum StashKey {
     ItemNoType,
 }
-
-fn default_track_diagnostic(_: &Diagnostic) {}
-
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
-    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -949,13 +943,8 @@ impl HandlerInner {
             && !self.flags.can_emit_warnings
             && !diagnostic.is_force_warn()
         {
-            if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTICS)(diagnostic);
-            }
             return;
         }
-
-        (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if diagnostic.level == Allow {
             return;

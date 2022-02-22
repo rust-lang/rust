@@ -21,10 +21,8 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
         return;
     }
 
-    tcx.dep_graph.with_ignore(|| {
-        let mut visitor = SymbolNamesTest { tcx };
-        tcx.hir().visit_all_item_likes(&mut visitor);
-    })
+    let mut visitor = SymbolNamesTest { tcx };
+    tcx.hir().visit_all_item_likes(&mut visitor);
 }
 
 struct SymbolNamesTest<'tcx> {

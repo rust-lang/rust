@@ -57,14 +57,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // account cycles that may have occurred in forming the
         // candidate. I don't know of any specific problems that
         // result but it seems awfully suspicious.
-        let (candidate, dep_node) =
-            self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
+        let (candidate, _) = self.in_task(|this| this.candidate_from_obligation_no_cache(stack));
 
         debug!(?candidate, "CACHE MISS");
         self.insert_candidate_cache(
             stack.obligation.param_env,
             cache_fresh_trait_pred,
-            dep_node,
             candidate.clone(),
         );
         candidate

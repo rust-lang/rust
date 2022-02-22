@@ -1,9 +1,8 @@
-use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
+use crate::back::lto::{LtoModuleCodegen, ThinModule};
 use crate::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
 use rustc_errors::{FatalError, Handler};
-use rustc_middle::dep_graph::WorkProduct;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
@@ -24,7 +23,6 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<LtoModuleCodegen<Self>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
@@ -32,8 +30,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
+    ) -> Result<Vec<LtoModuleCodegen<Self>>, FatalError>;
     fn print_pass_timings(&self);
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,

@@ -12,13 +12,10 @@ pub use self::caches::{
 };
 
 mod config;
-pub use self::config::{QueryConfig, QueryDescription, QueryVtable};
+pub use self::config::{QueryConfig, QueryDescription};
 
-use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
+use crate::dep_graph::HasDepContext;
 
-use rustc_data_structures::sync::Lock;
-use rustc_data_structures::thin_vec::ThinVec;
-use rustc_errors::Diagnostic;
 use rustc_hir::def::DefKind;
 use rustc_span::Span;
 
@@ -66,31 +63,6 @@ impl QueryStackFrame {
     }
 }
 
-/// Tracks 'side effects' for a particular query.
-/// This struct is saved to disk along with the query result,
-/// and loaded from disk if we mark the query as green.
-/// This allows us to 'replay' changes to global state
-/// that would otherwise only occur if we actually
-/// executed the query method.
-#[derive(Debug, Clone, Default, Encodable, Decodable)]
-pub struct QuerySideEffects {
-    /// Stores any diagnostics emitted during query execution.
-    /// These diagnostics will be re-emitted if we mark
-    /// the query as green.
-    pub(super) diagnostics: ThinVec<Diagnostic>,
-}
-
-impl QuerySideEffects {
-    pub fn is_empty(&self) -> bool {
-        let QuerySideEffects { diagnostics } = self;
-        diagnostics.is_empty()
-    }
-    pub fn append(&mut self, other: QuerySideEffects) {
-        let QuerySideEffects { diagnostics } = self;
-        diagnostics.extend(other.diagnostics);
-    }
-}
-
 pub trait QueryContext: HasDepContext {
     fn next_job_id(&self) -> QueryJobId;
 
@@ -98,27 +70,8 @@ pub trait QueryContext: HasDepContext {
     fn current_query_job(&self) -> Option<QueryJobId>;
 
     fn try_collect_active_jobs(&self) -> Option<QueryMap>;
-
-    /// Load side effects associated to the node in the previous session.
-    fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
-
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_side_effects_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        side_effects: QuerySideEffects,
-    );
-
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes. It returns the diagnostics
     /// captured during execution and the actual result.
-    fn start_query<R>(
-        &self,
-        token: QueryJobId,
-        diagnostics: Option<&Lock<ThinVec<Diagnostic>>>,
-        compute: impl FnOnce() -> R,
-    ) -> R;
+    fn start_query<R>(&self, token: QueryJobId, compute: impl FnOnce() -> R) -> R;
 }

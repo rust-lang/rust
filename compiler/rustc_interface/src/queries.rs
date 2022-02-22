@@ -3,11 +3,8 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_errors::ErrorReported;
-use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
@@ -74,7 +71,6 @@ pub struct Queries<'tcx> {
     arena: WorkerLocal<Arena<'tcx>>,
     hir_arena: WorkerLocal<rustc_ast_lowering::Arena<'tcx>>,
 
-    dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
@@ -93,7 +89,6 @@ impl<'tcx> Queries<'tcx> {
             queries: OnceCell::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_ast_lowering::Arena::default()),
-            dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
             register_plugins: Default::default(),
@@ -110,13 +105,6 @@ impl<'tcx> Queries<'tcx> {
     }
     fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
         self.compiler.codegen_backend()
-    }
-
-    fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
-        self.dep_graph_future.compute(|| {
-            let sess = self.session();
-            Ok(sess.opts.build_dep_graph().then(|| rustc_incremental::load_dep_graph(sess)))
-        })
     }
 
     pub fn parse(&self) -> Result<&Query<ast::Crate>> {
@@ -141,13 +129,6 @@ impl<'tcx> Queries<'tcx> {
                 krate,
                 &crate_name,
             )?;
-
-            // Compute the dependency graph (in the background). We want to do
-            // this as early as possible, to give the DepGraph maximum time to
-            // load before dep_graph() is called, but it also can't happen
-            // until after rustc_incremental::prepare_session_directory() is
-            // called, which happens within passes::register_plugins().
-            self.dep_graph_future().ok();
 
             Ok((krate, Lrc::new(lint_store)))
         })
@@ -187,19 +168,7 @@ impl<'tcx> Queries<'tcx> {
     }
 
     fn dep_graph(&self) -> Result<&Query<DepGraph>> {
-        self.dep_graph.compute(|| {
-            let sess = self.session();
-            let future_opt = self.dep_graph_future()?.take();
-            let dep_graph = future_opt
-                .and_then(|future| {
-                    let (prev_graph, prev_work_products) =
-                        sess.time("blocked_on_dep_graph_loading", || future.open().open(sess));
-
-                    rustc_incremental::build_dep_graph(sess, prev_graph, prev_work_products)
-                })
-                .unwrap_or_else(DepGraph::new_disabled);
-            Ok(dep_graph)
-        })
+        self.dep_graph.compute(|| Ok(DepGraph::new_disabled()))
     }
 
     pub fn prepare_outputs(&self) -> Result<&Query<OutputFilenames>> {
@@ -302,18 +271,9 @@ impl<'tcx> Queries<'tcx> {
 
         let dep_graph = self.dep_graph()?.peek().clone();
         let prepare_outputs = self.prepare_outputs()?.take();
-        let crate_hash = self.global_ctxt()?.peek_mut().enter(|tcx| tcx.crate_hash(LOCAL_CRATE));
         let ongoing_codegen = self.ongoing_codegen()?.take();
 
-        Ok(Linker {
-            sess,
-            codegen_backend,
-
-            dep_graph,
-            prepare_outputs,
-            crate_hash,
-            ongoing_codegen,
-        })
+        Ok(Linker { sess, codegen_backend, dep_graph, prepare_outputs, ongoing_codegen })
     }
 }
 
@@ -325,13 +285,12 @@ pub struct Linker {
     // compilation outputs
     dep_graph: DepGraph,
     prepare_outputs: OutputFilenames,
-    crate_hash: Svh,
     ongoing_codegen: Box<dyn Any>,
 }
 
 impl Linker {
     pub fn link(self) -> Result<()> {
-        let (codegen_results, work_products) = self.codegen_backend.join_codegen(
+        let (codegen_results, _) = self.codegen_backend.join_codegen(
             self.ongoing_codegen,
             &self.sess,
             &self.prepare_outputs,
@@ -341,16 +300,9 @@ impl Linker {
 
         let sess = &self.sess;
         let dep_graph = self.dep_graph;
-        sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
-        });
 
         let prof = self.sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
-
-        // Now that we won't touch anything in the incremental compilation directory
-        // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(&self.sess, self.crate_hash);
 
         if !self
             .sess
@@ -396,9 +348,6 @@ impl Compiler {
                     queries.session().prof.generic_activity("self_profile_alloc_query_strings");
                 gcx.enter(rustc_query_impl::alloc_self_profile_query_strings);
             }
-
-            self.session()
-                .time("serialize_dep_graph", || gcx.enter(rustc_incremental::save_dep_graph));
         }
 
         _timer = Some(self.session().timer("free_global_ctxt"));

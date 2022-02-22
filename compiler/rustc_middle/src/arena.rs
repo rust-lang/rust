@@ -100,8 +100,6 @@ macro_rules! arena_types {
             [decode] span: rustc_span::Span,
             [decode] used_trait_imports: rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::LocalDefId>,
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
-
-            [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
         ]);
     )
 }

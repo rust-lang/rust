@@ -208,6 +208,8 @@ struct QueryModifiers {
     cache: Option<(Option<IdentOrWild>, Block)>,
 
     /// Custom code to load the query from disk.
+    #[allow(unused)]
+    // FIXME: remove
     load_cached: Option<(Ident, Ident, Block)>,
 
     /// A cycle error for this query aborting the compilation with a fatal error.
@@ -379,54 +381,6 @@ fn add_query_description_impl(
     let name = &query.name;
     let key = &query.key.0;
 
-    // Find out if we should cache the query on disk
-    let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
-        let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
-            // Use custom code to load the query from disk
-            quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                    = Some(|#tcx, #id| { #block });
-            }
-        } else {
-            // Use the default code to load the query from disk
-            quote! {
-                const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>>
-                    = Some(|tcx, id| tcx.on_disk_cache().as_ref()?.try_load_query_result(*tcx, id));
-            }
-        };
-
-        let tcx = args
-            .as_ref()
-            .map(|t| {
-                let t = &t.0;
-                quote! { #t }
-            })
-            .unwrap_or_else(|| quote! { _ });
-        // expr is a `Block`, meaning that `{ #expr }` gets expanded
-        // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
-        quote! {
-            #[allow(unused_variables, unused_braces)]
-            #[inline]
-            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
-                #expr
-            }
-
-            #try_load_from_disk
-        }
-    } else {
-        if modifiers.load_cached.is_some() {
-            panic!("load_cached modifier on query `{}` without a cache modifier", name);
-        }
-        quote! {
-            #[inline]
-            fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
-                false
-            }
-
-            const TRY_LOAD_FROM_DISK: Option<fn(QueryCtxt<$tcx>, SerializedDepNodeIndex) -> Option<Self::Value>> = None;
-        }
-    };
-
     let (tcx, desc) = modifiers.desc;
     let tcx = tcx.as_ref().map_or_else(|| quote! { _ }, |t| quote! { #t });
 
@@ -443,7 +397,6 @@ fn add_query_description_impl(
     impls.extend(quote! {
         (#name<$tcx:tt>) => {
             #desc
-            #cache
         };
     });
 }

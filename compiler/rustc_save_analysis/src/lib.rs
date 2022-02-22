@@ -977,33 +977,31 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     mut handler: H,
 ) {
     with_no_trimmed_paths!({
-        tcx.dep_graph.with_ignore(|| {
-            info!("Dumping crate {}", cratename);
+        info!("Dumping crate {}", cratename);
 
-            // Privacy checking must be done outside of type inference; use a
-            // fallback in case the access levels couldn't have been correctly computed.
-            let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(()),
-                Err(..) => tcx.arena.alloc(AccessLevels::default()),
-            };
+        // Privacy checking must be done outside of type inference; use a
+        // fallback in case the access levels couldn't have been correctly computed.
+        let access_levels = match tcx.sess.compile_status() {
+            Ok(..) => tcx.privacy_access_levels(()),
+            Err(..) => tcx.arena.alloc(AccessLevels::default()),
+        };
 
-            let save_ctxt = SaveContext {
-                tcx,
-                maybe_typeck_results: None,
-                access_levels: &access_levels,
-                span_utils: SpanUtils::new(&tcx.sess),
-                config: find_config(config),
-                impl_counter: Cell::new(0),
-            };
+        let save_ctxt = SaveContext {
+            tcx,
+            maybe_typeck_results: None,
+            access_levels: &access_levels,
+            span_utils: SpanUtils::new(&tcx.sess),
+            config: find_config(config),
+            impl_counter: Cell::new(0),
+        };
 
-            let mut visitor = DumpVisitor::new(save_ctxt);
+        let mut visitor = DumpVisitor::new(save_ctxt);
 
-            visitor.dump_crate_info(cratename);
-            visitor.dump_compilation_options(input, cratename);
-            visitor.process_crate();
+        visitor.dump_crate_info(cratename);
+        visitor.dump_compilation_options(input, cratename);
+        visitor.process_crate();
 
-            handler.save(&visitor.save_ctxt, &visitor.analysis())
-        })
+        handler.save(&visitor.save_ctxt, &visitor.analysis())
     })
 }
 

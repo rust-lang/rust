@@ -24,7 +24,6 @@ use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::mono::{Linkage, Visibility};
 use rustc_middle::ty::TyCtxt;
@@ -58,14 +57,7 @@ pub fn iter_globals(llmod: &llvm::Module) -> ValueIter<'_> {
 pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen<ModuleLlvm>, u64) {
     let start_time = Instant::now();
 
-    let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
-    let (module, _) = tcx.dep_graph.with_task(
-        dep_node,
-        tcx,
-        cgu_name,
-        module_codegen,
-        Some(dep_graph::hash_result),
-    );
+    let module = module_codegen(tcx, cgu_name);
     let time_to_codegen = start_time.elapsed();
 
     // We assume that the cost to run LLVM on a CGU is proportional to

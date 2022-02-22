@@ -1,7 +1,7 @@
 //! Type context book-keeping.
 
 use crate::arena::Arena;
-use crate::dep_graph::{DepGraph, DepKind, DepKindStruct};
+use crate::dep_graph::DepGraph;
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
@@ -27,7 +27,6 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -47,13 +46,12 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
 use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
 use rustc_session::Limit;
 use rustc_session::Session;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
-use rustc_span::source_map::{MultiSpan, SourceMap};
+use rustc_span::source_map::MultiSpan;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
@@ -70,21 +68,6 @@ use std::iter;
 use std::mem;
 use std::ops::{Bound, Deref};
 use std::sync::Arc;
-
-pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
-    /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
-    fn new(sess: &'tcx Session, data: Mmap, start_pos: usize) -> Self
-    where
-        Self: Sized;
-
-    fn new_empty(source_map: &'tcx SourceMap) -> Self
-    where
-        Self: Sized;
-
-    fn drop_serialized_data(&self, tcx: TyCtxt<'tcx>);
-
-    fn serialize(&self, tcx: TyCtxt<'tcx>, encoder: &mut FileEncoder) -> FileEncodeResult;
-}
 
 /// A type that is not publicly constructable. This prevents people from making [`TyKind::Error`]s
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
@@ -1023,15 +1006,8 @@ pub struct GlobalCtxt<'tcx> {
 
     pub(crate) untracked_crate: &'tcx hir::Crate<'tcx>,
 
-    /// This provides access to the incremental compilation on-disk cache for query results.
-    /// Do not access this directly. It is only meant to be used by
-    /// `DepGraph::try_mark_green()` and the query infrastructure.
-    /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
-
     pub queries: &'tcx dyn query::QueryEngine<'tcx>,
     pub query_caches: query::QueryCaches<'tcx>,
-    query_kinds: &'tcx [DepKindStruct],
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
@@ -1161,9 +1137,7 @@ impl<'tcx> TyCtxt<'tcx> {
         resolutions: ty::ResolverOutputs,
         krate: &'tcx hir::Crate<'tcx>,
         dep_graph: DepGraph,
-        on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
-        query_kinds: &'tcx [DepKindStruct],
         crate_name: &str,
         output_filenames: OutputFilenames,
     ) -> GlobalCtxt<'tcx> {
@@ -1187,10 +1161,8 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked_crate: krate,
-            on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
-            query_kinds,
             ty_rcache: Default::default(),
             pred_rcache: Default::default(),
             selection_cache: Default::default(),
@@ -1200,10 +1172,6 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: Lock::new(interpret::AllocMap::new()),
             output_filenames: Arc::new(output_filenames),
         }
-    }
-
-    crate fn query_kind(self, k: DepKind) -> &'tcx DepKindStruct {
-        &self.query_kinds[k as usize]
     }
 
     /// Constructs a `TyKind::Error` type and registers a `delay_span_bug` to ensure it gets used.
@@ -1401,10 +1369,6 @@ impl<'tcx> TyCtxt<'tcx> {
             &resolutions.definitions,
             &*resolutions.cstore,
         )
-    }
-
-    pub fn serialize_query_result_cache(self, encoder: &mut FileEncoder) -> FileEncodeResult {
-        self.on_disk_cache.as_ref().map_or(Ok(()), |c| c.serialize(self, encoder))
     }
 
     /// If `true`, we should use the MIR-based borrowck, but also
@@ -1723,11 +1687,8 @@ CloneLiftImpls! { for<'tcx> { Constness, traits::WellFormedLoc, } }
 pub mod tls {
     use super::{ptr_eq, GlobalCtxt, TyCtxt};
 
-    use crate::dep_graph::TaskDepsRef;
     use crate::ty::query;
-    use rustc_data_structures::sync::{self, Lock};
-    use rustc_data_structures::thin_vec::ThinVec;
-    use rustc_errors::Diagnostic;
+    use rustc_data_structures::sync::{self};
     use std::mem;
 
     #[cfg(not(parallel_compiler))]
@@ -1742,7 +1703,7 @@ pub mod tls {
     /// you should also have access to an `ImplicitCtxt` through the functions
     /// in this module.
     #[derive(Clone)]
-    pub struct ImplicitCtxt<'a, 'tcx> {
+    pub struct ImplicitCtxt<'tcx> {
         /// The current `TyCtxt`.
         pub tcx: TyCtxt<'tcx>,
 
@@ -1750,28 +1711,14 @@ pub mod tls {
         /// `ty::query::plumbing` when executing a query.
         pub query: Option<query::QueryJobId>,
 
-        /// Where to store diagnostics for the current query job, if any.
-        /// This is updated by `JobOwner::start` in `ty::query::plumbing` when executing a query.
-        pub diagnostics: Option<&'a Lock<ThinVec<Diagnostic>>>,
-
         /// Used to prevent layout from recursing too deeply.
         pub layout_depth: usize,
-
-        /// The current dep graph task. This is used to add dependencies to queries
-        /// when executing them.
-        pub task_deps: TaskDepsRef<'a>,
     }
 
-    impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
+    impl<'tcx> ImplicitCtxt<'tcx> {
         pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
             let tcx = TyCtxt { gcx };
-            ImplicitCtxt {
-                tcx,
-                query: None,
-                diagnostics: None,
-                layout_depth: 0,
-                task_deps: TaskDepsRef::Ignore,
-            }
+            ImplicitCtxt { tcx, query: None, layout_depth: 0 }
         }
     }
 
@@ -1819,9 +1766,9 @@ pub mod tls {
 
     /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
     #[inline]
-    pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> R
+    pub fn enter_context<'tcx, F, R>(context: &ImplicitCtxt<'tcx>, f: F) -> R
     where
-        F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+        F: FnOnce(&ImplicitCtxt<'tcx>) -> R,
     {
         set_tlv(context as *const _ as usize, || f(&context))
     }
@@ -1830,7 +1777,7 @@ pub mod tls {
     #[inline]
     pub fn with_context_opt<F, R>(f: F) -> R
     where
-        F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
+        F: for<'tcx> FnOnce(Option<&ImplicitCtxt<'tcx>>) -> R,
     {
         let context = get_tlv();
         if context == 0 {
@@ -1838,9 +1785,9 @@ pub mod tls {
         } else {
             // We could get an `ImplicitCtxt` pointer from another thread.
             // Ensure that `ImplicitCtxt` is `Sync`.
-            sync::assert_sync::<ImplicitCtxt<'_, '_>>();
+            sync::assert_sync::<ImplicitCtxt<'_>>();
 
-            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_>))) }
+            unsafe { f(Some(&*(context as *const ImplicitCtxt<'_>))) }
         }
     }
 
@@ -1849,7 +1796,7 @@ pub mod tls {
     #[inline]
     pub fn with_context<F, R>(f: F) -> R
     where
-        F: for<'a, 'tcx> FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
+        F: for<'tcx> FnOnce(&ImplicitCtxt<'tcx>) -> R,
     {
         with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
     }
@@ -1862,11 +1809,11 @@ pub mod tls {
     #[inline]
     pub fn with_related_context<'tcx, F, R>(tcx: TyCtxt<'tcx>, f: F) -> R
     where
-        F: FnOnce(&ImplicitCtxt<'_, 'tcx>) -> R,
+        F: FnOnce(&ImplicitCtxt<'tcx>) -> R,
     {
         with_context(|context| unsafe {
             assert!(ptr_eq(context.tcx.gcx, tcx.gcx));
-            let context: &ImplicitCtxt<'_, '_> = mem::transmute(context);
+            let context: &ImplicitCtxt<'_> = mem::transmute(context);
             f(context)
         })
     }
@@ -2971,18 +2918,28 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
     t as *const () == u as *const ()
 }
 
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn resolutions(self, _: ()) -> &'tcx ty::ResolverOutputs {
+        &self.untracked_resolutions
+    }
+
+    pub fn module_reexports(self, id: LocalDefId) -> Option<&'tcx [crate::metadata::ModChild]> {
+        self.untracked_resolutions.reexport_map.get(&id).map(|v| &v[..])
+    }
+
+    pub fn maybe_unused_trait_import(self, id: LocalDefId) -> bool {
+        self.untracked_resolutions.maybe_unused_trait_imports.contains(&id)
+    }
+    pub fn maybe_unused_extern_crates(self, _: ()) -> &'tcx [(LocalDefId, Span)] {
+        &self.untracked_resolutions.maybe_unused_extern_crates[..]
+    }
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.resolutions = |tcx, ()| &tcx.untracked_resolutions;
-    providers.module_reexports =
-        |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
-    providers.maybe_unused_trait_import =
-        |tcx, id| tcx.resolutions(()).maybe_unused_trait_imports.contains(&id);
-    providers.maybe_unused_extern_crates =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use = |tcx, id| {
         tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };

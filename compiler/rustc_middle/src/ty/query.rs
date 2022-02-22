@@ -1,4 +1,3 @@
-use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
 use crate::metadata::ModChild;
@@ -95,10 +94,6 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     pub fn at(self, span: Span) -> TyCtxtAt<'tcx> {
         TyCtxtAt { tcx: self, span }
-    }
-
-    pub fn try_mark_green(self, dep_node: &dep_graph::DepNode) -> bool {
-        self.queries.try_mark_green(self, dep_node)
     }
 }
 
@@ -227,7 +222,7 @@ macro_rules! define_callbacks {
                     Err(lookup) => lookup,
                 };
 
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, lookup, QueryMode::Ensure);
+                let _ = self.tcx.queries.$name(self.tcx, DUMMY_SP, key, lookup);
             })*
         }
 
@@ -256,7 +251,7 @@ macro_rules! define_callbacks {
                     Err(lookup) => lookup,
                 };
 
-                self.tcx.queries.$name(self.tcx, self.span, key, lookup, QueryMode::Get).unwrap()
+                self.tcx.queries.$name(self.tcx, self.span, key, lookup)
             })*
         }
 
@@ -306,8 +301,6 @@ macro_rules! define_callbacks {
         pub trait QueryEngine<'tcx>: rustc_data_structures::sync::Sync {
             fn as_any(&'tcx self) -> &'tcx dyn std::any::Any;
 
-            fn try_mark_green(&'tcx self, tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool;
-
             $($(#[$attr])*
             fn $name(
                 &'tcx self,
@@ -315,8 +308,7 @@ macro_rules! define_callbacks {
                 span: Span,
                 key: query_keys::$name<$tcx>,
                 lookup: QueryLookup,
-                mode: QueryMode,
-            ) -> Option<query_stored::$name<$tcx>>;)*
+            ) -> query_stored::$name<$tcx>;)*
         }
     };
 }

@@ -20,12 +20,6 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
-    query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
-        eval_always
-        no_hash
-        desc { "get the resolver outputs" }
-    }
-
     /// Return the span for a definition.
     /// Contrary to `def_span` below, this query returns the full absolute span of the definition.
     /// This span is meant for dep-tracking rather than diagnostics. It should not be used outside
@@ -1314,10 +1308,6 @@ rustc_queries! {
         desc { "traits in scope at a block" }
     }
 
-    query module_reexports(def_id: LocalDefId) -> Option<&'tcx [ModChild]> {
-        desc { |tcx| "looking up reexports of module `{}`", tcx.def_path_str(def_id.to_def_id()) }
-    }
-
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
         separate_provide_extern
@@ -1625,12 +1615,6 @@ rustc_queries! {
 
     query upvars_mentioned(def_id: DefId) -> Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>> {
         desc { |tcx| "collecting upvars mentioned in `{}`", tcx.def_path_str(def_id) }
-    }
-    query maybe_unused_trait_import(def_id: LocalDefId) -> bool {
-        desc { |tcx| "maybe_unused_trait_import for `{}`", tcx.def_path_str(def_id.to_def_id()) }
-    }
-    query maybe_unused_extern_crates(_: ()) -> &'tcx [(LocalDefId, Span)] {
-        desc { "looking up all possibly unused extern crates" }
     }
     query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxHashSet<Symbol> {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }

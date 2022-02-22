@@ -220,8 +220,7 @@ impl<'tcx> Inliner<'tcx> {
             // a lower `HirId` than the callee. This ensures that the callee will
             // not inline us. This trick only works without incremental compilation.
             // So don't do it if that is enabled.
-            if !self.tcx.dep_graph.is_fully_enabled() && self.hir_id.index() < callee_hir_id.index()
-            {
+            if self.hir_id.index() < callee_hir_id.index() {
                 return Ok(());
             }
 

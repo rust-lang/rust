@@ -1,4 +1,3 @@
-use crate::cgu_reuse_tracker::CguReuseTracker;
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, OutputType, SwitchWithOptPath};
@@ -13,7 +12,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{duration_to_secs_str, SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
-    self, AtomicU64, AtomicUsize, Lock, Lrc, OnceCell, OneThread, Ordering, Ordering::SeqCst,
+    self, AtomicU64, AtomicUsize, Lock, Lrc, OnceCell, Ordering, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
@@ -31,7 +30,6 @@ use rustc_target::spec::{
     SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
-use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
@@ -149,11 +147,6 @@ pub struct Session {
     pub stable_crate_id: OnceCell<StableCrateId>,
 
     features: OnceCell<rustc_feature::Features>,
-
-    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
-    /// Used for incremental compilation tests. Will only be populated if
-    /// `-Zquery-dep-graph` is specified.
-    pub cgu_reuse_tracker: CguReuseTracker,
 
     /// Used by `-Z self-profile`.
     pub prof: SelfProfilerRef,
@@ -796,67 +789,6 @@ impl Session {
         if self_contained { vec![p.clone(), p.join("self-contained")] } else { vec![p] }
     }
 
-    pub fn init_incr_comp_session(
-        &self,
-        session_dir: PathBuf,
-        lock_file: flock::Lock,
-        load_dep_graph: bool,
-    ) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::NotInitialized = *incr_comp_session {
-        } else {
-            panic!("Trying to initialize IncrCompSession `{:?}`", *incr_comp_session)
-        }
-
-        *incr_comp_session =
-            IncrCompSession::Active { session_directory: session_dir, lock_file, load_dep_graph };
-    }
-
-    pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        if let IncrCompSession::Active { .. } = *incr_comp_session {
-        } else {
-            panic!("trying to finalize `IncrCompSession` `{:?}`", *incr_comp_session);
-        }
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
-    }
-
-    pub fn mark_incr_comp_session_as_invalid(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        let session_directory = match *incr_comp_session {
-            IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
-            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => panic!("trying to invalidate `IncrCompSession` `{:?}`", *incr_comp_session),
-        };
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
-    }
-
-    pub fn incr_comp_session_dir(&self) -> cell::Ref<'_, PathBuf> {
-        let incr_comp_session = self.incr_comp_session.borrow();
-        cell::Ref::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
-            IncrCompSession::NotInitialized => panic!(
-                "trying to get session directory from `IncrCompSession`: {:?}",
-                *incr_comp_session,
-            ),
-            IncrCompSession::Active { ref session_directory, .. }
-            | IncrCompSession::Finalized { ref session_directory }
-            | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
-                session_directory
-            }
-        })
-    }
-
-    pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
-        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
-    }
-
     pub fn print_perf_stats(&self) {
         eprintln!(
             "Total time spent computing symbol hashes:      {}",
@@ -1261,12 +1193,6 @@ pub fn build_session(
     });
     let print_fuel = AtomicU64::new(0);
 
-    let cgu_reuse_tracker = if sopts.debugging_opts.query_dep_graph {
-        CguReuseTracker::new()
-    } else {
-        CguReuseTracker::new_disabled()
-    };
-
     let prof = SelfProfilerRef::new(
         self_profiler,
         sopts.debugging_opts.time_passes || sopts.debugging_opts.time,
@@ -1295,8 +1221,6 @@ pub fn build_session(
         crate_types: OnceCell::new(),
         stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
-        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
-        cgu_reuse_tracker,
         prof,
         perf_stats: PerfStats {
             symbol_hash_time: Lock::new(Duration::from_secs(0)),

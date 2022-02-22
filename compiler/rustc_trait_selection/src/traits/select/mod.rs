@@ -33,7 +33,7 @@ use rustc_errors::ErrorReported;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
-use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
+use rustc_middle::dep_graph::DepNodeIndex;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::fast_reject::{self, SimplifyParams};
@@ -763,40 +763,33 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let reached_depth = stack.reached_depth.get();
         if reached_depth >= stack.depth {
             debug!(?result, "CACHE MISS");
-            self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
+            self.insert_evaluation_cache(param_env, fresh_trait_pred, result);
 
-            stack.cache().on_completion(
-                stack.dfn,
-                |fresh_trait_pred, provisional_result, provisional_dep_node| {
-                    // Create a new `DepNode` that has dependencies on:
-                    // * The `DepNode` for the original evaluation that resulted in a provisional cache
-                    // entry being crated
-                    // * The `DepNode` for the *current* evaluation, which resulted in us completing
-                    // provisional caches entries and inserting them into the evaluation cache
-                    //
-                    // This ensures that when a query reads this entry from the evaluation cache,
-                    // it will end up (transitively) dependening on all of the incr-comp dependencies
-                    // created during the evaluation of this trait. For example, evaluating a trait
-                    // will usually require us to invoke `type_of(field_def_id)` to determine the
-                    // constituent types, and we want any queries reading from this evaluation
-                    // cache entry to end up with a transitive `type_of(field_def_id`)` dependency.
-                    //
-                    // By using `in_task`, we're also creating an edge from the *current* query
-                    // to the newly-created `combined_dep_node`. This is probably redundant,
-                    // but it's better to add too many dep graph edges than to add too few
-                    // dep graph edges.
-                    let ((), combined_dep_node) = self.in_task(|this| {
-                        this.tcx().dep_graph.read_index(provisional_dep_node);
-                        this.tcx().dep_graph.read_index(dep_node);
-                    });
-                    self.insert_evaluation_cache(
-                        param_env,
-                        fresh_trait_pred,
-                        combined_dep_node,
-                        provisional_result.max(result),
-                    );
-                },
-            );
+            stack.cache().on_completion(stack.dfn, |fresh_trait_pred, provisional_result, _| {
+                // Create a new `DepNode` that has dependencies on:
+                // * The `DepNode` for the original evaluation that resulted in a provisional cache
+                // entry being crated
+                // * The `DepNode` for the *current* evaluation, which resulted in us completing
+                // provisional caches entries and inserting them into the evaluation cache
+                //
+                // This ensures that when a query reads this entry from the evaluation cache,
+                // it will end up (transitively) dependening on all of the incr-comp dependencies
+                // created during the evaluation of this trait. For example, evaluating a trait
+                // will usually require us to invoke `type_of(field_def_id)` to determine the
+                // constituent types, and we want any queries reading from this evaluation
+                // cache entry to end up with a transitive `type_of(field_def_id`)` dependency.
+                //
+                // By using `in_task`, we're also creating an edge from the *current* query
+                // to the newly-created `combined_dep_node`. This is probably redundant,
+                // but it's better to add too many dep graph edges than to add too few
+                // dep graph edges.
+                let ((), _combined_dep_node) = self.in_task(|_| {});
+                self.insert_evaluation_cache(
+                    param_env,
+                    fresh_trait_pred,
+                    provisional_result.max(result),
+                );
+            });
         } else {
             debug!(?result, "PROVISIONAL");
             debug!(
@@ -1048,18 +1041,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_pred), tcx) {
+            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_pred)) {
                 return Some(res);
             }
         }
-        self.infcx.evaluation_cache.get(&param_env.and(trait_pred), tcx)
+        self.infcx.evaluation_cache.get(&param_env.and(trait_pred))
     }
 
     fn insert_evaluation_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-        dep_node: DepNodeIndex,
         result: EvaluationResult,
     ) {
         // Avoid caching results that depend on more than just the trait-ref
@@ -1083,13 +1075,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME: Due to #50507 this overwrites the different values
                 // This should be changed to use HashMapExt::insert_same
                 // when that is fixed
-                self.tcx().evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
+                self.tcx().evaluation_cache.insert(param_env.and(trait_pred), result);
                 return;
             }
         }
 
         debug!(?trait_pred, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
+        self.infcx.evaluation_cache.insert(param_env.and(trait_pred), result);
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -1148,9 +1140,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> R,
     {
-        let (result, dep_node) =
-            self.tcx().dep_graph.with_anon_task(self.tcx(), DepKind::TraitSelect, || op(self));
-        self.tcx().dep_graph.read_index(dep_node);
+        let result = op(self);
+        let dep_node = self.tcx().dep_graph.next_virtual_depnode_index();
         (result, dep_node)
     }
 
@@ -1297,11 +1288,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         pred.remap_constness(tcx, &mut param_env);
 
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.selection_cache.get(&param_env.and(pred), tcx) {
+            if let Some(res) = tcx.selection_cache.get(&param_env.and(pred)) {
                 return Some(res);
             }
         }
-        self.infcx.selection_cache.get(&param_env.and(pred), tcx)
+        self.infcx.selection_cache.get(&param_env.and(pred))
     }
 
     /// Determines whether can we safely cache the result
@@ -1341,7 +1332,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         mut param_env: ty::ParamEnv<'tcx>,
         cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
-        dep_node: DepNodeIndex,
         candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>,
     ) {
         let tcx = self.tcx();
@@ -1361,14 +1351,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if !candidate.needs_infer() {
                     debug!(?pred, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
-                    tcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
+                    tcx.selection_cache.insert(param_env.and(pred), candidate);
                     return;
                 }
             }
         }
 
         debug!(?pred, ?candidate, "insert_candidate_cache local");
-        self.infcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
+        self.infcx.selection_cache.insert(param_env.and(pred), candidate);
     }
 
     /// Matches a predicate against the bounds of its self type.

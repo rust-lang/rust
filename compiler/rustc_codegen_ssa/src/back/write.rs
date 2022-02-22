@@ -1,5 +1,5 @@
 use super::link::{self, ensure_removed};
-use super::lto::{self, SerializedModule};
+use super::lto;
 use super::symbol_export::symbol_name_for_instance_in_crate;
 
 use crate::{
@@ -9,23 +9,17 @@ use crate::{
 use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{DiagnosticId, FatalError, Handler, Level};
-use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_incremental::{
-    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
-};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::middle::exported_symbols::SymbolExportLevel;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc_session::config::{self, CrateType, Lto, OutputFilenames, OutputType};
 use rustc_session::config::{Passes, SwitchWithOptPath};
 use rustc_session::Session;
@@ -200,10 +194,7 @@ impl ModuleConfig {
                 0
             ),
 
-            emit_pre_lto_bc: if_regular!(
-                save_temps || need_pre_lto_bitcode_for_incr_comp(sess),
-                false
-            ),
+            emit_pre_lto_bc: if_regular!(save_temps, false),
             emit_no_opt_bc: if_regular!(save_temps, false),
             emit_bc: if_regular!(
                 save_temps || sess.opts.output_types.contains_key(&OutputType::Bitcode),
@@ -342,11 +333,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub remark: Passes,
     // Worker thread number
     pub worker: usize,
-    // The incremental compilation session directory, or None if we are not
-    // compiling incrementally
-    pub incr_comp_session_dir: Option<PathBuf>,
-    // Used to update CGU re-use information during the thinlto phase.
-    pub cgu_reuse_tracker: CguReuseTracker,
     // Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
 }
@@ -369,18 +355,16 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
     needs_fat_lto: Vec<FatLTOInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
-    import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
 ) -> Vec<(WorkItem<B>, u64)> {
     let _prof_timer = cgcx.prof.generic_activity("codegen_generate_lto_work");
 
-    let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
+    let lto_modules = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let lto_module =
-            B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
-        (vec![lto_module], vec![])
+        let lto_module = B::run_fat_lto(cgcx, needs_fat_lto).unwrap_or_else(|e| e.raise());
+        vec![lto_module]
     } else {
         assert!(needs_fat_lto.is_empty());
-        B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules).unwrap_or_else(|e| e.raise())
+        B::run_thin_lto(cgcx, needs_thin_lto).unwrap_or_else(|e| e.raise())
     };
 
     lto_modules
@@ -389,15 +373,6 @@ fn generate_lto_work<B: ExtraBackendMethods>(
             let cost = module.cost();
             (WorkItem::LTO(module), cost)
         })
-        .chain(copy_jobs.into_iter().map(|wp| {
-            (
-                WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
-                    name: wp.cgu_name.clone(),
-                    source: wp,
-                }),
-                0,
-            )
-        }))
         .collect()
 }
 
@@ -412,17 +387,6 @@ fn need_bitcode_in_object(sess: &Session) -> bool {
         && sess.opts.output_types.contains_key(&OutputType::Exe);
     let forced_by_target = sess.target.forces_embed_bitcode;
     requested_for_rlib || forced_by_target
-}
-
-fn need_pre_lto_bitcode_for_incr_comp(sess: &Session) -> bool {
-    if sess.opts.incremental.is_none() {
-        return false;
-    }
-
-    match sess.lto() {
-        Lto::No => false,
-        Lto::Fat | Lto::Thin | Lto::ThinLocal => true,
-    }
 }
 
 pub fn start_async_codegen<B: ExtraBackendMethods>(
@@ -479,31 +443,6 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
         future: coordinator_thread,
         output_filenames: tcx.output_filenames(()).clone(),
     }
-}
-
-fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
-    sess: &Session,
-    compiled_modules: &CompiledModules,
-) -> FxHashMap<WorkProductId, WorkProduct> {
-    let mut work_products = FxHashMap::default();
-
-    if sess.opts.incremental.is_none() {
-        return work_products;
-    }
-
-    let _timer = sess.timer("copy_all_cgu_workproducts_to_incr_comp_cache_dir");
-
-    for module in compiled_modules.modules.iter().filter(|m| m.kind == ModuleKind::Regular) {
-        let path = module.object.as_ref().cloned();
-
-        if let Some((id, product)) =
-            copy_cgu_workproduct_to_incr_comp_cache_dir(sess, &module.name, &path)
-        {
-            work_products.insert(id, product);
-        }
-    }
-
-    work_products
 }
 
 fn produce_final_output_artifacts(
@@ -742,8 +681,9 @@ fn execute_work_item<B: ExtraBackendMethods>(
 
     match work_item {
         WorkItem::Optimize(module) => execute_optimize_work_item(cgcx, module, module_config),
-        WorkItem::CopyPostLtoArtifacts(module) => {
-            Ok(execute_copy_from_cache_work_item(cgcx, module, module_config))
+        WorkItem::CopyPostLtoArtifacts(_) => {
+            // FIXME: delete
+            unreachable!()
         }
         WorkItem::LTO(module) => execute_lto_work_item(cgcx, module, module_config),
     }
@@ -815,76 +755,14 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
 
     let lto_type = compute_per_cgu_lto_type(&cgcx.lto, &cgcx.opts, &cgcx.crate_types, module.kind);
 
-    // If we're doing some form of incremental LTO then we need to be sure to
-    // save our module to disk first.
-    let bitcode = if cgcx.config(module.kind).emit_pre_lto_bc {
-        let filename = pre_lto_bitcode_filename(&module.name);
-        cgcx.incr_comp_session_dir.as_ref().map(|path| path.join(&filename))
-    } else {
-        None
-    };
-
     match lto_type {
         ComputedLtoType::No => finish_intra_module_work(cgcx, module, module_config),
         ComputedLtoType::Thin => {
             let (name, thin_buffer) = B::prepare_thin(module);
-            if let Some(path) = bitcode {
-                fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
-                    panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
-                });
-            }
             Ok(WorkItemResult::NeedsThinLTO(name, thin_buffer))
         }
-        ComputedLtoType::Fat => match bitcode {
-            Some(path) => {
-                let (name, buffer) = B::serialize_module(module);
-                fs::write(&path, buffer.data()).unwrap_or_else(|e| {
-                    panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
-                });
-                Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::Serialized { name, buffer }))
-            }
-            None => Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module))),
-        },
+        ComputedLtoType::Fat => Ok(WorkItemResult::NeedsFatLTO(FatLTOInput::InMemory(module))),
     }
-}
-
-fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
-    cgcx: &CodegenContext<B>,
-    module: CachedModuleCodegen,
-    module_config: &ModuleConfig,
-) -> WorkItemResult<B> {
-    let incr_comp_session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
-    let mut object = None;
-    if let Some(saved_file) = module.source.saved_file {
-        let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, Some(&module.name));
-        object = Some(obj_out.clone());
-        let source_file = in_incr_comp_dir(&incr_comp_session_dir, &saved_file);
-        debug!(
-            "copying pre-existing module `{}` from {:?} to {}",
-            module.name,
-            source_file,
-            obj_out.display()
-        );
-        if let Err(err) = link_or_copy(&source_file, &obj_out) {
-            let diag_handler = cgcx.create_diag_handler();
-            diag_handler.err(&format!(
-                "unable to copy {} to {}: {}",
-                source_file.display(),
-                obj_out.display(),
-                err
-            ));
-        }
-    }
-
-    assert_eq!(object.is_some(), module_config.emit_obj != EmitObj::None);
-
-    WorkItemResult::Compiled(CompiledModule {
-        name: module.name,
-        kind: ModuleKind::Regular,
-        object,
-        dwarf_object: None,
-        bytecode: None,
-    })
 }
 
 fn execute_lto_work_item<B: ExtraBackendMethods>(
@@ -916,31 +794,11 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
 
 pub enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
-    NeedsFatLTO {
-        result: FatLTOInput<B>,
-        worker_id: usize,
-    },
-    NeedsThinLTO {
-        name: String,
-        thin_buffer: B::ThinBuffer,
-        worker_id: usize,
-    },
-    NeedsLink {
-        module: ModuleCodegen<B::Module>,
-        worker_id: usize,
-    },
-    Done {
-        result: Result<CompiledModule, Option<WorkerFatalError>>,
-        worker_id: usize,
-    },
-    CodegenDone {
-        llvm_work_item: WorkItem<B>,
-        cost: u64,
-    },
-    AddImportOnlyModule {
-        module_data: SerializedModule<B::ModuleBuffer>,
-        work_product: WorkProduct,
-    },
+    NeedsFatLTO { result: FatLTOInput<B>, worker_id: usize },
+    NeedsThinLTO { name: String, thin_buffer: B::ThinBuffer, worker_id: usize },
+    NeedsLink { module: ModuleCodegen<B::Module>, worker_id: usize },
+    Done { result: Result<CompiledModule, Option<WorkerFatalError>>, worker_id: usize },
+    CodegenDone { llvm_work_item: WorkItem<B>, cost: u64 },
     CodegenComplete,
     CodegenItem,
     CodegenAborted,
@@ -1046,8 +904,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         exported_symbols,
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
-        incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
-        cgu_reuse_tracker: sess.cgu_reuse_tracker.clone(),
         coordinator_send,
         diag_emitter: shared_emitter.clone(),
         output_filenames: tcx.output_filenames(()).clone(),
@@ -1221,7 +1077,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_link = Vec::new();
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
-        let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
         let mut codegen_aborted = false;
 
@@ -1252,7 +1107,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 && !(work_items.is_empty()
                     && needs_fat_lto.is_empty()
                     && needs_thin_lto.is_empty()
-                    && lto_import_only_modules.is_empty()
                     && main_thread_worker_state == MainThreadWorkerState::Idle))
         {
             // While there are still CGUs to be codegened, the coordinator has
@@ -1313,11 +1167,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
-                    let import_only_modules = mem::take(&mut lto_import_only_modules);
 
-                    for (work, cost) in
-                        generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto, import_only_modules)
-                    {
+                    for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto) {
                         let insertion_index = work_items
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
@@ -1495,13 +1346,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     free_worker(worker_id);
                     needs_thin_lto.push((name, thin_buffer));
-                }
-                Message::AddImportOnlyModule { module_data, work_product } => {
-                    assert!(!started_lto);
-                    assert!(!codegen_done);
-                    assert_eq!(main_thread_worker_state, MainThreadWorkerState::Codegenning);
-                    lto_import_only_modules.push((module_data, work_product));
-                    main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
                 // If the thread failed that means it panicked, so we abort immediately.
                 Message::Done { result: Err(None), worker_id: _ } => {
@@ -1822,12 +1666,9 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             }
         });
 
-        sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
-
         sess.abort_if_errors();
 
-        let work_products =
-            copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
+        let work_products = FxHashMap::default();
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         // FIXME: time_llvm_passes support - does this use a global context or
@@ -1916,29 +1757,6 @@ pub fn submit_post_lto_module_to_llvm<B: ExtraBackendMethods>(
 ) {
     let llvm_work_item = WorkItem::CopyPostLtoArtifacts(module);
     drop(tx_to_llvm_workers.send(Box::new(Message::CodegenDone::<B> { llvm_work_item, cost: 0 })));
-}
-
-pub fn submit_pre_lto_module_to_llvm<B: ExtraBackendMethods>(
-    _backend: &B,
-    tcx: TyCtxt<'_>,
-    tx_to_llvm_workers: &Sender<Box<dyn Any + Send>>,
-    module: CachedModuleCodegen,
-) {
-    let filename = pre_lto_bitcode_filename(&module.name);
-    let bc_path = in_incr_comp_dir_sess(tcx.sess, &filename);
-    let file = fs::File::open(&bc_path)
-        .unwrap_or_else(|e| panic!("failed to open bitcode file `{}`: {}", bc_path.display(), e));
-
-    let mmap = unsafe {
-        Mmap::map(file).unwrap_or_else(|e| {
-            panic!("failed to mmap bitcode file `{}`: {}", bc_path.display(), e)
-        })
-    };
-    // Schedule the module to be loaded
-    drop(tx_to_llvm_workers.send(Box::new(Message::AddImportOnlyModule::<B> {
-        module_data: SerializedModule::FromUncompressedFile(mmap),
-        work_product: module.source,
-    })));
 }
 
 pub fn pre_lto_bitcode_filename(module_name: &str) -> String {

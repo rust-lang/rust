@@ -1,15 +1,12 @@
 use crate::back::metadata::create_compressed_metadata_file;
-use crate::back::write::{
-    compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
-    submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
-};
+use crate::back::write::{start_async_codegen, submit_codegened_module_to_llvm, OngoingCodegen};
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
 use crate::meth;
 use crate::mir;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
+use crate::{CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -23,11 +20,10 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::lang_items;
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::mir::mono::{CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
-use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc_session::config::{self, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
@@ -505,17 +501,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // codegen units.
     let codegen_units = tcx.collect_and_partition_mono_items(()).1;
 
-    // Force all codegen_unit queries so they are already either red or green
-    // when compile_codegen_unit accesses them. We are not able to re-execute
-    // the codegen_unit query from just the DepNode, so an unknown color would
-    // lead to having to re-execute compile_codegen_unit, possibly
-    // unnecessarily.
-    if tcx.dep_graph.is_fully_enabled() {
-        for cgu in codegen_units {
-            tcx.ensure().codegen_unit(cgu.name());
-        }
-    }
-
     let metadata_module = if need_metadata_module {
         // Emit compressed metadata object.
         let metadata_cgu_name =
@@ -619,22 +604,17 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let pre_compile_cgus = |cgu_reuse: &[CguReuse]| {
+    let pre_compile_cgus = || {
         if cfg!(parallel_compiler) {
             tcx.sess.time("compile_first_CGU_batch", || {
                 // Try to find one CGU to compile per thread.
-                let cgus: Vec<_> = cgu_reuse
-                    .iter()
-                    .enumerate()
-                    .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                    .take(tcx.sess.threads())
-                    .collect();
+                let cgus: Vec<_> = (0..tcx.sess.threads()).collect();
 
                 // Compile the found CGUs in parallel.
                 let start_time = Instant::now();
 
                 let pre_compiled_cgus = par_iter(cgus)
-                    .map(|(i, _)| {
+                    .map(|i| {
                         let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
                         (i, module)
                     })
@@ -647,7 +627,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     };
 
-    let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
     let mut total_codegen_time = Duration::new(0, 0);
     let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
@@ -659,66 +638,26 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         // Do some setup work in the first iteration
         if pre_compiled_cgus.is_none() {
             // Calculate the CGU reuse
-            cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-                codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect()
-            });
             // Pre compile some CGUs
-            let (compiled_cgus, codegen_time) = pre_compile_cgus(&cgu_reuse);
+            let (compiled_cgus, codegen_time) = pre_compile_cgus();
             pre_compiled_cgus = Some(compiled_cgus);
             total_codegen_time += codegen_time;
         }
 
-        let cgu_reuse = cgu_reuse[i];
-        tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
-
-        match cgu_reuse {
-            CguReuse::No => {
-                let (module, cost) =
-                    if let Some(cgu) = pre_compiled_cgus.as_mut().unwrap().remove(&i) {
-                        cgu
-                    } else {
-                        let start_time = Instant::now();
-                        let module = backend.compile_codegen_unit(tcx, cgu.name());
-                        total_codegen_time += start_time.elapsed();
-                        module
-                    };
-                // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
-                // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
-                // compilation hang on post-monomorphization errors.
-                tcx.sess.abort_if_errors();
-
-                submit_codegened_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator_send,
-                    module,
-                    cost,
-                );
-                false
-            }
-            CguReuse::PreLto => {
-                submit_pre_lto_module_to_llvm(
-                    &backend,
-                    tcx,
-                    &ongoing_codegen.coordinator_send,
-                    CachedModuleCodegen {
-                        name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
-                    },
-                );
-                true
-            }
-            CguReuse::PostLto => {
-                submit_post_lto_module_to_llvm(
-                    &backend,
-                    &ongoing_codegen.coordinator_send,
-                    CachedModuleCodegen {
-                        name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
-                    },
-                );
-                true
-            }
+        let (module, cost) = if let Some(cgu) = pre_compiled_cgus.as_mut().unwrap().remove(&i) {
+            cgu
+        } else {
+            let start_time = Instant::now();
+            let module = backend.compile_codegen_unit(tcx, cgu.name());
+            total_codegen_time += start_time.elapsed();
+            module
         };
+        // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
+        // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
+        // compilation hang on post-monomorphization errors.
+        tcx.sess.abort_if_errors();
+
+        submit_codegened_module_to_llvm(&backend, &ongoing_codegen.coordinator_send, module, cost);
     }
 
     ongoing_codegen.codegen_finished(tcx);
@@ -917,47 +856,4 @@ pub fn provide(providers: &mut Providers) {
         }
         tcx.sess.opts.optimize
     };
-}
-
-fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {
-    if !tcx.dep_graph.is_fully_enabled() {
-        return CguReuse::No;
-    }
-
-    let work_product_id = &cgu.work_product_id();
-    if tcx.dep_graph.previous_work_product(work_product_id).is_none() {
-        // We don't have anything cached for this CGU. This can happen
-        // if the CGU did not exist in the previous session.
-        return CguReuse::No;
-    }
-
-    // Try to mark the CGU as green. If it we can do so, it means that nothing
-    // affecting the LLVM module has changed and we can re-use a cached version.
-    // If we compile with any kind of LTO, this means we can re-use the bitcode
-    // of the Pre-LTO stage (possibly also the Post-LTO version but we'll only
-    // know that later). If we are not doing LTO, there is only one optimized
-    // version of each module, so we re-use that.
-    let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
-
-    if tcx.try_mark_green(&dep_node) {
-        // We can re-use either the pre- or the post-thinlto state. If no LTO is
-        // being performed then we can use post-LTO artifacts, otherwise we must
-        // reuse pre-LTO artifacts
-        match compute_per_cgu_lto_type(
-            &tcx.sess.lto(),
-            &tcx.sess.opts,
-            &tcx.sess.crate_types(),
-            ModuleKind::Regular,
-        ) {
-            ComputedLtoType::No => CguReuse::PostLto,
-            _ => CguReuse::PreLto,
-        }
-    } else {
-        CguReuse::No
-    }
 }

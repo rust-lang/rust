@@ -2153,10 +2153,6 @@ impl EncodedMetadata {
 pub fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
     let _prof_timer = tcx.prof.verbose_generic_activity("generate_crate_metadata");
 
-    // Since encoding metadata is not in a query, and nothing is cached,
-    // there's no need to do dep-graph tracking for any of it.
-    tcx.dep_graph.assert_ignored();
-
     join(
         || encode_metadata_impl(tcx),
         || {

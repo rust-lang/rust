@@ -3555,7 +3555,6 @@ dependencies = [
  "rustc_errors",
  "rustc_fs_util",
  "rustc_hir",
- "rustc_incremental",
  "rustc_index",
  "rustc_macros",
  "rustc_metadata",
@@ -3746,25 +3745,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc_incremental"
-version = "0.0.0"
-dependencies = [
- "rand 0.8.4",
- "rustc_ast",
- "rustc_data_structures",
- "rustc_errors",
- "rustc_fs_util",
- "rustc_graphviz",
- "rustc_hir",
- "rustc_macros",
- "rustc_middle",
- "rustc_serialize",
- "rustc_session",
- "rustc_span",
- "tracing",
-]
-
-[[package]]
 name = "rustc_index"
 version = "0.0.0"
 dependencies = [
@@ -3813,7 +3793,6 @@ dependencies = [
  "rustc_errors",
  "rustc_expand",
  "rustc_hir",
- "rustc_incremental",
  "rustc_lint",
  "rustc_metadata",
  "rustc_middle",
@@ -4152,7 +4131,6 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
- "rustc_macros",
  "rustc_middle",
  "rustc_query_system",
  "rustc_serialize",

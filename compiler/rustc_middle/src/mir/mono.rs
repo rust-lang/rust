@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
+use crate::dep_graph::{WorkProduct, WorkProductId};
 use crate::ty::{subst::InternalSubsts, Instance, InstanceDef, SymbolName, TyCtxt};
 use rustc_attr::InlineAttr;
 use rustc_data_structures::base_n;
@@ -186,11 +186,6 @@ impl<'tcx> MonoItem<'tcx> {
         .map(|def_id| tcx.def_span(def_id))
     }
 
-    // Only used by rustc_codegen_cranelift
-    pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
-        crate::dep_graph::make_compile_mono_item(tcx, self)
-    }
-
     /// Returns the item's `CrateNum`
     pub fn krate(&self) -> CrateNum {
         match self {
@@ -355,11 +350,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
-        let work_product_id = self.work_product_id();
-        tcx.dep_graph
-            .previous_work_product(&work_product_id)
-            .unwrap_or_else(|| panic!("Could not find work-product for CGU `{}`", self.name()))
+    pub fn work_product(&self, _: TyCtxt<'_>) -> WorkProduct {
+        // FIXME: delete
+        panic!("Could not find work-product for CGU `{}`", self.name())
     }
 
     pub fn items_in_deterministic_order(
@@ -403,10 +396,6 @@ impl<'tcx> CodegenUnit<'tcx> {
         let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
         items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
         items
-    }
-
-    pub fn codegen_dep_node(&self, tcx: TyCtxt<'tcx>) -> DepNode {
-        crate::dep_graph::make_compile_codegen_unit(tcx, self.name())
     }
 }
 

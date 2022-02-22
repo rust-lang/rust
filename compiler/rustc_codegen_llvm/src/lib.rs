@@ -17,7 +17,7 @@ use back::write::{create_informational_target_machine, create_target_machine};
 
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
+use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLTOInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
@@ -183,16 +183,14 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<FatLTOInput<Self>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<LtoModuleCodegen<Self>, FatalError> {
-        back::lto::run_fat(cgcx, modules, cached_modules)
+        back::lto::run_fat(cgcx, modules)
     }
     fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<(String, Self::ThinBuffer)>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
-        back::lto::run_thin(cgcx, modules, cached_modules)
+    ) -> Result<Vec<LtoModuleCodegen<Self>>, FatalError> {
+        back::lto::run_thin(cgcx, modules)
     }
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,

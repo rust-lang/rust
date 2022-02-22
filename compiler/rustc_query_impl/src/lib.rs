@@ -10,14 +10,11 @@
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
-extern crate rustc_macros;
-#[macro_use]
 extern crate rustc_middle;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::AtomicU64;
-use rustc_middle::arena::Arena;
-use rustc_middle::dep_graph::{self, DepKindStruct, SerializedDepNodeIndex};
+use rustc_middle::dep_graph;
 use rustc_middle::ty::query::{query_keys, query_storage, query_stored, query_values};
 use rustc_middle::ty::query::{ExternProviders, Providers, QueryEngine};
 use rustc_middle::ty::{self, TyCtxt};
@@ -36,10 +33,7 @@ mod values;
 use self::values::Value;
 
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::{QueryDescription, QueryVtable};
-
-mod on_disk_cache;
-pub use on_disk_cache::OnDiskCache;
+pub(crate) use rustc_query_system::query::QueryDescription;
 
 mod profiling_support;
 pub use self::profiling_support::alloc_self_profile_query_strings;

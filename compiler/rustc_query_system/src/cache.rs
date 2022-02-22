@@ -1,7 +1,5 @@
 //! Cache for candidate selection.
 
-use crate::dep_graph::{DepContext, DepNodeIndex};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 
@@ -9,7 +7,7 @@ use std::hash::Hash;
 
 #[derive(Clone)]
 pub struct Cache<Key, Value> {
-    hashmap: Lock<FxHashMap<Key, WithDepNode<Value>>>,
+    hashmap: Lock<FxHashMap<Key, Value>>,
 }
 
 impl<Key, Value> Default for Cache<Key, Value> {
@@ -26,28 +24,11 @@ impl<Key, Value> Cache<Key, Value> {
 }
 
 impl<Key: Eq + Hash, Value: Clone> Cache<Key, Value> {
-    pub fn get<CTX: DepContext>(&self, key: &Key, tcx: CTX) -> Option<Value> {
-        Some(self.hashmap.borrow().get(key)?.get(tcx))
+    pub fn get(&self, key: &Key) -> Option<Value> {
+        Some(self.hashmap.borrow().get(key)?.clone())
     }
 
-    pub fn insert(&self, key: Key, dep_node: DepNodeIndex, value: Value) {
-        self.hashmap.borrow_mut().insert(key, WithDepNode::new(dep_node, value));
-    }
-}
-
-#[derive(Clone, Eq, PartialEq)]
-pub struct WithDepNode<T> {
-    dep_node: DepNodeIndex,
-    cached_value: T,
-}
-
-impl<T: Clone> WithDepNode<T> {
-    pub fn new(dep_node: DepNodeIndex, cached_value: T) -> Self {
-        WithDepNode { dep_node, cached_value }
-    }
-
-    pub fn get<CTX: DepContext>(&self, tcx: CTX) -> T {
-        tcx.dep_graph().read_index(self.dep_node);
-        self.cached_value.clone()
+    pub fn insert(&self, key: Key, value: Value) {
+        self.hashmap.borrow_mut().insert(key, value);
     }
 }
