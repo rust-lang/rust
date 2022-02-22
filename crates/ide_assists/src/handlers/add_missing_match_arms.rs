@@ -79,9 +79,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
         bool,
     ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
-        let variants = enum_def.variants(ctx.db());
-
         let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db());
+
+        let variants = enum_def.variants(ctx.db());
 
         let missing_pats = variants
             .into_iter()
@@ -1598,7 +1598,7 @@ fn foo(t: E, b: bool) {
     }
 
     #[test]
-    fn does_notfill_wildcard_with_partial_wildcard_and_wildcard() {
+    fn does_not_fill_wildcard_with_partial_wildcard_and_wildcard() {
         check_assist(
             add_missing_match_arms,
             r#"
@@ -1616,6 +1616,30 @@ enum E { #[doc(hidden)] A, }
 fn foo(t: E, b: bool) {
     match t {
         _ if b => todo!(),
+        _ => todo!(),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn non_exhaustive_doc_hidden_tuple_fills_wildcard() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E, b: bool) {
+    match $0(t, b) {
+    }
+}"#,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E, b: bool) {
+    match (t, b) {
+        $0(E::A, true) => todo!(),
+        (E::A, false) => todo!(),
         _ => todo!(),
     }
 }"#,
