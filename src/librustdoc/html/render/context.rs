@@ -201,19 +201,19 @@ impl<'tcx> Context<'tcx> {
         } else {
             tyname.as_str()
         };
-        let page = layout::Page {
-            css_class: tyname_s,
-            root_path: &self.root_path(),
-            static_root_path: self.shared.static_root_path.as_deref(),
-            title: &title,
-            description: &desc,
-            keywords: &keywords,
-            resource_suffix: &self.shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
-        };
 
         if !self.render_redirect_pages {
+            let page = layout::Page {
+                css_class: tyname_s,
+                root_path: &self.root_path(),
+                static_root_path: self.shared.static_root_path.as_deref(),
+                title: &title,
+                description: &desc,
+                keywords: &keywords,
+                resource_suffix: &self.shared.resource_suffix,
+                extra_scripts: &[],
+                static_extra_scripts: &[],
+            };
             layout::render(
                 &self.shared.layout,
                 &page,
@@ -223,23 +223,31 @@ impl<'tcx> Context<'tcx> {
             )
         } else {
             if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
-                let mut path = String::new();
-                for name in &names[..names.len() - 1] {
-                    path.push_str(&name.as_str());
-                    path.push('/');
-                }
-                path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
-                match self.shared.redirections {
-                    Some(ref redirections) => {
-                        let mut current_path = String::new();
-                        for name in &self.current {
-                            current_path.push_str(&name.as_str());
-                            current_path.push('/');
-                        }
-                        current_path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
-                        redirections.borrow_mut().insert(current_path, path);
+                if self.current.len() + 1 != names.len()
+                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b)
+                {
+                    // We checked that the redirection isn't pointing to the current file,
+                    // preventing an infinite redirection loop in the generated
+                    // documentation.
+
+                    let mut path = String::new();
+                    for name in &names[..names.len() - 1] {
+                        path.push_str(&name.as_str());
+                        path.push('/');
                     }
-                    None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                    path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
+                    match self.shared.redirections {
+                        Some(ref redirections) => {
+                            let mut current_path = String::new();
+                            for name in &self.current {
+                                current_path.push_str(&name.as_str());
+                                current_path.push('/');
+                            }
+                            current_path.push_str(&item_path(ty, &names.last().unwrap().as_str()));
+                            redirections.borrow_mut().insert(current_path, path);
+                        }
+                        None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                    }
                 }
             }
             String::new()
