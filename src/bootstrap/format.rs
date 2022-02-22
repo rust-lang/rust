@@ -13,7 +13,7 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     // avoid the submodule config paths from coming into play,
     // we only allow a single global config for the workspace for now
     cmd.arg("--config-path").arg(&src.canonicalize().unwrap());
-    cmd.arg("--edition").arg("2018");
+    cmd.arg("--edition").arg("2021");
     cmd.arg("--unstable-features");
     cmd.arg("--skip-children");
     if check {
