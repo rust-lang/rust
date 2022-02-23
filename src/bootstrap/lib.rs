@@ -186,6 +186,34 @@ const LLVM_TOOLS: &[&str] = &[
 
 pub const VERSION: usize = 2;
 
+/// Extra --check-cfg to add when building
+/// (Mode restriction, config name, config values (if any))
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)] = &[
+    (None, "bootstrap", None),
+    (Some(Mode::Rustc), "parallel_compiler", None),
+    (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::Std), "miri", None),
+    (Some(Mode::Std), "stdarch_intel_sde", None),
+    (Some(Mode::Std), "no_fp_fmt_parse", None),
+    (Some(Mode::Std), "no_global_oom_handling", None),
+    (Some(Mode::Std), "freebsd12", None),
+    (Some(Mode::Std), "backtrace_in_libstd", None),
+    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
+    // this config) should probably by removed or use a allow attribute.
+    (Some(Mode::ToolRustc), "release", None),
+    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
+    (Some(Mode::Std), "dont_compile_me", None),
+    // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
+    (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
+    // FIXME: Used by crossbeam-utils, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "crossbeam_loom", None),
+    (Some(Mode::ToolRustc), "crossbeam_loom", None),
+    // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "span_locations", None),
+    (Some(Mode::ToolRustc), "span_locations", None),
+];
+
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that

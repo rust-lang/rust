@@ -26,6 +26,7 @@ use crate::run;
 use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
+use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -1093,6 +1094,33 @@ impl<'a> Builder<'a> {
         } else {
             rustflags.arg("-Csymbol-mangling-version=legacy");
             rustflags.arg("-Zunstable-options");
+        }
+
+        // #[cfg(not(bootstrap)]
+        if stage != 0 {
+            // Enable cfg checking of cargo features
+            // FIXME: De-comment this when cargo beta get support for it
+            // cargo.arg("-Zcheck-cfg-features");
+
+            // Enable cfg checking of rustc well-known names
+            rustflags.arg("-Zunstable-options").arg("--check-cfg=names()");
+
+            // Add extra cfg not defined in rustc
+            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+                if *restricted_mode == None || *restricted_mode == Some(mode) {
+                    // Creating a string of the values by concatenating each value:
+                    // ',"tvos","watchos"' or '' (nothing) when there are no values
+                    let values = match values {
+                        Some(values) => values
+                            .iter()
+                            .map(|val| [",", "\"", val, "\""])
+                            .flatten()
+                            .collect::<String>(),
+                        None => String::new(),
+                    };
+                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                }
+            }
         }
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
