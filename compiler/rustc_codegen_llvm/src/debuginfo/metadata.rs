@@ -449,7 +449,10 @@ fn pointer_or_reference_metadata<'ll, 'tcx>(
             // This is a thin pointer. Create a regular pointer type and give it the correct name.
             debug_assert_eq!(
                 (thin_pointer_size, thin_pointer_align),
-                cx.size_and_align_of(ptr_type)
+                cx.size_and_align_of(ptr_type),
+                "ptr_type={}, pointee_type={}",
+                ptr_type,
+                pointee_type,
             );
 
             unsafe {
