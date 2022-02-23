@@ -15,7 +15,7 @@ pub use rustc_middle::traits::{EvaluationResult, Reveal};
 pub(crate) type UndoLog<'tcx> =
     snapshot_map::UndoLog<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>,
 }

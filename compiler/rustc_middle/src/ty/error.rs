@@ -30,7 +30,7 @@ impl<T> ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, PartialEq)]
 pub enum TypeError<'tcx> {
     Mismatch,
     ConstnessMismatch(ExpectedFound<ty::BoundConstness>),

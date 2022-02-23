@@ -456,7 +456,7 @@ pub struct DerivedObligationCause<'tcx> {
     pub parent_code: Lrc<ObligationCauseCode<'tcx>>,
 }
 
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TypeFoldable, Lift, PartialEq)]
 pub enum SelectionError<'tcx> {
     /// The trait is not implemented.
     Unimplemented,

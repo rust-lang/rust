@@ -1163,6 +1163,8 @@ options! {
         "the codegen unit partitioning strategy to use"),
     chalk: bool = (false, parse_bool, [TRACKED],
         "enable the experimental Chalk-based trait solving engine"),
+    chalk_migration: bool = (false, parse_bool, [TRACKED],
+        "compare current trait solving engine against the experimental Chalk-based one"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],

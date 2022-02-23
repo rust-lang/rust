@@ -87,6 +87,7 @@ pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 
 pub type Selection<'tcx> = ImplSource<'tcx, PredicateObligation<'tcx>>;
 
+#[derive(PartialEq)]
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>,
@@ -96,7 +97,7 @@ pub struct FulfillmentError<'tcx> {
     pub root_obligation: PredicateObligation<'tcx>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),

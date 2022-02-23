@@ -2303,7 +2303,7 @@ impl<'tcx> fmt::Debug for SymbolName<'tcx> {
     }
 }
 
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone, PartialEq)]
 pub struct FoundRelationships {
     /// This is true if we identified that this Ty (`?T`) is found in a `?T: Foo`
     /// obligation, where:
