@@ -1,4 +1,5 @@
 // check-pass
+// compile-flags: -Zdrop-tracking
 #![feature(generators, negative_impls)]
 
 struct Client;
