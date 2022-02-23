@@ -1388,9 +1388,13 @@ impl Function {
         let loc = self.id.lookup(db.upcast());
         let krate = loc.krate(db);
         let def_map = db.crate_def_map(krate.into());
-        let name = &function_data.name;
+        let ast_id =
+            InFile::new(loc.id.file_id(), loc.id.item_tree(db.upcast())[loc.id.value].ast_id);
+
         let mut exported_proc_macros = def_map.exported_proc_macros();
-        exported_proc_macros.find(|(_, mac_name)| mac_name == name).map(|(id, _)| MacroDef { id })
+        exported_proc_macros
+            .find(|&(id, _)| matches!(id.kind, MacroDefKind::ProcMacro(_, _, id) if id == ast_id))
+            .map(|(id, _)| MacroDef { id })
     }
 
     /// A textual representation of the HIR of this function for debugging purposes.
