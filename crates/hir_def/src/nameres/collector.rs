@@ -1701,8 +1701,9 @@ impl ModCollector<'_, '_> {
                 {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
                         let item_tree = db.file_item_tree(file_id.into());
+                        let krate = self.def_collector.def_map.krate;
                         let is_enabled = item_tree
-                            .top_level_attrs(db, self.def_collector.def_map.krate)
+                            .top_level_attrs(db, krate)
                             .cfg()
                             .map_or(true, |cfg| self.is_cfg_enabled(&cfg));
                         if is_enabled {
@@ -1713,7 +1714,7 @@ impl ModCollector<'_, '_> {
                                 &self.item_tree[module.visibility],
                             );
                             ModCollector {
-                                def_collector: &mut *self.def_collector,
+                                def_collector: self.def_collector,
                                 macro_depth: self.macro_depth,
                                 module_id,
                                 tree_id: TreeId::new(file_id.into(), None),
@@ -1723,7 +1724,7 @@ impl ModCollector<'_, '_> {
                             .collect_in_top_module(item_tree.top_level_items());
                             let is_macro_use = is_macro_use
                                 || item_tree
-                                    .top_level_attrs(db, self.def_collector.def_map.krate)
+                                    .top_level_attrs(db, krate)
                                     .by_key("macro_use")
                                     .exists();
                             if is_macro_use {
@@ -1748,12 +1749,11 @@ impl ModCollector<'_, '_> {
         definition: Option<(FileId, bool)>,
         visibility: &crate::visibility::RawVisibility,
     ) -> LocalModuleId {
-        let vis = self
-            .def_collector
-            .def_map
+        let def_map = &mut self.def_collector.def_map;
+        let vis = def_map
             .resolve_visibility(self.def_collector.db, self.module_id, visibility)
             .unwrap_or(Visibility::Public);
-        let modules = &mut self.def_collector.def_map.modules;
+        let modules = &mut def_map.modules;
         let origin = match definition {
             None => ModuleOrigin::Inline { definition: declaration },
             Some((definition, is_mod_rs)) => {
@@ -1768,10 +1768,10 @@ impl ModCollector<'_, '_> {
         }
         modules[self.module_id].children.insert(name.clone(), res);
 
-        let module = self.def_collector.def_map.module_id(res);
+        let module = def_map.module_id(res);
         let def = ModuleDefId::from(module);
 
-        self.def_collector.def_map.modules[self.module_id].scope.declare(def);
+        def_map.modules[self.module_id].scope.declare(def);
         self.def_collector.update(
             self.module_id,
             &[(Some(name), PerNs::from_def(def, vis, false))],
