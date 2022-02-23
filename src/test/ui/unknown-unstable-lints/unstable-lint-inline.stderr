@@ -1,0 +1,19 @@
+error[E0658]: the `test_unstable_lint` lint is unstable
+  --> $DIR/unstable-lint-inline.rs:4:1
+   |
+LL | #![allow(test_unstable_lint)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+
+error[E0658]: the `test_unstable_lint` lint is unstable
+  --> $DIR/unstable-lint-inline.rs:4:1
+   |
+LL | #![allow(test_unstable_lint)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(test_unstable_lint)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

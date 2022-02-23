@@ -169,6 +169,8 @@ declare_features! (
     (active, staged_api, "1.0.0", None, None),
     /// Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+    /// Added for testing unstable lints; perma-unstable.
+    (active, test_unstable_lint, "1.60.0", None, None),
     /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
     /// Marked `incomplete` since perma-unstable and unsound.
     (incomplete, unsafe_pin_internals, "1.60.0", None, None),

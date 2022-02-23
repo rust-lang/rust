@@ -3128,6 +3128,7 @@ declare_lint_pass! {
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         UNEXPECTED_CFGS,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        TEST_UNSTABLE_LINT,
     ]
 }
 
@@ -3770,4 +3771,12 @@ declare_lint! {
     pub DEPRECATED_WHERE_CLAUSE_LOCATION,
     Warn,
     "deprecated where clause location"
+}
+
+declare_lint! {
+    #[doc(hidden)]
+    pub TEST_UNSTABLE_LINT,
+    Deny,
+    "this unstable lint is only for testing",
+    @feature_gate = sym::test_unstable_lint;
 }
