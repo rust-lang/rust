@@ -310,7 +310,7 @@
                     ],
                     "scope": "machine-overridable",
                     "default": null,
-                    "markdownDescription": "Path to rust-analyzer executable (points to bundled binary by default). If this is set, then `#rust-analyzer.updates.channel#` setting is not used"
+                    "markdownDescription": "Path to rust-analyzer executable (points to bundled binary by default)."
                 },
                 "rust-analyzer.server.extraEnv": {
                     "type": [
