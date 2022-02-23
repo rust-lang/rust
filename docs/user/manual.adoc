@@ -100,8 +100,7 @@ It will ask your permission to download the matching language server version bin
 ===== Nightly
 
 We ship nightly releases for VS Code.
-You can opt in to these by switching to the pre-release version in the Code extension page or settings.
-To help us out with testing the newest code and follow the bleeding edge of our `master`, please use the following config:
+To help us out by testing the newest code, you can enable pre-release versions in the Code extension page.
 
 ==== Manual installation
 
