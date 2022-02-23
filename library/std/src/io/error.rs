@@ -148,7 +148,7 @@ struct Custom {
 /// "all other errors".
 ///
 /// In comprehensive and thorough tests that want to verify that a test doesn't return any known incorrect error kind,
-/// you may want to cut-and-paste the current list of errors from here into your test code. This seems counterintuitive,
+/// you may want to cut-and-paste the current full list of errors from here into your test code, and then match `_` as the correct case. This seems counterintuitive,
 /// but it will make your tests more robust. In particular, if you want to verify that your code does produce an
 /// unrecognized error kind, the robust solution is to check for all the recognized error kinds and fail in those cases.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
