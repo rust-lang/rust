@@ -41,7 +41,6 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_cast<T, U>(x: T) -> U;
     /// follows Rust's `T as U` semantics, including saturating float casts
     /// which amounts to the same as `simd_cast` for many cases
-    #[cfg(not(bootstrap))]
     pub(crate) fn simd_as<T, U>(x: T) -> U;
 
     /// neg/fneg
