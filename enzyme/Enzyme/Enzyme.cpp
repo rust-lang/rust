@@ -1354,6 +1354,8 @@ public:
         }
         if ((Fn->getName() == "cblas_ddot" || Fn->getName() == "cblas_sdot") &&
             Fn->isDeclaration()) {
+          Fn->addFnAttr(Attribute::ReadOnly);
+          Fn->addFnAttr(Attribute::ArgMemOnly);
           CI->addParamAttr(1, Attribute::ReadOnly);
           CI->addParamAttr(1, Attribute::NoCapture);
           CI->addParamAttr(3, Attribute::ReadOnly);

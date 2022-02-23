@@ -86,7 +86,6 @@ entry:
 
 ; CHECK: define internal void @[[active]](i32 %len, float* noalias %m, float* %"m'", i32 %incm, float* noalias %n, float* %"n'", i32 %incn, float %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %m, i32 %incm, float* %"n'", i32 %incn)
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %n, i32 %incn, float* %"m'", i32 %incm)
 ; CHECK-NEXT:   ret void
@@ -94,14 +93,12 @@ entry:
 
 ; CHECK: define internal void @[[inactiveFirst]](i32 %len, float* noalias %m, i32 %incm, float* noalias %n, float* %"n'", i32 %incn, float %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %m, i32 %incm, float* %"n'", i32 %incn)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @[[inactiveSecond]](i32 %len, float* noalias %m, float* %"m'", i32 %incm, float* noalias %n, i32 %incn, float %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   call void @cblas_saxpy(i32 %len, float %differeturn, float* %n, i32 %incn, float* %"m'", i32 %incm)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
@@ -125,7 +122,6 @@ entry:
 ; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %1, float* %n, i32 %len, i32 %incn)
 ; CHECK-NEXT:   %2 = insertvalue { float*, float* } undef, float* %0, 0
 ; CHECK-NEXT:   %3 = insertvalue { float*, float* } %2, float* %1, 1
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   ret { float*, float* } %3
 ; CHECK-NEXT: }
 
@@ -155,7 +151,6 @@ entry:
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
 ; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %0, float* %m, i32 %len, i32 %incm)
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   ret float* %0
 ; CHECK-NEXT: }
 
@@ -180,7 +175,6 @@ entry:
 ; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i32 %mallocsize)
 ; CHECK-NEXT:   %0 = bitcast i8* %malloccall to float*
 ; CHECK-NEXT:   call void @__enzyme_memcpy_float_32_da0sa0stride(float* %0, float* %n, i32 %len, i32 %incn)
-; CHECK-NEXT:   %call = call float @cblas_sdot(i32 %len, float* nocapture readonly %m, i32 %incm, float* nocapture readonly %n, i32 %incn)
 ; CHECK-NEXT:   ret float* %0
 ; CHECK-NEXT: }
 

@@ -4988,6 +4988,29 @@ public:
               call.getArgOperand(0)->getType(),
               call.getArgOperand(3)->getType(),
               call.getArgOperand(0)->getType());
+#if LLVM_VERSION_MAJOR >= 9
+          if (auto F = dyn_cast<Function>(derivcall.getCallee()))
+#else
+          if (auto F = dyn_cast<Function>(derivcall))
+#endif
+          {
+            F->addFnAttr(Attribute::ArgMemOnly);
+            if (byRef) {
+              F->addParamAttr(0, Attribute::ReadOnly);
+              F->addParamAttr(0, Attribute::NoCapture);
+              F->addParamAttr(3, Attribute::ReadOnly);
+              F->addParamAttr(3, Attribute::NoCapture);
+              F->addParamAttr(5, Attribute::ReadOnly);
+              F->addParamAttr(5, Attribute::NoCapture);
+            }
+            if (call.getArgOperand(1)->getType()->isPointerTy()) {
+              F->addParamAttr(2, Attribute::ReadOnly);
+              F->addParamAttr(2, Attribute::NoCapture);
+            }
+            if (call.getArgOperand(3)->getType()->isPointerTy()) {
+              F->addParamAttr(4, Attribute::NoCapture);
+            }
+          }
 
           if (cachetype) {
             if (Mode == DerivativeMode::ReverseModeGradient) {
