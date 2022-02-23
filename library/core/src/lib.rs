@@ -156,7 +156,7 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cfg_target_has_atomic)]
-#![cfg_attr(not(bootstrap), feature(cfg_target_has_atomic_equal_alignment))]
+#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_fn_trait_bound)]

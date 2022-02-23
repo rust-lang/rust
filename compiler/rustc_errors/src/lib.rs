@@ -8,9 +8,9 @@
 #![feature(if_let_guard)]
 #![feature(let_else)]
 #![feature(nll)]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 #![feature(adt_const_params)]
 #![allow(incomplete_features)]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;

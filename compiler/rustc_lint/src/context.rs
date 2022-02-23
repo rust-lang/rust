@@ -147,7 +147,7 @@ impl LintStore {
         &'t self,
     ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
         // This function is not used in a way which observes the order of lints.
-        #[cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+        #[allow(rustc::potential_query_instability)]
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {

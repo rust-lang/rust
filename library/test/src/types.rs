@@ -123,8 +123,6 @@ pub struct TestDesc {
     pub compile_fail: bool,
     pub no_run: bool,
     pub test_type: TestType,
-    #[cfg(bootstrap)]
-    pub allow_fail: bool,
 }
 
 impl TestDesc {

@@ -21,7 +21,7 @@ pub use valtree::*;
 
 /// Use this rather than `ConstS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
 
 impl<'tcx> fmt::Debug for Const<'tcx> {

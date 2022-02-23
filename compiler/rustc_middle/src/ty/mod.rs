@@ -433,7 +433,7 @@ static_assert_size!(TyS<'_>, 40);
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[rustc_diagnostic_item = "Ty"]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, TyS<'tcx>>);
 
 // Statics only used for internal testing.
@@ -486,7 +486,7 @@ static_assert_size!(PredicateS<'_>, 56);
 
 /// Use this rather than `PredicateS`, whenever possible.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Predicate<'tcx>(Interned<'tcx, PredicateS<'tcx>>);
 
 impl<'tcx> Predicate<'tcx> {

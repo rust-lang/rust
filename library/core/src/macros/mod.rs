@@ -594,7 +594,6 @@ macro_rules! writeln {
 ///     unreachable!("The loop should always return");
 /// }
 /// ```
-#[cfg(not(bootstrap))]
 #[macro_export]
 #[rustc_builtin_macro(unreachable)]
 #[allow_internal_unstable(edition_panic)]
@@ -606,24 +605,6 @@ macro_rules! unreachable {
     ($($arg:tt)*) => {
         /* compiler built-in */
     };
-}
-
-/// unreachable!() macro
-#[cfg(bootstrap)]
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
-#[allow_internal_unstable(core_panic)]
-macro_rules! unreachable {
-    () => ({
-        $crate::panicking::panic("internal error: entered unreachable code")
-    });
-    ($msg:expr $(,)?) => ({
-        $crate::unreachable!("{}", $msg)
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
-    });
 }
 
 /// Indicates unimplemented code by panicking with a message of "not implemented".

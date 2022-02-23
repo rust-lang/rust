@@ -1396,7 +1396,7 @@ impl ParamConst {
 
 /// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind>);
 
 impl<'tcx> Deref for Region<'tcx> {

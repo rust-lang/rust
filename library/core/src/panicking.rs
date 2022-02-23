@@ -56,7 +56,6 @@ pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
 
-#[cfg(not(bootstrap))]
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
@@ -85,7 +84,6 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {} but the index is {}", len, index)
 }
 
-#[cfg(not(bootstrap))]
 #[cold]
 #[inline(never)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function

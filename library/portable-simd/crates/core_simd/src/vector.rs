@@ -62,10 +62,7 @@ where
     /// `from_slice` will panic if the slice's `len` is less than the vector's `Simd::LANES`.
     #[must_use]
     pub const fn from_slice(slice: &[T]) -> Self {
-        assert!(
-            slice.len() >= LANES,
-            "slice length must be at least the number of lanes"
-        );
+        assert!(slice.len() >= LANES, "slice length must be at least the number of lanes");
         let mut array = [slice[0]; LANES];
         let mut i = 0;
         while i < LANES {
@@ -100,7 +97,6 @@ where
     /// ```
     #[must_use]
     #[inline]
-    #[cfg(not(bootstrap))]
     pub fn cast<U: SimdElement>(self) -> Simd<U, LANES> {
         unsafe { intrinsics::simd_as(self) }
     }
