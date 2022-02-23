@@ -594,10 +594,18 @@ pub fn eval_condition(
             match cfg.name_or_empty() {
                 sym::any => mis
                     .iter()
-                    .any(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
+                    // We don't use any() here, because we want to evaluate all cfg condition
+                    // as eval_condition can (and does) extra checks
+                    .fold(false, |res, mi| {
+                        res | eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    }),
                 sym::all => mis
                     .iter()
-                    .all(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
+                    // We don't use all() here, because we want to evaluate all cfg condition
+                    // as eval_condition can (and does) extra checks
+                    .fold(true, |res, mi| {
+                        res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    }),
                 sym::not => {
                     if mis.len() != 1 {
                         struct_span_err!(
