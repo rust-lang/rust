@@ -2124,7 +2124,26 @@ impl Constant {
     }
 
     crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.kind.value(tcx)
+        use super::utils::print_const;
+
+        match self.kind {
+            ConstantKind::TyConst { .. } => None,
+            ConstantKind::Anonymous { body } => {
+                let def_id = tcx.hir().body_owner_def_id(body).to_def_id().as_local().unwrap();
+                let ct = ty::Const::from_anon_const(tcx, def_id);
+                let param_env = tcx.param_env(def_id);
+                let s = print_const(tcx, ct.eval(tcx, param_env));
+                if s.starts_with('"') && s.ends_with('"') && s[1..s.len() - 1].contains('"') {
+                    // If it's a string containing `"`, better show the original.
+                    Some(print_const_expr(tcx, body))
+                } else {
+                    Some(s)
+                }
+            }
+            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
+                print_evaluated_const(tcx, def_id)
+            }
+        }
     }
 
     crate fn is_literal(&self, tcx: TyCtxt<'_>) -> bool {
@@ -2139,15 +2158,6 @@ impl ConstantKind {
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 print_const_expr(tcx, body)
-            }
-        }
-    }
-
-    crate fn value(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        match *self {
-            ConstantKind::TyConst { .. } | ConstantKind::Anonymous { .. } => None,
-            ConstantKind::Extern { def_id } | ConstantKind::Local { def_id, .. } => {
-                print_evaluated_const(tcx, def_id)
             }
         }
     }

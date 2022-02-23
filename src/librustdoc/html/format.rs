@@ -374,12 +374,10 @@ impl clean::Lifetime {
 
 impl clean::Constant {
     crate fn print(&self, tcx: TyCtxt<'_>) -> impl fmt::Display + '_ {
-        let expr = self.expr(tcx);
-        display_fn(
-            move |f| {
-                if f.alternate() { f.write_str(&expr) } else { write!(f, "{}", Escape(&expr)) }
-            },
-        )
+        let value = self.value(tcx).unwrap_or_else(|| self.expr(tcx));
+        display_fn(move |f| {
+            if f.alternate() { f.write_str(&value) } else { write!(f, "{}", Escape(&value)) }
+        })
     }
 }
 

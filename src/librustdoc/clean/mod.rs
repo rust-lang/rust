@@ -1382,7 +1382,8 @@ impl Clean<Type> for hir::Ty<'_> {
                 let length = match length {
                     hir::ArrayLen::Infer(_, _) => "_".to_string(),
                     hir::ArrayLen::Body(anon_const) => {
-                        let def_id = cx.tcx.hir().local_def_id(anon_const.hir_id);
+                        let tcx = cx.tcx;
+                        let def_id = tcx.hir().local_def_id(anon_const.hir_id);
                         // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
                         // as we currently do not supply the parent generics to anonymous constants
                         // but do allow `ConstKind::Param`.
@@ -1390,9 +1391,9 @@ impl Clean<Type> for hir::Ty<'_> {
                         // `const_eval_poly` tries to to first substitute generic parameters which
                         // results in an ICE while manually constructing the constant and using `eval`
                         // does nothing for `ConstKind::Param`.
-                        let ct = ty::Const::from_anon_const(cx.tcx, def_id);
-                        let param_env = cx.tcx.param_env(def_id);
-                        print_const(cx, ct.eval(cx.tcx, param_env))
+                        let ct = ty::Const::from_anon_const(tcx, def_id);
+                        let param_env = tcx.param_env(def_id);
+                        print_const(tcx, ct.eval(tcx, param_env))
                     }
                 };
 
@@ -1468,7 +1469,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(n).expect("array lift failed");
                 n = n.eval(cx.tcx, ty::ParamEnv::reveal_all());
-                let n = print_const(cx, n);
+                let n = print_const(cx.tcx, n);
                 Array(box ty.clean(cx), n)
             }
             ty::RawPtr(mt) => RawPointer(mt.mutbl, box mt.ty.clean(cx)),
