@@ -141,6 +141,14 @@ struct Custom {
 /// It is used with the [`io::Error`] type.
 ///
 /// [`io::Error`]: Error
+///
+/// # Handling errors and matching on `ErrorKind`
+///
+/// In application code, use `match` for the `ErrorKind` values you are expecting; use `_` to match
+/// "all other errors".
+///
+/// In comprehensive and thorough tests, you may need to cut-and-paste the current list of
+/// errors from here into your test code.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
