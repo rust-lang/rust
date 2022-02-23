@@ -22,6 +22,7 @@
 #![feature(negative_impls)]
 #![feature(nll)]
 #![feature(min_specialization)]
+#![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability)]
 
 #[macro_use]

@@ -1533,7 +1533,7 @@ fn rewrite_struct_lit<'a>(
     enum StructLitField<'a> {
         Regular(&'a ast::ExprField),
         Base(&'a ast::Expr),
-        Rest(&'a Span),
+        Rest(Span),
     }
 
     // 2 = " {".len()
@@ -1568,7 +1568,7 @@ fn rewrite_struct_lit<'a>(
         let field_iter = fields.iter().map(StructLitField::Regular).chain(
             match struct_rest {
                 ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
-                ast::StructRest::Rest(span) => Some(StructLitField::Rest(span)),
+                ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
                 ast::StructRest::None => None,
             }
             .into_iter(),

@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(&lhs.span, lhs_ty, &rhs.span, rhs_ty, op);
+                self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
@@ -98,9 +98,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && is_builtin_binop(lhs_ty, rhs_ty, op)
                 {
                     let builtin_return_ty = self.enforce_builtin_binop_types(
-                        &lhs_expr.span,
+                        lhs_expr.span,
                         lhs_ty,
-                        &rhs_expr.span,
+                        rhs_expr.span,
                         rhs_ty,
                         op,
                     );
@@ -114,9 +114,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enforce_builtin_binop_types(
         &self,
-        lhs_span: &Span,
+        lhs_span: Span,
         lhs_ty: Ty<'tcx>,
-        rhs_span: &Span,
+        rhs_span: Span,
         rhs_ty: Ty<'tcx>,
         op: hir::BinOp,
     ) -> Ty<'tcx> {
@@ -129,8 +129,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(*lhs_span, tcx.types.bool, lhs_ty);
-                self.demand_suptype(*rhs_span, tcx.types.bool, rhs_ty);
+                self.demand_suptype(lhs_span, tcx.types.bool, lhs_ty);
+                self.demand_suptype(rhs_span, tcx.types.bool, rhs_ty);
                 tcx.types.bool
             }
 
@@ -141,13 +141,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             BinOpCategory::Math | BinOpCategory::Bitwise => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
                 lhs_ty
             }
 
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
                 tcx.types.bool
             }
         }
