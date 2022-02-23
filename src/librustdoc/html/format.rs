@@ -1171,8 +1171,8 @@ impl clean::FnDecl {
         cx: &Context<'_>,
     ) -> fmt::Result {
         let amp = if f.alternate() { "&" } else { "&amp;" };
-        let mut args = String::new();
-        let mut args_plain = String::new();
+        let mut args = Buffer::html();
+        let mut args_plain = Buffer::new();
         for (i, input) in self.inputs.values.iter().enumerate() {
             if i == 0 {
                 args.push_str("<br>");
@@ -1185,59 +1185,51 @@ impl clean::FnDecl {
                         args_plain.push_str("self");
                     }
                     clean::SelfBorrowed(Some(ref lt), mtbl) => {
-                        args.push_str(&format!(
-                            "{}{} {}self",
-                            amp,
-                            lt.print(),
-                            mtbl.print_with_space()
-                        ));
-                        args_plain.push_str(&format!(
-                            "&{} {}self",
-                            lt.print(),
-                            mtbl.print_with_space()
-                        ));
+                        write!(args, "{}{} {}self", amp, lt.print(), mtbl.print_with_space());
+                        write!(args_plain, "&{} {}self", lt.print(), mtbl.print_with_space());
                     }
                     clean::SelfBorrowed(None, mtbl) => {
-                        args.push_str(&format!("{}{}self", amp, mtbl.print_with_space()));
-                        args_plain.push_str(&format!("&{}self", mtbl.print_with_space()));
+                        write!(args, "{}{}self", amp, mtbl.print_with_space());
+                        write!(args_plain, "&{}self", mtbl.print_with_space());
                     }
                     clean::SelfExplicit(ref typ) => {
                         if f.alternate() {
-                            args.push_str(&format!("self: {:#}", typ.print(cx)));
+                            write!(args, "self: {:#}", typ.print(cx));
                         } else {
-                            args.push_str(&format!("self: {}", typ.print(cx)));
+                            write!(args, "self: {}", typ.print(cx));
                         }
-                        args_plain.push_str(&format!("self: {:#}", typ.print(cx)));
+                        write!(args_plain, "self: {:#}", typ.print(cx));
                     }
                 }
             } else {
                 if i > 0 {
                     args.push_str(" <br>");
-                    args_plain.push(' ');
+                    args_plain.push_str(" ");
                 }
                 if input.is_const {
                     args.push_str("const ");
                     args_plain.push_str("const ");
                 }
                 if !input.name.is_empty() {
-                    args.push_str(&format!("{}: ", input.name));
-                    args_plain.push_str(&format!("{}: ", input.name));
+                    write!(args, "{}: ", input.name);
+                    write!(args_plain, "{}: ", input.name);
                 }
 
                 if f.alternate() {
-                    args.push_str(&format!("{:#}", input.type_.print(cx)));
+                    write!(args, "{:#}", input.type_.print(cx));
                 } else {
-                    args.push_str(&input.type_.print(cx).to_string());
+                    write!(args, "{}", input.type_.print(cx));
                 }
-                args_plain.push_str(&format!("{:#}", input.type_.print(cx)));
+                write!(args_plain, "{:#}", input.type_.print(cx));
             }
             if i + 1 < self.inputs.values.len() {
-                args.push(',');
-                args_plain.push(',');
+                args.push_str(",");
+                args_plain.push_str(",");
             }
         }
 
-        let mut args_plain = format!("({})", args_plain);
+        let mut args_plain = format!("({})", args_plain.into_inner());
+        let mut args = args.into_inner();
 
         if self.c_variadic {
             args.push_str(",<br> ...");
