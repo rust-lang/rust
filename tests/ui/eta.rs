@@ -279,3 +279,15 @@ mod bind_by_ref {
         Some(A).map(|ref a| B::from(a));
     }
 }
+
+// #7812 False positive on coerced closure
+fn coerced_closure() {
+    fn function_returning_unit<F: FnMut(i32)>(f: F) {}
+    function_returning_unit(|x| std::process::exit(x));
+
+    fn arr() -> &'static [u8; 0] {
+        &[]
+    }
+    fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
+    slice_fn(|| arr());
+}
