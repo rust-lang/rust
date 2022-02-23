@@ -4,9 +4,9 @@ use crate::MirPass;
 use rustc_hir::Mutability;
 use rustc_middle::mir::{
     BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
-    StatementKind, UnOp,
+    Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TyKind};
 
 pub struct InstCombine;
 
@@ -29,6 +29,11 @@ impl<'tcx> MirPass<'tcx> for InstCombine {
                     _ => {}
                 }
             }
+
+            ctx.combine_primitive_clone(
+                &mut block.terminator.as_mut().unwrap(),
+                &mut block.statements,
+            );
         }
     }
 }
@@ -129,5 +134,81 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                 *rvalue = Rvalue::Use(Operand::Constant(Box::new(constant)));
             }
         }
+    }
+
+    fn combine_primitive_clone(
+        &self,
+        terminator: &mut Terminator<'tcx>,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let TerminatorKind::Call { func, args, destination, .. } = &mut terminator.kind
+        else { return };
+
+        // It's definitely not a clone if there are multiple arguments
+        if args.len() != 1 {
+            return;
+        }
+
+        let Some((destination_place, destination_block)) = *destination
+        else { return };
+
+        // Only bother looking more if it's easy to know what we're calling
+        let Some((fn_def_id, fn_substs)) = func.const_fn_def()
+        else { return };
+
+        // Clone needs one subst, so we can cheaply rule out other stuff
+        if fn_substs.len() != 1 {
+            return;
+        }
+
+        // These types are easily available from locals, so check that before
+        // doing DefId lookups to figure out what we're actually calling.
+        let arg_ty = args[0].ty(self.local_decls, self.tcx);
+
+        let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind()
+        else { return };
+
+        if !is_trivially_pure_copy(self.tcx, inner_ty) {
+            return;
+        }
+
+        let trait_def_id = self.tcx.trait_of_item(fn_def_id);
+        if trait_def_id.is_none() || trait_def_id != self.tcx.lang_items().clone_trait() {
+            return;
+        }
+
+        if !self.tcx.consider_optimizing(|| {
+            format!(
+                "InstCombine - Call: {:?} SourceInfo: {:?}",
+                (fn_def_id, fn_substs),
+                terminator.source_info
+            )
+        }) {
+            return;
+        }
+
+        let Some(arg_place) = args.pop().unwrap().place()
+        else { return };
+
+        statements.push(Statement {
+            source_info: terminator.source_info,
+            kind: StatementKind::Assign(box (
+                destination_place,
+                Rvalue::Use(Operand::Copy(
+                    arg_place.project_deeper(&[ProjectionElem::Deref], self.tcx),
+                )),
+            )),
+        });
+        terminator.kind = TerminatorKind::Goto { target: destination_block };
+    }
+}
+
+fn is_trivially_pure_copy<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    use TyKind::*;
+    match *ty.kind() {
+        Bool | Char | Int(..) | Uint(..) | Float(..) => true,
+        Array(element_ty, _len) => is_trivially_pure_copy(tcx, element_ty),
+        Tuple(field_tys) => field_tys.iter().all(|x| is_trivially_pure_copy(tcx, x)),
+        _ => false,
     }
 }
