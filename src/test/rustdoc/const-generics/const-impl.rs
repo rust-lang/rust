@@ -15,14 +15,14 @@ pub struct VSet<T, const ORDER: Order> {
     inner: Vec<T>,
 }
 
-// @has foo/struct.VSet.html '//*[@id="impl"]/h3[@class="code-header in-band"]' 'impl<T> VSet<T, { Order::Sorted }>'
+// @has foo/struct.VSet.html '//*[@id="impl"]/h3[@class="code-header in-band"]' 'impl<T> VSet<T, Order::Sorted>'
 impl<T> VSet<T, { Order::Sorted }> {
     pub fn new() -> Self {
         Self { inner: Vec::new() }
     }
 }
 
-// @has foo/struct.VSet.html '//*[@id="impl-1"]/h3[@class="code-header in-band"]' 'impl<T> VSet<T, { Order::Unsorted }>'
+// @has foo/struct.VSet.html '//*[@id="impl-1"]/h3[@class="code-header in-band"]' 'impl<T> VSet<T, Order::Unsorted>'
 impl<T> VSet<T, { Order::Unsorted }> {
     pub fn new() -> Self {
         Self { inner: Vec::new() }
