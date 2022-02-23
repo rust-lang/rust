@@ -1,7 +1,7 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, HasAttrs, HasSource, ModuleDef, Semantics};
+use hir::{Adt, Crate, HasAttrs, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
@@ -74,7 +74,6 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         .collect();
 
     let module = ctx.sema.scope(expr.syntax()).module()?;
-
     let (mut missing_pats, is_non_exhaustive): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
         bool,
@@ -86,7 +85,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         let missing_pats = variants
             .into_iter()
             .filter_map(|variant| {
-                Some((build_pat(ctx.db(), module, variant)?, variant.has_doc_hidden(ctx.db())))
+                Some((
+                    build_pat(ctx.db(), module, variant)?,
+                    variant.should_be_hidden(ctx.db(), module.krate()),
+                ))
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
@@ -127,7 +129,9 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
             .multi_cartesian_product()
             .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
             .map(|variants| {
-                let is_hidden = variants.iter().any(|variant| variant.has_doc_hidden(ctx.db()));
+                let is_hidden = variants
+                    .iter()
+                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
 
@@ -282,9 +286,11 @@ enum ExtendedVariant {
 }
 
 impl ExtendedVariant {
-    fn has_doc_hidden(self, db: &RootDatabase) -> bool {
+    fn should_be_hidden(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
-            ExtendedVariant::Variant(var) => var.attrs(db).has_doc_hidden(),
+            ExtendedVariant::Variant(var) => {
+                var.attrs(db).has_doc_hidden() && var.module(db).krate() != krate
+            }
             _ => false,
         }
     }
@@ -1337,29 +1343,22 @@ fn foo(t: bool) {
         check_assist(
             add_missing_match_arms,
             r#"
-enum E {
-    A,
-    #[doc(hidden)]
-    C,
-}
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
     }
-}"#,
-            r#"
-enum E {
-    A,
-    #[doc(hidden)]
-    C,
 }
-
-fn foo(t: E) {
+//- /e.rs crate:e
+pub enum E { A, #[doc(hidden)] B, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
-        $0E::A => todo!(),
+        $0e::E::A => todo!(),
         _ => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1369,30 +1368,23 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-enum E {
-    A,
-    #[doc(hidden)]
-    C,
-}
-
-fn foo(t: (bool, E)) {
+//- /main.rs crate:main deps:e
+fn foo(t: (bool, ::e::E)) {
     match $0t {
     }
-}"#,
-            r#"
-enum E {
-    A,
-    #[doc(hidden)]
-    C,
 }
-
-fn foo(t: (bool, E)) {
+//- /e.rs crate:e
+pub enum E { A, #[doc(hidden)] B, }
+"#,
+            r#"
+fn foo(t: (bool, ::e::E)) {
     match t {
-        $0(true, E::A) => todo!(),
-        (false, E::A) => todo!(),
+        $0(true, e::E::A) => todo!(),
+        (false, e::E::A) => todo!(),
         _ => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1402,26 +1394,21 @@ fn foo(t: (bool, E)) {
         check_assist(
             add_missing_match_arms,
             r#"
-enum E {
-    #[doc(hidden)]
-    A,
-}
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
     }
-}"#,
-            r#"
-enum E {
-    #[doc(hidden)]
-    A,
 }
-
-fn foo(t: E) {
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
         ${0:_} => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1430,16 +1417,15 @@ fn foo(t: E) {
         check_assist_not_applicable(
             add_missing_match_arms,
             r#"
-enum E {
-    #[doc(hidden)]
-    A,
-}
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
-        E::A => todo!(),
+        e::E::A => todo!(),
     }
-}"#,
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
         );
     }
 
@@ -1449,21 +1435,22 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
         _ => todo!(),
     }
-}"#,
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E) {
+fn foo(t: ::e::E) {
     match t {
         _ => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1473,24 +1460,24 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-#[non_exhaustive]
-enum E { A, }
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
-        E::A => todo!(),
+        e::E::A => todo!(),
     }
-}"#,
-            r#"
+}
+//- /e.rs crate:e
 #[non_exhaustive]
-enum E { A, }
-
-fn foo(t: E) {
+pub enum E { A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
-        E::A => todo!(),
+        e::E::A => todo!(),
         ${0:_} => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1500,23 +1487,23 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-#[non_exhaustive]
-enum E { A, }
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
     }
-}"#,
-            r#"
+}
+//- /e.rs crate:e
 #[non_exhaustive]
-enum E { A, }
-
-fn foo(t: E) {
+pub enum E { A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
-        $0E::A => todo!(),
+        $0e::E::A => todo!(),
         _ => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1526,23 +1513,22 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-#[non_exhaustive]
-enum E { A, #[doc(hidden)] B }
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
     }
-}"#,
-            r#"
+}
+//- /e.rs crate:e
 #[non_exhaustive]
-enum E { A, #[doc(hidden)] B }
-
-fn foo(t: E) {
+pub enum E { A, #[doc(hidden)] B }"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
-        $0E::A => todo!(),
+        $0e::E::A => todo!(),
         _ => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1552,48 +1538,48 @@ fn foo(t: E) {
         check_assist(
             add_missing_match_arms,
             r#"
-#[non_exhaustive]
-enum E { #[doc(hidden)] A }
-
-fn foo(t: E) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
     match $0t {
-        E::A => todo!(),
+        e::E::A => todo!(),
     }
-}"#,
-            r#"
+}
+//- /e.rs crate:e
 #[non_exhaustive]
-enum E { #[doc(hidden)] A }
-
-fn foo(t: E) {
+pub enum E { A, #[doc(hidden)] B }"#,
+            r#"
+fn foo(t: ::e::E) {
     match t {
-        E::A => todo!(),
+        e::E::A => todo!(),
         ${0:_} => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
     #[test]
     fn fill_wildcard_with_partial_wildcard() {
+        cov_mark::check!(added_wildcard_pattern);
         check_assist(
             add_missing_match_arms,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E, b: bool) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E, b: bool) {
     match $0t {
         _ if b => todo!(),
     }
-}"#,
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }"#,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E, b: bool) {
+fn foo(t: ::e::E, b: bool) {
     match t {
         _ if b => todo!(),
         ${0:_} => todo!(),
     }
-}"#,
+}
+"#,
         );
     }
 
@@ -1602,44 +1588,95 @@ fn foo(t: E, b: bool) {
         check_assist(
             add_missing_match_arms,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E, b: bool) {
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E, b: bool) {
     match $0t {
         _ if b => todo!(),
         _ => todo!(),
     }
-}"#,
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }"#,
             r#"
-enum E { #[doc(hidden)] A, }
-
-fn foo(t: E, b: bool) {
+fn foo(t: ::e::E, b: bool) {
     match t {
         _ if b => todo!(),
         _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn non_exhaustive_doc_hidden_tuple_fills_wildcard() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, #[doc(hidden)] B, }"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        $0e::E::A => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignores_doc_hidden_for_crate_local_enums() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match $0t {
+    }
+}"#,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match t {
+        $0E::A => todo!(),
+        E::B => todo!(),
     }
 }"#,
         );
     }
 
     #[test]
-    fn non_exhaustive_doc_hidden_tuple_fills_wildcard() {
+    fn ignores_doc_hidden_for_crate_local_enums_but_not_non_exhaustive() {
+        cov_mark::check!(added_wildcard_pattern);
         check_assist(
             add_missing_match_arms,
             r#"
+#[non_exhaustive]
 enum E { A, #[doc(hidden)] B, }
 
-fn foo(t: E, b: bool) {
-    match $0(t, b) {
+fn foo(t: E) {
+    match $0t {
     }
 }"#,
             r#"
+#[non_exhaustive]
 enum E { A, #[doc(hidden)] B, }
 
-fn foo(t: E, b: bool) {
-    match (t, b) {
-        $0(E::A, true) => todo!(),
-        (E::A, false) => todo!(),
+fn foo(t: E) {
+    match t {
+        $0E::A => todo!(),
+        E::B => todo!(),
         _ => todo!(),
     }
 }"#,
