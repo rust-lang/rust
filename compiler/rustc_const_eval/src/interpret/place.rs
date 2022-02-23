@@ -479,7 +479,9 @@ where
         base: &MPlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
+        // Downcasts only change the layout.
+        // (In particular, no check about whether this is even the active variant -- that's by design,
+        // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
         assert!(!base.meta.has_meta());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..*base })
     }
