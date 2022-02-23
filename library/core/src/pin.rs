@@ -1100,8 +1100,8 @@ pub macro pin($value:expr $(,)?) {
     //     that would break `Pin`'s invariants.
     //   - `{ $value }` is braced, making it a _block expression_, thus **moving**
     //     the given `$value`, and making it _become an **anonymous** temporary_.
-    //     By virtue of being anonynomous, it can no longer be accessed, thus
-    //     preventing any attemps to `mem::replace` it or `mem::forget` it, _etc._
+    //     By virtue of being anonymous, it can no longer be accessed, thus
+    //     preventing any attempts to `mem::replace` it or `mem::forget` it, _etc._
     //
     // This gives us a `pin!` definition that is sound, and which works, but only
     // in certain scenarios:
