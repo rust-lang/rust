@@ -101,6 +101,7 @@ Compatibility Notes
 - [Weaken guarantee around advancing underlying iterators in zip][83791]
 - [Make split_inclusive() on an empty slice yield an empty output][89825]
 - [Update std::env::temp_dir to use GetTempPath2 on Windows when available.][89999]
+- [unreachable! was updated to match other formatting macro behavior on Rust 2021][92137]
 
 Internal Changes
 ----------------
