@@ -1,4 +1,4 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::{Body, Field, Rvalue, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
@@ -89,7 +89,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
 fn is_needs_drop_and_init<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    maybe_inits: &BitSet<MovePathIndex>,
+    maybe_inits: &ChunkedBitSet<MovePathIndex>,
     move_data: &MoveData<'tcx>,
     ty: Ty<'tcx>,
     mpi: MovePathIndex,

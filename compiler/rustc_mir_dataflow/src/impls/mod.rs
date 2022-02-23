@@ -2,7 +2,7 @@
 //! bitvectors attached to each basic block, represented via a
 //! zero-sized structure.
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::visit::{MirVisitable, Visitor};
 use rustc_middle::mir::{self, Body, Location};
@@ -286,12 +286,12 @@ impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
-    type Domain = BitSet<MovePathIndex>;
+    type Domain = ChunkedBitSet<MovePathIndex>;
     const NAME: &'static str = "maybe_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = uninitialized
-        BitSet::new_empty(self.move_data().move_paths.len())
+        ChunkedBitSet::new_empty(self.move_data().move_paths.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
@@ -417,13 +417,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
-    type Domain = BitSet<MovePathIndex>;
+    type Domain = ChunkedBitSet<MovePathIndex>;
 
     const NAME: &'static str = "maybe_uninit";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = initialized (start_block_effect counters this at outset)
-        BitSet::new_empty(self.move_data().move_paths.len())
+        ChunkedBitSet::new_empty(self.move_data().move_paths.len())
     }
 
     // sets on_entry bits for Arg places
@@ -606,13 +606,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for DefinitelyInitializedPlaces<'_, 'tcx> {
 }
 
 impl<'tcx> AnalysisDomain<'tcx> for EverInitializedPlaces<'_, 'tcx> {
-    type Domain = BitSet<InitIndex>;
+    type Domain = ChunkedBitSet<InitIndex>;
 
     const NAME: &'static str = "ever_init";
 
     fn bottom_value(&self, _: &mir::Body<'tcx>) -> Self::Domain {
         // bottom = no initialized variables by default
-        BitSet::new_empty(self.move_data().inits.len())
+        ChunkedBitSet::new_empty(self.move_data().inits.len())
     }
 
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {

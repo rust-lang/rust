@@ -37,6 +37,8 @@ extern crate cfg_if;
 #[macro_use]
 extern crate rustc_macros;
 
+pub use rustc_index::static_assert_size;
+
 #[inline(never)]
 #[cold]
 pub fn cold_path<F: FnOnce() -> R, R>(f: F) -> R {

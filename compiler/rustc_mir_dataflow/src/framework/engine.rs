@@ -1,6 +1,7 @@
 //! A solver for dataflow problems.
 
-use std::borrow::BorrowMut;
+use crate::framework::BitSetExt;
+
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -91,7 +92,7 @@ where
 impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
 where
     A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
-    D: Clone + JoinSemiLattice + GenKill<T> + BorrowMut<BitSet<T>>,
+    D: Clone + JoinSemiLattice + GenKill<T> + BitSetExt<T>,
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
@@ -106,7 +107,7 @@ where
 
         // Otherwise, compute and store the cumulative transfer function for each block.
 
-        let identity = GenKillSet::identity(analysis.bottom_value(body).borrow().domain_size());
+        let identity = GenKillSet::identity(analysis.bottom_value(body).domain_size());
         let mut trans_for_block = IndexVec::from_elem(identity, body.basic_blocks());
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
@@ -115,7 +116,7 @@ where
         }
 
         let apply_trans = Box::new(move |bb: BasicBlock, state: &mut A::Domain| {
-            trans_for_block[bb].apply(state.borrow_mut());
+            trans_for_block[bb].apply(state);
         });
 
         Self::new(tcx, body, analysis, Some(apply_trans as Box<_>))
