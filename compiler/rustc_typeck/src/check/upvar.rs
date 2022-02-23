@@ -1792,6 +1792,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
         bk: ty::BorrowKind,
+        _is_autoref: bool,
     ) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
@@ -1826,7 +1827,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
-        self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow);
+        self.borrow(assignee_place, diag_expr_id, ty::BorrowKind::MutBorrow, false);
     }
 }
 

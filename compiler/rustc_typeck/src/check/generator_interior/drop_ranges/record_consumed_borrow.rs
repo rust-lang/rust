@@ -102,9 +102,13 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         &mut self,
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
-        _bk: rustc_middle::ty::BorrowKind,
+        bk: rustc_middle::ty::BorrowKind,
+        is_autoref: bool,
     ) {
-        debug!("borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}");
+        debug!(
+            "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
+            borrow_kind={bk:?}, is_autoref={is_autoref}"
+        );
 
         self.places
             .borrowed
@@ -114,7 +118,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         //
         // XXX -- we need to distinguish `&*E` where `E: &T` which is not creating a temporary
         // even though the place-base E is an rvalue
-        if let PlaceBase::Rvalue = place_with_id.place.base {
+        if let (false, PlaceBase::Rvalue) = (is_autoref, place_with_id.place.base) {
             self.places.borrowed_temporaries.insert(place_with_id.hir_id);
         }
     }

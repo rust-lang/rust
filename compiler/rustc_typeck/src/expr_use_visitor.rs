@@ -45,6 +45,7 @@ pub trait Delegate<'tcx> {
         place_with_id: &PlaceWithHirId<'tcx>,
         diag_expr_id: hir::HirId,
         bk: ty::BorrowKind,
+        is_autoref: bool,
     );
 
     /// The path at `assignee_place` is being assigned to.
@@ -175,7 +176,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
 
         let place_with_id = return_if_err!(self.mc.cat_expr(expr));
-        self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
+        self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk, false);
 
         self.walk_expr(expr)
     }
@@ -558,7 +559,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // this is an autoref of `x`.
                 adjustment::Adjust::Deref(Some(ref deref)) => {
                     let bk = ty::BorrowKind::from_mutbl(deref.mutbl);
-                    self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk);
+                    self.delegate.borrow(&place_with_id, place_with_id.hir_id, bk, true);
                 }
 
                 adjustment::Adjust::Borrow(ref autoref) => {
@@ -590,13 +591,14 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     base_place,
                     base_place.hir_id,
                     ty::BorrowKind::from_mutbl(m.into()),
+                    true,
                 );
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
-                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m));
+                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m), true);
             }
         }
     }
@@ -669,7 +671,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     match bm {
                         ty::BindByReference(m) => {
                             let bk = ty::BorrowKind::from_mutbl(m);
-                            delegate.borrow(place, discr_place.hir_id, bk);
+                            delegate.borrow(place, discr_place.hir_id, bk, false);
                         }
                         ty::BindByValue(..) => {
                             debug!("walk_pat binding consuming pat");
@@ -799,6 +801,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                                 &place_with_id,
                                 place_with_id.hir_id,
                                 upvar_borrow,
+                                false,
                             );
                         }
                     }
@@ -837,7 +840,7 @@ fn delegate_consume<'a, 'tcx>(
     match mode {
         ConsumeMode::Move => delegate.consume(place_with_id, diag_expr_id),
         ConsumeMode::Copy => {
-            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow, false)
         }
     }
 }
