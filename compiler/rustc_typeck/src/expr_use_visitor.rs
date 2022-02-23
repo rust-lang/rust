@@ -48,6 +48,14 @@ pub trait Delegate<'tcx> {
         is_autoref: bool,
     );
 
+    /// The value found at `place` is being copied.
+    /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        // In most cases, treating a copy as a borrow is the right thing, so we forward
+        // this to the borrow callback by default.
+        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow, false)
+    }
+
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
@@ -598,7 +606,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             adjustment::AutoBorrow::RawPtr(m) => {
                 debug!("walk_autoref: expr.hir_id={} base_place={:?}", expr.hir_id, base_place);
 
-                self.delegate.borrow(base_place, base_place.hir_id, ty::BorrowKind::from_mutbl(m), true);
+                self.delegate.borrow(
+                    base_place,
+                    base_place.hir_id,
+                    ty::BorrowKind::from_mutbl(m),
+                    true,
+                );
             }
         }
     }
@@ -839,9 +852,7 @@ fn delegate_consume<'a, 'tcx>(
 
     match mode {
         ConsumeMode::Move => delegate.consume(place_with_id, diag_expr_id),
-        ConsumeMode::Copy => {
-            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow, false)
-        }
+        ConsumeMode::Copy => delegate.copy(place_with_id, diag_expr_id),
     }
 }
 
