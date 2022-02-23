@@ -169,7 +169,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]
-#![feature(exhaustive_patterns)]
 #![feature(doc_cfg_hide)]
 #![feature(extern_types)]
 #![feature(fundamental)]

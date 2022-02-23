@@ -119,6 +119,7 @@ impl<B, C> ops::FromResidual for ControlFlow<B, C> {
     fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {
         match residual {
             ControlFlow::Break(b) => ControlFlow::Break(b),
+            ControlFlow::Continue(never) => match never {},
         }
     }
 }

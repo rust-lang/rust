@@ -282,6 +282,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Pol
     fn from_residual(x: Result<convert::Infallible, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Err(From::from(e))),
+            Ok(never) => match never {},
         }
     }
 }
@@ -315,6 +316,7 @@ impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>>
     fn from_residual(x: Result<convert::Infallible, E>) -> Self {
         match x {
             Err(e) => Poll::Ready(Some(Err(From::from(e)))),
+            Ok(never) => match never {},
         }
     }
 }

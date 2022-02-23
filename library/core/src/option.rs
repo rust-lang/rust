@@ -2276,6 +2276,7 @@ impl<T> const ops::FromResidual for Option<T> {
     fn from_residual(residual: Option<convert::Infallible>) -> Self {
         match residual {
             None => None,
+            Some(never) => match never {},
         }
     }
 }

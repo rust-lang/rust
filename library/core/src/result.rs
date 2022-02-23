@@ -2062,6 +2062,7 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),
+            Ok(never) => match never {},
         }
     }
 }

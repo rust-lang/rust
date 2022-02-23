@@ -176,6 +176,7 @@ impl<T> OnceCell<T> {
     {
         match self.get_or_try_init(|| Ok::<T, !>(f())) {
             Ok(val) => val,
+            Err(never) => match never {},
         }
     }
 

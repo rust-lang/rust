@@ -95,6 +95,7 @@ impl<T> FromResidual for Ready<T> {
     fn from_residual(residual: Ready<convert::Infallible>) -> Self {
         match residual.0 {
             Poll::Pending => Ready(Poll::Pending),
+            Poll::Ready(never) => match never {},
         }
     }
 }
@@ -105,6 +106,7 @@ impl<T> FromResidual<Ready<convert::Infallible>> for Poll<T> {
     fn from_residual(residual: Ready<convert::Infallible>) -> Self {
         match residual.0 {
             Poll::Pending => Poll::Pending,
+            Poll::Ready(never) => match never {},
         }
     }
 }
