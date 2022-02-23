@@ -80,8 +80,8 @@ possible effects for each statement and terminator, the "before" effect and the
 unprefixed (or "primary") effect. The "before" effects are applied immediately
 before the unprefixed effect **regardless of the direction of the analysis**.
 In other words, a backward analysis will apply the "before" effect and then the
-the "primary" effect when computing the transfer function for a basic block,
-just like a forward analysis.
+"primary" effect when computing the transfer function for a basic block, just
+like a forward analysis.
 
 The vast majority of analyses should use only the unprefixed effects: Having
 multiple effects for each statement makes it difficult for consumers to know
