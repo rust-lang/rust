@@ -12,6 +12,7 @@ use rustc_hir::{def::CtorKind, def_id::DefId};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::CRATE_DEF_INDEX;
 use rustc_span::Pos;
+use rustc_target::spec::abi::Abi as RustcAbi;
 
 use rustdoc_json_types::*;
 
@@ -19,7 +20,6 @@ use crate::clean::utils::print_const_expr;
 use crate::clean::{self, ItemId};
 use crate::formats::item_type::ItemType;
 use crate::json::JsonRenderer;
-use std::collections::HashSet;
 
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: clean::Item) -> Option<Item> {
@@ -271,22 +271,28 @@ crate fn from_ctor_kind(struct_type: CtorKind) -> StructType {
     }
 }
 
-crate fn from_fn_header(header: &rustc_hir::FnHeader) -> HashSet<Qualifiers> {
-    let mut v = HashSet::new();
-
-    if let rustc_hir::Unsafety::Unsafe = header.unsafety {
-        v.insert(Qualifiers::Unsafe);
+crate fn from_fn_header(header: &rustc_hir::FnHeader) -> Header {
+    Header {
+        async_: header.is_async(),
+        const_: header.is_const(),
+        unsafe_: header.is_unsafe(),
+        abi: convert_abi(header.abi),
     }
+}
 
-    if let rustc_hir::IsAsync::Async = header.asyncness {
-        v.insert(Qualifiers::Async);
+fn convert_abi(a: RustcAbi) -> Abi {
+    match a {
+        RustcAbi::Rust => Abi::Rust,
+        RustcAbi::C { unwind } => Abi::C { unwind },
+        RustcAbi::Cdecl { unwind } => Abi::Cdecl { unwind },
+        RustcAbi::Stdcall { unwind } => Abi::Stdcall { unwind },
+        RustcAbi::Fastcall { unwind } => Abi::Fastcall { unwind },
+        RustcAbi::Aapcs { unwind } => Abi::Aapcs { unwind },
+        RustcAbi::Win64 { unwind } => Abi::Win64 { unwind },
+        RustcAbi::SysV64 { unwind } => Abi::SysV64 { unwind },
+        RustcAbi::System { unwind } => Abi::System { unwind },
+        _ => Abi::Other(a.to_string()),
     }
-
-    if let rustc_hir::Constness::Const = header.constness {
-        v.insert(Qualifiers::Const);
-    }
-
-    v
 }
 
 impl FromWithTcx<clean::Function> for Function {
@@ -296,7 +302,6 @@ impl FromWithTcx<clean::Function> for Function {
             decl: decl.into_tcx(tcx),
             generics: generics.into_tcx(tcx),
             header: from_fn_header(&header),
-            abi: header.abi.to_string(),
         }
     }
 }
@@ -465,16 +470,14 @@ impl FromWithTcx<clean::BareFunctionDecl> for FunctionPointer {
     fn from_tcx(bare_decl: clean::BareFunctionDecl, tcx: TyCtxt<'_>) -> Self {
         let clean::BareFunctionDecl { unsafety, generic_params, decl, abi } = bare_decl;
         FunctionPointer {
-            header: if let rustc_hir::Unsafety::Unsafe = unsafety {
-                let mut hs = HashSet::new();
-                hs.insert(Qualifiers::Unsafe);
-                hs
-            } else {
-                HashSet::new()
+            header: Header {
+                unsafe_: matches!(unsafety, rustc_hir::Unsafety::Unsafe),
+                const_: false,
+                async_: false,
+                abi: convert_abi(abi),
             },
             generic_params: generic_params.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             decl: decl.into_tcx(tcx),
-            abi: abi.to_string(),
         }
     }
 }
@@ -554,7 +557,6 @@ crate fn from_function_method(
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),
         header: from_fn_header(&header),
-        abi: header.abi.to_string(),
         has_body,
     }
 }
