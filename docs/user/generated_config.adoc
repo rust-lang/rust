@@ -213,6 +213,11 @@ Note that your client must specify the `additionalTextEdits` LSP client capabili
 Toggles the additional completions that automatically show method calls and field accesses
 with `self` prefixed to them when inside a method.
 --
+[[rust-analyzer.completion.privateEditable.enable]]rust-analyzer.completion.privateEditable.enable (default: `false`)::
++
+--
+Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
+--
 [[rust-analyzer.diagnostics.enable]]rust-analyzer.diagnostics.enable (default: `true`)::
 +
 --

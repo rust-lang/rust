@@ -360,6 +360,9 @@ impl<'a> CompletionContext<'a> {
             None => return Visible::No,
         };
         if !vis.is_visible_from(self.db, module.into()) {
+            if !self.config.enable_private_editable {
+                return Visible::No;
+            }
             // If the definition location is editable, also show private items
             let root_file = defining_crate.root_file(self.db);
             let source_root_id = self.db.file_source_root(root_file);
