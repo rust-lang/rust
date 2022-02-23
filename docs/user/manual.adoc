@@ -436,6 +436,40 @@ Then click on apply, and restart the LSP server for your rust project.
 
 https://gitlab.com/cppit/jucipp[juCi++] has built-in support for the language server protocol, and since version 1.7.0 offers installation of both Rust and rust-analyzer when opening a Rust file.
 
+=== Kakoune
+
+https://kakoune.org/[Kakoune] supports LSP with the help of https://github.com/kak-lsp/kak-lsp[`kak-lsp`].
+Follow the https://github.com/kak-lsp/kak-lsp#installation[instructions] to install `kak-lsp`.
+To configure `kak-lsp`, refer to the https://github.com/kak-lsp/kak-lsp#configuring-kak-lsp[configuration section] which is basically about copying the https://github.com/kak-lsp/kak-lsp/blob/master/kak-lsp.toml[configuration file] in the right place (latest versions should use `rust-analyzer` by default).
+
+Finally, you need to configure Kakoune to talk to `kak-lsp` (see https://github.com/kak-lsp/kak-lsp#usage[Usage section]).
+A basic configuration will only get you LSP but you can also activate inlay diagnostics and auto-formatting on save.
+The following might help you get all of this.
+
+[source,txt]
+----
+eval %sh{kak-lsp --kakoune -s $kak_session}  # Not needed if you load it with plug.kak.
+hook global WinSetOption filetype=rust %{
+    # Enable LSP
+    lsp-enable-window
+
+    # Auto-formatting on save
+    hook window BufWritePre .* lsp-formatting-sync
+
+    # Configure inlay hints (only on save)
+    hook window -group rust-inlay-hints BufWritePost .* rust-analyzer-inlay-hints
+    hook -once -always window WinSetOption filetype=.* %{
+        remove-hooks window rust-inlay-hints
+    }
+}
+----
+
+=== Helix
+
+https://docs.helix-editor.com/[Helix] supports LSP by default.
+However, it won't install `rust-analyzer` automatically.
+You can follow instructions for installing <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+
 == Troubleshooting
 
 Start with looking at the rust-analyzer version.
