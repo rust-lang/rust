@@ -18,7 +18,7 @@
 // warn on rustc internal lints
 #![warn(rustc::internal)]
 // Disable this rustc lint for now, as it was also done in rustc
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![allow(rustc::potential_query_instability)]
 
 // FIXME: switch to something more ergonomic here, once available.
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
