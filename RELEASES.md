@@ -4,7 +4,7 @@ Version 1.59.0 (2022-02-24)
 Language
 --------
 
-- [Stabilize default arguments for const generics][90207]
+- [Stabilize default arguments for const generics and remove the ordering restriction for type and const parameters][90207]
 - [Stabilize destructuring assignment][90521]
 - [Relax private in public lint on generic bounds and where clauses of trait impls][90586]
 - [Stabilize asm! and global_asm! for x86, x86_64, ARM, Aarch64, and RISC-V][91728]
