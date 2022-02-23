@@ -17,6 +17,7 @@ pub use self::Variance::*;
 pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
+use rustc_data_structures::fingerprint::Fingerprint;
 pub use vtable::*;
 
 use crate::metadata::ModChild;
@@ -424,11 +425,15 @@ crate struct TyS<'tcx> {
     /// De Bruijn indices within the type are contained within `0..D`
     /// (exclusive).
     outer_exclusive_binder: ty::DebruijnIndex,
+
+    /// The stable hash of the type. This way hashing of types will not have to work
+    /// on the address of the type anymore, but can instead just read this field
+    stable_hash: Fingerprint,
 }
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
+static_assert_size!(TyS<'_>, 56);
 
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -442,21 +447,25 @@ static BOOL_TYS: TyS<'static> = TyS {
     kind: ty::Bool,
     flags: TypeFlags::empty(),
     outer_exclusive_binder: DebruijnIndex::from_usize(0),
+    stable_hash: Fingerprint::ZERO,
 };
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TyS {
-            ref kind,
+            kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
             flags: _,
 
             outer_exclusive_binder: _,
+
+            stable_hash,
         } = self.0.0;
 
-        kind.hash_stable(hcx, hasher);
+        assert_ne!(*stable_hash, Fingerprint::ZERO, "{:#?}", kind);
+        stable_hash.hash_stable(hcx, hasher);
     }
 }
 
