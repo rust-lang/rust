@@ -1417,13 +1417,6 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect(&mut self, items: &[ModItem], container: ItemContainerId) {
-        struct DefData<'a> {
-            id: ModuleDefId,
-            name: &'a Name,
-            visibility: &'a RawVisibility,
-            has_constructor: bool,
-        }
-
         let krate = self.def_collector.def_map.krate;
 
         // Note: don't assert that inserted value is fresh: it's simply not true
@@ -1473,22 +1466,37 @@ impl ModCollector<'_, '_> {
                 continue;
             }
 
+            let db = self.def_collector.db;
             let module = self.def_collector.def_map.module_id(self.module_id);
+            let def_map = &mut self.def_collector.def_map;
+            let update_def =
+                |def_collector: &mut DefCollector, id, name: &Name, vis, has_constructor| {
+                    def_collector.def_map.modules[self.module_id].scope.declare(id);
+                    def_collector.update(
+                        self.module_id,
+                        &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
+                        vis,
+                        ImportType::Named,
+                    )
+                };
+            let resolve_vis = |def_map: &DefMap, visibility| {
+                def_map
+                    .resolve_visibility(db, self.module_id, visibility)
+                    .unwrap_or(Visibility::Public)
+            };
 
-            let mut def = None;
             match item {
                 ModItem::Mod(m) => self.collect_module(&self.item_tree[m], &attrs),
                 ModItem::Import(import_id) => {
-                    let module_id = self.module_id;
                     let imports = Import::from_use(
-                        self.def_collector.db,
+                        db,
                         krate,
                         self.item_tree,
                         ItemTreeId::new(self.tree_id, import_id),
                     );
                     self.def_collector.unresolved_imports.extend(imports.into_iter().map(
                         |import| ImportDirective {
-                            module_id,
+                            module_id: self.module_id,
                             import,
                             status: PartialResolvedImport::Unresolved,
                         },
@@ -1498,7 +1506,7 @@ impl ModCollector<'_, '_> {
                     self.def_collector.unresolved_imports.push(ImportDirective {
                         module_id: self.module_id,
                         import: Import::from_extern_crate(
-                            self.def_collector.db,
+                            db,
                             krate,
                             self.item_tree,
                             ItemTreeId::new(self.tree_id, import_id),
@@ -1513,7 +1521,7 @@ impl ModCollector<'_, '_> {
                             container: module,
                             id: ItemTreeId::new(self.tree_id, block),
                         }
-                        .intern(self.def_collector.db),
+                        .intern(db),
                     ),
                 ),
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac], container),
@@ -1523,73 +1531,84 @@ impl ModCollector<'_, '_> {
                     let module = self.def_collector.def_map.module_id(self.module_id);
                     let impl_id =
                         ImplLoc { container: module, id: ItemTreeId::new(self.tree_id, imp) }
-                            .intern(self.def_collector.db);
+                            .intern(db);
                     self.def_collector.def_map.modules[self.module_id].scope.define_impl(impl_id)
                 }
                 ModItem::Function(id) => {
-                    let func = &self.item_tree[id];
+                    let it = &self.item_tree[id];
 
-                    let ast_id = InFile::new(self.file_id(), func.ast_id);
-                    self.collect_proc_macro_def(&func.name, ast_id, &attrs);
-
-                    def = Some(DefData {
-                        id: FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let is_proc_macro = attrs.parse_proc_macro_decl(&it.name);
+                    let vis = match is_proc_macro {
+                        Some(proc_macro) => {
+                            // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
+                            let ast_id = InFile::new(self.tree_id.file_id(), it.ast_id);
+                            let module_id = def_map.module_id(def_map.root());
+                            self.def_collector.export_proc_macro(proc_macro, ast_id);
+                            Visibility::Module(module_id)
+                        }
+                        None => resolve_vis(def_map, &self.item_tree[it.visibility]),
+                    };
+                    update_def(
+                        self.def_collector,
+                        FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &func.name,
-                        visibility: &self.item_tree[func.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
                 ModItem::Struct(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: StructLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        StructLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: !matches!(it.fields, Fields::Record(_)),
-                    });
+                        &it.name,
+                        vis,
+                        !matches!(it.fields, Fields::Record(_)),
+                    );
                 }
                 ModItem::Union(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: UnionLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        UnionLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
                 ModItem::Enum(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: EnumLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        EnumLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
                 ModItem::Const(id) => {
                     let it = &self.item_tree[id];
-                    let const_id = ConstLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                        .intern(self.def_collector.db);
+                    let const_id =
+                        ConstLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     match &it.name {
                         Some(name) => {
-                            def = Some(DefData {
-                                id: const_id.into(),
-                                name,
-                                visibility: &self.item_tree[it.visibility],
-                                has_constructor: false,
-                            });
+                            let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                            update_def(self.def_collector, const_id.into(), name, vis, false);
                         }
                         None => {
                             // const _: T = ...;
@@ -1602,54 +1621,45 @@ impl ModCollector<'_, '_> {
                 ModItem::Static(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: StaticLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        StaticLoc { container, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
                 ModItem::Trait(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: TraitLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        TraitLoc { container: module, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
                 ModItem::TypeAlias(id) => {
                     let it = &self.item_tree[id];
 
-                    def = Some(DefData {
-                        id: TypeAliasLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(self.def_collector.db)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        TypeAliasLoc { container, id: ItemTreeId::new(self.tree_id, id) }
+                            .intern(db)
                             .into(),
-                        name: &it.name,
-                        visibility: &self.item_tree[it.visibility],
-                        has_constructor: false,
-                    });
+                        &it.name,
+                        vis,
+                        false,
+                    );
                 }
-            }
-
-            if let Some(DefData { id, name, visibility, has_constructor }) = def {
-                self.def_collector.def_map.modules[self.module_id].scope.declare(id);
-                let vis = self
-                    .def_collector
-                    .def_map
-                    .resolve_visibility(self.def_collector.db, self.module_id, visibility)
-                    .unwrap_or(Visibility::Public);
-                self.def_collector.update(
-                    self.module_id,
-                    &[(Some(name.clone()), PerNs::from_def(id, vis, has_constructor))],
-                    vis,
-                    ImportType::Named,
-                )
             }
         }
     }
@@ -1833,14 +1843,6 @@ impl ModCollector<'_, '_> {
         }
 
         Ok(())
-    }
-
-    /// If `attrs` registers a procedural macro, collects its definition.
-    fn collect_proc_macro_def(&mut self, func_name: &Name, ast_id: AstId<ast::Fn>, attrs: &Attrs) {
-        // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
-        if let Some(proc_macro) = attrs.parse_proc_macro_decl(func_name) {
-            self.def_collector.export_proc_macro(proc_macro, ast_id);
-        }
     }
 
     fn collect_macro_rules(&mut self, id: FileItemTreeId<MacroRules>) {
