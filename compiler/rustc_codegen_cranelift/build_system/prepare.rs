@@ -5,8 +5,8 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use crate::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
-use crate::utils::{copy_dir_recursively, spawn_and_wait};
+use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
+use super::utils::{copy_dir_recursively, spawn_and_wait};
 
 pub(crate) fn prepare() {
     prepare_sysroot();
@@ -92,7 +92,7 @@ fn prepare_sysroot() {
     clone_repo(
         "build_sysroot/compiler-builtins",
         "https://github.com/rust-lang/compiler-builtins.git",
-        "0.1.66",
+        "0.1.70",
     );
     apply_patches("compiler-builtins", Path::new("build_sysroot/compiler-builtins"));
 }

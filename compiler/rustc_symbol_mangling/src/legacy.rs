@@ -346,7 +346,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
 }
 
 impl<'tcx> PrettyPrinter<'tcx> for &mut SymbolPrinter<'tcx> {
-    fn region_should_not_be_omitted(&self, _region: ty::Region<'_>) -> bool {
+    fn should_print_region(&self, _region: ty::Region<'_>) -> bool {
         false
     }
     fn comma_sep<T>(mut self, mut elems: impl Iterator<Item = T>) -> Result<Self, Self::Error>

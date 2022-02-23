@@ -275,7 +275,7 @@ pub trait PrettyPrinter<'tcx>:
     /// Returns `true` if the region should be printed in
     /// optional positions, e.g., `&'a T` or `dyn Tr + 'b`.
     /// This is typically the case for all non-`'_` regions.
-    fn region_should_not_be_omitted(&self, region: ty::Region<'_>) -> bool;
+    fn should_print_region(&self, region: ty::Region<'_>) -> bool;
 
     // Defaults (should not be overridden):
 
@@ -577,7 +577,7 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Ref(r, ty, mutbl) => {
                 p!("&");
-                if self.region_should_not_be_omitted(r) {
+                if self.should_print_region(r) {
                     p!(print(r), " ");
                 }
                 p!(print(ty::TypeAndMut { ty, mutbl }))
@@ -621,7 +621,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_def_path(def.did, substs));
             }
             ty::Dynamic(data, r) => {
-                let print_r = self.region_should_not_be_omitted(r);
+                let print_r = self.should_print_region(r);
                 if print_r {
                     p!("(");
                 }
@@ -1914,7 +1914,7 @@ impl<'tcx, F: fmt::Write> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx, F> {
         Ok(inner)
     }
 
-    fn region_should_not_be_omitted(&self, region: ty::Region<'_>) -> bool {
+    fn should_print_region(&self, region: ty::Region<'_>) -> bool {
         let highlight = self.region_highlight_mode;
         if highlight.region_highlighted(region).is_some() {
             return true;

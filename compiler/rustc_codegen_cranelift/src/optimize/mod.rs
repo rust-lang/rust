@@ -15,6 +15,6 @@ pub(crate) fn optimize_function<'tcx>(
 ) {
     // FIXME classify optimizations over opt levels once we have more
 
-    crate::pretty_clif::write_clif_file(tcx, "preopt", isa, instance, &ctx, &*clif_comments);
+    crate::pretty_clif::write_clif_file(tcx, "preopt", isa, instance, &ctx.func, &*clif_comments);
     crate::base::verify_func(tcx, &*clif_comments, &ctx.func);
 }

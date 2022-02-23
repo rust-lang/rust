@@ -405,10 +405,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: &OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
         Ok(match op.try_as_mplace() {
             Ok(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
+                // Downcasts only change the layout.
+                // (In particular, no check about whether this is even the active variant -- that's by design,
+                // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
                 let layout = op.layout.for_variant(self, variant);
                 OpTy { layout, ..*op }
             }
