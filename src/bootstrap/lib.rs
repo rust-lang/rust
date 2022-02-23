@@ -186,6 +186,25 @@ const LLVM_TOOLS: &[&str] = &[
 
 pub const VERSION: usize = 2;
 
+/// Extra --check-cfg to add when building
+/// (Mode restriction, config name, config values (if any))
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)] = &[
+    (None, "bootstrap", None),
+    (Some(Mode::Rustc), "parallel_compiler", None),
+    (Some(Mode::ToolRustc), "parallel_compiler", None),
+    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
+    // this config) should probably by removed or use a allow attribute.
+    (Some(Mode::ToolRustc), "release", None),
+    (Some(Mode::Std), "miri", None),
+    (Some(Mode::Std), "stdarch_intel_sde", None),
+    (Some(Mode::Std), "no_fp_fmt_parse", None),
+    (Some(Mode::Std), "no_global_oom_handling", None),
+    (Some(Mode::Std), "freebsd12", None),
+    (Some(Mode::Std), "backtrace_in_libstd", None),
+    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
+    (Some(Mode::Std), "dont_compile_me", None),
+];
+
 /// A structure representing a Rust compiler.
 ///
 /// Each compiler has a `stage` that it is associated with and a `host` that
