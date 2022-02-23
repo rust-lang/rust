@@ -762,7 +762,6 @@ impl TransitiveRelation {
 
     fn reachable_from(&self, a: mir::Local, domain_size: usize) -> HybridBitSet<mir::Local> {
         let mut seen = HybridBitSet::new_empty(domain_size);
-        seen.insert(a);
         let mut stack = vec![a];
         while let Some(u) = stack.pop() {
             if let Some(edges) = self.relations.get(&u) {
@@ -773,7 +772,6 @@ impl TransitiveRelation {
                 }
             }
         }
-        seen.remove(a);
         seen
     }
 }
