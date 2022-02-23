@@ -454,6 +454,8 @@ Definite bugs found:
 * [TiKV using `Vec::from_raw_parts` incorrectly](https://github.com/tikv/agatedb/pull/24)
 * Incorrect doctests for [`AtomicPtr`](https://github.com/rust-lang/rust/pull/84052) and [`Box::from_raw_in`](https://github.com/rust-lang/rust/pull/84053)
 * [Insufficient alignment in `ThinVec`](https://github.com/Gankra/thin-vec/pull/27)
+* [`crossbeam-epoch` calling `assume_init` on a partly-initialized `MaybeUninit`](https://github.com/crossbeam-rs/crossbeam/pull/779)
+* [`integer-encoding` dereferencing a misaligned pointer](https://github.com/dermesser/integer-encoding-rs/pull/23)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 
