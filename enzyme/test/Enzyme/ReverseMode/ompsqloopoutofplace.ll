@@ -155,7 +155,7 @@ attributes #1 = { argmemonly }
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"outidx'ipg_unwrap", align 8
 ; CHECK-NEXT:   %arrayidx_unwrap = getelementptr inbounds double, double* %tmp, i64 %_unwrap3
 ; CHECK-NEXT:   %_unwrap4 = load double, double* %arrayidx_unwrap, align 8, !tbaa !9, !invariant.group !16
-; CHECK-NEXT:   %2 = call fast double @llvm.sqrt.f64(double %_unwrap4)
+; CHECK-NEXT:   %2 = call fast double @sqrt(double %_unwrap4)
 ; CHECK-NEXT:   %3 = fmul fast double 5.000000e-01, %1
 ; CHECK-NEXT:   %4 = fdiv fast double %3, %2
 ; CHECK-NEXT:   %5 = fcmp fast oeq double %_unwrap4, 0.000000e+00
