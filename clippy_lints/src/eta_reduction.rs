@@ -176,8 +176,7 @@ fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_
             PatKind::Binding(_, id, ..) if path_to_local_id(arg, id) => {},
             _ => return false,
         }
-        // checks that parameters are not bound as `ref`
-        //dbg!(binding_modes.get(param.pat.hir_id));
+        // checks that parameters are not bound as `ref` or `ref mut`
         if let Some(BindingMode::BindByReference(_)) = binding_modes.get(param.pat.hir_id) {
             return false;
         }
