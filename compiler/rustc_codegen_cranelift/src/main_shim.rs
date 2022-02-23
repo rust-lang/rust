@@ -1,4 +1,3 @@
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_hir::LangItem;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::AssocKind;
@@ -152,8 +151,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        m.define_function(cmain_func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap();
+        m.define_function(cmain_func_id, &mut ctx).unwrap();
         unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

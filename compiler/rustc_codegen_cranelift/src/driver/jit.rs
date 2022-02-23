@@ -7,7 +7,6 @@ use std::lazy::SyncOnceCell;
 use std::os::raw::{c_char, c_int};
 use std::sync::{mpsc, Mutex};
 
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
@@ -381,12 +380,5 @@ fn codegen_shim<'tcx>(cx: &mut CodegenCx<'tcx>, module: &mut JITModule, inst: In
     let ret_vals = trampoline_builder.func.dfg.inst_results(call_inst).to_vec();
     trampoline_builder.ins().return_(&ret_vals);
 
-    module
-        .define_function(
-            func_id,
-            &mut cx.cached_context,
-            &mut NullTrapSink {},
-            &mut NullStackMapSink {},
-        )
-        .unwrap();
+    module.define_function(func_id, &mut cx.cached_context).unwrap();
 }

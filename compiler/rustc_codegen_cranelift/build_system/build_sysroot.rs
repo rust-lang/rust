@@ -3,9 +3,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
-use crate::rustc_info::{get_file_name, get_rustc_version};
-use crate::utils::{spawn_and_wait, try_hard_link};
-use crate::SysrootKind;
+use super::rustc_info::{get_file_name, get_rustc_version};
+use super::utils::{spawn_and_wait, try_hard_link};
+use super::SysrootKind;
 
 pub(crate) fn build_sysroot(
     channel: &str,
@@ -52,7 +52,7 @@ pub(crate) fn build_sysroot(
         .arg("-g");
     spawn_and_wait(build_cargo_wrapper_cmd);
 
-    let default_sysroot = crate::rustc_info::get_default_sysroot();
+    let default_sysroot = super::rustc_info::get_default_sysroot();
 
     let rustlib = target_dir.join("lib").join("rustlib");
     let host_rustlib_lib = rustlib.join(host_triple).join("lib");
@@ -167,7 +167,7 @@ fn build_clif_sysroot_for_triple(
 
     let build_dir = Path::new("build_sysroot").join("target").join(triple).join(channel);
 
-    if !crate::config::get_bool("keep_sysroot") {
+    if !super::config::get_bool("keep_sysroot") {
         // Cleanup the target dir with the exception of build scripts and the incremental cache
         for dir in ["build", "deps", "examples", "native"] {
             if build_dir.join(dir).exists() {
