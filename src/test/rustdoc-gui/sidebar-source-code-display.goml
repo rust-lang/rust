@@ -1,0 +1,22 @@
+// This test ensures that the elements in the sidebar are displayed correctly.
+javascript: false
+goto: file://|DOC_PATH|/src/test_docs/lib.rs.html
+// Since the javascript is disabled, there shouldn't be a toggle.
+assert-false: "#sidebar-toggle"
+// For some reason, we need to wait a bit here because it seems like the transition on opacity
+// is being applied whereas it can't be reproduced in a browser...
+wait-for: 500
+assert-css: (".sidebar > *", {"visibility": "hidden", "opacity": 0})
+
+// Let's retry with javascript enabled.
+javascript: true
+reload:
+wait-for: "#sidebar-toggle"
+assert-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden", "opacity": 0})
+// Let's expand the sidebar now.
+click: "#sidebar-toggle"
+// Because of the transition CSS, better wait a second before checking.
+wait-for: 1000
+assert-css: ("#sidebar-toggle", {"visibility": "visible", "opacity": 1})
+assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "visible", "opacity": 1})
