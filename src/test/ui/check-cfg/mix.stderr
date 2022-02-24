@@ -1,0 +1,66 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:11:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^ help: did you mean: `windows`
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value
+  --> $DIR/mix.rs:21:7
+   |
+LL | #[cfg(feature = "zebra")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: bar, foo
+
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:25:12
+   |
+LL | #[cfg_attr(uu, test)]
+   |            ^^
+
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:34:10
+   |
+LL |     cfg!(widnows);
+   |          ^^^^^^^ help: did you mean: `windows`
+
+warning: unexpected `cfg` condition value
+  --> $DIR/mix.rs:38:10
+   |
+LL |     cfg!(feature = "zebra");
+   |          ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: bar, foo
+
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:40:10
+   |
+LL |     cfg!(xxx = "foo");
+   |          ^^^^^^^^^^^
+
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:42:10
+   |
+LL |     cfg!(xxx);
+   |          ^^^
+
+warning: unexpected `cfg` condition name
+  --> $DIR/mix.rs:44:14
+   |
+LL |     cfg!(any(xxx, windows));
+   |              ^^^
+
+warning: unexpected `cfg` condition value
+  --> $DIR/mix.rs:46:14
+   |
+LL |     cfg!(any(feature = "bad", windows));
+   |              ^^^^^^^^^^-----
+   |                        |
+   |                        help: did you mean: `"bar"`
+   |
+   = note: expected values for `feature` are: bar, foo
+
+warning: 9 warnings emitted
+
