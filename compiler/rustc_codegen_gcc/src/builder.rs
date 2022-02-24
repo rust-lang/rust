@@ -390,11 +390,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         bx
     }
 
-    fn build_sibling_block(&mut self, name: &str) -> Self {
-        let block = self.append_sibling_block(name);
-        Self::build(self.cx, block)
-    }
-
     fn llbb(&self) -> Block<'gcc> {
         self.block.expect("block")
     }
@@ -407,6 +402,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn append_sibling_block(&mut self, name: &str) -> Block<'gcc> {
         let func = self.current_func();
         func.new_block(name)
+    }
+
+    fn switch_to_block(&mut self, block: Self::BasicBlock) {
+        *self.cx.current_block.borrow_mut() = Some(block);
+        self.block = Some(block);
     }
 
     fn ret_void(&mut self) {
@@ -880,28 +880,31 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let start = dest.project_index(&mut self, zero).llval;
         let end = dest.project_index(&mut self, count).llval;
 
-        let mut header_bx = self.build_sibling_block("repeat_loop_header");
-        let mut body_bx = self.build_sibling_block("repeat_loop_body");
-        let next_bx = self.build_sibling_block("repeat_loop_next");
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
 
         let ptr_type = start.get_type();
         let current = self.llbb().get_function().new_local(None, ptr_type, "loop_var");
         let current_val = current.to_rvalue();
         self.assign(current, start);
 
-        self.br(header_bx.llbb());
+        self.br(header_bb);
 
-        let keep_going = header_bx.icmp(IntPredicate::IntNE, current_val, end);
-        header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
+        self.switch_to_block(header_bb);
+        let keep_going = self.icmp(IntPredicate::IntNE, current_val, end);
+        self.cond_br(keep_going, body_bb, next_bb);
 
+        self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut body_bx, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
-        body_bx.llbb().add_assignment(None, current, next);
-        body_bx.br(header_bx.llbb());
+        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
+        self.llbb().add_assignment(None, current, next);
+        self.br(header_bb);
 
-        next_bx
+        self.switch_to_block(next_bb);
+        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {

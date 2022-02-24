@@ -96,9 +96,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
             debug!("llblock: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let mut trampoline = fx.new_block(name);
-            trampoline.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-            trampoline.llbb()
+            let trampoline = Bx::append_block(fx.cx, fx.llfn, name);
+            let mut trampoline_bx = Bx::build(fx.cx, trampoline);
+            trampoline_bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+            trampoline
         } else {
             lltarget
         }
@@ -169,9 +170,9 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
 
             if let Some((ret_dest, target)) = destination {
-                let mut ret_bx = fx.build_block(target);
-                fx.set_debug_loc(&mut ret_bx, self.terminator.source_info);
-                fx.store_return(&mut ret_bx, ret_dest, &fn_abi.ret, invokeret);
+                bx.switch_to_block(fx.llbb(target));
+                fx.set_debug_loc(bx, self.terminator.source_info);
+                fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
         } else {
             let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
@@ -452,15 +453,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llblock(self, target);
-        let panic_block = bx.build_sibling_block("panic");
+        let panic_block = bx.append_sibling_block("panic");
         if expected {
-            bx.cond_br(cond, lltarget, panic_block.llbb());
+            bx.cond_br(cond, lltarget, panic_block);
         } else {
-            bx.cond_br(cond, panic_block.llbb(), lltarget);
+            bx.cond_br(cond, panic_block, lltarget);
         }
 
         // After this point, bx is the block for the call to panic.
-        bx = panic_block;
+        bx.switch_to_block(panic_block);
         self.set_debug_loc(&mut bx, terminator.source_info);
 
         // Get the location information.
@@ -908,13 +909,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             // Test whether the function pointer is associated with the type identifier.
             let cond = bx.type_test(fn_ptr, typeid_metadata);
-            let mut bx_pass = bx.build_sibling_block("type_test.pass");
-            let mut bx_fail = bx.build_sibling_block("type_test.fail");
-            bx.cond_br(cond, bx_pass.llbb(), bx_fail.llbb());
+            let bb_pass = bx.append_sibling_block("type_test.pass");
+            let bb_fail = bx.append_sibling_block("type_test.fail");
+            bx.cond_br(cond, bb_pass, bb_fail);
 
+            bx.switch_to_block(bb_pass);
             helper.do_call(
                 self,
-                &mut bx_pass,
+                &mut bx,
                 fn_abi,
                 fn_ptr,
                 &llargs,
@@ -922,8 +924,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
             );
 
-            bx_fail.abort();
-            bx_fail.unreachable();
+            bx.switch_to_block(bb_fail);
+            bx.abort();
+            bx.unreachable();
 
             return;
         }
@@ -1020,7 +1023,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
-        let mut bx = self.build_block(bb);
+        let llbb = self.llbb(bb);
+        let mut bx = Bx::build(self.cx, llbb);
         let mir = self.mir;
         let data = &mir[bb];
 
@@ -1356,16 +1360,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //          bar();
                 //      }
                 Some(&mir::TerminatorKind::Abort) => {
-                    let mut cs_bx = self.new_block(&format!("cs_funclet{:?}", bb));
-                    let mut cp_bx = self.new_block(&format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bx.llbb();
+                    let cs_bb =
+                        Bx::append_block(self.cx, self.llfn, &format!("cs_funclet{:?}", bb));
+                    let cp_bb =
+                        Bx::append_block(self.cx, self.llfn, &format!("cp_funclet{:?}", bb));
+                    ret_llbb = cs_bb;
 
-                    let cs = cs_bx.catch_switch(None, None, &[cp_bx.llbb()]);
+                    let mut cs_bx = Bx::build(self.cx, cs_bb);
+                    let cs = cs_bx.catch_switch(None, None, &[cp_bb]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so
                     // it's null. The 64 here is actually a bitfield which
                     // represents that this is a catch-all block.
+                    let mut cp_bx = Bx::build(self.cx, cp_bb);
                     let null = cp_bx.const_null(
                         cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
                     );
@@ -1374,8 +1382,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cp_bx.br(llbb);
                 }
                 _ => {
-                    let mut cleanup_bx = self.new_block(&format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bx.llbb();
+                    let cleanup_bb =
+                        Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
+                    ret_llbb = cleanup_bb;
+                    let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
                     funclet = cleanup_bx.cleanup_pad(None, &[]);
                     cleanup_bx.br(llbb);
                 }
@@ -1383,7 +1393,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.funclets[bb] = Some(funclet);
             ret_llbb
         } else {
-            let mut bx = self.new_block("cleanup");
+            let bb = Bx::append_block(self.cx, self.llfn, "cleanup");
+            let mut bx = Bx::build(self.cx, bb);
 
             let llpersonality = self.cx.eh_personality();
             let llretty = self.landing_pad_type();
@@ -1405,10 +1416,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {
         self.unreachable_block.unwrap_or_else(|| {
-            let mut bx = self.new_block("unreachable");
+            let llbb = Bx::append_block(self.cx, self.llfn, "unreachable");
+            let mut bx = Bx::build(self.cx, llbb);
             bx.unreachable();
-            self.unreachable_block = Some(bx.llbb());
-            bx.llbb()
+            self.unreachable_block = Some(llbb);
+            llbb
         })
     }
 
@@ -1416,7 +1428,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.double_unwind_guard.unwrap_or_else(|| {
             assert!(!base::wants_msvc_seh(self.cx.sess()));
 
-            let mut bx = self.new_block("abort");
+            let llbb = Bx::append_block(self.cx, self.llfn, "abort");
+            let mut bx = Bx::build(self.cx, llbb);
             self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
             let llpersonality = self.cx.eh_personality();
@@ -1434,18 +1447,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.apply_attrs_to_cleanup_callsite(llret);
 
             bx.unreachable();
-            let llbb = bx.llbb();
 
             self.double_unwind_guard = Some(llbb);
             llbb
         })
-    }
-
-    // FIXME(eddyb) replace with `build_sibling_block`/`append_sibling_block`
-    // (which requires having a `Bx` already, and not all callers do).
-    fn new_block(&self, name: &str) -> Bx {
-        let llbb = Bx::append_block(self.cx, self.llfn, name);
-        Bx::build(self.cx, llbb)
     }
 
     /// Get the backend `BasicBlock` for a MIR `BasicBlock`, either already
@@ -1459,11 +1464,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.cached_llbbs[bb] = Some(llbb);
             llbb
         })
-    }
-
-    pub fn build_block(&mut self, bb: mir::BasicBlock) -> Bx {
-        let llbb = self.llbb(bb);
-        Bx::build(self.cx, llbb)
     }
 
     fn make_return_dest(

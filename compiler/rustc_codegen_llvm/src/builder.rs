@@ -166,9 +166,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Self::append_block(self.cx, self.llfn(), name)
     }
 
-    fn build_sibling_block(&mut self, name: &str) -> Self {
-        let llbb = self.append_sibling_block(name);
-        Self::build(self.cx, llbb)
+    fn switch_to_block(&mut self, llbb: Self::BasicBlock) {
+        *self = Self::build(self.cx, llbb)
     }
 
     fn ret_void(&mut self) {
@@ -544,16 +543,19 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let start = dest.project_index(&mut self, zero).llval;
         let end = dest.project_index(&mut self, count).llval;
 
-        let mut header_bx = self.build_sibling_block("repeat_loop_header");
-        let mut body_bx = self.build_sibling_block("repeat_loop_body");
-        let next_bx = self.build_sibling_block("repeat_loop_next");
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
 
-        self.br(header_bx.llbb());
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
         let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
-        header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
+        header_bx.cond_br(keep_going, body_bb, next_bb);
 
+        let mut body_bx = Self::build(self.cx, body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem
             .val
@@ -564,10 +566,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             current,
             &[self.const_usize(1)],
         );
-        body_bx.br(header_bx.llbb());
-        header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        next_bx
+        Self::build(self.cx, next_bb)
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
