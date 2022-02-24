@@ -358,6 +358,7 @@ Expr =
 | WhileExpr
 | YieldExpr
 | LetExpr
+| UnderscoreExpr
 
 Literal =
   Attr* value:(
@@ -426,7 +427,7 @@ RecordExprFieldList =
   '{'
     Attr*
     fields:(RecordExprField (',' RecordExprField)* ','?)?
-    ('..' spread:Expr)?
+    ('..' spread:Expr?)?
   '}'
 
 RecordExprField =
@@ -499,6 +500,9 @@ YieldExpr =
 
 LetExpr =
   Attr* 'let' Pat '=' Expr
+
+UnderscoreExpr =
+  Attr* '_'
 
 AwaitExpr =
   Attr* Expr '.' 'await'
