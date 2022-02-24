@@ -1,11 +1,11 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{Adt, HasSource, ModuleDef, Semantics};
+use hir::{Adt, Crate, HasAttrs, HasSource, ModuleDef, Semantics};
 use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
 use itertools::Itertools;
-use syntax::ast::{self, make, AstNode, HasName, MatchArm, MatchArmList, MatchExpr, Pat};
+use syntax::ast::{self, make, AstNode, HasName, MatchArmList, MatchExpr, Pat};
 
 use crate::{
     utils::{self, render_snippet, Cursor},
@@ -52,36 +52,45 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
 
     let expr = match_expr.expr()?;
 
-    let mut arms: Vec<MatchArm> = match_arm_list.arms().collect();
-    if let [arm] = arms.as_slice() {
-        if let Some(Pat::WildcardPat(..)) = arm.pat() {
-            arms.clear();
-        }
-    }
+    let mut has_catch_all_arm = false;
 
-    let top_lvl_pats: Vec<_> = arms
-        .iter()
-        .filter_map(ast::MatchArm::pat)
-        .flat_map(|pat| match pat {
-            // Special case OrPat as separate top-level pats
-            Pat::OrPat(or_pat) => Either::Left(or_pat.pats()),
-            _ => Either::Right(iter::once(pat)),
+    let top_lvl_pats: Vec<_> = match_arm_list
+        .arms()
+        .filter_map(|arm| Some((arm.pat()?, arm.guard().is_some())))
+        .flat_map(|(pat, has_guard)| {
+            match pat {
+                // Special case OrPat as separate top-level pats
+                Pat::OrPat(or_pat) => Either::Left(or_pat.pats()),
+                _ => Either::Right(iter::once(pat)),
+            }
+            .map(move |pat| (pat, has_guard))
+        })
+        .map(|(pat, has_guard)| {
+            has_catch_all_arm |= !has_guard && matches!(pat, Pat::WildcardPat(_));
+            pat
         })
         // Exclude top level wildcards so that they are expanded by this assist, retains status quo in #8129.
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
     let module = ctx.sema.scope(expr.syntax()).module()?;
+    let (mut missing_pats, is_non_exhaustive): (
+        Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
+        bool,
+    ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
+        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db());
 
-    let mut missing_pats: Peekable<Box<dyn Iterator<Item = ast::Pat>>> = if let Some(enum_def) =
-        resolve_enum_def(&ctx.sema, &expr)
-    {
         let variants = enum_def.variants(ctx.db());
 
         let missing_pats = variants
             .into_iter()
-            .filter_map(|variant| build_pat(ctx.db(), module, variant))
-            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat));
+            .filter_map(|variant| {
+                Some((
+                    build_pat(ctx.db(), module, variant)?,
+                    variant.should_be_hidden(ctx.db(), module.krate()),
+                ))
+            })
+            .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
         let option_enum =
             FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option().map(lift_enum);
@@ -92,8 +101,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         } else {
             Box::new(missing_pats)
         };
-        missing_pats.peekable()
+        (missing_pats.peekable(), is_non_exhaustive)
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
+        let is_non_exhaustive =
+            enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db()));
+
         let mut n_arms = 1;
         let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
             .into_iter()
@@ -117,17 +129,23 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
             .multi_cartesian_product()
             .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
             .map(|variants| {
+                let is_hidden = variants
+                    .iter()
+                    .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
                 let patterns =
                     variants.into_iter().filter_map(|variant| build_pat(ctx.db(), module, variant));
-                ast::Pat::from(make::tuple_pat(patterns))
+
+                (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
             })
-            .filter(|variant_pat| is_variant_missing(&top_lvl_pats, variant_pat));
-        (Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable()
+            .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
+        ((Box::new(missing_pats) as Box<dyn Iterator<Item = _>>).peekable(), is_non_exhaustive)
     } else {
         return None;
     };
 
-    if missing_pats.peek().is_none() {
+    let mut needs_catch_all_arm = is_non_exhaustive && !has_catch_all_arm;
+
+    if !needs_catch_all_arm && missing_pats.peek().is_none() {
         return None;
     }
 
@@ -138,8 +156,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         |builder| {
             let new_match_arm_list = match_arm_list.clone_for_update();
             let missing_arms = missing_pats
-                .map(|pat| make::match_arm(iter::once(pat), None, make::ext::expr_todo()))
-                .map(|it| it.clone_for_update());
+                .map(|(pat, hidden)| {
+                    (make::match_arm(iter::once(pat), None, make::ext::expr_todo()), hidden)
+                })
+                .map(|(it, hidden)| (it.clone_for_update(), hidden));
 
             let catch_all_arm = new_match_arm_list
                 .arms()
@@ -159,7 +179,22 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
                 }
             }
             let mut first_new_arm = None;
-            for arm in missing_arms {
+            for (arm, hidden) in missing_arms {
+                if hidden {
+                    needs_catch_all_arm = !has_catch_all_arm;
+                } else {
+                    first_new_arm.get_or_insert_with(|| arm.clone());
+                    new_match_arm_list.add_arm(arm);
+                }
+            }
+            if needs_catch_all_arm && !has_catch_all_arm {
+                cov_mark::hit!(added_wildcard_pattern);
+                let arm = make::match_arm(
+                    iter::once(make::wildcard_pat().into()),
+                    None,
+                    make::ext::expr_todo(),
+                )
+                .clone_for_update();
                 first_new_arm.get_or_insert_with(|| arm.clone());
                 new_match_arm_list.add_arm(arm);
             }
@@ -250,11 +285,29 @@ enum ExtendedVariant {
     Variant(hir::Variant),
 }
 
+impl ExtendedVariant {
+    fn should_be_hidden(self, db: &RootDatabase, krate: Crate) -> bool {
+        match self {
+            ExtendedVariant::Variant(var) => {
+                var.attrs(db).has_doc_hidden() && var.module(db).krate() != krate
+            }
+            _ => false,
+        }
+    }
+}
+
 fn lift_enum(e: hir::Enum) -> ExtendedEnum {
     ExtendedEnum::Enum(e)
 }
 
 impl ExtendedEnum {
+    fn is_non_exhaustive(self, db: &RootDatabase) -> bool {
+        match self {
+            ExtendedEnum::Enum(e) => e.attrs(db).by_key("non_exhaustive").exists(),
+            _ => false,
+        }
+    }
+
     fn variants(self, db: &RootDatabase) -> Vec<ExtendedVariant> {
         match self {
             ExtendedEnum::Enum(e) => {
@@ -1279,6 +1332,352 @@ fn foo(t: bool) {
         _ => 1 + 2,
         $0true => todo!(),
         false => todo!(),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn does_not_fill_hidden_variants() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+pub enum E { A, #[doc(hidden)] B, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        $0e::E::A => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn does_not_fill_hidden_variants_tuple() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: (bool, ::e::E)) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+pub enum E { A, #[doc(hidden)] B, }
+"#,
+            r#"
+fn foo(t: (bool, ::e::E)) {
+    match t {
+        $0(true, e::E::A) => todo!(),
+        (false, e::E::A) => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fills_wildcard_with_only_hidden_variants() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        ${0:_} => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn does_not_fill_wildcard_when_hidden_variants_are_explicit() {
+        check_assist_not_applicable(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+        e::E::A => todo!(),
+    }
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
+        );
+    }
+
+    // FIXME: I don't think the assist should be applicable in this case
+    #[test]
+    fn does_not_fill_wildcard_with_wildcard() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+        _ => todo!(),
+    }
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fills_wildcard_on_non_exhaustive_with_explicit_matches() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+        e::E::A => todo!(),
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        e::E::A => todo!(),
+        ${0:_} => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fills_wildcard_on_non_exhaustive_without_matches() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, }
+"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        $0e::E::A => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fills_wildcard_on_non_exhaustive_with_doc_hidden() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, #[doc(hidden)] B }"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        $0e::E::A => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fills_wildcard_on_non_exhaustive_with_doc_hidden_with_explicit_arms() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+        e::E::A => todo!(),
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, #[doc(hidden)] B }"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        e::E::A => todo!(),
+        ${0:_} => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn fill_wildcard_with_partial_wildcard() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E, b: bool) {
+    match $0t {
+        _ if b => todo!(),
+    }
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }"#,
+            r#"
+fn foo(t: ::e::E, b: bool) {
+    match t {
+        _ if b => todo!(),
+        ${0:_} => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn does_not_fill_wildcard_with_partial_wildcard_and_wildcard() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E, b: bool) {
+    match $0t {
+        _ if b => todo!(),
+        _ => todo!(),
+    }
+}
+//- /e.rs crate:e
+pub enum E { #[doc(hidden)] A, }"#,
+            r#"
+fn foo(t: ::e::E, b: bool) {
+    match t {
+        _ if b => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn non_exhaustive_doc_hidden_tuple_fills_wildcard() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+//- /main.rs crate:main deps:e
+fn foo(t: ::e::E) {
+    match $0t {
+    }
+}
+//- /e.rs crate:e
+#[non_exhaustive]
+pub enum E { A, #[doc(hidden)] B, }"#,
+            r#"
+fn foo(t: ::e::E) {
+    match t {
+        $0e::E::A => todo!(),
+        _ => todo!(),
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn ignores_doc_hidden_for_crate_local_enums() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match $0t {
+    }
+}"#,
+            r#"
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match t {
+        $0E::A => todo!(),
+        E::B => todo!(),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn ignores_doc_hidden_for_crate_local_enums_but_not_non_exhaustive() {
+        cov_mark::check!(added_wildcard_pattern);
+        check_assist(
+            add_missing_match_arms,
+            r#"
+#[non_exhaustive]
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match $0t {
+    }
+}"#,
+            r#"
+#[non_exhaustive]
+enum E { A, #[doc(hidden)] B, }
+
+fn foo(t: E) {
+    match t {
+        $0E::A => todo!(),
+        E::B => todo!(),
+        _ => todo!(),
     }
 }"#,
         );
