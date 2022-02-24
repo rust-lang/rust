@@ -166,4 +166,12 @@ fn match_expr_like_matches_macro_priority() {
     };
 }
 
-fn main() {}
+fn main() {
+    let _ = match Some(0) {
+        Some(0) => 0,
+        Some(1) => 1,
+        #[cfg(feature = "foo")]
+        Some(2) => 2,
+        _ => 1,
+    };
+}

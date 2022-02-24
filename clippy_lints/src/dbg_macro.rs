@@ -1,11 +1,11 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::source::snippet_opt;
-use rustc_ast::ast;
-use rustc_ast::tokenstream::TokenStream;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_hir::{Expr, ExprKind};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -14,14 +14,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `dbg!` macro is intended as a debugging tool. It
     /// should not be in version control.
-    ///
-    /// ### Known problems
-    /// * The lint level is unaffected by crate attributes. The level can still
-    ///   be set for functions, modules and other items. To change the level for
-    ///   the entire crate, please use command line flags. More information and a
-    ///   configuration example can be found in [clippy#6610].
-    ///
-    /// [clippy#6610]: https://github.com/rust-lang/rust-clippy/issues/6610#issuecomment-977120558
     ///
     /// ### Example
     /// ```rust,ignore
@@ -39,37 +31,52 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DbgMacro => [DBG_MACRO]);
 
-impl EarlyLintPass for DbgMacro {
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        if mac.path == sym!(dbg) {
-            if let Some(sugg) = tts_span(mac.args.inner_tokens()).and_then(|span| snippet_opt(cx, span)) {
-                span_lint_and_sugg(
-                    cx,
-                    DBG_MACRO,
-                    mac.span(),
-                    "`dbg!` macro is intended as a debugging tool",
-                    "ensure to avoid having uses of it in version control",
-                    sugg,
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                span_lint_and_help(
-                    cx,
-                    DBG_MACRO,
-                    mac.span(),
-                    "`dbg!` macro is intended as a debugging tool",
-                    None,
-                    "ensure to avoid having uses of it in version control",
-                );
-            }
+impl LateLintPass<'_> for DbgMacro {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return };
+        if cx.tcx.is_diagnostic_item(sym::dbg_macro, macro_call.def_id) {
+            let mut applicability = Applicability::MachineApplicable;
+            let suggestion = match expr.peel_drop_temps().kind {
+                // dbg!()
+                ExprKind::Block(_, _) => String::new(),
+                // dbg!(1)
+                ExprKind::Match(val, ..) => {
+                    snippet_with_applicability(cx, val.span.source_callsite(), "..", &mut applicability).to_string()
+                },
+                // dbg!(2, 3)
+                ExprKind::Tup(
+                    [
+                        Expr {
+                            kind: ExprKind::Match(first, ..),
+                            ..
+                        },
+                        ..,
+                        Expr {
+                            kind: ExprKind::Match(last, ..),
+                            ..
+                        },
+                    ],
+                ) => {
+                    let snippet = snippet_with_applicability(
+                        cx,
+                        first.span.source_callsite().to(last.span.source_callsite()),
+                        "..",
+                        &mut applicability,
+                    );
+                    format!("({snippet})")
+                },
+                _ => return,
+            };
+
+            span_lint_and_sugg(
+                cx,
+                DBG_MACRO,
+                macro_call.span,
+                "`dbg!` macro is intended as a debugging tool",
+                "ensure to avoid having uses of it in version control",
+                suggestion,
+                applicability,
+            );
         }
     }
-}
-
-// Get span enclosing entire the token stream.
-fn tts_span(tts: TokenStream) -> Option<Span> {
-    let mut cursor = tts.into_trees();
-    let first = cursor.next()?.span();
-    let span = cursor.last().map_or(first, |tree| first.to(tree.span()));
-    Some(span)
 }

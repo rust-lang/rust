@@ -167,5 +167,14 @@ LL +             unwrapped
 LL ~         })
    |
 
-error: aborting due to 11 previous errors
+error: this match could be replaced by its body itself
+  --> $DIR/match_single_binding.rs:124:5
+   |
+LL | /     match x {
+LL | |         // =>
+LL | |         _ => println!("Not an array index start"),
+LL | |     }
+   | |_____^ help: consider using the match body instead: `println!("Not an array index start");`
+
+error: aborting due to 12 previous errors
 

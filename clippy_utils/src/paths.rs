@@ -4,7 +4,6 @@
 //! Whenever possible, please consider diagnostic items over hardcoded paths.
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
-pub const ANY_TRAIT: [&str; 3] = ["core", "any", "Any"];
 #[cfg(feature = "internal")]
 pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
 #[cfg(feature = "internal")]
@@ -32,19 +31,16 @@ pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "
 pub const BTREEMAP_ENTRY: [&str; 6] = ["alloc", "collections", "btree", "map", "entry", "Entry"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const CLONE_TRAIT_METHOD: [&str; 4] = ["core", "clone", "Clone", "clone"];
-pub const CMP_MAX: [&str; 3] = ["core", "cmp", "max"];
-pub const CMP_MIN: [&str; 3] = ["core", "cmp", "min"];
 pub const COW: [&str; 3] = ["alloc", "borrow", "Cow"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["std", "ffi", "c_str", "CString", "as_c_str"];
+pub const DEBUG_TRAIT: [&str; 3] = ["core", "fmt", "Debug"];
 pub const DEFAULT_TRAIT_METHOD: [&str; 4] = ["core", "default", "Default", "default"];
 pub const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
 /// Preferably use the diagnostic item `sym::deref_method` where possible
 pub const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
 pub const DIR_BUILDER: [&str; 3] = ["std", "fs", "DirBuilder"];
 pub const DISPLAY_TRAIT: [&str; 3] = ["core", "fmt", "Display"];
-pub const DOUBLE_ENDED_ITERATOR: [&str; 4] = ["core", "iter", "traits", "DoubleEndedIterator"];
 pub const DROP: [&str; 3] = ["core", "mem", "drop"];
-pub const DURATION: [&str; 3] = ["core", "time", "Duration"];
 #[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
@@ -59,7 +55,6 @@ pub const FILE_TYPE: [&str; 3] = ["std", "fs", "FileType"];
 #[allow(clippy::invalid_paths)] // `check_path` does not seem to work for macros
 pub const FORMAT_ARGS_MACRO: [&str; 4] = ["core", "macros", "builtin", "format_args"];
 pub const FROM_FROM: [&str; 4] = ["core", "convert", "From", "from"];
-pub const FROM_ITERATOR: [&str; 5] = ["core", "iter", "traits", "collect", "FromIterator"];
 pub const FROM_ITERATOR_METHOD: [&str; 6] = ["core", "iter", "traits", "collect", "FromIterator", "from_iter"];
 pub const FROM_STR_METHOD: [&str; 5] = ["core", "str", "traits", "FromStr", "from_str"];
 pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"];
@@ -67,7 +62,6 @@ pub const FUTURE_FROM_GENERATOR: [&str; 3] = ["core", "future", "from_generator"
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[allow(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWriteExt"];
-pub const HASH: [&str; 3] = ["core", "hash", "Hash"];
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_ENTRY: [&str; 5] = ["std", "collections", "hash", "map", "Entry"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
@@ -111,9 +105,9 @@ pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", 
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
 pub const PARKING_LOT_RAWMUTEX: [&str; 3] = ["parking_lot", "raw_mutex", "RawMutex"];
 pub const PARKING_LOT_RAWRWLOCK: [&str; 3] = ["parking_lot", "raw_rwlock", "RawRwLock"];
-pub const PARKING_LOT_MUTEX_GUARD: [&str; 2] = ["parking_lot", "MutexGuard"];
-pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 2] = ["parking_lot", "RwLockReadGuard"];
-pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 2] = ["parking_lot", "RwLockWriteGuard"];
+pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
+pub const PARKING_LOT_RWLOCK_READ_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockReadGuard"];
+pub const PARKING_LOT_RWLOCK_WRITE_GUARD: [&str; 3] = ["lock_api", "rwlock", "RwLockWriteGuard"];
 pub const PATH_BUF_AS_PATH: [&str; 4] = ["std", "path", "PathBuf", "as_path"];
 pub const PATH_TO_PATH_BUF: [&str; 4] = ["std", "path", "Path", "to_path_buf"];
 pub const PERMISSIONS: [&str; 3] = ["std", "fs", "Permissions"];
