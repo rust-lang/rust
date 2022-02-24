@@ -397,14 +397,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                 }
 
-                let mut s = String::new();
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
+                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
                 if let Some(highlight) = highlight {
                     printer.region_highlight_mode = highlight;
                 }
-                let _ = ty.print(printer);
+                let name = ty.print(printer).unwrap().into_buffer();
                 InferenceDiagnosticsData {
-                    name: s,
+                    name,
                     span: None,
                     kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
@@ -433,15 +432,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         }
 
                         debug_assert!(!origin.span.is_dummy());
-                        let mut s = String::new();
-                        let mut printer =
-                            ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::ValueNS);
+                        let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::ValueNS);
                         if let Some(highlight) = highlight {
                             printer.region_highlight_mode = highlight;
                         }
-                        let _ = ct.print(printer);
+                        let name = ct.print(printer).unwrap().into_buffer();
                         InferenceDiagnosticsData {
-                            name: s,
+                            name,
                             span: Some(origin.span),
                             kind: UnderspecifiedArgKind::Const { is_parameter: false },
                             parent: None,
@@ -497,8 +494,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         let mut local_visitor = FindHirNodeVisitor::new(&self, arg, span);
         let ty_to_string = |ty: Ty<'tcx>| -> String {
-            let mut s = String::new();
-            let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
+            let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
             let ty_getter = move |ty_vid| {
                 if let TypeVariableOriginKind::TypeParameterDefinition(name, _) =
                     self.inner.borrow_mut().type_variables().var_origin(ty_vid).kind
@@ -525,14 +521,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             printer.const_infer_name_resolver = Some(Box::new(const_getter));
 
-            let _ = if let ty::FnDef(..) = ty.kind() {
+            if let ty::FnDef(..) = ty.kind() {
                 // We don't want the regular output for `fn`s because it includes its path in
                 // invalid pseudo-syntax, we want the `fn`-pointer output instead.
-                ty.fn_sig(self.tcx).print(printer)
+                ty.fn_sig(self.tcx).print(printer).unwrap().into_buffer()
             } else {
-                ty.print(printer)
-            };
-            s
+                ty.print(printer).unwrap().into_buffer()
+            }
         };
 
         if let Some(body_id) = body_id {

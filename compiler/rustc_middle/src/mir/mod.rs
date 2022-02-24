@@ -2421,11 +2421,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
                         ty::tls::with(|tcx| {
-                            let mut name = String::new();
                             let variant_def = &tcx.adt_def(adt_did).variants[variant];
                             let substs = tcx.lift(substs).expect("could not lift for printing");
-                            FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, substs)?;
+                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
+                                .print_def_path(variant_def.def_id, substs)?
+                                .into_buffer();
 
                             match variant_def.ctor_kind {
                                 CtorKind::Const => fmt.write_str(&name),
@@ -2847,9 +2847,10 @@ fn pretty_print_const<'tcx>(
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
         let literal = tcx.lift(c).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const(literal, print_types)?;
+        let cx = cx.pretty_print_const(literal, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }
@@ -2864,9 +2865,10 @@ fn pretty_print_const_value<'tcx>(
     ty::tls::with(|tcx| {
         let val = tcx.lift(val).unwrap();
         let ty = tcx.lift(ty).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const_value(val, ty, print_types)?;
+        let cx = cx.pretty_print_const_value(val, ty, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }

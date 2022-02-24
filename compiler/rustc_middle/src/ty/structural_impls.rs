@@ -22,10 +22,13 @@ use std::sync::Arc;
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths!(
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])?
-            );
-            Ok(())
+            with_no_trimmed_paths!({
+                f.write_str(
+                    &FmtPrinter::new(tcx, Namespace::TypeNS)
+                        .print_def_path(self.def_id, &[])?
+                        .into_buffer(),
+                )
+            })
         })
     }
 }
@@ -33,10 +36,13 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths!(
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])?
-            );
-            Ok(())
+            with_no_trimmed_paths!({
+                f.write_str(
+                    &FmtPrinter::new(tcx, Namespace::TypeNS)
+                        .print_def_path(self.did, &[])?
+                        .into_buffer(),
+                )
+            })
         })
     }
 }
