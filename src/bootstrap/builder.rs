@@ -11,8 +11,7 @@ use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use build_helper::{output, t};
-
+use crate::build_helper::{output, t};
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
 use crate::compile;

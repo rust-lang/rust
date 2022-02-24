@@ -11,8 +11,7 @@ use std::process::Command;
 use std::str;
 use std::time::Instant;
 
-use build_helper::t;
-
+use crate::build_helper::t;
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 

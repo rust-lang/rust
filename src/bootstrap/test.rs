@@ -11,8 +11,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use build_helper::{self, output, t};
-
+use crate::build_helper::{self, output, t};
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::compile;

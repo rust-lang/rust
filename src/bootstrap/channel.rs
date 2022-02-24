@@ -8,8 +8,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use build_helper::output;
-
+use crate::build_helper::output;
 use crate::Build;
 
 pub enum GitInfo {
