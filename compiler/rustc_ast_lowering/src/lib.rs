@@ -61,7 +61,7 @@ use rustc_session::lint::LintBuffer;
 use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnId;
+use rustc_span::hygiene::{ExpnId, MacroKind};
 use rustc_span::source_map::{respan, DesugaringKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -210,6 +210,8 @@ pub trait ResolverAstLowering {
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId;
+
+    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind;
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,

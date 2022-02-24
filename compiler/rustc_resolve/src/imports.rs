@@ -1399,14 +1399,22 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let mut reexports = Vec::new();
 
         module.for_each_child(self.r, |_, ident, _, binding| {
-            // Filter away ambiguous imports and anything that has def-site hygiene.
-            // FIXME: Implement actual cross-crate hygiene.
-            let is_good_import =
-                binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
-            if is_good_import || binding.is_macro_def() {
+            // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+            // into the crate root to actual `NameBindingKind::Import`.
+            if binding.is_import()
+                || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+            {
                 let res = binding.res().expect_non_local();
-                if res != def::Res::Err {
-                    reexports.push(ModChild { ident, res, vis: binding.vis, span: binding.span });
+                // Ambiguous imports are treated as errors at this point and are
+                // not exposed to other crates (see #36837 for more details).
+                if res != def::Res::Err && !binding.is_ambiguity() {
+                    reexports.push(ModChild {
+                        ident,
+                        res,
+                        vis: binding.vis,
+                        span: binding.span,
+                        macro_rules: false,
+                    });
                 }
             }
         });

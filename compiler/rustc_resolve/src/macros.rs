@@ -1209,7 +1209,13 @@ impl<'a> Resolver<'a> {
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
-                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext,
+                    BuiltinMacroState::NotYetSeen(ext) => {
+                        result.kind = ext;
+                        if item.id != ast::DUMMY_NODE_ID {
+                            self.builtin_macro_kinds
+                                .insert(self.local_def_id(item.id), result.macro_kind());
+                        }
+                    }
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(
                             self.session,

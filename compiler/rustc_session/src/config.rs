@@ -8,7 +8,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{early_error, early_warn, Session};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::abi::{Align, TargetDataLayout};
@@ -1023,34 +1023,30 @@ pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig 
 
 /// The parsed `--check-cfg` options
 pub struct CheckCfg<T = String> {
-    /// Set if `names()` checking is enabled
-    pub names_checked: bool,
-    /// The union of all `names()`
-    pub names_valid: FxHashSet<T>,
-    /// The set of names for which `values()` was used
-    pub values_checked: FxHashSet<T>,
-    /// The set of all (name, value) pairs passed in `values()`
-    pub values_valid: FxHashSet<(T, T)>,
+    /// The set of all `names()`, if None no name checking is performed
+    pub names_valid: Option<FxHashSet<T>>,
+    /// The set of all `values()`
+    pub values_valid: FxHashMap<T, FxHashSet<T>>,
 }
 
 impl<T> Default for CheckCfg<T> {
     fn default() -> Self {
-        CheckCfg {
-            names_checked: false,
-            names_valid: FxHashSet::default(),
-            values_checked: FxHashSet::default(),
-            values_valid: FxHashSet::default(),
-        }
+        CheckCfg { names_valid: Default::default(), values_valid: Default::default() }
     }
 }
 
 impl<T> CheckCfg<T> {
     fn map_data<O: Eq + Hash>(&self, f: impl Fn(&T) -> O) -> CheckCfg<O> {
         CheckCfg {
-            names_checked: self.names_checked,
-            names_valid: self.names_valid.iter().map(|a| f(a)).collect(),
-            values_checked: self.values_checked.iter().map(|a| f(a)).collect(),
-            values_valid: self.values_valid.iter().map(|(a, b)| (f(a), f(b))).collect(),
+            names_valid: self
+                .names_valid
+                .as_ref()
+                .map(|names_valid| names_valid.iter().map(|a| f(a)).collect()),
+            values_valid: self
+                .values_valid
+                .iter()
+                .map(|(a, b)| (f(a), b.iter().map(|b| f(b)).collect()))
+                .collect(),
         }
     }
 }
@@ -1090,17 +1086,23 @@ impl CrateCheckConfig {
             sym::doctest,
             sym::feature,
         ];
-        for &name in WELL_KNOWN_NAMES {
-            self.names_valid.insert(name);
+        if let Some(names_valid) = &mut self.names_valid {
+            for &name in WELL_KNOWN_NAMES {
+                names_valid.insert(name);
+            }
         }
     }
 
     /// Fills a `CrateCheckConfig` with configuration names and values that are actually active.
     pub fn fill_actual(&mut self, cfg: &CrateConfig) {
         for &(k, v) in cfg {
-            self.names_valid.insert(k);
+            if let Some(names_valid) = &mut self.names_valid {
+                names_valid.insert(k);
+            }
             if let Some(v) = v {
-                self.values_valid.insert((k, v));
+                self.values_valid.entry(k).and_modify(|values| {
+                    values.insert(v);
+                });
             }
         }
     }

@@ -845,10 +845,6 @@ impl<'a> NameBinding<'a> {
         )
     }
 
-    fn is_macro_def(&self) -> bool {
-        matches!(self.kind, NameBindingKind::Res(Res::Def(DefKind::Macro(..), _), _))
-    }
-
     fn macro_kind(&self) -> Option<MacroKind> {
         self.res().macro_kind()
     }
@@ -990,6 +986,9 @@ pub struct Resolver<'a> {
     crate_loader: CrateLoader<'a>,
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
+    /// A small map keeping true kinds of built-in macros that appear to be fn-like on
+    /// the surface (`macro` items in libcore), but are actually attributes or derives.
+    builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
     registered_attrs: FxHashSet<Ident>,
     registered_tools: RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, &'a NameBinding<'a>>,
@@ -1261,6 +1260,10 @@ impl ResolverAstLowering for Resolver<'_> {
 
         def_id
     }
+
+    fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
+        self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
+    }
 }
 
 impl<'a> Resolver<'a> {
@@ -1381,6 +1384,7 @@ impl<'a> Resolver<'a> {
             crate_loader: CrateLoader::new(session, metadata_loader, crate_name),
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
+            builtin_macro_kinds: Default::default(),
             registered_attrs,
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
