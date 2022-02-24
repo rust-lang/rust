@@ -1090,6 +1090,9 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     debug_assert_eq!(crate_num, LOCAL_CRATE);
+    let krate = tcx.hir_crate(());
+    let hir_body_hash = krate.hir_hash;
+
     // We hash the final, remapped names of all local source files so we
     // don't have to include the path prefix remapping commandline args.
     // If we included the full mapping in the SVH, we could only have
@@ -1116,14 +1119,27 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         .collect();
     upstream_crates.sort_unstable_by_key(|&(stable_crate_id, _)| stable_crate_id);
 
-    let mut cfg_opts: Vec<_> = tcx.sess.parse_sess.config.iter().collect();
-    cfg_opts.sort_unstable_by_key(|&(symbol, _)| symbol.as_str());
-
     let mut hcx = tcx.create_stable_hashing_context();
     let mut stable_hasher = StableHasher::new();
-    source_file_hashes.hash_stable(&mut hcx, &mut stable_hasher);
-    cfg_opts.hash_stable(&mut hcx, &mut stable_hasher);
+    hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
     upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+    source_file_hashes.hash_stable(&mut hcx, &mut stable_hasher);
+    if tcx.sess.opts.debugging_opts.incremental_relative_spans {
+        let definitions = &tcx.untracked_resolutions.definitions;
+        let mut owner_spans: Vec<_> = krate
+            .owners
+            .iter_enumerated()
+            .filter_map(|(def_id, info)| {
+                let _ = info.as_owner()?;
+                let def_path_hash = definitions.def_path_hash(def_id);
+                let span = definitions.def_span(def_id);
+                debug_assert_eq!(span.parent(), None);
+                Some((def_path_hash, span))
+            })
+            .collect();
+        owner_spans.sort_unstable_by_key(|bn| bn.0);
+        owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+    }
     tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
     tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
 
