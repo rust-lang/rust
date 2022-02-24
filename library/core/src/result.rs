@@ -855,6 +855,7 @@ impl<T, E> Result<T, E> {
     ///     .inspect(|x| println!("original: {}", x))
     ///     .map(|x| x.pow(3))
     ///     .expect("failed to parse number");
+    /// assert_eq!(x, 64);
     /// ```
     #[inline]
     #[unstable(feature = "result_option_inspect", issue = "91345")]

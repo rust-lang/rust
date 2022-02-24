@@ -918,10 +918,12 @@ impl<T> Option<T> {
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints "got: 4"
-    /// let x: Option<&usize> = v.get(3).inspect(|x| println!("got: {}", x));
+    /// let a: Option<&usize> = v.get(3).inspect(|x| println!("got: {}", x));
+    /// assert_eq!(a, Some(&4));
     ///
     /// // prints nothing
-    /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {}", x));
+    /// let b: Option<&usize> = v.get(5).inspect(|x| println!("got: {}", x));
+    /// assert_eq!(b, None);
     /// ```
     #[inline]
     #[unstable(feature = "result_option_inspect", issue = "91345")]
