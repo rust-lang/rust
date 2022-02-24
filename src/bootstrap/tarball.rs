@@ -3,8 +3,7 @@ use std::{
     process::Command,
 };
 
-use build_helper::t;
-
+use crate::build_helper::t;
 use crate::builder::Builder;
 
 #[derive(Copy, Clone)]

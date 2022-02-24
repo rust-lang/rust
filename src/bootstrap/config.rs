@@ -12,13 +12,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use crate::build_helper::t;
 use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
 use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::exe;
-use build_helper::t;
 use serde::Deserialize;
 
 macro_rules! check_ci_llvm {

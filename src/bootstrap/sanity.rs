@@ -15,8 +15,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use build_helper::output;
-
+use crate::build_helper::output;
 use crate::cache::INTERNER;
 use crate::config::Target;
 use crate::Build;

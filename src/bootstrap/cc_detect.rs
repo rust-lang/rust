@@ -26,8 +26,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, iter};
 
-use build_helper::output;
-
+use crate::build_helper::output;
 use crate::config::{Target, TargetSelection};
 use crate::{Build, CLang, GitRepo};
 

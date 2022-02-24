@@ -214,7 +214,6 @@ dependencies = [
 name = "bootstrap"
 version = "0.0.0"
 dependencies = [
- "build_helper",
  "cc",
  "cmake",
  "filetime",
@@ -255,10 +254,6 @@ dependencies = [
  "tar",
  "toml",
 ]
-
-[[package]]
-name = "build_helper"
-version = "0.1.0"
 
 [[package]]
 name = "bump-stage0"
@@ -3891,7 +3886,6 @@ dependencies = [
 name = "rustc_llvm"
 version = "0.0.0"
 dependencies = [
- "build_helper",
  "cc",
  "libc",
 ]

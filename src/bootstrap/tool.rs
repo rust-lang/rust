@@ -4,8 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 
-use build_helper::t;
-
+use crate::build_helper::t;
 use crate::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::channel::GitInfo;
 use crate::compile;

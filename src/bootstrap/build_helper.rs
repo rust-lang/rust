@@ -1,9 +1,7 @@
-use std::ffi::{OsStr, OsString};
-use std::fmt::Display;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::{env, fs};
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -13,7 +11,6 @@ use std::{env, fs};
 ///
 /// This is currently used judiciously throughout the build system rather than
 /// using a `Result` with `try!`, but this may change one day...
-#[macro_export]
 macro_rules! t {
     ($e:expr) => {
         match $e {
@@ -29,31 +26,7 @@ macro_rules! t {
         }
     };
 }
-
-/// Reads an environment variable and adds it to dependencies.
-/// Supposed to be used for all variables except those set for build scripts by cargo
-/// <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts>
-pub fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString> {
-    println!("cargo:rerun-if-env-changed={}", key);
-    env::var_os(key)
-}
-
-// Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
-// break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
-// shared library, which means that when our freshly built llvm-config goes to load it's
-// associated LLVM, it actually loads the compiler's LLVM. In particular when building the first
-// compiler (i.e., in stage 0) that's a problem, as the compiler's LLVM is likely different from
-// the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
-// perfect -- we might actually want to see something from Cargo's added library paths -- but
-// for now it works.
-pub fn restore_library_path() {
-    let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
-    if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
-        env::set_var(&key, &env);
-    } else {
-        env::remove_var(&key);
-    }
-}
+pub(crate) use t;
 
 pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
     if !try_run(cmd, print_cmd_on_fail) {
@@ -128,23 +101,6 @@ pub fn output(cmd: &mut Command) -> String {
         );
     }
     String::from_utf8(output.stdout).unwrap()
-}
-
-pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
-    let mut stack = dir
-        .read_dir()
-        .unwrap()
-        .map(|e| e.unwrap())
-        .filter(|e| &*e.file_name() != ".git")
-        .collect::<Vec<_>>();
-    while let Some(entry) = stack.pop() {
-        let path = entry.path();
-        if entry.file_type().unwrap().is_dir() {
-            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
-        } else {
-            println!("cargo:rerun-if-changed={}", path.display());
-        }
-    }
 }
 
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.

@@ -7,9 +7,9 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use build_helper::t;
 use getopts::Options;
 
+use crate::build_helper::t;
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;

@@ -8,7 +8,7 @@ use std::fs;
 use std::path::{Component, PathBuf};
 use std::process::Command;
 
-use build_helper::t;
+use crate::build_helper::t;
 
 use crate::dist::{self, sanitize_sh};
 use crate::tarball::GeneratedTarball;
