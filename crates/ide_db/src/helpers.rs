@@ -247,7 +247,7 @@ fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool
 
 struct TreeWithDepthIterator {
     preorder: Preorder<RustLanguage>,
-    depth: i32,
+    depth: u32,
 }
 
 impl TreeWithDepthIterator {
@@ -258,33 +258,31 @@ impl TreeWithDepthIterator {
 }
 
 impl<'a> Iterator for TreeWithDepthIterator {
-    type Item = (ast::Expr, i32);
+    type Item = (ast::Expr, u32);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((event, expr)) = self.preorder.find_map(|ev| match ev {
-            WalkEvent::Enter(it) => Some(WalkEvent::Enter(())).zip(ast::Expr::cast(it)),
-            WalkEvent::Leave(it) => Some(WalkEvent::Leave(())).zip(ast::Expr::cast(it)),
+        while let Some(event) = self.preorder.find_map(|ev| match ev {
+            WalkEvent::Enter(it) => ast::Expr::cast(it).map(WalkEvent::Enter),
+            WalkEvent::Leave(it) => ast::Expr::cast(it).map(WalkEvent::Leave),
         }) {
-            match (event, expr) {
-                (
-                    WalkEvent::Enter(_),
+            match event {
+                WalkEvent::Enter(
                     ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
                 ) => {
                     self.depth += 1;
                 }
-                (
-                    WalkEvent::Leave(_),
+                WalkEvent::Leave(
                     ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
                 ) => {
                     self.depth -= 1;
                 }
-                (WalkEvent::Enter(_), ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                WalkEvent::Enter(ast::Expr::BlockExpr(e)) if e.label().is_some() => {
                     self.depth += 1;
                 }
-                (WalkEvent::Leave(_), ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                WalkEvent::Leave(ast::Expr::BlockExpr(e)) if e.label().is_some() => {
                     self.depth -= 1;
                 }
-                (WalkEvent::Enter(_), expr) => return Some((expr, self.depth)),
+                WalkEvent::Enter(expr) => return Some((expr, self.depth)),
                 _ => (),
             }
         }
