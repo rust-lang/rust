@@ -700,10 +700,49 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub const fn swap<T>(x: &mut T, y: &mut T) {
-    // SAFETY: the raw pointers have been created from safe mutable references satisfying all the
-    // constraints on `ptr::swap_nonoverlapping_one`
+    // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
+    // reinterpretation of values as (chunkable) byte arrays, and the loop in the
+    // block optimization in `swap_slice` is hard to rewrite back
+    // into the (unoptimized) direct swapping implementation, so we disable it.
+    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
+    // understanding `mem::replace`, `Option::take`, etc. - a better overall
+    // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
+    // a backend can choose to implement using the block optimization, or not.
+    #[cfg(not(target_arch = "spirv"))]
+    {
+        // For types that are larger multiples of their alignment, the simple way
+        // tends to copy the whole thing to stack rather than doing it one part
+        // at a time, so instead treat them as one-element slices and piggy-back
+        // the slice optimizations that will split up the swaps.
+        if size_of::<T>() / align_of::<T>() > 4 {
+            // SAFETY: exclusive references always point to one non-overlapping
+            // element and are non-null and properly aligned.
+            return unsafe { ptr::swap_nonoverlapping(x, y, 1) };
+        }
+    }
+
+    // If a scalar consists of just a small number of alignment units, let
+    // the codegen just swap those pieces directly, as it's likely just a
+    // few instructions and anything else is probably overcomplicated.
+    //
+    // Most importantly, this covers primitives and simd types that tend to
+    // have size=align where doing anything else can be a pessimization.
+    // (This will also be used for ZSTs, though any solution works for them.)
+    swap_simple(x, y);
+}
+
+/// Same as [`swap`] semantically, but always uses the simple implementation.
+///
+/// Used elsewhere in `mem` and `ptr` at the bottom layer of calls.
+#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+#[inline]
+pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
+    // SAFETY: exclusive references are always valid to read/write,
+    // are non-overlapping, and nothing here panics so it's drop-safe.
     unsafe {
-        ptr::swap_nonoverlapping_one(x, y);
+        let z = ptr::read(x);
+        ptr::copy_nonoverlapping(y, x, 1);
+        ptr::write(y, z);
     }
 }
 
