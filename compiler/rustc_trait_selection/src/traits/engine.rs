@@ -27,6 +27,22 @@ struct ChalkMigration<'tcx> {
     legacy: FulfillmentContext<'tcx>,
 }
 
+macro_rules! try_chalk {
+    ($chalk:expr, $legacy:expr, $method:ident, $($args:expr),*) => {{
+        let chalk = $chalk.$method($($args.clone()),*);
+        let legacy = $legacy.$method($($args),*);
+        if chalk != legacy {
+            warn!(
+                ?chalk,
+                ?legacy,
+                "`{}` yielded different results, falling back to legacy value",
+                stringify!($method),
+            );
+        }
+        legacy
+    }};
+}
+
 impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
     fn normalize_projection_type(
         &mut self,
@@ -35,17 +51,15 @@ impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
         projection_ty: rustc_middle::ty::ProjectionTy<'tcx>,
         cause: rustc_infer::traits::ObligationCause<'tcx>,
     ) -> Ty<'tcx> {
-        let chalk =
-            self.chalk.normalize_projection_type(infcx, param_env, projection_ty, cause.clone());
-        let legacy = self.legacy.normalize_projection_type(infcx, param_env, projection_ty, cause);
-        if chalk != legacy {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "normalization yielded different types, falling back to legacy value"
-            );
-        }
-        legacy
+        try_chalk!(
+            self.chalk,
+            self.legacy,
+            normalize_projection_type,
+            infcx,
+            param_env,
+            projection_ty,
+            cause
+        )
     }
 
     fn register_predicate_obligation(
@@ -53,53 +67,25 @@ impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
         infcx: &rustc_infer::infer::InferCtxt<'_, 'tcx>,
         obligation: rustc_infer::traits::PredicateObligation<'tcx>,
     ) {
-        self.chalk.register_predicate_obligation(infcx, obligation.clone());
-        self.legacy.register_predicate_obligation(infcx, obligation);
+        try_chalk!(self.chalk, self.legacy, register_predicate_obligation, infcx, obligation)
     }
 
     fn select_all_or_error(
         &mut self,
         infcx: &rustc_infer::infer::InferCtxt<'_, 'tcx>,
     ) -> Vec<rustc_infer::traits::FulfillmentError<'tcx>> {
-        let chalk = self.chalk.select_all_or_error(infcx);
-        let legacy = self.legacy.select_all_or_error(infcx);
-        if chalk != legacy {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "select_all_or_error yielded different errors, falling back to legacy value"
-            );
-        }
-        legacy
+        try_chalk!(self.chalk, self.legacy, select_all_or_error, infcx)
     }
 
     fn select_where_possible(
         &mut self,
         infcx: &rustc_infer::infer::InferCtxt<'_, 'tcx>,
     ) -> Vec<rustc_infer::traits::FulfillmentError<'tcx>> {
-        let chalk = self.chalk.select_where_possible(infcx);
-        let legacy = self.legacy.select_where_possible(infcx);
-        if chalk != legacy {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "select_where_possible yielded different errors, falling back to legacy value"
-            );
-        }
-        legacy
+        try_chalk!(self.chalk, self.legacy, select_where_possible, infcx)
     }
 
     fn pending_obligations(&self) -> Vec<rustc_infer::traits::PredicateObligation<'tcx>> {
-        let chalk = self.chalk.pending_obligations();
-        let legacy = self.legacy.pending_obligations();
-        if chalk != legacy {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "pending_obligations yielded different errors, falling back to legacy value"
-            );
-        }
-        legacy
+        try_chalk!(self.chalk, self.legacy, pending_obligations,)
     }
 
     fn relationships(
@@ -108,15 +94,6 @@ impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
         rustc_middle::ty::TyVid,
         rustc_middle::ty::FoundRelationships,
     > {
-        let chalk = self.chalk.relationships();
-        let legacy = self.legacy.relationships();
-        if chalk.len() != legacy.len() || chalk.iter().all(|(k, v)| &legacy[k] == v) {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "relationships yielded different errors, falling back to legacy value"
-            );
-        }
-        legacy
+        try_chalk!(self.chalk, self.legacy, relationships,)
     }
 }
