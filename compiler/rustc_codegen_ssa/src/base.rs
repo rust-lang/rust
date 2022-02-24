@@ -407,7 +407,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().erase_regions(main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = cx.tcx().normalize_erasing_regions(
+            ty::ParamEnv::reveal_all(),
+            main_ret_ty.no_bound_vars().unwrap(),
+        );
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
