@@ -938,6 +938,38 @@ impl<T> Option<T> {
         self
     }
 
+    /// Calls the provided closure if [`None`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_inspect)]
+    ///
+    /// let v = vec![1, 2, 3, 4, 5];
+    ///
+    /// // prints nothing
+    /// let a: Option<&usize> = v.get(3).inspect_none(|| println!("index out of bound!"));
+    /// assert_eq!(a, Some(&4));
+    ///
+    /// // prints "index out of bound!"
+    /// let b: Option<&usize> = v.get(5).inspect_none(|| println!("index out of bound!"));
+    /// assert_eq!(b, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    pub const fn inspect_none<F>(self, f: F) -> Self
+    where
+        F: ~const FnOnce(),
+        F: ~const Drop,
+    {
+        if let None = self {
+            f();
+        }
+
+        self
+    }
+
     /// Returns the provided default result (if none),
     /// or applies a function to the contained value (if any).
     ///
