@@ -157,17 +157,12 @@ impl<'tcx> CtxtInterners<'tcx> {
                         Fingerprint::ZERO
                     } else {
                         let mut hasher = StableHasher::new();
-                        let mut hcx = StableHashingContext::new(
+                        let mut hcx = StableHashingContext::ignore_spans(
                             sess,
                             &resolutions.definitions,
                             &*resolutions.cstore,
                         );
-
-                        hcx.while_hashing_spans(false, |hcx| {
-                            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                                kind.hash_stable(hcx, &mut hasher);
-                            });
-                        });
+                        kind.hash_stable(&mut hcx, &mut hasher);
                         hasher.finish()
                     };
 
