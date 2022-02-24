@@ -16,7 +16,8 @@ use hir::{ItemInNs, MacroDef, ModuleDef, Name, Semantics};
 use itertools::Itertools;
 use syntax::{
     ast::{self, make, HasLoopBody},
-    AstNode, AstToken, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent, T,
+    AstNode, AstToken, Preorder, RustLanguage, SyntaxKind, SyntaxToken, TokenAtOffset, WalkEvent,
+    T,
 };
 
 use crate::{defs::Definition, RootDatabase};
@@ -120,7 +121,9 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                 ) => return cb(expr),
 
                 Some(ast::BlockModifier::Label(label)) => {
-                    for_each_break_and_continue_expr(Some(label), b.stmt_list(), &mut |b| cb(&b));
+                    for_each_break_expr(Some(label), b.stmt_list(), &mut |b| {
+                        cb(&ast::Expr::BreakExpr(b))
+                    });
                 }
                 Some(ast::BlockModifier::Unsafe(_)) => (),
                 None => (),
@@ -147,16 +150,14 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                 }
             }
         }
-        ast::Expr::LoopExpr(l) => for_each_break_and_continue_expr(
-            l.label(),
-            l.loop_body().and_then(|it| it.stmt_list()),
-            &mut |b| cb(&b),
-        ),
+        ast::Expr::LoopExpr(l) => {
+            for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
+                cb(&ast::Expr::BreakExpr(b))
+            })
+        }
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
-                arms.arms()
-                    .filter_map(|arm| arm.expr())
-                    .for_each(|e| for_each_tail_expr(&e, &mut |b| cb(&b)));
+                arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, cb));
             }
         }
         ast::Expr::ArrayExpr(_)
@@ -190,51 +191,104 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
     }
 }
 
-/// Calls `cb` on each break expr and continue expr inside of `body` that is applicable for the given label.
 pub fn for_each_break_and_continue_expr(
     label: Option<ast::Label>,
     body: Option<ast::StmtList>,
     cb: &mut dyn FnMut(ast::Expr),
 ) {
     let label = label.and_then(|lbl| lbl.lifetime());
-    let mut depth = 0;
     if let Some(b) = body {
-        let preorder = &mut b.syntax().preorder();
-        let ev_as_expr = |ev| match ev {
-            WalkEvent::Enter(it) => Some(WalkEvent::Enter(ast::Expr::cast(it)?)),
-            WalkEvent::Leave(it) => Some(WalkEvent::Leave(ast::Expr::cast(it)?)),
-        };
-        let eq_label = |lt: Option<ast::Lifetime>| {
-            lt.zip(label.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
-        };
-        while let Some(node) = preorder.find_map(ev_as_expr) {
-            match node {
-                WalkEvent::Enter(expr) => match expr {
-                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
-                        depth += 1
-                    }
-                    ast::Expr::BlockExpr(e) if e.label().is_some() => depth += 1,
-                    ast::Expr::BreakExpr(b)
-                        if (depth == 0 && b.lifetime().is_none()) || eq_label(b.lifetime()) =>
-                    {
-                        cb(ast::Expr::BreakExpr(b));
-                    }
-                    ast::Expr::ContinueExpr(c)
-                        if (depth == 0 && c.lifetime().is_none()) || eq_label(c.lifetime()) =>
-                    {
-                        cb(ast::Expr::ContinueExpr(c))
-                    }
-                    _ => (),
-                },
-                WalkEvent::Leave(expr) => match expr {
-                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_) => {
-                        depth -= 1
-                    }
-                    ast::Expr::BlockExpr(e) if e.label().is_some() => depth -= 1,
-                    _ => (),
-                },
+        let tree_depth_iterator = TreeWithDepthIterator::new(b);
+        for (expr, depth) in tree_depth_iterator {
+            match expr {
+                ast::Expr::BreakExpr(b)
+                    if (depth == 0 && b.lifetime().is_none())
+                        || eq_label_lt(&label, &b.lifetime()) =>
+                {
+                    cb(ast::Expr::BreakExpr(b));
+                }
+                ast::Expr::ContinueExpr(c)
+                    if (depth == 0 && c.lifetime().is_none())
+                        || eq_label_lt(&label, &c.lifetime()) =>
+                {
+                    cb(ast::Expr::ContinueExpr(c));
+                }
+                _ => (),
             }
         }
+    }
+}
+
+fn for_each_break_expr(
+    label: Option<ast::Label>,
+    body: Option<ast::StmtList>,
+    cb: &mut dyn FnMut(ast::BreakExpr),
+) {
+    let label = label.and_then(|lbl| lbl.lifetime());
+    if let Some(b) = body {
+        let tree_depth_iterator = TreeWithDepthIterator::new(b);
+        for (expr, depth) in tree_depth_iterator {
+            match expr {
+                ast::Expr::BreakExpr(b)
+                    if (depth == 0 && b.lifetime().is_none())
+                        || eq_label_lt(&label, &b.lifetime()) =>
+                {
+                    cb(b);
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
+    lt1.as_ref().zip(lt2.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
+}
+
+struct TreeWithDepthIterator {
+    preorder: Preorder<RustLanguage>,
+    depth: i32,
+}
+
+impl TreeWithDepthIterator {
+    fn new(body: ast::StmtList) -> Self {
+        let preorder = body.syntax().preorder();
+        Self { preorder, depth: 0 }
+    }
+}
+
+impl<'a> Iterator for TreeWithDepthIterator {
+    type Item = (ast::Expr, i32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some((event, expr)) = self.preorder.find_map(|ev| match ev {
+            WalkEvent::Enter(it) => Some(WalkEvent::Enter(())).zip(ast::Expr::cast(it)),
+            WalkEvent::Leave(it) => Some(WalkEvent::Leave(())).zip(ast::Expr::cast(it)),
+        }) {
+            match (event, expr) {
+                (
+                    WalkEvent::Enter(_),
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
+                ) => {
+                    self.depth += 1;
+                }
+                (
+                    WalkEvent::Leave(_),
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
+                ) => {
+                    self.depth -= 1;
+                }
+                (WalkEvent::Enter(_), ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                    self.depth += 1;
+                }
+                (WalkEvent::Leave(_), ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                    self.depth -= 1;
+                }
+                (WalkEvent::Enter(_), expr) => return Some((expr, self.depth)),
+                _ => (),
+            }
+        }
+        None
     }
 }
 

@@ -52,14 +52,15 @@ pub use crate::{
     ptr::{AstPtr, SyntaxNodePtr},
     syntax_error::SyntaxError,
     syntax_node::{
-        PreorderWithTokens, SyntaxElement, SyntaxElementChildren, SyntaxNode, SyntaxNodeChildren,
-        SyntaxToken, SyntaxTreeBuilder,
+        PreorderWithTokens, RustLanguage, SyntaxElement, SyntaxElementChildren, SyntaxNode,
+        SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
     token_text::TokenText,
 };
 pub use parser::{SyntaxKind, T};
 pub use rowan::{
-    Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
+    api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
+    TokenAtOffset, WalkEvent,
 };
 pub use smol_str::SmolStr;
 
