@@ -1,7 +1,10 @@
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::ty::{FoundRelationships, Ty, TyCtxt, TyVid};
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
+
+use std::panic;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
@@ -29,18 +32,94 @@ struct ChalkMigration<'tcx> {
 
 macro_rules! try_chalk {
     ($chalk:expr, $legacy:expr, $method:ident, $($args:expr),*) => {{
-        let chalk = $chalk.$method($($args.clone()),*);
-        let legacy = $legacy.$method($($args),*);
-        if chalk != legacy {
-            warn!(
-                ?chalk,
-                ?legacy,
-                "`{}` yielded different results, falling back to legacy value",
-                stringify!($method),
-            );
+        let legacy = $legacy.$method($($args.clone()),*);
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(|_| {
+            // report nothing
+        }));
+        match panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            let chalk = $chalk.$method($($args),*);
+            if chalk != legacy {
+                chalk.report(&legacy);
+            }
+        })) {
+            Ok(()) => {},
+            Err(_) => eprintln!("chalk panicked, rerun with `-Zchalk` if you are interested in the ICE itself."),
         }
+        panic::set_hook(hook);
         legacy
     }};
+}
+
+trait ChalkDiff {
+    fn report(&self, legacy: &Self);
+}
+
+impl<'tcx> ChalkDiff for Ty<'tcx> {
+    fn report(&self, legacy: &Self) {
+        eprintln!();
+        eprintln!("chalk normalized projection to `{}`", self);
+        eprintln!("but legacy mode normalized to  `{}`", legacy);
+        eprintln!();
+    }
+}
+
+impl ChalkDiff for () {
+    fn report(&self, _: &Self) {
+        unreachable!()
+    }
+}
+
+impl<T: std::fmt::Debug + PartialEq> ChalkDiff for Vec<T> {
+    fn report(&self, legacy: &Self) {
+        for chalk in self {
+            if !legacy.contains(chalk) {
+                eprintln!();
+                eprintln!("chalk yielded item that legacy mode did not return: {:#?}", chalk);
+                eprintln!();
+            }
+        }
+        for legacy in legacy {
+            if !self.contains(legacy) {
+                eprintln!();
+                eprintln!("legacy mode yielded item that chalk did not return: {:#?}", legacy);
+                eprintln!();
+            }
+        }
+    }
+}
+
+impl ChalkDiff for &mut FxHashMap<TyVid, FoundRelationships> {
+    fn report(&self, legacy: &Self) {
+        for (key, chalk) in self.iter() {
+            if let Some(legacy) = legacy.get(key) {
+                if chalk != legacy {
+                    eprintln!();
+                    eprintln!("item for key {:?} differs between chalk and legacy mode:", key);
+                    eprintln!("chalk:  {:?}", chalk);
+                    eprintln!("legacy: {:?}", legacy);
+                    eprintln!();
+                }
+            } else {
+                eprintln!();
+                eprintln!(
+                    "chalk had entry for key {:?} that legacy mode did not return: {:#?}",
+                    key, chalk
+                );
+                eprintln!();
+            }
+        }
+        for (key, legacy) in legacy.iter() {
+            if !self.contains_key(key) {
+                eprintln!();
+                eprintln!(
+                    "legacy mode had entry for key {:?} that chalk did not return: {:#?}",
+                    key, legacy
+                );
+                eprintln!();
+            }
+        }
+    }
 }
 
 impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
@@ -88,12 +167,7 @@ impl<'tcx> TraitEngine<'tcx> for ChalkMigration<'tcx> {
         try_chalk!(self.chalk, self.legacy, pending_obligations,)
     }
 
-    fn relationships(
-        &mut self,
-    ) -> &mut rustc_data_structures::fx::FxHashMap<
-        rustc_middle::ty::TyVid,
-        rustc_middle::ty::FoundRelationships,
-    > {
+    fn relationships(&mut self) -> &mut FxHashMap<TyVid, FoundRelationships> {
         try_chalk!(self.chalk, self.legacy, relationships,)
     }
 }

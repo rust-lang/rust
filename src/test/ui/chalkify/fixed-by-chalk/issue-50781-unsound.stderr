@@ -1,0 +1,6 @@
+chalk panicked, rerun with `-Zchalk` if you are interested in the ICE itself.
+error: internal compiler error: compiler/rustc_middle/src/ty/fold.rs:962:21: Not enough bound vars: ^0 not found in []
+
+chalk panicked, rerun with `-Zchalk` if you are interested in the ICE itself.
+error: aborting due to previous error
+

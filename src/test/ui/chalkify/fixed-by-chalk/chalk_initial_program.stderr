@@ -1,0 +1,24 @@
+
+chalk yielded item that legacy mode did not return: FulfillmentError(
+    Obligation {
+        predicate: Binder(WellFormed(S), []),
+        depth: 0,
+    },
+    Unimplemented,
+)
+
+error[E0277]: the trait bound `S: Bar` is not satisfied
+  --> $DIR/chalk_initial_program.rs:12:6
+   |
+LL | impl Foo for S {
+   |      ^^^ the trait `Bar` is not implemented for `S`
+   |
+note: required by a bound in `Foo`
+  --> $DIR/chalk_initial_program.rs:8:12
+   |
+LL | trait Foo: Bar { }
+   |            ^^^ required by this bound in `Foo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

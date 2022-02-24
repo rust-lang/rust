@@ -10,40 +10,44 @@ use std::ops::ControlFlow;
 
 impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Normalized({:?}, {:?})", self.value, self.obligations)
+        f.debug_tuple("Normalized").field(&self.value).field(&self.obligations).finish()
     }
 }
 
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if ty::tls::with(|tcx| tcx.sess.verbose()) {
-            write!(
-                f,
-                "Obligation(predicate={:?}, cause={:?}, param_env={:?}, depth={})",
-                self.predicate, self.cause, self.param_env, self.recursion_depth
-            )
+            f.debug_struct("Obligation")
+                .field("predicate", &self.predicate)
+                .field("cause", &self.cause)
+                .field("param_env", &self.param_env)
+                .field("depth", &self.recursion_depth)
+                .finish()
         } else {
-            write!(f, "Obligation(predicate={:?}, depth={})", self.predicate, self.recursion_depth)
+            f.debug_struct("Obligation")
+                .field("predicate", &self.predicate)
+                .field("depth", &self.recursion_depth)
+                .finish()
         }
     }
 }
 
 impl<'tcx> fmt::Debug for traits::FulfillmentError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})", self.obligation, self.code)
+        f.debug_tuple("FulfillmentError").field(&self.obligation).field(&self.code).finish()
     }
 }
 
 impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
+            super::CodeSelectionError(ref e) => e.fmt(f),
+            super::CodeProjectionError(ref e) => e.fmt(f),
             super::CodeSubtypeError(ref a, ref b) => {
-                write!(f, "CodeSubtypeError({:?}, {:?})", a, b)
+                f.debug_tuple("CodeSubtypeError").field(a).field(b).finish()
             }
             super::CodeConstEquateError(ref a, ref b) => {
-                write!(f, "CodeConstEquateError({:?}, {:?})", a, b)
+                f.debug_tuple("CodeConstEquateError").field(a).field(b).finish()
             }
             super::CodeAmbiguity => write!(f, "Ambiguity"),
         }
@@ -52,7 +56,7 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
 
 impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MismatchedProjectionTypes({:?})", self.err)
+        f.debug_tuple("MismatchedProjectionTypes").field(&self.err).finish()
     }
 }
 
