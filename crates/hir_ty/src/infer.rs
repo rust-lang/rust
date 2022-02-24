@@ -13,8 +13,8 @@
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
 
-use std::ops::Index;
 use std::sync::Arc;
+use std::{collections::hash_map::Entry, ops::Index};
 
 use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
@@ -457,6 +457,12 @@ impl<'a> InferenceContext<'a> {
 
     fn write_field_resolution(&mut self, expr: ExprId, field: FieldId) {
         self.result.field_resolutions.insert(expr, field);
+    }
+
+    fn write_field_resolution_if_empty(&mut self, expr: ExprId, field: FieldId) {
+        if let Entry::Vacant(entry) = self.result.field_resolutions.entry(expr) {
+            entry.insert(field);
+        }
     }
 
     fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantId) {

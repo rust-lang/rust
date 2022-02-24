@@ -532,6 +532,11 @@ impl<'a> InferenceContext<'a> {
                                         .substitute(Interner, &parameters),
                                 )
                             } else {
+                                // Write down the first field resolution even if it is not visible
+                                // This aids IDE features for private fields like goto def and in
+                                // case of autoderef finding an applicable field, this will be
+                                // overwritten in a following cycle
+                                self.write_field_resolution_if_empty(tgt_expr, field);
                                 None
                             }
                         }
@@ -546,6 +551,11 @@ impl<'a> InferenceContext<'a> {
                                         .substitute(Interner, &parameters),
                                 )
                             } else {
+                                // Write down the first field resolution even if it is not visible
+                                // This aids IDE features for private fields like goto def and in
+                                // case of autoderef finding an applicable field, this will be
+                                // overwritten in a following cycle
+                                self.write_field_resolution_if_empty(tgt_expr, field);
                                 None
                             }
                         }
