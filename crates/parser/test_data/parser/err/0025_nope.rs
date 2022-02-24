@@ -27,5 +27,6 @@ fn main() {
         }
     }
     // still recover later
-    let bad_syntax = _; //~ ERROR: expected expression, found reserved identifier `_`
+    let; //~ ERROR: expected pattern
+    let _ = 0;
 }

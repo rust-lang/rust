@@ -176,18 +176,22 @@ SOURCE_FILE
         WHITESPACE "\n    "
         LET_STMT
           LET_KW "let"
+          ERROR
+            SEMICOLON ";"
+        WHITESPACE " "
+        COMMENT "//~ ERROR: expected pattern"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
           WHITESPACE " "
-          IDENT_PAT
-            NAME
-              IDENT "bad_syntax"
+          WILDCARD_PAT
+            UNDERSCORE "_"
           WHITESPACE " "
           EQ "="
           WHITESPACE " "
-          ERROR
-            UNDERSCORE "_"
+          LITERAL
+            INT_NUMBER "0"
           SEMICOLON ";"
-        WHITESPACE " "
-        COMMENT "//~ ERROR: expected expression, found reserved identifier `_`"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
@@ -201,4 +205,5 @@ error 372: expected R_PAREN
 error 372: expected COMMA
 error 372: expected enum variant
 error 374: expected enum variant
-error 508: expected expression
+error 494: expected pattern
+error 495: expected SEMICOLON
