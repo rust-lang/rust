@@ -1,6 +1,5 @@
 use crate::leb128::{self, max_leb128_len};
-use crate::serialize::{self, Encoder as _};
-use std::borrow::Cow;
+use crate::serialize::{self, Decoder as _, Encoder as _};
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
@@ -549,13 +548,6 @@ impl<'a> Decoder<'a> {
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
     }
-
-    #[inline]
-    pub fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
-        let start = self.position;
-        self.position += bytes;
-        &self.data[start..self.position]
-    }
 }
 
 macro_rules! read_leb128 {
@@ -563,11 +555,6 @@ macro_rules! read_leb128 {
 }
 
 impl<'a> serialize::Decoder for Decoder<'a> {
-    #[inline]
-    fn read_unit(&mut self) -> () {
-        ()
-    }
-
     #[inline]
     fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
@@ -663,7 +650,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
     }
 
     #[inline]
-    fn read_str(&mut self) -> Cow<'_, str> {
+    fn read_str(&mut self) -> &'a str {
         let len = self.read_usize();
         let sentinel = self.data[self.position + len];
         assert!(sentinel == STR_SENTINEL);
@@ -671,14 +658,14 @@ impl<'a> serialize::Decoder for Decoder<'a> {
             std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
         };
         self.position += len + 1;
-        Cow::Borrowed(s)
+        s
     }
 
     #[inline]
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) {
+    fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
         let start = self.position;
-        self.position += s.len();
-        s.copy_from_slice(&self.data[start..self.position]);
+        self.position += bytes;
+        &self.data[start..self.position]
     }
 }
 
@@ -746,10 +733,10 @@ impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
     fn decode(decoder: &mut Decoder<'a>) -> IntEncodedWithFixedSize {
         let _start_pos = decoder.position();
         let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
+        let value = u64::from_le_bytes(bytes.try_into().unwrap());
         let _end_pos = decoder.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
 
-        let value = u64::from_le_bytes(bytes.try_into().unwrap());
         IntEncodedWithFixedSize(value)
     }
 }

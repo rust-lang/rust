@@ -153,9 +153,7 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for Fingerprint {
 impl<D: rustc_serialize::Decoder> Decodable<D> for Fingerprint {
     #[inline]
     fn decode(d: &mut D) -> Self {
-        let mut bytes = [0u8; 16];
-        d.read_raw_bytes_into(&mut bytes);
-        Fingerprint::from_le_bytes(bytes)
+        Fingerprint::from_le_bytes(d.read_raw_bytes(16).try_into().unwrap())
     }
 }
 
