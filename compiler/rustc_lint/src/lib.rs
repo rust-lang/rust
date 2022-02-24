@@ -31,6 +31,7 @@
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iter_order_by)]
 #![feature(let_else)]
 #![feature(never_type)]

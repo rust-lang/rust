@@ -8,6 +8,7 @@ use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
+use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
@@ -461,27 +462,35 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                 true
             }
             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
-                let name = cfg.ident().expect("multi-segment cfg predicate").name;
+                let ident = cfg.ident().expect("multi-segment cfg predicate");
+                let name = ident.name;
                 let value = cfg.value_str();
-                if sess.check_config.names_checked && !sess.check_config.names_valid.contains(&name)
-                {
-                    sess.buffer_lint(
-                        UNEXPECTED_CFGS,
-                        cfg.span,
-                        CRATE_NODE_ID,
-                        "unexpected `cfg` condition name",
-                    );
-                }
-                if let Some(val) = value {
-                    if sess.check_config.values_checked.contains(&name)
-                        && !sess.check_config.values_valid.contains(&(name, val))
-                    {
-                        sess.buffer_lint(
+                if let Some(names_valid) = &sess.check_config.names_valid {
+                    if !names_valid.contains(&name) {
+                        sess.buffer_lint_with_diagnostic(
                             UNEXPECTED_CFGS,
                             cfg.span,
                             CRATE_NODE_ID,
-                            "unexpected `cfg` condition value",
+                            "unexpected `cfg` condition name",
+                            BuiltinLintDiagnostics::UnexpectedCfg(ident.span, name, None),
                         );
+                    }
+                }
+                if let Some(value) = value {
+                    if let Some(values) = &sess.check_config.values_valid.get(&name) {
+                        if !values.contains(&value) {
+                            sess.buffer_lint_with_diagnostic(
+                                UNEXPECTED_CFGS,
+                                cfg.span,
+                                CRATE_NODE_ID,
+                                "unexpected `cfg` condition value",
+                                BuiltinLintDiagnostics::UnexpectedCfg(
+                                    cfg.name_value_literal_span().unwrap(),
+                                    name,
+                                    Some(value),
+                                ),
+                            );
+                        }
                     }
                 }
                 sess.config.contains(&(name, value))
