@@ -40,6 +40,10 @@ jobs:
         rustc -Vv
         cargo -V
         cargo build
+      env:
+        RUSTFLAGS: '-D warnings'
 
     - name: test
       run: cargo test
+      env:
+        RUSTFLAGS: '-D warnings'

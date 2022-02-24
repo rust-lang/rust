@@ -32,16 +32,15 @@ impl IgnorePathSet {
 
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
-
-    use crate::config::{Config, FileName};
-    use crate::ignore_path::IgnorePathSet;
-
     use rustfmt_config_proc_macro::nightly_only_test;
 
     #[nightly_only_test]
     #[test]
     fn test_ignore_path_set() {
+        use crate::config::{Config, FileName};
+        use crate::ignore_path::IgnorePathSet;
+        use std::path::{Path, PathBuf};
+
         let config =
             Config::from_toml(r#"ignore = ["foo.rs", "bar_dir/*"]"#, Path::new("")).unwrap();
         let ignore_path_set = IgnorePathSet::from_ignore_list(&config.ignore()).unwrap();
