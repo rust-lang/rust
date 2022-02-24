@@ -51,7 +51,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::misc::can_type_implement_copy;
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -764,7 +764,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
             return;
         }
-        if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
+        if can_type_implement_copy(
+            cx.tcx,
+            param_env,
+            ty,
+            traits::ObligationCause::misc(item.span, item.hir_id()),
+        )
+        .is_ok()
+        {
             cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(
                     "type could implement `Copy`; consider adding `impl \
