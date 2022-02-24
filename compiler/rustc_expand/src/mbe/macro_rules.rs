@@ -584,7 +584,10 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
     use mbe::TokenTree;
     for tt in tts {
         match *tt {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
+            TokenTree::Token(..)
+            | TokenTree::MetaVar(..)
+            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(_, ref del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
@@ -673,7 +676,10 @@ impl FirstSets {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
                 match *tt {
-                    TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                    TokenTree::Token(..)
+                    | TokenTree::MetaVar(..)
+                    | TokenTree::MetaVarDecl(..)
+                    | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(tt.clone());
                     }
                     TokenTree::Delimited(span, ref delimited) => {
@@ -735,7 +741,10 @@ impl FirstSets {
         for tt in tts.iter() {
             assert!(first.maybe_empty);
             match *tt {
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                TokenTree::Token(..)
+                | TokenTree::MetaVar(..)
+                | TokenTree::MetaVarDecl(..)
+                | TokenTree::MetaVarExpr(..) => {
                     first.add_one(tt.clone());
                     return first;
                 }
@@ -911,7 +920,10 @@ fn check_matcher_core(
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
         match *token {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+            TokenTree::Token(..)
+            | TokenTree::MetaVar(..)
+            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarExpr(..) => {
                 if token_can_be_followed_by_any(token) {
                     // don't need to track tokens that work with any,
                     last.replace_with_irrelevant();

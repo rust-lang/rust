@@ -7,9 +7,9 @@ use rustc_ast::token::{self, NtTT, Token};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{pluralize, PResult};
+use rustc_errors::{pluralize, DiagnosticBuilder, PResult};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::MacroRulesNormalizedIdent;
+use rustc_span::symbol::{sym, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
@@ -255,6 +255,11 @@ pub(super) fn transcribe<'a>(
                 }
             }
 
+            // Replace meta-variable expressions with the result of their expansion.
+            mbe::TokenTree::MetaVarExpr(sp, expr) => {
+                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, &sp)?;
+            }
+
             // If we are entering a new delimiter, we push its contents to the `stack` to be
             // processed, and we push all of the currently produced results to the `result_stack`.
             // We will produce all of the results of the inside of the `Delimited` and then we will
@@ -352,6 +357,83 @@ impl LockstepIterSize {
     }
 }
 
+/// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
+/// given optional nested depth.
+///
+/// For example, a macro parameter of `$( { $( $foo:ident ),* } )*` called with `{ a, b } { c }`:
+///
+/// * `[ $( ${count(foo)} ),* ]` will return [2, 1] with a, b = 2 and c = 1
+/// * `[ $( ${count(foo, 0)} ),* ]` will be the same as `[ $( ${count(foo)} ),* ]`
+/// * `[ $( ${count(foo, 1)} ),* ]` will return an error because `${count(foo, 1)}` is
+///   declared inside a single repetition and the index `1` implies two nested repetitions.
+fn count_repetitions<'a>(
+    cx: &ExtCtxt<'a>,
+    depth_opt: Option<usize>,
+    ident: &MacroRulesNormalizedIdent,
+    mut matched: &NamedMatch,
+    repeats: &[(usize, usize)],
+    sp: &DelimSpan,
+) -> PResult<'a, usize> {
+    // Recursively count the number of matches in `matched` at given depth
+    // (or at the top-level of `matched` if no depth is given).
+    fn count<'a>(
+        cx: &ExtCtxt<'a>,
+        depth_opt: Option<usize>,
+        matched: &NamedMatch,
+        sp: &DelimSpan,
+        system_depth: usize,
+    ) -> PResult<'a, usize> {
+        match matched {
+            MatchedNonterminal(_) => {
+                if system_depth == 0 {
+                    return Err(cx.struct_span_err(
+                        sp.entire(),
+                        "`count` can not be placed inside the inner-most repetition",
+                    ));
+                }
+                match depth_opt {
+                    None => Ok(1),
+                    Some(_) => Err(out_of_bounds_err(cx, system_depth, sp.entire(), "count")),
+                }
+            }
+            MatchedSeq(ref named_matches) => {
+                let new_system_depth = system_depth.wrapping_add(1);
+                match depth_opt {
+                    None => named_matches
+                        .iter()
+                        .map(|elem| count(cx, None, elem, sp, new_system_depth))
+                        .sum(),
+                    Some(0) => Ok(named_matches.len()),
+                    Some(depth) => named_matches
+                        .iter()
+                        .map(|elem| count(cx, Some(depth - 1), elem, sp, new_system_depth))
+                        .sum(),
+                }
+            }
+        }
+    }
+    // `repeats` records all of the nested levels at which we are currently
+    // matching meta-variables. The meta-var-expr `count($x)` only counts
+    // matches that occur in this "subtree" of the `NamedMatch` where we
+    // are currently transcribing, so we need to descend to that subtree
+    // before we start counting. `matched` contains the various levels of the
+    // tree as we descend, and its final value is the subtree we are currently at.
+    for &(idx, _) in repeats {
+        match matched {
+            MatchedSeq(ref ads) if let Some(elem) = ads.get(idx) => matched = elem,
+           // We can only get here if `repeats` is more deeply nested than the
+           // `NamedMatch` passed in to `count_repetitions`. That would
+           // indicate that the RHS of the macro is more deeply nested than
+           // the LHS, which is an error.
+            _ => return Err(cx.struct_span_err(
+                sp.entire(),
+                &format!("variable `{}` does not repeat at this depth", ident),
+            ))
+        }
+    }
+    count(cx, depth_opt, matched, sp, 0)
+}
+
 /// Given a `tree`, make sure that all sequences have the same length as the matches for the
 /// appropriate meta-vars in `interpolations`.
 ///
@@ -385,6 +467,90 @@ fn lockstep_iter_size(
                 _ => LockstepIterSize::Unconstrained,
             }
         }
+        TokenTree::MetaVarExpr(_, ref expr) => {
+            let default_rslt = LockstepIterSize::Unconstrained;
+            let Some(ident) = expr.ident() else { return default_rslt; };
+            let name = MacroRulesNormalizedIdent::new(ident.clone());
+            match lookup_cur_matched(name, interpolations, repeats) {
+                Some(MatchedSeq(ref ads)) => {
+                    default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
+                }
+                _ => default_rslt,
+            }
+        }
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
     }
+}
+
+/// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
+/// example, index(999999) in an repetition of only three elements.
+fn out_of_bounds_err<'a>(
+    cx: &ExtCtxt<'a>,
+    max: usize,
+    span: Span,
+    ty: &str,
+) -> DiagnosticBuilder<'a> {
+    cx.struct_span_err(span, &format!("{ty} depth must be less than {max}"))
+}
+
+fn transcribe_metavar_expr<'a>(
+    cx: &ExtCtxt<'a>,
+    expr: mbe::MetaVarExpr,
+    interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    repeats: &[(usize, usize)],
+    result: &mut Vec<TreeAndSpacing>,
+    sp: &DelimSpan,
+) -> PResult<'a, ()> {
+    match expr {
+        mbe::MetaVarExpr::Count(original_ident, depth_opt) => {
+            let ident = MacroRulesNormalizedIdent::new(original_ident);
+            match interp.get(&ident) {
+                Some(matched) => {
+                    let count = count_repetitions(cx, depth_opt, &ident, matched, &repeats, sp)?;
+                    result.push(
+                        TokenTree::token(
+                            token::TokenKind::lit(token::Integer, sym::integer(count), None),
+                            sp.entire(),
+                        )
+                        .into(),
+                    );
+                }
+                None => {
+                    return Err(cx.struct_span_err(
+                        sp.entire(),
+                        &format!(
+                            "variable `{}` is not recognized in meta-variable expression",
+                            ident
+                        ),
+                    ));
+                }
+            }
+        }
+        mbe::MetaVarExpr::Ignore(..) => {}
+        mbe::MetaVarExpr::Index(depth) => match repeats.iter().nth_back(depth) {
+            Some((index, _)) => {
+                result.push(
+                    TokenTree::token(
+                        token::TokenKind::lit(token::Integer, sym::integer(*index), None),
+                        sp.entire(),
+                    )
+                    .into(),
+                );
+            }
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
+        },
+        mbe::MetaVarExpr::Length(depth) => match repeats.iter().nth_back(depth) {
+            Some((_, length)) => {
+                result.push(
+                    TokenTree::token(
+                        token::TokenKind::lit(token::Integer, sym::integer(*length), None),
+                        sp.entire(),
+                    )
+                    .into(),
+                );
+            }
+            None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
+        },
+    }
+    Ok(())
 }
