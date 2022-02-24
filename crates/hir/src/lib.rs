@@ -2507,6 +2507,10 @@ impl Type {
         matches!(self.ty.kind(Interner), TyKind::Ref(..))
     }
 
+    pub fn is_slice(&self) -> bool {
+        matches!(self.ty.kind(Interner), TyKind::Slice(..))
+    }
+
     pub fn is_usize(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Scalar(Scalar::Uint(UintTy::Usize)))
     }
