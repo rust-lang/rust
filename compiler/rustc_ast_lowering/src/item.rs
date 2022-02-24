@@ -360,7 +360,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_def_id = self.lower_node_id(id).expect_owner();
+                let lowered_trait_def_id = hir_id.expect_owner();
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
                     lowered_trait_def_id,
@@ -509,10 +509,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let new_id = self.resolver.local_def_id(new_node_id);
                     let Some(res) = resolutions.next() else {
                         // Associate an HirId to both ids even if there is no resolution.
-                        let _old = self
-                            .node_id_to_hir_id
-                            .insert(new_node_id, hir::HirId::make_owner(new_id));
-                        debug_assert!(_old.is_none());
                         self.owners.ensure_contains_elem(new_id, || hir::MaybeOwner::Phantom);
                         let _old = std::mem::replace(
                             &mut self.owners[new_id],

@@ -611,6 +611,19 @@ impl<Id> Res<Id> {
         }
     }
 
+    pub fn apply_id<R, E>(self, mut map: impl FnMut(Id) -> Result<R, E>) -> Result<Res<R>, E> {
+        Ok(match self {
+            Res::Def(kind, id) => Res::Def(kind, id),
+            Res::SelfCtor(id) => Res::SelfCtor(id),
+            Res::PrimTy(id) => Res::PrimTy(id),
+            Res::Local(id) => Res::Local(map(id)?),
+            Res::SelfTy { trait_, alias_to } => Res::SelfTy { trait_, alias_to },
+            Res::ToolMod => Res::ToolMod,
+            Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
+            Res::Err => Res::Err,
+        })
+    }
+
     #[track_caller]
     pub fn expect_non_local<OtherId>(self) -> Res<OtherId> {
         self.map_id(|_| panic!("unexpected `Res::Local`"))
