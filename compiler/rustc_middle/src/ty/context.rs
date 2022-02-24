@@ -24,7 +24,6 @@ use crate::ty::{
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::memmap::Mmap;
@@ -115,12 +114,6 @@ pub struct CtxtInterners<'tcx> {
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, Layout>,
     adt_def: InternedSet<'tcx, AdtDef>,
-
-    /// `#[stable]` and `#[unstable]` attributes
-    stability: InternedSet<'tcx, attr::Stability>,
-
-    /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
-    const_stability: InternedSet<'tcx, attr::ConstStability>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -141,8 +134,6 @@ impl<'tcx> CtxtInterners<'tcx> {
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
             adt_def: Default::default(),
-            stability: Default::default(),
-            const_stability: Default::default(),
         }
     }
 
@@ -1268,7 +1259,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
-    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
+    pub fn stability(self) -> &'tcx stability::Index {
         self.stability_index(())
     }
 
@@ -1997,12 +1988,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
                 writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
-                writeln!(fmt, "Stability interner: #{}", self.0.interners.stability.len())?;
-                writeln!(
-                    fmt,
-                    "Const Stability interner: #{}",
-                    self.0.interners.const_stability.len()
-                )?;
                 writeln!(
                     fmt,
                     "Const Allocation interner: #{}",
@@ -2190,8 +2175,6 @@ direct_interners_old! {
     const_allocation: intern_const_alloc(Allocation),
     layout: intern_layout(Layout),
     adt_def: intern_adt_def(AdtDef),
-    stability: intern_stability(attr::Stability),
-    const_stability: intern_const_stability(attr::ConstStability),
 }
 
 macro_rules! slice_interners {

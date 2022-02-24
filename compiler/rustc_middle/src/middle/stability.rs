@@ -57,11 +57,11 @@ impl DeprecationEntry {
 
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
-pub struct Index<'tcx> {
+pub struct Index {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, &'tcx Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, &'tcx ConstStability>,
+    pub stab_map: FxHashMap<LocalDefId, Stability>,
+    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
 
     /// Maps for each crate whether it is part of the staged API.
@@ -71,12 +71,12 @@ pub struct Index<'tcx> {
     pub active_features: FxHashSet<Symbol>,
 }
 
-impl<'tcx> Index<'tcx> {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<&'tcx Stability> {
+impl Index {
+    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
         self.stab_map.get(&def_id).copied()
     }
 
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<&'tcx ConstStability> {
+    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
     }
 
@@ -416,7 +416,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(&Stability {
+            Some(Stability {
                 level: attr::Unstable { reason, issue, is_soft }, feature, ..
             }) => {
                 if span.allows_unstable(feature) {

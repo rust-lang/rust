@@ -275,35 +275,48 @@ macro_rules! define_tables {
 }
 
 define_tables! {
-    def_kind: Table<DefIndex, Lazy<DefKind>>,
     kind: Table<DefIndex, Lazy<EntryKind>>,
-    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
-    span: Table<DefIndex, Lazy<Span>>,
-    ident_span: Table<DefIndex, Lazy<Span>>,
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
     children: Table<DefIndex, Lazy<[DefIndex]>>,
-    stability: Table<DefIndex, Lazy<attr::Stability>>,
-    const_stability: Table<DefIndex, Lazy<attr::ConstStability>>,
-    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
-    ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
-    fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
-    impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
-    trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
-    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
-    variances: Table<DefIndex, Lazy<[ty::Variance]>>,
-    generics: Table<DefIndex, Lazy<ty::Generics>>,
-    explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
-    expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
-    // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
-    super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+
+    opt_def_kind: Table<DefIndex, Lazy<DefKind>>,
+    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
+    def_span: Table<DefIndex, Lazy<Span>>,
+    def_ident_span: Table<DefIndex, Lazy<Span>>,
+    lookup_stability: Table<DefIndex, Lazy<attr::Stability>>,
+    lookup_const_stability: Table<DefIndex, Lazy<attr::ConstStability>>,
+    lookup_deprecation_entry: Table<DefIndex, Lazy<attr::Deprecation>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
     explicit_item_bounds: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
-    mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
+    explicit_predicates_of: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    generics_of: Table<DefIndex, Lazy<ty::Generics>>,
+    // As an optimization, a missing entry indicates an empty `&[]`.
+    inferred_outlives_of: Table<DefIndex, Lazy!([(ty::Predicate<'tcx>, Span)])>,
+    super_predicates_of: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    type_of: Table<DefIndex, Lazy!(Ty<'tcx>)>,
+    variances_of: Table<DefIndex, Lazy<[ty::Variance]>>,
+    fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
+    impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
+    const_param_default: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
+    optimized_mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     mir_for_ctfe: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
-    thir_abstract_consts: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
-    const_defaults: Table<DefIndex, Lazy<rustc_middle::ty::Const<'tcx>>>,
+    thir_abstract_const: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
+    impl_parent: Table<DefIndex, Lazy!(DefId)>,
+    impl_polarity: Table<DefIndex, Lazy!(ty::ImplPolarity)>,
+    impl_constness: Table<DefIndex, Lazy!(hir::Constness)>,
+    impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
+    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
+    coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
+    mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
+    rendered_const: Table<DefIndex, Lazy!(String)>,
+    asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
+    fn_arg_names: Table<DefIndex, Lazy!([Ident])>,
+    generator_kind: Table<DefIndex, Lazy!(hir::GeneratorKind)>,
+
+    trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
+    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
+    expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
@@ -316,8 +329,8 @@ define_tables! {
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 enum EntryKind {
-    AnonConst(mir::ConstQualifs, Lazy<RenderedConst>),
-    Const(mir::ConstQualifs, Lazy<RenderedConst>),
+    AnonConst,
+    Const,
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -340,25 +353,18 @@ enum EntryKind {
     MacroDef(Lazy<MacroDef>),
     ProcMacro(MacroKind),
     Closure,
-    Generator(hir::GeneratorKind),
+    Generator,
     Trait(Lazy<TraitData>),
-    Impl(Lazy<ImplData>),
+    Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
-    AssocConst(AssocContainer, mir::ConstQualifs, Lazy<RenderedConst>),
+    AssocConst(AssocContainer),
     TraitAlias,
 }
 
-/// Contains a constant which has been rendered to a String.
-/// Used by rustdoc.
-#[derive(Encodable, Decodable)]
-struct RenderedConst(String);
-
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct FnData {
-    asyncness: hir::IsAsync,
     constness: hir::Constness,
-    param_names: Lazy<[Ident]>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -379,18 +385,6 @@ struct TraitData {
     skip_array_during_method_dispatch: bool,
     specialization_kind: ty::trait_def::TraitSpecializationKind,
     must_implement_one_of: Option<Box<[Ident]>>,
-}
-
-#[derive(TyEncodable, TyDecodable)]
-struct ImplData {
-    polarity: ty::ImplPolarity,
-    constness: hir::Constness,
-    defaultness: hir::Defaultness,
-    parent_impl: Option<DefId>,
-
-    /// This is `Some` only for impls of `CoerceUnsized`.
-    // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
-    coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
 }
 
 /// Describes whether the container of an associated item

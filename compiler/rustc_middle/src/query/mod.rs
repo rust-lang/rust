@@ -1016,12 +1016,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query lookup_stability(def_id: DefId) -> Option<&'tcx attr::Stability> {
+    query lookup_stability(def_id: DefId) -> Option<attr::Stability> {
         desc { |tcx| "looking up stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
-    query lookup_const_stability(def_id: DefId) -> Option<&'tcx attr::ConstStability> {
+    query lookup_const_stability(def_id: DefId) -> Option<attr::ConstStability> {
         desc { |tcx| "looking up const stability of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1636,7 +1636,7 @@ rustc_queries! {
         desc { |tcx| "names_imported_by_glob_use for `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
-    query stability_index(_: ()) -> stability::Index<'tcx> {
+    query stability_index(_: ()) -> stability::Index {
         storage(ArenaCacheSelector<'tcx>)
         eval_always
         desc { "calculating the stability index for the local crate" }
