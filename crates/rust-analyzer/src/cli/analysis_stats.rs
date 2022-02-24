@@ -10,7 +10,11 @@ use hir::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     AssocItem, Crate, Function, HasSource, HirDisplay, ModuleDef,
 };
-use hir_def::{body::BodySourceMap, expr::ExprId, FunctionId};
+use hir_def::{
+    body::{BodySourceMap, SyntheticSyntax},
+    expr::ExprId,
+    FunctionId,
+};
 use hir_ty::{TyExt, TypeWalk};
 use ide::{Analysis, AnalysisHost, LineCol, RootDatabase};
 use ide_db::base_db::{
@@ -28,7 +32,7 @@ use syntax::{AstNode, SyntaxNode};
 use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
-    flags,
+    flags::{self, OutputFormat},
     load_cargo::{load_workspace, LoadCargoConfig},
     print_memory_usage,
     progress_report::ProgressReport,
@@ -191,7 +195,7 @@ impl flags::AnalysisStats {
     ) {
         let mut bar = match verbosity {
             Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
-            _ if self.parallel => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
             _ => ProgressReport::new(funcs.len() as u64),
         };
 
@@ -252,7 +256,7 @@ impl flags::AnalysisStats {
             for (expr_id, _) in body.exprs.iter() {
                 let ty = &inference_result[expr_id];
                 num_exprs += 1;
-                if ty.is_unknown() {
+                let unknown_or_partial = if ty.is_unknown() {
                     num_exprs_unknown += 1;
                     if verbosity.is_spammy() {
                         if let Some((path, start, end)) =
@@ -270,6 +274,7 @@ impl flags::AnalysisStats {
                             bar.println(format!("{}: Unknown type", name,));
                         }
                     }
+                    true
                 } else {
                     let mut is_partially_unknown = false;
                     ty.walk(&mut |ty| {
@@ -280,7 +285,8 @@ impl flags::AnalysisStats {
                     if is_partially_unknown {
                         num_exprs_partially_unknown += 1;
                     }
-                }
+                    is_partially_unknown
+                };
                 if self.only.is_some() && verbosity.is_spammy() {
                     // in super-verbose mode for just one function, we print every single expression
                     if let Some((_, start, end)) =
@@ -297,6 +303,13 @@ impl flags::AnalysisStats {
                     } else {
                         bar.println(format!("unknown location: {}", ty.display(db)));
                     }
+                }
+                if unknown_or_partial && self.output == Some(OutputFormat::Csv) {
+                    println!(
+                        r#"{},type,"{}""#,
+                        location_csv(db, &analysis, vfs, &sm, expr_id),
+                        ty.display(db)
+                    );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                     num_type_mismatches += 1;
@@ -322,6 +335,14 @@ impl flags::AnalysisStats {
                                 mismatch.actual.display(db)
                             ));
                         }
+                    }
+                    if self.output == Some(OutputFormat::Csv) {
+                        println!(
+                            r#"{},mismatch,"{}","{}""#,
+                            location_csv(db, &analysis, vfs, &sm, expr_id),
+                            mismatch.expected.display(db),
+                            mismatch.actual.display(db)
+                        );
                     }
                 }
             }
@@ -356,6 +377,28 @@ impl flags::AnalysisStats {
     fn stop_watch(&self) -> StopWatch {
         StopWatch::start().memory(self.memory_usage)
     }
+}
+
+fn location_csv(
+    db: &RootDatabase,
+    analysis: &Analysis,
+    vfs: &Vfs,
+    sm: &BodySourceMap,
+    expr_id: ExprId,
+) -> String {
+    let src = match sm.expr_syntax(expr_id) {
+        Ok(s) => s,
+        Err(SyntheticSyntax) => return "synthetic,,".to_string(),
+    };
+    let root = db.parse_or_expand(src.file_id).unwrap();
+    let node = src.map(|e| e.to_node(&root).syntax().clone());
+    let original_range = node.as_ref().original_file_range(db);
+    let path = vfs.file_path(original_range.file_id);
+    let line_index = analysis.file_line_index(original_range.file_id).unwrap();
+    let text_range = original_range.range;
+    let (start, end) =
+        (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
+    format!("{},{}:{},{}:{}", path, start.line + 1, start.col, end.line + 1, end.col)
 }
 
 fn expr_syntax_range(
