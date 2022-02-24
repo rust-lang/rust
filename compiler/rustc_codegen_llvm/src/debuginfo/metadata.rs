@@ -113,11 +113,20 @@ mod unique_type_id {
     /// A unique identifier for anything that we create a debuginfo node for.
     /// The types it contains are expected to already be normalized (which
     /// is debug_asserted in the constructors).
+    ///
+    /// Note that there are some things that only show up in debuginfo, like
+    /// the separate type descriptions for each enum variant. These get an ID
+    /// too because they have their own debuginfo node in LLVM IR.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, HashStable)]
     pub(super) enum UniqueTypeId<'tcx> {
+        /// The ID of a regular type as it shows up at the language level.
         Ty(Ty<'tcx>, HiddenZst),
+        /// The ID for the artificial struct type describing a single enum variant.
         Variant(Ty<'tcx>, VariantIdx, HiddenZst),
+        /// The ID for the single DW_TAG_variant_part nested inside the top-level
+        /// DW_TAG_structure_type that describes enums and generators.
         VariantPart(Ty<'tcx>, HiddenZst),
+        /// The ID of the artificial type we create for VTables.
         VTableTy(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>, HiddenZst),
     }
 
@@ -163,7 +172,11 @@ mod unique_type_id {
             UniqueTypeId::VTableTy(self_type, implemented_trait, HiddenZst { _inaccessible: () })
         }
 
-        pub fn to_string(&self, tcx: TyCtxt<'tcx>) -> String {
+        /// Generates a string version of this [UniqueTypeId], which can be used as the `UniqueId`
+        /// argument of the various `LLVMRustDIBuilderCreate*Type()` methods.
+        ///
+        /// Right now this takes the form of a hex-encoded opaque hash value.
+        pub fn generate_unique_id_string(&self, tcx: TyCtxt<'tcx>) -> String {
             let mut hasher = StableHasher::new();
             let mut hcx = tcx.create_stable_hashing_context();
             hcx.while_hashing_spans(false, |hcx| {
@@ -646,9 +659,8 @@ pub fn type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll 
                             "expected type metadata for unique \
                                type ID '{:?}' to already be in \
                                the `debuginfo::TypeMap` but it \
-                               was not. (Ty = {})",
+                               was not.",
                             unique_type_id,
-                            t
                         );
                     }
                 };
@@ -672,6 +684,9 @@ fn recursion_marker_type<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
             //
             // FIXME: the name `<recur_type>` does not fit the naming scheme
             //        of other types.
+            //
+            // FIXME: it might make sense to use an actual pointer type here
+            //        so that debuggers can show the address.
             let name = "<recur_type>";
             llvm::LLVMRustDIBuilderCreateBasicType(
                 DIB(cx),
@@ -2030,7 +2045,7 @@ fn prepare_enum_metadata<'ll, 'tcx>(
         };
 
         let enum_metadata = {
-            let unique_type_id_str = unique_type_id.to_string(tcx);
+            let unique_type_id_str = unique_type_id.generate_unique_id_string(tcx);
 
             unsafe {
                 llvm::LLVMRustDIBuilderCreateUnionType(
@@ -2142,7 +2157,7 @@ fn prepare_enum_metadata<'ll, 'tcx>(
     };
 
     let variant_part_unique_type_id_str =
-        UniqueTypeId::for_enum_variant_part(tcx, enum_type).to_string(tcx);
+        UniqueTypeId::for_enum_variant_part(tcx, enum_type).generate_unique_id_string(tcx);
 
     let empty_array = create_DIArray(DIB(cx), &[]);
     let name = "";
@@ -2171,7 +2186,7 @@ fn prepare_enum_metadata<'ll, 'tcx>(
         // an equivalent layout but offers us much better integration with
         // debuggers.
         let type_array = create_DIArray(DIB(cx), &[Some(variant_part)]);
-        let unique_type_id_str = unique_type_id.to_string(tcx);
+        let unique_type_id_str = unique_type_id.generate_unique_id_string(tcx);
 
         unsafe {
             llvm::LLVMRustDIBuilderCreateStructType(
@@ -2345,7 +2360,7 @@ fn create_struct_stub<'ll, 'tcx>(
     flags: DIFlags,
     vtable_holder: Option<&'ll DIType>,
 ) -> &'ll DICompositeType {
-    let unique_type_id = unique_type_id.to_string(cx.tcx);
+    let unique_type_id = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateStructType()` wants an empty array. A null
@@ -2383,7 +2398,7 @@ fn create_union_stub<'ll, 'tcx>(
     containing_scope: &'ll DIScope,
 ) -> &'ll DICompositeType {
     let (union_size, union_align) = cx.size_and_align_of(union_type);
-    let unique_type_id = unique_type_id.to_string(cx.tcx);
+    let unique_type_id = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let metadata_stub = unsafe {
         // `LLVMRustDIBuilderCreateUnionType()` wants an empty array. A null
