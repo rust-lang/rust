@@ -464,8 +464,20 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
             stable_hash,
         } = self.0.0;
 
-        assert_ne!(*stable_hash, Fingerprint::ZERO, "{:#?}", kind);
-        stable_hash.hash_stable(hcx, hasher);
+        if *stable_hash == Fingerprint::ZERO {
+            // No cached hash available. This can only mean that incremental is disabled.
+            // We don't cache stable hashes in non-incremental mode, because they are used
+            // so rarely that the performance actually suffers.
+
+            let stable_hash: Fingerprint = {
+                let mut hasher = StableHasher::new();
+                kind.hash_stable(hcx, &mut hasher);
+                hasher.finish()
+            };
+            stable_hash.hash_stable(hcx, hasher);
+        } else {
+            stable_hash.hash_stable(hcx, hasher);
+        }
     }
 }
 
