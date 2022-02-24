@@ -1,3 +1,5 @@
+use std::mem;
+
 trait Answer {
     fn answer() -> Self;
 }
@@ -56,4 +58,13 @@ fn main() {
     assert!(return_fn_ptr(g) == g);
     assert!(return_fn_ptr(g) as unsafe fn() -> i32 == g as fn() -> i32 as unsafe fn() -> i32);
     assert!(return_fn_ptr(f) != f);
+
+    // Any non-null value is okay for function pointers.
+    unsafe {
+        let _x: fn() = mem::transmute(1usize);
+        let mut b = Box::new(42);
+        let ptr = &mut *b as *mut _;
+        drop(b);
+        let _x: fn() = mem::transmute(ptr);
+    }
 }
