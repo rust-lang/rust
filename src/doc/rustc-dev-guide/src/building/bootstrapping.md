@@ -218,7 +218,7 @@ Stage N `std` is pretty much necessary for any useful work with the stage N comp
 Without it, you can only compile programs with `#![no_core]` -- not terribly useful!
 
 The reason these need to be different is because they aren't necessarily ABI-compatible:
-there could be a new layout optimizations, changes to MIR, or other changes
+there could be new layout optimizations, changes to MIR, or other changes
 to Rust metadata on nightly that aren't present in beta.
 
 This is also where `--keep-stage 1 library/std` comes into play. Since most
