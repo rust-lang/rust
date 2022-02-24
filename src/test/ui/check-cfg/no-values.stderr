@@ -1,0 +1,11 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/no-values.rs:6:7
+   |
+LL | #[cfg(feature = "foo")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: no expected value for `feature`
+
+warning: 1 warning emitted
+
