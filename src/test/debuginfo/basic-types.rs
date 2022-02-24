@@ -104,7 +104,8 @@
 // cdb-check:b                : false [Type: bool]
 // cdb-command:dx i
 // cdb-check:i                : -1 [Type: [...]]
-// The variable 'c' doesn't appear for some reason...
+// cdb-command:dx c
+// cdb-check:c                : 0x61 'a' [Type: char32_t]
 // cdb-command:dx i8
 // cdb-check:i8               : 68 [Type: char]
 // cdb-command:dx i16
