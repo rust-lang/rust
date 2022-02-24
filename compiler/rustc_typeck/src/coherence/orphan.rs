@@ -439,6 +439,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             }
 
             match t.kind() {
+                ty::Adt(def, substs) if def.is_phantom_data() => substs.super_visit_with(self),
                 ty::Adt(def, substs) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.
