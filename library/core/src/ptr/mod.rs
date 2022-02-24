@@ -419,106 +419,58 @@ pub const unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
-    let x = x as *mut u8;
-    let y = y as *mut u8;
-    let len = mem::size_of::<T>() * count;
-    // SAFETY: the caller must guarantee that `x` and `y` are
-    // valid for writes and properly aligned.
-    unsafe { swap_nonoverlapping_bytes(x, y, len) }
-}
+    macro_rules! attempt_swap_as_chunks {
+        ($ChunkTy:ty) => {
+            if mem::align_of::<T>() >= mem::align_of::<$ChunkTy>()
+                && mem::size_of::<T>() % mem::size_of::<$ChunkTy>() == 0
+            {
+                let x: *mut MaybeUninit<$ChunkTy> = x.cast();
+                let y: *mut MaybeUninit<$ChunkTy> = y.cast();
+                let count = count * (mem::size_of::<T>() / mem::size_of::<$ChunkTy>());
+                // SAFETY: these are the same bytes that the caller promised were
+                // ok, just typed as `MaybeUninit<ChunkTy>`s instead of as `T`s.
+                // The `if` condition above ensures that we're not violating
+                // alignment requirements, and that the division is exact so
+                // that we don't lose any bytes off the end.
+                return unsafe { swap_nonoverlapping_simple(x, y, count) };
+            }
+        };
+    }
 
-#[inline]
-#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-pub(crate) const unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
-    // NOTE(eddyb) SPIR-V's Logical addressing model doesn't allow for arbitrary
-    // reinterpretation of values as (chunkable) byte arrays, and the loop in the
-    // block optimization in `swap_nonoverlapping_bytes` is hard to rewrite back
-    // into the (unoptimized) direct swapping implementation, so we disable it.
-    // FIXME(eddyb) the block optimization also prevents MIR optimizations from
-    // understanding `mem::replace`, `Option::take`, etc. - a better overall
-    // solution might be to make `swap_nonoverlapping` into an intrinsic, which
-    // a backend can choose to implement using the block optimization, or not.
-    #[cfg(not(target_arch = "spirv"))]
+    // Split up the slice into small power-of-two-sized chunks that LLVM is able
+    // to vectorize (unless it's a special type with more-than-pointer alignment,
+    // because we don't want to pessimize things like slices of SIMD vectors.)
+    if mem::align_of::<T>() <= mem::size_of::<usize>()
+        && (!mem::size_of::<T>().is_power_of_two()
+            || mem::size_of::<T>() > mem::size_of::<usize>() * 2)
     {
-        // Only apply the block optimization in `swap_nonoverlapping_bytes` for types
-        // at least as large as the block size, to avoid pessimizing codegen.
-        if mem::size_of::<T>() >= 32 {
-            // SAFETY: the caller must uphold the safety contract for `swap_nonoverlapping`.
-            unsafe { swap_nonoverlapping(x, y, 1) };
-            return;
-        }
+        attempt_swap_as_chunks!(usize);
+        attempt_swap_as_chunks!(u8);
     }
 
-    // Direct swapping, for the cases not going through the block optimization.
-    // SAFETY: the caller must guarantee that `x` and `y` are valid
-    // for writes, properly aligned, and non-overlapping.
-    unsafe {
-        let z = read(x);
-        copy_nonoverlapping(y, x, 1);
-        write(y, z);
-    }
+    // SAFETY: Same preconditions as this function
+    unsafe { swap_nonoverlapping_simple(x, y, count) }
 }
 
+/// Same behaviour and safety conditions as [`swap_nonoverlapping`]
+///
+/// LLVM can vectorize this (at least it can for the power-of-two-sized types
+/// `swap_nonoverlapping` tries to use) so no need to manually SIMD it.
 #[inline]
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
-const unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
-    // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
-    // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
-    // Haswell E processors. LLVM is more able to optimize if we give a struct a
-    // #[repr(simd)], even if we don't actually use this struct directly.
-    //
-    // FIXME repr(simd) broken on emscripten and redox
-    #[cfg_attr(not(any(target_os = "emscripten", target_os = "redox")), repr(simd))]
-    struct Block(u64, u64, u64, u64);
-    struct UnalignedBlock(u64, u64, u64, u64);
-
-    let block_size = mem::size_of::<Block>();
-
-    // Loop through x & y, copying them `Block` at a time
-    // The optimizer should unroll the loop fully for most types
-    // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
+const unsafe fn swap_nonoverlapping_simple<T>(x: *mut T, y: *mut T, count: usize) {
     let mut i = 0;
-    while i + block_size <= len {
-        // Create some uninitialized memory as scratch space
-        // Declaring `t` here avoids aligning the stack when this loop is unused
-        let mut t = mem::MaybeUninit::<Block>::uninit();
-        let t = t.as_mut_ptr() as *mut u8;
+    while i < count {
+        let x: &mut T =
+            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+            unsafe { &mut *x.add(i) };
+        let y: &mut T =
+            // SAFETY: By precondition, `i` is in-bounds because it's below `n`
+            // and it's distinct from `x` since the ranges are non-overlapping
+            unsafe { &mut *y.add(i) };
+        mem::swap_simple(x, y);
 
-        // SAFETY: As `i < len`, and as the caller must guarantee that `x` and `y` are valid
-        // for `len` bytes, `x + i` and `y + i` must be valid addresses, which fulfills the
-        // safety contract for `add`.
-        //
-        // Also, the caller must guarantee that `x` and `y` are valid for writes, properly aligned,
-        // and non-overlapping, which fulfills the safety contract for `copy_nonoverlapping`.
-        unsafe {
-            let x = x.add(i);
-            let y = y.add(i);
-
-            // Swap a block of bytes of x & y, using t as a temporary buffer
-            // This should be optimized into efficient SIMD operations where available
-            copy_nonoverlapping(x, t, block_size);
-            copy_nonoverlapping(y, x, block_size);
-            copy_nonoverlapping(t, y, block_size);
-        }
-        i += block_size;
-    }
-
-    if i < len {
-        // Swap any remaining bytes
-        let mut t = mem::MaybeUninit::<UnalignedBlock>::uninit();
-        let rem = len - i;
-
-        let t = t.as_mut_ptr() as *mut u8;
-
-        // SAFETY: see previous safety comment.
-        unsafe {
-            let x = x.add(i);
-            let y = y.add(i);
-
-            copy_nonoverlapping(x, t, rem);
-            copy_nonoverlapping(y, x, rem);
-            copy_nonoverlapping(t, y, rem);
-        }
+        i += 1;
     }
 }
 
