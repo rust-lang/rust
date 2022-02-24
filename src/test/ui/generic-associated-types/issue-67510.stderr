@@ -5,8 +5,6 @@ LL | fn f(x: Box<dyn X<Y<'a>=&'a ()>>) {}
    |     -               ^^ undeclared lifetime
    |     |
    |     help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/issue-67510.rs:7:26
@@ -15,8 +13,6 @@ LL | fn f(x: Box<dyn X<Y<'a>=&'a ()>>) {}
    |     -                    ^^ undeclared lifetime
    |     |
    |     help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error: aborting due to 2 previous errors
 
