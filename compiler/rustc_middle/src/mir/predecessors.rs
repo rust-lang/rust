@@ -63,8 +63,7 @@ impl<S: serialize::Encoder> serialize::Encodable<S> for PredecessorCache {
 
 impl<D: serialize::Decoder> serialize::Decodable<D> for PredecessorCache {
     #[inline]
-    fn decode(d: &mut D) -> Self {
-        let () = d.read_unit();
+    fn decode(_: &mut D) -> Self {
         Self::new()
     }
 }

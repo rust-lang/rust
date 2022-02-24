@@ -316,7 +316,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     }
 
     #[inline]
-    pub fn read_raw_bytes(&mut self, len: usize) -> &'a [u8] {
+    pub fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
         self.opaque.read_raw_bytes(len)
     }
 }

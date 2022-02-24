@@ -465,8 +465,6 @@ macro_rules! implement_ty_decoder {
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
                 $crate::__impl_decoder_methods! {
-                    read_unit -> ();
-
                     read_u128 -> u128;
                     read_u64 -> u64;
                     read_u32 -> u32;
@@ -485,12 +483,12 @@ macro_rules! implement_ty_decoder {
                     read_f64 -> f64;
                     read_f32 -> f32;
                     read_char -> char;
-                    read_str -> Cow<'_, str>;
+                    read_str -> &str;
                 }
 
                 #[inline]
-                fn read_raw_bytes_into(&mut self, bytes: &mut [u8]) {
-                    self.opaque.read_raw_bytes_into(bytes)
+                fn read_raw_bytes(&mut self, len: usize) -> &[u8] {
+                    self.opaque.read_raw_bytes(len)
                 }
             }
         }
