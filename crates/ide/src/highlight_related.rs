@@ -2,7 +2,9 @@ use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FilePosition},
     defs::{Definition, IdentClass},
-    helpers::{for_each_break_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token},
+    helpers::{
+        for_each_break_and_continue_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token,
+    },
     search::{FileReference, ReferenceCategory, SearchScope},
     RootDatabase,
 };
@@ -10,7 +12,7 @@ use rustc_hash::FxHashSet;
 use syntax::{
     ast::{self, HasLoopBody},
     match_ast, AstNode,
-    SyntaxKind::{IDENT, INT_NUMBER},
+    SyntaxKind::{self, IDENT, INT_NUMBER},
     SyntaxNode, SyntaxToken, TextRange, T,
 };
 
@@ -66,7 +68,9 @@ pub(crate) fn highlight_related(
         T![for] if config.break_points && token.parent().and_then(ast::ForExpr::cast).is_some() => {
             highlight_break_points(token)
         }
-        T![break] | T![loop] | T![while] if config.break_points => highlight_break_points(token),
+        T![break] | T![loop] | T![while] | T![continue] if config.break_points => {
+            highlight_break_points(token)
+        }
         _ if config.references => highlight_references(sema, &syntax, token, file_id),
         _ => None,
     }
@@ -187,6 +191,7 @@ fn highlight_exit_points(
 
 fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     fn hl(
+        cursor_token_kind: SyntaxKind,
         token: Option<SyntaxToken>,
         label: Option<ast::Label>,
         body: Option<ast::StmtList>,
@@ -197,11 +202,23 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
             label.as_ref().map(|it| it.syntax().text_range()),
         );
         highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
-        for_each_break_expr(label, body, &mut |break_| {
-            let range = cover_range(
-                break_.break_token().map(|it| it.text_range()),
-                break_.lifetime().map(|it| it.syntax().text_range()),
-            );
+        for_each_break_and_continue_expr(label, body, &mut |expr| {
+            let range: Option<TextRange> = match (cursor_token_kind, expr) {
+                (T![for] | T![while] | T![loop] | T![break], ast::Expr::BreakExpr(break_)) => {
+                    cover_range(
+                        break_.break_token().map(|it| it.text_range()),
+                        break_.lifetime().map(|it| it.syntax().text_range()),
+                    )
+                }
+                (
+                    T![for] | T![while] | T![loop] | T![continue],
+                    ast::Expr::ContinueExpr(continue_),
+                ) => cover_range(
+                    continue_.continue_token().map(|it| it.text_range()),
+                    continue_.lifetime().map(|it| it.syntax().text_range()),
+                ),
+                _ => None,
+            };
             highlights.extend(range.map(|range| HighlightedRange { category: None, range }));
         });
         Some(highlights)
@@ -210,6 +227,7 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
     let lbl = match_ast! {
         match parent {
             ast::BreakExpr(b) => b.lifetime(),
+            ast::ContinueExpr(c) => c.lifetime(),
             ast::LoopExpr(l) => l.label().and_then(|it| it.lifetime()),
             ast::ForExpr(f) => f.label().and_then(|it| it.lifetime()),
             ast::WhileExpr(w) => w.label().and_then(|it| it.lifetime()),
@@ -224,19 +242,29 @@ fn highlight_break_points(token: SyntaxToken) -> Option<Vec<HighlightedRange>> {
         }
         None => true,
     };
+    let token_kind = token.kind();
     for anc in token.ancestors().flat_map(ast::Expr::cast) {
         return match anc {
-            ast::Expr::LoopExpr(l) if label_matches(l.label()) => {
-                hl(l.loop_token(), l.label(), l.loop_body().and_then(|it| it.stmt_list()))
-            }
-            ast::Expr::ForExpr(f) if label_matches(f.label()) => {
-                hl(f.for_token(), f.label(), f.loop_body().and_then(|it| it.stmt_list()))
-            }
-            ast::Expr::WhileExpr(w) if label_matches(w.label()) => {
-                hl(w.while_token(), w.label(), w.loop_body().and_then(|it| it.stmt_list()))
-            }
+            ast::Expr::LoopExpr(l) if label_matches(l.label()) => hl(
+                token_kind,
+                l.loop_token(),
+                l.label(),
+                l.loop_body().and_then(|it| it.stmt_list()),
+            ),
+            ast::Expr::ForExpr(f) if label_matches(f.label()) => hl(
+                token_kind,
+                f.for_token(),
+                f.label(),
+                f.loop_body().and_then(|it| it.stmt_list()),
+            ),
+            ast::Expr::WhileExpr(w) if label_matches(w.label()) => hl(
+                token_kind,
+                w.while_token(),
+                w.label(),
+                w.loop_body().and_then(|it| it.stmt_list()),
+            ),
             ast::Expr::BlockExpr(e) if e.label().is_some() && label_matches(e.label()) => {
-                hl(None, e.label(), e.stmt_list())
+                hl(token_kind, None, e.label(), e.stmt_list())
             }
             _ => continue,
         };
@@ -798,6 +826,115 @@ fn foo() {
         }
         break;
      // ^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_for_but_not_continue() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in () {
+ // ^^^^^^^^^^^
+        break;
+     // ^^^^^
+        continue;
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+                break 'outer;
+             // ^^^^^^^^^^^^
+                continue 'inner;
+                break 'inner;
+            }
+            break$0 'outer;
+         // ^^^^^^^^^^^^
+            continue 'outer;
+            break;
+            continue;
+        }
+        break;
+     // ^^^^^
+        continue;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_continue_for_but_not_break() {
+        check(
+            r#"
+fn foo() {
+    'outer: for _ in () {
+ // ^^^^^^^^^^^
+        break;
+        continue;
+     // ^^^^^^^^
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+             // ^^^^^^^^^^^^^^^
+                break 'outer;
+                continue 'inner;
+                break 'inner;
+            }
+            break 'outer;
+            continue$0 'outer;
+         // ^^^^^^^^^^^^^^^
+            break;
+            continue;
+        }
+        break;
+        continue;
+     // ^^^^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_hl_break_and_continue() {
+        check(
+            r#"
+fn foo() {
+    'outer: fo$0r _ in () {
+ // ^^^^^^^^^^^
+        break;
+     // ^^^^^
+        continue;
+     // ^^^^^^^^
+        'inner: for _ in () {
+            break;
+            continue;
+            'innermost: for _ in () {
+                continue 'outer;
+             // ^^^^^^^^^^^^^^^
+                break 'outer;
+             // ^^^^^^^^^^^^
+                continue 'inner;
+                break 'inner;
+            }
+            break 'outer;
+         // ^^^^^^^^^^^^
+            continue 'outer;
+         // ^^^^^^^^^^^^^^^
+            break;
+            continue;
+        }
+        break;
+     // ^^^^^
+        continue;
+     // ^^^^^^^^
     }
 }
 "#,
