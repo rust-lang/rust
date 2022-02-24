@@ -16,6 +16,7 @@
 #![feature(min_specialization)]
 #![recursion_limit = "256"]
 #![feature(slice_internals)]
+#![feature(stmt_expr_attributes)]
 
 #[macro_use]
 extern crate rustc_macros;
