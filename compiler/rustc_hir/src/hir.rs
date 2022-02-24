@@ -15,6 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable_Generic;
+use rustc_span::hygiene::MacroKind;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{def_id::LocalDefId, BytePos, MultiSpan, Span, DUMMY_SP};
@@ -2803,7 +2804,7 @@ pub enum ItemKind<'hir> {
     /// A function declaration.
     Fn(FnSig<'hir>, Generics<'hir>, BodyId),
     /// A MBE macro definition (`macro_rules!` or `macro`).
-    Macro(ast::MacroDef),
+    Macro(ast::MacroDef, MacroKind),
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.

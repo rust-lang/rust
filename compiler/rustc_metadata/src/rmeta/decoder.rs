@@ -5,6 +5,7 @@ use crate::rmeta::table::{FixedSizeEncoding, Table};
 use crate::rmeta::*;
 
 use rustc_ast as ast;
+use rustc_ast::ptr::P;
 use rustc_attr as attr;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
@@ -1076,6 +1077,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                         res,
                         vis: ty::Visibility::Public,
                         span: ident.span,
+                        macro_rules: false,
                     });
                 }
             }
@@ -1087,17 +1089,19 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             for child_index in children.decode((self, sess)) {
                 if let Some(ident) = self.opt_item_ident(child_index, sess) {
                     let kind = self.def_kind(child_index);
-                    if matches!(kind, DefKind::Macro(..)) {
-                        // FIXME: Macros are currently encoded twice, once as items and once as
-                        // reexports. We ignore the items here and only use the reexports.
-                        continue;
-                    }
                     let def_id = self.local_def_id(child_index);
                     let res = Res::Def(kind, def_id);
                     let vis = self.get_visibility(child_index);
                     let span = self.get_span(child_index, sess);
+                    let macro_rules = match kind {
+                        DefKind::Macro(..) => match self.kind(child_index) {
+                            EntryKind::MacroDef(_, macro_rules) => macro_rules,
+                            _ => unreachable!(),
+                        },
+                        _ => false,
+                    };
 
-                    callback(ModChild { ident, res, vis, span });
+                    callback(ModChild { ident, res, vis, span, macro_rules });
 
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
@@ -1109,7 +1113,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                 let ctor_res =
                                     Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(ModChild { ident, res: ctor_res, vis, span });
+                                callback(ModChild {
+                                    ident,
+                                    res: ctor_res,
+                                    vis,
+                                    span,
+                                    macro_rules: false,
+                                });
                             }
                         }
                         DefKind::Variant => {
@@ -1134,7 +1144,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(ModChild { ident, res: ctor_res, vis, span });
+                            callback(ModChild {
+                                ident,
+                                res: ctor_res,
+                                vis,
+                                span,
+                                macro_rules: false,
+                            });
                         }
                         _ => {}
                     }
@@ -1402,9 +1418,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.exported_symbols.decode((self, tcx)))
     }
 
-    fn get_macro(self, id: DefIndex, sess: &Session) -> MacroDef {
+    fn get_macro(self, id: DefIndex, sess: &Session) -> ast::MacroDef {
         match self.kind(id) {
-            EntryKind::MacroDef(macro_def) => macro_def.decode((self, sess)),
+            EntryKind::MacroDef(mac_args, macro_rules) => {
+                ast::MacroDef { body: P(mac_args.decode((self, sess))), macro_rules }
+            }
             _ => bug!(),
         }
     }

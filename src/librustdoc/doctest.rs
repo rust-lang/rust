@@ -1164,7 +1164,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
         let name = match &item.kind {
-            hir::ItemKind::Macro(ref macro_def) => {
+            hir::ItemKind::Macro(ref macro_def, _) => {
                 // FIXME(#88038): Non exported macros have historically not been tested,
                 // but we really ought to start testing them.
                 let def_id = item.def_id.to_def_id();

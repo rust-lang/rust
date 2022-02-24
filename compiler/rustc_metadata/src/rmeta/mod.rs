@@ -2,7 +2,7 @@ use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use table::{Table, TableBuilder};
 
-use rustc_ast::{self as ast, MacroDef};
+use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
@@ -350,7 +350,7 @@ enum EntryKind {
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<[ModChild]>),
-    MacroDef(Lazy<MacroDef>),
+    MacroDef(Lazy<ast::MacArgs>, /*macro_rules*/ bool),
     ProcMacro(MacroKind),
     Closure,
     Generator,

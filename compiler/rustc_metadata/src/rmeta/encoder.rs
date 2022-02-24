@@ -1406,8 +1406,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Fn(self.lazy(data))
             }
-            hir::ItemKind::Macro(ref macro_def) => {
-                EntryKind::MacroDef(self.lazy(macro_def.clone()))
+            hir::ItemKind::Macro(ref macro_def, _) => {
+                EntryKind::MacroDef(self.lazy(&*macro_def.body), macro_def.macro_rules)
             }
             hir::ItemKind::Mod(ref m) => {
                 return self.encode_info_for_mod(item.def_id, m);
