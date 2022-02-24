@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::subst::{GenericArg, Subst};
+use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_span::Span;
 
@@ -135,19 +135,21 @@ pub(super) fn check<'tcx>(
                             from_ty_orig, to_ty_orig
                         ),
                         |diag| {
-                            if let (Some(from_def), Some(to_def)) = (from_ty.ty_adt_def(), to_ty.ty_adt_def())
-                                && from_def == to_def
-                            {
-                                diag.note(&format!(
-                                    "two instances of the same generic type (`{}`) may have different layouts",
-                                    cx.tcx.item_name(from_def.did)
-                                ));
-                            } else {
-                                if from_ty_orig.peel_refs() != from_ty {
-                                    diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
-                                }
-                                if to_ty_orig.peel_refs() != to_ty {
-                                    diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                            if_chain! {
+                                if let (Some(from_def), Some(to_def)) = (from_ty.ty_adt_def(), to_ty.ty_adt_def());
+                                if from_def == to_def;
+                                then {
+                                    diag.note(&format!(
+                                        "two instances of the same generic type (`{}`) may have different layouts",
+                                        cx.tcx.item_name(from_def.did)
+                                    ));
+                                } else {
+                                    if from_ty_orig.peel_refs() != from_ty {
+                                        diag.note(&format!("the contained type `{}` has an undefined layout", from_ty));
+                                    }
+                                    if to_ty_orig.peel_refs() != to_ty {
+                                        diag.note(&format!("the contained type `{}` has an undefined layout", to_ty));
+                                    }
                                 }
                             }
                         },
@@ -223,27 +225,27 @@ fn reduce_refs<'tcx>(
     loop {
         return match (from_ty.kind(), to_ty.kind()) {
             (
-                ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. }),
-                ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. }),
+                &(ty::Ref(_, from_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: from_sub_ty, .. })),
+                &(ty::Ref(_, to_sub_ty, _) | ty::RawPtr(TypeAndMut { ty: to_sub_ty, .. })),
             ) => {
                 from_ty = from_sub_ty;
                 to_ty = to_sub_ty;
                 continue;
             },
-            (ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }), _)
+            (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })), _)
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
                 ReducedTys::FromFatPtr { unsized_ty, to_ty }
             },
-            (_, ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. }))
+            (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })))
                 if !unsized_ty.is_sized(cx.tcx.at(span), cx.param_env) =>
             {
                 ReducedTys::ToFatPtr { unsized_ty, from_ty }
             },
-            (ty::Ref(_, from_ty, _) | ty::RawPtr(TypeAndMut { ty: from_ty, .. }), _) => {
+            (&(ty::Ref(_, from_ty, _) | ty::RawPtr(TypeAndMut { ty: from_ty, .. })), _) => {
                 ReducedTys::FromPtr { from_ty, to_ty }
             },
-            (_, ty::Ref(_, to_ty, _) | ty::RawPtr(TypeAndMut { ty: to_ty, .. })) => {
+            (_, &(ty::Ref(_, to_ty, _) | ty::RawPtr(TypeAndMut { ty: to_ty, .. }))) => {
                 ReducedTys::ToPtr { from_ty, to_ty }
             },
             _ => ReducedTys::Other { from_ty, to_ty },
@@ -280,11 +282,10 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             },
             ty::Tuple(args) if args.is_empty() => ReducedTy::TypeErasure,
             ty::Tuple(args) => {
-                let mut iter = args.iter().map(GenericArg::expect_ty);
-                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
+                let Some(sized_ty) = args.iter().find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
-                if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
+                if args.iter().all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
                     continue;
                 }
@@ -296,7 +297,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .fields
                     .iter()
                     .map(|f| cx.tcx.type_of(f.did).subst(cx.tcx, substs));
-                let Some(sized_ty) = iter.find(|ty| !is_zero_sized_ty(cx, ty)) else {
+                let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::TypeErasure;
                 };
                 if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
@@ -321,11 +322,13 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty)
-        && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
-    {
-        layout.layout.size.bytes() == 0
-    } else {
-        false
+    if_chain! {
+        if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
+        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
+        then {
+            layout.layout.size.bytes() == 0
+        } else {
+            false
+        }
     }
 }

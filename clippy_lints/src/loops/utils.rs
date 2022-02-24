@@ -334,7 +334,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
         // (&mut x).into_iter() ==> x.iter_mut()
         let arg_ty = cx.typeck_results().expr_ty_adjusted(arg);
         match &arg_ty.kind() {
-            ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, inner_ty).is_some() => {
+            ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, *inner_ty).is_some() => {
                 let method_name = match mutbl {
                     Mutability::Mut => "iter_mut",
                     Mutability::Not => "iter",

@@ -73,7 +73,7 @@ pub(super) fn check<'tcx>(
                     match cx.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static(),
                         ),
                         _ => false,
                     }
@@ -87,7 +87,7 @@ pub(super) fn check<'tcx>(
                     .map_or(false, |method_id| {
                         matches!(
                             cx.tcx.fn_sig(method_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static()
                         )
                     })
             },

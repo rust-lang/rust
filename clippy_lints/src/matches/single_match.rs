@@ -8,7 +8,7 @@ use core::cmp::max;
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TyS};
+use rustc_middle::ty::{self, Ty};
 
 use super::{MATCH_BOOL, SINGLE_MATCH, SINGLE_MATCH_ELSE};
 
@@ -162,10 +162,10 @@ fn check_opt_like<'a>(
         return;
     }
 
-    let in_candidate_enum = |path_info: &(String, &TyS<'_>)| -> bool {
+    let in_candidate_enum = |path_info: &(String, Ty<'_>)| -> bool {
         let (path, ty) = path_info;
         for &(ty_path, pat_path) in candidates {
-            if path == pat_path && match_type(cx, ty, ty_path) {
+            if path == pat_path && match_type(cx, *ty, ty_path) {
                 return true;
             }
         }

@@ -294,7 +294,7 @@ impl LenOutput<'_> {
 /// Checks if the given signature matches the expectations for `is_empty`
 fn check_is_empty_sig(sig: FnSig<'_>, self_kind: ImplicitSelfKind, len_output: LenOutput<'_>) -> bool {
     match &**sig.inputs_and_output {
-        [arg, res] if len_output.matches_is_empty_output(res) => {
+        [arg, res] if len_output.matches_is_empty_output(*res) => {
             matches!(
                 (arg.kind(), self_kind),
                 (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)

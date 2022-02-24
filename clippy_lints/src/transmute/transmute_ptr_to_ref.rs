@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
                     let arg = if from_ptr_ty.ty == *to_ref_ty {
                         arg
                     } else {
-                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
+                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, *to_ref_ty)))
                     };
 
                     diag.span_suggestion(

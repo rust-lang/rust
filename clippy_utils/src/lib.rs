@@ -1461,7 +1461,7 @@ pub fn is_self(slf: &Param<'_>) -> bool {
 
 pub fn is_self_ty(slf: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(None, path)) = slf.kind {
-        if let Res::SelfTy(..) = path.res {
+        if let Res::SelfTy { .. } = path.res {
             return true;
         }
     }
@@ -1912,10 +1912,10 @@ pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<S
     let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
-        rustc_ty::Slice(element_type) => is_recursively_primitive_type(element_type),
+        rustc_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
         rustc_ty::Ref(_, inner_ty, _) if matches!(inner_ty.kind(), &rustc_ty::Slice(_)) => {
             if let rustc_ty::Slice(element_type) = inner_ty.kind() {
-                is_recursively_primitive_type(element_type)
+                is_recursively_primitive_type(*element_type)
             } else {
                 unreachable!()
             }
