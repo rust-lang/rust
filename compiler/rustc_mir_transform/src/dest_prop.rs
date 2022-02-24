@@ -38,12 +38,6 @@
 //!   It must also not contain any indexing projections, since those take an arbitrary `Local` as
 //!   the index, and that local might only be initialized shortly before `dest` is used.
 //!
-//!   Subtle case: If `dest` is a, or projects through a union, then we have to make sure that there
-//!   remains an assignment to it, since that sets the "active field" of the union. But if `src` is
-//!   a ZST, it might not be initialized, so there might not be any use of it before the assignment,
-//!   and performing the optimization would simply delete the assignment, leaving `dest`
-//!   uninitialized.
-//!
 //! * `src` must be a bare `Local` without any indirections or field projections (FIXME: Is this a
 //!   fundamental restriction or just current impl state?). It can be copied or moved by the
 //!   assignment.
@@ -103,7 +97,6 @@ use rustc_index::{
     bit_set::{BitMatrix, BitSet},
     vec::IndexVec,
 };
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
@@ -135,7 +128,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id();
 
-        let candidates = find_candidates(tcx, body);
+        let candidates = find_candidates(body);
         if candidates.is_empty() {
             debug!("{:?}: no dest prop candidates, done", def_id);
             return;
@@ -803,9 +796,8 @@ struct CandidateAssignment<'tcx> {
 /// comment) and also throw out assignments that involve a local that has its address taken or is
 /// otherwise ineligible (eg. locals used as array indices are ignored because we cannot propagate
 /// arbitrary places into array indices).
-fn find_candidates<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Vec<CandidateAssignment<'tcx>> {
+fn find_candidates<'tcx>(body: &Body<'tcx>) -> Vec<CandidateAssignment<'tcx>> {
     let mut visitor = FindAssignments {
-        tcx,
         body,
         candidates: Vec::new(),
         ever_borrowed_locals: ever_borrowed_locals(body),
@@ -816,7 +808,6 @@ fn find_candidates<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Vec<CandidateA
 }
 
 struct FindAssignments<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     candidates: Vec<CandidateAssignment<'tcx>>,
     ever_borrowed_locals: BitSet<Local>,
@@ -845,10 +836,11 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
                 return;
             }
 
-            // Can't optimize if both locals ever have their address taken (can introduce
-            // aliasing).
-            // FIXME: This can be smarter and take `StorageDead` into account (which
-            // invalidates borrows).
+            // Can't optimize if either local ever has their address taken. This optimization does
+            // liveness analysis only based on assignments, and a local can be live even if its
+            // never assigned to again, because a reference to it might be live.
+            // FIXME: This can be smarter and take `StorageDead` into  account (which invalidates
+            // borrows).
             if self.ever_borrowed_locals.contains(dest.local)
                 || self.ever_borrowed_locals.contains(src.local)
             {
@@ -862,20 +854,9 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, 'tcx> {
                 return;
             }
 
-            // Handle the "subtle case" described above by rejecting any `dest` that is or
-            // projects through a union.
-            let mut place_ty = PlaceTy::from_ty(self.body.local_decls[dest.local].ty);
-            if place_ty.ty.is_union() {
-                return;
-            }
             for elem in dest.projection {
                 if let PlaceElem::Index(_) = elem {
                     // `dest` contains an indexing projection.
-                    return;
-                }
-
-                place_ty = place_ty.projection_ty(self.tcx, elem);
-                if place_ty.ty.is_union() {
                     return;
                 }
             }
