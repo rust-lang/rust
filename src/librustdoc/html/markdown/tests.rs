@@ -336,6 +336,13 @@ fn test_header() {
              <strong>Foo?</strong> &amp; *bar?!*  <em><code>baz</code></em> ❤ #qux\
          </h5>",
     );
+    t(
+        "# Foo [bar](https://hello.yo)",
+        "<h2 id=\"foo-bar\">\
+             <a class=\"doc-anchor\" href=\"#foo-bar\">§</a>\
+             Foo <a href=\"https://hello.yo\">bar</a>\
+         </h2>",
+    );
 }
 
 #[test]
