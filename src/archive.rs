@@ -113,9 +113,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         Ok(())
     }
 
-    fn update_symbols(&mut self) {
-    }
-
     fn build(mut self) {
         use std::process::Command;
 
