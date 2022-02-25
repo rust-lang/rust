@@ -233,6 +233,7 @@ pub mod known {
         column,
         compile_error,
         concat_idents,
+        concat_bytes,
         concat,
         const_format_args,
         core_panic,
