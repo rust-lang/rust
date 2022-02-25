@@ -262,6 +262,15 @@ pub fn expand_test_or_bench(
                                         "ignore",
                                         cx.expr_bool(sp, should_ignore(&cx.sess, &item)),
                                     ),
+                                    // ignore_message: Some("...") | None
+                                    field(
+                                        "ignore_message",
+                                        if let Some(msg) = should_ignore_message(cx, &item) {
+                                            cx.expr_some(sp, cx.expr_str(sp, msg))
+                                        } else {
+                                            cx.expr_none(sp)
+                                        },
+                                    ),
                                     // compile_fail: true | false
                                     field("compile_fail", cx.expr_bool(sp, false)),
                                     // no_run: true | false
@@ -362,6 +371,20 @@ enum ShouldPanic {
 
 fn should_ignore(sess: &Session, i: &ast::Item) -> bool {
     sess.contains_name(&i.attrs, sym::ignore)
+}
+
+fn should_ignore_message(cx: &ExtCtxt<'_>, i: &ast::Item) -> Option<Symbol> {
+    match cx.sess.find_by_name(&i.attrs, sym::ignore) {
+        Some(attr) => {
+            match attr.meta_item_list() {
+                // Handle #[ignore(bar = "foo")]
+                Some(_) => None,
+                // Handle #[ignore] and #[ignore = "message"]
+                None => attr.value_str(),
+            }
+        }
+        None => None,
+    }
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {

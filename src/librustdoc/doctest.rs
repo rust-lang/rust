@@ -946,6 +946,8 @@ impl Tester for Collector {
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
                 },
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
                 compile_fail: config.compile_fail,
