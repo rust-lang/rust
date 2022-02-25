@@ -14,7 +14,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::layout::MAX_SIMD_LANES;
+use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, Ty, TyCtxt};
@@ -417,10 +417,31 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Spa
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id);
-    let Ok(layout) = tcx.layout_of(ParamEnv::reveal_all().and(ty)) else {
+    let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
+        Ok(l) => l,
+        // Foreign statics that overflow their allowed size should emit an error
+        Err(LayoutError::SizeOverflow(_))
+            if {
+                let node = tcx.hir().get_by_def_id(def_id);
+                matches!(
+                    node,
+                    hir::Node::ForeignItem(hir::ForeignItem {
+                        kind: hir::ForeignItemKind::Static(..),
+                        ..
+                    })
+                )
+            } =>
+        {
+            tcx.sess
+                .struct_span_err(span, "extern static is too large for the current architecture")
+                .emit();
+            return;
+        }
         // Generic statics are rejected, but we still reach this case.
-        tcx.sess.delay_span_bug(span, "generic static must be rejected");
-        return;
+        Err(e) => {
+            tcx.sess.delay_span_bug(span, &e.to_string());
+            return;
+        }
     };
     if layout.abi.is_uninhabited() {
         tcx.struct_span_lint_hir(
