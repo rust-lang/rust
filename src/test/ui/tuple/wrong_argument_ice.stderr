@@ -1,0 +1,19 @@
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/wrong_argument_ice.rs:11:18
+   |
+LL |         self.acc.push_back(self.current_provides, self.current_requires);
+   |                  ^^^^^^^^^ ---------------------  --------------------- supplied 2 arguments
+   |
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/collections/vec_deque/mod.rs:LL:COL
+   |
+LL |     pub fn push_back(&mut self, value: T) {
+   |            ^^^^^^^^^
+help: use parentheses to construct a tuple
+   |
+LL |         self.acc.push_back((self.current_provides, self.current_requires));
+   |                            +                                            +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.
