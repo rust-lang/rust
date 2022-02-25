@@ -572,21 +572,25 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     err_unsup!(ReadPointerAsBytes) => { "part of a pointer" } expected { "a proper pointer or integer value" },
                     err_ub!(InvalidUninitBytes(None)) => { "uninitialized bytes" } expected { "a proper pointer or integer value" },
                 );
-                let ptr = self.ecx.scalar_to_ptr(value);
-                // Ensure the pointer is non-null.
-                if self.ecx.memory.ptr_may_be_null(ptr) {
-                    throw_validation_failure!(self.path, { "a potentially null function pointer" });
-                }
+
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
+                    let ptr = self.ecx.scalar_to_ptr(value);
                     let _fn = try_validation!(
                         self.ecx.memory.get_fn(ptr),
                         self.path,
+                        err_ub!(DanglingIntPointer(0, _)) =>
+                            { "a null function pointer" },
                         err_ub!(DanglingIntPointer(..)) |
                         err_ub!(InvalidFunctionPointer(..)) =>
                             { "{:x}", value } expected { "a function pointer" },
                     );
                     // FIXME: Check if the signature matches
+                } else {
+                    // Otherwise (for standalone Miri), we have to still check it to be non-null.
+                    if self.ecx.scalar_may_be_null(value) {
+                        throw_validation_failure!(self.path, { "a null function pointer" });
+                    }
                 }
                 Ok(true)
             }
@@ -644,10 +648,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             Err(_) => {
                 // So this is a pointer then, and casting to an int failed.
                 // Can only happen during CTFE.
-                let ptr = self.ecx.scalar_to_ptr(value);
                 if start == 1 && end == max_value {
                     // Only null is the niche.  So make sure the ptr is NOT null.
-                    if self.ecx.memory.ptr_may_be_null(ptr) {
+                    if self.ecx.scalar_may_be_null(value) {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
                             expected {
@@ -758,7 +761,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     fn visit_value(&mut self, op: &OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
 
-        // Check primitive types -- the leafs of our recursive descend.
+        // Check primitive types -- the leaves of our recursive descent.
         if self.try_visit_primitive(op)? {
             return Ok(());
         }

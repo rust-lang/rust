@@ -720,12 +720,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Err(dbg_val) => {
                         // So this is a pointer then, and casting to an int failed.
                         // Can only happen during CTFE.
-                        let ptr = self.scalar_to_ptr(tag_val);
                         // The niche must be just 0, and the ptr not null, then we know this is
                         // okay. Everything else, we conservatively reject.
                         let ptr_valid = niche_start == 0
                             && variants_start == variants_end
-                            && !self.memory.ptr_may_be_null(ptr);
+                            && !self.scalar_may_be_null(tag_val);
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
                         }
