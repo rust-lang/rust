@@ -1,6 +1,6 @@
 //! Grammar for the command-line arguments.
 #![allow(unreachable_pub)]
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 use ide_ssr::{SsrPattern, SsrRule};
 
@@ -54,6 +54,8 @@ xflags::xflags! {
             /// Directory with Cargo.toml.
             required path: PathBuf
         {
+            optional --output format: OutputFormat
+
             /// Randomize order in which crates, modules, and items are processed.
             optional --randomize
             /// Run type inference in parallel.
@@ -160,6 +162,7 @@ pub struct Highlight {
 pub struct AnalysisStats {
     pub path: PathBuf,
 
+    pub output: Option<OutputFormat>,
     pub randomize: bool,
     pub parallel: bool,
     pub memory_usage: bool,
@@ -215,6 +218,11 @@ impl RustAnalyzer {
 }
 // generated end
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum OutputFormat {
+    Csv,
+}
+
 impl RustAnalyzer {
     pub fn verbosity(&self) -> Verbosity {
         if self.quiet {
@@ -224,6 +232,17 @@ impl RustAnalyzer {
             0 => Verbosity::Normal,
             1 => Verbosity::Verbose,
             _ => Verbosity::Spammy,
+        }
+    }
+}
+
+impl FromStr for OutputFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "csv" => Ok(Self::Csv),
+            _ => Err(format!("unknown output format `{}`", s)),
         }
     }
 }
