@@ -4,7 +4,7 @@ Version 1.59.0 (2022-02-24)
 Language
 --------
 
-- [Stabilize default arguments for const generics][90207]
+- [Stabilize default arguments for const parameters and remove the ordering restriction for type and const parameters][90207]
 - [Stabilize destructuring assignment][90521]
 - [Relax private in public lint on generic bounds and where clauses of trait impls][90586]
 - [Stabilize asm! and global_asm! for x86, x86_64, ARM, Aarch64, and RISC-V][91728]
@@ -18,6 +18,21 @@ Compiler
 - [Warn when a `#[test]`-like built-in attribute macro is present multiple times.][91172]
 - [Add support for riscv64gc-unknown-freebsd][91284]
 - [Stabilize `-Z emit-future-incompat` as `--json future-incompat`][91535]
+- [Soft disable incremental compilation][94124]
+
+This release disables incremental compilation, unless the user has explicitly
+opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
+This is due to a known and relatively frequently occurring bug in incremental
+compilation, which causes builds to issue internal compiler errors. This
+particular bug is already fixed on nightly, but that fix has not yet rolled out
+to stable and is deemed too risky for a direct stable backport.
+
+As always, we encourage users to test with nightly and report bugs so that we
+can track failures and fix issues earlier.
+
+See [94124] for more details.
+
+[94124]: https://github.com/rust-lang/rust/issues/94124
 
 Libraries
 ---------
@@ -86,6 +101,7 @@ Compatibility Notes
 - [Weaken guarantee around advancing underlying iterators in zip][83791]
 - [Make split_inclusive() on an empty slice yield an empty output][89825]
 - [Update std::env::temp_dir to use GetTempPath2 on Windows when available.][89999]
+- [unreachable! was updated to match other formatting macro behavior on Rust 2021][92137]
 
 Internal Changes
 ----------------
@@ -127,6 +143,7 @@ and related tools.
 [91984]: https://github.com/rust-lang/rust/pull/91984/
 [92020]: https://github.com/rust-lang/rust/pull/92020/
 [92034]: https://github.com/rust-lang/rust/pull/92034/
+[92137]: https://github.com/rust-lang/rust/pull/92137/
 [92483]: https://github.com/rust-lang/rust/pull/92483/
 [cargo/10088]: https://github.com/rust-lang/cargo/pull/10088/
 [cargo/10133]: https://github.com/rust-lang/cargo/pull/10133/
