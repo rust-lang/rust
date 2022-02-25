@@ -68,6 +68,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_partition_dedup)]
 #![feature(control_flow_enum)]
 #![feature(hash_drain_filter)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
 #![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
