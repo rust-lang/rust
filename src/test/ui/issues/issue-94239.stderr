@@ -1,0 +1,11 @@
+error: literal out of range for `usize`
+  --> $DIR/issue-94239.rs:3:32
+   |
+LL |         10000000000000000000..=99999999999999999999 => 0,
+   |                                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(overflowing_literals)]` on by default
+   = note: the literal `99999999999999999999` does not fit into the type `usize` whose range is `0..=18446744073709551615`
+
+error: aborting due to previous error
+
