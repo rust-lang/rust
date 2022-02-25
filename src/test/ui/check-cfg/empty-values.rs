@@ -1,6 +1,6 @@
-// Check that a an empty values() is rejected
+// Check that a an empty values() pass
 //
-// check-fail
+// check-pass
 // compile-flags: --check-cfg=values() -Z unstable-options
 
 fn main() {}

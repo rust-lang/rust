@@ -1025,13 +1025,19 @@ pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig 
 pub struct CheckCfg<T = String> {
     /// The set of all `names()`, if None no name checking is performed
     pub names_valid: Option<FxHashSet<T>>,
+    /// Is well known values activated
+    pub well_known_values: bool,
     /// The set of all `values()`
     pub values_valid: FxHashMap<T, FxHashSet<T>>,
 }
 
 impl<T> Default for CheckCfg<T> {
     fn default() -> Self {
-        CheckCfg { names_valid: Default::default(), values_valid: Default::default() }
+        CheckCfg {
+            names_valid: Default::default(),
+            values_valid: Default::default(),
+            well_known_values: false,
+        }
     }
 }
 
@@ -1047,6 +1053,7 @@ impl<T> CheckCfg<T> {
                 .iter()
                 .map(|(a, b)| (f(a), b.iter().map(|b| f(b)).collect()))
                 .collect(),
+            well_known_values: self.well_known_values,
         }
     }
 }

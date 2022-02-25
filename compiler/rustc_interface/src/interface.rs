@@ -207,6 +207,9 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                             "`values()` first argument must be a simple identifer"
                                         );
                                     }
+                                } else if args.is_empty() {
+                                    cfg.well_known_values = true;
+                                    continue 'specs;
                                 }
                             }
                         }
