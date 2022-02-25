@@ -5,7 +5,7 @@
 // NONMSVC: {{.*}}DIDerivedType(tag: DW_TAG_pointer_type, name: "fn() -> <recursive_type>",{{.*}}
 //
 // CHECK: {{.*}}DISubroutineType{{.*}}
-// CHECK: {{.*}}DIBasicType(name: "<recur_type>", encoding: DW_ATE_unsigned)
+// CHECK: {{.*}}DIBasicType(name: "<recur_type>", size: {{32|64}}, encoding: DW_ATE_unsigned)
 
 pub fn foo() -> impl Copy {
     foo

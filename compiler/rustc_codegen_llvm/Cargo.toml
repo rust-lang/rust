@@ -25,6 +25,7 @@ rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_llvm = { path = "../rustc_llvm" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
