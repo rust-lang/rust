@@ -254,7 +254,7 @@ fn report_msg<'tcx>(
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let mut err = match diag_level {
-        DiagLevel::Error => tcx.sess.struct_span_err(span, title),
+        DiagLevel::Error => tcx.sess.struct_span_err(span, title).forget_guarantee(),
         DiagLevel::Warning => tcx.sess.struct_span_warn(span, title),
         DiagLevel::Note => tcx.sess.diagnostic().span_note_diag(span, title),
     };
