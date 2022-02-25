@@ -240,6 +240,11 @@ impl Module {
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
+                    ast::Macro(it) => {
+                        if let Some(nod) = ctx.sema.to_def(&it) {
+                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs);
+                        }
+                    },
                     _ => (),
                 }
             }
@@ -1373,6 +1378,27 @@ mod modname {
             }
             ",
         )
+    }
+
+    #[test]
+    fn test_extract_module_macro_rules() {
+        check_assist(
+            extract_module,
+            r"
+$0macro_rules! m {
+    () => {};
+}$0
+m! {}
+            ",
+            r"
+mod modname {
+    macro_rules! m {
+        () => {};
+    }
+}
+modname::m! {}
+            ",
+        );
     }
 
     #[test]
