@@ -216,7 +216,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         Ok(self)
     }
 
-    fn print_type(self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
+    fn print_type(mut self, ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs)
@@ -224,6 +224,24 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
+
+            // The `pretty_print_type` formatting of array size depends on
+            // -Zverbose flag, so we cannot reuse it here.
+            ty::Array(ty, size) => {
+                self.write_str("[")?;
+                self = self.print_type(ty)?;
+                self.write_str("; ")?;
+                if let Some(size) = size.val().try_to_bits(self.tcx().data_layout.pointer_size) {
+                    write!(self, "{}", size)?
+                } else if let ty::ConstKind::Param(param) = size.val() {
+                    self = param.print(self)?
+                } else {
+                    self.write_str("_")?
+                }
+                self.write_str("]")?;
+                Ok(self)
+            }
+
             _ => self.pretty_print_type(ty),
         }
     }
@@ -245,12 +263,22 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // only print integers
-        if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int { .. })) = ct.val() {
-            if ct.ty().is_integral() {
-                return self.pretty_print_const(ct, true);
+        match (ct.val(), ct.ty().kind()) {
+            (
+                ty::ConstKind::Value(ConstValue::Scalar(Scalar::Int(scalar))),
+                ty::Int(_) | ty::Uint(_),
+            ) => {
+                // The `pretty_print_const` formatting depends on -Zverbose
+                // flag, so we cannot reuse it here.
+                let signed = matches!(ct.ty().kind(), ty::Int(_));
+                write!(
+                    self,
+                    "{:#?}",
+                    ty::ConstInt::new(scalar, signed, ct.ty().is_ptr_sized_integral())
+                )?;
             }
+            _ => self.write_str("_")?,
         }
-        self.write_str("_")?;
         Ok(self)
     }
 
