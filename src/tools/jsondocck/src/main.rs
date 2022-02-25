@@ -277,7 +277,7 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
             assert_eq!(
                 results.len(),
                 1,
-                "Didn't get 1 result for `{}`: got {:?}",
+                "Expected 1 match for `{}` (because of @set): matched to {:?}",
                 command.args[3],
                 results
             );
