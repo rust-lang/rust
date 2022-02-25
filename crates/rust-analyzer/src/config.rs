@@ -161,13 +161,15 @@ config_data! {
             }
         }"#,
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
-        completion_postfix_enable: bool          = "true",
+        completion_postfix_enable: bool         = "true",
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = "true",
         /// Toggles the additional completions that automatically show method calls and field accesses
         /// with `self` prefixed to them when inside a method.
-        completion_autoself_enable: bool       = "true",
+        completion_autoself_enable: bool        = "true",
+        /// Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.
+        completion_privateEditable_enable: bool = "false",
 
         /// Whether to show native rust-analyzer diagnostics.
         diagnostics_enable: bool                = "true",
@@ -875,6 +877,7 @@ impl Config {
             enable_imports_on_the_fly: self.data.completion_autoimport_enable
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
+            enable_private_editable: self.data.completion_privateEditable_enable,
             add_call_parenthesis: self.data.completion_addCallParenthesis,
             add_call_argument_snippets: self.data.completion_addCallArgumentSnippets,
             insert_use: self.insert_use_config(),

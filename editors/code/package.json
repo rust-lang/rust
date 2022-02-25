@@ -643,6 +643,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.completion.privateEditable.enable": {
+                    "markdownDescription": "Enables completions of private items and fields that are defined in the current workspace even if they are not visible at the current position.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.diagnostics.enable": {
                     "markdownDescription": "Whether to show native rust-analyzer diagnostics.",
                     "default": true,
