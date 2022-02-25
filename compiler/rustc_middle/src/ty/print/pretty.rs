@@ -612,7 +612,7 @@ pub trait PrettyPrinter<'tcx>:
                 }
             }
             ty::Error(_) => p!("[type error]"),
-            ty::Param(ref param_ty) => p!(write("{}", param_ty)),
+            ty::Param(ref param_ty) => p!(print(param_ty)),
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {
                 ty::BoundTyKind::Anon => self.pretty_print_bound_var(debruijn, bound_ty.var)?,
                 ty::BoundTyKind::Param(p) => p!(write("{}", p)),
@@ -754,7 +754,7 @@ pub trait PrettyPrinter<'tcx>:
                 } else if let Some(n) = sz.val().try_to_bits(self.tcx().data_layout.pointer_size) {
                     p!(write("{}", n));
                 } else if let ty::ConstKind::Param(param) = sz.val() {
-                    p!(write("{}", param));
+                    p!(print(param));
                 } else {
                     p!("_");
                 }
