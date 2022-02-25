@@ -1,13 +1,33 @@
 use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, TypeAndMut};
-use rustc_span::{BytePos, Symbol};
+use rustc_middle::ty::{self, Instance, TypeAndMut};
+use rustc_span::{BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 use std::convert::TryInto as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+    fn handle_miri_backtrace_size(
+        &mut self,
+        abi: Abi,
+        link_name: Symbol,
+        args: &[OpTy<'tcx, Tag>],
+        dest: &PlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let &[ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+
+        let flags = this.read_scalar(flags)?.to_u64()?;
+        if flags != 0 {
+            throw_unsup_format!("unknown `miri_backtrace_size` flags {}", flags);
+        }
+
+        let frame_count = this.active_thread_stack().len();
+
+        this.write_scalar(Scalar::from_machine_usize(frame_count.try_into().unwrap(), this), dest)
+    }
+
     fn handle_miri_get_backtrace(
         &mut self,
         abi: Abi,
@@ -17,12 +37,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let tcx = this.tcx;
-        let &[ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
-        let flags = this.read_scalar(flags)?.to_u64()?;
-        if flags != 0 {
-            throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags);
-        }
+        let flags = if let Some(flags_op) = args.get(0) {
+            this.read_scalar(flags_op)?.to_u64()?
+        } else {
+            throw_ub_format!("expected at least 1 argument")
+        };
 
         let mut data = Vec::new();
         for frame in this.active_thread_stack().iter().rev() {
@@ -49,46 +69,60 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             })
             .collect();
 
-        let len = ptrs.len();
+        let len: u64 = ptrs.len().try_into().unwrap();
 
         let ptr_ty = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
 
-        let array_ty = tcx.mk_array(ptr_ty, ptrs.len().try_into().unwrap());
+        let array_layout = this.layout_of(tcx.mk_array(ptr_ty, len)).unwrap();
 
-        // Write pointers into array
-        let alloc =
-            this.allocate(this.layout_of(array_ty).unwrap(), MiriMemoryKind::Rust.into())?;
-        for (i, ptr) in ptrs.into_iter().enumerate() {
-            let place = this.mplace_index(&alloc, i as u64)?;
-            this.write_pointer(ptr, &place.into())?;
-        }
+        match flags {
+            // storage for pointers is allocated by miri
+            // deallocating the slice is undefined behavior with a custom global allocator
+            0 => {
+                let &[_flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
 
-        this.write_immediate(
-            Immediate::new_slice(
-                Scalar::from_maybe_pointer(alloc.ptr, this),
-                len.try_into().unwrap(),
-                this,
-            ),
-            dest,
-        )?;
+                let alloc = this.allocate(array_layout, MiriMemoryKind::Rust.into())?;
+
+                // Write pointers into array
+                for (i, ptr) in ptrs.into_iter().enumerate() {
+                    let place = this.mplace_index(&alloc, i as u64)?;
+
+                    this.write_pointer(ptr, &place.into())?;
+                }
+
+                this.write_immediate(
+                    Immediate::new_slice(Scalar::from_maybe_pointer(alloc.ptr, this), len, this),
+                    dest,
+                )?;
+            }
+            // storage for pointers is allocated by the caller
+            1 => {
+                let &[_flags, ref buf] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+
+                let buf_place = this.deref_operand(buf)?;
+
+                let ptr_layout = this.layout_of(ptr_ty)?;
+
+                for (i, ptr) in ptrs.into_iter().enumerate() {
+                    let offset = ptr_layout.size * i.try_into().unwrap();
+
+                    let op_place =
+                        buf_place.offset(offset, MemPlaceMeta::None, ptr_layout, this)?;
+
+                    this.write_pointer(ptr, &op_place.into())?;
+                }
+            }
+            _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),
+        };
+
         Ok(())
     }
 
-    fn handle_miri_resolve_frame(
+    fn resolve_frame_pointer(
         &mut self,
-        abi: Abi,
-        link_name: Symbol,
-        args: &[OpTy<'tcx, Tag>],
-        dest: &PlaceTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx> {
+        ptr: &OpTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, (Instance<'tcx>, Loc, String, String)> {
         let this = self.eval_context_mut();
-        let tcx = this.tcx;
-        let &[ref ptr, ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
-
-        let flags = this.read_scalar(flags)?.to_u64()?;
-        if flags != 0 {
-            throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags);
-        }
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces.
@@ -100,6 +134,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             } else {
                 throw_ub_format!("expected function pointer, found {:?}", ptr);
             };
+
+        let lo =
+            this.tcx.sess.source_map().lookup_char_pos(BytePos(offset.bytes().try_into().unwrap()));
+
+        let name = fn_instance.to_string();
+        let filename = lo.file.name.prefer_remapped().to_string();
+
+        Ok((fn_instance, lo, name, filename))
+    }
+
+    fn handle_miri_resolve_frame(
+        &mut self,
+        abi: Abi,
+        link_name: Symbol,
+        args: &[OpTy<'tcx, Tag>],
+        dest: &PlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        let &[ref ptr, ref flags] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+
+        let flags = this.read_scalar(flags)?.to_u64()?;
+
+        let (fn_instance, lo, name, filename) = this.resolve_frame_pointer(ptr)?;
 
         // Reconstruct the original function pointer,
         // which we pass to user code.
@@ -115,22 +172,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             );
         }
 
-        let pos = BytePos(offset.bytes().try_into().unwrap());
-        let name = fn_instance.to_string();
-
-        let lo = tcx.sess.source_map().lookup_char_pos(pos);
-
-        let filename = lo.file.name.prefer_remapped().to_string();
         let lineno: u32 = lo.line as u32;
         // `lo.col` is 0-based - add 1 to make it 1-based for the caller.
         let colno: u32 = lo.col.0 as u32 + 1;
-
-        // These are "mutable" allocations as we consider them to be owned by the callee.
-        let name_alloc = this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut);
-        let filename_alloc =
-            this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut);
-        let lineno_alloc = Scalar::from_u32(lineno);
-        let colno_alloc = Scalar::from_u32(colno);
 
         let dest = this.force_allocation(dest)?;
         if let ty::Adt(adt, _) = dest.layout.ty.kind() {
@@ -141,16 +185,68 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
         }
 
-        this.write_immediate(name_alloc.to_ref(this), &this.mplace_field(&dest, 0)?.into())?;
-        this.write_immediate(filename_alloc.to_ref(this), &this.mplace_field(&dest, 1)?.into())?;
-        this.write_scalar(lineno_alloc, &this.mplace_field(&dest, 2)?.into())?;
-        this.write_scalar(colno_alloc, &this.mplace_field(&dest, 3)?.into())?;
+        match flags {
+            0 => {
+                // These are "mutable" allocations as we consider them to be owned by the callee.
+                let name_alloc =
+                    this.allocate_str(&name, MiriMemoryKind::Rust.into(), Mutability::Mut);
+                let filename_alloc =
+                    this.allocate_str(&filename, MiriMemoryKind::Rust.into(), Mutability::Mut);
+
+                this.write_immediate(
+                    name_alloc.to_ref(this),
+                    &this.mplace_field(&dest, 0)?.into(),
+                )?;
+                this.write_immediate(
+                    filename_alloc.to_ref(this),
+                    &this.mplace_field(&dest, 1)?.into(),
+                )?;
+            }
+            1 => {
+                this.write_scalar(
+                    Scalar::from_machine_usize(name.len().try_into().unwrap(), this),
+                    &this.mplace_field(&dest, 0)?.into(),
+                )?;
+                this.write_scalar(
+                    Scalar::from_machine_usize(filename.len().try_into().unwrap(), this),
+                    &this.mplace_field(&dest, 1)?.into(),
+                )?;
+            }
+            _ => throw_unsup_format!("unknown `miri_resolve_frame` flags {}", flags),
+        }
+
+        this.write_scalar(Scalar::from_u32(lineno), &this.mplace_field(&dest, 2)?.into())?;
+        this.write_scalar(Scalar::from_u32(colno), &this.mplace_field(&dest, 3)?.into())?;
 
         // Support a 4-field struct for now - this is deprecated
         // and slated for removal.
         if num_fields == 5 {
             this.write_pointer(fn_ptr, &this.mplace_field(&dest, 4)?.into())?;
         }
+
+        Ok(())
+    }
+
+    fn handle_miri_resolve_frame_names(
+        &mut self,
+        abi: Abi,
+        link_name: Symbol,
+        args: &[OpTy<'tcx, Tag>],
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let &[ref ptr, ref flags, ref name_ptr, ref filename_ptr] =
+            this.check_shim(abi, Abi::Rust, link_name, args)?;
+
+        let flags = this.read_scalar(flags)?.to_u64()?;
+        if flags != 0 {
+            throw_unsup_format!("unknown `miri_resolve_frame_names` flags {}", flags);
+        }
+
+        let (_, _, name, filename) = this.resolve_frame_pointer(ptr)?;
+
+        this.memory.write_bytes(this.read_pointer(name_ptr)?, name.bytes())?;
+        this.memory.write_bytes(this.read_pointer(filename_ptr)?, filename.bytes())?;
 
         Ok(())
     }
