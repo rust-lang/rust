@@ -363,8 +363,16 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: io::Result<&SocketAddr>) -> io::Result<TcpListener> {
+    pub fn bind_with_backlog(
+        addr: io::Result<&SocketAddr>,
+        backlog: usize,
+    ) -> io::Result<TcpListener> {
         let addr = addr?;
+
+        // Type-convert the backlog
+        let backlog = backlog
+            .try_into()
+            .map_err(|e| crate::io::Error::new(crate::io::ErrorKind::InvalidData, e))?;
 
         init();
 
@@ -385,7 +393,7 @@ impl TcpListener {
         cvt(unsafe { c::bind(sock.as_raw(), addrp, len as _) })?;
 
         // Start listening
-        cvt(unsafe { c::listen(sock.as_raw(), 128) })?;
+        cvt(unsafe { c::listen(sock.as_raw(), backlog) })?;
         Ok(TcpListener { inner: sock })
     }
 
