@@ -1,8 +1,8 @@
 use super::pat::Expected;
 use super::ty::{AllowPlus, IsAsCast};
 use super::{
-    BlockMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions, SemiColonMode, SeqSep,
-    TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
+    SemiColonMode, SeqSep, TokenExpectType, TokenType,
 };
 
 use rustc_ast as ast;
@@ -2238,12 +2238,32 @@ impl<'a> Parser<'a> {
         first_pat
     }
 
+    crate fn maybe_recover_unexpected_block_label(&mut self) -> bool {
+        let Some(label) = self.eat_label().filter(|_| {
+            self.eat(&token::Colon) && self.token.kind == token::OpenDelim(token::Brace)
+        }) else {
+            return false;
+        };
+        let span = label.ident.span.to(self.prev_token.span);
+        let mut err = self.struct_span_err(span, "block label not supported here");
+        err.span_label(span, "not supported here");
+        err.tool_only_span_suggestion(
+            label.ident.span.until(self.token.span),
+            "remove this block label",
+            String::new(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+        true
+    }
+
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
     crate fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
         rc: RecoverComma,
+        rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
         if rc == RecoverComma::No || self.token != token::Comma {
             return Ok(());
@@ -2263,20 +2283,25 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            const MSG: &str = "try adding parentheses to match on a tuple...";
-
-            err.span_suggestion(
-                seq_span,
-                MSG,
-                format!("({})", seq_snippet),
+            err.multipart_suggestion(
+                &format!(
+                    "try adding parentheses to match on a tuple{}",
+                    if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
+                ),
+                vec![
+                    (seq_span.shrink_to_lo(), "(".to_string()),
+                    (seq_span.shrink_to_hi(), ")".to_string()),
+                ],
                 Applicability::MachineApplicable,
             );
-            err.span_suggestion(
-                seq_span,
-                "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(',', " |"),
-                Applicability::MachineApplicable,
-            );
+            if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+                err.span_suggestion(
+                    seq_span,
+                    "...or a vertical bar to match on multiple alternatives",
+                    seq_snippet.replace(',', " |"),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
         Err(err)
     }

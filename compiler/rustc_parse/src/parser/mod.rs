@@ -15,7 +15,7 @@ pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
 pub(crate) use item::FnParseMode;
-pub use pat::{RecoverColon, RecoverComma};
+pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;

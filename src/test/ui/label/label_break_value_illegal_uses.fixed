@@ -5,19 +5,19 @@
 
 #[allow(unused_unsafe)]
 fn labeled_unsafe() {
-    unsafe 'b: {} //~ ERROR block label not supported here
+    unsafe {} //~ ERROR block label not supported here
 }
 
 fn labeled_if() {
-    if true 'b: {} //~ ERROR block label not supported here
+    if true {} //~ ERROR block label not supported here
 }
 
 fn labeled_else() {
-    if true {} else 'b: {} //~ ERROR block label not supported here
+    if true {} else {} //~ ERROR block label not supported here
 }
 
 fn labeled_match() {
-    match false 'b: { //~ ERROR block label not supported here
+    match false { //~ ERROR block label not supported here
         _ => {}
     }
 }
