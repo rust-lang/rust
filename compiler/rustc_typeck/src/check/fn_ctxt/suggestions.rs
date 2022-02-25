@@ -633,7 +633,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .collect::<Result<Vec<_>, _>>();
 
-        let Ok(where_predicates) =  where_predicates else { return };
+        let Ok(where_predicates) = where_predicates else { return };
 
         // now get all predicates in the same types as the where bounds, so we can chain them
         let predicates_from_where =
