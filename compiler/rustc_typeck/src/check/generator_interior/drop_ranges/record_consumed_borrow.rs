@@ -93,9 +93,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
     fn borrow(
         &mut self,
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        _diag_expr_id: HirId,
+        diag_expr_id: HirId,
         _bk: rustc_middle::ty::BorrowKind,
     ) {
+        debug!("borrow {:?}; diag_expr_id={:?}", place_with_id, diag_expr_id);
         self.places
             .borrowed
             .insert(TrackedValue::from_place_with_projections_allowed(place_with_id));
@@ -103,9 +104,14 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
 
     fn mutate(
         &mut self,
-        _assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
-        _diag_expr_id: HirId,
+        assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        diag_expr_id: HirId,
     ) {
+        debug!("mutate {:?}; diag_expr_id={:?}", assignee_place, diag_expr_id);
+        // Count mutations as a borrow.
+        self.places
+            .borrowed
+            .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));
     }
 
     fn fake_read(
