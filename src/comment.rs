@@ -683,6 +683,7 @@ impl<'a> CommentRewrite<'a> {
         i: usize,
         line: &'a str,
         has_leading_whitespace: bool,
+        is_doc_comment: bool,
     ) -> bool {
         let num_newlines = count_newlines(orig);
         let is_last = i == num_newlines;
@@ -789,10 +790,19 @@ impl<'a> CommentRewrite<'a> {
             }
         }
 
-        if self.fmt.config.wrap_comments()
+        let is_markdown_header_doc_comment = is_doc_comment && line.starts_with("#");
+
+        // We only want to wrap the comment if:
+        // 1) wrap_comments = true is configured
+        // 2) The comment is not the start of a markdown header doc comment
+        // 3) The comment width exceeds the shape's width
+        // 4) No URLS were found in the commnet
+        let should_wrap_comment = self.fmt.config.wrap_comments()
+            && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
-            && !has_url(line)
-        {
+            && !has_url(line);
+
+        if should_wrap_comment {
             match rewrite_string(line, &self.fmt, self.max_width) {
                 Some(ref s) => {
                     self.is_prev_line_multi_line = s.contains('\n');
@@ -882,7 +892,7 @@ fn rewrite_comment_inner(
         });
 
     for (i, (line, has_leading_whitespace)) in lines.enumerate() {
-        if rewriter.handle_line(orig, i, line, has_leading_whitespace) {
+        if rewriter.handle_line(orig, i, line, has_leading_whitespace, is_doc_comment) {
             break;
         }
     }
