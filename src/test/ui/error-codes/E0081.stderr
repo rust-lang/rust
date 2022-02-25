@@ -7,14 +7,14 @@ LL |
 LL |     X = 3,
    |         ^ enum already has `3`
 
-error[E0081]: discriminant value `1` already exists
+error[E0081]: discriminant value `255` already exists
   --> $DIR/E0081.rs:14:9
    |
 LL |     P = 257,
-   |         --- first use of `1` (overflowed from `257`)
+   |         --- first use of `255` (overflowed from `257`)
 LL |
 LL |     X = 513,
-   |         ^^^ enum already has `1` (overflowed from `513`)
+   |         ^^^ enum already has `255` (overflowed from `513`)
 
 error: aborting due to 2 previous errors
 
