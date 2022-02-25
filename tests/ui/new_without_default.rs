@@ -201,4 +201,14 @@ pub mod issue7220 {
     }
 }
 
+// see issue #8152
+// This should not create any lints
+pub struct DocHidden;
+impl DocHidden {
+    #[doc(hidden)]
+    pub fn new() -> Self {
+        DocHidden
+    }
+}
+
 fn main() {}
