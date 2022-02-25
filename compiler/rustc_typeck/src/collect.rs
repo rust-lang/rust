@@ -1377,7 +1377,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
                 Some(
-                    rl::Region::LateBound(debruijn, _, _, _)
+                    rl::Region::LateBound(debruijn, _, _)
                     | rl::Region::LateBoundAnon(debruijn, _, _),
                 ) if debruijn < self.outer_index => {}
                 Some(
