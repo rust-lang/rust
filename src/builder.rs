@@ -379,9 +379,7 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
-        let bx = Builder::with_cx(cx, block);
-        *cx.current_block.borrow_mut() = Some(block);
-        bx
+        Builder::with_cx(cx, block)
     }
 
     fn llbb(&self) -> Block<'gcc> {
@@ -399,7 +397,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn switch_to_block(&mut self, block: Self::BasicBlock) {
-        *self.cx.current_block.borrow_mut() = Some(block);
         self.block = block;
     }
 

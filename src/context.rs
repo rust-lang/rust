@@ -31,8 +31,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
-    // TODO(antoyo): First set it to a dummy block to avoid using Option?
-    pub current_block: RefCell<Option<Block<'gcc>>>,
+    // TODO(bjorn3): First set it to a dummy function to avoid using Option?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
@@ -177,7 +176,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             check_overflow,
             codegen_unit,
             context,
-            current_block: RefCell::new(None),
             current_func: RefCell::new(None),
             normal_function_addresses: Default::default(),
             functions: RefCell::new(functions),
