@@ -262,6 +262,7 @@ pub struct ExternBlock {
 impl ast::HasAttrs for ExternBlock {}
 impl ast::HasDocComments for ExternBlock {}
 impl ExternBlock {
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
 }
