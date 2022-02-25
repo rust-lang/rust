@@ -558,12 +558,10 @@ impl<'a, 'b, 'ids, I: Iterator<Item = SpannedEvent<'a>>> Iterator
 
             let level =
                 std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
-            self.buf.push_back((Event::Html(format!("</a></h{level}>").into()), 0..0));
+            self.buf.push_back((Event::Html(format!("</h{level}>").into()), 0..0));
 
-            let start_tags = format!(
-                "<h{level} id=\"{id}\">\
-                    <a href=\"#{id}\">",
-            );
+            let start_tags =
+                format!("<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{id}\">§</a>");
             return Some((Event::Html(start_tags.into()), 0..0));
         }
         event

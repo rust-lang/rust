@@ -765,6 +765,9 @@ nav.sub {
 h2.section-header > .anchor {
 	padding-right: 6px;
 }
+.doc-anchor {
+	margin-right: 6px;
+}
 
 .main-heading a:hover,
 .example-wrap .rust a:hover,
