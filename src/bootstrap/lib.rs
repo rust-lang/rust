@@ -119,6 +119,7 @@ use std::os::windows::fs::symlink_file;
 use build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use filetime::FileTime;
 
+use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{exe, libdir, CiEnv};
 
@@ -669,12 +670,12 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self) -> String {
+    fn rustc_features(&self, kind: Kind) -> String {
         let mut features = String::new();
         if self.config.jemalloc {
             features.push_str("jemalloc");
         }
-        if self.config.llvm_enabled() {
+        if self.config.llvm_enabled() || kind == Kind::Check {
             features.push_str(" llvm");
         }
 

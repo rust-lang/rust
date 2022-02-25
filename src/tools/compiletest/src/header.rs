@@ -806,6 +806,8 @@ pub fn make_test_description<R: Read>(
     cfg: Option<&str>,
 ) -> test::TestDesc {
     let mut ignore = false;
+    #[cfg(not(bootstrap))]
+    let ignore_message: Option<String> = None;
     let mut should_fail = false;
 
     let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
@@ -877,6 +879,8 @@ pub fn make_test_description<R: Read>(
     test::TestDesc {
         name,
         ignore,
+        #[cfg(not(bootstrap))]
+        ignore_message,
         should_panic,
         compile_fail: false,
         no_run: false,
