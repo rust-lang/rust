@@ -1,7 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
 use crate::visitors::expr_visitor_no_bodies;
-use crate::{match_def_path, paths};
 
 use arrayvec::ArrayVec;
 use if_chain::if_chain;
@@ -14,29 +13,31 @@ use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, ExpnData, ExpnId, ExpnKind, Span, Symbol};
 use std::ops::ControlFlow;
 
-const FORMAT_MACRO_PATHS: &[&[&str]] = &[
-    &paths::FORMAT_ARGS_MACRO,
-    &paths::ASSERT_EQ_MACRO,
-    &paths::ASSERT_MACRO,
-    &paths::ASSERT_NE_MACRO,
-    &paths::EPRINT_MACRO,
-    &paths::EPRINTLN_MACRO,
-    &paths::PRINT_MACRO,
-    &paths::PRINTLN_MACRO,
-    &paths::WRITE_MACRO,
-    &paths::WRITELN_MACRO,
+const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
+    sym::assert_eq_macro,
+    sym::assert_macro,
+    sym::assert_ne_macro,
+    sym::debug_assert_eq_macro,
+    sym::debug_assert_macro,
+    sym::debug_assert_ne_macro,
+    sym::eprint_macro,
+    sym::eprintln_macro,
+    sym::format_args_macro,
+    sym::format_macro,
+    sym::print_macro,
+    sym::println_macro,
+    sym::std_panic_macro,
+    sym::write_macro,
+    sym::writeln_macro,
 ];
-
-const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[sym::format_macro, sym::std_panic_macro];
 
 /// Returns true if a given Macro `DefId` is a format macro (e.g. `println!`)
 pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
-    FORMAT_MACRO_PATHS
-        .iter()
-        .any(|path| match_def_path(cx, macro_def_id, path))
-        || FORMAT_MACRO_DIAG_ITEMS
-            .iter()
-            .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, macro_def_id))
+    if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
+        FORMAT_MACRO_DIAG_ITEMS.contains(&name)
+    } else {
+        false
+    }
 }
 
 /// A macro call, like `vec![1, 2, 3]`.
