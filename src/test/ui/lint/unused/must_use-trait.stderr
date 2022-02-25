@@ -26,13 +26,13 @@ error: unused boxed `Critical` trait object in tuple element 1 that must be used
   --> $DIR/must_use-trait.rs:37:5
    |
 LL |     get_critical_tuple();
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: unused implementer of `Critical` in tuple element 2 that must be used
   --> $DIR/must_use-trait.rs:37:5
    |
 LL |     get_critical_tuple();
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 
