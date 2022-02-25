@@ -32,7 +32,7 @@ error: unused array of boxed `T` trait objects in tuple element 1 that must be u
   --> $DIR/must_use-array.rs:43:5
    |
 LL |     impl_array();
-   |     ^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^
 
 error: unused array of arrays of arrays of `S` that must be used
   --> $DIR/must_use-array.rs:45:5

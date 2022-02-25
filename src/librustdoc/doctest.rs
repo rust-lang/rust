@@ -91,7 +91,7 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
-        crate_check_cfg: interface::parse_check_cfg(vec![]),
+        crate_check_cfg: interface::parse_check_cfg(options.check_cfgs.clone()),
         input,
         input_path: None,
         output_file: None,
@@ -320,6 +320,12 @@ fn run_test(
     compiler.arg("--crate-type").arg("bin");
     for cfg in &rustdoc_options.cfgs {
         compiler.arg("--cfg").arg(&cfg);
+    }
+    if !rustdoc_options.check_cfgs.is_empty() {
+        compiler.arg("-Z").arg("unstable-options");
+        for check_cfg in &rustdoc_options.check_cfgs {
+            compiler.arg("--check-cfg").arg(&check_cfg);
+        }
     }
     if let Some(sysroot) = rustdoc_options.maybe_sysroot {
         compiler.arg("--sysroot").arg(sysroot);

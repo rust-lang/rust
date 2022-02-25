@@ -58,6 +58,7 @@ Stabilized APIs
 - [`NonZeroU32::is_power_of_two`][is_power_of_two32]
 - [`NonZeroU64::is_power_of_two`][is_power_of_two64]
 - [`NonZeroU128::is_power_of_two`][is_power_of_two128]
+- [`NonZeroUsize::is_power_of_two`][is_power_of_two_usize]
 - [`DoubleEndedIterator for ToLowercase`][lowercase]
 - [`DoubleEndedIterator for ToUppercase`][uppercase]
 - [`TryFrom<&mut [T]> for [T; N]`][tryfrom_ref_arr]
@@ -178,6 +179,7 @@ and related tools.
 [is_power_of_two32]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU32.html#method.is_power_of_two
 [is_power_of_two64]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU64.html#method.is_power_of_two
 [is_power_of_two128]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU128.html#method.is_power_of_two
+[is_power_of_two_usize]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroUsize.html#method.is_power_of_two
 [stdarch/1266]: https://github.com/rust-lang/stdarch/pull/1266
 
 Version 1.58.1 (2022-01-19)
