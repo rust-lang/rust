@@ -121,6 +121,7 @@ register_builtin! {
     (compile_error, CompileError) => compile_error_expand,
     (concat, Concat) => concat_expand,
     (concat_idents, ConcatIdents) => concat_idents_expand,
+    (concat_bytes, ConcatBytes) => concat_bytes_expand,
     (include, Include) => include_expand,
     (include_bytes, IncludeBytes) => include_bytes_expand,
     (include_str, IncludeStr) => include_str_expand,
@@ -359,6 +360,12 @@ fn unquote_str(lit: &tt::Literal) -> Option<String> {
     token.value().map(|it| it.into_owned())
 }
 
+fn unquote_byte_string(lit: &tt::Literal) -> Option<Vec<u8>> {
+    let lit = ast::make::tokens::literal(&lit.to_string());
+    let token = ast::ByteString::cast(lit)?;
+    token.value().map(|it| it.into_owned())
+}
+
 fn compile_error_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
@@ -420,6 +427,74 @@ fn concat_expand(
         }
     }
     ExpandResult { value: ExpandedEager::new(quote!(#text)), err }
+}
+
+fn concat_bytes_expand(
+    _db: &dyn AstDatabase,
+    _arg_id: MacroCallId,
+    tt: &tt::Subtree,
+) -> ExpandResult<ExpandedEager> {
+    let mut bytes = Vec::new();
+    let mut err = None;
+    for (i, t) in tt.token_trees.iter().enumerate() {
+        match t {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                let token = ast::make::tokens::literal(&lit.to_string());
+                match token.kind() {
+                    syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
+                    syntax::SyntaxKind::BYTE_STRING => {
+                        let components = unquote_byte_string(lit).unwrap_or_else(|| Vec::new());
+                        components.into_iter().for_each(|x| bytes.push(x.to_string()));
+                    }
+                    _ => {
+                        err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                        break;
+                    }
+                }
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if i % 2 == 1 && punct.char == ',' => (),
+            tt::TokenTree::Subtree(tree)
+                if tree.delimiter_kind() == Some(tt::DelimiterKind::Bracket) =>
+            {
+                if let Err(e) = concat_bytes_expand_subtree(tree, &mut bytes) {
+                    err.get_or_insert(e);
+                    break;
+                }
+            }
+            _ => {
+                err.get_or_insert(mbe::ExpandError::UnexpectedToken.into());
+                break;
+            }
+        }
+    }
+    let ident = tt::Ident { text: bytes.join(", ").into(), id: tt::TokenId::unspecified() };
+    ExpandResult { value: ExpandedEager::new(quote!([#ident])), err }
+}
+
+fn concat_bytes_expand_subtree(
+    tree: &tt::Subtree,
+    bytes: &mut Vec<String>,
+) -> Result<(), ExpandError> {
+    for (ti, tt) in tree.token_trees.iter().enumerate() {
+        match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                let lit = ast::make::tokens::literal(&lit.to_string());
+                match lit.kind() {
+                    syntax::SyntaxKind::BYTE | syntax::SyntaxKind::INT_NUMBER => {
+                        bytes.push(lit.text().to_string())
+                    }
+                    _ => {
+                        return Err(mbe::ExpandError::UnexpectedToken.into());
+                    }
+                }
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if ti % 2 == 1 && punct.char == ',' => (),
+            _ => {
+                return Err(mbe::ExpandError::UnexpectedToken.into());
+            }
+        }
+    }
+    Ok(())
 }
 
 fn concat_idents_expand(
