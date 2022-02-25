@@ -281,7 +281,7 @@ impl graph::WithPredecessors for CoverageGraph {
 }
 
 rustc_index::newtype_index! {
-    /// A node in the [control-flow graph][CFG] of CoverageGraph.
+    /// A node in the control-flow graph of CoverageGraph.
     pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
         const START_BCB = 0,

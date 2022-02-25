@@ -1847,6 +1847,7 @@ rustc_index::newtype_index! {
     /// rustc can identify that a field projection refers to either two different regions of memory
     /// or the same one between the base and the 'projection element'.
     /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
+    ///
     /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
