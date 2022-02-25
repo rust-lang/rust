@@ -179,7 +179,7 @@ impl Module {
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
         //get updated by ADT section given below or if it is not, then we dont need to do any operation
-        self.body_items.clone().into_iter().for_each(|item| {
+        self.body_items.iter().cloned().for_each(|item| {
             match_ast! {
                 match (item.syntax()) {
                     ast::Adt(it) => {
