@@ -37,6 +37,7 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(loops::NEVER_LOOP),
     LintId::of(loops::WHILE_IMMUTABLE_CONDITION),
     LintId::of(match_str_case_mismatch::MATCH_STR_CASE_MISMATCH),
+    LintId::of(matches::NOP_MATCH),
     LintId::of(mem_replace::MEM_REPLACE_WITH_UNINIT),
     LintId::of(methods::CLONE_DOUBLE_REF),
     LintId::of(methods::ITERATOR_STEP_BY_ZERO),
