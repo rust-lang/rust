@@ -23,7 +23,7 @@ pub(crate) enum AutoderefKind {
 }
 
 pub(crate) struct Autoderef<'a, 'db> {
-    pub table: &'a mut InferenceTable<'db>,
+    pub(crate) table: &'a mut InferenceTable<'db>,
     ty: Ty,
     at_start: bool,
     steps: Vec<(AutoderefKind, Ty)>,
