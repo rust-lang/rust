@@ -313,6 +313,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ) => {
                         // A reborrow has no effect before a dereference.
                     }
+                    // Catch cases which have Deref(None)
+                    // having them slip to bug! causes ICE
+                    // see #94291 for more info
+                    (&[Adjustment { kind: Adjust::Deref(None), .. }], _) => {
+                        self.tcx.sess.delay_span_bug(
+                            DUMMY_SP,
+                            &format!("Can't compose Deref(None) expressions"),
+                        )
+                    }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
                     _ => bug!(
