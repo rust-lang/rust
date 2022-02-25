@@ -4583,3 +4583,33 @@ pub struct Foo;
         "##]],
     );
 }
+
+#[test]
+fn hover_dollar_crate() {
+    // $crate should be resolved to the right crate name.
+
+    check(
+        r#"
+//- /main.rs crate:main deps:dep
+dep::m!(KONST$0);
+//- /dep.rs crate:dep
+#[macro_export]
+macro_rules! m {
+    ( $name:ident ) => { const $name: $crate::Type = $crate::Type; };
+}
+
+pub struct Type;
+"#,
+        expect![[r#"
+            *KONST*
+
+            ```rust
+            main
+            ```
+
+            ```rust
+            const KONST: dep::Type = $crate::Type
+            ```
+        "#]],
+    );
+}

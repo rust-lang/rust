@@ -1189,7 +1189,18 @@ impl HirDisplay for Path {
                     write!(f, "super")?;
                 }
             }
-            (_, PathKind::DollarCrate(_)) => write!(f, "{{extern_crate}}")?,
+            (_, PathKind::DollarCrate(id)) => {
+                // Resolve `$crate` to the crate's display name.
+                // FIXME: should use the dependency name instead if available, but that depends on
+                // the crate invoking `HirDisplay`
+                let crate_graph = f.db.crate_graph();
+                let name = crate_graph[*id]
+                    .display_name
+                    .as_ref()
+                    .map(|name| name.canonical_name())
+                    .unwrap_or("$crate");
+                write!(f, "{name}")?
+            }
         }
 
         for (seg_idx, segment) in self.segments().iter().enumerate() {
