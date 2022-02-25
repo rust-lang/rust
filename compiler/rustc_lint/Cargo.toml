@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-if_chain = "1.0"
 tracing = "0.1"
 unicode-security = "0.0.5"
 rustc_middle = { path = "../rustc_middle" }
