@@ -259,6 +259,8 @@ impl<'a> InferenceContext<'a> {
         // details of coercion errors though, so I think it's useful to leave
         // the structure like it is.
 
+        let snapshot = self.table.snapshot();
+
         let mut autoderef = Autoderef::new(&mut self.table, from_ty.clone());
         let mut first_error = None;
         let mut found = None;
@@ -315,6 +317,7 @@ impl<'a> InferenceContext<'a> {
         let InferOk { value: ty, goals } = match found {
             Some(d) => d,
             None => {
+                self.table.rollback_to(snapshot);
                 let err = first_error.expect("coerce_borrowed_pointer had no error");
                 return Err(err);
             }

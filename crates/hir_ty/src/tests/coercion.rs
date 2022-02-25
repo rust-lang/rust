@@ -243,6 +243,45 @@ fn test() {
 }
 
 #[test]
+fn coerce_autoderef_implication_1() {
+    check_no_mismatches(
+        r"
+//- minicore: deref
+struct Foo<T>;
+impl core::ops::Deref for Foo<u32> { type Target = (); }
+
+fn takes_ref_foo<T>(x: &Foo<T>) {}
+fn test() {
+    let foo = Foo;
+      //^^^ type: Foo<{unknown}>
+    takes_ref_foo(&foo);
+
+    let foo = Foo;
+      //^^^ type: Foo<u32>
+    let _: &() = &foo;
+}",
+    );
+}
+
+#[test]
+fn coerce_autoderef_implication_2() {
+    check(
+        r"
+//- minicore: deref
+struct Foo<T>;
+impl core::ops::Deref for Foo<u32> { type Target = (); }
+
+fn takes_ref_foo<T>(x: &Foo<T>) {}
+fn test() {
+    let foo = Foo;
+      //^^^ type: Foo<{unknown}>
+    let _: &u32 = &Foo;
+                //^^^^ expected &u32, got &Foo<{unknown}>
+}",
+    );
+}
+
+#[test]
 fn closure_return_coerce() {
     check_no_mismatches(
         r"
