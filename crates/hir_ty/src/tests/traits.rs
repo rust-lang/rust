@@ -541,6 +541,52 @@ fn test() {
 }
 
 #[test]
+fn infer_ops_index_field() {
+    check_types(
+        r#"
+//- minicore: index
+struct Bar;
+struct Foo {
+    field: u32;
+}
+
+impl core::ops::Index<u32> for Bar {
+    type Output = Foo;
+}
+
+fn test() {
+    let a = Bar;
+    let b = a[1u32].field;
+    b;
+} //^ u32
+"#,
+    );
+}
+
+#[test]
+fn infer_ops_index_field_autoderef() {
+    check_types(
+        r#"
+//- minicore: index
+struct Bar;
+struct Foo {
+    field: u32;
+}
+
+impl core::ops::Index<u32> for Bar {
+    type Output = Foo;
+}
+
+fn test() {
+    let a = Bar;
+    let b = (&a[1u32]).field;
+    b;
+} //^ u32
+"#,
+    );
+}
+
+#[test]
 fn infer_ops_index_int() {
     check_types(
         r#"

@@ -90,10 +90,9 @@ fn get_impl_method(
     let impl_def: hir::Impl = ctx.sema.to_def(impl_)?;
 
     let scope = ctx.sema.scope(impl_.syntax());
-    let krate = impl_def.module(db).krate();
     let ty = impl_def.self_ty(db);
     let traits_in_scope = scope.visible_traits();
-    ty.iterate_method_candidates(db, krate, &traits_in_scope, None, Some(fn_name), |_, func| {
+    ty.iterate_method_candidates(db, &scope, &traits_in_scope, None, Some(fn_name), |func| {
         Some(func)
     })
 }

@@ -40,8 +40,7 @@ fn create_chalk_solver() -> chalk_recursive::RecursiveSolver<Interner> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TraitEnvironment {
     pub krate: CrateId,
-    // When we're using Chalk's Ty we can make this a BTreeMap since it's Ord,
-    // but for now it's too annoying...
+    // FIXME make this a BTreeMap
     pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
     pub env: chalk_ir::Environment<Interner>,
 }

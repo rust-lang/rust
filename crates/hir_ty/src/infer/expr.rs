@@ -1,6 +1,7 @@
 //! Type inference for expressions.
 
 use std::{
+    collections::hash_map::Entry,
     iter::{repeat, repeat_with},
     mem,
     sync::Arc,
@@ -26,15 +27,14 @@ use crate::{
     method_resolution,
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
-    traits::FnTrait,
     utils::{generics, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, InEnvironment, Interner,
-    ProjectionTyExt, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar,
+    Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
-    find_breakable, BindingMode, BreakableContext, Diverges, Expectation, InferenceContext,
-    InferenceDiagnostic, TypeMismatch,
+    coerce::auto_deref_adjust_steps, find_breakable, BindingMode, BreakableContext, Diverges,
+    Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -74,51 +74,6 @@ impl<'a> InferenceContext<'a> {
             }
         } else {
             ty
-        }
-    }
-
-    fn callable_sig_from_fn_trait(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
-        let krate = self.resolver.krate()?;
-        let fn_once_trait = FnTrait::FnOnce.get_id(self.db, krate)?;
-        let output_assoc_type =
-            self.db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
-
-        let mut arg_tys = vec![];
-        let arg_ty = TyBuilder::tuple(num_args)
-            .fill(repeat_with(|| {
-                let arg = self.table.new_type_var();
-                arg_tys.push(arg.clone());
-                arg
-            }))
-            .build();
-
-        let projection = {
-            let b = TyBuilder::assoc_type_projection(self.db, output_assoc_type);
-            if b.remaining() != 2 {
-                return None;
-            }
-            b.push(ty.clone()).push(arg_ty).build()
-        };
-
-        let trait_env = self.trait_env.env.clone();
-        let obligation = InEnvironment {
-            goal: projection.trait_ref(self.db).cast(Interner),
-            environment: trait_env,
-        };
-        let canonical = self.canonicalize(obligation.clone());
-        if self.db.trait_solve(krate, canonical.value.cast(Interner)).is_some() {
-            self.push_obligation(obligation.goal);
-            let return_ty = self.table.normalize_projection_ty(projection);
-            Some((arg_tys, return_ty))
-        } else {
-            None
-        }
-    }
-
-    pub(crate) fn callable_sig(&mut self, ty: &Ty, num_args: usize) -> Option<(Vec<Ty>, Ty)> {
-        match ty.callable_sig(self.db) {
-            Some(sig) => Some((sig.params().to_vec(), sig.ret().clone())),
-            None => self.callable_sig_from_fn_trait(ty, num_args),
         }
     }
 
@@ -319,22 +274,19 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let canonicalized = self.canonicalize(callee_ty.clone());
-                let mut derefs = Autoderef::new(
-                    self.db,
-                    self.resolver.krate(),
-                    InEnvironment {
-                        goal: canonicalized.value.clone(),
-                        environment: self.table.trait_env.env.clone(),
-                    },
-                );
-                let res = derefs.by_ref().find_map(|(callee_deref_ty, _)| {
-                    let ty = &canonicalized.decanonicalize_ty(&mut self.table, callee_deref_ty);
-                    self.callable_sig(ty, args.len())
-                });
+                let mut derefs = Autoderef::new(&mut self.table, callee_ty.clone());
+                let mut res = None;
+                // manual loop to be able to access `derefs.table`
+                while let Some((callee_deref_ty, _)) = derefs.next() {
+                    res = derefs.table.callable_sig(&callee_deref_ty, args.len());
+                    if res.is_some() {
+                        break;
+                    }
+                }
                 let (param_tys, ret_ty): (Vec<Ty>, Ty) = match res {
                     Some(res) => {
-                        self.write_expr_adj(*callee, self.auto_deref_adjust_steps(&derefs));
+                        let adjustments = auto_deref_adjust_steps(&derefs);
+                        self.write_expr_adj(*callee, adjustments);
                         res
                     }
                     None => (Vec::new(), self.err_ty()),
@@ -489,88 +441,67 @@ impl<'a> InferenceContext<'a> {
             }
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                let canonicalized = self.canonicalize(receiver_ty);
 
-                let mut autoderef = Autoderef::new(
-                    self.db,
-                    self.resolver.krate(),
-                    InEnvironment {
-                        goal: canonicalized.value.clone(),
-                        environment: self.trait_env.env.clone(),
-                    },
-                );
+                let mut autoderef = Autoderef::new(&mut self.table, receiver_ty);
                 let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
-                    let module = self.resolver.module();
-                    let db = self.db;
-                    let is_visible = |field_id: &FieldId| {
-                        module
-                            .map(|mod_id| {
-                                db.field_visibilities(field_id.parent)[field_id.local_id]
-                                    .is_visible_from(db.upcast(), mod_id)
-                            })
-                            .unwrap_or(true)
-                    };
-                    match canonicalized
-                        .decanonicalize_ty(&mut self.table, derefed_ty)
-                        .kind(Interner)
-                    {
-                        TyKind::Tuple(_, substs) => name.as_tuple_index().and_then(|idx| {
-                            substs
-                                .as_slice(Interner)
-                                .get(idx)
-                                .map(|a| a.assert_ty_ref(Interner))
-                                .cloned()
-                        }),
+                    let (field_id, parameters) = match derefed_ty.kind(Interner) {
+                        TyKind::Tuple(_, substs) => {
+                            return name.as_tuple_index().and_then(|idx| {
+                                substs
+                                    .as_slice(Interner)
+                                    .get(idx)
+                                    .map(|a| a.assert_ty_ref(Interner))
+                                    .cloned()
+                            });
+                        }
                         TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
                             let local_id = self.db.struct_data(*s).variant_data.field(name)?;
                             let field = FieldId { parent: (*s).into(), local_id };
-                            if is_visible(&field) {
-                                self.write_field_resolution(tgt_expr, field);
-                                Some(
-                                    self.db.field_types((*s).into())[field.local_id]
-                                        .clone()
-                                        .substitute(Interner, &parameters),
-                                )
-                            } else {
-                                // Write down the first field resolution even if it is not visible
-                                // This aids IDE features for private fields like goto def and in
-                                // case of autoderef finding an applicable field, this will be
-                                // overwritten in a following cycle
-                                self.write_field_resolution_if_empty(tgt_expr, field);
-                                None
-                            }
+                            (field, parameters.clone())
                         }
                         TyKind::Adt(AdtId(hir_def::AdtId::UnionId(u)), parameters) => {
                             let local_id = self.db.union_data(*u).variant_data.field(name)?;
                             let field = FieldId { parent: (*u).into(), local_id };
-                            if is_visible(&field) {
-                                self.write_field_resolution(tgt_expr, field);
-                                Some(
-                                    self.db.field_types((*u).into())[field.local_id]
-                                        .clone()
-                                        .substitute(Interner, &parameters),
-                                )
-                            } else {
-                                // Write down the first field resolution even if it is not visible
-                                // This aids IDE features for private fields like goto def and in
-                                // case of autoderef finding an applicable field, this will be
-                                // overwritten in a following cycle
-                                self.write_field_resolution_if_empty(tgt_expr, field);
-                                None
-                            }
+                            (field, parameters.clone())
                         }
-                        _ => None,
+                        _ => return None,
+                    };
+                    let module = self.resolver.module();
+                    let is_visible = module
+                        .map(|mod_id| {
+                            self.db.field_visibilities(field_id.parent)[field_id.local_id]
+                                .is_visible_from(self.db.upcast(), mod_id)
+                        })
+                        .unwrap_or(true);
+                    if !is_visible {
+                        // Write down the first field resolution even if it is not visible
+                        // This aids IDE features for private fields like goto def and in
+                        // case of autoderef finding an applicable field, this will be
+                        // overwritten in a following cycle
+                        if let Entry::Vacant(entry) = self.result.field_resolutions.entry(tgt_expr)
+                        {
+                            entry.insert(field_id);
+                        }
+                        return None;
                     }
+                    // can't have `write_field_resolution` here because `self.table` is borrowed :(
+                    self.result.field_resolutions.insert(tgt_expr, field_id);
+                    let ty = self.db.field_types(field_id.parent)[field_id.local_id]
+                        .clone()
+                        .substitute(Interner, &parameters);
+                    Some(ty)
                 });
                 let ty = match ty {
                     Some(ty) => {
-                        self.write_expr_adj(*expr, self.auto_deref_adjust_steps(&autoderef));
+                        let adjustments = auto_deref_adjust_steps(&autoderef);
+                        self.write_expr_adj(*expr, adjustments);
+                        let ty = self.insert_type_vars(ty);
+                        let ty = self.normalize_associated_types_in(ty);
                         ty
                     }
-                    None => self.err_ty(),
+                    _ => self.err_ty(),
                 };
-                let ty = self.insert_type_vars(ty);
-                self.normalize_associated_types_in(ty)
+                ty
             }
             Expr::Await { expr } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
@@ -628,25 +559,9 @@ impl<'a> InferenceContext<'a> {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let inner_ty = self.resolve_ty_shallow(&inner_ty);
                 match op {
-                    UnaryOp::Deref => match self.resolver.krate() {
-                        Some(krate) => {
-                            let canonicalized = self.canonicalize(inner_ty);
-                            match autoderef::deref(
-                                self.db,
-                                krate,
-                                InEnvironment {
-                                    goal: &canonicalized.value,
-                                    environment: self.trait_env.env.clone(),
-                                },
-                            ) {
-                                Some(derefed_ty) => {
-                                    canonicalized.decanonicalize_ty(&mut self.table, derefed_ty)
-                                }
-                                None => self.err_ty(),
-                            }
-                        }
-                        None => self.err_ty(),
-                    },
+                    UnaryOp::Deref => {
+                        autoderef::deref(&mut self.table, inner_ty).unwrap_or_else(|| self.err_ty())
+                    }
                     UnaryOp::Neg => {
                         match inner_ty.kind(Interner) {
                             // Fast path for builtins
@@ -732,20 +647,19 @@ impl<'a> InferenceContext<'a> {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
-                if let (Some(index_trait), Some(krate)) =
-                    (self.resolve_ops_index(), self.resolver.krate())
-                {
-                    let canonicalized = self.canonicalize(base_ty);
-                    let self_ty = method_resolution::resolve_indexing_op(
+                if let Some(index_trait) = self.resolve_ops_index() {
+                    let canonicalized = self.canonicalize(base_ty.clone());
+                    let receiver_adjustments = method_resolution::resolve_indexing_op(
                         self.db,
-                        &canonicalized.value,
                         self.trait_env.clone(),
-                        krate,
+                        canonicalized.value,
                         index_trait,
                     );
-                    let self_ty = self_ty.map_or(self.err_ty(), |t| {
-                        canonicalized.decanonicalize_ty(&mut self.table, t)
-                    });
+                    let (self_ty, adj) = receiver_adjustments
+                        .map_or((self.err_ty(), Vec::new()), |adj| {
+                            adj.apply(&mut self.table, base_ty)
+                        });
+                    self.write_expr_adj(*base, adj);
                     self.resolve_associated_type_with_params(
                         self_ty,
                         self.resolve_ops_index_output(),
@@ -992,22 +906,20 @@ impl<'a> InferenceContext<'a> {
 
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
-        let resolved = self.resolver.krate().and_then(|krate| {
-            method_resolution::lookup_method(
-                &canonicalized_receiver.value,
-                self.db,
-                self.trait_env.clone(),
-                krate,
-                &traits_in_scope,
-                self.resolver.module().into(),
-                method_name,
-            )
-        });
+        let resolved = method_resolution::lookup_method(
+            &canonicalized_receiver.value,
+            self.db,
+            self.trait_env.clone(),
+            &traits_in_scope,
+            self.resolver.module().into(),
+            method_name,
+        );
         let (receiver_ty, method_ty, substs) = match resolved {
-            Some((ty, func)) => {
-                let ty = canonicalized_receiver.decanonicalize_ty(&mut self.table, ty);
+            Some((adjust, func)) => {
+                let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
                 let generics = generics(self.db.upcast(), func.into());
-                let substs = self.substs_for_method_call(generics, generic_args, &ty);
+                let substs = self.substs_for_method_call(generics, generic_args);
+                self.write_expr_adj(receiver, adjustments);
                 self.write_method_resolution(tgt_expr, func, substs.clone());
                 (ty, self.db.value_ty(func.into()), substs)
             }
@@ -1120,20 +1032,15 @@ impl<'a> InferenceContext<'a> {
         &mut self,
         def_generics: Generics,
         generic_args: Option<&GenericArgs>,
-        receiver_ty: &Ty,
     ) -> Substitution {
         let (parent_params, self_params, type_params, impl_trait_params) =
             def_generics.provenance_split();
         assert_eq!(self_params, 0); // method shouldn't have another Self param
         let total_len = parent_params + type_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
-        // Parent arguments are unknown, except for the receiver type
-        for (_id, param) in def_generics.iter_parent() {
-            if param.provenance == hir_def::generics::TypeParamProvenance::TraitSelf {
-                substs.push(receiver_ty.clone());
-            } else {
-                substs.push(self.table.new_type_var());
-            }
+        // Parent arguments are unknown
+        for _ in def_generics.iter_parent() {
+            substs.push(self.table.new_type_var());
         }
         // handle provided type arguments
         if let Some(generic_args) = generic_args {

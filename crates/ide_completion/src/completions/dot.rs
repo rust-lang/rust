@@ -74,30 +74,28 @@ fn complete_methods(
     receiver: &hir::Type,
     mut f: impl FnMut(hir::Function),
 ) {
-    if let Some(krate) = ctx.krate {
-        let mut seen_methods = FxHashSet::default();
-        let mut traits_in_scope = ctx.scope.visible_traits();
+    let mut seen_methods = FxHashSet::default();
+    let mut traits_in_scope = ctx.scope.visible_traits();
 
-        // Remove drop from the environment as calling `Drop::drop` is not allowed
-        if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
-            cov_mark::hit!(dot_remove_drop_trait);
-            traits_in_scope.remove(&drop_trait.into());
-        }
-
-        receiver.iterate_method_candidates(
-            ctx.db,
-            krate,
-            &traits_in_scope,
-            ctx.module,
-            None,
-            |_ty, func| {
-                if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
-                    f(func);
-                }
-                None::<()>
-            },
-        );
+    // Remove drop from the environment as calling `Drop::drop` is not allowed
+    if let Some(drop_trait) = ctx.famous_defs().core_ops_Drop() {
+        cov_mark::hit!(dot_remove_drop_trait);
+        traits_in_scope.remove(&drop_trait.into());
     }
+
+    receiver.iterate_method_candidates(
+        ctx.db,
+        &ctx.scope,
+        &traits_in_scope,
+        ctx.module,
+        None,
+        |func| {
+            if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {
+                f(func);
+            }
+            None::<()>
+        },
+    );
 }
 
 #[cfg(test)]

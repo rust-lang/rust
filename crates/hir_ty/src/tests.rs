@@ -100,6 +100,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                         .trim_start_matches("adjustments: ")
                         .split(',')
                         .map(|it| it.trim().to_string())
+                        .filter(|it| !it.is_empty())
                         .collect(),
                 );
             } else {

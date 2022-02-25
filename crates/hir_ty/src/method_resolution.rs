@@ -17,10 +17,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::never;
 
 use crate::{
-    autoderef,
+    autoderef::{self, AutoderefKind},
     consteval::{self, ConstExt},
     db::HirDatabase,
     from_foreign_def_id,
+    infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
     primitive::{self, FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
@@ -429,28 +430,25 @@ pub fn def_crates(
     Some(res)
 }
 
-/// Look up the method with the given name, returning the actual autoderefed
-/// receiver type (but without autoref applied yet).
+/// Look up the method with the given name.
 pub(crate) fn lookup_method(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: &Name,
-) -> Option<(Canonical<Ty>, FunctionId)> {
+) -> Option<(ReceiverAdjustments, FunctionId)> {
     iterate_method_candidates(
         ty,
         db,
         env,
-        krate,
         traits_in_scope,
         visible_from_module,
         Some(name),
         LookupMode::MethodCall,
-        |ty, f| match f {
-            AssocItemId::FunctionId(f) => Some((ty.clone(), f)),
+        |adjustments, f| match f {
+            AssocItemId::FunctionId(f) => Some((adjustments, f)),
             _ => None,
         },
     )
@@ -496,33 +494,89 @@ impl From<Option<BlockId>> for VisibleFromModule {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ReceiverAdjustments {
+    autoref: Option<Mutability>,
+    autoderefs: usize,
+    unsize_array: bool,
+}
+
+impl ReceiverAdjustments {
+    pub(crate) fn apply(&self, table: &mut InferenceTable, ty: Ty) -> (Ty, Vec<Adjustment>) {
+        let mut ty = ty;
+        let mut adjust = Vec::new();
+        for _ in 0..self.autoderefs {
+            match autoderef::autoderef_step(table, ty.clone()) {
+                None => {
+                    never!("autoderef not possible for {:?}", ty);
+                    ty = TyKind::Error.intern(Interner);
+                    break;
+                }
+                Some((kind, new_ty)) => {
+                    ty = new_ty.clone();
+                    adjust.push(Adjustment {
+                        kind: Adjust::Deref(match kind {
+                            // FIXME should we know the mutability here?
+                            AutoderefKind::Overloaded => Some(OverloadedDeref(Mutability::Not)),
+                            AutoderefKind::Builtin => None,
+                        }),
+                        target: new_ty,
+                    });
+                }
+            }
+        }
+        if self.unsize_array {
+            ty = match ty.kind(Interner) {
+                TyKind::Array(inner, _) => TyKind::Slice(inner.clone()).intern(Interner),
+                _ => {
+                    never!("unsize_array with non-array {:?}", ty);
+                    ty
+                }
+            };
+            // FIXME this is kind of wrong since the unsize needs to happen to a pointer/reference
+            adjust.push(Adjustment {
+                kind: Adjust::Pointer(PointerCast::Unsize),
+                target: ty.clone(),
+            });
+        }
+        if let Some(m) = self.autoref {
+            ty = TyKind::Ref(m, static_lifetime(), ty).intern(Interner);
+            adjust
+                .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(m)), target: ty.clone() });
+        }
+        (ty, adjust)
+    }
+
+    fn with_autoref(&self, m: Mutability) -> ReceiverAdjustments {
+        Self { autoref: Some(m), ..*self }
+    }
+}
+
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplDefs`.
 // FIXME add a context type here?
-pub fn iterate_method_candidates<T>(
+pub(crate) fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    mut callback: impl FnMut(&Canonical<Ty>, AssocItemId) -> Option<T>,
+    mut callback: impl FnMut(ReceiverAdjustments, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
     iterate_method_candidates_dyn(
         ty,
         db,
         env,
-        krate,
         traits_in_scope,
         visible_from_module,
         name,
         mode,
-        &mut |ty, item| {
+        &mut |adj, item| {
             assert!(slot.is_none());
-            if let Some(it) = callback(ty, item) {
+            if let Some(it) = callback(adj, item) {
                 slot = Some(it);
                 return ControlFlow::Break(());
             }
@@ -532,28 +586,45 @@ pub fn iterate_method_candidates<T>(
     slot
 }
 
+pub fn iterate_path_candidates(
+    ty: &Canonical<Ty>,
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    traits_in_scope: &FxHashSet<TraitId>,
+    visible_from_module: VisibleFromModule,
+    name: Option<&Name>,
+    callback: &mut dyn FnMut(AssocItemId) -> ControlFlow<()>,
+) -> ControlFlow<()> {
+    iterate_method_candidates_dyn(
+        ty,
+        db,
+        env,
+        traits_in_scope,
+        visible_from_module,
+        name,
+        LookupMode::Path,
+        // the adjustments are not relevant for path lookup
+        &mut |_, id| callback(id),
+    )
+}
+
 pub fn iterate_method_candidates_dyn(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     match mode {
         LookupMode::MethodCall => {
-            // For method calls, rust first does any number of autoderef, and then one
-            // autoref (i.e. when the method takes &self or &mut self). We just ignore
-            // the autoref currently -- when we find a method matching the given name,
-            // we assume it fits.
-
-            // Also note that when we've got a receiver like &S, even if the method we
-            // find in the end takes &self, we still do the autoderef step (just as
-            // rustc does an autoderef and then autoref again).
-            let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
+            // For method calls, rust first does any number of autoderef, and
+            // then one autoref (i.e. when the method takes &self or &mut self).
+            // Note that when we've got a receiver like &S, even if the method
+            // we find in the end takes &self, we still do the autoderef step
+            // (just as rustc does an autoderef and then autoref again).
 
             // We have to be careful about the order we're looking at candidates
             // in here. Consider the case where we're resolving `x.clone()`
@@ -568,29 +639,31 @@ pub fn iterate_method_candidates_dyn(
             // the methods by autoderef order of *receiver types*, not *self
             // types*.
 
-            let deref_chain = autoderef_method_receiver(db, krate, ty);
-            let mut deref_chains = stdx::slice_tails(&deref_chain);
+            let mut table = InferenceTable::new(db, env.clone());
+            let ty = table.instantiate_canonical(ty.clone());
+            let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
+            let deref_chains = stdx::slice_tails(&deref_chain);
 
-            deref_chains.try_for_each(|deref_chain| {
+            let result = deref_chains.zip(adj).try_for_each(|(deref_chain, adj)| {
                 iterate_method_candidates_with_autoref(
                     deref_chain,
+                    adj,
                     db,
                     env.clone(),
-                    krate,
                     traits_in_scope,
                     visible_from_module,
                     name,
                     callback,
                 )
-            })
+            });
+            result
         }
         LookupMode::Path => {
             // No autoderef for path lookups
             iterate_method_candidates_for_self_ty(
                 ty,
                 db,
-                env,
-                krate,
+                env.clone(),
                 traits_in_scope,
                 visible_from_module,
                 name,
@@ -602,27 +675,27 @@ pub fn iterate_method_candidates_dyn(
 
 fn iterate_method_candidates_with_autoref(
     deref_chain: &[Canonical<Ty>],
+    first_adjustment: ReceiverAdjustments,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let (receiver_ty, rest) = match deref_chain.split_first() {
-        Some((rec, rest)) => (rec.clone(), rest),
+        Some((rec, rest)) => (rec, rest),
         None => {
             never!("received empty deref-chain");
             return ControlFlow::Break(());
         }
     };
     iterate_method_candidates_by_receiver(
-        &receiver_ty,
+        receiver_ty,
+        first_adjustment.clone(),
         &rest,
         db,
         env.clone(),
-        krate,
         traits_in_scope,
         visible_from_module,
         name,
@@ -630,17 +703,17 @@ fn iterate_method_candidates_with_autoref(
     )?;
 
     let refed = Canonical {
-        binders: receiver_ty.binders.clone(),
         value: TyKind::Ref(Mutability::Not, static_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
+        binders: receiver_ty.binders.clone(),
     };
 
     iterate_method_candidates_by_receiver(
         &refed,
+        first_adjustment.with_autoref(Mutability::Not),
         deref_chain,
         db,
         env.clone(),
-        krate,
         traits_in_scope,
         visible_from_module,
         name,
@@ -648,16 +721,17 @@ fn iterate_method_candidates_with_autoref(
     )?;
 
     let ref_muted = Canonical {
-        binders: receiver_ty.binders,
-        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value).intern(Interner),
+        value: TyKind::Ref(Mutability::Mut, static_lifetime(), receiver_ty.value.clone())
+            .intern(Interner),
+        binders: receiver_ty.binders.clone(),
     };
 
     iterate_method_candidates_by_receiver(
         &ref_muted,
+        first_adjustment.with_autoref(Mutability::Mut),
         deref_chain,
         db,
-        env,
-        krate,
+        env.clone(),
         traits_in_scope,
         visible_from_module,
         name,
@@ -667,14 +741,14 @@ fn iterate_method_candidates_with_autoref(
 
 fn iterate_method_candidates_by_receiver(
     receiver_ty: &Canonical<Ty>,
+    receiver_adjustments: ReceiverAdjustments,
     rest_of_deref_chain: &[Canonical<Ty>],
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
@@ -686,7 +760,7 @@ fn iterate_method_candidates_by_receiver(
             env.clone(),
             name,
             Some(receiver_ty),
-            krate,
+            Some(receiver_adjustments.clone()),
             visible_from_module,
             &mut callback,
         )?
@@ -697,10 +771,10 @@ fn iterate_method_candidates_by_receiver(
             self_ty,
             db,
             env.clone(),
-            krate,
             traits_in_scope,
             name,
             Some(receiver_ty),
+            Some(receiver_adjustments.clone()),
             &mut callback,
         )?
     }
@@ -712,11 +786,10 @@ fn iterate_method_candidates_for_self_ty(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     iterate_inherent_methods(
         self_ty,
@@ -724,24 +797,24 @@ fn iterate_method_candidates_for_self_ty(
         env.clone(),
         name,
         None,
-        krate,
+        None,
         visible_from_module,
         &mut callback,
     )?;
-    iterate_trait_method_candidates(self_ty, db, env, krate, traits_in_scope, name, None, callback)
+    iterate_trait_method_candidates(self_ty, db, env, traits_in_scope, name, None, None, callback)
 }
 
 fn iterate_trait_method_candidates(
     self_ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     traits_in_scope: &FxHashSet<TraitId>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
-    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    receiver_adjustments: Option<ReceiverAdjustments>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let receiver_is_array = matches!(self_ty.value.kind(Interner), chalk_ir::TyKind::Array(..));
+    let self_is_array = matches!(self_ty.value.kind(Interner), chalk_ir::TyKind::Array(..));
     // if ty is `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait =
         self_ty.value.dyn_trait().into_iter().flat_map(|t| all_super_traits(db.upcast(), t));
@@ -763,10 +836,10 @@ fn iterate_trait_method_candidates(
         // 2021.
         // This is to make `[a].into_iter()` not break code with the new `IntoIterator` impl for
         // arrays.
-        if data.skip_array_during_method_dispatch && receiver_is_array {
+        if data.skip_array_during_method_dispatch && self_is_array {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if db.crate_graph()[krate].edition < Edition::Edition2021 {
+            if db.crate_graph()[env.krate].edition < Edition::Edition2021 {
                 continue;
             }
         }
@@ -782,14 +855,13 @@ fn iterate_trait_method_candidates(
                 continue;
             }
             if !known_implemented {
-                let goal = generic_implements_goal(db, env.clone(), t, self_ty.clone());
-                if db.trait_solve(krate, goal.cast(Interner)).is_none() {
+                let goal = generic_implements_goal(db, env.clone(), t, self_ty);
+                if db.trait_solve(env.krate, goal.cast(Interner)).is_none() {
                     continue 'traits;
                 }
             }
             known_implemented = true;
-            // FIXME: we shouldn't be ignoring the binders here
-            callback(self_ty, item)?
+            callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
         }
     }
     ControlFlow::Continue(())
@@ -824,11 +896,11 @@ fn iterate_inherent_methods(
     env: Arc<TraitEnvironment>,
     name: Option<&Name>,
     receiver_ty: Option<&Canonical<Ty>>,
-    krate: CrateId,
+    receiver_adjustments: Option<ReceiverAdjustments>,
     visible_from_module: VisibleFromModule,
-    callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
-    let def_crates = match def_crates(db, &self_ty.value, krate) {
+    let def_crates = match def_crates(db, &self_ty.value, env.krate) {
         Some(k) => k,
         None => return ControlFlow::Continue(()),
     };
@@ -848,6 +920,7 @@ fn iterate_inherent_methods(
                 env.clone(),
                 name,
                 receiver_ty,
+                receiver_adjustments.clone(),
                 module,
                 callback,
             )?;
@@ -856,7 +929,17 @@ fn iterate_inherent_methods(
 
     for krate in def_crates {
         let impls = db.inherent_impls_in_crate(krate);
-        impls_for_self_ty(&impls, self_ty, db, env.clone(), name, receiver_ty, module, callback)?;
+        impls_for_self_ty(
+            &impls,
+            self_ty,
+            db,
+            env.clone(),
+            name,
+            receiver_ty,
+            receiver_adjustments.clone(),
+            module,
+            callback,
+        )?;
     }
     return ControlFlow::Continue(());
 
@@ -867,8 +950,9 @@ fn iterate_inherent_methods(
         env: Arc<TraitEnvironment>,
         name: Option<&Name>,
         receiver_ty: Option<&Canonical<Ty>>,
+        receiver_adjustments: Option<ReceiverAdjustments>,
         visible_from_module: Option<ModuleId>,
-        callback: &mut dyn FnMut(&Canonical<Ty>, AssocItemId) -> ControlFlow<()>,
+        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         let impls_for_self_ty = filter_inherent_impls_for_self_ty(impls, &self_ty.value);
         for &impl_def in impls_for_self_ty {
@@ -889,33 +973,32 @@ fn iterate_inherent_methods(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none()
-                    && inherent_impl_substs(db, env.clone(), impl_def, self_ty).is_none()
+                    && inherent_impl_substs(db, env.clone(), impl_def, &self_ty).is_none()
                 {
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
                 }
-                let receiver_ty = receiver_ty.unwrap_or(self_ty);
-                callback(receiver_ty, item)?;
+                callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
             }
         }
         ControlFlow::Continue(())
     }
 }
 
-/// Returns the self type for the index trait call.
+/// Returns the receiver type for the index trait call.
 pub fn resolve_indexing_op(
     db: &dyn HirDatabase,
-    ty: &Canonical<Ty>,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
+    ty: Canonical<Ty>,
     index_trait: TraitId,
-) -> Option<Canonical<Ty>> {
-    let ty = InEnvironment { goal: ty.clone(), environment: env.env.clone() };
-    let deref_chain = autoderef_method_receiver(db, krate, ty);
-    for ty in deref_chain {
-        let goal = generic_implements_goal(db, env.clone(), index_trait, ty.clone());
-        if db.trait_solve(krate, goal.cast(Interner)).is_some() {
-            return Some(ty);
+) -> Option<ReceiverAdjustments> {
+    let mut table = InferenceTable::new(db, env.clone());
+    let ty = table.instantiate_canonical(ty);
+    let (deref_chain, adj) = autoderef_method_receiver(&mut table, ty);
+    for (ty, adj) in deref_chain.into_iter().zip(adj) {
+        let goal = generic_implements_goal(db, env.clone(), index_trait, &ty);
+        if db.trait_solve(env.krate, goal.cast(Interner)).is_some() {
+            return Some(adj);
         }
     }
     None
@@ -1067,11 +1150,10 @@ pub fn implements_trait(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal.cast(Interner));
+    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     solution.is_some()
 }
@@ -1080,11 +1162,10 @@ pub fn implements_trait_unique(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
-    krate: CrateId,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal.cast(Interner));
+    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))
 }
@@ -1095,11 +1176,11 @@ fn generic_implements_goal(
     db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
-    self_ty: Canonical<Ty>,
+    self_ty: &Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::DomainGoal>> {
     let mut kinds = self_ty.binders.interned().to_vec();
     let trait_ref = TyBuilder::trait_ref(db, trait_)
-        .push(self_ty.value)
+        .push(self_ty.value.clone())
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
     kinds.extend(
@@ -1117,17 +1198,27 @@ fn generic_implements_goal(
 }
 
 fn autoderef_method_receiver(
-    db: &dyn HirDatabase,
-    krate: CrateId,
-    ty: InEnvironment<Canonical<Ty>>,
-) -> Vec<Canonical<Ty>> {
-    let mut deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty).collect();
-    // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
-    if let Some(TyKind::Array(parameters, _)) = deref_chain.last().map(|ty| ty.value.kind(Interner))
-    {
-        let kinds = deref_chain.last().unwrap().binders.clone();
-        let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
-        deref_chain.push(Canonical { value: unsized_ty, binders: kinds })
+    table: &mut InferenceTable,
+    ty: Ty,
+) -> (Vec<Canonical<Ty>>, Vec<ReceiverAdjustments>) {
+    let (mut deref_chain, mut adjustments): (Vec<_>, Vec<_>) = (Vec::new(), Vec::new());
+    let mut autoderef = autoderef::Autoderef::new(table, ty);
+    while let Some((ty, derefs)) = autoderef.next() {
+        deref_chain.push(autoderef.table.canonicalize(ty).value);
+        adjustments.push(ReceiverAdjustments {
+            autoref: None,
+            autoderefs: derefs,
+            unsize_array: false,
+        });
     }
-    deref_chain
+    // As a last step, we can do array unsizing (that's the only unsizing that rustc does for method receivers!)
+    if let (Some((TyKind::Array(parameters, _), binders)), Some(adj)) = (
+        deref_chain.last().map(|ty| (ty.value.kind(Interner), ty.binders.clone())),
+        adjustments.last().cloned(),
+    ) {
+        let unsized_ty = TyKind::Slice(parameters.clone()).intern(Interner);
+        deref_chain.push(Canonical { value: unsized_ty, binders });
+        adjustments.push(ReceiverAdjustments { unsize_array: true, ..adj });
+    }
+    (deref_chain, adjustments)
 }

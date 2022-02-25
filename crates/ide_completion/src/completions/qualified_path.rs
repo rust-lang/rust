@@ -138,11 +138,11 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                 let traits_in_scope = ctx.scope.visible_traits();
                 ty.iterate_path_candidates(
                     ctx.db,
-                    krate,
+                    &ctx.scope,
                     &traits_in_scope,
                     ctx.module,
                     None,
-                    |_ty, item| {
+                    |item| {
                         add_assoc_item(acc, ctx, item);
                         None::<()>
                     },
@@ -164,35 +164,33 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             }
         }
         hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_) => {
-            if let Some(krate) = ctx.krate {
-                let ty = match resolution {
-                    hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
-                    hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
-                    _ => return,
-                };
+            let ty = match resolution {
+                hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
+                hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
+                _ => return,
+            };
 
-                if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                    add_enum_variants(acc, ctx, e);
-                }
-
-                let traits_in_scope = ctx.scope.visible_traits();
-                let mut seen = FxHashSet::default();
-                ty.iterate_path_candidates(
-                    ctx.db,
-                    krate,
-                    &traits_in_scope,
-                    ctx.module,
-                    None,
-                    |_ty, item| {
-                        // We might iterate candidates of a trait multiple times here, so deduplicate
-                        // them.
-                        if seen.insert(item) {
-                            add_assoc_item(acc, ctx, item);
-                        }
-                        None::<()>
-                    },
-                );
+            if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
+                add_enum_variants(acc, ctx, e);
             }
+
+            let traits_in_scope = ctx.scope.visible_traits();
+            let mut seen = FxHashSet::default();
+            ty.iterate_path_candidates(
+                ctx.db,
+                &ctx.scope,
+                &traits_in_scope,
+                ctx.module,
+                None,
+                |item| {
+                    // We might iterate candidates of a trait multiple times here, so deduplicate
+                    // them.
+                    if seen.insert(item) {
+                        add_assoc_item(acc, ctx, item);
+                    }
+                    None::<()>
+                },
+            );
         }
         _ => {}
     }

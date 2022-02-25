@@ -1460,3 +1460,121 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn deref_fun_1() {
+    check_types(
+        r#"
+//- minicore: deref
+
+struct A<T, U>(T, U);
+struct B<T>(T);
+struct C<T>(T);
+
+impl<T> core::ops::Deref for A<B<T>, u32> {
+    type Target = B<T>;
+    fn deref(&self) -> &B<T> { &self.0 }
+}
+impl core::ops::Deref for B<isize> {
+    type Target = C<isize>;
+    fn deref(&self) -> &C<isize> { loop {} }
+}
+
+impl<T: Copy> C<T> {
+    fn thing(&self) -> T { self.0 }
+}
+
+fn make<T>() -> T { loop {} }
+
+fn test() {
+    let a1 = A(make(), make());
+    let _: usize = (*a1).0;
+    a1;
+  //^^ A<B<usize>, u32>
+
+    let a2 = A(make(), make());
+    a2.thing();
+  //^^^^^^^^^^ isize
+    a2;
+  //^^ A<B<isize>, u32>
+}
+"#,
+    );
+}
+
+#[test]
+fn deref_fun_2() {
+    check_types(
+        r#"
+//- minicore: deref
+
+struct A<T, U>(T, U);
+struct B<T>(T);
+struct C<T>(T);
+
+impl<T> core::ops::Deref for A<B<T>, u32> {
+    type Target = B<T>;
+    fn deref(&self) -> &B<T> { &self.0 }
+}
+impl core::ops::Deref for B<isize> {
+    type Target = C<isize>;
+    fn deref(&self) -> &C<isize> { loop {} }
+}
+
+impl<T> core::ops::Deref for A<C<T>, i32> {
+    type Target = C<T>;
+    fn deref(&self) -> &C<T> { &self.0 }
+}
+
+impl<T: Copy> C<T> {
+    fn thing(&self) -> T { self.0 }
+}
+
+fn make<T>() -> T { loop {} }
+
+fn test() {
+    let a1 = A(make(), 1u32);
+    a1.thing();
+    a1;
+  //^^ A<B<isize>, u32>
+
+    let a2 = A(make(), 1i32);
+    let _: &str = a2.thing();
+    a2;
+  //^^ A<C<&str>, i32>
+}
+"#,
+    );
+}
+
+#[test]
+fn receiver_adjustment_autoref() {
+    check(
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self) {}
+}
+fn test() {
+    Foo.foo();
+  //^^^ adjustments: Borrow(Ref(Not))
+    (&Foo).foo();
+  // ^^^^ adjustments: ,
+}
+"#,
+    );
+}
+
+#[test]
+fn receiver_adjustment_unsize_array() {
+    // FIXME not quite correct
+    check(
+        r#"
+//- minicore: slice
+fn test() {
+    let a = [1, 2, 3];
+    a.len();
+} //^ adjustments: Pointer(Unsize), Borrow(Ref(Not))
+"#,
+    );
+}

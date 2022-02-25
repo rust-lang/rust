@@ -222,11 +222,11 @@ impl<'db> ResolutionScope<'db> {
             let module = self.scope.module()?;
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
-                module.krate(),
+                &self.scope,
                 &self.scope.visible_traits(),
                 Some(module),
                 None,
-                |_ty, assoc_item| {
+                |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;
                     if item_name.to_smol_str().as_str() == name.text() {
                         Some(hir::PathResolution::AssocItem(assoc_item))

@@ -371,7 +371,7 @@ fn handle_ref_field_usage(ctx: &AssistContext, field_expr: &FieldExpr) -> RefDat
             fn is_auto_ref(ctx: &AssistContext, call_expr: &MethodCallExpr) -> bool {
                 fn impl_(ctx: &AssistContext, call_expr: &MethodCallExpr) -> Option<bool> {
                     let rec = call_expr.receiver()?;
-                    let rec_ty = ctx.sema.type_of_expr(&rec)?.adjusted();
+                    let rec_ty = ctx.sema.type_of_expr(&rec)?.original();
                     // input must be actual value
                     if rec_ty.is_reference() {
                         return Some(false);

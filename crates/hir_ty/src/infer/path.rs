@@ -218,14 +218,12 @@ impl<'a> InferenceContext<'a> {
         }
 
         let canonical_ty = self.canonicalize(ty.clone());
-        let krate = self.resolver.krate()?;
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         method_resolution::iterate_method_candidates(
             &canonical_ty.value,
             self.db,
             self.table.trait_env.clone(),
-            krate,
             &traits_in_scope,
             self.resolver.module().into(),
             Some(name),
