@@ -253,6 +253,7 @@ pub mod known {
         std_panic,
         stringify,
         trace_macros,
+        unreachable,
         // Builtin derives
         Copy,
         Clone,

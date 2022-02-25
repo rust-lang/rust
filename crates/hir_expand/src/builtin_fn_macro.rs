@@ -114,6 +114,7 @@ register_builtin! {
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
+    (unreachable, Unreachable) => unreachable_expand,
     (log_syntax, LogSyntax) => log_syntax_expand,
     (trace_macros, TraceMacros) => trace_macros_expand,
 
@@ -347,6 +348,25 @@ fn panic_expand(
         quote!(#krate::panic::panic_2021!)
     } else {
         quote!(#krate::panic::panic_2015!)
+    };
+
+    // Pass the original arguments
+    call.token_trees.push(tt::TokenTree::Subtree(tt.clone()));
+    ExpandResult::ok(call)
+}
+
+fn unreachable_expand(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    tt: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
+    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
+    // Expand to a macro call `$crate::panic::unreachable_{edition}`
+    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
+    let mut call = if db.crate_graph()[loc.krate].edition == Edition::Edition2021 {
+        quote!(#krate::panic::unreachable_2021!)
+    } else {
+        quote!(#krate::panic::unreachable_2015!)
     };
 
     // Pass the original arguments
