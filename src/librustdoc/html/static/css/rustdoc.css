@@ -833,6 +833,9 @@ h2.small-section-header > .anchor {
 .anchor::before {
 	content: '§';
 }
+.doc-anchor {
+	margin-right: 6px;
+}
 
 .docblock a:not(.srclink):not(.test-arrow):hover,
 .docblock-short a:not(.srclink):not(.test-arrow):hover, .item-info a {
