@@ -758,7 +758,6 @@ fn test_debugging_options_tracking_hash() {
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
-    tracked!(partially_uninit_const_threshold, Some(123));
     tracked!(pick_stable_methods_before_any_unstable, false);
     tracked!(plt, Some(true));
     tracked!(polonius, true);
@@ -789,6 +788,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
     tracked!(tune_cpu, Some(String::from("abc")));
+    tracked!(uninit_const_chunk_threshold, 123);
     tracked!(unleash_the_miri_inside_of_you, true);
     tracked!(use_ctors_section, Some(true));
     tracked!(verify_llvm_ir, true);

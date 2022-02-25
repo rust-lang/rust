@@ -2,6 +2,7 @@ use crate::base;
 use crate::common::CodegenCx;
 use crate::debuginfo;
 use crate::llvm::{self, True};
+use crate::llvm_util;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -37,7 +38,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
         alloc: &'a Allocation,
         range: Range<usize>,
     ) {
-        let mut chunks = alloc
+        let chunks = alloc
             .init_mask()
             .range_as_init_chunks(Size::from_bytes(range.start), Size::from_bytes(range.end));
 
@@ -53,30 +54,26 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
             }
         };
 
-        // Generating partially-uninit consts inhibits optimizations, so it is disabled by default.
-        // See https://github.com/rust-lang/rust/issues/84565.
-        let allow_partially_uninit =
-            match cx.sess().opts.debugging_opts.partially_uninit_const_threshold {
-                Some(max) => range.len() <= max,
-                None => false,
-            };
+        // Generating partially-uninit consts is limited to small numbers of chunks,
+        // to avoid the cost of generating large complex const expressions.
+        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
+        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
+        let max = if llvm_util::get_version() < (14, 0, 0) {
+            // Generating partially-uninit consts inhibits optimizations in LLVM < 14.
+            // See https://github.com/rust-lang/rust/issues/84565.
+            1
+        } else {
+            cx.sess().opts.debugging_opts.uninit_const_chunk_threshold
+        };
+        let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
-        if allow_partially_uninit {
+        if allow_uninit_chunks {
             llvals.extend(chunks.map(chunk_to_llval));
         } else {
-            let llval = match (chunks.next(), chunks.next()) {
-                (Some(chunk), None) => {
-                    // exactly one chunk, either fully init or fully uninit
-                    chunk_to_llval(chunk)
-                }
-                _ => {
-                    // partially uninit, codegen as if it was initialized
-                    // (using some arbitrary value for uninit bytes)
-                    let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
-                    cx.const_bytes(bytes)
-                }
-            };
-            llvals.push(llval);
+            // If this allocation contains any uninit bytes, codegen as if it was initialized
+            // (using some arbitrary value for uninit bytes).
+            let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(range);
+            llvals.push(cx.const_bytes(bytes));
         }
     }
 
