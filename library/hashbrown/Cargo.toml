@@ -3,13 +3,14 @@ name = "hashbrown"
 version = "0.12.0"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
 description = "A Rust port of Google's SwissTable hash map"
-license = "Apache-2.0/MIT"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/hashbrown"
 readme = "README.md"
 keywords = ["hash", "no_std", "hashmap", "swisstable"]
 categories = ["data-structures", "no-std"]
-exclude = [".github", "bors.toml", "/ci/*"]
+exclude = [".github", "/ci/*"]
 edition = "2021"
+rust-version = "1.56.1"
 
 [dependencies]
 # For the default hasher
