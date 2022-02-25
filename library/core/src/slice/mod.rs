@@ -587,11 +587,17 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
-        let _ = &self[a];
-        let _ = &self[b];
-
-        // SAFETY: we just checked that both `a` and `b` are in bounds
-        unsafe { self.swap_unchecked(a, b) }
+        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
+        // Can't take two mutable loans from one vector, so instead use raw pointers.
+        let pa = ptr::addr_of_mut!(self[a]);
+        let pb = ptr::addr_of_mut!(self[b]);
+        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
+        // to elements in the slice and therefore are guaranteed to be valid and aligned.
+        // Note that accessing the elements behind `a` and `b` is checked and will
+        // panic when out of bounds.
+        unsafe {
+            ptr::swap(pa, pb);
+        }
     }
 
     /// Swaps two elements in the slice, without doing bounds checking.
