@@ -116,8 +116,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: since jumps were added and compare_exchange doesn't expect this, the current blocks in the
         // state need to be updated.
-        self.block = Some(while_block);
-        *self.cx.current_block.borrow_mut() = Some(while_block);
+        self.switch_to_block(while_block);
 
         let comparison_operator =
             match operation {
@@ -134,8 +133,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         return_value.to_rvalue()
     }
@@ -1021,8 +1019,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         variable.to_rvalue()
     }

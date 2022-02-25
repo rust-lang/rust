@@ -148,8 +148,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: since jumps were added in a place rustc does not expect, the current block in the
             // state need to be updated.
-            self.block = Some(after_block);
-            *self.cx.current_block.borrow_mut() = Some(after_block);
+            self.switch_to_block(after_block);
 
             result.to_rvalue()
         }
@@ -494,8 +493,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: since jumps were added in a place rustc does not expect, the current block in the
             // state need to be updated.
-            self.block = Some(after_block);
-            *self.cx.current_block.borrow_mut() = Some(after_block);
+            self.switch_to_block(after_block);
 
             result.to_rvalue()
         }

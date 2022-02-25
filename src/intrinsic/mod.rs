@@ -186,8 +186,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     // NOTE: since jumps were added in a place
                                     // count_leading_zeroes() does not expect, the current blocks
                                     // in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(else_block);
-                                    self.block = Some(else_block);
+                                    self.switch_to_block(else_block);
 
                                     let zeros =
                                         match name {
@@ -200,8 +199,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                                     // NOTE: since jumps were added in a place rustc does not
                                     // expect, the current blocks in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(after_block);
-                                    self.block = Some(after_block);
+                                    self.switch_to_block(after_block);
 
                                     result.to_rvalue()
                                 }
@@ -1003,8 +1001,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: since jumps were added in a place rustc does not
             // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }
@@ -1074,8 +1071,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             // NOTE: since jumps were added in a place rustc does not
             // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }
