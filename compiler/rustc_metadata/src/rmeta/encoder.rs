@@ -6,7 +6,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
-use rustc_hir::def::{CtorOf, DefKind};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{
     CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE,
 };
@@ -983,12 +983,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
-            record!(self.tables.opt_def_kind[def_id] <- match def_kind {
-                // Replace Ctor by the enclosing object to avoid leaking details in children crates.
-                DefKind::Ctor(CtorOf::Struct, _) => DefKind::Struct,
-                DefKind::Ctor(CtorOf::Variant, _) => DefKind::Variant,
-                def_kind => def_kind,
-            });
+            record!(self.tables.opt_def_kind[def_id] <- def_kind);
             record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
             record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
