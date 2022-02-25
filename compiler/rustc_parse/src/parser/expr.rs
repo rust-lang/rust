@@ -17,7 +17,7 @@ use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, Lit, UnOp
 use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
 use rustc_ast::{Arm, Async, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::edition::LATEST_STABLE_EDITION;
@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
         let parser_snapshot_before_type = self.clone();
         let cast_expr = match self.parse_as_cast_ty() {
             Ok(rhs) => mk_expr(self, lhs, rhs),
-            Err(mut type_err) => {
+            Err(type_err) => {
                 // Rewind to before attempting to parse the type with generics, to recover
                 // from situations like `x as usize < y` in which we first tried to parse
                 // `usize < y` as a type with generic arguments.
@@ -717,7 +717,7 @@ impl<'a> Parser<'a> {
                                     .emit();
                                 return Ok(expr);
                             }
-                            Err(mut err) => {
+                            Err(err) => {
                                 err.cancel();
                                 *self = snapshot;
                             }
@@ -773,7 +773,7 @@ impl<'a> Parser<'a> {
 
                         expr
                     }
-                    Err(mut path_err) => {
+                    Err(path_err) => {
                         // Couldn't parse as a path, return original error and parser state.
                         path_err.cancel();
                         *self = parser_snapshot_after_type;
@@ -1127,7 +1127,7 @@ impl<'a> Parser<'a> {
         snapshot: Option<(Self, ExprKind)>,
     ) -> Option<P<Expr>> {
         match (seq.as_mut(), snapshot) {
-            (Err(ref mut err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
+            (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 let name = pprust::path_to_string(&path);
                 snapshot.bump(); // `(`
                 match snapshot.parse_struct_fields(path, false, token::Paren) {
@@ -1138,11 +1138,12 @@ impl<'a> Parser<'a> {
                         let close_paren = self.prev_token.span;
                         let span = lo.to(self.prev_token.span);
                         if !fields.is_empty() {
-                            err.cancel();
-                            let mut err = self.struct_span_err(
+                            let replacement_err = self.struct_span_err(
                                 span,
                                 "invalid `struct` delimiters or `fn` call arguments",
                             );
+                            mem::replace(err, replacement_err).cancel();
+
                             err.multipart_suggestion(
                                 &format!("if `{}` is a struct, use braces as delimiters", name),
                                 vec![
@@ -1166,7 +1167,9 @@ impl<'a> Parser<'a> {
                         return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
-                    Err(mut err) => err.emit(),
+                    Err(mut err) => {
+                        err.emit();
+                    }
                 }
             }
             _ => {}
@@ -1622,9 +1625,11 @@ impl<'a> Parser<'a> {
                 };
                 if let Some(expr) = expr {
                     if matches!(expr.kind, ExprKind::Err) {
-                        self.diagnostic()
-                            .delay_span_bug(self.token.span, &"invalid interpolated expression");
-                        return self.diagnostic().struct_dummy();
+                        let mut err = self
+                            .diagnostic()
+                            .struct_span_err(self.token.span, &"invalid interpolated expression");
+                        err.downgrade_to_delayed_bug();
+                        return err;
                     }
                 }
             }
@@ -1816,6 +1821,7 @@ impl<'a> Parser<'a> {
                 err
             } else {
                 self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                    .forget_guarantee()
             };
             err.span_label(sp, format!("invalid suffix `{}`", suf));
             err.emit();
@@ -1876,7 +1882,7 @@ impl<'a> Parser<'a> {
                 *self = snapshot;
                 Some(self.mk_expr_err(arr.span))
             }
-            Err(mut e) => {
+            Err(e) => {
                 e.cancel();
                 None
             }
@@ -2097,9 +2103,9 @@ impl<'a> Parser<'a> {
     fn error_missing_if_then_block(
         &self,
         if_span: Span,
-        err: Option<DiagnosticBuilder<'a>>,
+        err: Option<DiagnosticBuilder<'a, ErrorReported>>,
         binop_span: Option<Span>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         let msg = "this `if` expression has a condition, but no block";
 
         let mut err = if let Some(mut err) = err {
@@ -2379,7 +2385,7 @@ impl<'a> Parser<'a> {
                         return Some(err(self, stmts));
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.cancel();
                 }
             }
@@ -2396,7 +2402,7 @@ impl<'a> Parser<'a> {
                 }
                 // We couldn't parse either yet another statement missing it's
                 // enclosing block nor the next arm's pattern or closing brace.
-                Err(mut stmt_err) => {
+                Err(stmt_err) => {
                     stmt_err.cancel();
                     *self = start_snapshot;
                     break;
@@ -2653,7 +2659,7 @@ impl<'a> Parser<'a> {
         let mut base = ast::StructRest::None;
         let mut recover_async = false;
 
-        let mut async_block_err = |e: &mut DiagnosticBuilder<'_>, span: Span| {
+        let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
             e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
             e.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));

@@ -94,7 +94,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             for span in fields.iter().map(|f| tcx.def_span(f.did)) {
                 err.span_label(span, "this field does not implement `Copy`");
             }
-            err.emit()
+            err.emit();
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_did);

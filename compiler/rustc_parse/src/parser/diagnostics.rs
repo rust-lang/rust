@@ -16,7 +16,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorReported};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -53,7 +53,11 @@ pub enum Error {
 }
 
 impl Error {
-    fn span_err(self, sp: impl Into<MultiSpan>, handler: &Handler) -> DiagnosticBuilder<'_> {
+    fn span_err(
+        self,
+        sp: impl Into<MultiSpan>,
+        handler: &Handler,
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         match self {
             Error::UselessDocComment => {
                 let mut err = struct_span_err!(
@@ -151,11 +155,19 @@ impl AttemptLocalParseRecovery {
 }
 
 impl<'a> Parser<'a> {
-    pub(super) fn span_err<S: Into<MultiSpan>>(&self, sp: S, err: Error) -> DiagnosticBuilder<'a> {
+    pub(super) fn span_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        err: Error,
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         err.span_err(sp, self.diagnostic())
     }
 
-    pub fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+    pub fn struct_span_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        m: &str,
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
@@ -171,7 +183,7 @@ impl<'a> Parser<'a> {
         self.sess.source_map().span_to_snippet(span)
     }
 
-    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorReported> {
         let mut err = self.struct_span_err(
             self.token.span,
             &format!("expected identifier, found {}", super::token_descr(&self.token)),
@@ -393,7 +405,7 @@ impl<'a> Parser<'a> {
         Err(err)
     }
 
-    fn check_too_many_raw_str_terminators(&mut self, err: &mut DiagnosticBuilder<'_>) -> bool {
+    fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         match (&self.prev_token.kind, &self.token.kind) {
             (
                 TokenKind::Literal(Lit {
@@ -461,12 +473,12 @@ impl<'a> Parser<'a> {
                     tail.could_be_bare_literal = true;
                     Ok(tail)
                 }
-                (Err(mut err), Ok(tail)) => {
+                (Err(err), Ok(tail)) => {
                     // We have a block tail that contains a somehow valid type ascription expr.
                     err.cancel();
                     Ok(tail)
                 }
-                (Err(mut snapshot_err), Err(err)) => {
+                (Err(snapshot_err), Err(err)) => {
                     // We don't know what went wrong, emit the normal error.
                     snapshot_err.cancel();
                     self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
@@ -483,7 +495,7 @@ impl<'a> Parser<'a> {
 
     pub fn maybe_annotate_with_ascription(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         maybe_expected_semicolon: bool,
     ) {
         if let Some((sp, likely_path)) = self.last_type_ascription.take() {
@@ -537,7 +549,7 @@ impl<'a> Parser<'a> {
     /// Eats and discards tokens until one of `kets` is encountered. Respects token trees,
     /// passes through any errors encountered. Used for error recovery.
     pub(super) fn eat_to_tokens(&mut self, kets: &[&TokenKind]) {
-        if let Err(ref mut err) =
+        if let Err(err) =
             self.parse_seq_to_before_tokens(kets, SeqSep::none(), TokenExpectType::Expect, |p| {
                 Ok(p.parse_token_tree())
             })
@@ -703,7 +715,7 @@ impl<'a> Parser<'a> {
                         *self = snapshot;
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     // We couldn't parse generic parameters, unlikely to be a turbofish. Rely on
                     // generic parse error instead.
                     err.cancel();
@@ -717,7 +729,7 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a>,
+        mut e: DiagnosticBuilder<'a, ErrorReported>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind {
@@ -744,14 +756,14 @@ impl<'a> Parser<'a> {
                                             self.mk_expr_err(expr.span.to(self.prev_token.span));
                                         return Ok(());
                                     }
-                                    Err(mut err) => {
+                                    Err(err) => {
                                         *expr = self.mk_expr_err(expr.span);
                                         err.cancel();
                                     }
                                 }
                             }
                         }
-                        Err(mut err) => {
+                        Err(err) => {
                             err.cancel();
                         }
                         _ => {}
@@ -767,7 +779,7 @@ impl<'a> Parser<'a> {
     /// parenthesising the leftmost comparison.
     fn attempt_chained_comparison_suggestion(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
@@ -821,7 +833,7 @@ impl<'a> Parser<'a> {
                             enclose(r1.span, r2.span);
                             true
                         }
-                        Err(mut expr_err) => {
+                        Err(expr_err) => {
                             expr_err.cancel();
                             *self = snapshot;
                             false
@@ -838,7 +850,7 @@ impl<'a> Parser<'a> {
                             enclose(l1.span, r1.span);
                             true
                         }
-                        Err(mut expr_err) => {
+                        Err(expr_err) => {
                             expr_err.cancel();
                             *self = snapshot;
                             false
@@ -890,7 +902,7 @@ impl<'a> Parser<'a> {
                     "comparison operators cannot be chained",
                 );
 
-                let suggest = |err: &mut DiagnosticBuilder<'_>| {
+                let suggest = |err: &mut Diagnostic| {
                     err.span_suggestion_verbose(
                         op.span.shrink_to_lo(),
                         TURBOFISH_SUGGESTION_STR,
@@ -938,7 +950,7 @@ impl<'a> Parser<'a> {
                                 // `ExprKind::Err` placeholder.
                                 mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                             }
-                            Err(mut expr_err) => {
+                            Err(expr_err) => {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
@@ -1439,7 +1451,7 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_closing_delimiter(
         &mut self,
         tokens: &[TokenKind],
-        mut err: DiagnosticBuilder<'a>,
+        mut err: DiagnosticBuilder<'a, ErrorReported>,
     ) -> PResult<'a, bool> {
         let mut pos = None;
         // We want to use the last closing delim that would apply.
@@ -1637,7 +1649,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parameter_without_type(
         &mut self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         pat: P<ast::Pat>,
         require_name: bool,
         first_param: bool,
@@ -1810,7 +1822,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
+    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorReported> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.prev_token.span);
@@ -1946,17 +1958,14 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn recover_const_param_decl(
-        &mut self,
-        ty_generics: Option<&Generics>,
-    ) -> PResult<'a, Option<GenericArg>> {
+    fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
         let snapshot = self.clone();
         let param = match self.parse_const_param(vec![]) {
             Ok(param) => param,
-            Err(mut err) => {
+            Err(err) => {
                 err.cancel();
                 *self = snapshot;
-                return Err(err);
+                return None;
             }
         };
         let mut err =
@@ -1977,7 +1986,7 @@ impl<'a> Parser<'a> {
         }
         let value = self.mk_expr_err(param.span());
         err.emit();
-        return Ok(Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })));
+        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
     }
 
     pub fn recover_const_param_declaration(
@@ -1985,8 +1994,8 @@ impl<'a> Parser<'a> {
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
         // We have to check for a few different cases.
-        if let Ok(arg) = self.recover_const_param_decl(ty_generics) {
-            return Ok(arg);
+        if let Some(arg) = self.recover_const_param_decl(ty_generics) {
+            return Ok(Some(arg));
         }
 
         // We haven't consumed `const` yet.
@@ -2019,7 +2028,7 @@ impl<'a> Parser<'a> {
     pub fn recover_const_arg(
         &mut self,
         start: Span,
-        mut err: DiagnosticBuilder<'a>,
+        mut err: DiagnosticBuilder<'a, ErrorReported>,
     ) -> PResult<'a, GenericArg> {
         let is_op = AssocOp::from_token(&self.token)
             .and_then(|op| {
@@ -2085,7 +2094,7 @@ impl<'a> Parser<'a> {
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 }
             }
-            Err(mut err) => {
+            Err(err) => {
                 err.cancel();
             }
         }
@@ -2099,7 +2108,7 @@ impl<'a> Parser<'a> {
     pub(super) fn incorrect_move_async_order_found(
         &self,
         move_async_span: Span,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         let mut err =
             self.struct_span_err(move_async_span, "the order of `move` and `async` is incorrect");
         err.span_suggestion_verbose(
@@ -2139,7 +2148,7 @@ impl<'a> Parser<'a> {
             Err(mut err) => {
                 self.bump(); // Skip the `:`.
                 match self.parse_pat_no_top_alt(expected) {
-                    Err(mut inner_err) => {
+                    Err(inner_err) => {
                         // Carry on as if we had not done anything, callers will emit a
                         // reasonable error.
                         inner_err.cancel();
@@ -2246,7 +2255,7 @@ impl<'a> Parser<'a> {
         // suggestion-enhanced error here rather than choking on the comma later.
         let comma_span = self.token.span;
         self.bump();
-        if let Err(mut err) = self.skip_pat_list() {
+        if let Err(err) = self.skip_pat_list() {
             // We didn't expect this to work anyway; we just wanted to advance to the
             // end of the comma-sequence so we know the span to suggest parenthesizing.
             err.cancel();

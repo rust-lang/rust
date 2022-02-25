@@ -2095,7 +2095,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                             rustc_errors::Applicability::MachineApplicable,
                         );
                     }
-                    err.emit()
+                    err.emit();
                 }
             }
         }

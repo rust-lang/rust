@@ -417,7 +417,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
-    errors.buffer_error(err);
+    errors.buffer_non_error_diag(err);
 }
 
 fn for_each_region_constraint(

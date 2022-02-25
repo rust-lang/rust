@@ -14,6 +14,7 @@ use crate::traits::{
     PredicateObligations, SelectionContext,
 };
 //use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -50,7 +51,7 @@ pub struct OverlapResult<'tcx> {
     pub involves_placeholder: bool,
 }
 
-pub fn add_placeholder_note(err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+pub fn add_placeholder_note(err: &mut Diagnostic) {
     err.note(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",

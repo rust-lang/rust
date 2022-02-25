@@ -159,7 +159,7 @@ fn emit_orphan_check_error<'tcx>(
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorReported> {
-    match err {
+    Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let mut err = struct_span_err!(
                 tcx.sess,
@@ -269,9 +269,7 @@ fn emit_orphan_check_error<'tcx>(
                 .emit(),
             }
         }
-    }
-
-    Err(ErrorReported)
+    })
 }
 
 #[derive(Default)]

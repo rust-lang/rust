@@ -12,7 +12,9 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -133,7 +135,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'a>, Vec<ImportSuggestion>) {
+    ) -> (DiagnosticBuilder<'a, ErrorReported>, Vec<ImportSuggestion>) {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
@@ -606,11 +608,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         (err, candidates)
     }
 
-    fn detect_assoct_type_constraint_meant_as_path(
-        &self,
-        base_span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    fn detect_assoct_type_constraint_meant_as_path(&self, base_span: Span, err: &mut Diagnostic) {
         let Some(ty) = self.diagnostic_metadata.current_type_path else { return; };
         let TyKind::Path(_, path) = &ty.kind else { return; };
         for segment in &path.segments {
@@ -675,11 +673,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     }
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
-    fn restrict_assoc_type_in_where_clause(
-        &mut self,
-        span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) -> bool {
+    fn restrict_assoc_type_in_where_clause(&mut self, span: Span, err: &mut Diagnostic) -> bool {
         // Detect that we are actually in a `where` predicate.
         let (bounded_ty, bounds, where_span) =
             if let Some(ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
@@ -875,7 +869,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     /// Returns `true` if able to provide context-dependent help.
     fn smart_resolve_context_dependent_help(
         &mut self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut Diagnostic,
         span: Span,
         source: PathSource<'_>,
         res: Res,
@@ -885,7 +879,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
-        let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.kind {
+        let path_sep = |err: &mut Diagnostic, expr: &Expr| match expr.kind {
             ExprKind::Field(_, ident) => {
                 err.span_suggestion(
                     expr.span,
@@ -908,7 +902,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             _ => false,
         };
 
-        let find_span = |source: &PathSource<'_>, err: &mut DiagnosticBuilder<'_>| {
+        let find_span = |source: &PathSource<'_>, err: &mut Diagnostic| {
             match source {
                 PathSource::Expr(Some(Expr { span, kind: ExprKind::Call(_, _), .. }))
                 | PathSource::TupleStruct(span, _) => {
@@ -1066,7 +1060,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     })
                     .unwrap_or(false)
                 {
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                     // We already suggested changing `:` into `::` during parsing.
                     return false;
                 }
@@ -1435,7 +1429,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         start.to(sm.next_point(start))
     }
 
-    fn type_ascription_suggestion(&self, err: &mut DiagnosticBuilder<'_>, base_span: Span) -> bool {
+    fn type_ascription_suggestion(&self, err: &mut Diagnostic, base_span: Span) -> bool {
         let sm = self.r.session.source_map();
         let base_snippet = sm.span_to_snippet(base_span);
         if let Some(&sp) = self.diagnostic_metadata.current_type_ascription.last() {
@@ -1472,7 +1466,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                 .borrow_mut()
                                 .insert(colon_sp)
                             {
-                                err.delay_as_bug();
+                                err.downgrade_to_delayed_bug();
                             }
                         }
                         if let Ok(base_snippet) = base_snippet {
@@ -1577,7 +1571,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     /// Adds a suggestion for using an enum's variant when an enum is used instead.
     fn suggest_using_enum_variant(
         &mut self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut Diagnostic,
         source: PathSource<'_>,
         def_id: DefId,
         span: Span,
@@ -1825,7 +1819,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         &self,
         spans: Vec<Span>,
         count: usize,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         struct_span_err!(
             self.tcx.sess,
             spans,
@@ -1910,7 +1904,8 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     /// Returns whether to add `'static` lifetime to the suggested lifetime list.
     crate fn report_elision_failure(
         &mut self,
-        db: &mut DiagnosticBuilder<'_>,
+        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
+        db: &mut Diagnostic,
         params: &[ElisionFailureInfo],
     ) -> bool {
         let mut m = String::new();
@@ -2059,7 +2054,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
 
     crate fn add_missing_lifetime_specifiers_label(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         mut spans_with_counts: Vec<(Span, usize)>,
         lifetime_names: &FxHashSet<Symbol>,
         lifetime_spans: Vec<Span>,
@@ -2090,7 +2085,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
 
         let suggest_existing =
-            |err: &mut DiagnosticBuilder<'_>,
+            |err: &mut Diagnostic,
              name: &str,
              formatters: Vec<Option<Box<dyn Fn(&str) -> String>>>| {
                 if let Some(MissingLifetimeSpot::HigherRanked { span: for_span, span_type }) =
@@ -2174,7 +2169,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             };
-        let suggest_new = |err: &mut DiagnosticBuilder<'_>, suggs: Vec<Option<String>>| {
+        let suggest_new = |err: &mut Diagnostic, suggs: Vec<Option<String>>| {
             for missing in self.missing_named_lifetime_spots.iter().rev() {
                 let mut introduce_suggestion = vec![];
                 let msg;

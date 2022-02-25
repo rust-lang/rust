@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::return_ty;
 use clippy_utils::source::snippet;
-use clippy_utils::sugg::DiagnosticBuilderExt;
+use clippy_utils::sugg::DiagnosticExt;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;

@@ -4,7 +4,7 @@ use crate::astconv::AstConv;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_span::{self, MultiSpan, Span};
 
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -22,11 +22,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(in super::super) fn suggest_semicolon_at_end(
-        &self,
-        span: Span,
-        err: &mut DiagnosticBuilder<'_>,
-    ) {
+    pub(in super::super) fn suggest_semicolon_at_end(&self, span: Span, err: &mut Diagnostic) {
         err.span_suggestion_short(
             span.shrink_to_hi(),
             "consider using a semicolon here",
@@ -42,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// - Possible missing return type if the return type is the default, and not `fn main()`.
     pub fn suggest_mismatched_types_on_tail(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -81,7 +77,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn suggest_fn_call(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -211,7 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn suggest_deref_ref_or_into(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -312,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// in the heap by calling `Box::new()`.
     pub(in super::super) fn suggest_boxing_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -347,7 +343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest a non-capturing closure
     pub(in super::super) fn suggest_no_capture_closure(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -382,7 +378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, err))]
     pub(in super::super) fn suggest_calling_boxed_future_when_appropriate(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -477,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// it suggests adding a semicolon.
     fn suggest_missing_semicolon(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expression: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) {
@@ -518,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// type.
     pub(in super::super) fn suggest_missing_return_type(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -580,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn try_suggest_return_impl_trait(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         fn_id: hir::HirId,
@@ -681,7 +677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn suggest_missing_break_or_return_expr(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &'tcx hir::Expr<'tcx>,
         fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
@@ -751,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn suggest_missing_parentheses(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
     ) {
         let sp = self.tcx.sess.source_map().start_point(expr.span);

@@ -69,9 +69,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
         match rustc_parse::maybe_new_parser_from_source_str(&sess, file_name, snippet.clone()) {
             Ok(parser) => parser,
             Err(diagnostics) => {
-                for mut diagnostic in diagnostics {
-                    diagnostic.cancel();
-                }
+                drop(diagnostics);
                 return None;
             }
         };
@@ -79,7 +77,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
     // Reparse a single token tree.
     let mut reparsed_trees = match parser.parse_all_token_trees() {
         Ok(reparsed_trees) => reparsed_trees,
-        Err(mut diagnostic) => {
+        Err(diagnostic) => {
             diagnostic.cancel();
             return None;
         }

@@ -31,7 +31,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -1476,17 +1476,17 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut Diagnostic) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a, 'db> {
-            err: &'a mut DiagnosticBuilder<'db>,
+        struct WalkAssocTypes<'a> {
+            err: &'a mut Diagnostic,
         }
-        impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
+        impl Visitor<'_> for WalkAssocTypes<'_> {
+            fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(
                         span,

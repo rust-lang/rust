@@ -8,7 +8,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported, PResult};
 use rustc_span::source_map::{respan, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
 
@@ -655,7 +655,7 @@ impl<'a> Parser<'a> {
 
     fn fatal_unexpected_non_pat(
         &mut self,
-        mut err: DiagnosticBuilder<'a>,
+        err: DiagnosticBuilder<'a, ErrorReported>,
         expected: Expected,
     ) -> PResult<'a, P<Pat>> {
         err.cancel();
@@ -722,7 +722,7 @@ impl<'a> Parser<'a> {
             // Ensure the user doesn't receive unhelpful unexpected token errors
             self.bump();
             if self.is_pat_range_end_start(0) {
-                let _ = self.parse_pat_range_end().map_err(|mut e| e.cancel());
+                let _ = self.parse_pat_range_end().map_err(|e| e.cancel());
             }
 
             self.error_inclusive_range_with_extra_equals(span_with_eq);
@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
         let mut fields = Vec::new();
         let mut etc = false;
         let mut ate_comma = true;
-        let mut delayed_err: Option<DiagnosticBuilder<'a>> = None;
+        let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorReported>> = None;
         let mut etc_span = None;
 
         while self.token != token::CloseDelim(token::Brace) {

@@ -7,7 +7,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::{GenericParamKind, Ty};
 use rustc_middle::ty::Region;
@@ -156,7 +156,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         sub: Region<'tcx>,
         ty_sup: &Ty<'_>,
         ty_sub: &Ty<'_>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         if let (
             hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },

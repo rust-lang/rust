@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -49,7 +49,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut DiagnosticBuilder<'_>| {
+        let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diagnostic| {
             let suggestions = vec![
                 (arg.span().shrink_to_lo(), String::from("{ ")),
                 (arg.span().shrink_to_hi(), String::from(" }")),

@@ -6,7 +6,7 @@ use clippy_utils::{get_trait_def_id, is_self, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, GenericArg, HirId, Impl, ItemKind, Node, PatKind, QPath, TyKind};
 use rustc_hir::{HirIdMap, HirIdSet};
@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                     }
 
                     // Dereference suggestion
-                    let sugg = |diag: &mut DiagnosticBuilder<'_>| {
+                    let sugg = |diag: &mut Diagnostic| {
                         if let ty::Adt(def, ..) = ty.kind() {
                             if let Some(span) = cx.tcx.hir().span_if_local(def.did) {
                                 if can_type_implement_copy(cx.tcx, cx.param_env, ty, traits::ObligationCause::dummy_with_span(span)).is_ok() {

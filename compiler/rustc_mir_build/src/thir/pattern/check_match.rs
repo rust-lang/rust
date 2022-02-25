@@ -6,7 +6,9 @@ use super::{PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -36,7 +38,11 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(
+    sess: &Session,
+    sp: Span,
+    error_message: String,
+) -> DiagnosticBuilder<'_, ErrorReported> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -281,12 +287,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
 /// A path pattern was interpreted as a constant, not a new variable.
 /// This caused an irrefutable match failure in e.g. `let`.
-fn const_not_var(
-    err: &mut DiagnosticBuilder<'_>,
-    tcx: TyCtxt<'_>,
-    pat: &Pat<'_>,
-    path: &hir::Path<'_>,
-) {
+fn const_not_var(err: &mut Diagnostic, tcx: TyCtxt<'_>, pat: &Pat<'_>, path: &hir::Path<'_>) {
     let descr = path.res.descr();
     err.span_label(
         pat.span,
@@ -594,7 +595,7 @@ crate fn pattern_not_covered_label(
 /// Point at the definition of non-covered `enum` variants.
 fn adt_defined_here<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     ty: Ty<'tcx>,
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) {

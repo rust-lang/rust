@@ -720,12 +720,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
-            if file.is_empty() {
-                msg.emit()
-            } else {
-                msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+            if !file.is_empty() {
+                msg.note(&format!("failed to create or modify \"{}\"", file));
             }
-            Err(ErrorReported)
+            Err(msg.emit())
         }
     }
 }

@@ -18,7 +18,7 @@ use rustc_ast::{
 };
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -296,7 +296,7 @@ impl<'a> Parser<'a> {
                 // extra noise.
                 init
             }
-            (Err(mut init_err), Some((snapshot, _, ty_err))) => {
+            (Err(init_err), Some((snapshot, _, ty_err))) => {
                 // init error, ty error
                 init_err.cancel();
                 // Couldn't parse the type nor the initializer, only raise the type error and
@@ -414,7 +414,10 @@ impl<'a> Parser<'a> {
         Ok(block)
     }
 
-    fn error_block_no_opening_brace_msg(&mut self, msg: &str) -> DiagnosticBuilder<'a> {
+    fn error_block_no_opening_brace_msg(
+        &mut self,
+        msg: &str,
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         let sp = self.token.span;
         let mut e = self.struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
@@ -449,7 +452,7 @@ impl<'a> Parser<'a> {
                     );
                 }
             }
-            Err(mut e) => {
+            Err(e) => {
                 self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
                 e.cancel();
             }

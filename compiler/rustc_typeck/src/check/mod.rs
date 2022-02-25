@@ -139,11 +139,13 @@ pub use self::Expectation::*;
 #[macro_export]
 macro_rules! type_error_struct {
     ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        let mut err = rustc_errors::struct_span_err!($session, $span, $code, $($message)*);
+
         if $typ.references_error() {
-            $session.diagnostic().struct_dummy()
-        } else {
-            rustc_errors::struct_span_err!($session, $span, $code, $($message)*)
+            err.downgrade_to_delayed_bug();
         }
+
+        err
     })
 }
 

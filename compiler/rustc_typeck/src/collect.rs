@@ -26,7 +26,7 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -321,7 +321,7 @@ fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
     kind: &'static str,
-) -> rustc_errors::DiagnosticBuilder<'tcx> {
+) -> DiagnosticBuilder<'tcx, ErrorReported> {
     let kind = if kind.ends_with('s') { format!("{}es", kind) } else { format!("{}s", kind) };
 
     spans.sort();
@@ -1277,19 +1277,21 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                         return None;
                     }
-                    Some(item) => tcx
-                        .sess
-                        .struct_span_err(item.span, "Not a function")
-                        .span_note(attr_span, "required by this annotation")
-                        .note(
-                            "All `#[rustc_must_implement_one_of]` arguments \
+                    Some(item) => {
+                        tcx.sess
+                            .struct_span_err(item.span, "Not a function")
+                            .span_note(attr_span, "required by this annotation")
+                            .note(
+                                "All `#[rustc_must_implement_one_of]` arguments \
                             must be associated function names",
-                        )
-                        .emit(),
-                    None => tcx
-                        .sess
-                        .struct_span_err(ident.span, "Function not found in this trait")
-                        .emit(),
+                            )
+                            .emit();
+                    }
+                    None => {
+                        tcx.sess
+                            .struct_span_err(ident.span, "Function not found in this trait")
+                            .emit();
+                    }
                 }
 
                 Some(())

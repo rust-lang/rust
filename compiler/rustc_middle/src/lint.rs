@@ -2,7 +2,7 @@ use std::cmp;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId};
 use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
@@ -186,28 +186,28 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     }
 }
 
-pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a>);
+pub struct LintDiagnosticBuilder<'a>(DiagnosticBuilder<'a, ()>);
 
 impl<'a> LintDiagnosticBuilder<'a> {
     /// Return the inner DiagnosticBuilder, first setting the primary message to `msg`.
-    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a> {
+    pub fn build(mut self, msg: &str) -> DiagnosticBuilder<'a, ()> {
         self.0.set_primary_message(msg);
         self.0.set_is_lint();
         self.0
     }
 
     /// Create a LintDiagnosticBuilder from some existing DiagnosticBuilder.
-    pub fn new(err: DiagnosticBuilder<'a>) -> LintDiagnosticBuilder<'a> {
+    pub fn new(err: DiagnosticBuilder<'a, ()>) -> LintDiagnosticBuilder<'a> {
         LintDiagnosticBuilder(err)
     }
 }
 
-pub fn explain_lint_level_source<'s>(
-    sess: &'s Session,
+pub fn explain_lint_level_source(
+    sess: &Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
-    err: &mut DiagnosticBuilder<'s>,
+    err: &mut Diagnostic,
 ) {
     let name = lint.name_lower();
     match src {
@@ -314,10 +314,8 @@ pub fn struct_lint_level<'s, 'd>(
                     return;
                 }
             }
-            (Level::Warn, Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn, None) => sess.struct_warn(""),
-            (Level::ForceWarn, Some(span)) => sess.struct_span_force_warn(span, ""),
-            (Level::ForceWarn, None) => sess.struct_force_warn(""),
+            (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
+            (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
                 let mut builder = sess.diagnostic().struct_err_lint("");
                 builder.set_span(span);

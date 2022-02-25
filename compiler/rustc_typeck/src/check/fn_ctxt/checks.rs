@@ -11,7 +11,7 @@ use crate::check::{
 
 use rustc_ast as ast;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -460,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
                 use crate::structured_errors::MissingCastForVariadicArg;
 
-                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit()
+                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
             }
 
             for arg in provided_args.iter().skip(expected_arg_count) {
@@ -837,7 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             kind: hir::ExprKind::Loop(_, _, hir::LoopSource::While, _),
                                             ..
                                         })) => {
-                                            err.delay_as_bug();
+                                            err.downgrade_to_delayed_bug();
                                         }
                                         _ => {}
                                     }
@@ -890,7 +890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         if let Some((span_semi, boxed)) = self.could_remove_semicolon(blk, expected_ty) {
             if let StatementAsExpression::NeedsBoxing = boxed {

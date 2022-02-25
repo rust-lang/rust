@@ -102,7 +102,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                 }
 
                 match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
-                    Ok(mut parser) => match &mut parser.parse_meta_item() {
+                    Ok(mut parser) => match parser.parse_meta_item() {
                         Ok(meta_item) if parser.token == token::Eof => {
                             if meta_item.path.segments.len() != 1 {
                                 error!("argument key must be an identifier");
@@ -121,7 +121,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                         Ok(..) => {}
                         Err(err) => err.cancel(),
                     },
-                    Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
+                    Err(errs) => drop(errs),
                 }
 
                 // If the user tried to use a key="value" flag, but is missing the quotes, provide
@@ -165,7 +165,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
             }
 
             match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
-                Ok(mut parser) => match &mut parser.parse_meta_item() {
+                Ok(mut parser) => match parser.parse_meta_item() {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if let Some(args) = meta_item.meta_item_list() {
                             if meta_item.has_name(sym::names) {
@@ -214,7 +214,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                     Ok(..) => {}
                     Err(err) => err.cancel(),
                 },
-                Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
+                Err(errs) => drop(errs),
             }
 
             error!(

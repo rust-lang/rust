@@ -57,7 +57,7 @@ fn parse_cfg_if_inner<'a>(
             let item = match parser.parse_item(ForceCollect::No) {
                 Ok(Some(item_ptr)) => item_ptr.into_inner(),
                 Ok(None) => continue,
-                Err(mut err) => {
+                Err(err) => {
                     err.cancel();
                     parser.sess.span_diagnostic.reset_err_count();
                     return Err(

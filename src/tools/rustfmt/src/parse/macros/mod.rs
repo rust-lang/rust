@@ -36,7 +36,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
                         return Some(MacroArg::$macro_arg($f(x)?));
                     }
                 }
-                Err(mut e) => {
+                Err(e) => {
                     e.cancel();
                     parser.sess.span_diagnostic.reset_err_count();
                 }

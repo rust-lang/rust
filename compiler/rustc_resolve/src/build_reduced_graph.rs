@@ -1070,8 +1070,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             .emit();
                     }
                 }
-                let ill_formed =
-                    |span| struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                let ill_formed = |span| {
+                    struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
                         MetaItemKind::Word => {

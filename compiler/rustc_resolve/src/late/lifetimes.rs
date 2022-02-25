@@ -9,7 +9,7 @@
 use crate::late::diagnostics::{ForLifetimeSpanType, MissingLifetimeSpot};
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefIdMap, LocalDefId};
@@ -1572,6 +1572,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: Symbol, orig: Original, shado
             name,
             orig.kind.desc()
         )
+        .forget_guarantee()
     } else {
         // shadowing involving a label is only a warning, due to issues with
         // labels and lifetimes not being macro-hygienic.
@@ -1873,7 +1874,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     // or from `fn rah<'a>(T<'a>)` to `fn rah(T<'_>)`
     fn suggest_eliding_single_use_lifetime(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         def_id: DefId,
         lifetime: &hir::Lifetime,
     ) {

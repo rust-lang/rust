@@ -3,7 +3,9 @@
 
 use crate::check::FnCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -91,14 +93,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<&'tcx [hir::Expr<'tcx>]>,
-    ) -> Option<DiagnosticBuilder<'_>> {
+    ) -> Option<DiagnosticBuilder<'_, ErrorReported>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return None;
         }
 
         let report_candidates = |span: Span,
-                                 err: &mut DiagnosticBuilder<'_>,
+                                 err: &mut Diagnostic,
                                  mut sources: Vec<CandidateSource>,
                                  sugg_span: Span| {
             sources.sort();
@@ -268,7 +270,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (None, true) => "variant",
                     }
                 };
-                let mut err = if !actual.references_error() {
+                // FIXME(eddyb) this intendation is probably unnecessary.
+                let mut err = {
                     // Suggest clamping down the type if the method that is being attempted to
                     // be used exists at all, and the type is an ambiguous numeric type
                     // ({integer}/{float}).
@@ -461,9 +464,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         err
                     }
-                } else {
-                    tcx.sess.diagnostic().struct_dummy()
                 };
+
+                if actual.references_error() {
+                    err.downgrade_to_delayed_bug();
+                }
 
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
@@ -625,10 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if self.is_fn_ty(rcvr_ty, span) {
-                    fn report_function<T: std::fmt::Display>(
-                        err: &mut DiagnosticBuilder<'_>,
-                        name: T,
-                    ) {
+                    fn report_function<T: std::fmt::Display>(err: &mut Diagnostic, name: T) {
                         err.note(
                             &format!("`{}` is a function, perhaps you wish to call it", name,),
                         );
@@ -1111,7 +1113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     crate fn note_unmet_impls_on_type(
         &self,
-        err: &mut rustc_errors::DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         errors: Vec<FulfillmentError<'tcx>>,
     ) {
         let all_local_types_needing_impls =
@@ -1187,7 +1189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_derive(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         unsatisfied_predicates: &[(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
@@ -1287,7 +1289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_await_before_method(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         item_name: Ident,
         ty: Ty<'tcx>,
         call: &hir::Expr<'_>,
@@ -1311,7 +1313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_use_candidates(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         mut msg: String,
         candidates: Vec<DefId>,
     ) {
@@ -1416,7 +1418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_valid_traits(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         valid_out_of_scope_traits: Vec<DefId>,
     ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
@@ -1454,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_traits_to_import(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         span: Span,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
@@ -1983,7 +1985,7 @@ fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Op
 fn print_disambiguation_help<'tcx>(
     item_name: Ident,
     args: Option<&'tcx [hir::Expr<'tcx>]>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     trait_name: String,
     rcvr_ty: Ty<'_>,
     kind: ty::AssocKind,

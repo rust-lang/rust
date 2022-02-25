@@ -551,10 +551,7 @@ crate fn make_test(
             let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
-                    for mut err in errs {
-                        err.cancel();
-                    }
-
+                    drop(errs);
                     return (found_main, found_extern_crate, found_macro);
                 }
             };
@@ -594,7 +591,7 @@ crate fn make_test(
                         }
                     }
                     Ok(None) => break,
-                    Err(mut e) => {
+                    Err(e) => {
                         e.cancel();
                         break;
                     }

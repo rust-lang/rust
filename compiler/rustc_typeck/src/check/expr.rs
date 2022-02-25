@@ -25,6 +25,7 @@ use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructEx
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_errors::Diagnostic;
 use rustc_errors::ErrorReported;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
@@ -60,7 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut Diagnostic),
     ) -> Ty<'tcx> {
         self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
     }
@@ -69,7 +70,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut Diagnostic),
     ) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
@@ -485,7 +486,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })
+            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span });
         }
     }
 
@@ -1469,14 +1470,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                     self.register_predicates(obligations)
                                                 }
                                                 // FIXME: Need better diagnostics for `FieldMisMatch` error
-                                                Err(_) => self
-                                                    .report_mismatched_types(
+                                                Err(_) => {
+                                                    self.report_mismatched_types(
                                                         &cause,
                                                         target_ty,
                                                         fru_ty,
                                                         FieldMisMatch(variant.name, ident.name),
                                                     )
-                                                    .emit(),
+                                                    .emit();
+                                                }
                                             }
                                         }
                                         fru_ty
@@ -1484,22 +1486,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .collect()
                             }
                             _ => {
-                                return self
-                                    .report_mismatched_types(
-                                        &self.misc(base_expr.span),
-                                        adt_ty,
-                                        base_ty,
-                                        Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
-                                    )
-                                    .emit();
+                                self.report_mismatched_types(
+                                    &self.misc(base_expr.span),
+                                    adt_ty,
+                                    base_ty,
+                                    Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
+                                )
+                                .emit();
+                                return;
                             }
                         }
                     }
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             } else {
@@ -1528,10 +1530,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .collect(),
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             };
@@ -1923,7 +1925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_await_on_field_access(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         field_ident: Ident,
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
@@ -2123,7 +2125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
+    fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
@@ -2142,7 +2144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_fields_on_recordish(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         def: &'tcx ty::AdtDef,
         field: Ident,
         access_span: Span,
@@ -2171,7 +2173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_array_indexing(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
@@ -2195,7 +2197,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_first_deref_field(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
@@ -2212,7 +2214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         expr_t: Ty<'tcx>,
         id: HirId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 

@@ -3,7 +3,7 @@
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
 use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::{
     DefKind,
     Namespace::{self, *},
@@ -1434,7 +1434,7 @@ impl LinkCollector<'_, '_> {
     ) {
         // The resolved item did not match the disambiguator; give a better error than 'not found'
         let msg = format!("incompatible link kind for `{}`", path_str);
-        let callback = |diag: &mut DiagnosticBuilder<'_>, sp: Option<rustc_span::Span>| {
+        let callback = |diag: &mut Diagnostic, sp: Option<rustc_span::Span>| {
             let note = format!(
                 "this link resolved to {} {}, which is not {} {}",
                 resolved.article(),
@@ -1866,7 +1866,7 @@ fn report_diagnostic(
     lint: &'static Lint,
     msg: &str,
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
-    decorate: impl FnOnce(&mut DiagnosticBuilder<'_>, Option<rustc_span::Span>),
+    decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>),
 ) {
     let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
         Some(hir_id) => hir_id,
@@ -2098,8 +2098,15 @@ fn resolution_failure(
                         )
                     }
                     ResolutionFailure::NoParentItem => {
-                        diag.level = rustc_errors::Level::Bug;
-                        "all intra-doc links should have a parent item".to_owned()
+                        // FIXME(eddyb) this doesn't belong here, whatever made
+                        // the `ResolutionFailure::NoParentItem` should emit an
+                        // immediate or delayed `span_bug` about the issue.
+                        tcx.sess.delay_span_bug(
+                            sp.unwrap_or(DUMMY_SP),
+                            "intra-doc link missing parent item",
+                        );
+
+                        "BUG: all intra-doc links should have a parent item".to_owned()
                     }
                     ResolutionFailure::MalformedGenerics(variant) => match variant {
                         MalformedGenerics::UnbalancedAngleBrackets => {
@@ -2233,7 +2240,7 @@ fn ambiguity_error(
 /// disambiguator.
 fn suggest_disambiguator(
     res: Res,
-    diag: &mut DiagnosticBuilder<'_>,
+    diag: &mut Diagnostic,
     path_str: &str,
     ori_link: &str,
     sp: Option<rustc_span::Span>,

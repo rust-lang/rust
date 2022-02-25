@@ -3,7 +3,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, PResult};
 use rustc_expand::base::{self, *};
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
@@ -30,7 +30,7 @@ fn parse_args<'a>(
     sp: Span,
     tts: TokenStream,
     is_global_asm: bool,
-) -> Result<AsmArgs, DiagnosticBuilder<'a>> {
+) -> PResult<'a, AsmArgs> {
     let mut p = ecx.new_parser_from_tts(tts);
     let sess = &ecx.sess.parse_sess;
     parse_asm_args(&mut p, sess, sp, is_global_asm)
@@ -43,7 +43,7 @@ pub fn parse_asm_args<'a>(
     sess: &'a ParseSess,
     sp: Span,
     is_global_asm: bool,
-) -> Result<AsmArgs, DiagnosticBuilder<'a>> {
+) -> PResult<'a, AsmArgs> {
     let diag = &sess.span_diagnostic;
 
     if p.token == token::Eof {
@@ -390,7 +390,7 @@ fn parse_options<'a>(
     p: &mut Parser<'a>,
     args: &mut AsmArgs,
     is_global_asm: bool,
-) -> Result<(), DiagnosticBuilder<'a>> {
+) -> PResult<'a, ()> {
     let span_start = p.prev_token.span;
 
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
@@ -431,10 +431,7 @@ fn parse_options<'a>(
     Ok(())
 }
 
-fn parse_clobber_abi<'a>(
-    p: &mut Parser<'a>,
-    args: &mut AsmArgs,
-) -> Result<(), DiagnosticBuilder<'a>> {
+fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, ()> {
     let span_start = p.prev_token.span;
 
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
@@ -501,7 +498,7 @@ fn parse_clobber_abi<'a>(
 fn parse_reg<'a>(
     p: &mut Parser<'a>,
     explicit_reg: &mut bool,
-) -> Result<ast::InlineAsmRegOrRegClass, DiagnosticBuilder<'a>> {
+) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(&token::OpenDelim(token::DelimToken::Paren))?;
     let result = match p.token.uninterpolate().kind {
         token::Ident(name, false) => ast::InlineAsmRegOrRegClass::RegClass(name),

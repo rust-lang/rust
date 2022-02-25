@@ -14,7 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -1475,19 +1475,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sp: Span,
         mk_diag: M,
         actual_ty: Ty<'tcx>,
-    ) -> DiagnosticBuilder<'tcx>
+    ) -> DiagnosticBuilder<'tcx, ErrorReported>
     where
-        M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
+        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorReported>,
     {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
+        let mut err = mk_diag(self.ty_to_string(actual_ty));
+
         // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
-            return self.tcx.sess.diagnostic().struct_dummy();
+            err.downgrade_to_delayed_bug();
         }
 
-        mk_diag(self.ty_to_string(actual_ty))
+        err
     }
 
     pub fn report_mismatched_types(
@@ -1496,7 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }
@@ -1507,7 +1509,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let trace = TypeTrace::consts(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }

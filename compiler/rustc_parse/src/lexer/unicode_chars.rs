@@ -3,7 +3,7 @@
 
 use super::StringReader;
 use crate::token;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
@@ -336,7 +336,7 @@ pub(super) fn check_for_substitution<'a>(
     reader: &StringReader<'a>,
     pos: BytePos,
     ch: char,
-    err: &mut DiagnosticBuilder<'a>,
+    err: &mut Diagnostic,
 ) -> Option<token::TokenKind> {
     let Some(&(_u_char, u_name, ascii_char)) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) else {
         return None;

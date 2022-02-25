@@ -4,7 +4,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCause;
 
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
@@ -23,7 +23,7 @@ use std::iter;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
@@ -57,7 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -67,7 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -97,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         match self.at(cause, self.param_env).eq(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx, ErrorReported>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase, None) {
@@ -155,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn annotate_expected_due_to_let_ty(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         error: TypeError<'_>,
     ) {
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !lhs.is_syntactic_place_expr() {
                     // We already emitted E0070 "invalid left-hand side of assignment", so we
                     // silence this.
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
             }
             _ => {}
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// sole field is of the found type, suggest such variants. (Issue #42764)
     fn suggest_compatible_variants(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
@@ -899,7 +899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_for_cast(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1039,7 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
 
         let suggest_fallible_into_or_lhs_from =
-            |err: &mut DiagnosticBuilder<'_>, exp_to_found_is_fallible: bool| {
+            |err: &mut Diagnostic, exp_to_found_is_fallible: bool| {
                 // If we know the expression the expected type is derived from, we might be able
                 // to suggest a widening conversion rather than a narrowing one (which may
                 // panic). For example, given x: u8 and y: u32, if we know the span of "x",
@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         let suggest_to_change_suffix_or_into =
-            |err: &mut DiagnosticBuilder<'_>,
+            |err: &mut Diagnostic,
              found_to_exp_is_fallible: bool,
              exp_to_found_is_fallible: bool| {
                 let exp_is_lhs =
@@ -1282,11 +1282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Report the type inferred by the return statement.
-    fn report_closure_inferred_return_type(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        expected: Ty<'tcx>,
-    ) {
+    fn report_closure_inferred_return_type(&self, err: &mut Diagnostic, expected: Ty<'tcx>) {
         if let Some(sp) = self.ret_coercion_span.get() {
             // If the closure has an explicit return type annotation, or if
             // the closure's return type has been inferred from outside

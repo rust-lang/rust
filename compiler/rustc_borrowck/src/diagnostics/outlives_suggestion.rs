@@ -2,7 +2,7 @@
 //! outlives constraints.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
@@ -162,7 +162,7 @@ impl OutlivesSuggestionBuilder {
         &mut self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
         errci: &ErrorConstraintInfo,
-        diag: &mut DiagnosticBuilder<'_>,
+        diag: &mut Diagnostic,
     ) {
         // Emit an intermediate note.
         let fr_name = self.region_vid_to_name(mbcx, errci.fr);
@@ -256,6 +256,6 @@ impl OutlivesSuggestionBuilder {
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        mbcx.buffer_error(diag);
+        mbcx.buffer_non_error_diag(diag);
     }
 }

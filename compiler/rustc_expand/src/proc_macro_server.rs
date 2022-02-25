@@ -446,7 +446,9 @@ impl server::TokenStream for Rustc<'_, '_> {
             }
             expr
         };
-        let expr = expr.map_err(|mut err| err.emit())?;
+        let expr = expr.map_err(|mut err| {
+            err.emit();
+        })?;
 
         // Perform eager expansion on the expression.
         let expr = self

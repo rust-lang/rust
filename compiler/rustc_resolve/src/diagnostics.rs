@@ -3,7 +3,7 @@ use std::ptr;
 use rustc_ast::{self as ast, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
@@ -110,7 +110,7 @@ impl<'a> Resolver<'a> {
         &self,
         span: Span,
         resolution_error: ResolutionError<'_>,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorReported> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
                 let mut err = struct_span_err!(
@@ -624,7 +624,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    crate fn report_vis_error(&self, vis_resolution_error: VisResolutionError<'_>) {
+    crate fn report_vis_error(
+        &self,
+        vis_resolution_error: VisResolutionError<'_>,
+    ) -> ErrorReported {
         match vis_resolution_error {
             VisResolutionError::Relative2018(span, path) => {
                 let mut err = self.session.struct_span_err(
@@ -1031,7 +1034,7 @@ impl<'a> Resolver<'a> {
 
     crate fn unresolved_macro_suggestions(
         &mut self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut Diagnostic,
         macro_kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         ident: Ident,
@@ -1120,7 +1123,7 @@ impl<'a> Resolver<'a> {
 
     crate fn add_typo_suggestion(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         suggestion: Option<TypoSuggestion>,
         span: Span,
     ) -> bool {
@@ -1817,7 +1820,7 @@ fn find_span_immediately_after_crate_name(
 crate fn show_candidates(
     definitions: &rustc_hir::definitions::Definitions,
     session: &Session,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],

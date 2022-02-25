@@ -40,7 +40,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::def::Namespace::*;
 use rustc_hir::def::{self, CtorOf, DefKind, NonMacroAttrKind, PartialRes};
@@ -713,7 +713,7 @@ struct PrivacyError<'a> {
 }
 
 struct UseError<'a> {
-    err: DiagnosticBuilder<'a>,
+    err: DiagnosticBuilder<'a, ErrorReported>,
     /// Candidates which user could `use` to access the missing type.
     candidates: Vec<ImportSuggestion>,
     /// The `DefId` of the module to place the use-statements in.
@@ -3173,7 +3173,7 @@ impl<'a> Resolver<'a> {
     /// ```
     fn add_suggestion_for_rename_of_use(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         name: Symbol,
         import: &Import<'_>,
         binding_span: Span,
@@ -3252,7 +3252,7 @@ impl<'a> Resolver<'a> {
     /// as characters expected by span manipulations won't be present.
     fn add_suggestion_for_duplicate_nested_use(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         import: &Import<'_>,
         binding_span: Span,
     ) {

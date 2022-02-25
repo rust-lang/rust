@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_const_eval::util::{CallDesugaringKind, CallKind};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
@@ -507,7 +507,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
@@ -554,7 +554,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -782,7 +782,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     #[instrument(level = "debug", skip(self, err))]
     fn suggest_using_local_if_applicable(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         location: Location,
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
@@ -855,7 +855,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     fn suggest_split_at_mut_if_applicable(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         place: Place<'tcx>,
         borrowed_place: Place<'tcx>,
     ) {
@@ -1120,7 +1120,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}, {:?}\
@@ -1298,7 +1298,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         drop_span: Span,
         borrow_span: Span,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
              {:?}, {:?}\
@@ -1325,7 +1325,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         debug!(
             "report_temporary_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}\
@@ -1384,7 +1384,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         return_span: Span,
         category: ConstraintCategory,
         opt_place_desc: Option<&String>,
-    ) -> Option<DiagnosticBuilder<'cx>> {
+    ) -> Option<DiagnosticBuilder<'cx, ErrorReported>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
@@ -1483,7 +1483,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         category: ConstraintCategory,
         constraint_span: Span,
         captured_var: &str,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
@@ -1560,7 +1560,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         upvar_span: Span,
         upvar_name: &str,
         escape_span: Span,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> DiagnosticBuilder<'cx, ErrorReported> {
         let tcx = self.infcx.tcx;
 
         let (_, escapes_from) = tcx.article_and_description(self.mir_def_id().to_def_id());
@@ -1835,7 +1835,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut DiagnosticBuilder<'_>) {
+    fn explain_deref_coercion(&mut self, loan: &BorrowData<'tcx>, err: &mut Diagnostic) {
         let tcx = self.infcx.tcx;
         if let (
             Some(Terminator { kind: TerminatorKind::Call { from_hir_call: false, .. }, .. }),
@@ -2362,11 +2362,7 @@ enum AnnotatedBorrowFnSignature<'tcx> {
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     /// Annotate the provided diagnostic with information about borrow from the fn signature that
     /// helps explain.
-    pub(crate) fn emit(
-        &self,
-        cx: &mut MirBorrowckCtxt<'_, 'tcx>,
-        diag: &mut DiagnosticBuilder<'_>,
-    ) -> String {
+    pub(crate) fn emit(&self, cx: &mut MirBorrowckCtxt<'_, 'tcx>, diag: &mut Diagnostic) -> String {
         match self {
             &AnnotatedBorrowFnSignature::Closure { argument_ty, argument_span } => {
                 diag.span_label(

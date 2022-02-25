@@ -36,7 +36,10 @@ TrivialTypeFoldableAndLiftImpls! {
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
-pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
+pub fn struct_error<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    msg: &str,
+) -> DiagnosticBuilder<'tcx, ErrorReported> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 

@@ -1,4 +1,4 @@
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, ErrorReported};
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
@@ -120,7 +120,11 @@ impl<'tcx, F, G> ToUniverseInfo<'tcx> for Canonical<'tcx, type_op::custom::Custo
 trait TypeOpInfo<'tcx> {
     /// Returns an error to be reported if rerunning the type op fails to
     /// recover the error's cause.
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx>;
+    fn fallback_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
 
     fn base_universe(&self) -> ty::UniverseIndex;
 
@@ -130,7 +134,7 @@ trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>>;
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>>;
 
     fn report_error(
         &self,
@@ -188,7 +192,11 @@ struct PredicateQuery<'tcx> {
 }
 
 impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not prove {}", self.canonical_query.value.value.predicate));
         err
@@ -204,7 +212,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -231,7 +239,11 @@ impl<'tcx, T> TypeOpInfo<'tcx> for NormalizeQuery<'tcx, T>
 where
     T: Copy + fmt::Display + TypeFoldable<'tcx> + 'tcx,
 {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not normalize `{}`", self.canonical_query.value.value.value));
         err
@@ -247,7 +259,7 @@ where
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -288,7 +300,11 @@ struct AscribeUserTypeQuery<'tcx> {
 }
 
 impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
+    fn fallback_error(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
         tcx.sess.struct_span_err(span, "higher-ranked lifetime error")
@@ -304,7 +320,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -329,7 +345,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
-) -> Option<DiagnosticBuilder<'tcx>> {
+) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
     let tcx = infcx.tcx;
 
     // We generally shouldn't have errors here because the query was

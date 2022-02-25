@@ -13,7 +13,7 @@ use rustc_ast::{EnumDef, FieldDef, Generics, TraitRef, Ty, TyKind, Variant, Vari
 use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, VisibilityKind};
 use rustc_ast::{MacArgs, MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
+use rustc_errors::{struct_span_err, Applicability, ErrorReported, PResult, StashKey};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
@@ -801,7 +801,7 @@ impl<'a> Parser<'a> {
         before_where_clause_span: Span,
         after_predicates: &[WherePredicate],
         after_where_clause_span: Span,
-    ) {
+    ) -> ErrorReported {
         let mut err =
             self.struct_span_err(after_where_clause_span, "where clause not allowed here");
         if !after_predicates.is_empty() {
@@ -1114,7 +1114,7 @@ impl<'a> Parser<'a> {
         // Only try to recover if this is implementing a trait for a type
         let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
             Ok(impl_info) => impl_info,
-            Err(mut recovery_error) => {
+            Err(recovery_error) => {
                 // Recovery failed, raise the "expected identifier" error
                 recovery_error.cancel();
                 return Err(err);
@@ -1476,7 +1476,9 @@ impl<'a> Parser<'a> {
                             // after the comma
                             self.eat(&token::Comma);
                             // `check_trailing_angle_brackets` already emitted a nicer error
-                            err.cancel();
+                            // NOTE(eddyb) this was `.cancel()`, but `err`
+                            // gets returned, so we can't fully defuse it.
+                            err.downgrade_to_delayed_bug();
                         }
                     }
                 }
@@ -2073,7 +2075,7 @@ impl<'a> Parser<'a> {
                         if let Ok(snippet) = self.span_to_snippet(sp) {
                             let current_vis = match self.parse_visibility(FollowedByType::No) {
                                 Ok(v) => v,
-                                Err(mut d) => {
+                                Err(d) => {
                                     d.cancel();
                                     return Err(err);
                                 }
@@ -2216,7 +2218,7 @@ impl<'a> Parser<'a> {
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),
                     // Recover from attempting to parse the argument as a type without pattern.
-                    Err(mut err) => {
+                    Err(err) => {
                         err.cancel();
                         *this = parser_snapshot_before_ty;
                         this.recover_arg_parse()?
@@ -2358,7 +2360,7 @@ impl<'a> Parser<'a> {
         match self
             .parse_outer_attributes()
             .and_then(|_| self.parse_self_param())
-            .map_err(|mut e| e.cancel())
+            .map_err(|e| e.cancel())
         {
             Ok(Some(_)) => "method",
             _ => "function",

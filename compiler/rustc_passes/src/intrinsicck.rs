@@ -118,7 +118,7 @@ impl<'tcx> ExprVisitor<'tcx> {
             err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
         }
-        err.emit()
+        err.emit();
     }
 
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {

@@ -7,7 +7,7 @@ use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -167,7 +167,7 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut DiagnosticBuilder<'_>,
+    diag: &mut Diagnostic,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,

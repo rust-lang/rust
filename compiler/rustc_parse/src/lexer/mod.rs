@@ -3,7 +3,9 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, FatalError, PResult};
+use rustc_errors::{
+    error_code, Applicability, DiagnosticBuilder, ErrorReported, FatalError, PResult,
+};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
@@ -127,7 +129,7 @@ impl<'a> StringReader<'a> {
         to_pos: BytePos,
         m: &str,
         c: char,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, ErrorReported> {
         self.sess
             .span_diagnostic
             .struct_span_fatal(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))

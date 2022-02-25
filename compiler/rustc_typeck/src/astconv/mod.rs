@@ -15,7 +15,7 @@ use crate::middle::resolve_lifetime as rl;
 use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, ErrorReported, FatalError};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -2618,7 +2618,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
         referenced_regions: FxHashSet<ty::BoundRegionKind>,
-        generate_err: impl Fn(&str) -> rustc_errors::DiagnosticBuilder<'tcx>,
+        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx, ErrorReported>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
