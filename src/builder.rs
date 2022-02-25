@@ -114,7 +114,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let after_block = func.new_block("after_while");
         self.llbb().end_with_jump(None, while_block);
 
-        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current blocks in the
+        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current block in the
         // state need to be updated.
         self.switch_to_block(while_block);
 
@@ -131,7 +131,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         while_block.end_with_conditional(None, cond, while_block, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
         self.switch_to_block(after_block);
 
@@ -906,6 +906,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
+        assert_eq!(
+            value.get_type(),
+            self.cx.type_isize(),
+            "cg_ssa currently only calls this function with an isize argument",
+        );
         self.cx.const_bitcast(value, dest_ty)
     }
 
@@ -1007,7 +1012,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         else_block.add_assignment(None, variable, else_val);
         else_block.end_with_jump(None, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
         self.switch_to_block(after_block);
 
