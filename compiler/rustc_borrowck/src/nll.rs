@@ -188,6 +188,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
+            use_polonius,
         );
 
     if let Some(all_facts) = &mut all_facts {
