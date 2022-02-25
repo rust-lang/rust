@@ -3,7 +3,7 @@
 #![feature(nll)]
 #![feature(let_else)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![allow(rustc::potential_query_instability)]
 
 mod dump_visitor;
 mod dumper;

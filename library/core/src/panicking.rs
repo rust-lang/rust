@@ -56,7 +56,6 @@ pub const fn panic_str(expr: &str) -> ! {
     panic_display(&expr);
 }
 
-#[cfg(not(bootstrap))]
 #[inline]
 #[track_caller]
 #[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
@@ -85,9 +84,11 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
     panic!("index out of bounds: the len is {} but the index is {}", len, index)
 }
 
-#[cfg(not(bootstrap))]
+// This function is called directly by the codegen backend, and must not have
+// any extra arguments (including those synthesized by track_caller).
 #[cold]
 #[inline(never)]
+#[cfg_attr(bootstrap, track_caller)]
 #[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
 fn panic_no_unwind() -> ! {
     if cfg!(feature = "panic_immediate_abort") {

@@ -953,8 +953,6 @@ impl Tester for Collector {
                 compile_fail: config.compile_fail,
                 no_run,
                 test_type: test::TestType::DocTest,
-                #[cfg(bootstrap)]
-                allow_fail: false,
             },
             testfn: test::DynTestFn(box move || {
                 let report_unused_externs = |uext| {

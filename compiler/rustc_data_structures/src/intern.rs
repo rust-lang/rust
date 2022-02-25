@@ -20,7 +20,7 @@ mod private {
 /// but you can only construct a `Interned` with `new_unchecked`, and not
 /// directly.
 #[derive(Debug)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Interned<'a, T>(pub &'a T, pub private::PrivateZst);
 
 impl<'a, T> Interned<'a, T> {

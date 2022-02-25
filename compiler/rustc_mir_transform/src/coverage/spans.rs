@@ -47,9 +47,9 @@ impl CoverageStatement {
         }
     }
 
-    pub fn span(&self) -> &Span {
+    pub fn span(&self) -> Span {
         match self {
-            Self::Statement(_, span, _) | Self::Terminator(_, span) => span,
+            Self::Statement(_, span, _) | Self::Terminator(_, span) => *span,
         }
     }
 }

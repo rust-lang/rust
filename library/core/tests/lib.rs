@@ -6,8 +6,6 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
-#![cfg_attr(bootstrap, feature(cfg_panic))]
-#![cfg_attr(bootstrap, feature(cfg_target_has_atomic))]
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]

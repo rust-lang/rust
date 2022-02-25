@@ -162,6 +162,9 @@ macro_rules! make_mir_visitor {
                 self.super_constant(constant, location);
             }
 
+            // The macro results in a false positive of sorts, where &mut Span
+            // is fine, but &Span is not; just allow the lint.
+            #[allow(rustc::pass_by_value)]
             fn visit_span(&mut self,
                           span: & $($mutability)? Span) {
                 self.super_span(span);
@@ -869,6 +872,9 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            // The macro results in a false positive of sorts, where &mut Span
+            // is fine, but &Span is not; just allow the lint.
+            #[allow(rustc::pass_by_value)]
             fn super_span(&mut self, _span: & $($mutability)? Span) {
             }
 
