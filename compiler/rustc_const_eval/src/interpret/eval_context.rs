@@ -22,9 +22,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar,
-    ScalarMaybeUninit, StackPopJump,
+    AllocCheck, AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine,
+    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance,
+    Scalar, ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -438,6 +438,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     #[inline(always)]
     pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
         self.memory.scalar_to_ptr(scalar)
+    }
+
+    /// Test if this value might be null.
+    /// If the machine does not support ptr-to-int casts, this is conservative.
+    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> bool {
+        match scalar.try_to_int() {
+            Ok(int) => int.is_null(),
+            Err(_) => {
+                let ptr = self.scalar_to_ptr(scalar);
+                match self.memory.ptr_try_get_alloc(ptr) {
+                    Ok((alloc_id, offset, _)) => {
+                        let (size, _align) = self
+                            .memory
+                            .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
+                            .expect("alloc info with MaybeDead cannot fail");
+                        // If the pointer is out-of-bounds, it may be null.
+                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                        offset > size
+                    }
+                    Err(offset) => offset == 0,
+                }
+            }
+        }
     }
 
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
