@@ -372,10 +372,17 @@ impl<'a> Parser<'a> {
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 false
             }
-            (true, Some(AssocOp::LAnd)) => {
+            (true, Some(AssocOp::LAnd)) |
+            (true, Some(AssocOp::LOr)) |
+            (true, Some(AssocOp::BitOr)) => {
                 // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`. Separated from the
                 // above due to #74233.
                 // These cases are ambiguous and can't be identified in the parser alone.
+                //
+                // Bitwise AND is left out because guessing intent is hard. We can make
+                // suggestions based on the assumption that double-refs are rarely intentional,
+                // and closures are distinct enough that they don't get mixed up with their
+                // return value.
                 let sp = self.sess.source_map().start_point(self.token.span);
                 self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 false
@@ -1247,7 +1254,14 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::OpenDelim(token::Brace)) {
             self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
         } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
-            self.parse_closure_expr(attrs)
+            self.parse_closure_expr(attrs).map_err(|mut err| {
+                // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
+                // then suggest parens around the lhs.
+                if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    self.sess.expr_parentheses_needed(&mut err, *sp);
+                }
+                err
+            })
         } else if self.check(&token::OpenDelim(token::Bracket)) {
             self.parse_array_or_repeat_expr(attrs, token::Bracket)
         } else if self.check_path() {

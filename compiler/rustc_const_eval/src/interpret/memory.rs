@@ -483,21 +483,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         })
     }
-
-    /// Test if the pointer might be null.
-    pub fn ptr_may_be_null(&self, ptr: Pointer<Option<M::PointerTag>>) -> bool {
-        match self.ptr_try_get_alloc(ptr) {
-            Ok((alloc_id, offset, _)) => {
-                let (size, _align) = self
-                    .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
-                    .expect("alloc info with MaybeDead cannot fail");
-                // If the pointer is out-of-bounds, it may be null.
-                // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                offset > size
-            }
-            Err(offset) => offset == 0,
-        }
-    }
 }
 
 /// Allocation accessors
