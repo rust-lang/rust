@@ -87,6 +87,8 @@ found in [`header.rs`] from the compiletest source.
     * [`revisions`](compiletest.md#revisions) — compile multiple times
     * [`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects output pattern
     * [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should ICE
+    * [`known-bug`](ui.md#known-bugs) — indicates that the test is
+      for a known bug that has not yet been fixed
 * [Assembly](compiletest.md#assembly-tests) headers
     * `assembly-output` — the type of assembly output to check
 

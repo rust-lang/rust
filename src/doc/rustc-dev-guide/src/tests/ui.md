@@ -394,6 +394,21 @@ The `ignore-pass` header can be used to ignore the `--pass` CLI flag if the
 test won't work properly with that override.
 
 
+## Known bugs
+
+The `known-bug` header may be used for tests that demonstrate a known bug that
+has not yet been fixed.
+Adding tests for known bugs is helpful for several reasons, including:
+
+1. Maintaining a functional test that can be conveniently reused when the bug is fixed.
+2. Providing a sentinel that will fail if the bug is incidentally fixed.
+   This can alert the developer so they know that the associated issue has
+   been fixed and can possibly be closed.
+
+Do not include [error annotations](#error-annotations) in a test with `known-bug`.
+The test should still include other normal headers and stdout/stderr files.
+
+
 ## Test organization
 
 When deciding where to place a test file, please try to find a subdirectory
