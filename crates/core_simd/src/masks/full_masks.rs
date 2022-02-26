@@ -2,7 +2,7 @@
 
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
@@ -66,6 +66,23 @@ where
     }
 }
 
+// Used for bitmask bit order workaround
+pub(crate) trait ReverseBits {
+    fn reverse_bits(self) -> Self;
+}
+
+macro_rules! impl_reverse_bits {
+    { $($int:ty),* } => {
+        $(
+        impl ReverseBits for $int {
+            fn reverse_bits(self) -> Self { <$int>::reverse_bits(self) }
+        }
+        )*
+    }
+}
+
+impl_reverse_bits! { u8, u16, u32, u64 }
+
 impl<T, const LANES: usize> Mask<T, LANES>
 where
     T: MaskElement,
@@ -110,41 +127,36 @@ where
         unsafe { Mask(intrinsics::simd_cast(self.0)) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
-        unsafe {
-            let mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN] =
-                intrinsics::simd_bitmask(self.0);
+    pub(crate) fn to_bitmask_integer<U: ReverseBits>(self) -> U
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: U is required to be the appropriate bitmask type
+        let bitmask: U = unsafe { intrinsics::simd_bitmask(self.0) };
 
-            // There is a bug where LLVM appears to implement this operation with the wrong
-            // bit order.
-            // TODO fix this in a better way
-            if cfg!(target_endian = "big") {
-                for x in bitmask.as_mut() {
-                    *x = x.reverse_bits();
-                }
-            }
-
+        // LLVM assumes bit order should match endianness
+        if cfg!(target_endian = "big") {
+            bitmask.reverse_bits()
+        } else {
             bitmask
         }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask(mut bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
-        unsafe {
-            // There is a bug where LLVM appears to implement this operation with the wrong
-            // bit order.
-            // TODO fix this in a better way
-            if cfg!(target_endian = "big") {
-                for x in bitmask.as_mut() {
-                    *x = x.reverse_bits();
-                }
-            }
+    pub(crate) fn from_bitmask_integer<U: ReverseBits>(bitmask: U) -> Self
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // LLVM assumes bit order should match endianness
+        let bitmask = if cfg!(target_endian = "big") {
+            bitmask.reverse_bits()
+        } else {
+            bitmask
+        };
 
+        // Safety: U is required to be the appropriate bitmask type
+        unsafe {
             Self::from_int_unchecked(intrinsics::simd_select_bitmask(
                 bitmask,
                 Self::splat(true).to_int(),
