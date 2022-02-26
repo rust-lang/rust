@@ -281,9 +281,7 @@ pub(crate) fn type_is_scalar<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // FIXME: can these ever have Scalar ABI?
         ty::Closure(..) | ty::Generator(..) => false,
         // Types that don't have scalar layout to begin with.
-        ty::Array(..) | ty::Slice(..) | ty::Str | ty::Dynamic(..) | ty::Foreign(..) => {
-            false
-        }
+        ty::Array(..) | ty::Slice(..) | ty::Str | ty::Dynamic(..) | ty::Foreign(..) => false,
         // Types we should not uusally see here, but when called from CTFE op_to_const these can
         // actually happen.
         ty::Error(_)
