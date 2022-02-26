@@ -51,13 +51,10 @@ const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
 ];
 
-fn get_attrs<'ll>(
-    this: &ArgAttributes,
-    cx: &CodegenCx<'ll, '_>,
-) -> SmallVec<impl smallvec::Array<Item = &'ll Attribute>> {
+fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
     let mut regular = this.regular;
 
-    let mut attrs = SmallVec::<[_; 8]>::new();
+    let mut attrs = SmallVec::new();
 
     // ABI-affecting attributes must always be applied
     for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {

@@ -62,8 +62,8 @@ fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll 
 pub fn sanitize_attrs<'ll>(
     cx: &CodegenCx<'ll, '_>,
     no_sanitize: SanitizerSet,
-) -> SmallVec<impl smallvec::Array<Item = &'ll Attribute>> {
-    let mut attrs = SmallVec::<[_; 4]>::new();
+) -> SmallVec<[&'ll Attribute; 4]> {
+    let mut attrs = SmallVec::new();
     let enabled = cx.tcx.sess.opts.debugging_opts.sanitizer - no_sanitize;
     if enabled.contains(SanitizerSet::ADDRESS) {
         attrs.push(llvm::AttributeKind::SanitizeAddress.create_attr(cx.llcx));
@@ -224,12 +224,12 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     cx: &CodegenCx<'ll, '_>,
 ) -> (
     // Attributes to remove
-    SmallVec<impl smallvec::Array<Item = AttributeKind>>,
+    SmallVec<[AttributeKind; 3]>,
     // Attributes to add
-    SmallVec<impl smallvec::Array<Item = &'ll Attribute>>,
+    SmallVec<[&'ll Attribute; 2]>,
 ) {
-    let mut to_remove = SmallVec::<[_; 3]>::new();
-    let mut to_add = SmallVec::<[_; 2]>::new();
+    let mut to_remove = SmallVec::new();
+    let mut to_add = SmallVec::new();
     match cx.sess().opts.optimize {
         OptLevel::Size => {
             to_remove.push(llvm::AttributeKind::MinSize);
