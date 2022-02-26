@@ -183,7 +183,8 @@ pub(crate) fn highlight(
     traverse(
         &mut hl,
         &sema,
-        InFile::new(file_id.into(), &root),
+        file_id,
+        &root,
         sema.scope(&root).krate(),
         range_to_highlight,
         syntactic_name_ref_highlighting,
@@ -194,11 +195,13 @@ pub(crate) fn highlight(
 fn traverse(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
-    root: InFile<&SyntaxNode>,
+    file_id: FileId,
+    root: &SyntaxNode,
     krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
     syntactic_name_ref_highlighting: bool,
 ) {
+    let is_unlinked = sema.to_module_def(file_id).is_none();
     let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
@@ -209,7 +212,7 @@ fn traverse(
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
-    for event in root.value.preorder_with_tokens() {
+    for event in root.preorder_with_tokens() {
         let range = match &event {
             WalkEvent::Enter(it) | WalkEvent::Leave(it) => it.text_range(),
         };
@@ -283,7 +286,7 @@ fn traverse(
             WalkEvent::Enter(it) => it,
             WalkEvent::Leave(NodeOrToken::Token(_)) => continue,
             WalkEvent::Leave(NodeOrToken::Node(node)) => {
-                inject::doc_comment(hl, sema, root.with_value(&node));
+                inject::doc_comment(hl, sema, InFile::new(file_id.into(), &node));
                 continue;
             }
         };
@@ -378,6 +381,11 @@ fn traverse(
             NodeOrToken::Token(token) => highlight::token(sema, token).zip(Some(None)),
         };
         if let Some((mut highlight, binding_hash)) = element {
+            if is_unlinked && highlight.tag == HlTag::UnresolvedReference {
+                // do not emit unresolved references if the file is unlinked
+                // let the editor do its highlighting for these tokens instead
+                continue;
+            }
             if inside_attribute {
                 highlight |= HlMod::Attribute
             }
