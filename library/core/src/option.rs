@@ -1354,32 +1354,22 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// let x = Some(2);
-    /// let y: Option<u32> = None;
-    /// assert_eq!(x.not(y), None);
-    ///
     /// let x: Option<u32> = None;
-    /// let y = Some(2);
+    /// let y = 2;
     /// assert_eq!(x.not(y), Some(2));
     ///
     /// let x = Some(2);
-    /// let y = Some(2);
-    /// assert_eq!(x.not(y), None);
-    ///
-    /// let x: Option<u32> = None;
-    /// let y: Option<u32> = None;
+    /// let y = 2;
     /// assert_eq!(x.not(y), None);
     /// ```
     #[inline]
-    #[unstable(feature = "option_not")]
-    #[rustc_const_unstable(feature = "option_not")]
-    pub const fn not(self, optb: Option<T>) -> Option<T>
+    pub const fn not(self, some: T) -> Option<T>
     where
         T: ~const Drop,
     {
         match self {
             Some(_) => None,
-            None => optb,
+            None => some,
         }
     }
 
@@ -1405,6 +1395,8 @@ impl<T> Option<T> {
     /// assert_eq!(x.xor(y), None);
     /// ```
     #[inline]
+    #[stable(feature = "option_xor", since = "1.37.0")]
+    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn xor(self, optb: Option<T>) -> Option<T>
     where
         T: ~const Drop,
