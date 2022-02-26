@@ -744,6 +744,7 @@ impl Default for Options {
             json_future_incompat: false,
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
+            injected_env_vars: Default::default(),
         }
     }
 }
@@ -1429,6 +1430,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
+        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2197,6 +2199,23 @@ fn parse_remap_path_prefix(
     mapping
 }
 
+fn parse_injected_env_vars(
+    matches: &getopts::Matches,
+    error_format: ErrorOutputType,
+) -> FxHashMap<String, String> {
+    let mut vars = FxHashMap::default();
+
+    for arg in matches.opt_strs("env") {
+        if let Some((name, val)) = arg.split_once('=') {
+            vars.insert(name.to_string(), val.to_string());
+        } else {
+            early_error(error_format, &format!("`--env`: specify value for variable `{}`", arg));
+        }
+    }
+
+    vars
+}
+
 // JUSTIFICATION: before wrapper fn is available
 #[cfg_attr(not(bootstrap), allow(rustc::bad_opt_access))]
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
@@ -2470,6 +2489,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         RealFileName::LocalPath(path)
     };
 
+    let injected_env_vars = parse_injected_env_vars(matches, error_format);
+
     Options {
         assert_incr_state,
         crate_types,
@@ -2506,6 +2527,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         json_future_incompat,
         pretty,
         working_dir,
+        injected_env_vars,
     }
 }
 

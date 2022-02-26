@@ -21,7 +21,12 @@ pub fn expand_option_env<'cx>(
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+
+    let injected_value =
+        cx.sess.opts.injected_env_vars.get(var.as_str()).map(|s| Symbol::intern(s));
+    let value =
+        injected_value.or_else(|| env::var(var.as_str()).ok().as_deref().map(Symbol::intern));
+
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
@@ -78,7 +83,11 @@ pub fn expand_env<'cx>(
     }
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+
+    let key = var.as_str();
+    let injected_value = cx.sess.opts.injected_env_vars.get(key).map(|s| Symbol::intern(s));
+    let value = injected_value.or_else(|| env::var(key).ok().as_deref().map(Symbol::intern));
+
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {

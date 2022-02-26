@@ -10,6 +10,8 @@ use rustc_target::spec::{
     RelocModel, RelroLevel, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
 };
 
+use rustc_data_structures::fx::FxHashMap;
+
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::Edition;
 use rustc_span::RealFileName;
@@ -210,6 +212,9 @@ top_level_options!(
 
         /// The (potentially remapped) working directory
         working_dir: RealFileName [TRACKED],
+
+        /// Overridden env vars used for `env!` and `option_env!`
+        injected_env_vars: FxHashMap<String, String> [UNTRACKED],
     }
 );
 
