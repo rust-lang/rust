@@ -1245,3 +1245,25 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn while_loop_block_expr_iterable() {
+    check_infer(
+        r#"
+fn test() {
+    while { true } {
+        let y = 0;
+    }
+}
+        "#,
+        expect![[r#"
+            10..59 '{     ...   } }': ()
+            16..57 'while ...     }': ()
+            22..30 '{ true }': bool
+            24..28 'true': bool
+            31..57 '{     ...     }': ()
+            45..46 'y': i32
+            49..50 '0': i32
+        "#]],
+    );
+}
