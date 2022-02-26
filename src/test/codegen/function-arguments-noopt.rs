@@ -10,7 +10,7 @@ pub struct S {
   _field: [i32; 8],
 }
 
-// CHECK: define zeroext i1 @boolean(i1 zeroext %x)
+// CHECK: zeroext i1 @boolean(i1 zeroext %x)
 #[no_mangle]
 pub fn boolean(x: bool) -> bool {
   x
@@ -23,7 +23,7 @@ pub fn boolean_call(x: bool, f: fn(bool) -> bool) -> bool {
   f(x)
 }
 
-// CHECK: define align 4 i32* @borrow(i32* align 4 %x)
+// CHECK: align 4 i32* @borrow(i32* align 4 %x)
 #[no_mangle]
 pub fn borrow(x: &i32) -> &i32 {
   x
@@ -36,7 +36,7 @@ pub fn borrow_call(x: &i32, f: fn(&i32) -> &i32) -> &i32 {
   f(x)
 }
 
-// CHECK: define void @struct_(%S* sret(%S){{( %0)?}}, %S* %x)
+// CHECK: void @struct_(%S* sret(%S){{( %0)?}}, %S* %x)
 #[no_mangle]
 pub fn struct_(x: S) -> S {
   x
@@ -49,7 +49,7 @@ pub fn struct_call(x: S, f: fn(S) -> S) -> S {
   f(x)
 }
 
-// CHECK: define { i8, i8 } @enum_(i1 zeroext %x.0, i8 %x.1)
+// CHECK: { i8, i8 } @enum_(i1 zeroext %x.0, i8 %x.1)
 #[no_mangle]
 pub fn enum_(x: Option<u8>) -> Option<u8> {
   x
