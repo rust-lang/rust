@@ -8,7 +8,7 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AssocItemContainer, AssocKind, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast::ast;
 use rustc_attr as attr;
@@ -482,21 +482,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .iter()
                 .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
                 .map(|bound| {
-                    bound.fold_with(&mut ty::fold::BottomUpFolder {
+                    bound.fold_with(&mut ReplaceOpaqueTyFolder {
                         tcx: self.interner.tcx,
-                        ty_op: |ty| {
-                            if let ty::Opaque(def_id, substs) = *ty.kind() {
-                                if def_id == opaque_ty_id.0 && substs == identity_substs {
-                                    return self.interner.tcx.mk_ty(ty::Bound(
-                                        ty::INNERMOST,
-                                        ty::BoundTy::from(ty::BoundVar::from_u32(0)),
-                                    ));
-                                }
-                            }
-                            ty
-                        },
-                        lt_op: |lt| lt,
-                        ct_op: |ct| ct,
+                        opaque_ty_id,
+                        identity_substs,
+                        binder_index: ty::INNERMOST,
                     })
                 })
                 .filter_map(|bound| {
@@ -738,4 +728,39 @@ fn binders_for<'tcx>(
             }
         }),
     )
+}
+
+struct ReplaceOpaqueTyFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    opaque_ty_id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
+    identity_substs: SubstsRef<'tcx>,
+    binder_index: ty::DebruijnIndex,
+}
+
+impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.binder_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.binder_index.shift_out(1);
+        t
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Opaque(def_id, substs) = *ty.kind() {
+            if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
+                return self.tcx.mk_ty(ty::Bound(
+                    self.binder_index,
+                    ty::BoundTy::from(ty::BoundVar::from_u32(0)),
+                ));
+            }
+        }
+        ty
+    }
 }
