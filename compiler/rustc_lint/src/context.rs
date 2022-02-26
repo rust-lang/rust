@@ -166,7 +166,12 @@ impl LintStore {
         self.early_passes.push(Box::new(pass));
     }
 
-    /// Used by clippy.
+    /// This lint pass is softly deprecated. It misses expanded code and has caused a few
+    /// errors in the past. Currently, it is only used in Clippy. New implementations
+    /// should avoid using this interface, as it might be removed in the future.
+    ///
+    /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
+    /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
     pub fn register_pre_expansion_pass(
         &mut self,
         pass: impl Fn() -> EarlyLintPassObject + 'static + sync::Send + sync::Sync,
