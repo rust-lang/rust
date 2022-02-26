@@ -32,6 +32,11 @@ impl flags::Metrics {
 
         let _env = pushenv("RA_METRICS", "1");
 
+        {
+            // https://github.com/rust-analyzer/rust-analyzer/issues/9997
+            let _d = pushd("target/rustc-perf/collector/benchmarks/webrender")?;
+            cmd!("cargo update -p url --precise 1.6.1").run()?;
+        }
         metrics.measure_build()?;
         metrics.measure_analysis_stats_self()?;
         metrics.measure_analysis_stats("ripgrep")?;
