@@ -12,11 +12,12 @@
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
 #![feature(label_break_value)]
-#![feature(nll)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
-#![recursion_limit = "256"]
+#![feature(nll)]
 #![feature(slice_internals)]
 #![feature(stmt_expr_attributes)]
+#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_macros;
