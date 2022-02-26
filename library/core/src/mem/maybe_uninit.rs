@@ -817,6 +817,7 @@ impl<T> MaybeUninit<T> {
     /// ### Correct usage of this method:
     ///
     /// ```rust
+    /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
     /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
