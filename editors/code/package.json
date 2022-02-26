@@ -284,6 +284,14 @@
                 "command": "rust-analyzer.clearFlycheck",
                 "title": "Clear flycheck diagnostics",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.openFile",
+                "title": "Open File"
+            },
+            {
+                "command": "rust-analyzer.revealDependency",
+                "title": "Reveal File"
             }
         ],
         "keybindings": [
@@ -1953,6 +1961,14 @@
                     "command": "rust-analyzer.openDocs",
                     "when": "inRustProject && editorTextFocus && editorLangId == rust",
                     "group": "navigation@1001"
+                }
+            ]
+        },
+        "views": {
+            "explorer": [
+                {
+                    "id": "rustDependencies",
+                    "name": "Rust Dependencies"
                 }
             ]
         },

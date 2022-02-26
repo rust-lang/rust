@@ -2,10 +2,10 @@ import * as vscode from "vscode";
 import * as lc from "vscode-languageclient/node";
 
 import * as commands from "./commands";
-import { CommandFactory, Ctx, fetchWorkspace } from "./ctx";
+import {CommandFactory, Ctx, fetchWorkspace} from "./ctx";
 import * as diagnostics from "./diagnostics";
-import { activateTaskProvider } from "./tasks";
-import { setContextValue } from "./util";
+import {activateTaskProvider} from "./tasks";
+import {setContextValue} from "./util";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
@@ -24,11 +24,12 @@ export async function activate(
         vscode.window
             .showWarningMessage(
                 `You have both the rust-analyzer (rust-lang.rust-analyzer) and Rust (rust-lang.rust) ` +
-                    "plugins enabled. These are known to conflict and cause various functions of " +
-                    "both plugins to not work correctly. You should disable one of them.",
+                "plugins enabled. These are known to conflict and cause various functions of " +
+                "both plugins to not work correctly. You should disable one of them.",
                 "Got it"
             )
-            .then(() => {}, console.error);
+            .then(() => {
+            }, console.error);
     }
 
     const ctx = new Ctx(context, createCommands(), fetchWorkspace());
@@ -118,7 +119,7 @@ function createCommands(): Record<string, CommandFactory> {
     return {
         onEnter: {
             enabled: commands.onEnter,
-            disabled: (_) => () => vscode.commands.executeCommand("default:type", { text: "\n" }),
+            disabled: (_) => () => vscode.commands.executeCommand("default:type", {text: "\n"}),
         },
         restartServer: {
             enabled: (ctx) => async () => {
@@ -144,51 +145,54 @@ function createCommands(): Record<string, CommandFactory> {
                     health: "stopped",
                 });
             },
-            disabled: (_) => async () => {},
+            disabled: (_) => async () => {
+            },
         },
 
-        analyzerStatus: { enabled: commands.analyzerStatus },
-        memoryUsage: { enabled: commands.memoryUsage },
-        shuffleCrateGraph: { enabled: commands.shuffleCrateGraph },
-        reloadWorkspace: { enabled: commands.reloadWorkspace },
-        rebuildProcMacros: { enabled: commands.rebuildProcMacros },
-        addProject: { enabled: commands.addProject },
-        matchingBrace: { enabled: commands.matchingBrace },
-        joinLines: { enabled: commands.joinLines },
-        parentModule: { enabled: commands.parentModule },
-        syntaxTree: { enabled: commands.syntaxTree },
-        viewHir: { enabled: commands.viewHir },
-        viewMir: { enabled: commands.viewMir },
+        analyzerStatus: {enabled: commands.analyzerStatus},
+        memoryUsage: {enabled: commands.memoryUsage},
+        shuffleCrateGraph: {enabled: commands.shuffleCrateGraph},
+        reloadWorkspace: {enabled: commands.reloadWorkspace},
+        rebuildProcMacros: {enabled: commands.rebuildProcMacros},
+        addProject: {enabled: commands.addProject},
+        matchingBrace: {enabled: commands.matchingBrace},
+        joinLines: {enabled: commands.joinLines},
+        parentModule: {enabled: commands.parentModule},
+        syntaxTree: {enabled: commands.syntaxTree},
+        viewHir: {enabled: commands.viewHir},
+        viewMir: {enabled: commands.viewMir},
         interpretFunction: { enabled: commands.interpretFunction },
-        viewFileText: { enabled: commands.viewFileText },
-        viewItemTree: { enabled: commands.viewItemTree },
-        viewCrateGraph: { enabled: commands.viewCrateGraph },
-        viewFullCrateGraph: { enabled: commands.viewFullCrateGraph },
-        expandMacro: { enabled: commands.expandMacro },
-        run: { enabled: commands.run },
-        copyRunCommandLine: { enabled: commands.copyRunCommandLine },
-        debug: { enabled: commands.debug },
-        newDebugConfig: { enabled: commands.newDebugConfig },
-        openDocs: { enabled: commands.openDocs },
-        openCargoToml: { enabled: commands.openCargoToml },
-        peekTests: { enabled: commands.peekTests },
-        moveItemUp: { enabled: commands.moveItemUp },
-        moveItemDown: { enabled: commands.moveItemDown },
-        cancelFlycheck: { enabled: commands.cancelFlycheck },
-        clearFlycheck: { enabled: commands.clearFlycheck },
-        runFlycheck: { enabled: commands.runFlycheck },
-        ssr: { enabled: commands.ssr },
-        serverVersion: { enabled: commands.serverVersion },
+        viewFileText: {enabled: commands.viewFileText},
+        viewItemTree: {enabled: commands.viewItemTree},
+        viewCrateGraph: {enabled: commands.viewCrateGraph},
+        viewFullCrateGraph: {enabled: commands.viewFullCrateGraph},
+        expandMacro: {enabled: commands.expandMacro},
+        run: {enabled: commands.run},
+        copyRunCommandLine: {enabled: commands.copyRunCommandLine},
+        debug: {enabled: commands.debug},
+        newDebugConfig: {enabled: commands.newDebugConfig},
+        openDocs: {enabled: commands.openDocs},
+        openCargoToml: {enabled: commands.openCargoToml},
+        peekTests: {enabled: commands.peekTests},
+        moveItemUp: {enabled: commands.moveItemUp},
+        moveItemDown: {enabled: commands.moveItemDown},
+        cancelFlycheck: {enabled: commands.cancelFlycheck},
+        clearFlycheck: {enabled: commands.clearFlycheck},
+        runFlycheck: {enabled: commands.runFlycheck},
+        ssr: {enabled: commands.ssr},
+        serverVersion: {enabled: commands.serverVersion},
         // Internal commands which are invoked by the server.
-        applyActionGroup: { enabled: commands.applyActionGroup },
-        applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
-        debugSingle: { enabled: commands.debugSingle },
-        gotoLocation: { enabled: commands.gotoLocation },
-        linkToCommand: { enabled: commands.linkToCommand },
-        resolveCodeAction: { enabled: commands.resolveCodeAction },
-        runSingle: { enabled: commands.runSingle },
-        showReferences: { enabled: commands.showReferences },
-        triggerParameterHints: { enabled: commands.triggerParameterHints },
-        openLogs: { enabled: commands.openLogs },
+        applyActionGroup: {enabled: commands.applyActionGroup},
+        applySnippetWorkspaceEdit: {enabled: commands.applySnippetWorkspaceEditCommand},
+        debugSingle: {enabled: commands.debugSingle},
+        gotoLocation: {enabled: commands.gotoLocation},
+        linkToCommand: {enabled: commands.linkToCommand},
+        resolveCodeAction: {enabled: commands.resolveCodeAction},
+        runSingle: {enabled: commands.runSingle},
+        showReferences: {enabled: commands.showReferences},
+        triggerParameterHints: {enabled: commands.triggerParameterHints},
+        openLogs: {enabled: commands.openLogs},
+        openFile: {enabled: commands.openFile},
+        revealDependency: {enabled: commands.revealDependency}
     };
 }

@@ -3,8 +3,8 @@ import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 import * as path from "path";
 
-import { Config, prepareVSCodeConfig } from "./config";
-import { createClient } from "./client";
+import {Config, prepareVSCodeConfig} from './config';
+import {createClient} from './client';
 import {
     executeDiscoverProject,
     isRustDocument,
@@ -12,11 +12,13 @@ import {
     LazyOutputChannel,
     log,
     RustEditor,
-} from "./util";
-import { ServerStatusParams } from "./lsp_ext";
-import { PersistentState } from "./persistent_state";
-import { bootstrap } from "./bootstrap";
-import { ExecOptions } from "child_process";
+} from './util';
+import {ServerStatusParams} from './lsp_ext';
+import {Dependency, DependencyFile, RustDependenciesProvider, DependencyId} from './dependencies_provider';
+import {execRevealDependency} from './commands';
+import {PersistentState} from "./persistent_state";
+import {bootstrap} from "./bootstrap";
+import {ExecOptions} from "child_process";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -25,12 +27,12 @@ import { ExecOptions } from "child_process";
 export type Workspace =
     | { kind: "Empty" }
     | {
-          kind: "Workspace Folder";
-      }
+    kind: "Workspace Folder";
+}
     | {
-          kind: "Detached Files";
-          files: vscode.TextDocument[];
-      };
+    kind: "Detached Files";
+    files: vscode.TextDocument[];
+};
 
 export function fetchWorkspace(): Workspace {
     const folders = (vscode.workspace.workspaceFolders || []).filter(
@@ -42,12 +44,12 @@ export function fetchWorkspace(): Workspace {
 
     return folders.length === 0
         ? rustDocuments.length === 0
-            ? { kind: "Empty" }
+            ? {kind: "Empty"}
             : {
-                  kind: "Detached Files",
-                  files: rustDocuments,
-              }
-        : { kind: "Workspace Folder" };
+                kind: "Detached Files",
+                files: rustDocuments,
+            }
+        : {kind: "Workspace Folder"};
 }
 
 export async function discoverWorkspace(
@@ -84,6 +86,8 @@ export class Ctx {
     private commandFactories: Record<string, CommandFactory>;
     private commandDisposables: Disposable[];
     private unlinkedFiles: vscode.Uri[];
+    readonly dependencies: RustDependenciesProvider;
+    readonly treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId>;
 
     get client() {
         return this._client;
@@ -92,7 +96,9 @@ export class Ctx {
     constructor(
         readonly extCtx: vscode.ExtensionContext,
         commandFactories: Record<string, CommandFactory>,
-        workspace: Workspace
+        workspace: Workspace,
+        dependencies: RustDependenciesProvider,
+        treeView: vscode.TreeView<Dependency | DependencyFile | DependencyId>
     ) {
         extCtx.subscriptions.push(this);
         this.statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
@@ -101,6 +107,8 @@ export class Ctx {
         this.commandDisposables = [];
         this.commandFactories = commandFactories;
         this.unlinkedFiles = [];
+        this.dependencies = dependencies;
+        this.treeView = treeView;
 
         this.state = new PersistentState(extCtx.globalState);
         this.config = new Config(extCtx);
@@ -108,6 +116,13 @@ export class Ctx {
         this.updateCommands("disable");
         this.setServerStatus({
             health: "stopped",
+        });
+        vscode.window.onDidChangeActiveTextEditor(e => {
+            if (e && isRustEditor(e)) {
+                execRevealDependency(e).catch(reason => {
+                    void vscode.window.showErrorMessage(`Dependency error: ${reason}`);
+                });
+            }
         });
     }
 
@@ -174,7 +189,7 @@ export class Ctx {
             const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
             const run: lc.Executable = {
                 command: this._serverPath,
-                options: { env: newEnv },
+                options: {env: newEnv},
             };
             const serverOptions = {
                 run,
@@ -348,6 +363,7 @@ export class Ctx {
                 statusBar.color = undefined;
                 statusBar.backgroundColor = undefined;
                 statusBar.command = "rust-analyzer.stopServer";
+                this.dependencies.refresh();
                 break;
             case "warning":
                 if (status.message) {
@@ -410,4 +426,5 @@ export class Ctx {
 export interface Disposable {
     dispose(): void;
 }
+
 export type Cmd = (...args: any[]) => unknown;

@@ -8,10 +8,11 @@ import { applySnippetWorkspaceEdit, applySnippetTextEdits } from "./snippets";
 import { spawnSync } from "child_process";
 import { RunnableQuickPick, selectRunnable, createTask, createArgs } from "./run";
 import { AstInspector } from "./ast_inspector";
-import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor } from "./util";
+import { isRustDocument, isCargoTomlDocument, sleep, isRustEditor, RustEditor } from './util';
 import { startDebugSession, makeDebugConfig } from "./debug";
 import { LanguageClient } from "vscode-languageclient/node";
 import { LINKED_COMMANDS } from "./client";
+import { DependencyId } from './dependencies_provider';
 
 export * from "./ast_inspector";
 export * from "./run";
@@ -264,6 +265,44 @@ export function openCargoToml(ctx: CtxInit): Cmd {
         e.selection = new vscode.Selection(range.start, range.start);
         e.revealRange(range, vscode.TextEditorRevealType.InCenter);
     };
+}
+
+export function openFile(_ctx: CtxInit): Cmd {
+    return async (uri: vscode.Uri) => {
+        try {
+            await vscode.window.showTextDocument(uri);
+        } catch (err) {
+            await vscode.window.showErrorMessage(err.message);
+        }
+    };
+}
+
+export function revealDependency(ctx: CtxInit): Cmd {
+    return async (editor: RustEditor) => {
+        const rootPath = vscode.workspace.workspaceFolders![0].uri.fsPath;
+        const documentPath = editor.document.uri.fsPath;
+        if (documentPath.startsWith(rootPath)) return;
+        const dep = ctx.dependencies.getDependency(documentPath);
+        if (dep) {
+            await ctx.treeView.reveal(dep, { select: true, expand: true });
+        } else {
+            let documentPath = editor.document.uri.fsPath;
+            const parentChain: DependencyId[] = [{ id: documentPath.toLowerCase() }];
+            do {
+                documentPath = path.dirname(documentPath);
+                parentChain.push({ id: documentPath.toLowerCase() });
+            }
+            while (!ctx.dependencies.contains(documentPath));
+            parentChain.reverse();
+            for (const idx in parentChain) {
+                await ctx.treeView.reveal(parentChain[idx], { select: true, expand: true });
+            }
+        }
+    };
+}
+
+export async function execRevealDependency(e: RustEditor): Promise<void> {
+    await vscode.commands.executeCommand('rust-analyzer.revealDependency', e);
 }
 
 export function ssr(ctx: CtxInit): Cmd {
