@@ -773,89 +773,73 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 }
 
-/// Run-length encoding of the uninit mask.
-/// Used to copy parts of a mask multiple times to another allocation.
-pub struct InitMaskCompressed {
-    /// Whether the first range is initialized.
-    initial: bool,
-    /// The lengths of ranges that are run-length encoded.
-    /// The initialization state of the ranges alternate starting with `initial`.
-    ranges: smallvec::SmallVec<[u64; 1]>,
-}
-
-impl InitMaskCompressed {
-    pub fn no_bytes_init(&self) -> bool {
-        // The `ranges` are run-length encoded and of alternating initialization state.
-        // So if `ranges.len() > 1` then the second block is an initialized range.
-        !self.initial && self.ranges.len() == 1
-    }
-}
-
 /// Transferring the initialization mask to other allocations.
 impl<Tag, Extra> Allocation<Tag, Extra> {
-    /// Creates a run-length encoding of the initialization mask; panics if range is empty.
-    ///
-    /// This is essentially a more space-efficient version of
-    /// `InitMask::range_as_init_chunks(...).collect::<Vec<_>>()`.
-    pub fn compress_uninit_range(&self, range: AllocRange) -> InitMaskCompressed {
-        // Since we are copying `size` bytes from `src` to `dest + i * size` (`for i in 0..repeat`),
-        // a naive initialization mask copying algorithm would repeatedly have to read the initialization mask from
-        // the source and write it to the destination. Even if we optimized the memory accesses,
-        // we'd be doing all of this `repeat` times.
-        // Therefore we precompute a compressed version of the initialization mask of the source value and
-        // then write it back `repeat` times without computing any more information from the source.
-
-        // A precomputed cache for ranges of initialized / uninitialized bits
-        // 0000010010001110 will become
-        // `[5, 1, 2, 1, 3, 3, 1]`,
-        // where each element toggles the state.
-
-        let mut ranges = smallvec::SmallVec::<[u64; 1]>::new();
-
-        let mut chunks = self.init_mask.range_as_init_chunks(range.start, range.end()).peekable();
-
-        let initial = chunks.peek().expect("range should be nonempty").is_init();
-
-        // Here we rely on `range_as_init_chunks` to yield alternating init/uninit chunks.
-        for chunk in chunks {
-            let len = chunk.range().end.bytes() - chunk.range().start.bytes();
-            ranges.push(len);
-        }
-
-        InitMaskCompressed { ranges, initial }
+    pub fn no_bytes_init(&self, range: AllocRange) -> bool {
+        // If no bits set in start..end
+        self.init_mask.find_bit(range.start, range.end(), true).is_none()
     }
 
     /// Applies multiple instances of the run-length encoding to the initialization mask.
-    pub fn mark_compressed_init_range(
+    pub fn mark_init_range_repeated(
         &mut self,
-        defined: &InitMaskCompressed,
-        range: AllocRange,
+        mut src_init: InitMask,
+        src_range: AllocRange,
+        dest_first_range: AllocRange,
         repeat: u64,
     ) {
-        // An optimization where we can just overwrite an entire range of initialization
-        // bits if they are going to be uniformly `1` or `0`.
-        if defined.ranges.len() <= 1 {
-            self.init_mask.set_range_inbounds(
-                range.start,
-                range.start + range.size * repeat, // `Size` operations
-                defined.initial,
-            );
-            return;
+        // If the src_range and *each* destination range are of equal size,
+        // and the source range is either entirely initialized or entirely
+        // uninitialized, we can skip a bunch of inserts by just inserting for
+        // the full range once.
+        if src_range.size == dest_first_range.size {
+            let initialized =
+                if src_init.find_bit(src_range.start, src_range.end(), false).is_none() {
+                    Some(true)
+                } else if src_init.find_bit(src_range.start, src_range.end(), true).is_none() {
+                    Some(false)
+                } else {
+                    None
+                };
+
+            if let Some(initialized) = initialized {
+                // De-initialize the destination range across all repetitions.
+                self.init_mask.set_range_inbounds(
+                    dest_first_range.start,
+                    dest_first_range.start + dest_first_range.size * repeat,
+                    initialized,
+                );
+                return;
+            }
         }
 
-        for mut j in 0..repeat {
-            j *= range.size.bytes();
-            j += range.start.bytes();
-            let mut cur = defined.initial;
-            for range in &defined.ranges {
-                let old_j = j;
-                j += range;
+        // Deinitialize the ranges outside the area we care about, so the loop below
+        // can do less work.
+        src_init.set_range_inbounds(Size::from_bytes(0), src_range.start, false);
+        src_init.set_range_inbounds(
+            src_range.end(),
+            Size::from_bytes(src_init.set.domain_size()),
+            false,
+        );
+
+        // De-initialize the destination range across all repetitions.
+        self.init_mask.set_range_inbounds(
+            dest_first_range.start,
+            dest_first_range.start + dest_first_range.size * repeat,
+            false,
+        );
+
+        // Then we initialize.
+        for count in 0..repeat {
+            let start = dest_first_range.start + count * dest_first_range.size;
+            for range in src_init.set.iter_intervals() {
+                // Offset the chunk start/end from src_range, and then
+                // offset from the start of this repetition.
                 self.init_mask.set_range_inbounds(
-                    Size::from_bytes(old_j),
-                    Size::from_bytes(j),
-                    cur,
+                    start + (Size::from_bytes(range.start) - src_range.start),
+                    start + (Size::from_bytes(range.end) - src_range.start),
+                    true,
                 );
-                cur = !cur;
             }
         }
     }

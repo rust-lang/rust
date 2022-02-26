@@ -1035,6 +1035,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             // Zero-sized *destination*.
             return Ok(());
         };
+        let src_all_uninit = src_alloc.no_bytes_init(src_range);
+        // FIXME: This is potentially bad for performance as the init mask could
+        // be large, but is currently necessary to workaround needing to have
+        // both the init mask for the src_alloc (shared ref) and the dst_alloc
+        // (unique ref) available simultaneously. Those are access through
+        // `self.get_raw{,_mut}` and we can't currently explain to rustc that
+        // there's no invalidation of the two references.
+        let src_init_mask = src_alloc.init_mask().clone();
 
         // This checks relocation edges on the src, which needs to happen before
         // `prepare_relocation_copy`.
@@ -1047,8 +1055,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // since we don't want to keep any relocations at the target.
         let relocations =
             src_alloc.prepare_relocation_copy(self, src_range, dest_offset, num_copies);
-        // Prepare a copy of the initialization mask.
-        let compressed = src_alloc.compress_uninit_range(src_range);
 
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_raw_mut(dest_alloc_id)?;
@@ -1059,7 +1065,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             .map_err(|e| e.to_interp_error(dest_alloc_id))?
             .as_mut_ptr();
 
-        if compressed.no_bytes_init() {
+        if src_all_uninit {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
             // is marked as uninitialized but we otherwise omit changing the byte representation which may
             // be arbitrary for uninitialized bytes.
@@ -1106,8 +1112,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
 
         // now fill in all the "init" data
-        dest_alloc.mark_compressed_init_range(
-            &compressed,
+        dest_alloc.mark_init_range_repeated(
+            src_init_mask,
+            src_range,
             alloc_range(dest_offset, size), // just a single copy (i.e., not full `dest_range`)
             num_copies,
         );
