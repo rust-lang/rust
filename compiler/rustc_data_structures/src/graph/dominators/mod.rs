@@ -241,9 +241,19 @@ fn compress(
     v: PreorderIndex,
 ) {
     assert!(is_processed(v, lastlinked));
-    let u = ancestor[v];
-    if is_processed(u, lastlinked) {
-        compress(ancestor, lastlinked, semi, label, u);
+    // Compute the processed list of ancestors
+    //
+    // We use a heap stack here to avoid recursing too deeply, exhausting the
+    // stack space.
+    let mut stack: smallvec::SmallVec<[_; 8]> = smallvec::smallvec![v];
+    let mut u = ancestor[v];
+    while is_processed(u, lastlinked) {
+        stack.push(u);
+        u = ancestor[u];
+    }
+
+    // Then in reverse order, popping the stack
+    for &[v, u] in stack.array_windows().rev() {
         if semi[label[u]] < semi[label[v]] {
             label[v] = label[u];
         }
