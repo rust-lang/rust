@@ -7,18 +7,95 @@ use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
 use crate::{fixture, FileRange, HlTag, TextRange};
 
 #[test]
+fn attributes() {
+    check_highlighting(
+        r#"
+//- proc_macros: identity
+//- minicore: derive, copy
+#[allow(dead_code)]
+#[rustfmt::skip]
+#[proc_macros::identity]
+#[derive(Copy)]
+/// This is a doc comment
+// This is a normal comment
+/// This is a doc comment
+#[derive(Copy)]
+// This is another normal comment
+/// This is another doc comment
+// This is another normal comment
+#[derive(Copy)]
+// The reason for these being here is to test AttrIds
+struct Foo;
+"#,
+        expect_file!["./test_data/attributes.html"],
+        false,
+    );
+}
+#[test]
+fn macros() {
+    check_highlighting(
+        r#"
+//- proc_macros: mirror
+proc_macros::mirror! {
+    {
+        ,i32 :x pub
+        ,i32 :y pub
+    } Foo struct
+}
+macro_rules! def_fn {
+    ($($tt:tt)*) => {$($tt)*}
+}
+
+def_fn! {
+    fn bar() -> u32 {
+        100
+    }
+}
+
+macro_rules! dont_color_me_braces {
+    () => {0}
+}
+
+macro_rules! noop {
+    ($expr:expr) => {
+        $expr
+    }
+}
+
+macro_rules! keyword_frag {
+    ($type:ty) => ($type)
+}
+
+macro with_args($i:ident) {
+    $i
+}
+
+macro without_args {
+    ($i:ident) => {
+        $i
+    }
+}
+
+fn main() {
+    println!("Hello, {}!", 92);
+    dont_color_me_braces!();
+    noop!(noop!(1));
+}
+"#,
+        expect_file!["./test_data/macros.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- proc_macros: identity, mirror
 //- minicore: derive, copy
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
 
-#[allow()]
-#[rustfmt::skip]
-#[proc_macros::identity]
 pub mod ops {
     #[lang = "fn_once"]
     pub trait FnOnce<Args> {}
@@ -30,11 +107,8 @@ pub mod ops {
     pub trait Fn<Args>: FnMut<Args> {}
 }
 
-proc_macros::mirror! {
-    {
-        ,i32 :x pub
-        ,i32 :y pub
-    } Foo struct
+struct Foo {
+    x: u32,
 }
 
 trait Bar where Self: {
@@ -64,15 +138,6 @@ impl Foo {
 use self::FooCopy::{self as BarCopy};
 
 #[derive(Copy)]
-/// This is a doc comment
-// This is a normal comment
-/// This is a doc comment
-#[derive(Copy)]
-// This is another normal comment
-/// This is another doc comment
-// This is another normal comment
-#[derive(Copy)]
-// The reason for these being here is to test AttrIds
 struct FooCopy {
     x: u32,
 }
@@ -118,57 +183,8 @@ fn foo() {
     let bar = foobar();
 }
 
-macro_rules! def_fn {
-    ($($tt:tt)*) => {$($tt)*}
-}
-
-def_fn! {
-    fn bar() -> u32 {
-        100
-    }
-}
-
-macro_rules! dont_color_me_braces {
-    () => {0}
-}
-
-macro_rules! noop {
-    ($expr:expr) => {
-        $expr
-    }
-}
-
-macro_rules! keyword_frag {
-    ($type:ty) => ($type)
-}
-
-macro with_args($i:ident) {
-    $i
-}
-
-macro without_args {
-    ($i:ident) => {
-        $i
-    }
-}
-
 // comment
 fn main() {
-    println!("Hello, {}!", 92);
-    dont_color_me_braces!();
-
-    let mut vec = Vec::new();
-    if true {
-        let x = 92;
-        vec.push(Foo { x, y: 1 });
-    }
-
-    for e in vec {
-        // Do nothing
-    }
-
-    noop!(noop!(1));
-
     let mut x = 42;
     x += 1;
     let y = &mut x;
