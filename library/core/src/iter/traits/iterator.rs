@@ -1690,8 +1690,8 @@ pub trait Iterator {
         Inspect::new(self, f)
     }
 
-    /// Removes all but the first of consecutive elements in the iterator according to the
-    /// [`PartialEq`] trait implementation.
+    /// Removes all but the first of consecutive repeated elements in the iterator
+    /// according to the [`PartialEq`] trait implementation.
     ///
     /// For an iterator yielding infinitely many consecutive duplicates,
     /// this may result in an infinite loop.
@@ -1734,11 +1734,11 @@ pub trait Iterator {
         Dedup::new(self, ByPartialEq::new())
     }
 
-    /// Removes all but the first of consecutive elements in the iterator satisfying a given equality
-    /// relation.
+    /// Removes all but the first of consecutive elements in the iterator
+    /// satisfying a given equality relation.
     ///
-    /// The `same_bucket` function is passed a references to two elements from the iterator and
-    /// must determine if the elements compare equal.
+    /// The `same_bucket` function is passed a references to two elements from
+    /// the iterator and must determine if the elements compare equal.
     ///
     /// For an iterator yielding infinitely many consecutive duplicates,
     /// this may result in an infinite loop.
@@ -1781,8 +1781,8 @@ pub trait Iterator {
         Dedup::new(self, same_bucket)
     }
 
-    /// Removes all but the first of consecutive elements in the iterator that
-    /// resolve to the same key.
+    /// Removes all but the first of consecutive elements in the iterator
+    /// that resolve to the same key.
     ///
     /// For an iterator yielding infinitely many consecutive duplicates,
     /// this may result in an infinite loop.

@@ -1,3 +1,5 @@
+#![unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+
 use crate::iter::{InPlaceIterable, SourceIter};
 
 /// A wrapper type around a key function.
@@ -9,7 +11,6 @@ use crate::iter::{InPlaceIterable, SourceIter};
 /// See its documentation for more.
 ///
 /// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 pub struct ByKey<F> {
     key: F,
@@ -22,7 +23,6 @@ impl<F> ByKey<F> {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<F, T, K> FnOnce<(&T, &T)> for ByKey<F>
 where
     F: FnMut(&T) -> K,
@@ -35,7 +35,6 @@ where
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<F, T, K> FnMut<(&T, &T)> for ByKey<F>
 where
     F: FnMut(&T) -> K,
@@ -56,7 +55,6 @@ where
 /// See its documentation for more.
 ///
 /// [`Iterator::dedup`]: Iterator::dedup
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct ByPartialEq;
@@ -68,7 +66,6 @@ impl ByPartialEq {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
     type Output = bool;
     #[inline]
@@ -77,7 +74,6 @@ impl<T: PartialEq> FnOnce<(&T, &T)> for ByPartialEq {
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
     #[inline]
     extern "rust-call" fn call_mut(&mut self, args: (&T, &T)) -> Self::Output {
@@ -94,7 +90,6 @@ impl<T: PartialEq> FnMut<(&T, &T)> for ByPartialEq {
 /// [`Iterator::dedup`]: Iterator::dedup
 /// [`Iterator::dedup_by`]: Iterator::dedup_by
 /// [`Iterator::dedup_by_key`]: Iterator::dedup_by_key
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 #[derive(Debug, Clone)]
 pub struct Dedup<I, F>
 where
@@ -115,7 +110,6 @@ where
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
 impl<I, F> Iterator for Dedup<I, F>
 where
     I: Iterator,
@@ -140,22 +134,21 @@ where
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
-unsafe impl<S, I, F> SourceIter for Dedup<I, F>
+#[unstable(issue = "none", feature = "inplace_iteration")]
+unsafe impl<I, F> SourceIter for Dedup<I, F>
 where
-    S: Iterator,
-    I: Iterator + SourceIter<Source = S>,
+    I: SourceIter + Iterator,
 {
-    type Source = S;
+    type Source = I::Source;
 
     #[inline]
-    unsafe fn as_inner(&mut self) -> &mut Self::Source {
+    unsafe fn as_inner(&mut self) -> &mut I::Source {
         // SAFETY: unsafe function forwarding to unsafe function with the same requirements
         unsafe { SourceIter::as_inner(&mut self.inner) }
     }
 }
 
-#[unstable(feature = "iter_dedup", reason = "recently added", issue = "83748")]
+#[unstable(issue = "none", feature = "inplace_iteration")]
 unsafe impl<I, F> InPlaceIterable for Dedup<I, F>
 where
     I: InPlaceIterable,
