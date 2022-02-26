@@ -10,12 +10,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, TyKind, Unsafety};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
+use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy,
+    self, AdtDef, Binder, FnSig, IntTy, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_target::abi::{Size, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::normalize::AtExt;
 use std::iter;
@@ -513,5 +515,74 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
             },
             _ => None,
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum EnumValue {
+    Unsigned(u128),
+    Signed(i128),
+}
+impl core::ops::Add<u32> for EnumValue {
+    type Output = Self;
+    fn add(self, n: u32) -> Self::Output {
+        match self {
+            Self::Unsigned(x) => Self::Unsigned(x + u128::from(n)),
+            Self::Signed(x) => Self::Signed(x + i128::from(n)),
+        }
+    }
+}
+
+/// Attempts to read the given constant as though it were an an enum value.
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
+    if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
+        match tcx.type_of(id).kind() {
+            ty::Int(_) => Some(EnumValue::Signed(match value.size().bytes() {
+                1 => i128::from(value.assert_bits(Size::from_bytes(1)) as u8 as i8),
+                2 => i128::from(value.assert_bits(Size::from_bytes(2)) as u16 as i16),
+                4 => i128::from(value.assert_bits(Size::from_bytes(4)) as u32 as i32),
+                8 => i128::from(value.assert_bits(Size::from_bytes(8)) as u64 as i64),
+                16 => value.assert_bits(Size::from_bytes(16)) as i128,
+                _ => return None,
+            })),
+            ty::Uint(_) => Some(EnumValue::Unsigned(match value.size().bytes() {
+                1 => value.assert_bits(Size::from_bytes(1)),
+                2 => value.assert_bits(Size::from_bytes(2)),
+                4 => value.assert_bits(Size::from_bytes(4)),
+                8 => value.assert_bits(Size::from_bytes(8)),
+                16 => value.assert_bits(Size::from_bytes(16)),
+                _ => return None,
+            })),
+            _ => None,
+        }
+    } else {
+        None
+    }
+}
+
+/// Gets the value of the given variant.
+pub fn get_discriminant_value(tcx: TyCtxt<'_>, adt: &'_ AdtDef, i: VariantIdx) -> EnumValue {
+    let variant = &adt.variants[i];
+    match variant.discr {
+        VariantDiscr::Explicit(id) => read_explicit_enum_value(tcx, id).unwrap(),
+        VariantDiscr::Relative(x) => match adt.variants[(i.as_usize() - x as usize).into()].discr {
+            VariantDiscr::Explicit(id) => read_explicit_enum_value(tcx, id).unwrap() + x,
+            VariantDiscr::Relative(_) => EnumValue::Unsigned(x.into()),
+        },
+    }
+}
+
+/// Check if the given type is either `core::ffi::c_void`, `std::os::raw::c_void`, or one of the
+/// platform specific `libc::<platform>::c_void` types in libc.
+pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    if let ty::Adt(adt, _) = ty.kind()
+        && let &[krate, .., name] = &*cx.get_def_path(adt.did)
+        && let sym::libc | sym::core | sym::std = krate
+        && name.as_str() == "c_void"
+    {
+        true
+    } else {
+        false
     }
 }

@@ -358,7 +358,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for transmutes either to or from a type which does not have a defined representation.
+    /// Checks for transmutes between types which do not have a representation defined relative to
+    /// each other.
     ///
     /// ### Why is this bad?
     /// The results of such a transmute are not defined.
@@ -376,7 +377,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.60.0"]
     pub TRANSMUTE_UNDEFINED_REPR,
-    nursery,
+    correctness,
     "transmute to or from a type with an undefined representation"
 }
 

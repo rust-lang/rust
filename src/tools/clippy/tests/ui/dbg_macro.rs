@@ -16,4 +16,27 @@ fn main() {
     dbg!(42);
     dbg!(dbg!(dbg!(42)));
     foo(3) + dbg!(factorial(4));
+    dbg!(1, 2, dbg!(3, 4));
+    dbg!(1, 2, 3, 4, 5);
+}
+
+mod issue7274 {
+    trait Thing<'b> {
+        fn foo(&self);
+    }
+
+    macro_rules! define_thing {
+        ($thing:ident, $body:expr) => {
+            impl<'a> Thing<'a> for $thing {
+                fn foo<'b>(&self) {
+                    $body
+                }
+            }
+        };
+    }
+
+    struct MyThing;
+    define_thing!(MyThing, {
+        dbg!(2);
+    });
 }

@@ -1,8 +1,11 @@
+use clippy_utils::source::{snippet_opt, walk_span_to_context};
 use clippy_utils::{meets_msrv, msrvs};
-use rustc_hir::{Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
+use rustc_lexer::{tokenize, TokenKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::{Span, SpanData, SyntaxContext};
 
 mod infalliable_detructuring_match;
 mod match_as_ref;
@@ -604,33 +607,39 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
             return;
         }
 
-        redundant_pattern_match::check(cx, expr);
+        if let ExprKind::Match(ex, arms, source) = expr.kind {
+            if !contains_cfg_arm(cx, expr, ex, arms) {
+                if source == MatchSource::Normal {
+                    if !(meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO)
+                        && match_like_matches::check_match(cx, expr, ex, arms))
+                    {
+                        match_same_arms::check(cx, arms);
+                    }
 
-        if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
-            if !match_like_matches::check(cx, expr) {
-                match_same_arms::check(cx, expr);
+                    redundant_pattern_match::check_match(cx, expr, ex, arms);
+                    single_match::check(cx, ex, arms, expr);
+                    match_bool::check(cx, ex, arms, expr);
+                    overlapping_arms::check(cx, ex, arms);
+                    match_wild_enum::check(cx, ex, arms);
+                    match_as_ref::check(cx, ex, arms, expr);
+
+                    if self.infallible_destructuring_match_linted {
+                        self.infallible_destructuring_match_linted = false;
+                    } else {
+                        match_single_binding::check(cx, ex, arms, expr);
+                    }
+                }
+                match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
-        } else {
-            match_same_arms::check(cx, expr);
-        }
 
-        if let ExprKind::Match(ex, arms, MatchSource::Normal) = expr.kind {
-            single_match::check(cx, ex, arms, expr);
-            match_bool::check(cx, ex, arms, expr);
-            overlapping_arms::check(cx, ex, arms);
+            // These don't depend on a relationship between multiple arms
             match_wild_err_arm::check(cx, ex, arms);
-            match_wild_enum::check(cx, ex, arms);
-            match_as_ref::check(cx, ex, arms, expr);
             wild_in_or_pats::check(cx, arms);
-
-            if self.infallible_destructuring_match_linted {
-                self.infallible_destructuring_match_linted = false;
-            } else {
-                match_single_binding::check(cx, ex, arms, expr);
+        } else {
+            if meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO) {
+                match_like_matches::check(cx, expr);
             }
-        }
-        if let ExprKind::Match(ex, arms, _) = expr.kind {
-            match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
+            redundant_pattern_match::check(cx, expr);
         }
     }
 
@@ -643,4 +652,95 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     }
 
     extract_msrv_attr!(LateContext);
+}
+
+/// Checks if there are any arms with a `#[cfg(..)]` attribute.
+fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
+    let Some(scrutinee_span) = walk_span_to_context(scrutinee.span, SyntaxContext::root()) else {
+        // Shouldn't happen, but treat this as though a `cfg` attribute were found
+        return true;
+    };
+
+    let start = scrutinee_span.hi();
+    let mut arm_spans = arms.iter().map(|arm| {
+        let data = arm.span.data();
+        (data.ctxt == SyntaxContext::root()).then(|| (data.lo, data.hi))
+    });
+    let end = e.span.hi();
+
+    // Walk through all the non-code space before each match arm. The space trailing the final arm is
+    // handled after the `try_fold` e.g.
+    //
+    // match foo {
+    // _________^-                      everything between the scrutinee and arm1
+    //|    arm1 => (),
+    //|---^___________^                 everything before arm2
+    //|    #[cfg(feature = "enabled")]
+    //|    arm2 => some_code(),
+    //|---^____________________^        everything before arm3
+    //|    // some comment about arm3
+    //|    arm3 => some_code(),
+    //|---^____________________^        everything after arm3
+    //|    #[cfg(feature = "disabled")]
+    //|    arm4 = some_code(),
+    //|};
+    //|^
+    let found = arm_spans.try_fold(start, |start, range| {
+        let Some((end, next_start)) = range else {
+            // Shouldn't happen as macros can't expand to match arms, but treat this as though a `cfg` attribute were
+            // found.
+            return Err(());
+        };
+        let span = SpanData {
+            lo: start,
+            hi: end,
+            ctxt: SyntaxContext::root(),
+            parent: None,
+        }
+        .span();
+        (!span_contains_cfg(cx, span)).then(|| next_start).ok_or(())
+    });
+    match found {
+        Ok(start) => {
+            let span = SpanData {
+                lo: start,
+                hi: end,
+                ctxt: SyntaxContext::root(),
+                parent: None,
+            }
+            .span();
+            span_contains_cfg(cx, span)
+        },
+        Err(()) => true,
+    }
+}
+
+/// Checks if the given span contains a `#[cfg(..)]` attribute
+fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+    let Some(snip) = snippet_opt(cx, s) else {
+        // Assume true. This would require either an invalid span, or one which crosses file boundaries.
+        return true;
+    };
+    let mut pos = 0usize;
+    let mut iter = tokenize(&snip).map(|t| {
+        let start = pos;
+        pos += t.len;
+        (t.kind, start..pos)
+    });
+
+    // Search for the token sequence [`#`, `[`, `cfg`]
+    while iter.any(|(t, _)| matches!(t, TokenKind::Pound)) {
+        let mut iter = iter.by_ref().skip_while(|(t, _)| {
+            matches!(
+                t,
+                TokenKind::Whitespace | TokenKind::LineComment { .. } | TokenKind::BlockComment { .. }
+            )
+        });
+        if matches!(iter.next(), Some((TokenKind::OpenBracket, _)))
+            && matches!(iter.next(), Some((TokenKind::Ident, range)) if &snip[range.clone()] == "cfg")
+        {
+            return true;
+        }
+    }
+    false
 }

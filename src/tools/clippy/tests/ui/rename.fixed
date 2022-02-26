@@ -20,6 +20,7 @@
 #![allow(clippy::match_result_ok)]
 #![allow(clippy::disallowed_types)]
 #![allow(clippy::disallowed_methods)]
+#![allow(clippy::recursive_format_impl)]
 // uplifted lints
 #![allow(invalid_value)]
 #![allow(array_into_iter)]
@@ -55,6 +56,7 @@
 #![warn(clippy::disallowed_types)]
 #![warn(clippy::disallowed_methods)]
 #![warn(clippy::needless_borrow)]
+#![warn(clippy::recursive_format_impl)]
 // uplifted lints
 #![warn(invalid_value)]
 #![warn(array_into_iter)]
