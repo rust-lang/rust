@@ -5,6 +5,7 @@ use crate::sys::cvt;
 use crate::sys::net::Socket;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, io, mem};
+use core::convert::TryInto;
 
 /// A structure representing a Unix domain socket server.
 ///
@@ -53,7 +54,17 @@ impl fmt::Debug for UnixListener {
 }
 
 impl UnixListener {
+    /// Default "backlog" for [`UnixListener::bind`] and
+    /// [`UnixListener::bind_addr`]. See [`UnixListener::bind_with_backlog`]
+    /// for an explanation of backlog values.
+    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    pub const DEFAULT_BACKLOG: usize = 128;
+
     /// Creates a new `UnixListener` bound to the specified socket.
+    ///
+    /// The listener will have a backlog given by
+    /// [`UnixListener::DEFAULT_BACKLOG`]. See the documentation for
+    /// [`UnixListener::bind_with_backlog`] for further information.
     ///
     /// # Examples
     ///
@@ -70,12 +81,50 @@ impl UnixListener {
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
+        UnixListener::bind_with_backlog(path, UnixListener::DEFAULT_BACKLOG)
+    }
+
+    /// Creates a new `UnixListener` bound to the specified socket.
+    ///
+    /// The given backlog specifies the maximum number of outstanding
+    /// connections that will be buffered in the OS waiting to be accepted by
+    /// [`UnixListener::accept`]. The backlog argument overrides the default
+    /// specified by [`UnixListener::DEFAULT_BACKLOG`]; that default is
+    /// reasonable for most use cases.
+    ///
+    /// This function is otherwise [`UnixListener::bind`]: see that
+    /// documentation for full details of operation.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::os::unix::net::UnixListener;
+    ///
+    /// let listener = match UnixListener::bind_with_backlog("/path/to/the/socket", 1000) {
+    ///     Ok(sock) => sock,
+    ///     Err(e) => {
+    ///         println!("Couldn't connect: {:?}", e);
+    ///         return
+    ///     }
+    /// };
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// The specified backlog may be larger than supported by the underlying
+    /// system. In this case an [`io::Error`] with
+    /// [`io::ErrorKind::InvalidData`] will be returned.
+    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    pub fn bind_with_backlog<P: AsRef<Path>>(path: P, backlog: usize) -> io::Result<UnixListener> {
         unsafe {
+            let backlog = backlog
+                .try_into()
+                .map_err(|e| crate::io::Error::new(crate::io::ErrorKind::InvalidData, e))?;
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), &addr as *const _ as *const _, len as _))?;
-            cvt(libc::listen(inner.as_inner().as_raw_fd(), 128))?;
+            cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
 
             Ok(UnixListener(inner))
         }
@@ -107,14 +156,60 @@ impl UnixListener {
     /// ```
     #[unstable(feature = "unix_socket_abstract", issue = "85410")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
+        UnixListener::bind_addr_with_backlog(socket_addr, UnixListener::DEFAULT_BACKLOG)
+    }
+
+    /// Creates a new `UnixListener` bound to the specified [`socket address`].
+    ///
+    /// The given backlog specifies the maximum number of outstanding
+    /// connections that will be buffered in the OS waiting to be accepted by
+    /// [`UnixListener::accept`]. The backlog argument overrides the default
+    /// specified by [`UnixListener::DEFAULT_BACKLOG`]; that default is
+    /// reasonable for most use cases.
+    ///
+    /// This function is otherwise [`UnixListener::bind_addr`]: see that
+    /// documentation for full details of operation.
+    ///
+    /// [`socket address`]: crate::os::unix::net::SocketAddr
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(unix_socket_abstract)]
+    /// #![feature(bind_with_backlog)]
+    /// use std::os::unix::net::{UnixListener};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener1 = UnixListener::bind("path/to/socket")?;
+    ///     let addr = listener1.local_addr()?;
+    ///
+    ///     let listener2 = match UnixListener::bind_addr_with_backlog(&addr, 1000) {
+    ///         Ok(sock) => sock,
+    ///         Err(err) => {
+    ///             println!("Couldn't bind: {:?}", err);
+    ///             return Err(err);
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
+    /// ```
+    //#[unstable(feature = "unix_socket_abstract", issue = "85410")]
+    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    pub fn bind_addr_with_backlog(
+        socket_addr: &SocketAddr,
+        backlog: usize,
+    ) -> io::Result<UnixListener> {
         unsafe {
+            let backlog = backlog
+                .try_into()
+                .map_err(|e| crate::io::Error::new(crate::io::ErrorKind::InvalidData, e))?;
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::bind(
                 inner.as_raw_fd(),
                 &socket_addr.addr as *const _ as *const _,
                 socket_addr.len as _,
             ))?;
-            cvt(libc::listen(inner.as_raw_fd(), 128))?;
+            cvt(libc::listen(inner.as_raw_fd(), backlog))?;
             Ok(UnixListener(inner))
         }
     }
