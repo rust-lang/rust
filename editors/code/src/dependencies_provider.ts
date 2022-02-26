@@ -80,6 +80,7 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
     const basePath = fspath.join(registryDir, fs.readdirSync(registryDir)[0]);
     const deps = await this.getDepsInCartoTree(basePath);
     const stdlib = await this.getStdLib();
+    this.dependenciesMap[stdlib.dependencyPath.toLowerCase()] = stdlib;
     return [stdlib].concat(deps);
   }
 
@@ -87,12 +88,14 @@ export class RustDependenciesProvider implements vscode.TreeDataProvider<Depende
     const toolchain = await activeToolchain();
     const rustVersion = await getRustcVersion(os.homedir());
     const stdlibPath = fspath.join(os.homedir(), '.rustup', 'toolchains', toolchain, 'lib', 'rustlib', 'src', 'rust', 'library');
-    return new Dependency(
+    const stdlib = new Dependency(
       "stdlib",
       rustVersion,
       stdlibPath,
       vscode.TreeItemCollapsibleState.Collapsed
     );
+
+    return stdlib;
   }
 
   private async getDepsInCartoTree(basePath: string): Promise<Dependency[]> {
