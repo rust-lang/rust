@@ -13,33 +13,13 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
+use rustc_session::config;
 use rustc_target::abi::call::ArgAbi;
 pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int};
 pub use rustc_target::spec::abi::Abi;
 
 use libc::c_uint;
-
-macro_rules! for_each_kind {
-    ($flags: ident, $f: ident, $($kind: ident),+) => ({
-        $(if $flags.contains(ArgAttribute::$kind) { $f(llvm::Attribute::$kind) })+
-    })
-}
-
-trait ArgAttributeExt {
-    fn for_each_kind<F>(&self, f: F)
-    where
-        F: FnMut(llvm::Attribute);
-}
-
-impl ArgAttributeExt for ArgAttribute {
-    fn for_each_kind<F>(&self, mut f: F)
-    where
-        F: FnMut(llvm::Attribute),
-    {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg, NoUndef)
-    }
-}
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -58,10 +38,39 @@ fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
     cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
 }
 
+const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::Attribute); 1] =
+    [(ArgAttribute::InReg, llvm::Attribute::InReg)];
+
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::Attribute); 5] = [
+    (ArgAttribute::NoAlias, llvm::Attribute::NoAlias),
+    (ArgAttribute::NoCapture, llvm::Attribute::NoCapture),
+    (ArgAttribute::NonNull, llvm::Attribute::NonNull),
+    (ArgAttribute::ReadOnly, llvm::Attribute::ReadOnly),
+    (ArgAttribute::NoUndef, llvm::Attribute::NoUndef),
+];
+
 impl ArgAttributesExt for ArgAttributes {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
         let mut regular = self.regular;
         unsafe {
+            // ABI-affecting attributes must always be applied
+            for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
+                if regular.contains(attr) {
+                    llattr.apply_llfn(idx, llfn);
+                }
+            }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
+            }
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => llvm::Attribute::ZExt.apply_llfn(idx, llfn),
+                ArgExtension::Sext => llvm::Attribute::SExt.apply_llfn(idx, llfn),
+            }
+            // Only apply remaining attributes when optimizing
+            if cx.sess().opts.optimize == config::OptLevel::No {
+                return;
+            }
             let deref = self.pointee_size.bytes();
             if deref != 0 {
                 if regular.contains(ArgAttribute::NonNull) {
@@ -71,21 +80,13 @@ impl ArgAttributesExt for ArgAttributes {
                 }
                 regular -= ArgAttribute::NonNull;
             }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
+            for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
+                if regular.contains(attr) {
+                    llattr.apply_llfn(idx, llfn);
+                }
             }
-            regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
             if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
                 llvm::Attribute::NoAlias.apply_llfn(idx, llfn);
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => {
-                    llvm::Attribute::ZExt.apply_llfn(idx, llfn);
-                }
-                ArgExtension::Sext => {
-                    llvm::Attribute::SExt.apply_llfn(idx, llfn);
-                }
             }
         }
     }
@@ -98,6 +99,28 @@ impl ArgAttributesExt for ArgAttributes {
     ) {
         let mut regular = self.regular;
         unsafe {
+            // ABI-affecting attributes must always be applied
+            for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
+                if regular.contains(attr) {
+                    llattr.apply_callsite(idx, callsite);
+                }
+            }
+            if let Some(align) = self.pointee_align {
+                llvm::LLVMRustAddAlignmentCallSiteAttr(
+                    callsite,
+                    idx.as_uint(),
+                    align.bytes() as u32,
+                );
+            }
+            match self.arg_ext {
+                ArgExtension::None => {}
+                ArgExtension::Zext => llvm::Attribute::ZExt.apply_callsite(idx, callsite),
+                ArgExtension::Sext => llvm::Attribute::SExt.apply_callsite(idx, callsite),
+            }
+            // Only apply remaining attributes when optimizing
+            if cx.sess().opts.optimize == config::OptLevel::No {
+                return;
+            }
             let deref = self.pointee_size.bytes();
             if deref != 0 {
                 if regular.contains(ArgAttribute::NonNull) {
@@ -111,25 +134,13 @@ impl ArgAttributesExt for ArgAttributes {
                 }
                 regular -= ArgAttribute::NonNull;
             }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentCallSiteAttr(
-                    callsite,
-                    idx.as_uint(),
-                    align.bytes() as u32,
-                );
+            for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
+                if regular.contains(attr) {
+                    llattr.apply_callsite(idx, callsite);
+                }
             }
-            regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
             if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
                 llvm::Attribute::NoAlias.apply_callsite(idx, callsite);
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => {
-                    llvm::Attribute::ZExt.apply_callsite(idx, callsite);
-                }
-                ArgExtension::Sext => {
-                    llvm::Attribute::SExt.apply_callsite(idx, callsite);
-                }
             }
         }
     }
