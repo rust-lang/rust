@@ -978,9 +978,10 @@ mod parse {
         true
     }
 
-    crate fn parse_branch_protection(slot: &mut BranchProtection, v: Option<&str>) -> bool {
+    crate fn parse_branch_protection(slot: &mut Option<BranchProtection>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
+                let slot = slot.get_or_insert_default();
                 for opt in s.split(',') {
                     match opt {
                         "bti" => slot.bti = true,
@@ -1155,7 +1156,7 @@ options! {
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
-    branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
