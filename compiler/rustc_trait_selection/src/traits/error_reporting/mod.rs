@@ -22,6 +22,7 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
@@ -928,8 +929,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
                 return;
             }
-
-            Overflow => {
+            // Already reported.
+            Overflow(OverflowError::Error(_)) => {
+                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
+                return;
+            }
+            Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
             SelectionError::ErrorReporting => {
