@@ -192,32 +192,6 @@ export async function activeToolchain(): Promise<string> {
     });
 }
 
-export async function rustVersion(): Promise<string> {
-    const pathToRustup = await rustupPath();
-    return await new Promise((resolve, reject) => {
-        const execution = cp.spawn(pathToRustup, ['show', 'active-toolchain'], {
-            stdio: ['ignore', 'pipe', 'pipe'],
-            cwd: os.homedir()
-        });
-        const rl = readline.createInterface({ input: execution.stdout });
-
-        let currToolchain: string | undefined = undefined;
-        rl.on('line', line => {
-            const match = line.match(TOOLCHAIN_PATTERN);
-            if (match) {
-                currToolchain = match[1];
-            }
-        });
-        execution.on('exit', (exitCode, _) => {
-            if (exitCode === 1 && currToolchain)
-                resolve(currToolchain);
-            else
-                reject(new Error(`exit code: ${exitCode}.`));
-        });
-
-    });
-}
-
 /** Mirrors `project_model::sysroot::discover_sysroot_dir()` implementation*/
 export async function getSysroot(dir: string): Promise<string> {
     const rustcPath = await getPathForExecutable("rustc");
