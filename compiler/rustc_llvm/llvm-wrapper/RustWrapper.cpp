@@ -250,14 +250,17 @@ template<typename T> static inline void AddAttributes(T *t, unsigned Index,
 template<typename T> static inline void RemoveAttributes(T *t, unsigned Index,
                                                          LLVMRustAttribute *RustAttrs,
                                                          size_t RustAttrsLen) {
-  AttributeMask Mask;
-  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
-    Mask.addAttribute(fromRust(RustAttr));
   AttributeList PAL = t->getAttributes();
   AttributeList PALNew;
 #if LLVM_VERSION_LT(14, 0)
-  PALNew = PAL.removeAttributes(t->getContext(), Index, Mask);
+  AttrBuilder B(t->getContext());
+  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
+    B.addAttribute(fromRust(RustAttr));
+  PALNew = PAL.removeAttributes(t->getContext(), Index, B);
 #else
+  AttributeMask Mask;
+  for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
+    Mask.addAttribute(fromRust(RustAttr));
   PALNew = PAL.removeAttributesAtIndex(t->getContext(), Index, Mask);
 #endif
   t->setAttributes(PALNew);
