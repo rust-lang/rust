@@ -41,7 +41,7 @@ fn basic() {
     let msg1 = b"hello";
     let msg2 = b"world!";
 
-    let listener = or_panic!(UnixListener::bind(&socket_path));
+    let listener = or_panic!(UnixListener::bind_with_backlog(&socket_path, 1));
     let thread = thread::spawn(move || {
         let mut stream = or_panic!(listener.accept()).0;
         let mut buf = [0; 5];
@@ -111,7 +111,7 @@ fn try_clone() {
     let msg1 = b"hello";
     let msg2 = b"world";
 
-    let listener = or_panic!(UnixListener::bind(&socket_path));
+    let listener = or_panic!(UnixListener::bind_with_backlog(&socket_path, 1));
     let thread = thread::spawn(move || {
         let mut stream = or_panic!(listener.accept()).0;
         or_panic!(stream.write_all(msg1));
@@ -135,7 +135,7 @@ fn iter() {
     let dir = tmpdir();
     let socket_path = dir.path().join("sock");
 
-    let listener = or_panic!(UnixListener::bind(&socket_path));
+    let listener = or_panic!(UnixListener::bind_with_backlog(&socket_path, 2));
     let thread = thread::spawn(move || {
         for stream in listener.incoming().take(2) {
             let mut stream = or_panic!(stream);
@@ -423,7 +423,7 @@ fn test_abstract_stream_connect() {
     let msg2 = b"world";
 
     let socket_addr = or_panic!(SocketAddr::from_abstract_namespace(b"namespace"));
-    let listener = or_panic!(UnixListener::bind_addr(&socket_addr));
+    let listener = or_panic!(UnixListener::bind_addr_with_backlog(&socket_addr, 1));
 
     let thread = thread::spawn(move || {
         let mut stream = or_panic!(listener.accept()).0;
@@ -451,7 +451,7 @@ fn test_abstract_stream_connect() {
 #[test]
 fn test_abstract_stream_iter() {
     let addr = or_panic!(SocketAddr::from_abstract_namespace(b"hidden"));
-    let listener = or_panic!(UnixListener::bind_addr(&addr));
+    let listener = or_panic!(UnixListener::bind_addr_with_backlog(&addr, 2));
 
     let thread = thread::spawn(move || {
         for stream in listener.incoming().take(2) {

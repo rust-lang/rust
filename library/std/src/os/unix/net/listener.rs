@@ -98,6 +98,7 @@ impl UnixListener {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(bind_with_backlog)]
     /// use std::os::unix::net::UnixListener;
     ///
     /// let listener = match UnixListener::bind_with_backlog("/path/to/the/socket", 1000) {

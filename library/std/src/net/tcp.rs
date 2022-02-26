@@ -730,6 +730,7 @@ impl TcpListener {
     /// Creates a TCP listener bound to `127.0.0.1:80` with a backlog of 1000:
     ///
     /// ```no_run
+    /// #![feature(bind_with_backlog)]
     /// use std::net::TcpListener;
     ///
     /// let listener = TcpListener::bind_with_backlog("127.0.0.1:80", 1000).unwrap();
