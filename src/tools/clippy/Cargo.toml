@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.1.60"
+version = "0.1.61"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -50,6 +50,7 @@ syn = { version = "1.0", features = ["full"] }
 futures = "0.3"
 parking_lot = "0.11.2"
 tokio = { version = "1", features = ["io-util"] }
+num_cpus = "1.13"
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }

@@ -390,6 +390,25 @@ declare_clippy_lint! {
     "casting using `as` from and to raw pointers that doesn't change its mutability, where `pointer::cast` could take the place of `as`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for casts from an enum type to an integral type which will definitely truncate the
+    /// value.
+    ///
+    /// ### Why is this bad?
+    /// The resulting integral value will not match the value of the variant it came from.
+    ///
+    /// ### Example
+    /// ```rust
+    /// enum E { X = 256 };
+    /// let _ = E::X as u8;
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub CAST_ENUM_TRUNCATION,
+    suspicious,
+    "casts from an enum type to an integral type which will truncate the value"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -415,10 +434,15 @@ impl_lint_pass!(Casts => [
     FN_TO_NUMERIC_CAST_WITH_TRUNCATION,
     CHAR_LIT_AS_U8,
     PTR_AS_PTR,
+    CAST_ENUM_TRUNCATION,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if !in_external_macro(cx.sess(), expr.span) {
+            ptr_as_ptr::check(cx, expr, &self.msrv);
+        }
+
         if expr.span.from_expansion() {
             return;
         }
@@ -441,13 +465,12 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
 
             if cast_to.is_numeric() && !in_external_macro(cx.sess(), expr.span) {
+                cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
                 if cast_from.is_numeric() {
-                    cast_possible_truncation::check(cx, expr, cast_expr, cast_from, cast_to);
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
-
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
             }
         }
@@ -455,7 +478,6 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);

@@ -13,6 +13,33 @@ use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
 use rustc_span::{sym, ExpnData, ExpnId, ExpnKind, Span, Symbol};
 use std::ops::ControlFlow;
 
+const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
+    sym::assert_eq_macro,
+    sym::assert_macro,
+    sym::assert_ne_macro,
+    sym::debug_assert_eq_macro,
+    sym::debug_assert_macro,
+    sym::debug_assert_ne_macro,
+    sym::eprint_macro,
+    sym::eprintln_macro,
+    sym::format_args_macro,
+    sym::format_macro,
+    sym::print_macro,
+    sym::println_macro,
+    sym::std_panic_macro,
+    sym::write_macro,
+    sym::writeln_macro,
+];
+
+/// Returns true if a given Macro `DefId` is a format macro (e.g. `println!`)
+pub fn is_format_macro(cx: &LateContext<'_>, macro_def_id: DefId) -> bool {
+    if let Some(name) = cx.tcx.get_diagnostic_name(macro_def_id) {
+        FORMAT_MACRO_DIAG_ITEMS.contains(&name)
+    } else {
+        false
+    }
+}
+
 /// A macro call, like `vec![1, 2, 3]`.
 ///
 /// Use `tcx.item_name(macro_call.def_id)` to get the macro name.

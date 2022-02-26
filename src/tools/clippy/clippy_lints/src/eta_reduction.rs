@@ -10,6 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, Param, PatKind, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
+use rustc_middle::ty::binding::BindingMode;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ClosureKind, Ty, TypeFoldable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -169,11 +170,17 @@ fn check_inputs(cx: &LateContext<'_>, params: &[Param<'_>], call_args: &[Expr<'_
     if params.len() != call_args.len() {
         return false;
     }
+    let binding_modes = cx.typeck_results().pat_binding_modes();
     std::iter::zip(params, call_args).all(|(param, arg)| {
         match param.pat.kind {
             PatKind::Binding(_, id, ..) if path_to_local_id(arg, id) => {},
             _ => return false,
         }
+        // checks that parameters are not bound as `ref` or `ref mut`
+        if let Some(BindingMode::BindByReference(_)) = binding_modes.get(param.pat.hir_id) {
+            return false;
+        }
+
         match *cx.typeck_results().expr_adjustments(arg) {
             [] => true,
             [

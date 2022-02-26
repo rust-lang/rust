@@ -5,8 +5,12 @@
 store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec![
     LintId::of(assign_ops::MISREFACTORED_ASSIGN_OP),
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
+    LintId::of(await_holding_invalid::AWAIT_HOLDING_LOCK),
+    LintId::of(await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
+    LintId::of(casts::CAST_ENUM_TRUNCATION),
     LintId::of(eval_order_dependence::EVAL_ORDER_DEPENDENCE),
     LintId::of(float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
+    LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),
     LintId::of(formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_ELSE_FORMATTING),
     LintId::of(formatting::SUSPICIOUS_UNARY_OP_FORMATTING),

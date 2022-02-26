@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{get_trait_def_id, higher, match_def_path, path_def_id, paths};
+use clippy_utils::{higher, match_def_path, path_def_id, paths};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -229,9 +229,12 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(last) && args.len() == 1 {
-                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR).map_or(false, |id| {
-                    !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
-                });
+                let not_double_ended = cx
+                    .tcx
+                    .get_diagnostic_item(sym::DoubleEndedIterator)
+                    .map_or(false, |id| {
+                        !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
+                    });
                 if not_double_ended {
                     return is_infinite(cx, &args[0]);
                 }
