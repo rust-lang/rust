@@ -390,10 +390,7 @@ impl ToNav for hir::Local {
         let FileRange { file_id, range: full_range } =
             InFile::new(file_id, node).original_file_range(db);
 
-        let name = match self.name(db) {
-            Some(it) => it.to_smol_str(),
-            None => "".into(),
-        };
+        let name = self.name(db).to_smol_str();
         let kind = if self.is_self(db) {
             SymbolKind::SelfParam
         } else if self.is_param(db) {

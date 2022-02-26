@@ -393,7 +393,7 @@ impl Param {
     }
 
     fn to_param(&self, ctx: &AssistContext, module: hir::Module) -> ast::Param {
-        let var = self.var.name(ctx.db()).unwrap().to_string();
+        let var = self.var.name(ctx.db()).to_string();
         let var_name = make::name(&var);
         let pat = match self.kind() {
             ParamKind::MutValue => make::ident_pat(false, true, var_name),
@@ -1144,12 +1144,12 @@ fn make_call(ctx: &AssistContext, fun: &Function, indent: IndentLevel) -> String
     match fun.outliving_locals.as_slice() {
         [] => {}
         [var] => {
-            format_to!(buf, "let {}{} = ", mut_modifier(var), var.local.name(ctx.db()).unwrap())
+            format_to!(buf, "let {}{} = ", mut_modifier(var), var.local.name(ctx.db()))
         }
         vars => {
             buf.push_str("let (");
             let bindings = vars.iter().format_with(", ", |local, f| {
-                f(&format_args!("{}{}", mut_modifier(local), local.local.name(ctx.db()).unwrap()))
+                f(&format_args!("{}{}", mut_modifier(local), local.local.name(ctx.db())))
             });
             format_to!(buf, "{}", bindings);
             buf.push_str(") = ");
@@ -1288,7 +1288,7 @@ impl FlowHandler {
 }
 
 fn path_expr_from_local(ctx: &AssistContext, var: Local) -> ast::Expr {
-    let name = var.name(ctx.db()).unwrap().to_string();
+    let name = var.name(ctx.db()).to_string();
     make::expr_path(make::ext::ident_path(&name))
 }
 

@@ -106,7 +106,7 @@ impl Definition {
             Definition::TypeAlias(it) => it.name(db),
             Definition::BuiltinType(it) => it.name(),
             Definition::SelfType(_) => return None,
-            Definition::Local(it) => it.name(db)?,
+            Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
             Definition::Label(it) => it.name(db),
             Definition::BuiltinAttr(_) => return None, // FIXME
