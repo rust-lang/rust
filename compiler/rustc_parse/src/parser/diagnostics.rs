@@ -2030,7 +2030,7 @@ impl<'a> Parser<'a> {
         start: Span,
         mut err: DiagnosticBuilder<'a, ErrorReported>,
     ) -> PResult<'a, GenericArg> {
-        let is_op = AssocOp::from_token(&self.token)
+        let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
                 if let AssocOp::Greater
                 | AssocOp::Less
@@ -2046,17 +2046,18 @@ impl<'a> Parser<'a> {
                     Some(op)
                 }
             })
-            .is_some();
+            .is_some()
+            || self.token.kind == TokenKind::Dot;
         // This will be true when a trait object type `Foo +` or a path which was a `const fn` with
         // type params has been parsed.
         let was_op =
             matches!(self.prev_token.kind, token::BinOp(token::Plus | token::Shr) | token::Gt);
-        if !is_op && !was_op {
+        if !is_op_or_dot && !was_op {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);
         }
         let snapshot = self.clone();
-        if is_op {
+        if is_op_or_dot {
             self.bump();
         }
         match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
@@ -2080,18 +2081,7 @@ impl<'a> Parser<'a> {
                     //    |
                     // LL |     let sr: Vec<{ (u32, _, _) = vec![] };
                     //    |                 ^                      ^
-                    err.multipart_suggestion(
-                        "expressions must be enclosed in braces to be used as const generic \
-                         arguments",
-                        vec![
-                            (start.shrink_to_lo(), "{ ".to_string()),
-                            (expr.span.shrink_to_hi(), " }".to_string()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
-                    let value = self.mk_expr_err(start.to(expr.span));
-                    err.emit();
-                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                    return Ok(self.dummy_const_arg_needs_braces(err, start.to(expr.span)));
                 }
             }
             Err(err) => {
@@ -2100,6 +2090,23 @@ impl<'a> Parser<'a> {
         }
         *self = snapshot;
         Err(err)
+    }
+
+    /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
+    pub fn dummy_const_arg_needs_braces(
+        &self,
+        mut err: DiagnosticBuilder<'a, ErrorReported>,
+        span: Span,
+    ) -> GenericArg {
+        err.multipart_suggestion(
+            "expressions must be enclosed in braces to be used as const generic \
+             arguments",
+            vec![(span.shrink_to_lo(), "{ ".to_string()), (span.shrink_to_hi(), " }".to_string())],
+            Applicability::MaybeIncorrect,
+        );
+        let value = self.mk_expr_err(span);
+        err.emit();
+        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
     /// Get the diagnostics for the cases where `move async` is found.
