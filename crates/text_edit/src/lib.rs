@@ -203,3 +203,17 @@ fn check_disjoint_and_sort(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bo
         l.delete.end() <= r.delete.start() || l == r
     })
 }
+
+#[test]
+fn test_apply() {
+    let mut text = "_11h1_2222_xx3333_4444_6666".to_string();
+    let mut builder = TextEditBuilder::default();
+    builder.replace(TextRange::new(3.into(), 4.into()), "1".to_string());
+    builder.delete(TextRange::new(11.into(), 13.into()));
+    builder.insert(22.into(), "_5555".to_string());
+
+    let text_edit = builder.finish();
+    text_edit.apply(&mut text);
+
+    assert_eq!(text, "_1111_2222_3333_4444_5555_6666")
+}
