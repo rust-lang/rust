@@ -501,6 +501,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             err.span_label(enclosing_scope_span, s.as_str());
                         }
 
+                        self.suggest_floating_point_literal(&obligation, &mut err, &trait_ref);
                         self.suggest_dereferences(&obligation, &mut err, trait_predicate);
                         self.suggest_fn_call(&obligation, &mut err, trait_predicate);
                         self.suggest_remove_reference(&obligation, &mut err, trait_predicate);
