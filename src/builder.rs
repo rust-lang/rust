@@ -906,12 +906,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        assert_eq!(
-            value.get_type(),
-            self.cx.type_isize(),
-            "cg_ssa currently only calls this function with an isize argument",
-        );
-        self.cx.const_bitcast(value, dest_ty)
+        let usize_value = self.intcast(value, self.cx.type_isize(), false);
+        self.cx.const_bitcast(usize_value, dest_ty)
     }
 
     fn bitcast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
