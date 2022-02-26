@@ -1,0 +1,39 @@
+error[E0277]: the trait bound `[static generator@$DIR/async.rs:7:29: 9:2]: Generator<ResumeTy>` is not satisfied
+  --> $DIR/async.rs:7:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________^
+LL | |     x
+LL | | }
+   | |_^ the trait `Generator<ResumeTy>` is not implemented for `[static generator@$DIR/async.rs:7:29: 9:2]`
+   |
+note: required by a bound in `from_generator`
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL |     T: Generator<ResumeTy, Yield = ()>,
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `from_generator`
+
+error[E0280]: the requirement `<[static generator@$DIR/async.rs:7:29: 9:2] as Generator<ResumeTy>>::Yield == ()` is not satisfied
+  --> $DIR/async.rs:7:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________^
+LL | |     x
+LL | | }
+   | |_^
+   |
+note: required by a bound in `from_generator`
+  --> $SRC_DIR/core/src/future/mod.rs:LL:COL
+   |
+LL |     T: Generator<ResumeTy, Yield = ()>,
+   |                            ^^^^^^^^^^ required by this bound in `from_generator`
+
+error[E0280]: the requirement `<impl Future<Output = [async output]> as Future>::Output == u32` is not satisfied
+  --> $DIR/async.rs:7:25
+   |
+LL | async fn foo(x: u32) -> u32 {
+   |                         ^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
