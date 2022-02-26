@@ -166,7 +166,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 bx.invoke(fn_ty, fn_ptr, &llargs, ret_llbb, unwind_block, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, invokeret);
             if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(invokeret);
+                bx.do_not_inline(invokeret);
             }
 
             if let Some((ret_dest, target)) = destination {
@@ -178,7 +178,11 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             let llret = bx.call(fn_ty, fn_ptr, &llargs, self.funclet(fx));
             bx.apply_attrs_callsite(&fn_abi, llret);
             if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(llret);
+                // Cleanup is always the cold path. Don't inline
+                // drop glue. Also, when there is a deeply-nested
+                // struct, there are "symmetry" issues that cause
+                // exponential inlining - see issue #41696.
+                bx.do_not_inline(llret);
             }
 
             if let Some((ret_dest, target)) = destination {
@@ -1444,7 +1448,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let llret = bx.call(fn_ty, fn_ptr, &[], None);
             bx.apply_attrs_callsite(&fn_abi, llret);
-            bx.apply_attrs_to_cleanup_callsite(llret);
+            bx.do_not_inline(llret);
 
             bx.unreachable();
 
