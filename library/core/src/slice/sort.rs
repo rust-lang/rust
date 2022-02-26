@@ -600,12 +600,19 @@ where
 fn break_patterns<T>(v: &mut [T]) {
     let len = v.len();
     if len >= 8 {
-        // Pseudorandom number generator from the "Xorshift RNGs" paper by George Marsaglia.
+        // Pseudo-random number generator from the 32-bit integer hashing algorithm
+        // to avoid the bias caused by the low entropy of `len` seed.
+        // See https://github.com/rust-lang/rust/issues/74928 for more test results.
+        // See http://burtleburtle.net/bob/hash/integer.html for more algorithm details.
         let mut random = len as u32;
         let mut gen_u32 = || {
-            random ^= random << 13;
+            random -= random << 6;
             random ^= random >> 17;
-            random ^= random << 5;
+            random -= random << 9;
+            random ^= random << 4;
+            random -= random << 3;
+            random ^= random << 10;
+            random ^= random >> 15;
             random
         };
         let mut gen_usize = || {
