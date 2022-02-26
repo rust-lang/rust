@@ -1035,7 +1035,6 @@ pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
 }
 impl ast::HasAttrs for WhileExpr {}
-impl ast::HasLoopBody for WhileExpr {}
 impl WhileExpr {
     pub fn while_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![while]) }
     pub fn condition(&self) -> Option<Expr> { support::child(&self.syntax) }

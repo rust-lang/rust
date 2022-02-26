@@ -769,6 +769,15 @@ impl ast::HasLoopBody for ast::ForExpr {
     }
 }
 
+impl ast::HasLoopBody for ast::WhileExpr {
+    fn loop_body(&self) -> Option<ast::BlockExpr> {
+        let mut exprs = support::children(self.syntax());
+        let first = exprs.next();
+        let second = exprs.next();
+        second.or(first)
+    }
+}
+
 impl ast::HasAttrs for ast::AnyHasDocComments {}
 
 impl From<ast::Adt> for ast::Item {
