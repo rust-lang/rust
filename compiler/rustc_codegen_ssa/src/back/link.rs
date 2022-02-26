@@ -299,13 +299,12 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         }
     }
 
-    match flavor {
-        RlibFlavor::Normal => {}
-        RlibFlavor::StaticlibBase => {
-            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-            if let Some(obj) = obj {
-                ab.add_file(obj);
-            }
+    if flavor == RlibFlavor::StaticlibBase
+        || sess.opts.debugging_opts.force_allocator_shim.unwrap_or(false)
+    {
+        let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+        if let Some(obj) = obj {
+            ab.add_file(obj);
         }
     }
 

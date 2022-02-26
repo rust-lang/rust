@@ -809,7 +809,9 @@ impl<'a> CrateLoader<'a> {
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
         let all_rlib = self.sess.crate_types().iter().all(|ct| matches!(*ct, CrateType::Rlib));
-        if all_rlib {
+        let force_allocator_shim =
+            self.sess.opts.debugging_opts.force_allocator_shim.unwrap_or(false);
+        if all_rlib && !force_allocator_shim {
             return;
         }
 
