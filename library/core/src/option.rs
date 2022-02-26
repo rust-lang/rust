@@ -1405,8 +1405,6 @@ impl<T> Option<T> {
     /// assert_eq!(x.xor(y), None);
     /// ```
     #[inline]
-    #[stable(feature = "option_xor", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn xor(self, optb: Option<T>) -> Option<T>
     where
         T: ~const Drop,
