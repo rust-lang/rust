@@ -184,10 +184,9 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     then_block.end_with_jump(None, after_block);
 
                                     // NOTE: since jumps were added in a place
-                                    // count_leading_zeroes() does not expect, the current blocks
+                                    // count_leading_zeroes() does not expect, the current block
                                     // in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(else_block);
-                                    self.block = Some(else_block);
+                                    self.switch_to_block(else_block);
 
                                     let zeros =
                                         match name {
@@ -199,9 +198,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                                     self.llbb().end_with_jump(None, after_block);
 
                                     // NOTE: since jumps were added in a place rustc does not
-                                    // expect, the current blocks in the state need to be updated.
-                                    *self.current_block.borrow_mut() = Some(after_block);
-                                    self.block = Some(after_block);
+                                    // expect, the current block in the state need to be updated.
+                                    self.switch_to_block(after_block);
 
                                     result.to_rvalue()
                                 }
@@ -1002,9 +1000,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
-            // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            // expect, the current block in the state need to be updated.
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }
@@ -1073,9 +1070,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.llbb().end_with_conditional(None, overflow, then_block, after_block);
 
             // NOTE: since jumps were added in a place rustc does not
-            // expect, the current blocks in the state need to be updated.
-            *self.current_block.borrow_mut() = Some(after_block);
-            self.block = Some(after_block);
+            // expect, the current block in the state need to be updated.
+            self.switch_to_block(after_block);
 
             res.to_rvalue()
         }

@@ -80,15 +80,15 @@ impl EnumClone for AtomicOrdering {
 
 pub struct Builder<'a: 'gcc, 'gcc, 'tcx> {
     pub cx: &'a CodegenCx<'gcc, 'tcx>,
-    pub block: Option<Block<'gcc>>,
+    pub block: Block<'gcc>,
     stack_var_count: Cell<usize>,
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
-    fn with_cx(cx: &'a CodegenCx<'gcc, 'tcx>) -> Self {
+    fn with_cx(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
         Builder {
             cx,
-            block: None,
+            block,
             stack_var_count: Cell::new(0),
         }
     }
@@ -114,10 +114,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let after_block = func.new_block("after_while");
         self.llbb().end_with_jump(None, while_block);
 
-        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current blocks in the
+        // NOTE: since jumps were added and compare_exchange doesn't expect this, the current block in the
         // state need to be updated.
-        self.block = Some(while_block);
-        *self.cx.current_block.borrow_mut() = Some(while_block);
+        self.switch_to_block(while_block);
 
         let comparison_operator =
             match operation {
@@ -132,10 +131,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
         while_block.end_with_conditional(None, cond, while_block, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         return_value.to_rvalue()
     }
@@ -245,7 +243,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn current_func(&self) -> Function<'gcc> {
-        self.block.expect("block").get_function()
+        self.block.get_function()
     }
 
     fn function_call(&mut self, func: RValue<'gcc>, args: &[RValue<'gcc>], _funclet: Option<&Funclet>) -> RValue<'gcc> {
@@ -256,17 +254,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local or call add_eval().
         let return_type = func.get_return_type();
-        let current_block = self.current_block.borrow().expect("block");
         let void_type = self.context.new_type::<()>();
-        let current_func = current_block.get_function();
+        let current_func = self.block.get_function();
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("returnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            current_block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
+            self.block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
             result.to_rvalue()
         }
         else {
-            current_block.add_eval(None, self.cx.context.new_call(None, func, &args));
+            self.block.add_eval(None, self.cx.context.new_call(None, func, &args));
             // Return dummy value when not having return value.
             self.context.new_rvalue_from_long(self.isize_type, 0)
         }
@@ -279,9 +276,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // That's why we assign the result to a local or call add_eval().
         let gcc_func = func_ptr.get_type().dyncast_function_ptr_type().expect("function ptr");
         let mut return_type = gcc_func.get_return_type();
-        let current_block = self.current_block.borrow().expect("block");
         let void_type = self.context.new_type::<()>();
-        let current_func = current_block.get_function();
+        let current_func = self.block.get_function();
 
         // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
         if gcc_func.get_param_count() == 0 && format!("{:?}", func_ptr) == "__builtin_ia32_pmovmskb128" {
@@ -291,20 +287,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if return_type != void_type {
             unsafe { RETURN_VALUE_COUNT += 1 };
             let result = current_func.new_local(None, return_type, &format!("ptrReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
-            current_block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+            self.block.add_assignment(None, result, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             result.to_rvalue()
         }
         else {
             if gcc_func.get_param_count() == 0 {
                 // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
-                current_block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
             }
             else {
-                current_block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             }
             // Return dummy value when not having return value.
             let result = current_func.new_local(None, self.isize_type, "dummyValueThatShouldNeverBeUsed");
-            current_block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
+            self.block.add_assignment(None, result, self.context.new_rvalue_from_long(self.isize_type, 0));
             result.to_rvalue()
         }
     }
@@ -313,12 +309,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // gccjit requires to use the result of functions, even when it's not used.
         // That's why we assign the result to a local.
         let return_type = self.context.new_type::<bool>();
-        let current_block = self.current_block.borrow().expect("block");
-        let current_func = current_block.get_function();
+        let current_func = self.block.get_function();
         // TODO(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
         unsafe { RETURN_VALUE_COUNT += 1 };
         let result = current_func.new_local(None, return_type, &format!("overflowReturnValue{}", unsafe { RETURN_VALUE_COUNT }));
-        current_block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
+        self.block.add_assignment(None, result, self.cx.context.new_call(None, func, &args));
         result.to_rvalue()
     }
 }
@@ -384,14 +379,11 @@ impl<'gcc, 'tcx> BackendTypes for Builder<'_, 'gcc, 'tcx> {
 
 impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn build(cx: &'a CodegenCx<'gcc, 'tcx>, block: Block<'gcc>) -> Self {
-        let mut bx = Builder::with_cx(cx);
-        *cx.current_block.borrow_mut() = Some(block);
-        bx.block = Some(block);
-        bx
+        Builder::with_cx(cx, block)
     }
 
     fn llbb(&self) -> Block<'gcc> {
-        self.block.expect("block")
+        self.block
     }
 
     fn append_block(cx: &'a CodegenCx<'gcc, 'tcx>, func: RValue<'gcc>, name: &str) -> Block<'gcc> {
@@ -405,8 +397,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn switch_to_block(&mut self, block: Self::BasicBlock) {
-        *self.cx.current_block.borrow_mut() = Some(block);
-        self.block = Some(block);
+        self.block = block;
     }
 
     fn ret_void(&mut self) {
@@ -441,7 +432,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             let on_val = self.const_uint_big(typ, on_val);
             gcc_cases.push(self.context.new_case(on_val, on_val, dest));
         }
-        self.block.expect("block").end_with_switch(None, value, default_block, &gcc_cases);
+        self.block.end_with_switch(None, value, default_block, &gcc_cases);
     }
 
     fn invoke(&mut self, _typ: Type<'gcc>, _func: RValue<'gcc>, _args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
@@ -454,17 +445,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn unreachable(&mut self) {
         let func = self.context.get_builtin_function("__builtin_unreachable");
-        let block = self.block.expect("block");
-        block.add_eval(None, self.context.new_call(None, func, &[]));
-        let return_type = block.get_function().get_return_type();
+        self.block.add_eval(None, self.context.new_call(None, func, &[]));
+        let return_type = self.block.get_function().get_return_type();
         let void_type = self.context.new_type::<()>();
         if return_type == void_type {
-            block.end_with_void_return(None)
+            self.block.end_with_void_return(None)
         }
         else {
             let return_value = self.current_func()
                 .new_local(None, return_type, "unreachableReturn");
-            block.end_with_return(None, return_value)
+            self.block.end_with_return(None, return_value)
         }
     }
 
@@ -911,11 +901,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn ptrtoint(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.cx.ptrtoint(self.block.expect("block"), value, dest_ty)
+        let usize_value = self.cx.const_bitcast(value, self.cx.type_isize());
+        self.intcast(usize_value, dest_ty, false)
     }
 
     fn inttoptr(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        self.cx.inttoptr(self.block.expect("block"), value, dest_ty)
+        let usize_value = self.intcast(value, self.cx.type_isize(), false);
+        self.cx.const_bitcast(usize_value, dest_ty)
     }
 
     fn bitcast(&mut self, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
@@ -967,9 +959,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let dst = self.pointercast(dst, self.type_i8p());
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
         let memcpy = self.context.get_builtin_function("memcpy");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle aligns and is_volatile.
-        block.add_eval(None, self.context.new_call(None, memcpy, &[dst, src, size]));
+        self.block.add_eval(None, self.context.new_call(None, memcpy, &[dst, src, size]));
     }
 
     fn memmove(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
@@ -986,20 +977,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let src = self.pointercast(src, self.type_ptr_to(self.type_void()));
 
         let memmove = self.context.get_builtin_function("memmove");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle is_volatile.
-        block.add_eval(None, self.context.new_call(None, memmove, &[dst, src, size]));
+        self.block.add_eval(None, self.context.new_call(None, memmove, &[dst, src, size]));
     }
 
     fn memset(&mut self, ptr: RValue<'gcc>, fill_byte: RValue<'gcc>, size: RValue<'gcc>, _align: Align, flags: MemFlags) {
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let ptr = self.pointercast(ptr, self.type_i8p());
         let memset = self.context.get_builtin_function("memset");
-        let block = self.block.expect("block");
         // TODO(antoyo): handle align and is_volatile.
         let fill_byte = self.context.new_cast(None, fill_byte, self.i32_type);
         let size = self.intcast(size, self.type_size_t(), false);
-        block.add_eval(None, self.context.new_call(None, memset, &[ptr, fill_byte, size]));
+        self.block.add_eval(None, self.context.new_call(None, memset, &[ptr, fill_byte, size]));
     }
 
     fn select(&mut self, cond: RValue<'gcc>, then_val: RValue<'gcc>, mut else_val: RValue<'gcc>) -> RValue<'gcc> {
@@ -1019,10 +1008,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         else_block.add_assignment(None, variable, else_val);
         else_block.end_with_jump(None, after_block);
 
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
+        // NOTE: since jumps were added in a place rustc does not expect, the current block in the
         // state need to be updated.
-        self.block = Some(after_block);
-        *self.cx.current_block.borrow_mut() = Some(after_block);
+        self.switch_to_block(after_block);
 
         variable.to_rvalue()
     }
