@@ -75,6 +75,54 @@ enum DiagLevel {
     Note,
 }
 
+fn has_local_frame(stacktrace: &[FrameInfo<'_>]) -> bool {
+    stacktrace.iter().any(|frame| frame.instance.def_id().is_local())
+}
+
+fn prune_stacktrace<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
+    mut stacktrace: Vec<FrameInfo<'tcx>>,
+) -> Vec<FrameInfo<'tcx>> {
+    match ecx.machine.backtrace_style {
+        BacktraceStyle::Off => {
+            // Retain one frame so that we can print a span for the error itself
+            stacktrace.truncate(1);
+        }
+        BacktraceStyle::Short => {
+            // Only prune frames if there is at least one local frame. This check ensures that if
+            // we get a backtrace that never makes it to the user code because it has detected a
+            // bug in the Rust runtime, we don't prune away every frame.
+            if has_local_frame(&stacktrace) {
+                // This is part of the logic that `std` uses to select the relevant part of a
+                // backtrace. But here, we only look for __rust_begin_short_backtrace, not
+                // __rust_end_short_backtrace because the end symbol comes from a call to the default
+                // panic handler.
+                stacktrace = stacktrace
+                    .into_iter()
+                    .take_while(|frame| {
+                        let def_id = frame.instance.def_id();
+                        let path = ecx.tcx.tcx.def_path_str(def_id);
+                        !path.contains("__rust_begin_short_backtrace")
+                    })
+                    .collect::<Vec<_>>();
+
+                // After we prune frames from the bottom, there are a few left that are part of the
+                // Rust runtime. So we remove frames until we get to a local symbol, which should be
+                // main or a test.
+                // This len check ensures that we don't somehow remove every frame, as doing so breaks
+                // the primary error message.
+                while stacktrace.len() > 1
+                    && stacktrace.last().map_or(false, |e| !e.instance.def_id().is_local())
+                {
+                    stacktrace.pop();
+                }
+            }
+        }
+        BacktraceStyle::Full => {}
+    }
+    stacktrace
+}
+
 /// Emit a custom diagnostic without going through the miri-engine machinery
 pub fn report_error<'tcx, 'mir>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
@@ -157,46 +205,8 @@ pub fn report_error<'tcx, 'mir>(
         }
     };
 
-    let mut stacktrace = ecx.generate_stacktrace();
-    let has_local_frame = stacktrace.iter().any(|frame| frame.instance.def_id().is_local());
-    match ecx.machine.backtrace_style {
-        BacktraceStyle::Off => {
-            // Retain one frame so that we can print a span for the error itself
-            stacktrace.truncate(1);
-        }
-        BacktraceStyle::Short => {
-            // Only prune frames if there is at least one local frame. This check ensures that if
-            // we get a backtrace that never makes it to the user code because it has detected a
-            // bug in the Rust runtime, we don't prune away every frame.
-            if has_local_frame {
-                // This is part of the logic that `std` uses to select the relevant part of a
-                // backtrace. But here, we only look for __rust_begin_short_backtrace, not
-                // __rust_end_short_backtrace because the end symbol comes from a call to the default
-                // panic handler.
-                stacktrace = stacktrace
-                    .into_iter()
-                    .take_while(|frame| {
-                        let def_id = frame.instance.def_id();
-                        let path = ecx.tcx.tcx.def_path_str(def_id);
-                        !path.contains("__rust_begin_short_backtrace")
-                    })
-                    .collect::<Vec<_>>();
-
-                // After we prune frames from the bottom, there are a few left that are part of the
-                // Rust runtime. So we remove frames until we get to a local symbol, which should be
-                // main or a test.
-                // This len check ensures that we don't somehow remove every frame, as doing so breaks
-                // the primary error message.
-                while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |e| !e.instance.def_id().is_local())
-                {
-                    stacktrace.pop();
-                }
-            }
-        }
-        BacktraceStyle::Full => {}
-    }
-
+    let stacktrace = ecx.generate_stacktrace();
+    let stacktrace = prune_stacktrace(ecx, stacktrace);
     e.print_backtrace();
     let msg = e.to_string();
     report_msg(
@@ -210,7 +220,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // Include a note like `std` does for short backtraces, but since we are opt-out not opt-in, we
     // do not include a note when backtraces are off.
-    if ecx.machine.backtrace_style == BacktraceStyle::Short && has_local_frame {
+    if ecx.machine.backtrace_style == BacktraceStyle::Short && has_local_frame(&stacktrace) {
         ecx.tcx.sess.diagnostic().note_without_error(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
@@ -366,6 +376,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "we should not pop and push a frame in one step"
                 );
             }
+
+            let stacktrace = prune_stacktrace(this, stacktrace);
 
             // Show diagnostics.
             for e in diagnostics.drain(..) {
