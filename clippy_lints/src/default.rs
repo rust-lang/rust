@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_macro_callsite;
 use clippy_utils::ty::{has_drop, is_copy};
-use clippy_utils::{any_parent_is_automatically_derived, contains_name, match_def_path, paths};
+use clippy_utils::{any_parent_is_automatically_derived, contains_name, get_parent_expr, match_def_path, paths};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -88,6 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             if let ExprKind::Path(ref qpath) = path.kind;
             if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if !is_update_syntax_base(cx, expr);
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             if let QPath::Resolved(None, _path) = qpath;
             let expr_ty = cx.typeck_results().expr_ty(expr);
@@ -287,6 +288,19 @@ fn field_reassigned_by_stmt<'tcx>(this: &Stmt<'tcx>, binding_name: Symbol) -> Op
             Some((field_ident, assign_rhs))
         } else {
             None
+        }
+    }
+}
+
+/// Returns whether `expr` is the update syntax base: `Foo { a: 1, .. base }`
+fn is_update_syntax_base<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+    if_chain! {
+        if let Some(parent) = get_parent_expr(cx, expr);
+        if let ExprKind::Struct(_, _, Some(base)) = parent.kind;
+        then {
+            base.hir_id == expr.hir_id
+        } else {
+            false
         }
     }
 }

@@ -3,7 +3,7 @@ use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{higher, is_wild};
 use rustc_ast::{Attribute, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Guard, MatchSource, Pat};
+use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -11,7 +11,7 @@ use rustc_span::source_map::Spanned;
 use super::MATCH_LIKE_MATCHES_MACRO;
 
 /// Lint a `match` or `if let .. { .. } else { .. }` expr that could be replaced by `matches!`
-pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
+pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::IfLet {
         let_pat,
         let_expr,
@@ -19,7 +19,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool 
         if_else: Some(if_else),
     }) = higher::IfLet::hir(cx, expr)
     {
-        return find_matches_sugg(
+        find_matches_sugg(
             cx,
             let_expr,
             IntoIterator::into_iter([(&[][..], Some(let_pat), if_then, None), (&[][..], None, if_else, None)]),
@@ -27,25 +27,28 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool 
             true,
         );
     }
+}
 
-    if let ExprKind::Match(scrut, arms, MatchSource::Normal) = expr.kind {
-        return find_matches_sugg(
-            cx,
-            scrut,
-            arms.iter().map(|arm| {
-                (
-                    cx.tcx.hir().attrs(arm.hir_id),
-                    Some(arm.pat),
-                    arm.body,
-                    arm.guard.as_ref(),
-                )
-            }),
-            expr,
-            false,
-        );
-    }
-
-    false
+pub(super) fn check_match<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    scrutinee: &'tcx Expr<'_>,
+    arms: &'tcx [Arm<'tcx>],
+) -> bool {
+    find_matches_sugg(
+        cx,
+        scrutinee,
+        arms.iter().map(|arm| {
+            (
+                cx.tcx.hir().attrs(arm.hir_id),
+                Some(arm.pat),
+                arm.body,
+                arm.guard.as_ref(),
+            )
+        }),
+        e,
+        false,
+    )
 }
 
 /// Lint a `match` or `if let` for replacement by `matches!`
