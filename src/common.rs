@@ -181,6 +181,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
+                // TODO(bjorn3): assert size is correct
                 self.const_bitcast(value, ty)
             }
             Scalar::Ptr(ptr, _size) => {

@@ -31,7 +31,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
 
-    // TODO(bjorn3): First set it to a dummy function to avoid using Option?
+    // TODO(bjorn3): Can this field be removed?
     pub current_func: RefCell<Option<Function<'gcc>>>,
     pub normal_function_addresses: RefCell<FxHashSet<RValue<'gcc>>>,
 
