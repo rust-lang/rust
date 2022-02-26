@@ -27,7 +27,7 @@ fn attributes() {
 // The reason for these being here is to test AttrIds
 struct Foo;
 "#,
-        expect_file!["./test_data/attributes.html"],
+        expect_file!["./test_data/highlight_attributes.html"],
         false,
     );
 }
@@ -82,11 +82,13 @@ fn main() {
     noop!(noop!(1));
 }
 "#,
-        expect_file!["./test_data/macros.html"],
+        expect_file!["./test_data/highlight_macros.html"],
         false,
     );
 }
 
+/// If what you want to test feels like a specific entity consider making a new test instead,
+/// this test fixture here in fact should shrink instead of grow ideally.
 #[test]
 fn test_highlighting() {
     check_highlighting(
@@ -305,7 +307,7 @@ macro_rules! die {
     };
 }
 "#,
-        expect_file!["./test_data/highlighting.html"],
+        expect_file!["./test_data/highlight_general.html"],
         false,
     );
 }
@@ -762,17 +764,26 @@ impl t for foo {
 fn test_injection() {
     check_highlighting(
         r##"
-fn f(ra_fixture: &str) {}
+fn fixture(ra_fixture: &str) {}
+
 fn main() {
-    f(r"
+    fixture(r#"
+trait Foo {
+    fn foo() {
+        println!("2 + 2 = {}", 4);
+    }
+}"#
+    );
+    fixture(r"
 fn foo() {
     foo(\$0{
         92
     }\$0)
-}");
+}"
+    );
 }
 "##,
-        expect_file!["./test_data/injection.html"],
+        expect_file!["./test_data/highlight_injection.html"],
         false,
     );
 }
@@ -794,7 +805,7 @@ fn bar() {
     let mut hello = "hello";
 }
 "#,
-        expect_file!["./test_data/rainbow_highlighting.html"],
+        expect_file!["./test_data/highlight_rainbow.html"],
         true,
     );
 }
@@ -817,26 +828,6 @@ struct Foo {
         .unwrap();
 
     assert_eq!(&highlights[0].highlight.to_string(), "field.declaration.public");
-}
-
-#[test]
-fn test_flattening() {
-    check_highlighting(
-        r##"
-fn fixture(ra_fixture: &str) {}
-
-fn main() {
-    fixture(r#"
-        trait Foo {
-            fn foo() {
-                println!("2 + 2 = {}", 4);
-            }
-        }"#
-    );
-}"##,
-        expect_file!["./test_data/highlight_injection.html"],
-        false,
-    );
 }
 
 #[test]
