@@ -1363,7 +1363,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.not(y), None);
     /// ```
     #[inline]
-    pub const fn not(self, some: T) -> Option<T>
+    pub const fn not<U>(self, some: U) -> Option<U>
     where
         T: ~const Drop,
     {
@@ -1397,7 +1397,7 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_xor", since = "1.37.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
-    pub const fn xor<U>(self, optb: Option<U>) -> Option<U>
+    pub const fn xor(self, optb: Option<T>) -> Option<T>
     {
         match (self, optb) {
             (Some(a), None) => Some(a),
