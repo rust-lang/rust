@@ -79,7 +79,8 @@ export class RustDependenciesProvider
         const deps = crates.map((crate) => {
             const dep = this.toDep(crate.name, crate.version, crate.path);
             this.dependenciesMap[dep.dependencyPath.toLowerCase()] = dep;
-            return dep;
+            this.dependenciesMap[stdlib.dependencyPath.toLowerCase()] = stdlib;
+    return dep;
         });
         return deps;
     }
