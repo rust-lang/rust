@@ -1349,6 +1349,40 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns [`None`] if `self` is [`Some`], otherwise returns `optb`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Some(2);
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.not(y), None);
+    ///
+    /// let x: Option<u32> = None;
+    /// let y = Some(2);
+    /// assert_eq!(x.not(y), Some(2));
+    ///
+    /// let x = Some(2);
+    /// let y = Some(2);
+    /// assert_eq!(x.not(y), None);
+    ///
+    /// let x: Option<u32> = None;
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.not(y), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_not")]
+    #[rustc_const_unstable(feature = "option_not")]
+    pub const fn not(self, optb: Option<T>) -> Option<T>
+    where
+        T: ~const Drop,
+    {
+        match self {
+            Some(_) => None,
+            None => optb,
+        }
+    }
+
     /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns [`None`].
     ///
     /// # Examples
