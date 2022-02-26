@@ -90,7 +90,7 @@ struct MutatePairDelegate<'a, 'tcx> {
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind, _is_autoref: bool) {
         if bk == ty::BorrowKind::MutBorrow {
             if let PlaceBase::Local(id) = cmt.place.base {
                 if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
