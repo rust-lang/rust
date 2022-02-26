@@ -118,8 +118,9 @@ pub(super) fn op_to_const<'tcx>(
     // instead allow `ConstValue::Scalar` to store `ScalarMaybeUninit`, but that would affect all
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
+    // FIXME: This is all a horrible hack and should go away once we are properly using valtrees.
     let try_as_immediate = match op.layout.abi {
-        Abi::Scalar(..) => true,
+        Abi::Scalar(..) if crate::interpret::type_is_scalar(ecx.tcx.tcx, op.layout.ty) => true,
         Abi::ScalarPair(..) => match op.layout.ty.kind() {
             ty::Ref(_, inner, _) => match *inner.kind() {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,

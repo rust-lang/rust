@@ -9,7 +9,7 @@ use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
-use rustc_middle::ty::{ConstInt, Ty};
+use rustc_middle::ty::{ConstInt, Ty, TyCtxt};
 use rustc_middle::{mir, ty};
 use rustc_target::abi::{Abi, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
@@ -246,6 +246,57 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
     }
 }
 
+/// See `try_read_immediate_from_mplace` for what this function is about.
+/// Exposed to the rest of the crate since some hacky code in `eval_queries.rs` (that shouldn't
+/// exist) also needs it.
+pub(crate) fn type_is_scalar<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        // Primitive types. We *have to* handle these since the primitive operations that
+        // act on them require it.
+        ty::Bool
+        | ty::Char
+        | ty::Float(_)
+        | ty::Int(_)
+        | ty::Uint(_)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnPtr(..)
+        | ty::FnDef(..)
+        | ty::Never => true,
+        // Compound types. We have to exclude unions here.
+        ty::Adt(adt_def, substs) => {
+            if adt_def.is_union() {
+                // Unions are explicitly allowed to be partially initialized, so we have to
+                // exclude them here.
+                false
+            } else {
+                // Check all fields of all variants, to make sure there is no union hiding here.
+                adt_def.all_fields().all(|field| type_is_scalar(tcx, field.ty(tcx, substs)))
+            }
+        }
+        ty::Tuple(..) => {
+            // If all fields are scalar, we are good.
+            ty.tuple_fields().iter().all(|field| type_is_scalar(tcx, field))
+        }
+        // FIXME: can these ever have Scalar ABI?
+        ty::Closure(..) | ty::Generator(..) => false,
+        // Types that don't have scalar layout to begin with.
+        ty::Array(..) | ty::Slice(..) | ty::Str | ty::Dynamic(..) | ty::Foreign(..) => {
+            false
+        }
+        // Types we should not uusally see here, but when called from CTFE op_to_const these can
+        // actually happen.
+        ty::Error(_)
+        | ty::Infer(..)
+        | ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Param(..)
+        | ty::Opaque(..)
+        | ty::Projection(..)
+        | ty::GeneratorWitness(..) => false,
+    }
+}
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
@@ -266,12 +317,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }));
         };
 
+        // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
+        // However, `MaybeUninit<u64>` is considered a `Scalar` as far as its layout is concerned --
+        // and yet cannot be represented by an interpreter `Scalar`, since we have to handle the
+        // case where some of the bytes are initialized and others are not. So, we need an extra
+        // check that walks over the type of `mplace` to make sure it is truly correct to treat this
+        // like a `Scalar` (or `ScalarPair`).
         match mplace.layout.abi {
-            Abi::Scalar(..) => {
+            Abi::Scalar(..) if type_is_scalar(self.tcx.tcx, mplace.layout.ty) => {
                 let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
-            Abi::ScalarPair(a, b) => {
+            Abi::ScalarPair(a, b) if type_is_scalar(self.tcx.tcx, mplace.layout.ty) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.

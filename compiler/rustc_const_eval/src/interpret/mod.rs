@@ -30,4 +30,5 @@ pub use self::validity::{CtfeValidationMode, RefTracking};
 pub use self::visitor::{MutValueVisitor, ValueVisitor};
 
 crate use self::intrinsics::eval_nullary_intrinsic;
+crate use self::operand::type_is_scalar;
 use eval_context::{from_known_layout, mir_assign_valid_types};
