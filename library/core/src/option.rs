@@ -1369,7 +1369,7 @@ impl<T> Option<T> {
     {
         match self {
             Some(_) => None,
-            None => some,
+            None => Some(some),
         }
     }
 
