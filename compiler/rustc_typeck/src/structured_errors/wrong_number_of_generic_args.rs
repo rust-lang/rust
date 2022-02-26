@@ -84,6 +84,9 @@ pub enum GenericArgsInfo {
         // us infer the position of type and const generic arguments
         // in the angle brackets
         args_offset: usize,
+
+        // if synthetic type arguments (e.g. `impl Trait`) are specified
+        synth_provided: bool,
     },
 }
 
@@ -251,6 +254,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             MissingTypesOrConsts { num_default_params, .. }
             | ExcessTypesOrConsts { num_default_params, .. } => num_default_params,
             _ => 0,
+        }
+    }
+
+    fn is_synth_provided(&self) -> bool {
+        match self.gen_args_info {
+            ExcessTypesOrConsts { synth_provided, .. } => synth_provided,
+            _ => false,
         }
     }
 
@@ -780,6 +790,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         err.span_note(spans, &msg);
     }
+
+    /// Add note if `impl Trait` is explicitly specified.
+    fn note_synth_provided(&self, err: &mut Diagnostic) {
+        if !self.is_synth_provided() {
+            return;
+        }
+
+        err.note("`impl Trait` cannot be explicitly specified as a generic argument");
+    }
 }
 
 impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
@@ -797,6 +816,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         self.notify(&mut err);
         self.suggest(&mut err);
         self.show_definition(&mut err);
+        self.note_synth_provided(&mut err);
 
         err
     }
