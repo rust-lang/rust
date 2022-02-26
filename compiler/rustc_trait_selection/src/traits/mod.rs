@@ -340,19 +340,16 @@ pub fn normalize_param_env_or_error<'tcx>(
         "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
         predicates, outlives_predicates
     );
-    let non_outlives_predicates = match do_normalize_predicates(
+    let Ok(non_outlives_predicates) = do_normalize_predicates(
         tcx,
         region_context,
         cause.clone(),
         elaborated_env,
         predicates,
-    ) {
-        Ok(predicates) => predicates,
+    ) else {
         // An unnormalized env is better than nothing.
-        Err(ErrorReported) => {
-            debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
-            return elaborated_env;
-        }
+        debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
+        return elaborated_env;
     };
 
     debug!("normalize_param_env_or_error: non-outlives predicates={:?}", non_outlives_predicates);
@@ -367,19 +364,16 @@ pub fn normalize_param_env_or_error<'tcx>(
         unnormalized_env.reveal(),
         unnormalized_env.constness(),
     );
-    let outlives_predicates = match do_normalize_predicates(
+    let Ok(outlives_predicates) = do_normalize_predicates(
         tcx,
         region_context,
         cause,
         outlives_env,
         outlives_predicates,
-    ) {
-        Ok(predicates) => predicates,
+    ) else {
         // An unnormalized env is better than nothing.
-        Err(ErrorReported) => {
-            debug!("normalize_param_env_or_error: errored resolving outlives predicates");
-            return elaborated_env;
-        }
+        debug!("normalize_param_env_or_error: errored resolving outlives predicates");
+        return elaborated_env;
     };
     debug!("normalize_param_env_or_error: outlives predicates={:?}", outlives_predicates);
 
@@ -834,9 +828,8 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
         selcx.select(&obligation).unwrap()
     });
 
-    let implsrc_traitcasting = match implsrc {
-        Some(ImplSource::TraitUpcasting(data)) => data,
-        _ => bug!(),
+    let Some(ImplSource::TraitUpcasting(implsrc_traitcasting)) = implsrc else {
+        bug!();
     };
 
     implsrc_traitcasting.vtable_vptr_slot

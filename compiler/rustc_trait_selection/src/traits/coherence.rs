@@ -328,18 +328,15 @@ fn negative_impl<'cx, 'tcx>(
             impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
 
         // do the impls unify? If not, not disjoint.
-        let more_obligations = match infcx
+        let Ok(InferOk { obligations: more_obligations, .. }) = infcx
             .at(&ObligationCause::dummy(), impl1_env)
             .eq(impl1_trait_ref, impl2_trait_ref)
-        {
-            Ok(InferOk { obligations, .. }) => obligations,
-            Err(_) => {
-                debug!(
-                    "explicit_disjoint: {:?} does not unify with {:?}",
-                    impl1_trait_ref, impl2_trait_ref
-                );
-                return false;
-            }
+        else {
+            debug!(
+                "explicit_disjoint: {:?} does not unify with {:?}",
+                impl1_trait_ref, impl2_trait_ref
+            );
+            return false;
         };
 
         let opt_failing_obligation = obligations

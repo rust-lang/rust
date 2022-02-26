@@ -1830,9 +1830,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
     let param_env = obligation.param_env;
-    let assoc_ty = match assoc_def(selcx, impl_def_id, assoc_item_id) {
-        Ok(assoc_ty) => assoc_ty,
-        Err(ErrorReported) => return Progress { term: tcx.ty_error().into(), obligations: nested },
+    let Ok(assoc_ty) = assoc_def(selcx, impl_def_id, assoc_item_id) else {
+        return Progress { term: tcx.ty_error().into(), obligations: nested };
     };
 
     if !assoc_ty.item.defaultness.has_value() {

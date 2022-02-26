@@ -512,9 +512,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::BuiltinDerivedObligation(cause) => cause.parent_trait_pred,
             _ => trait_pred,
         };
-        let real_ty = match real_trait_pred.self_ty().no_bound_vars() {
-            Some(ty) => ty,
-            None => return,
+        let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
+            return;
         };
 
         if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
@@ -586,9 +585,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) {
-        let self_ty = match trait_pred.self_ty().no_bound_vars() {
-            None => return,
-            Some(ty) => ty,
+        let Some(self_ty) = trait_pred.self_ty().no_bound_vars() else {
+            return;
         };
 
         let (def_id, output_ty, callable) = match *self_ty.kind() {
@@ -600,9 +598,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         // `mk_trait_obligation_with_new_self_ty` only works for types with no escaping bound
         // variables, so bail out if we have any.
-        let output_ty = match output_ty.no_bound_vars() {
-            Some(ty) => ty,
-            None => return,
+        let Some(output_ty) = output_ty.no_bound_vars() else {
+            return;
         };
 
         let new_obligation =
@@ -624,9 +621,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ..
             })) => {
                 err.span_label(*span, "consider calling this closure");
-                let name = match self.get_closure_name(def_id, err, &msg) {
-                    Some(name) => name,
-                    None => return,
+                let Some(name) = self.get_closure_name(def_id, err, &msg) else {
+                    return;
                 };
                 let args = decl.inputs.iter().map(|_| "_").collect::<Vec<_>>().join(", ");
                 let sugg = format!("({})", args);
@@ -823,9 +819,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 return;
             }
 
-            let mut suggested_ty = match trait_pred.self_ty().no_bound_vars() {
-                Some(ty) => ty,
-                None => return,
+            let Some(mut suggested_ty) = trait_pred.self_ty().no_bound_vars() else {
+                return;
             };
 
             for refs_remaining in 0..refs_number {
@@ -1039,9 +1034,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
-        let sig = match hir.find(parent_node) {
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) => sig,
-            _ => return None,
+        let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) = hir.find(parent_node) else {
+            return None;
         };
 
         if let hir::FnRetTy::Return(ret_ty) = sig.decl.output { Some(ret_ty.span) } else { None }
@@ -1491,11 +1485,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
         // Only continue if a generator was found.
         debug!(?generator, ?trait_ref, ?target_ty, "maybe_note_obligation_cause_for_async_await");
-        let (generator_did, trait_ref, target_ty) = match (generator, trait_ref, target_ty) {
-            (Some(generator_did), Some(trait_ref), Some(target_ty)) => {
-                (generator_did, trait_ref, target_ty)
-            }
-            _ => return false,
+        let (Some(generator_did), Some(trait_ref), Some(target_ty)) = (generator, trait_ref, target_ty) else {
+            return false;
         };
 
         let span = self.tcx.def_span(generator_did);
