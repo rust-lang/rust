@@ -7,18 +7,97 @@ use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
 use crate::{fixture, FileRange, HlTag, TextRange};
 
 #[test]
+fn attributes() {
+    check_highlighting(
+        r#"
+//- proc_macros: identity
+//- minicore: derive, copy
+#[allow(dead_code)]
+#[rustfmt::skip]
+#[proc_macros::identity]
+#[derive(Copy)]
+/// This is a doc comment
+// This is a normal comment
+/// This is a doc comment
+#[derive(Copy)]
+// This is another normal comment
+/// This is another doc comment
+// This is another normal comment
+#[derive(Copy)]
+// The reason for these being here is to test AttrIds
+struct Foo;
+"#,
+        expect_file!["./test_data/highlight_attributes.html"],
+        false,
+    );
+}
+#[test]
+fn macros() {
+    check_highlighting(
+        r#"
+//- proc_macros: mirror
+proc_macros::mirror! {
+    {
+        ,i32 :x pub
+        ,i32 :y pub
+    } Foo struct
+}
+macro_rules! def_fn {
+    ($($tt:tt)*) => {$($tt)*}
+}
+
+def_fn! {
+    fn bar() -> u32 {
+        100
+    }
+}
+
+macro_rules! dont_color_me_braces {
+    () => {0}
+}
+
+macro_rules! noop {
+    ($expr:expr) => {
+        $expr
+    }
+}
+
+macro_rules! keyword_frag {
+    ($type:ty) => ($type)
+}
+
+macro with_args($i:ident) {
+    $i
+}
+
+macro without_args {
+    ($i:ident) => {
+        $i
+    }
+}
+
+fn main() {
+    println!("Hello, {}!", 92);
+    dont_color_me_braces!();
+    noop!(noop!(1));
+}
+"#,
+        expect_file!["./test_data/highlight_macros.html"],
+        false,
+    );
+}
+
+/// If what you want to test feels like a specific entity consider making a new test instead,
+/// this test fixture here in fact should shrink instead of grow ideally.
+#[test]
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- proc_macros: identity, mirror
 //- minicore: derive, copy
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
 
-#[allow()]
-#[rustfmt::skip]
-#[proc_macros::identity]
 pub mod ops {
     #[lang = "fn_once"]
     pub trait FnOnce<Args> {}
@@ -30,11 +109,8 @@ pub mod ops {
     pub trait Fn<Args>: FnMut<Args> {}
 }
 
-proc_macros::mirror! {
-    {
-        ,i32 :x pub
-        ,i32 :y pub
-    } Foo struct
+struct Foo {
+    x: u32,
 }
 
 trait Bar where Self: {
@@ -64,15 +140,6 @@ impl Foo {
 use self::FooCopy::{self as BarCopy};
 
 #[derive(Copy)]
-/// This is a doc comment
-// This is a normal comment
-/// This is a doc comment
-#[derive(Copy)]
-// This is another normal comment
-/// This is another doc comment
-// This is another normal comment
-#[derive(Copy)]
-// The reason for these being here is to test AttrIds
 struct FooCopy {
     x: u32,
 }
@@ -118,57 +185,8 @@ fn foo() {
     let bar = foobar();
 }
 
-macro_rules! def_fn {
-    ($($tt:tt)*) => {$($tt)*}
-}
-
-def_fn! {
-    fn bar() -> u32 {
-        100
-    }
-}
-
-macro_rules! dont_color_me_braces {
-    () => {0}
-}
-
-macro_rules! noop {
-    ($expr:expr) => {
-        $expr
-    }
-}
-
-macro_rules! keyword_frag {
-    ($type:ty) => ($type)
-}
-
-macro with_args($i:ident) {
-    $i
-}
-
-macro without_args {
-    ($i:ident) => {
-        $i
-    }
-}
-
 // comment
 fn main() {
-    println!("Hello, {}!", 92);
-    dont_color_me_braces!();
-
-    let mut vec = Vec::new();
-    if true {
-        let x = 92;
-        vec.push(Foo { x, y: 1 });
-    }
-
-    for e in vec {
-        // Do nothing
-    }
-
-    noop!(noop!(1));
-
     let mut x = 42;
     x += 1;
     let y = &mut x;
@@ -288,159 +306,10 @@ macro_rules! die {
         panic!();
     };
 }
-"#
-        .trim(),
-        expect_file!["./test_data/highlighting.html"],
-        false,
-    );
-}
-
-#[test]
-fn test_rainbow_highlighting() {
-    check_highlighting(
-        r#"
-fn main() {
-    let hello = "hello";
-    let x = hello.to_string();
-    let y = hello.to_string();
-
-    let x = "other color please!";
-    let y = x.to_string();
-}
-
-fn bar() {
-    let mut hello = "hello";
-}
-"#
-        .trim(),
-        expect_file!["./test_data/rainbow_highlighting.html"],
-        true,
-    );
-}
-
-#[test]
-fn benchmark_syntax_highlighting_long_struct() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let fixture = bench_fixture::big_struct();
-    let (analysis, file_id) = fixture::file(&fixture);
-
-    let hash = {
-        let _pt = bench("syntax highlighting long struct");
-        analysis
-            .highlight(file_id)
-            .unwrap()
-            .iter()
-            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
-            .count()
-    };
-    assert_eq!(hash, 2001);
-}
-
-#[test]
-fn syntax_highlighting_not_quadratic() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let mut al = AssertLinear::default();
-    while al.next_round() {
-        for i in 6..=10 {
-            let n = 1 << i;
-
-            let fixture = bench_fixture::big_struct_n(n);
-            let (analysis, file_id) = fixture::file(&fixture);
-
-            let time = Instant::now();
-
-            let hash = analysis
-                .highlight(file_id)
-                .unwrap()
-                .iter()
-                .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
-                .count();
-            assert!(hash > n as usize);
-
-            let elapsed = time.elapsed();
-            al.sample(n as f64, elapsed.as_millis() as f64);
-        }
-    }
-}
-
-#[test]
-fn benchmark_syntax_highlighting_parser() {
-    if skip_slow_tests() {
-        return;
-    }
-
-    let fixture = bench_fixture::glorious_old_parser();
-    let (analysis, file_id) = fixture::file(&fixture);
-
-    let hash = {
-        let _pt = bench("syntax highlighting parser");
-        analysis
-            .highlight(file_id)
-            .unwrap()
-            .iter()
-            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
-            .count()
-    };
-    assert_eq!(hash, 1616);
-}
-
-#[test]
-fn test_ranges() {
-    let (analysis, file_id) = fixture::file(
-        r#"
-#[derive(Clone, Debug)]
-struct Foo {
-    pub x: i32,
-    pub y: i32,
-}
 "#,
-    );
-
-    // The "x"
-    let highlights = &analysis
-        .highlight_range(FileRange { file_id, range: TextRange::at(45.into(), 1.into()) })
-        .unwrap();
-
-    assert_eq!(&highlights[0].highlight.to_string(), "field.declaration.public");
-}
-
-#[test]
-fn test_flattening() {
-    check_highlighting(
-        r##"
-fn fixture(ra_fixture: &str) {}
-
-fn main() {
-    fixture(r#"
-        trait Foo {
-            fn foo() {
-                println!("2 + 2 = {}", 4);
-            }
-        }"#
-    );
-}"##
-        .trim(),
-        expect_file!["./test_data/highlight_injection.html"],
+        expect_file!["./test_data/highlight_general.html"],
         false,
     );
-}
-
-#[test]
-fn ranges_sorted() {
-    let (analysis, file_id) = fixture::file(
-        r#"
-#[foo(bar = "bar")]
-macro_rules! test {}
-}"#
-        .trim(),
-    );
-    let _ = analysis.highlight(file_id).unwrap();
 }
 
 #[test]
@@ -555,8 +424,7 @@ fn main() {
     toho!("{}fmt", 0);
     asm!("mov eax, {0}");
     format_args!(concat!("{}"), "{}");
-}"#
-        .trim(),
+}"#,
         expect_file!["./test_data/highlight_strings.html"],
         false,
     );
@@ -630,8 +498,7 @@ fn main() {
         packed.a.calls_autoref();
     }
 }
-"#
-        .trim(),
+"#,
         expect_file!["./test_data/highlight_unsafe.html"],
         false,
     );
@@ -781,8 +648,7 @@ pub fn block_comments2() {}
 //! ```
 //! fn test() {}
 //! ```
-"#
-        .trim(),
+"#,
         expect_file!["./test_data/highlight_doctest.html"],
         false,
     );
@@ -792,14 +658,14 @@ pub fn block_comments2() {}
 fn test_extern_crate() {
     check_highlighting(
         r#"
-        //- /main.rs crate:main deps:std,alloc
-        extern crate std;
-        extern crate alloc as abc;
-        //- /std/lib.rs crate:std
-        pub struct S;
-        //- /alloc/lib.rs crate:alloc
-        pub struct A
-        "#,
+//- /main.rs crate:main deps:std,alloc
+extern crate std;
+extern crate alloc as abc;
+//- /std/lib.rs crate:std
+pub struct S;
+//- /alloc/lib.rs crate:alloc
+pub struct A
+"#,
         expect_file!["./test_data/highlight_extern_crate.html"],
         false,
     );
@@ -809,41 +675,41 @@ fn test_extern_crate() {
 fn test_crate_root() {
     check_highlighting(
         r#"
-        //- minicore: iterators
-        //- /main.rs crate:main deps:foo
-        extern crate foo;
-        use core::iter;
+//- minicore: iterators
+//- /main.rs crate:main deps:foo
+extern crate foo;
+use core::iter;
 
-        pub const NINETY_TWO: u8 = 92;
+pub const NINETY_TWO: u8 = 92;
 
-        use foo as foooo;
+use foo as foooo;
 
-        pub(crate) fn main() {
-            let baz = iter::repeat(92);
-        }
+pub(crate) fn main() {
+    let baz = iter::repeat(92);
+}
 
-        mod bar {
-            pub(in super) const FORTY_TWO: u8 = 42;
+mod bar {
+    pub(in super) const FORTY_TWO: u8 = 42;
 
-            mod baz {
-                use super::super::NINETY_TWO;
-                use crate::foooo::Point;
+    mod baz {
+        use super::super::NINETY_TWO;
+        use crate::foooo::Point;
 
-                pub(in super::super) const TWENTY_NINE: u8 = 29;
-            }
-        }
-        //- /foo.rs crate:foo
-        struct Point {
-            x: u8,
-            y: u8,
-        }
+        pub(in super::super) const TWENTY_NINE: u8 = 29;
+    }
+}
+//- /foo.rs crate:foo
+struct Point {
+    x: u8,
+    y: u8,
+}
 
-        mod inner {
-            pub(super) fn swap(p: crate::Point) -> crate::Point {
-                crate::Point { x: p.y, y: p.x }
-            }
-        }
-        "#,
+mod inner {
+    pub(super) fn swap(p: crate::Point) -> crate::Point {
+        crate::Point { x: p.y, y: p.x }
+    }
+}
+"#,
         expect_file!["./test_data/highlight_crate_root.html"],
         false,
     );
@@ -853,14 +719,14 @@ fn test_crate_root() {
 fn test_default_library() {
     check_highlighting(
         r#"
-        //- minicore: option, iterators
-        use core::iter;
+//- minicore: option, iterators
+use core::iter;
 
-        fn main() {
-            let foo = Some(92);
-            let nums = iter::repeat(foo.unwrap());
-        }
-        "#,
+fn main() {
+    let foo = Some(92);
+    let nums = iter::repeat(foo.unwrap());
+}
+"#,
         expect_file!["./test_data/highlight_default_library.html"],
         false,
     );
@@ -888,7 +754,7 @@ impl t for foo {
     pub fn is_static() {}
     pub fn is_not_static(&self) {}
 }
-        "#,
+"#,
         expect_file!["./test_data/highlight_assoc_functions.html"],
         false,
     )
@@ -898,26 +764,161 @@ impl t for foo {
 fn test_injection() {
     check_highlighting(
         r##"
-fn f(ra_fixture: &str) {}
+fn fixture(ra_fixture: &str) {}
+
 fn main() {
-    f(r"
+    fixture(r#"
+trait Foo {
+    fn foo() {
+        println!("2 + 2 = {}", 4);
+    }
+}"#
+    );
+    fixture(r"
 fn foo() {
     foo(\$0{
         92
     }\$0)
-}");
+}"
+    );
 }
-    "##,
-        expect_file!["./test_data/injection.html"],
+"##,
+        expect_file!["./test_data/highlight_injection.html"],
         false,
     );
+}
+
+#[test]
+fn test_rainbow_highlighting() {
+    check_highlighting(
+        r#"
+fn main() {
+    let hello = "hello";
+    let x = hello.to_string();
+    let y = hello.to_string();
+
+    let x = "other color please!";
+    let y = x.to_string();
+}
+
+fn bar() {
+    let mut hello = "hello";
+}
+"#,
+        expect_file!["./test_data/highlight_rainbow.html"],
+        true,
+    );
+}
+
+#[test]
+fn test_ranges() {
+    let (analysis, file_id) = fixture::file(
+        r#"
+#[derive(Clone, Debug)]
+struct Foo {
+    pub x: i32,
+    pub y: i32,
+}
+"#,
+    );
+
+    // The "x"
+    let highlights = &analysis
+        .highlight_range(FileRange { file_id, range: TextRange::at(45.into(), 1.into()) })
+        .unwrap();
+
+    assert_eq!(&highlights[0].highlight.to_string(), "field.declaration.public");
+}
+
+#[test]
+fn ranges_sorted() {
+    let (analysis, file_id) = fixture::file(
+        r#"
+#[foo(bar = "bar")]
+macro_rules! test {}
+}"#
+        .trim(),
+    );
+    let _ = analysis.highlight(file_id).unwrap();
 }
 
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
 fn check_highlighting(ra_fixture: &str, expect: ExpectFile, rainbow: bool) {
-    let (analysis, file_id) = fixture::file(ra_fixture);
+    let (analysis, file_id) = fixture::file(ra_fixture.trim());
     let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
     expect.assert_eq(actual_html)
+}
+
+#[test]
+fn benchmark_syntax_highlighting_long_struct() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let fixture = bench_fixture::big_struct();
+    let (analysis, file_id) = fixture::file(&fixture);
+
+    let hash = {
+        let _pt = bench("syntax highlighting long struct");
+        analysis
+            .highlight(file_id)
+            .unwrap()
+            .iter()
+            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
+            .count()
+    };
+    assert_eq!(hash, 2001);
+}
+
+#[test]
+fn syntax_highlighting_not_quadratic() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let mut al = AssertLinear::default();
+    while al.next_round() {
+        for i in 6..=10 {
+            let n = 1 << i;
+
+            let fixture = bench_fixture::big_struct_n(n);
+            let (analysis, file_id) = fixture::file(&fixture);
+
+            let time = Instant::now();
+
+            let hash = analysis
+                .highlight(file_id)
+                .unwrap()
+                .iter()
+                .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Struct))
+                .count();
+            assert!(hash > n as usize);
+
+            let elapsed = time.elapsed();
+            al.sample(n as f64, elapsed.as_millis() as f64);
+        }
+    }
+}
+
+#[test]
+fn benchmark_syntax_highlighting_parser() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let fixture = bench_fixture::glorious_old_parser();
+    let (analysis, file_id) = fixture::file(&fixture);
+
+    let hash = {
+        let _pt = bench("syntax highlighting parser");
+        analysis
+            .highlight(file_id)
+            .unwrap()
+            .iter()
+            .filter(|it| it.highlight.tag == HlTag::Symbol(SymbolKind::Function))
+            .count()
+    };
+    assert_eq!(hash, 1616);
 }
