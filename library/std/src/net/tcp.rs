@@ -707,11 +707,8 @@ impl fmt::Debug for TcpStream {
 }
 
 impl TcpListener {
-    /// Default "backlog" for [`TcpListener::bind`]. See
-    /// [`TcpListener::bind_with_backlog`] for an explanation of backlog
-    /// values.
-    #[unstable(feature = "bind_with_backlog", issue = "94406")]
-    pub const DEFAULT_BACKLOG: usize = 128;
+    /// Default listen backlog.
+    const DEFAULT_BACKLOG: usize = 128;
 
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
@@ -719,8 +716,7 @@ impl TcpListener {
     /// The given backlog specifies the maximum number of outstanding
     /// connections that will be buffered in the OS waiting to be accepted by
     /// [`TcpListener::accept`]. The backlog argument overrides the default
-    /// specified by [`TcpListener::DEFAULT_BACKLOG`]; that default is
-    /// reasonable for most use cases.
+    /// value of 128; that default is reasonable for most use cases.
     ///
     /// This function is otherwise [`TcpListener::bind`]: see that
     /// documentation for full details of operation.
@@ -751,8 +747,7 @@ impl TcpListener {
     /// address. The returned listener is ready for accepting
     /// connections.
     ///
-    /// The listener will have a backlog given by
-    /// [`TcpListener::DEFAULT_BACKLOG`]. See the documentation for
+    /// The listener will have a backlog of 128.  See the documentation for
     /// [`TcpListener::bind_with_backlog`] for further information.
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port

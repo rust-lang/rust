@@ -54,16 +54,12 @@ impl fmt::Debug for UnixListener {
 }
 
 impl UnixListener {
-    /// Default "backlog" for [`UnixListener::bind`] and
-    /// [`UnixListener::bind_addr`]. See [`UnixListener::bind_with_backlog`]
-    /// for an explanation of backlog values.
-    #[unstable(feature = "bind_with_backlog", issue = "94406")]
-    pub const DEFAULT_BACKLOG: usize = 128;
+    /// Default backlog for `bind` and `bind_addr`.
+    const DEFAULT_BACKLOG: usize = 128;
 
     /// Creates a new `UnixListener` bound to the specified socket.
     ///
-    /// The listener will have a backlog given by
-    /// [`UnixListener::DEFAULT_BACKLOG`]. See the documentation for
+    /// The listener will have a backlog of 128. See the documentation for
     /// [`UnixListener::bind_with_backlog`] for further information.
     ///
     /// # Examples
@@ -87,10 +83,10 @@ impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified socket.
     ///
     /// The given backlog specifies the maximum number of outstanding
-    /// connections that will be buffered in the OS waiting to be accepted by
-    /// [`UnixListener::accept`]. The backlog argument overrides the default
-    /// specified by [`UnixListener::DEFAULT_BACKLOG`]; that default is
-    /// reasonable for most use cases.
+    /// connections that will be buffered in the OS waiting to be accepted
+    /// by [`UnixListener::accept`]. The backlog argument overrides the
+    /// default backlog of 128; that default is reasonable for most use
+    /// cases.
     ///
     /// This function is otherwise [`UnixListener::bind`]: see that
     /// documentation for full details of operation.
@@ -133,6 +129,9 @@ impl UnixListener {
 
     /// Creates a new `UnixListener` bound to the specified [`socket address`].
     ///
+    /// The listener will have a backlog of 128. See the documentation for
+    /// [`UnixListener::bind_addr_with_backlog`] for further information.
+    ///
     /// [`socket address`]: crate::os::unix::net::SocketAddr
     ///
     /// # Examples
@@ -163,10 +162,9 @@ impl UnixListener {
     /// Creates a new `UnixListener` bound to the specified [`socket address`].
     ///
     /// The given backlog specifies the maximum number of outstanding
-    /// connections that will be buffered in the OS waiting to be accepted by
-    /// [`UnixListener::accept`]. The backlog argument overrides the default
-    /// specified by [`UnixListener::DEFAULT_BACKLOG`]; that default is
-    /// reasonable for most use cases.
+    /// connections that will be buffered in the OS waiting to be accepted
+    /// by [`UnixListener::accept`]. The backlog argument overrides the
+    /// default of 128; that default is reasonable for most use cases.
     ///
     /// This function is otherwise [`UnixListener::bind_addr`]: see that
     /// documentation for full details of operation.
