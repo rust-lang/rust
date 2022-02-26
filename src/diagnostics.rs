@@ -75,24 +75,26 @@ enum DiagLevel {
     Note,
 }
 
-fn has_local_frame(stacktrace: &[FrameInfo<'_>]) -> bool {
-    stacktrace.iter().any(|frame| frame.instance.def_id().is_local())
-}
-
+/// Attempts to prune a stacktrace to omit the Rust runtime, and returns a bool indicating if any
+/// frames were pruned. If the stacktrace does not have any local frames, we conclude that it must
+/// be pointing to a problem in the Rust runtime itself, and do not prune it at all.
 fn prune_stacktrace<'mir, 'tcx>(
     ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
     mut stacktrace: Vec<FrameInfo<'tcx>>,
-) -> Vec<FrameInfo<'tcx>> {
+) -> (Vec<FrameInfo<'tcx>>, bool) {
     match ecx.machine.backtrace_style {
         BacktraceStyle::Off => {
             // Retain one frame so that we can print a span for the error itself
             stacktrace.truncate(1);
+            (stacktrace, false)
         }
         BacktraceStyle::Short => {
+            let original_len = stacktrace.len();
             // Only prune frames if there is at least one local frame. This check ensures that if
             // we get a backtrace that never makes it to the user code because it has detected a
             // bug in the Rust runtime, we don't prune away every frame.
-            if has_local_frame(&stacktrace) {
+            let has_local_frame = stacktrace.iter().any(|frame| frame.instance.def_id().is_local());
+            if has_local_frame {
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
                 // __rust_end_short_backtrace because the end symbol comes from a call to the default
@@ -117,10 +119,11 @@ fn prune_stacktrace<'mir, 'tcx>(
                     stacktrace.pop();
                 }
             }
+            let was_pruned = stacktrace.len() != original_len;
+            (stacktrace, was_pruned)
         }
-        BacktraceStyle::Full => {}
+        BacktraceStyle::Full => (stacktrace, false),
     }
-    stacktrace
 }
 
 /// Emit a custom diagnostic without going through the miri-engine machinery
@@ -206,7 +209,7 @@ pub fn report_error<'tcx, 'mir>(
     };
 
     let stacktrace = ecx.generate_stacktrace();
-    let stacktrace = prune_stacktrace(ecx, stacktrace);
+    let (stacktrace, was_pruned) = prune_stacktrace(ecx, stacktrace);
     e.print_backtrace();
     let msg = e.to_string();
     report_msg(
@@ -218,9 +221,8 @@ pub fn report_error<'tcx, 'mir>(
         &stacktrace,
     );
 
-    // Include a note like `std` does for short backtraces, but since we are opt-out not opt-in, we
-    // do not include a note when backtraces are off.
-    if ecx.machine.backtrace_style == BacktraceStyle::Short && has_local_frame(&stacktrace) {
+    // Include a note like `std` does when we omit frames from a backtrace
+    if was_pruned {
         ecx.tcx.sess.diagnostic().note_without_error(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
@@ -377,7 +379,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 );
             }
 
-            let stacktrace = prune_stacktrace(this, stacktrace);
+            let (stacktrace, _was_pruned) = prune_stacktrace(this, stacktrace);
 
             // Show diagnostics.
             for e in diagnostics.drain(..) {
