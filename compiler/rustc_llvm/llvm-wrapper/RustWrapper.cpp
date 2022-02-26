@@ -234,14 +234,17 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
 
 template<typename T> static inline void AddAttributes(T *t, unsigned Index,
                                                       LLVMAttributeRef *Attrs, size_t AttrsLen) {
-  AttrBuilder B(t->getContext());
-  for (LLVMAttributeRef Attr : makeArrayRef(Attrs, AttrsLen))
-    B.addAttribute(unwrap(Attr));
   AttributeList PAL = t->getAttributes();
   AttributeList PALNew;
 #if LLVM_VERSION_LT(14, 0)
+  AttrBuilder B;
+  for (LLVMAttributeRef Attr : makeArrayRef(Attrs, AttrsLen))
+    B.addAttribute(unwrap(Attr));
   PALNew = PAL.addAttributes(t->getContext(), Index, B);
 #else
+  AttrBuilder B(t->getContext());
+  for (LLVMAttributeRef Attr : makeArrayRef(Attrs, AttrsLen))
+    B.addAttribute(unwrap(Attr));
   PALNew = PAL.addAttributesAtIndex(t->getContext(), Index, B);
 #endif
   t->setAttributes(PALNew);
@@ -253,7 +256,7 @@ template<typename T> static inline void RemoveAttributes(T *t, unsigned Index,
   AttributeList PAL = t->getAttributes();
   AttributeList PALNew;
 #if LLVM_VERSION_LT(14, 0)
-  AttrBuilder B(t->getContext());
+  AttrBuilder B;
   for (LLVMRustAttribute RustAttr : makeArrayRef(RustAttrs, RustAttrsLen))
     B.addAttribute(fromRust(RustAttr));
   PALNew = PAL.removeAttributes(t->getContext(), Index, B);
