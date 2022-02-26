@@ -470,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().node_type(method_expr[0].hir_id);
+        let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
         let self_ty = format!("{:?}", self_ty);
         let name = method_path.ident.name;
         let is_as_ref_able = (self_ty.starts_with("&std::option::Option")
