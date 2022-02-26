@@ -1,4 +1,4 @@
-// check-pass
+// check-fail
 
 #![feature(generic_associated_types)]
 
@@ -16,6 +16,7 @@ impl<T> Foo<T> for () {
 
 fn foo<T>() {
     let _: for<'a> fn(<() as Foo<T>>::Type<'a>, &'a T) = |_, _| ();
+    //~^ the parameter type `T` may not live long enough
 }
 
 pub fn main() {}
