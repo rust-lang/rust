@@ -438,6 +438,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
+    pub(in super::super) fn normalize_op_associated_types_in_as_infer_ok<T>(
+        &self,
+        span: Span,
+        value: T,
+        opt_input_expr: Option<&hir::Expr<'_>>,
+    ) -> InferOk<'tcx, T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        self.inh.partially_normalize_associated_types_in(
+            ObligationCause::new(
+                span,
+                self.body_id,
+                traits::BinOp {
+                    rhs_span: opt_input_expr.map(|expr| expr.span),
+                    is_lit: opt_input_expr
+                        .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                },
+            ),
+            self.param_env,
+            value,
+        )
+    }
+
     pub fn require_type_meets(
         &self,
         ty: Ty<'tcx>,

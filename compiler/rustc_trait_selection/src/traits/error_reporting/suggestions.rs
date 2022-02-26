@@ -174,6 +174,13 @@ pub trait InferCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         span: Span,
     );
+
+    fn suggest_floating_point_literal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
@@ -1910,8 +1917,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             | ObligationCauseCode::AwaitableExpr(_)
             | ObligationCauseCode::ForLoopIterator
             | ObligationCauseCode::QuestionMark
+            | ObligationCauseCode::CheckAssociatedTypeBounds { .. }
             | ObligationCauseCode::LetElse
-            | ObligationCauseCode::CheckAssociatedTypeBounds { .. } => {}
+            | ObligationCauseCode::BinOp { .. } => {}
             ObligationCauseCode::SliceOrArrayElem => {
                 err.note("slice and array elements must have `Sized` type");
             }
@@ -2495,6 +2503,32 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    fn suggest_floating_point_literal(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+    ) {
+        let rhs_span = match obligation.cause.code() {
+            ObligationCauseCode::BinOp { rhs_span: Some(span), is_lit } if *is_lit => span,
+            _ => return,
+        };
+        match (
+            trait_ref.skip_binder().self_ty().kind(),
+            trait_ref.skip_binder().substs.type_at(1).kind(),
+        ) {
+            (ty::Float(_), ty::Infer(InferTy::IntVar(_))) => {
+                err.span_suggestion_verbose(
+                    rhs_span.shrink_to_hi(),
+                    "consider using a floating-point literal by writing it with `.0`",
+                    String::from(".0"),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            _ => {}
         }
     }
 }
