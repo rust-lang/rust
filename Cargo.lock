@@ -621,7 +621,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.60"
+version = "0.1.61"
 dependencies = [
  "cargo_metadata",
  "clippy_lints",
@@ -632,6 +632,7 @@ dependencies = [
  "futures 0.3.19",
  "if_chain",
  "itertools 0.10.1",
+ "num_cpus",
  "parking_lot",
  "quote",
  "regex",
@@ -662,7 +663,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.60"
+version = "0.1.61"
 dependencies = [
  "cargo_metadata",
  "clippy_utils",
@@ -683,7 +684,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.60"
+version = "0.1.61"
 dependencies = [
  "arrayvec",
  "if_chain",
