@@ -5,13 +5,14 @@ use std::ops::RangeBounds;
 
 use crate::vec::Idx;
 use crate::vec::IndexVec;
+use rustc_macros::{Decodable, Encodable};
 use smallvec::SmallVec;
 
 #[cfg(test)]
 mod tests;
 
 /// Stores a set of intervals on the indices.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct IntervalSet<I> {
     // Start, end
     map: SmallVec<[(u32, u32); 4]>,
@@ -43,6 +44,17 @@ impl<I: Idx> IntervalSet<I> {
         IntervalSet { map: SmallVec::new(), domain, _data: PhantomData }
     }
 
+    /// Ensure that the set's domain is at least `min_domain_size`.
+    pub fn ensure(&mut self, min_domain_size: usize) {
+        if self.domain < min_domain_size {
+            self.domain = min_domain_size;
+        }
+    }
+
+    pub fn domain_size(&self) -> usize {
+        self.domain
+    }
+
     pub fn clear(&mut self) {
         self.map.clear();
     }
@@ -65,6 +77,10 @@ impl<I: Idx> IntervalSet<I> {
     /// Returns true if we increased the number of elements present.
     pub fn insert(&mut self, point: I) -> bool {
         self.insert_range(point..=point)
+    }
+
+    pub fn remove(&mut self, point: I) {
+        self.remove_range(point..=point);
     }
 
     /// Returns true if we increased the number of elements present.
@@ -134,6 +150,31 @@ impl<I: Idx> IntervalSet<I> {
         }
     }
 
+    pub fn remove_range(&mut self, range: impl RangeBounds<I> + Clone) {
+        let start = inclusive_start(range.clone());
+        let Some(end) = inclusive_end(self.domain, range.clone()) else {
+            // empty range
+            return;
+        };
+        if start > end {
+            return;
+        }
+        // We insert the range, so that any previous gaps are merged into just one large
+        // range, which we can then split in the next step (either inserting a
+        // smaller range after or not).
+        self.insert_range(range);
+        // Find the range we just inserted.
+        let idx = self.map.partition_point(|r| r.0 <= end).checked_sub(1).unwrap();
+        let (prev_start, prev_end) = self.map.remove(idx);
+        // The range we're looking at contains the range we're removing completely.
+        assert!(prev_start <= start && end <= prev_end);
+        self.insert_range(I::new(prev_start as usize)..I::new(start as usize));
+        self.insert_range((
+            Bound::Excluded(I::new(end as usize)),
+            Bound::Included(I::new(prev_end as usize)),
+        ));
+    }
+
     pub fn contains(&self, needle: I) -> bool {
         let needle = needle.index() as u32;
         let Some(last) = self.map.partition_point(|r| r.0 <= needle).checked_sub(1) else {
@@ -155,6 +196,44 @@ impl<I: Idx> IntervalSet<I> {
 
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
+    }
+
+    /// Returns the minimum (first) element present in the set from `range`.
+    pub fn first_set_in(&self, range: impl RangeBounds<I> + Clone) -> Option<I> {
+        let start = inclusive_start(range.clone());
+        let Some(end) = inclusive_end(self.domain, range) else {
+            // empty range
+            return None;
+        };
+        if start > end {
+            return None;
+        }
+        let range = self.map.get(self.map.partition_point(|r| r.1 < start))?;
+        if range.0 > end { None } else { Some(I::new(std::cmp::max(range.0, start) as usize)) }
+    }
+
+    /// Returns the minimum (first) element **not** present in the set from `range`.
+    pub fn first_gap_in(&self, range: impl RangeBounds<I> + Clone) -> Option<I> {
+        let start = inclusive_start(range.clone());
+        let Some(end) = inclusive_end(self.domain, range) else {
+            // empty range
+            return None;
+        };
+        if start > end {
+            return None;
+        }
+        let Some(range) = self.map.get(self.map.partition_point(|r| r.1 < start)) else {
+            return Some(I::new(start as usize));
+        };
+        if start < range.0 {
+            return Some(I::new(start as usize));
+        } else if range.1 as usize + 1 < self.domain {
+            if range.1 + 1 <= end {
+                return Some(I::new(range.1 as usize + 1));
+            }
+        }
+
+        None
     }
 
     /// Returns the maximum (last) element present in the set from `range`.
