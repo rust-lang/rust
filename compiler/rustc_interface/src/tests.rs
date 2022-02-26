@@ -721,7 +721,10 @@ fn test_debugging_options_tracking_hash() {
     tracked!(binary_dep_depinfo, true);
     tracked!(
         branch_protection,
-        BranchProtection { bti: true, pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B }) }
+        Some(BranchProtection {
+            bti: true,
+            pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B })
+        })
     );
     tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
