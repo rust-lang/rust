@@ -710,7 +710,7 @@ impl TcpListener {
     /// Default "backlog" for [`TcpListener::bind`]. See
     /// [`TcpListener::bind_with_backlog`] for an explanation of backlog
     /// values.
-    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
     pub const DEFAULT_BACKLOG: usize = 128;
 
     /// Creates a new `TcpListener` which will be bound to the specified
@@ -741,7 +741,7 @@ impl TcpListener {
     /// The specified backlog may be larger than supported by the underlying
     /// system. In this case an [`io::Error`] with
     /// [`io::ErrorKind::InvalidData`] will be returned.
-    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
     pub fn bind_with_backlog<A: ToSocketAddrs>(addr: A, backlog: usize) -> io::Result<TcpListener> {
         super::each_addr(addr, move |a| net_imp::TcpListener::bind_with_backlog(a, backlog))
             .map(TcpListener)

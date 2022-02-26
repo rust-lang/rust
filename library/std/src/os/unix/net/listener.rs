@@ -57,7 +57,7 @@ impl UnixListener {
     /// Default "backlog" for [`UnixListener::bind`] and
     /// [`UnixListener::bind_addr`]. See [`UnixListener::bind_with_backlog`]
     /// for an explanation of backlog values.
-    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
     pub const DEFAULT_BACKLOG: usize = 128;
 
     /// Creates a new `UnixListener` bound to the specified socket.
@@ -115,7 +115,7 @@ impl UnixListener {
     /// The specified backlog may be larger than supported by the underlying
     /// system. In this case an [`io::Error`] with
     /// [`io::ErrorKind::InvalidData`] will be returned.
-    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
     pub fn bind_with_backlog<P: AsRef<Path>>(path: P, backlog: usize) -> io::Result<UnixListener> {
         unsafe {
             let backlog = backlog
@@ -195,7 +195,7 @@ impl UnixListener {
     /// }
     /// ```
     //#[unstable(feature = "unix_socket_abstract", issue = "85410")]
-    #[unstable(feature = "bind_with_backlog", issue = "none")]
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
     pub fn bind_addr_with_backlog(
         socket_addr: &SocketAddr,
         backlog: usize,
