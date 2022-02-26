@@ -81,6 +81,7 @@ use rustc_parse::parser::Parser;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 
+use im_rc::Vector;
 use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -88,6 +89,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::iter;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
@@ -172,7 +174,7 @@ struct MatcherPos<'root, 'tt> {
     /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
     /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
     /// wants the shared `matches`, one should use `up.matches`.
-    matches: Box<[Lrc<NamedMatchVec>]>,
+    matches: Vector<Lrc<NamedMatchVec>>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
     /// to `matches[match_lo]`.
@@ -290,14 +292,8 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
 }
 
 /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
-fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
-    if len == 0 {
-        vec![]
-    } else {
-        let empty_matches = Lrc::new(SmallVec::new());
-        vec![empty_matches; len]
-    }
-    .into_boxed_slice()
+fn create_matches(len: usize) -> Vector<Lrc<NamedMatchVec>> {
+    iter::repeat(()).map(|()| Lrc::new(SmallVec::new())).take(len).collect()
 }
 
 /// Generates the top-level matcher position in which the "dot" is before the first token of the
