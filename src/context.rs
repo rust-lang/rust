@@ -18,7 +18,6 @@ use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDat
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
-use crate::declare::mangle_name;
 
 #[derive(Clone)]
 pub struct FuncSig<'gcc> {
@@ -96,7 +95,6 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
-    pub global_gen_sym_counter: Cell<usize>,
 
     eh_personality: Cell<Option<RValue<'gcc>>>,
 
@@ -221,7 +219,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             struct_types: Default::default(),
             types_with_fields_to_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
-            global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
@@ -501,11 +498,6 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         base_n::push_str(idx as u128, base_n::ALPHANUMERIC_ONLY, &mut name);
         name
     }
-}
-
-pub fn unit_name<'tcx>(codegen_unit: &CodegenUnit<'tcx>) -> String {
-    let name = &codegen_unit.name().to_string();
-    mangle_name(&name.replace('-', "_"))
 }
 
 fn to_gcc_tls_mode(tls_model: TlsModel) -> gccjit::TlsModel {
