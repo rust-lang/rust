@@ -463,10 +463,8 @@ fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results = MaybeBorrowedLocals::all_borrows()
-        .into_engine(tcx, body_ref)
-        .pass_name("generator")
-        .iterate_to_fixpoint();
+    let borrowed_locals_results =
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
