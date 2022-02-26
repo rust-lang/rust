@@ -235,10 +235,9 @@ fn highlight_name_ref(
     let mut h = match name_class {
         NameRefClass::Definition(def) => {
             if let Definition::Local(local) = &def {
-                if let Some(name) = local.name(db) {
-                    let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-                    *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-                }
+                let name = local.name(db);
+                let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+                *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
             };
 
             let mut h = highlight_def(sema, krate, def);
@@ -288,11 +287,10 @@ fn highlight_name(
 ) -> Highlight {
     let name_kind = NameClass::classify(sema, &name);
     if let Some(NameClass::Definition(Definition::Local(local))) = &name_kind {
-        if let Some(name) = local.name(sema.db) {
-            let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
-            *shadow_count += 1;
-            *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
-        }
+        let name = local.name(sema.db);
+        let shadow_count = bindings_shadow_count.entry(name.clone()).or_default();
+        *shadow_count += 1;
+        *binding_hash = Some(calc_binding_hash(&name, *shadow_count))
     };
     match name_kind {
         Some(NameClass::Definition(def)) => {

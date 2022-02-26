@@ -2047,10 +2047,13 @@ impl Local {
     pub fn is_param(self, db: &dyn HirDatabase) -> bool {
         let src = self.source(db);
         match src.value {
-            Either::Left(bind_pat) => {
-                bind_pat.syntax().ancestors().any(|it| ast::Param::can_cast(it.kind()))
-            }
-            Either::Right(_self_param) => true,
+            Either::Left(pat) => pat
+                .syntax()
+                .ancestors()
+                .map(|it| it.kind())
+                .take_while(|&kind| ast::Pat::can_cast(kind) || ast::Param::can_cast(kind))
+                .any(ast::Param::can_cast),
+            Either::Right(_) => true,
         }
     }
 
@@ -2061,17 +2064,19 @@ impl Local {
         }
     }
 
-    // FIXME: why is this an option? It shouldn't be?
-    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
         let body = db.body(self.parent);
         match &body[self.pat_id] {
-            Pat::Bind { name, .. } => Some(name.clone()),
-            _ => None,
+            Pat::Bind { name, .. } => name.clone(),
+            _ => {
+                stdx::never!("hir::Local is missing a name!");
+                Name::missing()
+            }
         }
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == Some(name![self])
+        self.name(db) == name![self]
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {

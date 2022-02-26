@@ -480,7 +480,7 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
     let is_mut = if it.is_mut(db) { "mut " } else { "" };
     let desc = match it.source(db).value {
         Either::Left(ident) => {
-            let name = it.name(db).unwrap();
+            let name = it.name(db);
             let let_kw = if ident
                 .syntax()
                 .parent()
