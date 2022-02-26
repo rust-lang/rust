@@ -136,6 +136,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
     upvars: &[Upvar<'tcx>],
+    use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut universe_causes = FxHashMap::default();
@@ -187,7 +188,15 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut borrowck_context,
         |mut cx| {
             cx.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
-            liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
+            liveness::generate(
+                &mut cx,
+                body,
+                elements,
+                flow_inits,
+                move_data,
+                location_table,
+                use_polonius,
+            );
 
             translate_outlives_facts(&mut cx);
             let opaque_type_values = mem::take(&mut infcx.inner.borrow_mut().opaque_types);

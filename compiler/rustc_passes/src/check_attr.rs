@@ -1740,8 +1740,8 @@ impl CheckAttrVisitor<'_> {
     fn check_used(&self, attrs: &[Attribute], target: Target) {
         let mut used_linker_span = None;
         let mut used_compiler_span = None;
-        for attr in attrs {
-            if attr.has_name(sym::used) && target != Target::Static {
+        for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
+            if target != Target::Static {
                 self.tcx
                     .sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
