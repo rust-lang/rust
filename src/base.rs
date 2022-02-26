@@ -105,6 +105,9 @@ pub fn compile_codegen_unit<'tcx>(tcx: TyCtxt<'tcx>, cgu_name: Symbol, supports_
             context.set_keep_intermediates(true);
         }
 
+        // TODO(bjorn3): Remove once unwinding is properly implemented
+        context.set_allow_unreachable_blocks(true);
+
         {
             let cx = CodegenCx::new(&context, cgu, tcx, supports_128bit_integers);
 
