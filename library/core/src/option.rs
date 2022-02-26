@@ -1364,8 +1364,6 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     pub const fn not<U>(self, some: U) -> Option<U>
-    where
-        T: ~const Drop,
     {
         match self {
             Some(_) => None,
@@ -1398,6 +1396,8 @@ impl<T> Option<T> {
     #[stable(feature = "option_xor", since = "1.37.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
     pub const fn xor(self, optb: Option<T>) -> Option<T>
+    where
+        T: ~const Drop,
     {
         match (self, optb) {
             (Some(a), None) => Some(a),
