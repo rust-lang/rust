@@ -402,25 +402,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if arg_count == 0 || i + 1 == arg_count { &label } else { "" },
                 );
             }
-            if let Some(def_id) = fn_def_id {
-                if let Some(def_span) = tcx.def_ident_span(def_id) {
-                    let mut spans: MultiSpan = def_span.into();
+            if let Some(def_id) = fn_def_id && let Some(def_span) = tcx.def_ident_span(def_id) {
+                let mut spans: MultiSpan = def_span.into();
 
-                    let params = tcx
-                        .hir()
-                        .get_if_local(def_id)
-                        .and_then(|node| node.body_id())
-                        .into_iter()
-                        .map(|id| tcx.hir().body(id).params)
-                        .flatten();
+                let params = tcx
+                    .hir()
+                    .get_if_local(def_id)
+                    .and_then(|node| node.body_id())
+                    .into_iter()
+                    .map(|id| tcx.hir().body(id).params)
+                    .flatten();
 
-                    for param in params {
-                        spans.push_span_label(param.span, String::new());
-                    }
-
-                    let def_kind = tcx.def_kind(def_id);
-                    err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
+                for param in params {
+                    spans.push_span_label(param.span, String::new());
                 }
+
+                let def_kind = tcx.def_kind(def_id);
+                err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
             }
             if sugg_unit {
                 let sugg_span = tcx.sess.source_map().end_point(call_expr.span);
