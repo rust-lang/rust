@@ -7,7 +7,7 @@
 #![feature(if_let_guard)]
 #![feature(adt_const_params)]
 #![feature(let_chains)]
-#![feature(let_else)]
+#![cfg_attr(bootstrap, feature(let_else))]
 #![feature(never_type)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
