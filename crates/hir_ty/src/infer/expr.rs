@@ -84,7 +84,6 @@ impl<'a> InferenceContext<'a> {
         let ty = match &body[tgt_expr] {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
-                // if let is desugared to match, so this is always simple if
                 self.infer_expr(
                     condition,
                     &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
@@ -184,7 +183,6 @@ impl<'a> InferenceContext<'a> {
                     coerce: CoerceMany::new(self.err_ty()),
                     label: label.map(|label| self.body[label].name.clone()),
                 });
-                // while let is desugared to a match loop, so this is always simple while
                 self.infer_expr(
                     *condition,
                     &Expectation::has_type(TyKind::Scalar(Scalar::Bool).intern(Interner)),
