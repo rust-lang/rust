@@ -10,7 +10,7 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
+use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -543,6 +543,16 @@ impl<'tcx> Inliner<'tcx> {
                 // Copy the arguments if needed.
                 let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
+                let mut expn_data = ExpnData::default(
+                    ExpnKind::Inlined,
+                    callsite.source_info.span,
+                    self.tcx.sess.edition(),
+                    None,
+                    None,
+                );
+                expn_data.def_site = callee_body.span;
+                let expn_data =
+                    LocalExpnId::fresh(expn_data, self.tcx.create_stable_hashing_context());
                 let mut integrator = Integrator {
                     args: &args,
                     new_locals: Local::new(caller_body.local_decls.len())..,
@@ -553,8 +563,7 @@ impl<'tcx> Inliner<'tcx> {
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
-                    callsite_span: callsite.source_info.span,
-                    body_span: callee_body.span,
+                    expn_data,
                     always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
@@ -787,8 +796,7 @@ struct Integrator<'a, 'tcx> {
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
-    callsite_span: Span,
-    body_span: Span,
+    expn_data: LocalExpnId,
     always_live_locals: BitSet<Local>,
 }
 
@@ -835,12 +843,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
     }
 
     fn visit_span(&mut self, span: &mut Span) {
-        let mut expn_data =
-            ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None, None);
-        expn_data.def_site = self.body_span;
         // Make sure that all spans track the fact that they were inlined.
-        *span =
-            self.callsite_span.fresh_expansion(expn_data, self.tcx.create_stable_hashing_context());
+        *span = span.fresh_expansion(self.expn_data);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {

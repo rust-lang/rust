@@ -4,8 +4,9 @@ use rustc_errors::{emitter::Emitter, Applicability, Diagnostic, Handler};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_parse::parse_stream_from_source_str;
 use rustc_session::parse::ParseSess;
+use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{hygiene::AstPass, ExpnData, ExpnKind, FileName, InnerSpan, DUMMY_SP};
+use rustc_span::{FileName, InnerSpan, DUMMY_SP};
 
 use crate::clean;
 use crate::core::DocContext;
@@ -46,7 +47,8 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
             None,
             None,
         );
-        let span = DUMMY_SP.fresh_expansion(expn_data, self.cx.tcx.create_stable_hashing_context());
+        let expn_id = LocalExpnId::fresh(expn_data, self.cx.tcx.create_stable_hashing_context());
+        let span = DUMMY_SP.fresh_expansion(expn_id);
 
         let is_empty = rustc_driver::catch_fatal_errors(|| {
             parse_stream_from_source_str(

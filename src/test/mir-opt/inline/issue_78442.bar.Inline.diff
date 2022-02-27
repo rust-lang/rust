@@ -29,7 +29,7 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/issue-78442.rs:11:5: 11:15
 -                                          // + literal: Const { ty: for<'r> extern "rust-call" fn(&'r impl Fn(), ()) -> <impl Fn() as FnOnce<()>>::Output {<impl Fn() as Fn<()>>::call}, val: Value(Scalar(<ZST>)) }
-+         _2 = move (*_3)() -> [return: bb5, unwind: bb3]; // scope 1 at $DIR/issue-78442.rs:11:5: 11:17
++         _2 = move (*_3)() -> [return: bb5, unwind: bb3]; // scope 1 at $SRC_DIR/core/src/ops/function.rs:LL:COL
       }
   
       bb2: {

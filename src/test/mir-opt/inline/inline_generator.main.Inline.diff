@@ -14,22 +14,22 @@
 +     scope 2 (inlined g) {                // at $DIR/inline-generator.rs:9:28: 9:31
 +     }
 +     scope 3 (inlined Pin::<&mut [generator@$DIR/inline-generator.rs:15:5: 15:41]>::new) { // at $DIR/inline-generator.rs:9:14: 9:32
-+         debug pointer => _3;             // in scope 3 at $DIR/inline-generator.rs:9:14: 9:32
-+         let mut _5: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 3 at $DIR/inline-generator.rs:9:14: 9:32
++         debug pointer => _3;             // in scope 3 at $SRC_DIR/core/src/pin.rs:LL:COL
++         let mut _5: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 3 at $SRC_DIR/core/src/pin.rs:LL:COL
 +         scope 4 {
-+             scope 5 (inlined Pin::<&mut [generator@$DIR/inline-generator.rs:15:5: 15:41]>::new_unchecked) { // at $DIR/inline-generator.rs:9:14: 9:32
-+                 debug pointer => _5;     // in scope 5 at $DIR/inline-generator.rs:9:14: 9:32
-+                 let mut _6: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 5 at $DIR/inline-generator.rs:9:14: 9:32
++             scope 5 (inlined Pin::<&mut [generator@$DIR/inline-generator.rs:15:5: 15:41]>::new_unchecked) { // at $SRC_DIR/core/src/pin.rs:LL:COL
++                 debug pointer => _5;     // in scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++                 let mut _6: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]; // in scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
 +             }
 +         }
 +     }
 +     scope 6 (inlined g::{closure#0}) {   // at $DIR/inline-generator.rs:9:14: 9:46
-+         debug a => _11;                  // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         let mut _8: i32;                 // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         let mut _9: bool;                // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         let mut _10: bool;               // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         let _11: bool;                   // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         let mut _12: u32;                // in scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         debug a => _11;                  // in scope 6 at $DIR/inline-generator.rs:15:6: 15:7
++         let mut _8: i32;                 // in scope 6 at $DIR/inline-generator.rs:15:17: 15:39
++         let mut _9: bool;                // in scope 6 at $DIR/inline-generator.rs:15:20: 15:21
++         let mut _10: bool;               // in scope 6 at $DIR/inline-generator.rs:15:9: 15:9
++         let _11: bool;                   // in scope 6 at $DIR/inline-generator.rs:15:6: 15:7
++         let mut _12: u32;                // in scope 6 at $DIR/inline-generator.rs:15:5: 15:41
 +     }
   
       bb0: {
@@ -44,7 +44,7 @@
 -     }
 - 
 -     bb1: {
-+         discriminant(_4) = 0;            // scope 2 at $DIR/inline-generator.rs:9:28: 9:31
++         discriminant(_4) = 0;            // scope 2 at $DIR/inline-generator.rs:15:5: 15:41
           _3 = &mut _4;                    // scope 0 at $DIR/inline-generator.rs:9:23: 9:31
 -         _2 = Pin::<&mut impl Generator<bool>>::new(move _3) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/inline-generator.rs:9:14: 9:32
 -                                          // mir::Constant
@@ -54,13 +54,13 @@
 -     }
 - 
 -     bb2: {
-+         StorageLive(_5);                 // scope 4 at $DIR/inline-generator.rs:9:14: 9:32
-+         _5 = move _3;                    // scope 4 at $DIR/inline-generator.rs:9:14: 9:32
-+         StorageLive(_6);                 // scope 5 at $DIR/inline-generator.rs:9:14: 9:32
-+         _6 = move _5;                    // scope 5 at $DIR/inline-generator.rs:9:14: 9:32
-+         (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]) = move _6; // scope 5 at $DIR/inline-generator.rs:9:14: 9:32
-+         StorageDead(_6);                 // scope 5 at $DIR/inline-generator.rs:9:14: 9:32
-+         StorageDead(_5);                 // scope 4 at $DIR/inline-generator.rs:9:14: 9:32
++         StorageLive(_5);                 // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
++         _5 = move _3;                    // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
++         StorageLive(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         _6 = move _5;                    // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         (_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]) = move _6; // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         StorageDead(_6);                 // scope 5 at $SRC_DIR/core/src/pin.rs:LL:COL
++         StorageDead(_5);                 // scope 4 at $SRC_DIR/core/src/pin.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/inline-generator.rs:9:31: 9:32
 -         _1 = <impl Generator<bool> as Generator<bool>>::resume(move _2, const false) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 -                                          // mir::Constant
@@ -71,8 +71,8 @@
 +         StorageLive(_10);                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         StorageLive(_11);                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
 +         StorageLive(_12);                // scope 0 at $DIR/inline-generator.rs:9:14: 9:46
-+         _12 = discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))); // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         switchInt(move _12) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         _12 = discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))); // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
++         switchInt(move _12) -> [0_u32: bb3, 1_u32: bb8, 3_u32: bb7, otherwise: bb9]; // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
       }
   
 -     bb3: {
@@ -94,47 +94,47 @@
 +     }
 + 
 +     bb3: {
-+         _11 = move _7;                   // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         StorageLive(_8);                 // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         StorageLive(_9);                 // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         _9 = _11;                        // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         switchInt(move _9) -> [false: bb5, otherwise: bb4]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         _11 = move _7;                   // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
++         StorageLive(_8);                 // scope 6 at $DIR/inline-generator.rs:15:17: 15:39
++         StorageLive(_9);                 // scope 6 at $DIR/inline-generator.rs:15:20: 15:21
++         _9 = _11;                        // scope 6 at $DIR/inline-generator.rs:15:20: 15:21
++         switchInt(move _9) -> [false: bb5, otherwise: bb4]; // scope 6 at $DIR/inline-generator.rs:15:20: 15:21
 +     }
 + 
 +     bb4: {
-+         _8 = const 7_i32;                // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         _8 = const 7_i32;                // scope 6 at $DIR/inline-generator.rs:15:24: 15:25
++         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:15:17: 15:39
 +     }
 + 
 +     bb5: {
-+         _8 = const 13_i32;               // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         _8 = const 13_i32;               // scope 6 at $DIR/inline-generator.rs:15:35: 15:37
++         goto -> bb6;                     // scope 6 at $DIR/inline-generator.rs:15:17: 15:39
 +     }
 + 
 +     bb6: {
-+         StorageDead(_9);                 // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         discriminant(_1) = 0;            // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 3; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         StorageDead(_9);                 // scope 6 at $DIR/inline-generator.rs:15:38: 15:39
++         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
++         discriminant(_1) = 0;            // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
++         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 3; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:11: 15:39
 +     }
 + 
 +     bb7: {
-+         StorageLive(_8);                 // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         _10 = move _7;                   // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         StorageDead(_8);                 // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         ((_1 as Complete).0: bool) = move _10; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         discriminant(_1) = 1;            // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
-+         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 1; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         StorageLive(_8);                 // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
++         _10 = move _7;                   // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
++         StorageDead(_8);                 // scope 6 at $DIR/inline-generator.rs:15:38: 15:39
++         ((_1 as Complete).0: bool) = move _10; // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
++         discriminant(_1) = 1;            // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
++         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 1; // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:41: 15:41
 +     }
 + 
 +     bb8: {
-+         assert(const false, "generator resumed after completion") -> [success: bb8, unwind: bb2]; // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         assert(const false, "generator resumed after completion") -> [success: bb8, unwind: bb2]; // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
 +     }
 + 
 +     bb9: {
-+         unreachable;                     // scope 6 at $DIR/inline-generator.rs:9:14: 9:46
++         unreachable;                     // scope 6 at $DIR/inline-generator.rs:15:5: 15:41
       }
   }
   
