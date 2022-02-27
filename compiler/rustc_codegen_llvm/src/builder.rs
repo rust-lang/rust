@@ -1,3 +1,4 @@
+use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, False};
@@ -22,6 +23,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, Target};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::iter;
@@ -1174,14 +1176,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
+        let mut attrs = SmallVec::<[_; 2]>::new();
+
         // Cleanup is always the cold path.
-        llvm::Attribute::Cold.apply_callsite(llvm::AttributePlace::Function, llret);
+        attrs.push(llvm::AttributeKind::Cold.create_attr(self.llcx));
 
         // In LLVM versions with deferred inlining (currently, system LLVM < 14),
         // inlining drop glue can lead to exponential size blowup, see #41696 and #92110.
         if !llvm_util::is_rust_llvm() && llvm_util::get_version() < (14, 0, 0) {
-            llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+            attrs.push(llvm::AttributeKind::NoInline.create_attr(self.llcx));
         }
+
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &attrs);
     }
 }
 

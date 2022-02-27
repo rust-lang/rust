@@ -1,6 +1,7 @@
+use crate::attributes;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, AttributePlace};
+use crate::llvm::{self, Attribute, AttributePlace};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -20,6 +21,7 @@ use rustc_target::abi::{self, HasDataLayout, Int};
 pub use rustc_target::spec::abi::Abi;
 
 use libc::c_uint;
+use smallvec::SmallVec;
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -38,57 +40,65 @@ fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
     cx.tcx.sess.opts.debugging_opts.mutable_noalias.unwrap_or(true)
 }
 
-const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::Attribute); 1] =
-    [(ArgAttribute::InReg, llvm::Attribute::InReg)];
+const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
+    [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::Attribute); 5] = [
-    (ArgAttribute::NoAlias, llvm::Attribute::NoAlias),
-    (ArgAttribute::NoCapture, llvm::Attribute::NoCapture),
-    (ArgAttribute::NonNull, llvm::Attribute::NonNull),
-    (ArgAttribute::ReadOnly, llvm::Attribute::ReadOnly),
-    (ArgAttribute::NoUndef, llvm::Attribute::NoUndef),
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
+    (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
+    (ArgAttribute::NoCapture, llvm::AttributeKind::NoCapture),
+    (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
+    (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
+    (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
 ];
+
+fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
+    let mut regular = this.regular;
+
+    let mut attrs = SmallVec::new();
+
+    // ABI-affecting attributes must always be applied
+    for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
+        if regular.contains(attr) {
+            attrs.push(llattr.create_attr(cx.llcx));
+        }
+    }
+    if let Some(align) = this.pointee_align {
+        attrs.push(llvm::CreateAlignmentAttr(cx.llcx, align.bytes()));
+    }
+    match this.arg_ext {
+        ArgExtension::None => {}
+        ArgExtension::Zext => attrs.push(llvm::AttributeKind::ZExt.create_attr(cx.llcx)),
+        ArgExtension::Sext => attrs.push(llvm::AttributeKind::SExt.create_attr(cx.llcx)),
+    }
+
+    // Only apply remaining attributes when optimizing
+    if cx.sess().opts.optimize != config::OptLevel::No {
+        let deref = this.pointee_size.bytes();
+        if deref != 0 {
+            if regular.contains(ArgAttribute::NonNull) {
+                attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
+            } else {
+                attrs.push(llvm::CreateDereferenceableOrNullAttr(cx.llcx, deref));
+            }
+            regular -= ArgAttribute::NonNull;
+        }
+        for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
+            if regular.contains(attr) {
+                attrs.push(llattr.create_attr(cx.llcx));
+            }
+        }
+        if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
+            attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
+        }
+    }
+
+    attrs
+}
 
 impl ArgAttributesExt for ArgAttributes {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
-        let mut regular = self.regular;
-        unsafe {
-            // ABI-affecting attributes must always be applied
-            for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
-                if regular.contains(attr) {
-                    llattr.apply_llfn(idx, llfn);
-                }
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => llvm::Attribute::ZExt.apply_llfn(idx, llfn),
-                ArgExtension::Sext => llvm::Attribute::SExt.apply_llfn(idx, llfn),
-            }
-            // Only apply remaining attributes when optimizing
-            if cx.sess().opts.optimize == config::OptLevel::No {
-                return;
-            }
-            let deref = self.pointee_size.bytes();
-            if deref != 0 {
-                if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableAttr(llfn, idx.as_uint(), deref);
-                } else {
-                    llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
-                }
-                regular -= ArgAttribute::NonNull;
-            }
-            for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
-                if regular.contains(attr) {
-                    llattr.apply_llfn(idx, llfn);
-                }
-            }
-            if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-                llvm::Attribute::NoAlias.apply_llfn(idx, llfn);
-            }
-        }
+        let attrs = get_attrs(self, cx);
+        attributes::apply_to_llfn(llfn, idx, &attrs);
     }
 
     fn apply_attrs_to_callsite(
@@ -97,52 +107,8 @@ impl ArgAttributesExt for ArgAttributes {
         cx: &CodegenCx<'_, '_>,
         callsite: &Value,
     ) {
-        let mut regular = self.regular;
-        unsafe {
-            // ABI-affecting attributes must always be applied
-            for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
-                if regular.contains(attr) {
-                    llattr.apply_callsite(idx, callsite);
-                }
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentCallSiteAttr(
-                    callsite,
-                    idx.as_uint(),
-                    align.bytes() as u32,
-                );
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => llvm::Attribute::ZExt.apply_callsite(idx, callsite),
-                ArgExtension::Sext => llvm::Attribute::SExt.apply_callsite(idx, callsite),
-            }
-            // Only apply remaining attributes when optimizing
-            if cx.sess().opts.optimize == config::OptLevel::No {
-                return;
-            }
-            let deref = self.pointee_size.bytes();
-            if deref != 0 {
-                if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite, idx.as_uint(), deref);
-                } else {
-                    llvm::LLVMRustAddDereferenceableOrNullCallSiteAttr(
-                        callsite,
-                        idx.as_uint(),
-                        deref,
-                    );
-                }
-                regular -= ArgAttribute::NonNull;
-            }
-            for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
-                if regular.contains(attr) {
-                    llattr.apply_callsite(idx, callsite);
-                }
-            }
-            if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-                llvm::Attribute::NoAlias.apply_callsite(idx, callsite);
-            }
-        }
+        let attrs = get_attrs(self, cx);
+        attributes::apply_to_callsite(callsite, idx, &attrs);
     }
 }
 
@@ -444,15 +410,14 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
-        // FIXME(eddyb) can this also be applied to callsites?
+        let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
+            func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
         }
-
-        // FIXME(eddyb, wesleywiser): apply this to callsites as well?
         if !self.can_unwind {
-            llvm::Attribute::NoUnwind.apply_llfn(llvm::AttributePlace::Function, llfn);
+            func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
         }
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
@@ -467,13 +432,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(attrs);
-                unsafe {
-                    llvm::LLVMRustAddStructRetAttr(
-                        llfn,
-                        llvm::AttributePlace::Argument(i).as_uint(),
-                        self.ret.layout.llvm_type(cx),
-                    );
-                }
+                let sret = llvm::CreateStructRetAttr(cx.llcx, self.ret.layout.llvm_type(cx));
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
             }
             PassMode::Cast(cast) => {
                 cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
@@ -488,13 +448,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
                     let i = apply(attrs);
-                    unsafe {
-                        llvm::LLVMRustAddByValAttr(
-                            llfn,
-                            llvm::AttributePlace::Argument(i).as_uint(),
-                            arg.layout.llvm_type(cx),
-                        );
-                    }
+                    let byval = llvm::CreateByValAttr(cx.llcx, arg.layout.llvm_type(cx));
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
                 }
                 PassMode::Direct(ref attrs)
                 | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
@@ -517,12 +472,14 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+        let mut func_attrs = SmallVec::<[_; 2]>::new();
         if self.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_callsite(llvm::AttributePlace::Function, callsite);
+            func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
         }
         if !self.can_unwind {
-            llvm::Attribute::NoUnwind.apply_callsite(llvm::AttributePlace::Function, callsite);
+            func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(bx.cx.llcx));
         }
+        attributes::apply_to_callsite(callsite, llvm::AttributePlace::Function, &{ func_attrs });
 
         let mut i = 0;
         let mut apply = |cx: &CodegenCx<'_, '_>, attrs: &ArgAttributes| {
@@ -537,13 +494,8 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
                 assert!(!on_stack);
                 let i = apply(bx.cx, attrs);
-                unsafe {
-                    llvm::LLVMRustAddStructRetCallSiteAttr(
-                        callsite,
-                        llvm::AttributePlace::Argument(i).as_uint(),
-                        self.ret.layout.llvm_type(bx),
-                    );
-                }
+                let sret = llvm::CreateStructRetAttr(bx.cx.llcx, self.ret.layout.llvm_type(bx));
+                attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
             }
             PassMode::Cast(cast) => {
                 cast.attrs.apply_attrs_to_callsite(
@@ -572,13 +524,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Ignore => {}
                 PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
                     let i = apply(bx.cx, attrs);
-                    unsafe {
-                        llvm::LLVMRustAddByValCallSiteAttr(
-                            callsite,
-                            llvm::AttributePlace::Argument(i).as_uint(),
-                            arg.layout.llvm_type(bx),
-                        );
-                    }
+                    let byval = llvm::CreateByValAttr(bx.cx.llcx, arg.layout.llvm_type(bx));
+                    attributes::apply_to_callsite(
+                        callsite,
+                        llvm::AttributePlace::Argument(i),
+                        &[byval],
+                    );
                 }
                 PassMode::Direct(ref attrs)
                 | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
@@ -610,10 +561,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         if self.conv == Conv::CCmseNonSecureCall {
             // This will probably get ignored on all targets but those supporting the TrustZone-M
             // extension (thumbv8m targets).
-            llvm::AddCallSiteAttrString(
+            let cmse_nonsecure_call =
+                llvm::CreateAttrString(bx.cx.llcx, cstr::cstr!("cmse_nonsecure_call"));
+            attributes::apply_to_callsite(
                 callsite,
                 llvm::AttributePlace::Function,
-                cstr::cstr!("cmse_nonsecure_call"),
+                &[cmse_nonsecure_call],
             );
         }
     }

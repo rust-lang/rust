@@ -520,7 +520,8 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 } else {
                     let fty = self.type_variadic_func(&[], self.type_i32());
                     let llfn = self.declare_cfn(name, llvm::UnnamedAddr::Global, fty);
-                    attributes::apply_target_cpu_attr(self, llfn);
+                    let target_cpu = attributes::target_cpu_attr(self);
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[target_cpu]);
                     llfn
                 }
             }
@@ -550,12 +551,16 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {
-        attributes::set_frame_pointer_type(self, llfn)
+        if let Some(attr) = attributes::frame_pointer_type_attr(self) {
+            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[attr]);
+        }
     }
 
     fn apply_target_cpu_attr(&self, llfn: &'ll Value) {
-        attributes::apply_target_cpu_attr(self, llfn);
-        attributes::apply_tune_cpu_attr(self, llfn);
+        let mut attrs = SmallVec::<[_; 2]>::new();
+        attrs.push(attributes::target_cpu_attr(self));
+        attrs.extend(attributes::tune_cpu_attr(self));
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &attrs);
     }
 
     fn create_used_variable(&self) {
