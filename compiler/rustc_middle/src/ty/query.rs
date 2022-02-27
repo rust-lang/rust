@@ -210,7 +210,7 @@ macro_rules! define_callbacks {
 
         #[derive(Default)]
         pub struct QueryCaches<$tcx> {
-            $($(#[$attr])* pub $name: QueryCacheStore<query_storage::$name<$tcx>>,)*
+            $($(#[$attr])* pub $name: query_storage::$name<$tcx>,)*
         }
 
         impl<$tcx> TyCtxtEnsure<$tcx> {
@@ -222,12 +222,12 @@ macro_rules! define_callbacks {
 
                 let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
 
-                let lookup = match cached {
+                match cached {
                     Ok(()) => return,
-                    Err(lookup) => lookup,
-                };
+                    Err(()) => (),
+                }
 
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, lookup, QueryMode::Ensure);
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
             })*
         }
 
@@ -251,12 +251,12 @@ macro_rules! define_callbacks {
 
                 let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
 
-                let lookup = match cached {
+                match cached {
                     Ok(value) => return value,
-                    Err(lookup) => lookup,
-                };
+                    Err(()) => (),
+                }
 
-                self.tcx.queries.$name(self.tcx, self.span, key, lookup, QueryMode::Get).unwrap()
+                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
             })*
         }
 
@@ -314,7 +314,6 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
-                lookup: QueryLookup,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>>;)*
         }

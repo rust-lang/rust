@@ -4,7 +4,7 @@ use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::{QueryCacheStore, QueryContext, QueryState};
+use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_errors::{DiagnosticBuilder, ErrorReported};
@@ -64,7 +64,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
         CTX: 'a;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: CTX) -> &'a QueryCacheStore<Self::Cache>
+    fn query_cache<'a>(tcx: CTX) -> &'a Self::Cache
     where
         CTX: 'a;
 

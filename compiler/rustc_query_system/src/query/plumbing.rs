@@ -8,11 +8,12 @@ use crate::query::config::{QueryDescription, QueryVtable};
 use crate::query::job::{report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo};
 use crate::query::{QueryContext, QueryMap, QuerySideEffects, QueryStackFrame};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHasher};
+use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::profiling::TimingGuard;
-use rustc_data_structures::sharded::{get_shard_index_by_hash, Sharded};
-use rustc_data_structures::sync::{Lock, LockGuard};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sharded::Sharded;
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{DiagnosticBuilder, ErrorReported, FatalError};
 use rustc_session::Session;
@@ -20,64 +21,15 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
 use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::mem;
 use std::ptr;
 
-pub struct QueryCacheStore<C: QueryCache> {
-    cache: C,
-    shards: Sharded<C::Sharded>,
-}
-
-impl<C: QueryCache + Default> Default for QueryCacheStore<C> {
-    fn default() -> Self {
-        Self { cache: C::default(), shards: Default::default() }
-    }
-}
-
-/// Values used when checking a query cache which can be reused on a cache-miss to execute the query.
-pub struct QueryLookup {
-    pub(super) key_hash: u64,
-    shard: usize,
-}
-
-// We compute the key's hash once and then use it for both the
-// shard lookup and the hashmap lookup. This relies on the fact
-// that both of them use `FxHasher`.
-fn hash_for_shard<K: Hash>(key: &K) -> u64 {
-    let mut hasher = FxHasher::default();
-    key.hash(&mut hasher);
-    hasher.finish()
-}
-
-impl<C: QueryCache> QueryCacheStore<C> {
-    pub(super) fn get_lookup<'tcx>(
-        &'tcx self,
-        key: &C::Key,
-    ) -> (QueryLookup, LockGuard<'tcx, C::Sharded>) {
-        let key_hash = hash_for_shard(key);
-        let shard = get_shard_index_by_hash(key_hash);
-        let lock = self.shards.get_shard_by_index(shard).lock();
-        (QueryLookup { key_hash, shard }, lock)
-    }
-
-    pub fn iter_results(&self, f: &mut dyn FnMut(&C::Key, &C::Value, DepNodeIndex)) {
-        self.cache.iter(&self.shards, f)
-    }
-}
-
-struct QueryStateShard<K> {
-    active: FxHashMap<K, QueryResult>,
-}
-
-impl<K> Default for QueryStateShard<K> {
-    fn default() -> QueryStateShard<K> {
-        QueryStateShard { active: Default::default() }
-    }
-}
-
 pub struct QueryState<K> {
-    shards: Sharded<QueryStateShard<K>>,
+    #[cfg(parallel_compiler)]
+    active: Sharded<FxHashMap<K, QueryResult>>,
+    #[cfg(not(parallel_compiler))]
+    active: Lock<FxHashMap<K, QueryResult>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
@@ -95,8 +47,15 @@ where
     K: Eq + Hash + Clone + Debug,
 {
     pub fn all_inactive(&self) -> bool {
-        let shards = self.shards.lock_shards();
-        shards.iter().all(|shard| shard.active.is_empty())
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.active.lock_shards();
+            shards.iter().all(|shard| shard.is_empty())
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            self.active.lock().is_empty()
+        }
     }
 
     pub fn try_collect_active_jobs<CTX: Copy>(
@@ -105,11 +64,27 @@ where
         make_query: fn(CTX, K) -> QueryStackFrame,
         jobs: &mut QueryMap,
     ) -> Option<()> {
-        // We use try_lock_shards here since we are called from the
-        // deadlock handler, and this shouldn't be locked.
-        let shards = self.shards.try_lock_shards()?;
-        for shard in shards.iter() {
-            for (k, v) in shard.active.iter() {
+        #[cfg(parallel_compiler)]
+        {
+            // We use try_lock_shards here since we are called from the
+            // deadlock handler, and this shouldn't be locked.
+            let shards = self.active.try_lock_shards()?;
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    if let QueryResult::Started(ref job) = *v {
+                        let query = make_query(tcx, k.clone());
+                        jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
+                    }
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            // We use try_lock here since we are called from the
+            // deadlock handler, and this shouldn't be locked.
+            // (FIXME: Is this relevant for non-parallel compilers? It doesn't
+            // really hurt much.)
+            for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
                     let query = make_query(tcx, k.clone());
                     jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
@@ -123,7 +98,7 @@ where
 
 impl<K> Default for QueryState<K> {
     fn default() -> QueryState<K> {
-        QueryState { shards: Default::default() }
+        QueryState { active: Default::default() }
     }
 }
 
@@ -174,16 +149,17 @@ where
         state: &'b QueryState<K>,
         span: Span,
         key: K,
-        lookup: QueryLookup,
     ) -> TryGetJob<'b, K>
     where
         CTX: QueryContext,
     {
-        let shard = lookup.shard;
-        let mut state_lock = state.shards.get_shard_by_index(shard).lock();
+        #[cfg(parallel_compiler)]
+        let mut state_lock = state.active.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut state_lock = state.active.lock();
         let lock = &mut *state_lock;
 
-        match lock.active.entry(key) {
+        match lock.entry(key) {
             Entry::Vacant(entry) => {
                 let id = tcx.next_job_id();
                 let job = tcx.current_query_job();
@@ -239,12 +215,7 @@ where
 
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(
-        self,
-        cache: &QueryCacheStore<C>,
-        result: C::Value,
-        dep_node_index: DepNodeIndex,
-    ) -> C::Stored
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex) -> C::Stored
     where
         C: QueryCache<Key = K>,
     {
@@ -256,19 +227,17 @@ where
         mem::forget(self);
 
         let (job, result) = {
-            let key_hash = hash_for_shard(&key);
-            let shard = get_shard_index_by_hash(key_hash);
             let job = {
-                let mut lock = state.shards.get_shard_by_index(shard).lock();
-                match lock.active.remove(&key).unwrap() {
+                #[cfg(parallel_compiler)]
+                let mut lock = state.active.get_shard_by_value(&key).lock();
+                #[cfg(not(parallel_compiler))]
+                let mut lock = state.active.lock();
+                match lock.remove(&key).unwrap() {
                     QueryResult::Started(job) => job,
                     QueryResult::Poisoned => panic!(),
                 }
             };
-            let result = {
-                let mut lock = cache.shards.get_shard_by_index(shard).lock();
-                cache.cache.complete(&mut lock, key, result, dep_node_index)
-            };
+            let result = cache.complete(key, result, dep_node_index);
             (job, result)
         };
 
@@ -286,14 +255,16 @@ where
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
         let state = self.state;
-        let shard = state.shards.get_shard_by_value(&self.key);
         let job = {
-            let mut shard = shard.lock();
-            let job = match shard.active.remove(&self.key).unwrap() {
+            #[cfg(parallel_compiler)]
+            let mut shard = state.active.get_shard_by_value(&self.key).lock();
+            #[cfg(not(parallel_compiler))]
+            let mut shard = state.active.lock();
+            let job = match shard.remove(&self.key).unwrap() {
                 QueryResult::Started(job) => job,
                 QueryResult::Poisoned => panic!(),
             };
-            shard.active.insert(self.key.clone(), QueryResult::Poisoned);
+            shard.insert(self.key.clone(), QueryResult::Poisoned);
             job
         };
         // Also signal the completion of the job, so waiters
@@ -334,17 +305,17 @@ where
 #[inline]
 pub fn try_get_cached<'a, CTX, C, R, OnHit>(
     tcx: CTX,
-    cache: &'a QueryCacheStore<C>,
+    cache: &'a C,
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,
-) -> Result<R, QueryLookup>
+) -> Result<R, ()>
 where
     C: QueryCache,
     CTX: DepContext,
     OnHit: FnOnce(&C::Stored) -> R,
 {
-    cache.cache.lookup(cache, &key, |value, index| {
+    cache.lookup(&key, |value, index| {
         if unlikely!(tcx.profiler().enabled()) {
             tcx.profiler().query_cache_hit(index.into());
         }
@@ -356,10 +327,9 @@ where
 fn try_execute_query<CTX, C>(
     tcx: CTX,
     state: &QueryState<C::Key>,
-    cache: &QueryCacheStore<C>,
+    cache: &C,
     span: Span,
     key: C::Key,
-    lookup: QueryLookup,
     dep_node: Option<DepNode<CTX::DepKind>>,
     query: &QueryVtable<CTX, C::Key, C::Value>,
 ) -> (C::Stored, Option<DepNodeIndex>)
@@ -368,21 +338,20 @@ where
     C::Key: Clone + DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone(), lookup) {
+    match JobOwner::<'_, C::Key>::try_start(&tcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(tcx, key, dep_node, query, job.id);
             let result = job.complete(cache, result, dep_node_index);
             (result, Some(dep_node_index))
         }
         TryGetJob::Cycle(error) => {
-            let result = mk_cycle(tcx, error, query.handle_cycle_error, &cache.cache);
+            let result = mk_cycle(tcx, error, query.handle_cycle_error, cache);
             (result, None)
         }
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
             let (v, index) = cache
-                .cache
-                .lookup(cache, &key, |value, index| (value.clone(), index))
+                .lookup(&key, |value, index| (value.clone(), index))
                 .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
 
             if unlikely!(tcx.dep_context().profiler().enabled()) {
@@ -711,13 +680,7 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(
-    tcx: CTX,
-    span: Span,
-    key: Q::Key,
-    lookup: QueryLookup,
-    mode: QueryMode,
-) -> Option<Q::Stored>
+pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
@@ -741,7 +704,6 @@ where
         Q::query_cache(tcx),
         span,
         key,
-        lookup,
         dep_node,
         &query,
     );
@@ -760,20 +722,20 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
-    let cached = cache.cache.lookup(cache, &key, |_, index| {
+    let cached = cache.lookup(&key, |_, index| {
         if unlikely!(tcx.dep_context().profiler().enabled()) {
             tcx.dep_context().profiler().query_cache_hit(index.into());
         }
     });
 
-    let lookup = match cached {
+    match cached {
         Ok(()) => return,
-        Err(lookup) => lookup,
-    };
+        Err(()) => {}
+    }
 
     let query = Q::make_vtable(tcx, &key);
     let state = Q::query_state(tcx);
     debug_assert!(!query.anon);
 
-    try_execute_query(tcx, state, cache, DUMMY_SP, key, lookup, Some(dep_node), &query);
+    try_execute_query(tcx, state, cache, DUMMY_SP, key, Some(dep_node), &query);
 }
