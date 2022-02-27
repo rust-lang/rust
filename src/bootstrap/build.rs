@@ -4,13 +4,13 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=RUSTC");
-    println!("cargo:rerun-if-env-changed=PATH");
     println!("cargo:rustc-env=BUILD_TRIPLE={}", env::var("HOST").unwrap());
 
     // This may not be a canonicalized path.
     let mut rustc = PathBuf::from(env::var_os("RUSTC").unwrap());
 
     if rustc.is_relative() {
+        println!("cargo:rerun-if-env-changed=PATH");
         for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
             let absolute = dir.join(&rustc);
             if absolute.exists() {
