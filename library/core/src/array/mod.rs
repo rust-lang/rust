@@ -514,7 +514,7 @@ impl<T, const N: usize> [T; N] {
     ///
     /// ```rust
     /// # use std::ops::Add;
-    /// #![feature(array_zip_map)]
+    /// #![feature(array_zip, array_zip_map)]
     /// let op = i32::add;
     ///
     /// let x = [1, 2, 3];
@@ -571,22 +571,21 @@ impl<T, const N: usize> [T; N] {
         }
     }
 
-    /// Applies the op over pairs of elements
+    /// Applying the `op` over pairs of elements and assigning the value
+    /// back into `self`
     ///
     /// # Examples
     ///
     /// ```rust
     /// # use std::ops::Add;
     /// #![feature(array_zip_map)]
-    /// let op = i32::add;
     ///
-    /// let x = [1, 2, 3];
+    /// let mut x = [1, 2, 3];
     /// let y = [4, 5, 6];
     ///
-    /// let output1 = x.zip(y).map(|(a, b)| op(a, b));
-    /// let output2 = x.zip_map(y, op);
+    /// x.zip_map_assign(y, i32::add_assign);
     ///
-    /// assert_eq!(output1, output2);
+    /// assert_eq!(x, [5, 7, 9]);
     /// ```
     #[unstable(feature = "array_zip_map", issue = "none")]
     pub fn zip_map_assign<U, F>(&mut self, rhs: [U; N], mut op: F)
