@@ -707,10 +707,48 @@ impl fmt::Debug for TcpStream {
 }
 
 impl TcpListener {
+    /// Default listen backlog.
+    const DEFAULT_BACKLOG: usize = 128;
+
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
     ///
-    /// The returned listener is ready for accepting connections.
+    /// The given backlog specifies the maximum number of outstanding
+    /// connections that will be buffered in the OS waiting to be accepted by
+    /// [`TcpListener::accept`]. The backlog argument overrides the default
+    /// value of 128; that default is reasonable for most use cases.
+    ///
+    /// This function is otherwise [`TcpListener::bind`]: see that
+    /// documentation for full details of operation.
+    ///
+    /// # Examples
+    ///
+    /// Creates a TCP listener bound to `127.0.0.1:80` with a backlog of 1000:
+    ///
+    /// ```no_run
+    /// #![feature(bind_with_backlog)]
+    /// use std::net::TcpListener;
+    ///
+    /// let listener = TcpListener::bind_with_backlog("127.0.0.1:80", 1000).unwrap();
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// The specified backlog may be larger than supported by the underlying
+    /// system. In this case an [`io::Error`] with
+    /// [`io::ErrorKind::InvalidData`] will be returned.
+    #[unstable(feature = "bind_with_backlog", issue = "94406")]
+    pub fn bind_with_backlog<A: ToSocketAddrs>(addr: A, backlog: usize) -> io::Result<TcpListener> {
+        super::each_addr(addr, move |a| net_imp::TcpListener::bind_with_backlog(a, backlog))
+            .map(TcpListener)
+    }
+
+    /// Creates a new `TcpListener` which will be bound to the specified
+    /// address. The returned listener is ready for accepting
+    /// connections.
+    ///
+    /// The listener will have a backlog of 128.  See the documentation for
+    /// [`TcpListener::bind_with_backlog`] for further information.
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
@@ -748,7 +786,7 @@ impl TcpListener {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
-        super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
+        Self::bind_with_backlog(addr, TcpListener::DEFAULT_BACKLOG)
     }
 
     /// Returns the local socket address of this listener.

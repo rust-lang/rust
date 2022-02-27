@@ -48,7 +48,7 @@ fn connect_error() {
 #[test]
 fn listen_localhost() {
     let socket_addr = next_test_ip4();
-    let listener = t!(TcpListener::bind(&socket_addr));
+    let listener = t!(TcpListener::bind_with_backlog(&socket_addr, 1));
 
     let _t = thread::spawn(move || {
         let mut stream = t!(TcpStream::connect(&("localhost", socket_addr.port())));
@@ -64,7 +64,7 @@ fn listen_localhost() {
 #[test]
 fn connect_loopback() {
     each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+        let acceptor = t!(TcpListener::bind_with_backlog(&addr, 1));
 
         let _t = thread::spawn(move || {
             let host = match addr {
@@ -85,7 +85,7 @@ fn connect_loopback() {
 #[test]
 fn smoke_test() {
     each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+        let acceptor = t!(TcpListener::bind_with_backlog(&addr, 1));
 
         let (tx, rx) = channel();
         let _t = thread::spawn(move || {
@@ -173,10 +173,32 @@ fn multiple_connect_serial() {
 }
 
 #[test]
+fn multiple_connect_serial_with_backlog() {
+    each_ip(&mut |addr| {
+        let max = 10;
+        let acceptor = t!(TcpListener::bind_with_backlog(&addr, max));
+
+        let _t = thread::spawn(move || {
+            for _ in 0..max {
+                let mut stream = t!(TcpStream::connect(&addr));
+                t!(stream.write(&[99]));
+            }
+        });
+
+        for stream in acceptor.incoming().take(max) {
+            let mut stream = t!(stream);
+            let mut buf = [0];
+            t!(stream.read(&mut buf));
+            assert_eq!(buf[0], 99);
+        }
+    })
+}
+
+#[test]
 fn multiple_connect_interleaved_greedy_schedule() {
     const MAX: usize = 10;
     each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+        let acceptor = t!(TcpListener::bind_with_backlog(&addr, MAX));
 
         let _t = thread::spawn(move || {
             let acceptor = acceptor;
@@ -213,7 +235,7 @@ fn multiple_connect_interleaved_greedy_schedule() {
 fn multiple_connect_interleaved_lazy_schedule() {
     const MAX: usize = 10;
     each_ip(&mut |addr| {
-        let acceptor = t!(TcpListener::bind(&addr));
+        let acceptor = t!(TcpListener::bind_with_backlog(&addr, MAX));
 
         let _t = thread::spawn(move || {
             for stream in acceptor.incoming().take(MAX) {
