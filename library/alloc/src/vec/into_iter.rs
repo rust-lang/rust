@@ -1,7 +1,7 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
-use crate::raw_vec::RawVec;
+use crate::boxed::Box;
 use core::fmt;
 use core::intrinsics::arith_offset;
 use core::iter::{
@@ -113,7 +113,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
         // struct and then overwriting &mut self.
         // this creates less assembly
         self.cap = 0;
-        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+        self.buf = NonNull::dangling();
         self.ptr = self.buf.as_ptr();
         self.end = self.buf.as_ptr();
 
@@ -322,7 +322,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
+                    let _ = Box::from_raw_slice_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
                 }
             }
         }

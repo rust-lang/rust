@@ -193,8 +193,6 @@ extern crate test;
 #[macro_use]
 mod macros;
 
-mod raw_vec;
-
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
