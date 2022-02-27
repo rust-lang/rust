@@ -5,6 +5,7 @@ use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
 use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_ast::tokenstream::{LazyTokenStream, TokenTree};
+use rustc_ast::NodeId;
 use rustc_ast::{self as ast, AstLike, AttrStyle, Attribute, MetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -29,6 +30,7 @@ pub struct StripUnconfigured<'a> {
     /// This is only used for the input to derive macros,
     /// which needs eager expansion of `cfg` and `cfg_attr`
     pub config_tokens: bool,
+    pub lint_node_id: NodeId,
 }
 
 fn get_features(
@@ -196,8 +198,13 @@ fn get_features(
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(sess: &Session, mut krate: ast::Crate) -> (ast::Crate, Features) {
-    let mut strip_unconfigured = StripUnconfigured { sess, features: None, config_tokens: false };
+pub fn features(
+    sess: &Session,
+    mut krate: ast::Crate,
+    lint_node_id: NodeId,
+) -> (ast::Crate, Features) {
+    let mut strip_unconfigured =
+        StripUnconfigured { sess, features: None, config_tokens: false, lint_node_id };
 
     let unconfigured_attrs = krate.attrs.clone();
     let diag = &sess.parse_sess.span_diagnostic;
@@ -353,7 +360,12 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(&cfg_predicate, &self.sess.parse_sess, self.features) {
+        if !attr::cfg_matches(
+            &cfg_predicate,
+            &self.sess.parse_sess,
+            self.lint_node_id,
+            self.features,
+        ) {
             return vec![];
         }
 
@@ -445,7 +457,7 @@ impl<'a> StripUnconfigured<'a> {
             }
         };
         parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
-            attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.features)
+            attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.lint_node_id, self.features)
         })
     }
 
