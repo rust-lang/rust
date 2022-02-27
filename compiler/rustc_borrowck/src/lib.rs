@@ -1,15 +1,16 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+#![allow(rustc::potential_query_instability)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -159,16 +160,14 @@ fn do_mir_borrowck<'a, 'tcx>(
     for var_debug_info in &input_body.var_debug_info {
         if let VarDebugInfoContents::Place(place) = var_debug_info.value {
             if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local] {
-                    if var_debug_info.name != prev_name {
-                        span_bug!(
-                            var_debug_info.source_info.span,
-                            "local {:?} has many names (`{}` vs `{}`)",
-                            local,
-                            prev_name,
-                            var_debug_info.name
-                        );
-                    }
+                if let Some(prev_name) = local_names[local] && var_debug_info.name != prev_name {
+                    span_bug!(
+                        var_debug_info.source_info.span,
+                        "local {:?} has many names (`{}` vs `{}`)",
+                        local,
+                        prev_name,
+                        var_debug_info.name
+                    );
                 }
                 local_names[local] = Some(var_debug_info.name);
             }

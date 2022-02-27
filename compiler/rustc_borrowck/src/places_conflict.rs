@@ -60,10 +60,8 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 
     // This Local/Local case is handled by the more general code below, but
     // it's so common that it's a speed win to check for it first.
-    if let Some(l1) = borrow_place.as_local() {
-        if let Some(l2) = access_place.as_local() {
-            return l1 == l2;
-        }
+    if let Some(l1) = borrow_place.as_local() && let Some(l2) = access_place.as_local() {
+        return l1 == l2;
     }
 
     place_components_conflict(tcx, body, borrow_place, borrow_kind, access_place, access, bias)
