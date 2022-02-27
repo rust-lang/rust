@@ -804,9 +804,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     return;
                 }
 
-                let found_trait_ty = match found_trait_ref.self_ty().no_bound_vars() {
-                    Some(ty) => ty,
-                    None => return,
+                let Some(found_trait_ty) = found_trait_ref.self_ty().no_bound_vars() else {
+                    return;
                 };
 
                 let found_did = match *found_trait_ty.kind() {
@@ -2097,26 +2096,24 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         obligation: &PredicateObligation<'tcx>,
     ) {
-        let (pred, item_def_id, span) = match (
+        let (
+            ty::PredicateKind::Trait(pred),
+            &ObligationCauseCode::BindingObligation(item_def_id, span),
+        ) = (
             obligation.predicate.kind().skip_binder(),
             obligation.cause.code().peel_derives(),
-        ) {
-            (
-                ty::PredicateKind::Trait(pred),
-                &ObligationCauseCode::BindingObligation(item_def_id, span),
-            ) => (pred, item_def_id, span),
-            _ => return,
+        )  else {
+            return;
         };
         debug!(
             "suggest_unsized_bound_if_applicable: pred={:?} item_def_id={:?} span={:?}",
             pred, item_def_id, span
         );
-        let node = match (
+        let (Some(node), true) = (
             self.tcx.hir().get_if_local(item_def_id),
             Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),
-        ) {
-            (Some(node), true) => node,
-            _ => return,
+        ) else {
+            return;
         };
         self.maybe_suggest_unsized_generics(err, span, node);
     }
@@ -2127,9 +2124,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         span: Span,
         node: Node<'hir>,
     ) {
-        let generics = match node.generics() {
-            Some(generics) => generics,
-            None => return,
+        let Some(generics) = node.generics() else {
+            return;
         };
         let sized_trait = self.tcx.lang_items().sized_trait();
         debug!("maybe_suggest_unsized_generics: generics.params={:?}", generics.params);
@@ -2142,9 +2138,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 .iter()
                 .all(|bound| bound.trait_ref().and_then(|tr| tr.trait_def_id()) != sized_trait)
         });
-        let param = match param {
-            Some(param) => param,
-            _ => return,
+        let Some(param) = param else {
+            return;
         };
         let param_def_id = self.tcx.hir().local_def_id(param.hir_id).to_def_id();
         let preds = generics.where_clause.predicates.iter();
