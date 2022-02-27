@@ -167,11 +167,11 @@ where
         let (src_buf, src_ptr, dst_buf, dst_end, cap) = unsafe {
             let inner = iterator.as_inner().as_into_iter();
             (
-                inner.buf.as_ptr(),
+                inner.buf.as_ptr().cast::<T>(),
                 inner.ptr,
-                inner.buf.as_ptr() as *mut T,
+                inner.buf.as_mut_ptr().cast::<T>(),
                 inner.end as *const T,
-                inner.cap,
+                inner.buf.len(),
             )
         };
 
@@ -180,7 +180,7 @@ where
         let src = unsafe { iterator.as_inner().as_into_iter() };
         // check if SourceIter contract was upheld
         // caveat: if they weren't we might not even make it to this point
-        debug_assert_eq!(src_buf, src.buf.as_ptr());
+        debug_assert_eq!(src_buf, src.buf.as_ptr().cast());
         // check InPlaceIterable contract. This is only possible if the iterator advanced the
         // source pointer at all. If it uses unchecked access via TrustedRandomAccess
         // then the source pointer will stay in its initial position and we can't use it as reference

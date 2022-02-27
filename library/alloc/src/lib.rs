@@ -195,8 +195,6 @@ extern crate test;
 #[macro_use]
 mod macros;
 
-mod raw_vec;
-
 // Heaps provided for low-level allocation strategies
 
 pub mod alloc;
@@ -213,6 +211,7 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+mod box_storage;
 pub mod collections;
 #[cfg(not(no_global_oom_handling))]
 pub mod ffi;

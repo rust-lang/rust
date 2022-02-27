@@ -1,4 +1,5 @@
 use crate::alloc::{Allocator, Global};
+use crate::box_storage::BoxStorage;
 use core::ptr::{self};
 use core::slice::{self};
 
@@ -124,8 +125,9 @@ impl<T, A: Allocator> Drain<'_, T, A> {
 
         let new_tail_start = self.tail_start + additional;
         unsafe {
-            let src = vec.as_ptr().add(self.tail_start);
-            let dst = vec.as_mut_ptr().add(new_tail_start);
+            let ptr = vec.as_mut_ptr();
+            let src = ptr.add(self.tail_start);
+            let dst = ptr.add(new_tail_start);
             ptr::copy(src, dst, self.tail_len);
         }
         self.tail_start = new_tail_start;

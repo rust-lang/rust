@@ -1338,8 +1338,9 @@ impl String {
 
         let next = idx + ch.len_utf8();
         let len = self.len();
+        let ptr = self.vec.as_mut_ptr();
         unsafe {
-            ptr::copy(self.vec.as_ptr().add(next), self.vec.as_mut_ptr().add(idx), len - next);
+            ptr::copy(ptr.add(next), ptr.add(idx), len - next);
             self.vec.set_len(len - (next - idx));
         }
         ch
@@ -1541,10 +1542,11 @@ impl String {
         let len = self.len();
         let amt = bytes.len();
         self.vec.reserve(amt);
+        let ptr = self.vec.as_mut_ptr();
 
         unsafe {
-            ptr::copy(self.vec.as_ptr().add(idx), self.vec.as_mut_ptr().add(idx + amt), len - idx);
-            ptr::copy_nonoverlapping(bytes.as_ptr(), self.vec.as_mut_ptr().add(idx), amt);
+            ptr::copy(ptr.add(idx), ptr.add(idx + amt), len - idx);
+            ptr::copy_nonoverlapping(bytes.as_ptr(), ptr.add(idx), amt);
             self.vec.set_len(len + amt);
         }
     }

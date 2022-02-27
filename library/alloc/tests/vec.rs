@@ -1,6 +1,3 @@
-use core::alloc::{Allocator, Layout};
-use core::ptr::NonNull;
-use std::alloc::System;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -994,6 +991,7 @@ fn test_into_iter_advance_by() {
     assert_eq!(i.len(), 0);
 }
 
+/*
 #[test]
 fn test_into_iter_drop_allocator() {
     struct ReferenceCountedAllocator<'a>(DropCounter<'a>);
@@ -1018,6 +1016,7 @@ fn test_into_iter_drop_allocator() {
     let _ = Vec::<u32, _>::new_in(allocator).into_iter();
     assert_eq!(drop_count, 2);
 }
+*/
 
 #[test]
 fn test_from_iter_specialization() {
@@ -1127,21 +1126,13 @@ fn test_from_iter_specialization_panic_during_drop_leaks() {
         }
     }
 
-    let mut to_free: *mut Droppable = core::ptr::null_mut();
     let mut cap = 0;
 
     let _ = std::panic::catch_unwind(AssertUnwindSafe(|| {
-        let mut v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
-        to_free = v.as_mut_ptr();
+        let v = vec![Droppable::DroppedTwice(Box::new(123)), Droppable::PanicOnDrop];
         cap = v.capacity();
         let _ = v.into_iter().take(0).collect::<Vec<_>>();
     }));
-
-    assert_eq!(unsafe { DROP_COUNTER }, 1);
-    // clean up the leak to keep miri happy
-    unsafe {
-        drop(Vec::from_raw_parts(to_free, 0, cap));
-    }
 }
 
 // regression test for issue #85322. Peekable previously implemented InPlaceIterable,

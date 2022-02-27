@@ -18,7 +18,7 @@
       scope 2 {
       }
 +     scope 3 (inlined Vec::<u32>::new) {  // at $DIR/inline-into-box-place.rs:8:33: 8:43
-+         let mut _10: alloc::raw_vec::RawVec<u32>; // in scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         let mut _10: std::boxed::Box<[std::mem::MaybeUninit<u32>]>; // in scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +     }
   
       bb0: {
@@ -40,7 +40,7 @@
 +         StorageLive(_9);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         _9 = &mut (*_7);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
 +         StorageLive(_10);                // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         _10 = const alloc::raw_vec::RawVec::<u32>::NEW; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         _10 = const Box::<[MaybeUninit<u32>]>::EMPTY; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
                                            // mir::Constant
 -                                          // + span: $DIR/inline-into-box-place.rs:8:33: 8:41
 -                                          // + user_ty: UserType(1)
@@ -50,10 +50,10 @@
 -     bb2: {
 +                                          // + span: $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +                                          // + user_ty: UserType(0)
-+                                          // + literal: Const { ty: alloc::raw_vec::RawVec<u32>, val: Unevaluated(alloc::raw_vec::RawVec::<T>::NEW, [u32], None) }
++                                          // + literal: Const { ty: Box<[MaybeUninit<u32>]>, val: Unevaluated(Box::<[T]>::EMPTY, [std::mem::MaybeUninit<u32>], None) }
 +         Deinit((*_9));                   // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         ((*_9).0: alloc::raw_vec::RawVec<u32>) = move _10; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-+         ((*_9).1: usize) = const 0_usize; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         ((*_9).0: std::boxed::Box<[std::mem::MaybeUninit<u32>]>) = move _10; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
++         ((*_9).2: usize) = const 0_usize; // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         StorageDead(_10);                // scope 3 at $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 +         StorageDead(_9);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43
           StorageDead(_7);                 // scope 0 at $DIR/inline-into-box-place.rs:8:33: 8:43

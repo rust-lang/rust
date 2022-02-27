@@ -18,9 +18,10 @@ use core::ptr::{self, NonNull};
 use core::slice;
 
 use crate::alloc::{Allocator, Global};
+use crate::box_storage::{storage_from_raw_parts_in, BoxStorage};
+use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
-use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
 #[macro_use]
@@ -106,7 +107,8 @@ pub struct VecDeque<
     // is defined as the distance between the two.
     tail: usize,
     head: usize,
-    buf: RawVec<T, A>,
+    buf: Box<[MaybeUninit<T>], A>,
+    phantom: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -154,7 +156,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
             // use drop for [T]
             ptr::drop_in_place(front);
         }
-        // RawVec handles deallocation
+        // Box handles deallocation
     }
 }
 
@@ -170,8 +172,20 @@ impl<T> Default for VecDeque<T> {
 impl<T, A: Allocator> VecDeque<T, A> {
     /// Marginally more convenient
     #[inline]
-    fn ptr(&self) -> *mut T {
-        self.buf.ptr()
+    fn ptr(&self) -> *const T {
+        unsafe {
+            let ptr: &*const [T] = core::mem::transmute(&self.buf);
+            *ptr as *const T
+        }
+    }
+
+    /// Marginally more convenient
+    #[inline]
+    fn mut_ptr(&mut self) -> *mut T {
+        unsafe {
+            let ptr: &*mut [T] = core::mem::transmute(&self.buf);
+            *ptr as *mut T
+        }
     }
 
     /// Marginally more convenient
@@ -181,7 +195,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             // For zero sized types, we are always at maximum capacity
             MAXIMUM_ZST_CAPACITY
         } else {
-            self.buf.capacity()
+            self.buf.len()
         }
     }
 
@@ -206,7 +220,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [MaybeUninit<T>] {
-        unsafe { slice::from_raw_parts_mut(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
+        unsafe { slice::from_raw_parts_mut(self.mut_ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
     /// Moves an element out of the buffer
@@ -219,7 +233,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     unsafe fn buffer_write(&mut self, off: usize, value: T) {
         unsafe {
-            ptr::write(self.ptr().add(off), value);
+            ptr::write(self.mut_ptr().add(off), value);
         }
     }
 
@@ -252,7 +266,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy(&self, dst: usize, src: usize, len: usize) {
+    unsafe fn copy(&mut self, dst: usize, src: usize, len: usize) {
         debug_assert!(
             dst + len <= self.cap(),
             "cpy dst={} src={} len={} cap={}",
@@ -269,14 +283,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
             len,
             self.cap()
         );
+        let ptr = self.mut_ptr();
         unsafe {
-            ptr::copy(self.ptr().add(src), self.ptr().add(dst), len);
+            ptr::copy(ptr.add(src), ptr.add(dst), len);
         }
     }
 
     /// Copies a contiguous block of memory len long from src to dst
     #[inline]
-    unsafe fn copy_nonoverlapping(&self, dst: usize, src: usize, len: usize) {
+    unsafe fn copy_nonoverlapping(&mut self, dst: usize, src: usize, len: usize) {
         debug_assert!(
             dst + len <= self.cap(),
             "cno dst={} src={} len={} cap={}",
@@ -293,15 +308,16 @@ impl<T, A: Allocator> VecDeque<T, A> {
             len,
             self.cap()
         );
+        let ptr = self.mut_ptr();
         unsafe {
-            ptr::copy_nonoverlapping(self.ptr().add(src), self.ptr().add(dst), len);
+            ptr::copy_nonoverlapping(ptr.add(src), ptr.add(dst), len);
         }
     }
 
     /// Copies a potentially wrapping block of memory len long from src to dest.
     /// (abs(dst - src) + len) must be no larger than cap() (There must be at
     /// most one continuous overlapping region between src and dest).
-    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
+    unsafe fn wrap_copy(&mut self, dst: usize, src: usize, len: usize) {
         #[allow(dead_code)]
         fn diff(a: usize, b: usize) -> usize {
             if a <= b { b - a } else { a - b }
@@ -442,13 +458,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let head_room = self.cap() - dst;
         if src.len() <= head_room {
             unsafe {
-                ptr::copy_nonoverlapping(src.as_ptr(), self.ptr().add(dst), src.len());
+                ptr::copy_nonoverlapping(src.as_ptr(), self.mut_ptr().add(dst), src.len());
             }
         } else {
             let (left, right) = src.split_at(head_room);
             unsafe {
-                ptr::copy_nonoverlapping(left.as_ptr(), self.ptr().add(dst), left.len());
-                ptr::copy_nonoverlapping(right.as_ptr(), self.ptr(), right.len());
+                ptr::copy_nonoverlapping(left.as_ptr(), self.mut_ptr().add(dst), left.len());
+                ptr::copy_nonoverlapping(right.as_ptr(), self.mut_ptr(), right.len());
             }
         }
     }
@@ -582,7 +598,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
 
-        VecDeque { tail: 0, head: 0, buf: RawVec::with_capacity_in(cap, alloc) }
+        VecDeque {
+            tail: 0,
+            head: 0,
+            buf: Box::new_uninit_slice_in(cap, alloc),
+            phantom: PhantomData,
+        }
     }
 
     /// Provides a reference to the element at the given index.
@@ -633,7 +654,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         if index < self.len() {
             let idx = self.wrap_add(self.tail, index);
-            unsafe { Some(&mut *self.ptr().add(idx)) }
+            unsafe { Some(&mut *self.mut_ptr().add(idx)) }
         } else {
             None
         }
@@ -668,7 +689,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         assert!(j < self.len());
         let ri = self.wrap_add(self.tail, i);
         let rj = self.wrap_add(self.tail, j);
-        unsafe { ptr::swap(self.ptr().add(ri), self.ptr().add(rj)) }
+        let ptr = self.mut_ptr();
+        unsafe { ptr::swap(ptr.add(ri), ptr.add(rj)) }
     }
 
     /// Returns the number of elements the deque can hold without
@@ -1012,7 +1034,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub fn allocator(&self) -> &A {
-        self.buf.allocator()
+        Box::allocator(&self.buf)
     }
 
     /// Returns a front-to-back iterator.
@@ -1056,7 +1078,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         // SAFETY: The internal `IterMut` safety invariant is established because the
         // `ring` we create is a dereferenceable slice for lifetime '_.
-        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
+        let ring = ptr::slice_from_raw_parts_mut(self.mut_ptr(), self.cap());
 
         unsafe { IterMut::new(ring, self.tail, self.head, PhantomData) }
     }
@@ -1249,7 +1271,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         // SAFETY: The internal `IterMut` safety invariant is established because the
         // `ring` we create is a dereferenceable slice for lifetime '_.
-        let ring = ptr::slice_from_raw_parts_mut(self.ptr(), self.cap());
+        let ring = ptr::slice_from_raw_parts_mut(self.mut_ptr(), self.cap());
 
         unsafe { IterMut::new(ring, tail, head, PhantomData) }
     }
@@ -2100,12 +2122,16 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
 
-                ptr::copy_nonoverlapping(first_half.as_ptr().add(at), other.ptr(), amount_in_first);
+                ptr::copy_nonoverlapping(
+                    first_half.as_ptr().add(at),
+                    other.mut_ptr(),
+                    amount_in_first,
+                );
 
                 // just take all of the second half.
                 ptr::copy_nonoverlapping(
                     second_half.as_ptr(),
-                    other.ptr().add(amount_in_first),
+                    other.mut_ptr().add(amount_in_first),
                     second_len,
                 );
             } else {
@@ -2115,7 +2141,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
                 let amount_in_second = second_len - offset;
                 ptr::copy_nonoverlapping(
                     second_half.as_ptr().add(offset),
-                    other.ptr(),
+                    other.mut_ptr(),
                     amount_in_second,
                 );
             }
@@ -2379,7 +2405,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             };
         }
 
-        let buf = self.buf.ptr();
+        let buf = self.mut_ptr();
         let cap = self.cap();
         let len = self.len();
 
@@ -3055,8 +3081,8 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
 
         unsafe {
             let (other_buf, len, capacity, alloc) = other.into_raw_parts_with_alloc();
-            let buf = RawVec::from_raw_parts_in(other_buf, capacity, alloc);
-            VecDeque { tail: 0, head: len, buf }
+            let buf = storage_from_raw_parts_in(other_buf.cast(), capacity, alloc);
+            VecDeque { tail: 0, head: len, buf, phantom: PhantomData }
         }
     }
 }
@@ -3096,8 +3122,8 @@ impl<T, A: Allocator> From<VecDeque<T, A>> for Vec<T, A> {
         other.make_contiguous();
 
         unsafe {
-            let other = ManuallyDrop::new(other);
-            let buf = other.buf.ptr();
+            let mut other = ManuallyDrop::new(other);
+            let buf = other.mut_ptr();
             let len = other.len();
             let cap = other.cap();
             let alloc = ptr::read(other.allocator());
@@ -3127,7 +3153,7 @@ impl<T, const N: usize> From<[T; N]> for VecDeque<T> {
         if mem::size_of::<T>() != 0 {
             // SAFETY: VecDeque::with_capacity ensures that there is enough capacity.
             unsafe {
-                ptr::copy_nonoverlapping(arr.as_ptr(), deq.ptr(), N);
+                ptr::copy_nonoverlapping(arr.as_ptr(), deq.mut_ptr(), N);
             }
         }
         deq.tail = 0;

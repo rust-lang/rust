@@ -578,11 +578,8 @@ impl<T> [T] {
             while m > 0 {
                 // `buf.extend(buf)`:
                 unsafe {
-                    ptr::copy_nonoverlapping(
-                        buf.as_ptr(),
-                        (buf.as_mut_ptr() as *mut T).add(buf.len()),
-                        buf.len(),
-                    );
+                    let ptr = buf.as_mut_ptr() as *mut T;
+                    ptr::copy_nonoverlapping(ptr, ptr.add(buf.len()), buf.len());
                     // `buf` has capacity of `self.len() * n`.
                     let buf_len = buf.len();
                     buf.set_len(buf_len * 2);
@@ -598,12 +595,9 @@ impl<T> [T] {
         if rem_len > 0 {
             // `buf.extend(buf[0 .. rem_len])`:
             unsafe {
+                let ptr = buf.as_mut_ptr() as *mut T;
                 // This is non-overlapping since `2^expn > rem`.
-                ptr::copy_nonoverlapping(
-                    buf.as_ptr(),
-                    (buf.as_mut_ptr() as *mut T).add(buf.len()),
-                    rem_len,
-                );
+                ptr::copy_nonoverlapping(ptr, ptr.add(buf.len()), rem_len);
                 // `buf.len() + rem_len` equals to `buf.capacity()` (`= self.len() * n`).
                 buf.set_len(capacity);
             }

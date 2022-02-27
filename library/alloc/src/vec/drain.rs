@@ -116,8 +116,9 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
                         let start = source_vec.len();
                         let tail = self.0.tail_start;
                         if tail != start {
-                            let src = source_vec.as_ptr().add(tail);
-                            let dst = source_vec.as_mut_ptr().add(start);
+                            let ptr = source_vec.as_mut_ptr();
+                            let src = ptr.add(tail);
+                            let dst = ptr.add(start);
                             ptr::copy(src, dst, self.0.tail_len);
                         }
                         source_vec.set_len(start + self.0.tail_len);

@@ -1,8 +1,8 @@
-use core::cmp;
 use core::iter::TrustedLen;
 use core::ptr;
+use core::{cmp, mem::MaybeUninit};
 
-use crate::raw_vec::RawVec;
+use crate::{box_storage::BoxStorage, boxed::Box};
 
 use super::{SpecExtend, Vec};
 
@@ -28,7 +28,7 @@ where
             Some(element) => {
                 let (lower, _) = iterator.size_hint();
                 let initial_capacity =
-                    cmp::max(RawVec::<T>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
+                    cmp::max(Box::<[MaybeUninit<T>]>::MIN_NON_ZERO_CAP, lower.saturating_add(1));
                 let mut vector = Vec::with_capacity(initial_capacity);
                 unsafe {
                     // SAFETY: We requested capacity at least 1

@@ -1,7 +1,7 @@
-use core::ptr;
-
 use crate::alloc::Allocator;
-use crate::raw_vec::RawVec;
+use crate::boxed::Box;
+use core::marker::PhantomData;
+use core::ptr;
 
 use super::{ExtendElement, IsZero, Vec};
 
@@ -22,7 +22,7 @@ impl<T: Clone + IsZero> SpecFromElem for T {
     #[inline]
     default fn from_elem<A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
         if elem.is_zero() {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
+            return Vec { buf: Box::new_zeroed_slice_in(n, alloc), phantom: PhantomData, len: n };
         }
         let mut v = Vec::with_capacity_in(n, alloc);
         v.extend_with(n, ExtendElement(elem));
@@ -34,7 +34,7 @@ impl SpecFromElem for i8 {
     #[inline]
     fn from_elem<A: Allocator>(elem: i8, n: usize, alloc: A) -> Vec<i8, A> {
         if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
+            return Vec { buf: Box::new_zeroed_slice_in(n, alloc), phantom: PhantomData, len: n };
         }
         unsafe {
             let mut v = Vec::with_capacity_in(n, alloc);
@@ -49,7 +49,7 @@ impl SpecFromElem for u8 {
     #[inline]
     fn from_elem<A: Allocator>(elem: u8, n: usize, alloc: A) -> Vec<u8, A> {
         if elem == 0 {
-            return Vec { buf: RawVec::with_capacity_zeroed_in(n, alloc), len: n };
+            return Vec { buf: Box::new_zeroed_slice_in(n, alloc), phantom: PhantomData, len: n };
         }
         unsafe {
             let mut v = Vec::with_capacity_in(n, alloc);

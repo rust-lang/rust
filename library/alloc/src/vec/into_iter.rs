@@ -1,16 +1,13 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
-use crate::raw_vec::RawVec;
 use core::fmt;
 use core::intrinsics::arith_offset;
 use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
-#[cfg(not(no_global_oom_handling))]
-use core::ops::Deref;
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -31,12 +28,9 @@ pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    pub(super) buf: NonNull<T>,
-    pub(super) phantom: PhantomData<T>,
-    pub(super) cap: usize,
-    // the drop impl reconstructs a RawVec from buf, cap and alloc
-    // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
+    pub(super) buf: NonNull<[MaybeUninit<T>]>,
     pub(super) alloc: ManuallyDrop<A>,
+    pub(super) phantom: PhantomData<T>,
     pub(super) ptr: *const T,
     pub(super) end: *const T,
 }
@@ -110,13 +104,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
         let remaining = self.as_raw_mut_slice();
 
-        // overwrite the individual fields instead of creating a new
-        // struct and then overwriting &mut self.
-        // this creates less assembly
-        self.cap = 0;
-        self.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
-        self.ptr = self.buf.as_ptr();
-        self.end = self.buf.as_ptr();
+        self.buf = NonNull::from(&mut []);
+        self.ptr = NonNull::dangling().as_ptr();
+        self.end = NonNull::dangling().as_ptr();
 
         unsafe {
             ptr::drop_in_place(remaining);
@@ -304,11 +294,11 @@ where
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
-        self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
+        self.as_slice().to_vec_in(self.allocator().clone()).into_iter()
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
+        crate::slice::to_vec(self.as_slice(), self.allocator().clone()).into_iter()
     }
 }
 
@@ -323,7 +313,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
+                    let _ = crate::boxed::Box::from_raw_in(self.0.buf.as_ptr(), alloc);
                 }
             }
         }
@@ -333,7 +323,6 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
         unsafe {
             ptr::drop_in_place(guard.0.as_raw_mut_slice());
         }
-        // now `guard` will be dropped and do the rest
     }
 }
 

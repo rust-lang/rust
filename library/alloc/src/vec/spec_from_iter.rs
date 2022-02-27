@@ -1,3 +1,4 @@
+use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -44,14 +45,15 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // than creating it through the generic FromIterator implementation would. That limitation
         // is not strictly necessary as Vec's allocation behavior is intentionally unspecified.
         // But it is a conservative choice.
-        let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
-        if !has_advanced || iterator.len() >= iterator.cap / 2 {
+        let has_advanced = iterator.buf.as_ptr() as *const T != iterator.ptr;
+        if !has_advanced || iterator.len() >= iterator.buf.len() / 2 {
             unsafe {
                 let it = ManuallyDrop::new(iterator);
                 if has_advanced {
-                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
+                    ptr::copy(it.ptr, it.buf.as_ptr().cast(), it.len());
                 }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+                let buf = crate::boxed::Box::from_raw(it.buf.as_ptr());
+                return Vec { buf, phantom: PhantomData, len: it.len() };
             }
         }
 

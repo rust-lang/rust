@@ -47,7 +47,7 @@ class StdStringProvider:
         self.valobj = valobj
         vec = valobj["vec"]
         self.length = int(vec["len"])
-        self.data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
+        self.data_ptr = vec["buf"]["data_ptr"]
 
     def to_string(self):
         return self.data_ptr.lazy_string(encoding="utf-8", length=self.length)
@@ -65,7 +65,7 @@ class StdOsStringProvider:
         vec = buf[ZERO_FIELD] if is_windows else buf
 
         self.length = int(vec["len"])
-        self.data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
+        self.data_ptr = vec["buf"]["data_ptr"]
 
     def to_string(self):
         return self.data_ptr.lazy_string(encoding="utf-8", length=self.length)
@@ -103,6 +103,20 @@ def _enumerate_array_elements(element_ptrs):
 
         yield key, element
 
+def _enumerate_mu_array_elements(element_ptrs):
+    for (i, element_ptr) in enumerate(element_ptrs):
+        key = "[{}]".format(i)
+        element = element_ptr.dereference()["value"]["value"]
+
+        try:
+            str(element)
+        except RuntimeError:
+            yield key, "inaccessible"
+
+            break
+
+        yield key, element
+
 class StdSliceProvider:
     def __init__(self, valobj):
         self.valobj = valobj
@@ -125,13 +139,13 @@ class StdVecProvider:
     def __init__(self, valobj):
         self.valobj = valobj
         self.length = int(valobj["len"])
-        self.data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+        self.data_ptr = valobj["buf"]["data_ptr"]
 
     def to_string(self):
         return "Vec(size={})".format(self.length)
 
     def children(self):
-        return _enumerate_array_elements(
+        return _enumerate_mu_array_elements(
             self.data_ptr + index for index in xrange(self.length)
         )
 
@@ -145,8 +159,8 @@ class StdVecDequeProvider:
         self.valobj = valobj
         self.head = int(valobj["head"])
         self.tail = int(valobj["tail"])
-        self.cap = int(valobj["buf"]["cap"])
-        self.data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+        self.cap = int(valobj["buf"]["length"])
+        self.data_ptr = valobj["buf"]["data_ptr"]
         if self.head >= self.tail:
             self.size = self.head - self.tail
         else:
@@ -156,7 +170,7 @@ class StdVecDequeProvider:
         return "VecDeque(size={})".format(self.size)
 
     def children(self):
-        return _enumerate_array_elements(
+        return _enumerate_mu_array_elements(
             (self.data_ptr + ((self.tail + index) % self.cap)) for index in xrange(self.size)
         )
 
