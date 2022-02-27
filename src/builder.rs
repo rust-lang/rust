@@ -30,6 +30,7 @@ use rustc_codegen_ssa::traits::{
     OverflowOp,
     StaticBuilderMethods,
 };
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::ty::{ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::layout::{FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_span::Span;
@@ -207,6 +208,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             param_types.push(param);
         }
 
+        let mut on_stack_param_indices = FxHashSet::default();
+        if let Some(indices) = self.on_stack_params.borrow().get(&gcc_func) {
+            on_stack_param_indices = indices.clone();
+        }
+
         if all_args_match {
             return Cow::Borrowed(args);
         }
@@ -215,10 +221,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             .into_iter()
             .zip(args.iter())
             .enumerate()
-            .map(|(_i, (expected_ty, &actual_val))| {
+            .map(|(index, (expected_ty, &actual_val))| {
                 let actual_ty = actual_val.get_type();
                 if expected_ty != actual_ty {
-                    self.bitcast(actual_val, expected_ty)
+                    if on_stack_param_indices.contains(&index) {
+                        actual_val.dereference(None).to_rvalue()
+                    }
+                    else {
+                        self.bitcast(actual_val, expected_ty)
+                    }
                 }
                 else {
                     actual_val
@@ -946,14 +957,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     /* Miscellaneous instructions */
-    fn memcpy(&mut self, dst: RValue<'gcc>, dst_align: Align, src: RValue<'gcc>, src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
-        if flags.contains(MemFlags::NONTEMPORAL) {
-            // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-            let val = self.load(src.get_type(), src, src_align);
-            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
-            self.store_with_flags(val, ptr, dst_align, flags);
-            return;
-        }
+    fn memcpy(&mut self, dst: RValue<'gcc>, _dst_align: Align, src: RValue<'gcc>, _src_align: Align, size: RValue<'gcc>, flags: MemFlags) {
+        assert!(!flags.contains(MemFlags::NONTEMPORAL), "non-temporal memcpy not supported");
         let size = self.intcast(size, self.type_size_t(), false);
         let _is_volatile = flags.contains(MemFlags::VOLATILE);
         let dst = self.pointercast(dst, self.type_i8p());
