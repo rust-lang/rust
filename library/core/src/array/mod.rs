@@ -513,8 +513,8 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```rust
-    /// # use std::ops::Add;
     /// #![feature(array_zip, array_zip_map)]
+    /// # use std::ops::Add;
     /// let op = i32::add;
     ///
     /// let x = [1, 2, 3];
@@ -577,8 +577,8 @@ impl<T, const N: usize> [T; N] {
     /// # Examples
     ///
     /// ```rust
-    /// # use std::ops::Add;
     /// #![feature(array_zip_map)]
+    /// # use std::ops::AddAssign;
     ///
     /// let mut x = [1, 2, 3];
     /// let y = [4, 5, 6];
