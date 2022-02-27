@@ -5,7 +5,7 @@ use rustc_span::Symbol;
 use rustc_target::abi::call::FnAbi;
 
 use crate::abi::FnAbiGccExt;
-use crate::context::{CodegenCx, unit_name};
+use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
@@ -27,10 +27,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn declare_unnamed_global(&self, ty: Type<'gcc>) -> LValue<'gcc> {
-        let index = self.global_gen_sym_counter.get();
-        self.global_gen_sym_counter.set(index + 1);
-        let name = format!("global_{}_{}", index, unit_name(&self.codegen_unit));
-        self.context.new_global(None, GlobalKind::Exported, ty, &name)
+        let name = self.generate_local_symbol_name("global");
+        self.context.new_global(None, GlobalKind::Internal, ty, &name)
     }
 
     pub fn declare_global_with_linkage(&self, name: &str, ty: Type<'gcc>, linkage: GlobalKind) -> LValue<'gcc> {

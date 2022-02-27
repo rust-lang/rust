@@ -170,11 +170,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
-                    // TODO(antoyo): check if it's okay that TLS is off here.
-                    // TODO(antoyo): check if it's okay that link_section is None here.
+                    // TODO(antoyo): check if it's okay that no link_section is set.
                     // TODO(antoyo): set alignment here as well.
-                    let global = self.define_global(&name[..], self.val_ty(cv), false, None);
-                    // TODO(antoyo): set linkage.
+                    let global = self.declare_private_global(&name[..], self.val_ty(cv));
                     global
                 }
                 _ => {
@@ -183,8 +181,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     global
                 },
             };
-        // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
-        // globally.
         global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
         let rvalue = global.get_address(None);
