@@ -15,31 +15,31 @@ mod tests;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct IntervalSet<I> {
     // Start, end
-    map: SmallVec<[(u32, u32); 4]>,
+    map: SmallVec<[(I, I); 4]>,
     domain: usize,
     _data: PhantomData<I>,
 }
 
 #[inline]
-fn inclusive_start<T: Idx>(range: impl RangeBounds<T>) -> u32 {
+fn inclusive_start<T: Idx>(range: impl RangeBounds<T>) -> T {
     match range.start_bound() {
-        Bound::Included(start) => start.index() as u32,
-        Bound::Excluded(start) => start.index() as u32 + 1,
-        Bound::Unbounded => 0,
+        Bound::Included(start) => *start,
+        Bound::Excluded(start) => T::new(start.index() + 1),
+        Bound::Unbounded => T::new(0),
     }
 }
 
 #[inline]
-fn inclusive_end<T: Idx>(domain: usize, range: impl RangeBounds<T>) -> Option<u32> {
+fn inclusive_end<T: Idx>(domain: usize, range: impl RangeBounds<T>) -> Option<T> {
     let end = match range.end_bound() {
-        Bound::Included(end) => end.index() as u32,
-        Bound::Excluded(end) => end.index().checked_sub(1)? as u32,
-        Bound::Unbounded => domain.checked_sub(1)? as u32,
+        Bound::Included(end) => *end,
+        Bound::Excluded(end) => T::new(end.index().checked_sub(1)?),
+        Bound::Unbounded => T::new(domain.checked_sub(1)?),
     };
     Some(end)
 }
 
-impl<I: Idx> IntervalSet<I> {
+impl<I: Ord + Idx> IntervalSet<I> {
     pub fn new(domain: usize) -> IntervalSet<I> {
         IntervalSet { map: SmallVec::new(), domain, _data: PhantomData }
     }
@@ -71,7 +71,7 @@ impl<I: Idx> IntervalSet<I> {
     where
         I: Step,
     {
-        self.map.iter().map(|&(start, end)| I::new(start as usize)..I::new(end as usize + 1))
+        self.map.iter().map(|&(start, end)| start..I::new(end.index() + 1))
     }
 
     /// Returns true if we increased the number of elements present.
@@ -100,10 +100,10 @@ impl<I: Idx> IntervalSet<I> {
             // if r.0 == end + 1, then we're actually adjacent, so we want to
             // continue to the next range. We're looking here for the first
             // range which starts *non-adjacently* to our end.
-            let next = self.map.partition_point(|r| r.0 <= end + 1);
+            let next = self.map.partition_point(|r| r.0.index() <= end.index() + 1);
             if let Some(last) = next.checked_sub(1) {
                 let (prev_start, prev_end) = &mut self.map[last];
-                if *prev_end + 1 >= start {
+                if prev_end.index() + 1 >= start.index() {
                     // If the start for the inserted range is adjacent to the
                     // end of the previous, we can extend the previous range.
                     if start < *prev_start {
@@ -168,15 +168,11 @@ impl<I: Idx> IntervalSet<I> {
         let (prev_start, prev_end) = self.map.remove(idx);
         // The range we're looking at contains the range we're removing completely.
         assert!(prev_start <= start && end <= prev_end);
-        self.insert_range(I::new(prev_start as usize)..I::new(start as usize));
-        self.insert_range((
-            Bound::Excluded(I::new(end as usize)),
-            Bound::Included(I::new(prev_end as usize)),
-        ));
+        self.insert_range(prev_start..start);
+        self.insert_range((Bound::Excluded(end), Bound::Included(prev_end)));
     }
 
     pub fn contains(&self, needle: I) -> bool {
-        let needle = needle.index() as u32;
         let Some(last) = self.map.partition_point(|r| r.0 <= needle).checked_sub(1) else {
             // All ranges in the map start after the new range's end
             return false;
@@ -209,7 +205,7 @@ impl<I: Idx> IntervalSet<I> {
             return None;
         }
         let range = self.map.get(self.map.partition_point(|r| r.1 < start))?;
-        if range.0 > end { None } else { Some(I::new(std::cmp::max(range.0, start) as usize)) }
+        if range.0 > end { None } else { Some(std::cmp::max(range.0, start)) }
     }
 
     /// Returns the minimum (first) element **not** present in the set from `range`.
@@ -223,13 +219,13 @@ impl<I: Idx> IntervalSet<I> {
             return None;
         }
         let Some(range) = self.map.get(self.map.partition_point(|r| r.1 < start)) else {
-            return Some(I::new(start as usize));
+            return Some(start);
         };
         if start < range.0 {
-            return Some(I::new(start as usize));
-        } else if range.1 as usize + 1 < self.domain {
-            if range.1 + 1 <= end {
-                return Some(I::new(range.1 as usize + 1));
+            return Some(start);
+        } else if range.1.index() + 1 < self.domain {
+            if range.1.index() + 1 <= end.index() {
+                return Some(I::new(range.1.index() + 1));
             }
         }
 
@@ -251,12 +247,12 @@ impl<I: Idx> IntervalSet<I> {
             return None;
         };
         let (_, prev_end) = &self.map[last];
-        if start <= *prev_end { Some(I::new(std::cmp::min(*prev_end, end) as usize)) } else { None }
+        if start <= *prev_end { Some(std::cmp::min(*prev_end, end)) } else { None }
     }
 
     pub fn insert_all(&mut self) {
         self.clear();
-        self.map.push((0, self.domain.try_into().unwrap()));
+        self.map.push((I::new(0), I::new(self.domain)));
     }
 
     pub fn union(&mut self, other: &IntervalSet<I>) -> bool
@@ -287,7 +283,7 @@ where
     column_size: usize,
 }
 
-impl<R: Idx, C: Step + Idx> SparseIntervalMatrix<R, C> {
+impl<R: Idx, C: Ord + Step + Idx> SparseIntervalMatrix<R, C> {
     pub fn new(column_size: usize) -> SparseIntervalMatrix<R, C> {
         SparseIntervalMatrix { rows: IndexVec::new(), column_size }
     }
