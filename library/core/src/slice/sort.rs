@@ -606,11 +606,11 @@ fn break_patterns<T>(v: &mut [T]) {
         // See http://burtleburtle.net/bob/hash/integer.html for more algorithm details.
         let mut random = len as u32;
         let mut gen_u32 = || {
-            random -= random << 6;
+            random = random.wrapping_sub(random << 6);
             random ^= random >> 17;
-            random -= random << 9;
+            random = random.wrapping_sub(random << 9);
             random ^= random << 4;
-            random -= random << 3;
+            random = random.wrapping_sub(random << 3);
             random ^= random << 10;
             random ^= random >> 15;
             random
