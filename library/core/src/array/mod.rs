@@ -533,13 +533,14 @@ impl<T, const N: usize> [T; N] {
     {
         if core::mem::needs_drop::<T>()
             || core::mem::needs_drop::<U>()
-            || core::mem::needs_drop::<O>()
+            || core::mem::needs_drop::<R>()
         {
             let mut lhs = IntoIterator::into_iter(self);
             let mut rhs = IntoIterator::into_iter(rhs);
             let mut output = IntoIter::empty();
 
             for _ in 0..N {
+                // SAFETY: Will only be called a maximum of N times
                 unsafe {
                     let lhs = lhs.pop_front_unchecked();
                     let rhs = rhs.pop_front_unchecked();
@@ -547,13 +548,13 @@ impl<T, const N: usize> [T; N] {
                 }
             }
 
-            unsafe { output.output() }
+            // SAFETY: We have confirmed it has N elements
+            unsafe { output.assume_init() }
         } else {
-            // SAFETY:
-            // we will not read from output, and caller ensures that O is non-drop
-            let mut output: [MaybeUninit<O>; N] = uninit_array();
+            let mut output: [MaybeUninit<R>; N] = MaybeUninit::uninit_array();
 
             for i in 0..N {
+                // SAFETY: Will only be called a maximum of N times
                 unsafe {
                     let lhs = core::ptr::read(&self[i]);
                     let rhs = core::ptr::read(&rhs[i]);
@@ -561,7 +562,8 @@ impl<T, const N: usize> [T; N] {
                 }
             }
 
-            unsafe { core::ptr::read(&output as *const [MaybeUninit<O>; N] as *const [O; N]) }
+            // SAFETY: We have confirmed it has N elements
+            unsafe { MaybeUninit::array_assume_init(output) }
         }
     }
 
@@ -587,21 +589,26 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(&mut T, U),
     {
-        if needs_drop::<U>() {
+        if core::mem::needs_drop::<U>() {
             let mut rhs = IntoIterator::into_iter(rhs);
 
             for i in 0..N {
                 // SAFETY:
                 // Will only be called a maximum of N times
-                unsafe { op(self.0.get_unchecked_mut(i), rhs.pop_front_unchecked()) }
+                unsafe {
+                    let lhs = self.get_unchecked_mut(i);
+                    let rhs = rhs.pop_front_unchecked();
+                    op(lhs, rhs)
+                }
             }
         } else {
             for i in 0..N {
                 // SAFETY:
                 // Will only be called a maximum of N times
                 unsafe {
+                    let lhs = self.get_unchecked_mut(i);
                     let rhs = core::ptr::read(&rhs[i]);
-                    op(self.get_unchecked_mut(i), rhs)
+                    op(lhs, rhs)
                 }
             }
         }

@@ -3,7 +3,7 @@
 use crate::{
     cmp, fmt,
     iter::{self, ExactSizeIterator, FusedIterator, TrustedLen},
-    mem::{self, MaybeUninit},
+    mem::{self, ManuallyDrop, MaybeUninit},
     ops::Range,
     ptr,
 };
@@ -234,23 +234,36 @@ impl<T, const N: usize> IntoIter<T, N> {
         }
     }
 
-    unsafe fn pop_front_unchecked(&mut self) -> T {
+    pub(super) unsafe fn pop_front_unchecked(&mut self) -> T {
         debug_assert!(!self.alive.is_empty());
         debug_assert!(self.alive.start < N);
 
+        // SAFETY: The caller should ensure that these values are still valid
         unsafe {
-            let front = take(self.data.get_unchecked_mut(self.alive.start));
+            let front = MaybeUninit::assume_init_read(self.data.get_unchecked(self.alive.start));
             self.alive.start += 1;
             front
         }
     }
 
-    unsafe fn push_unchecked(&mut self, value: T) {
+    pub(super) unsafe fn push_unchecked(&mut self, value: T) {
         debug_assert!(self.alive.end < N);
 
+        // SAFETY: The caller should ensure that there is still free space
         unsafe {
-            self.array.get_unchecked_mut(self.alive.end).write(value);
+            self.data.get_unchecked_mut(self.alive.end).write(value);
             self.alive.end += 1;
+        }
+    }
+
+    pub(super) unsafe fn assume_init(self) -> [T; N] {
+        debug_assert!(self.alive == (0..N));
+        let this = ManuallyDrop::new(self);
+
+        // SAFETY: The caller should ensure that the array is full
+        unsafe {
+            let data = core::ptr::read(&this.data);
+            MaybeUninit::array_assume_init(data)
         }
     }
 }
