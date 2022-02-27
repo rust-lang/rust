@@ -1,6 +1,7 @@
 use core::array;
 use core::convert::TryFrom;
 use core::iter::Iterator;
+use core::ops::{Add, AddAssign};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
@@ -675,7 +676,7 @@ fn add() {
     let a: [i32; 4] = [0, 1, 2, 3];
     let b: [i32; 4] = [4, 5, 6, 7];
 
-    assert_eq!(a + b, [4, 6, 8, 10]);
+    assert_eq!(a.zip_map(b, Add::add), [4, 6, 8, 10]);
 }
 
 #[test]
@@ -683,7 +684,7 @@ fn add_assign() {
     let mut a: [i32; 4] = [0, 1, 2, 3];
     let b: [i32; 4] = [4, 5, 6, 7];
 
-    a += b;
+    a.zip_map_assign(b, AddAssign::add_assign);
 
     assert_eq!(a, [4, 6, 8, 10]);
 }
@@ -695,7 +696,7 @@ fn add_many() {
 
     let exp: [i32; 128] = (128..384).step_by(2).collect::<Vec<_>>().try_into().unwrap();
 
-    assert_eq!(a + b, exp);
+    assert_eq!(a.zip_map(b, Add::add), exp);
 }
 
 #[test]
@@ -705,7 +706,7 @@ fn add_assign_many() {
 
     let exp: [i32; 128] = (128..384).step_by(2).collect::<Vec<_>>().try_into().unwrap();
 
-    a += b;
+    a.zip_map_assign(b, AddAssign::add_assign);
 
     assert_eq!(a, exp);
 }

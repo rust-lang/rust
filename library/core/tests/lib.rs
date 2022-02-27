@@ -2,6 +2,7 @@
 #![feature(array_chunks)]
 #![feature(array_methods)]
 #![feature(array_windows)]
+#![feature(array_zip_map)]
 #![feature(bench_black_box)]
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
