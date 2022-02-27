@@ -17,7 +17,13 @@ crate fn lit_to_const<'tcx>(
         let param_ty = ParamEnv::reveal_all().and(ty);
         let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
         trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
-        let result = width.truncate(n);
+        let result = match &ty.kind() {
+            ty::Uint(_) => {
+                let max_value = width.unsigned_int_max();
+                if n >= max_value { max_value } else { width.truncate(n) }
+            }
+            _ => width.truncate(n),
+        };
         trace!("trunc result: {}", result);
         Ok(ConstValue::Scalar(Scalar::from_uint(result, width)))
     };
