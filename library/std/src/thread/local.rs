@@ -177,7 +177,7 @@ macro_rules! thread_local {
 macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
-        #[cfg_attr(not(windows), inline)] // see comments below
+        #[cfg_attr(not(windows), inline(always))] // see comments below
         unsafe fn __getit() -> $crate::option::Option<&'static $t> {
             const INIT_EXPR: $t = $init;
 
@@ -297,7 +297,7 @@ macro_rules! __thread_local_inner {
             // gets the pessimistic path for now where it's never inlined.
             //
             // The issue of "should enable on Windows sometimes" is #84933
-            #[cfg_attr(not(windows), inline)]
+            #[cfg_attr(not(windows), inline(always))]
             unsafe fn __getit() -> $crate::option::Option<&'static $t> {
                 #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
                 static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
