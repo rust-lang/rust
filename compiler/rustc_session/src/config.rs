@@ -38,16 +38,16 @@ use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
 /// The different settings that the `-C strip` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Hash, Debug)]
 pub enum Strip {
     /// Do not strip at all.
-    None,
+    None = 0,
 
     /// Strip debuginfo.
-    Debuginfo,
+    Debuginfo = 1,
 
     /// Strip all symbols.
-    Symbols,
+    Symbols = 2,
 }
 
 /// The different settings that the `-C control-flow-guard` flag can have.
@@ -240,11 +240,11 @@ pub enum SymbolManglingVersion {
 
 impl_stable_hash_via_hash!(SymbolManglingVersion);
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Hash)]
 pub enum DebugInfo {
-    None,
-    Limited,
-    Full,
+    None = 0,
+    Limited = 1,
+    Full = 2,
 }
 
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
@@ -2389,6 +2389,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg, error_format);
+
+    if debuginfo >= DebugInfo::Limited && cg.strip >= Strip::Debuginfo {
+        early_error(error_format, "`-Cdebuginfo` and `-Cstrip` cannot be used together");
+    }
 
     let mut search_paths = vec![];
     for s in &matches.opt_strs("L") {
