@@ -62,9 +62,10 @@ fn main() {
     // Any non-null value is okay for function pointers.
     unsafe {
         let _x: fn() = mem::transmute(1usize);
-        let mut b = Box::new(42);
-        let ptr = &mut *b as *mut _;
+        let mut b = Box::new(42u8);
+        let ptr = &mut *b as *mut u8;
         drop(b);
         let _x: fn() = mem::transmute(ptr);
+        let _x: fn() = mem::transmute(ptr.wrapping_offset(1));
     }
 }
