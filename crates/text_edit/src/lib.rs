@@ -90,28 +90,22 @@ impl TextEdit {
             _ => (),
         }
 
-        let mut total_len = TextSize::of(&*text);
+        let text_size = TextSize::of(&*text);
+        let mut total_len = text_size.clone();
         for indel in &self.indels {
             total_len += TextSize::of(&indel.insert);
-            total_len -= indel.delete.end() - indel.delete.start();
+            total_len -= indel.delete.len();
         }
-        let mut buf = String::with_capacity(total_len.into());
-        let mut prev = 0;
-        for indel in &self.indels {
-            let start: usize = indel.delete.start().into();
-            let end: usize = indel.delete.end().into();
-            if start > prev {
-                buf.push_str(&text[prev..start]);
-            }
-            buf.push_str(&indel.insert);
-            prev = end;
-        }
-        buf.push_str(&text[prev..text.len()]);
-        assert_eq!(TextSize::of(&buf), total_len);
 
-        // FIXME: figure out a way to mutate the text in-place or reuse the
-        // memory in some other way
-        *text = buf;
+        if let Some(additional) = total_len.checked_sub(text_size.into()) {
+            text.reserve(additional.into());
+        }
+
+        for indel in self.indels.iter().rev() {
+            indel.apply(text);
+        }
+
+        assert_eq!(TextSize::of(&*text), total_len);
     }
 
     pub fn union(&mut self, other: TextEdit) -> Result<(), TextEdit> {
@@ -202,4 +196,46 @@ fn check_disjoint_and_sort(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bo
         let r = r.borrow();
         l.delete.end() <= r.delete.start() || l == r
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TextEdit, TextEditBuilder, TextRange};
+
+    fn range(start: u32, end: u32) -> TextRange {
+        TextRange::new(start.into(), end.into())
+    }
+
+    #[test]
+    fn test_apply() {
+        let mut text = "_11h1_2222_xx3333_4444_6666".to_string();
+        let mut builder = TextEditBuilder::default();
+        builder.replace(range(3, 4), "1".to_string());
+        builder.delete(range(11, 13));
+        builder.insert(22.into(), "_5555".to_string());
+
+        let text_edit = builder.finish();
+        text_edit.apply(&mut text);
+
+        assert_eq!(text, "_1111_2222_3333_4444_5555_6666")
+    }
+
+    #[test]
+    fn test_union() {
+        let mut edit1 = TextEdit::delete(range(7, 11));
+        let mut builder = TextEditBuilder::default();
+        builder.delete(range(1, 5));
+        builder.delete(range(13, 17));
+
+        let edit2 = builder.finish();
+        assert!(edit1.union(edit2).is_ok());
+        assert_eq!(edit1.indels.len(), 3);
+    }
+
+    #[test]
+    fn test_union_panics() {
+        let mut edit1 = TextEdit::delete(range(7, 11));
+        let edit2 = TextEdit::delete(range(9, 13));
+        assert!(edit1.union(edit2).is_err());
+    }
 }
