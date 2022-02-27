@@ -1696,13 +1696,12 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
     }
 
     fn is_return_ty_unsized<'a>(&self, fcx: &FnCtxt<'a, 'tcx>, blk_id: hir::HirId) -> bool {
-        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id) {
-            if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
-                if let ty::Dynamic(..) = ty.kind() {
+        if let Some((fn_decl, _)) = fcx.get_fn_decl(blk_id)
+            && let hir::FnRetTy::Return(ty) = fn_decl.output
+            && let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty)
+            && let ty::Dynamic(..) = ty.kind()
+        {
                     return true;
-                }
-            }
         }
         false
     }

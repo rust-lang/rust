@@ -430,12 +430,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             actual.prefix_string(self.tcx),
                             ty_str_reported,
                         );
-                        if let Mode::MethodCall = mode {
-                            if let SelfSource::MethodCall(call) = source {
-                                self.suggest_await_before_method(
-                                    &mut err, item_name, actual, call, span,
-                                );
-                            }
+                        if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
+                            self.suggest_await_before_method(
+                                &mut err, item_name, actual, cal, span,
+                            );
                         }
                         if let Some(span) =
                             tcx.resolutions(()).confused_type_with_std_module.get(&span)
@@ -1525,43 +1523,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
-                    if let Some(new_rcvr_t) = *rcvr_ty {
-                        if let Ok(pick) = self.lookup_probe(
-                            span,
-                            item_name,
-                            new_rcvr_t,
-                            rcvr,
-                            crate::check::method::probe::ProbeScope::AllTraits,
-                        ) {
-                            debug!("try_alt_rcvr: pick candidate {:?}", pick);
-                            let did = Some(pick.item.container.id());
-                            // We don't want to suggest a container type when the missing
-                            // method is `.clone()` or `.deref()` otherwise we'd suggest
-                            // `Arc::new(foo).clone()`, which is far from what the user wants.
-                            // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
-                            // implement the `AsRef` trait.
-                            let skip = skippable.contains(&did)
-                                || (("Pin::new" == *pre) && (sym::as_ref == item_name.name));
-                            // Make sure the method is defined for the *actual* receiver: we don't
-                            // want to treat `Box<Self>` as a receiver if it only works because of
-                            // an autoderef to `&self`
-                            if pick.autoderefs == 0 && !skip {
-                                err.span_label(
-                                    pick.item.ident(self.tcx).span,
-                                    &format!("the method is available for `{}` here", new_rcvr_t),
-                                );
-                                err.multipart_suggestion(
-                                    "consider wrapping the receiver expression with the \
-                                        appropriate type",
-                                    vec![
-                                        (rcvr.span.shrink_to_lo(), format!("{}({}", pre, post)),
-                                        (rcvr.span.shrink_to_hi(), ")".to_string()),
-                                    ],
-                                    Applicability::MaybeIncorrect,
-                                );
-                                // We don't care about the other suggestions.
-                                alt_rcvr_sugg = true;
-                            }
+                    if let Some(new_rcvr_t) = *rcvr_ty && let Ok(pick) = self.lookup_probe(
+                        span,
+                        item_name,
+                        new_rcvr_t,
+                        rcvr,
+                        crate::check::method::probe::ProbeScope::AllTraits,
+                    ) {
+                        debug!("try_alt_rcvr: pick candidate {:?}", pick);
+                        let did = Some(pick.item.container.id());
+                        // We don't want to suggest a container type when the missing
+                        // method is `.clone()` or `.deref()` otherwise we'd suggest
+                        // `Arc::new(foo).clone()`, which is far from what the user wants.
+                        // Explicitly ignore the `Pin::as_ref()` method as `Pin` does not
+                        // implement the `AsRef` trait.
+                        let skip = skippable.contains(&did)
+                            || (("Pin::new" == *pre) && (sym::as_ref == item_name.name));
+                        // Make sure the method is defined for the *actual* receiver: we don't
+                        // want to treat `Box<Self>` as a receiver if it only works because of
+                        // an autoderef to `&self`
+                        if pick.autoderefs == 0 && !skip {
+                            err.span_label(
+                                pick.item.ident(self.tcx).span,
+                                &format!("the method is available for `{}` here", new_rcvr_t),
+                            );
+                            err.multipart_suggestion(
+                                "consider wrapping the receiver expression with the \
+                                    appropriate type",
+                                vec![
+                                    (rcvr.span.shrink_to_lo(), format!("{}({}", pre, post)),
+                                    (rcvr.span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                            // We don't care about the other suggestions.
+                            alt_rcvr_sugg = true;
                         }
                     }
                 }

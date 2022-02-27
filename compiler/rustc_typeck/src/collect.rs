@@ -190,25 +190,23 @@ crate fn placeholder_type_error<'tcx>(
         let mut is_fn = false;
         let mut is_const_or_static = false;
 
-        if let Some(hir_ty) = hir_ty {
-            if let hir::TyKind::BareFn(_) = hir_ty.kind {
-                is_fn = true;
+        if let Some(hir_ty) = hir_ty && let hir::TyKind::BareFn(_) = hir_ty.kind {
+            is_fn = true;
 
-                // Check if parent is const or static
-                let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
-                let parent_node = tcx.hir().get(parent_id);
+            // Check if parent is const or static
+            let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
+            let parent_node = tcx.hir().get(parent_id);
 
-                is_const_or_static = matches!(
-                    parent_node,
-                    Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
-                        ..
-                    }) | Node::TraitItem(&hir::TraitItem {
-                        kind: hir::TraitItemKind::Const(..),
-                        ..
-                    }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
-                );
-            }
+            is_const_or_static = matches!(
+                parent_node,
+                Node::Item(&hir::Item {
+                    kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
+                    ..
+                }) | Node::TraitItem(&hir::TraitItem {
+                    kind: hir::TraitItemKind::Const(..),
+                    ..
+                }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+            );
         }
 
         // if function is wrapped around a const or static,
@@ -2417,16 +2415,14 @@ fn const_evaluatable_predicates_of<'tcx>(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
-    if let hir::Node::Item(item) = node {
-        if let hir::ItemKind::Impl(ref impl_) = item.kind {
-            if let Some(of_trait) = &impl_.of_trait {
-                debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
-                collector.visit_trait_ref(of_trait);
-            }
-
-            debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
-            collector.visit_ty(impl_.self_ty);
+    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(ref impl_) = item.kind {
+        if let Some(of_trait) = &impl_.of_trait {
+            debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+            collector.visit_trait_ref(of_trait);
         }
+
+        debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+        collector.visit_ty(impl_.self_ty);
     }
 
     if let Some(generics) = node.generics() {
@@ -3280,15 +3276,14 @@ fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, id: DefId) -> &'tcx FxHashSet<Sy
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(impl_item) = tcx.opt_associated_item(def_id) {
-        if let ty::AssocItemContainer::ImplContainer(_) = impl_item.container {
-            if let Some(trait_item) = impl_item.trait_item_def_id {
-                return tcx
-                    .codegen_fn_attrs(trait_item)
-                    .flags
-                    .intersects(CodegenFnAttrFlags::TRACK_CALLER);
-            }
-        }
+    if let Some(impl_item) = tcx.opt_associated_item(def_id)
+        && let ty::AssocItemContainer::ImplContainer(_) = impl_item.container
+        && let Some(trait_item) = impl_item.trait_item_def_id
+    {
+        return tcx
+            .codegen_fn_attrs(trait_item)
+            .flags
+            .intersects(CodegenFnAttrFlags::TRACK_CALLER);
     }
 
     false

@@ -282,13 +282,12 @@ pub(super) fn check_fn<'a, 'tcx>(
                         sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
                     }
 
-                    if let Node::Item(item) = hir.get(fn_id) {
-                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
-                            if !generics.params.is_empty() {
+                    if let Node::Item(item) = hir.get(fn_id)
+                        && let ItemKind::Fn(_, ref generics, _) = item.kind
+                        && !generics.params.is_empty()
+                    {
                                 sess.span_err(span, "should have no type parameters");
                             }
-                        }
-                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -319,17 +318,15 @@ pub(super) fn check_fn<'a, 'tcx>(
                         sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
                     }
 
-                    if let Node::Item(item) = hir.get(fn_id) {
-                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
-                            if !generics.params.is_empty() {
+                    if let Node::Item(item) = hir.get(fn_id)
+                        && let ItemKind::Fn(_, ref generics, _) = item.kind
+                        && !generics.params.is_empty()
+                    {
                                 sess.span_err(
                                     span,
-                                    "`#[alloc_error_handler]` function should have no type \
-                                     parameters",
+                            "`#[alloc_error_handler]` function should have no type parameters",
                                 );
                             }
-                        }
-                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -1146,9 +1143,10 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
     if repr.packed() {
         for attr in tcx.get_attrs(def.did).iter() {
             for r in attr::find_repr_attrs(&tcx.sess, attr) {
-                if let attr::ReprPacked(pack) = r {
-                    if let Some(repr_pack) = repr.pack {
-                        if pack as u64 != repr_pack.bytes() {
+                if let attr::ReprPacked(pack) = r
+                    && let Some(repr_pack) = repr.pack
+                    && pack as u64 != repr_pack.bytes()
+                {
                             struct_span_err!(
                                 tcx.sess,
                                 sp,
@@ -1156,8 +1154,6 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                                 "type has conflicting packed representation hints"
                             )
                             .emit();
-                        }
-                    }
                 }
             }
         }
@@ -1399,12 +1395,11 @@ fn display_discriminant_value<'tcx>(
 ) -> String {
     if let Some(expr) = &variant.disr_expr {
         let body = &tcx.hir().body(expr.body).value;
-        if let hir::ExprKind::Lit(lit) = &body.kind {
-            if let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node {
-                if evaluated != *lit_value {
+        if let hir::ExprKind::Lit(lit) = &body.kind
+            && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
+            && evaluated != *lit_value
+        {
                     return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
-                }
-            }
         }
     }
     format!("`{}`", evaluated)

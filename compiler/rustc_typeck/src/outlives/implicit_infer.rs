@@ -304,13 +304,12 @@ pub fn check_explicit_predicates<'tcx>(
         // = X` binding from the object type (there must be such a
         // binding) and thus infer an outlives requirement that `X:
         // 'b`.
-        if let Some(self_ty) = ignored_self_ty {
-            if let GenericArgKind::Type(ty) = outlives_predicate.0.unpack() {
-                if ty.walk().any(|arg| arg == self_ty.into()) {
-                    debug!("skipping self ty = {:?}", &ty);
-                    continue;
-                }
-            }
+        if let Some(self_ty) = ignored_self_ty
+            && let GenericArgKind::Type(ty) = outlives_predicate.0.unpack()
+            && ty.walk().any(|arg| arg == self_ty.into())
+        {
+            debug!("skipping self ty = {:?}", &ty);
+            continue;
         }
 
         let predicate = outlives_predicate.subst(tcx, substs);
