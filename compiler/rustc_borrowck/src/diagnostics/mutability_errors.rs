@@ -1086,21 +1086,17 @@ fn get_mut_span_in_struct_field<'tcx>(
     field: &mir::Field,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.kind() {
-        if let ty::Adt(def, _) = ty.kind() {
-            let field = def.all_fields().nth(field.index())?;
-            // Use the HIR types to construct the diagnostic message.
-            let node = tcx.hir().find_by_def_id(field.did.as_local()?)?;
-            // Now we're dealing with the actual struct that we're going to suggest a change to,
-            // we can expect a field that is an immutable reference to a type.
-            if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, ty }) =
-                    field.ty.kind
-                {
-                    return Some(lifetime.span.between(ty.span));
-                }
-            }
-        }
+    if let ty::Ref(_, ty, _) = ty.kind()
+        && let ty::Adt(def, _) = ty.kind()
+        && let field = def.all_fields().nth(field.index())?
+        // Use the HIR types to construct the diagnostic message.
+        && let node = tcx.hir().find_by_def_id(field.did.as_local()?)?
+        // Now we're dealing with the actual struct that we're going to suggest a change to,
+        // we can expect a field that is an immutable reference to a type.
+        && let hir::Node::Field(field) = node
+        && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+    {
+        return Some(lt.span.between(ty.span));
     }
 
     None
