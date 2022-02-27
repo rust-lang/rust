@@ -1086,7 +1086,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 }
 
 fn try_intrinsic<'gcc, 'tcx>(bx: &mut Builder<'_, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, _catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
-    if bx.sess().panic_strategy() == PanicStrategy::Abort {
+    // NOTE: the `|| true` here is to use the panic=abort strategy with panic=unwind too
+    if bx.sess().panic_strategy() == PanicStrategy::Abort || true {
+        // TODO(bjorn3): Properly implement unwinding and remove the `|| true` once this is done.
         bx.call(bx.type_void(), try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.

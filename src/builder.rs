@@ -435,12 +435,12 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.end_with_switch(None, value, default_block, &gcc_cases);
     }
 
-    fn invoke(&mut self, _typ: Type<'gcc>, _func: RValue<'gcc>, _args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
-        let condition = self.context.new_rvalue_from_int(self.bool_type, 0);
+    fn invoke(&mut self, typ: Type<'gcc>, func: RValue<'gcc>, args: &[RValue<'gcc>], then: Block<'gcc>, catch: Block<'gcc>, _funclet: Option<&Funclet>) -> RValue<'gcc> {
+        // TODO(bjorn3): Properly implement unwinding.
+        let call_site = self.call(typ, func, args, None);
+        let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(None, condition, then, catch);
-        self.context.new_rvalue_from_int(self.int_type, 0)
-
-        // TODO(antoyo)
+        call_site
     }
 
     fn unreachable(&mut self) {
@@ -1106,7 +1106,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
-        let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
+        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
         let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
         self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
@@ -1117,7 +1117,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn resume(&mut self, _exn: RValue<'gcc>) {
-        unimplemented!();
+        // TODO(bjorn3): Properly implement unwinding.
+        self.unreachable();
     }
 
     fn cleanup_pad(&mut self, _parent: Option<RValue<'gcc>>, _args: &[RValue<'gcc>]) -> Funclet {
