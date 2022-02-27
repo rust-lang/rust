@@ -662,6 +662,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
 
+    if let Some(backend) = builder.config.rust_codegen_backends.get(0) {
+        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
+    }
+
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     let target_config = builder.config.target_config.get(&target);
 
