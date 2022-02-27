@@ -714,6 +714,16 @@ impl<T> Box<[T]> {
         }
     }
 
+    /// HACK(conradludgate): This exists because stable `const fn` can only call stable `const fn`, so
+    /// they cannot call `Self::empty()`.
+    ///
+    /// If you change `Box<[T]>::empty` or dependencies, please take care to not introduce anything
+    /// that would truly const-call something unstable.
+    pub(crate) const EMPTY: Self = Self::empty();
+
+    /// Constructs a new empty boxed slice
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
     pub const fn empty() -> Self {
         Self::empty_in(Global)
     }
@@ -728,6 +738,9 @@ enum AllocInit {
 }
 
 impl<T, A: Allocator> Box<[T], A> {
+    /// Constructs a new empty boxed slice
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[inline]
     pub const fn empty_in(alloc: A) -> Self {
         Box(Unique::dangling_slice(), alloc)
     }
@@ -822,9 +835,7 @@ impl<T, A: Allocator> Box<[T], A> {
         Self::allocate_in(len, AllocInit::Zeroed, alloc)
     }
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    #[inline]
-    pub unsafe fn from_raw_slice_parts_in(ptr: *mut T, len: usize, alloc: A) -> Self {
+    pub(crate) unsafe fn from_raw_slice_parts_in(ptr: *mut T, len: usize, alloc: A) -> Self {
         unsafe {
             let raw = core::slice::from_raw_parts_mut(ptr, len);
             Self::from_raw_in(raw, alloc)
@@ -966,7 +977,7 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn reserve(&mut self, len: usize, additional: usize) {
+    pub(crate) fn reserve(&mut self, len: usize, additional: usize) {
         handle_reserve(self.grow_exact(len, additional))
     }
 
@@ -974,7 +985,7 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     /// oft-instantiated `Vec::push()`, which does its own capacity check.
     #[cfg(not(no_global_oom_handling))]
     #[inline(never)]
-    pub fn reserve_for_push(&mut self, len: usize) {
+    pub(crate) fn reserve_for_push(&mut self, len: usize) {
         handle_reserve(self.grow_amortized(len, 1));
     }
 
@@ -989,12 +1000,16 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn shrink_to_fit(&mut self, cap: usize) {
+    pub(crate) fn shrink_to_fit(&mut self, cap: usize) {
         handle_reserve(self.shrink(cap));
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
+    pub(crate) fn try_reserve(
+        &mut self,
+        len: usize,
+        additional: usize,
+    ) -> Result<(), TryReserveError> {
         self.grow_amortized(len, additional)
     }
 
@@ -1016,12 +1031,12 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     ///
     /// Aborts on OOM.
     #[cfg(not(no_global_oom_handling))]
-    pub fn reserve_exact(&mut self, len: usize, additional: usize) {
+    pub(crate) fn reserve_exact(&mut self, len: usize, additional: usize) {
         handle_reserve(self.try_reserve_exact(len, additional));
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve_exact(
+    pub(crate) fn try_reserve_exact(
         &mut self,
         len: usize,
         additional: usize,
@@ -2299,7 +2314,7 @@ where
 #[inline]
 fn handle_reserve(result: Result<(), TryReserveError>) {
     match result.map_err(|e| e.kind()) {
-        Err(CapacityOverflow) => capacity_overflow(),
+        Err(TryReserveErrorKind::CapacityOverflow) => capacity_overflow(),
         Err(TryReserveErrorKind::AllocError { layout, .. }) => handle_alloc_error(layout),
         Ok(()) => { /* yay */ }
     }

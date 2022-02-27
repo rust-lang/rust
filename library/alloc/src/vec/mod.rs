@@ -421,7 +421,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
-        Vec { buf: Box::<[MaybeUninit<T>]>::empty(), len: 0 }
+        Vec { buf: Box::<[MaybeUninit<T>]>::EMPTY, len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
