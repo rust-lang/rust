@@ -198,16 +198,44 @@ fn check_disjoint_and_sort(indels: &mut [impl std::borrow::Borrow<Indel>]) -> bo
     })
 }
 
-#[test]
-fn test_apply() {
-    let mut text = "_11h1_2222_xx3333_4444_6666".to_string();
-    let mut builder = TextEditBuilder::default();
-    builder.replace(TextRange::new(3.into(), 4.into()), "1".to_string());
-    builder.delete(TextRange::new(11.into(), 13.into()));
-    builder.insert(22.into(), "_5555".to_string());
+#[cfg(test)]
+mod tests {
+    use super::{TextEdit, TextEditBuilder, TextRange};
 
-    let text_edit = builder.finish();
-    text_edit.apply(&mut text);
+    fn range(start: u32, end: u32) -> TextRange {
+        TextRange::new(start.into(), end.into())
+    }
 
-    assert_eq!(text, "_1111_2222_3333_4444_5555_6666")
+    #[test]
+    fn test_apply() {
+        let mut text = "_11h1_2222_xx3333_4444_6666".to_string();
+        let mut builder = TextEditBuilder::default();
+        builder.replace(range(3, 4), "1".to_string());
+        builder.delete(range(11, 13));
+        builder.insert(22.into(), "_5555".to_string());
+
+        let text_edit = builder.finish();
+        text_edit.apply(&mut text);
+
+        assert_eq!(text, "_1111_2222_3333_4444_5555_6666")
+    }
+
+    #[test]
+    fn test_union() {
+        let mut edit1 = TextEdit::delete(range(7, 11));
+        let mut builder = TextEditBuilder::default();
+        builder.delete(range(1, 5));
+        builder.delete(range(13, 17));
+
+        let edit2 = builder.finish();
+        assert!(edit1.union(edit2).is_ok());
+        assert_eq!(edit1.indels.len(), 3);
+    }
+
+    #[test]
+    fn test_union_panics() {
+        let mut edit1 = TextEdit::delete(range(7, 11));
+        let edit2 = TextEdit::delete(range(9, 13));
+        assert!(edit1.union(edit2).is_err());
+    }
 }
