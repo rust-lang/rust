@@ -708,7 +708,10 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // understanding `mem::replace`, `Option::take`, etc. - a better overall
     // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
     // a backend can choose to implement using the block optimization, or not.
-    #[cfg(not(target_arch = "spirv"))]
+    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
+    // pessimization for it.  Also, if the type contains any unaligned pointers,
+    // copying those over multiple reads is difficult to support.
+    #[cfg(not(any(target_arch = "spirv", miri)))]
     {
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part
@@ -737,12 +740,26 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 #[inline]
 pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
+    // We arrange for this to typically be called with small types,
+    // so this reads-and-writes approach is actually better than using
+    // copy_nonoverlapping as it easily puts things in LLVM registers
+    // directly and doesn't end up inlining allocas.
+    // And LLVM actually optimizes it to 3×memcpy if called with
+    // a type larger than it's willing to keep in a register.
+    // Having typed reads and writes in MIR here is also good as
+    // it lets MIRI and CTFE understand them better, including things
+    // like enforcing type validity for them.
+    // Importantly, read+copy_nonoverlapping+write introduces confusing
+    // asymmetry to the behaviour where one value went through read+write
+    // whereas the other was copied over by the intrinsic (see #94371).
+
     // SAFETY: exclusive references are always valid to read/write,
-    // are non-overlapping, and nothing here panics so it's drop-safe.
+    // including being aligned, and nothing here panics so it's drop-safe.
     unsafe {
-        let z = ptr::read(x);
-        ptr::copy_nonoverlapping(y, x, 1);
-        ptr::write(y, z);
+        let a = ptr::read(x);
+        let b = ptr::read(y);
+        ptr::write(x, b);
+        ptr::write(y, a);
     }
 }
 
