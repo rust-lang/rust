@@ -531,6 +531,11 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(T, U) -> R,
     {
+        // If any of the items need drop, take the 'slow' path that ensures all drop
+        // handlers are called in case of panic.
+        //
+        // In my profiling, I found that the drop code can interfere with the codegen just enough
+        // to cause some noticable regressions in speed
         if core::mem::needs_drop::<T>()
             || core::mem::needs_drop::<U>()
             || core::mem::needs_drop::<R>()
@@ -589,12 +594,16 @@ impl<T, const N: usize> [T; N] {
     where
         F: FnMut(&mut T, U),
     {
+        // If the rhs need drop, take the 'slow' path that ensures all drop
+        // handlers are called in case of panic.
+        //
+        // In my profiling, I found that the drop code can interfere with the codegen just enough
+        // to cause some noticable regressions in speed
         if core::mem::needs_drop::<U>() {
             let mut rhs = IntoIterator::into_iter(rhs);
 
             for i in 0..N {
-                // SAFETY:
-                // Will only be called a maximum of N times
+                // SAFETY: Will only be called a maximum of N times
                 unsafe {
                     let lhs = self.get_unchecked_mut(i);
                     let rhs = rhs.pop_front_unchecked();
@@ -603,8 +612,7 @@ impl<T, const N: usize> [T; N] {
             }
         } else {
             for i in 0..N {
-                // SAFETY:
-                // Will only be called a maximum of N times
+                // SAFETY: Will only be called a maximum of N times
                 unsafe {
                     let lhs = self.get_unchecked_mut(i);
                     let rhs = core::ptr::read(&rhs[i]);
