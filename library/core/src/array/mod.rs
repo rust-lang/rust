@@ -16,7 +16,6 @@ use crate::ops::{
 };
 use crate::slice::{Iter, IterMut};
 
-mod binops;
 mod equality;
 mod iter;
 
