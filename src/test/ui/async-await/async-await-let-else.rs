@@ -2,7 +2,7 @@
 // revisions: drop-tracking no-drop-tracking
 // [drop-tracking] compile-flags: -Zdrop-tracking=yes
 // [no-drop-tracking] compile-flags: -Zdrop-tracking=no
-#![feature(let_else)]
+
 use std::rc::Rc;
 
 async fn foo(x: Option<bool>) {

@@ -10,7 +10,7 @@
 //
 // The move was due to mir::Place being Copy, but mir::VarDebugInfoContents not being Copy.
 
-#![feature(let_else)]
+
 
 #[derive(Copy, Clone)]
 struct Copyable;

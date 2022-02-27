@@ -1,4 +1,4 @@
-#![feature(let_chains, let_else)]
+#![feature(let_chains)]
 
 fn main() {
     let opt = Some(1i32);

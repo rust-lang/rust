@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 #![deny(unused_variables)]
 
 fn main() {
