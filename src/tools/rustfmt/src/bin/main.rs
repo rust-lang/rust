@@ -693,6 +693,7 @@ fn edition_from_edition_str(edition_str: &str) -> Result<Edition> {
         "2015" => Ok(Edition::Edition2015),
         "2018" => Ok(Edition::Edition2018),
         "2021" => Ok(Edition::Edition2021),
+        "2024" => Ok(Edition::Edition2024),
         _ => Err(format_err!("Invalid value for `--edition`")),
     }
 }

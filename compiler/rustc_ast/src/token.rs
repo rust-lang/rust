@@ -722,7 +722,7 @@ impl NonterminalKind {
                 Edition::Edition2015 | Edition::Edition2018 => {
                     NonterminalKind::PatParam { inferred: true }
                 }
-                Edition::Edition2021 => NonterminalKind::PatWithOr,
+                Edition::Edition2021 | Edition::Edition2024 => NonterminalKind::PatWithOr,
             },
             sym::pat_param => NonterminalKind::PatParam { inferred: false },
             sym::expr => NonterminalKind::Expr,

@@ -22,13 +22,15 @@ pub enum Edition {
     Edition2018,
     /// The 2021 edition
     Edition2021,
+    /// The 2024 edition
+    Edition2024,
 }
 
 // Must be in order from oldest to newest.
 pub const ALL_EDITIONS: &[Edition] =
-    &[Edition::Edition2015, Edition::Edition2018, Edition::Edition2021];
+    &[Edition::Edition2015, Edition::Edition2018, Edition::Edition2021, Edition::Edition2024];
 
-pub const EDITION_NAME_LIST: &str = "2015|2018|2021";
+pub const EDITION_NAME_LIST: &str = "2015|2018|2021|2024";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
@@ -40,6 +42,7 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
             Edition::Edition2021 => "2021",
+            Edition::Edition2024 => "2024",
         };
         write!(f, "{}", s)
     }
@@ -51,6 +54,7 @@ impl Edition {
             Edition::Edition2015 => "rust_2015_compatibility",
             Edition::Edition2018 => "rust_2018_compatibility",
             Edition::Edition2021 => "rust_2021_compatibility",
+            Edition::Edition2024 => "rust_2024_compatibility",
         }
     }
 
@@ -59,6 +63,7 @@ impl Edition {
             Edition::Edition2015 => sym::rust_2015_preview,
             Edition::Edition2018 => sym::rust_2018_preview,
             Edition::Edition2021 => sym::rust_2021_preview,
+            Edition::Edition2024 => sym::rust_2024_preview,
         }
     }
 
@@ -67,7 +72,27 @@ impl Edition {
             Edition::Edition2015 => true,
             Edition::Edition2018 => true,
             Edition::Edition2021 => true,
+            Edition::Edition2024 => false,
         }
+    }
+
+    pub fn rust_2015(&self) -> bool {
+        *self == Edition::Edition2015
+    }
+
+    /// Are we allowed to use features from the Rust 2018 edition?
+    pub fn rust_2018(&self) -> bool {
+        *self >= Edition::Edition2018
+    }
+
+    /// Are we allowed to use features from the Rust 2021 edition?
+    pub fn rust_2021(&self) -> bool {
+        *self >= Edition::Edition2021
+    }
+
+    /// Are we allowed to use features from the Rust 2024 edition?
+    pub fn rust_2024(&self) -> bool {
+        *self >= Edition::Edition2024
     }
 }
 
@@ -78,6 +103,7 @@ impl FromStr for Edition {
             "2015" => Ok(Edition::Edition2015),
             "2018" => Ok(Edition::Edition2018),
             "2021" => Ok(Edition::Edition2021),
+            "2024" => Ok(Edition::Edition2024),
             _ => Err(()),
         }
     }

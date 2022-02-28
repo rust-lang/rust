@@ -1033,7 +1033,7 @@ fn check_matcher_core(
                             err.span_label(sp, format!("not allowed after `{}` fragments", kind));
 
                             if kind == NonterminalKind::PatWithOr
-                                && sess.edition == Edition::Edition2021
+                                && sess.edition.rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
