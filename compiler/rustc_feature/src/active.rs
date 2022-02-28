@@ -368,8 +368,6 @@ declare_features! (
     (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
-    /// Allows `#[derive(Default)]` and `#[default]` on enums.
-    (active, derive_default_enum, "1.56.0", Some(86985), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (active, doc_auto_cfg, "1.58.0", Some(43781), None),
     /// Allows `#[doc(cfg(...))]`.
