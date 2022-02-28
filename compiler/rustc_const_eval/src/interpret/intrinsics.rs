@@ -458,15 +458,25 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             sym::simd_extract => {
-                let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
-                let (input, input_len) = self.operand_to_simd(&args[0])?;
-                assert!(
-                    index < input_len,
-                    "index `{}` must be in bounds of vector with length `{}`",
-                    index,
-                    input_len
-                );
-                self.copy_op(&self.mplace_index(&input, index)?.into(), dest)?;
+                if args[0].layout.ty.is_simd() {
+                    let index = u64::from(self.read_scalar(&args[1])?.to_u32()?);
+                    let (input, input_len) = self.operand_to_simd(&args[0])?;
+                    assert!(
+                        index < input_len,
+                        "index `{}` must be in bounds of vector with length `{}`",
+                        index,
+                        input_len
+                    );
+                    self.copy_op(&self.mplace_index(&input, index)?.into(), dest)?;
+                } else {
+                    M::abort(
+                        self,
+                        format!(
+                            "aborted execution: type `{}` is not `#[repr(simd)]`",
+                            args[0].layout.ty
+                        ),
+                    )?;
+                }
             }
             sym::likely | sym::unlikely | sym::black_box => {
                 // These just return their argument

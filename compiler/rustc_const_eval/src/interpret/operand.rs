@@ -444,7 +444,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, u64)> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // This only works in memory, but repr(simd) types should never be immediates anyway.
-        assert!(base.layout.ty.is_simd());
+        assert!(
+            base.layout.ty.is_simd(),
+            "expected a simd type, instead found {:?}",
+            base.layout.ty
+        );
         self.mplace_to_simd(&base.assert_mem_place())
     }
 
