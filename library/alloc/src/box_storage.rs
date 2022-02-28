@@ -1,7 +1,8 @@
 use crate::alloc::{handle_alloc_error, Allocator, Layout, LayoutError};
 use crate::boxed::Box;
-use crate::collections::{TryReserveError, TryReserveErrorKind};
-use core::mem::{self};
+use crate::collections::TryReserveError;
+use crate::collections::TryReserveErrorKind::*;
+use core::mem;
 
 pub(crate) unsafe fn from_raw_slice_parts_in<T, A: Allocator>(
     ptr: *mut T,
@@ -48,7 +49,22 @@ pub(crate) trait BoxStorage {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     fn reserve(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.grow_exact(len, additional))
+        // Callers expect this function to be very cheap when there is already sufficient capacity.
+        // Therefore, we move all the resizing and error-handling logic from grow_amortized and
+        // handle_reserve behind a call, while making sure that this function is likely to be
+        // inlined as just a comparison and a call if the comparison fails.
+        if self.needs_to_grow(len, additional) {
+            self.do_reserve_and_handle(len, additional);
+        }
+    }
+
+    /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
+    /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool;
+
+    #[cold]
+    fn do_reserve_and_handle(&mut self, len: usize, additional: usize) {
+        handle_reserve(self.grow_amortized(len, additional));
     }
 
     /// A specialized version of `reserve()` used only by the hot and
@@ -120,6 +136,12 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
         1
     };
 
+    /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
+    /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+        additional > self.len().wrapping_sub(len)
+    }
+
     // This method is usually instantiated many times. So we want it to be as
     // small as possible, to improve compile times. But we also want as much of
     // its contents to be statically computable as possible, to make the
@@ -134,16 +156,16 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
         if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
             // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(TryReserveErrorKind::CapacityOverflow.into());
+            return Err(CapacityOverflow.into());
         }
 
         // Nothing we can really do about these checks, sadly.
-        let required_cap =
-            len.checked_add(additional).ok_or(TryReserveErrorKind::CapacityOverflow)?;
+        let required_cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
 
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
-        let cap = core::cmp::max(self.len() * 2, required_cap);
+        let cap = self.len();
+        let cap = core::cmp::max(cap * 2, required_cap);
         let cap = core::cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
@@ -158,12 +180,12 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
     // it's less critical.
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         if mem::size_of::<T>() == 0 {
-            // Since we return a capacity of `usize::MAX` when `elem_size` is
+            // Since we return a capacity of `usize::MAX` when the type size is
             // 0, getting to here necessarily means the `RawVec` is overfull.
-            return Err(TryReserveErrorKind::CapacityOverflow.into());
+            return Err(CapacityOverflow.into());
         }
 
-        let cap = len.checked_add(additional).ok_or(TryReserveErrorKind::CapacityOverflow)?;
+        let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
         let new_layout = Layout::array::<T>(cap);
 
         replace(self, |ptr, len, alloc| {
@@ -172,6 +194,7 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
     }
 
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
+        assert!(cap <= self.len(), "Tried to shrink to a larger capacity");
         replace(self, |ptr, len, alloc| {
             let (ptr, layout) =
                 if let Some(mem) = slice_layout(ptr, len) { mem } else { return Ok((ptr, len)) };
@@ -180,9 +203,9 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
                 // `Layout::array` cannot overflow here because it would have
                 // overflowed earlier when capacity was larger.
                 let new_layout = Layout::array::<T>(cap).unwrap_unchecked();
-                alloc.shrink(ptr, layout, new_layout).map_err(|_| {
-                    TryReserveErrorKind::AllocError { layout: new_layout, non_exhaustive: () }
-                })?
+                alloc
+                    .shrink(ptr, layout, new_layout)
+                    .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
             };
             Ok((ptr.as_mut_ptr().cast(), cap))
         })
@@ -235,7 +258,7 @@ where
     A: Allocator,
 {
     // Check for the error here to minimize the size of `RawVec::grow_*`.
-    let new_layout = new_layout.map_err(|_| TryReserveErrorKind::CapacityOverflow)?;
+    let new_layout = new_layout.map_err(|_| CapacityOverflow)?;
 
     alloc_guard(new_layout.size())?;
 
@@ -250,9 +273,7 @@ where
         alloc.allocate(new_layout)
     };
 
-    memory.map_err(|_| {
-        TryReserveErrorKind::AllocError { layout: new_layout, non_exhaustive: () }.into()
-    })
+    memory.map_err(|_| AllocError { layout: new_layout, non_exhaustive: () }.into())
 }
 
 // Central function for reserve error handling.
@@ -260,8 +281,8 @@ where
 #[inline]
 fn handle_reserve(result: Result<(), TryReserveError>) {
     match result.map_err(|e| e.kind()) {
-        Err(TryReserveErrorKind::CapacityOverflow) => capacity_overflow(),
-        Err(TryReserveErrorKind::AllocError { layout, .. }) => handle_alloc_error(layout),
+        Err(CapacityOverflow) => capacity_overflow(),
+        Err(AllocError { layout, .. }) => handle_alloc_error(layout),
         Ok(()) => { /* yay */ }
     }
 }
@@ -278,7 +299,7 @@ fn handle_reserve(result: Result<(), TryReserveError>) {
 #[inline]
 pub(crate) fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
     if usize::BITS < 64 && alloc_size > isize::MAX as usize {
-        Err(TryReserveErrorKind::CapacityOverflow.into())
+        Err(CapacityOverflow.into())
     } else {
         Ok(())
     }
