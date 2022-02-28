@@ -17,9 +17,9 @@ Depending on what you're trying to measure, there are several different approach
     full-featured graphical interface.
 
 - If you want a nice visual representation of the compile times of your crate graph,
-  you can use [cargo's `-Z timings` flag](https://doc.rust-lang.org/cargo/reference/unstable.html#timings),
-  eg. `cargo -Z timings build`.
-  You can use this flag on the compiler itself with `CARGOFLAGS="-Z timings" ./x.py build`
+  you can use [cargo's `--timings` flag](https://doc.rust-lang.org/nightly/cargo/reference/timings.html),
+  e.g. `cargo build --timings`.
+  You can use this flag on the compiler itself with `CARGOFLAGS="--timings" ./x.py build`
 
 - If you want to profile memory usage, you can use various tools depending on what operating system
   you are using.
