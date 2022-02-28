@@ -2,6 +2,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::mem::MaybeUninit;
 use core::result::Result::{Err, Ok};
+use core::slice;
 
 #[test]
 fn test_position() {
@@ -2479,4 +2480,25 @@ take_tests! {
     (take_mut_in_bounds_max_range_to, (..usize::MAX), Some(empty_max_mut!()), &mut [(); 0]),
     (take_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
     (take_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+}
+
+#[test]
+fn test_slice_from_ptr_range() {
+    let arr = ["foo".to_owned(), "bar".to_owned()];
+    let range = arr.as_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_ptr_range(range), &arr);
+    }
+
+    let mut arr = [1, 2, 3];
+    let range = arr.as_mut_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_mut_ptr_range(range), &mut [1, 2, 3]);
+    }
+
+    let arr: [Vec<String>; 0] = [];
+    let range = arr.as_ptr_range();
+    unsafe {
+        assert_eq!(slice::from_ptr_range(range), &arr);
+    }
 }
