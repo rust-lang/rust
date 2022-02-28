@@ -1,3 +1,5 @@
+//! Greatest lower bound. See [`lattice`].
+
 use super::combine::CombineFields;
 use super::lattice::{self, LatticeDir};
 use super::InferCtxt;
