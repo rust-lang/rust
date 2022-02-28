@@ -17,6 +17,7 @@ pub use self::Variance::*;
 pub use adt::*;
 pub use assoc::*;
 pub use generics::*;
+use rustc_data_structures::fingerprint::Fingerprint;
 pub use vtable::*;
 
 use crate::metadata::ModChild;
@@ -30,7 +31,7 @@ use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, NodeIdHashingMode, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -424,11 +425,15 @@ crate struct TyS<'tcx> {
     /// De Bruijn indices within the type are contained within `0..D`
     /// (exclusive).
     outer_exclusive_binder: ty::DebruijnIndex,
+
+    /// The stable hash of the type. This way hashing of types will not have to work
+    /// on the address of the type anymore, but can instead just read this field
+    stable_hash: Fingerprint,
 }
 
 // `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(TyS<'_>, 40);
+static_assert_size!(TyS<'_>, 56);
 
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -442,21 +447,41 @@ static BOOL_TYS: TyS<'static> = TyS {
     kind: ty::Bool,
     flags: TypeFlags::empty(),
     outer_exclusive_binder: DebruijnIndex::from_usize(0),
+    stable_hash: Fingerprint::ZERO,
 };
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Ty<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TyS {
-            ref kind,
+            kind,
 
             // The other fields just provide fast access to information that is
             // also contained in `kind`, so no need to hash them.
             flags: _,
 
             outer_exclusive_binder: _,
+
+            stable_hash,
         } = self.0.0;
 
-        kind.hash_stable(hcx, hasher);
+        if *stable_hash == Fingerprint::ZERO {
+            // No cached hash available. This can only mean that incremental is disabled.
+            // We don't cache stable hashes in non-incremental mode, because they are used
+            // so rarely that the performance actually suffers.
+
+            let stable_hash: Fingerprint = {
+                let mut hasher = StableHasher::new();
+                hcx.while_hashing_spans(false, |hcx| {
+                    hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                        kind.hash_stable(hcx, &mut hasher)
+                    })
+                });
+                hasher.finish()
+            };
+            stable_hash.hash_stable(hcx, hasher);
+        } else {
+            stable_hash.hash_stable(hcx, hasher);
+        }
     }
 }
 
