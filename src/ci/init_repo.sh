@@ -62,6 +62,7 @@ for i in ${!modules[@]}; do
         url=${urls[$i]}
         url=${url/\.git/}
         fetch_github_commit_archive $module "$url/archive/$commit.tar.gz" &
+        bg_pids[${i}]=$!
         continue
     else
         use_git="$use_git $module"
@@ -70,4 +71,9 @@ done
 retry sh -c "git submodule deinit -f $use_git && \
     git submodule sync && \
     git submodule update -j 16 --init --recursive $use_git"
-wait
+STATUS=0
+for pid in ${bg_pids[*]}
+do
+    wait $pid || STATUS=1
+done
+exit ${STATUS}
