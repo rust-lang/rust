@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionType, LValue, RValue, Struct, Type};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Struct, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
@@ -80,6 +80,12 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, RValue<'gcc>>>,
     /// Cache generated vtables
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+
+    // TODO(antoyo): improve the SSA API to not require those.
+    // Mapping from function pointer type to indexes of on stack parameters.
+    pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
+    // Mapping from function to indexes of on stack parameters.
+    pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
@@ -208,6 +214,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             linkage: Cell::new(FunctionType::Internal),
             instances: Default::default(),
             function_instances: Default::default(),
+            on_stack_params: Default::default(),
+            on_stack_function_params: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
             global_lvalues: Default::default(),

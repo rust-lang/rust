@@ -464,17 +464,17 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             val.to_rvalue()
         };
         match self.mode {
-            PassMode::Ignore => {}
+            PassMode::Ignore => {},
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
-            }
+            },
             PassMode::Indirect { extra_attrs: Some(_), .. } => {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
-            }
+            },
             PassMode::Direct(_) | PassMode::Indirect { extra_attrs: None, .. } | PassMode::Cast(_) => {
                 let next_arg = next();
-                self.store(bx, next_arg.to_rvalue(), dst);
-            }
+                self.store(bx, next_arg, dst);
+            },
         }
     }
 }
