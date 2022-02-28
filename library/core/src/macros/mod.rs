@@ -39,10 +39,12 @@ macro_rules! assert_eq {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     let kind = $crate::panicking::AssertKind::Eq;
+                    let left_name = stringify!($left);
+                    let right_name = stringify!($right);
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::None);
                 }
             }
         }
@@ -52,10 +54,12 @@ macro_rules! assert_eq {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
                     let kind = $crate::panicking::AssertKind::Eq;
+                    let left_name = stringify!($left);
+                    let right_name = stringify!($right);
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
@@ -89,10 +93,12 @@ macro_rules! assert_ne {
             (left_val, right_val) => {
                 if *left_val == *right_val {
                     let kind = $crate::panicking::AssertKind::Ne;
+                    let left_name = stringify!($left);
+                    let right_name = stringify!($right);
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::None);
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::None);
                 }
             }
         }
@@ -102,10 +108,12 @@ macro_rules! assert_ne {
             (left_val, right_val) => {
                 if *left_val == *right_val {
                     let kind = $crate::panicking::AssertKind::Ne;
+                    let left_name = stringify!($left);
+                    let right_name = stringify!($right);
                     // The reborrows below are intentional. Without them, the stack slot for the
                     // borrow is initialized even before the values are compared, leading to a
                     // noticeable slow down.
-                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, $crate::option::Option::Some($crate::format_args!($($arg)+)));
+                    $crate::panicking::assert_failed(kind, &*left_val, &*right_val, left_name, right_name, $crate::option::Option::Some($crate::format_args!($($arg)+)));
                 }
             }
         }
