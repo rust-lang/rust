@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
@@ -115,20 +115,22 @@ where
         unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask(self) -> [u8; LaneCount::<LANES>::BITMASK_LEN] {
-        // Safety: these are the same type and we are laundering the generic
+    pub fn to_bitmask_integer<U>(self) -> U
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: these are the same types
         unsafe { core::mem::transmute_copy(&self.0) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask(bitmask: [u8; LaneCount::<LANES>::BITMASK_LEN]) -> Self {
-        // Safety: these are the same type and we are laundering the generic
-        Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
+    pub fn from_bitmask_integer<U>(bitmask: U) -> Self
+    where
+        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+    {
+        // Safety: these are the same types
+        unsafe { Self(core::mem::transmute_copy(&bitmask), PhantomData) }
     }
 
     #[inline]
@@ -137,6 +139,7 @@ where
     where
         U: MaskElement,
     {
+        // Safety: bitmask layout does not depend on the element width
         unsafe { core::mem::transmute_copy(&self) }
     }
 
