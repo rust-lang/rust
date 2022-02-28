@@ -456,7 +456,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Deref => {
                     // custom allocators can change box's abi, making it unable to be derefed directly
                     if cg_base.layout.ty.is_box()
-                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. })
+                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. } | Abi::Uninhabited)
                     {
                         let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
 

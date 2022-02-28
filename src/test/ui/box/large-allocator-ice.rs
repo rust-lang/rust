@@ -1,4 +1,4 @@
-// check-pass
+// build-pass
 #![feature(allocator_api)]
 
 use std::alloc::Allocator;
@@ -18,5 +18,6 @@ unsafe impl Allocator for BigAllocator {
 }
 
 fn main() {
+    Box::new_in((), &std::alloc::Global);
     Box::new_in((), BigAllocator([0; 2]));
 }
