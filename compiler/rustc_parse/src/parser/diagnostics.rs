@@ -732,43 +732,42 @@ impl<'a> Parser<'a> {
         mut e: DiagnosticBuilder<'a, ErrorReported>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
-        if let ExprKind::Binary(binop, _, _) = &expr.kind {
-            if let ast::BinOpKind::Lt = binop.node {
-                if self.eat(&token::Comma) {
-                    let x = self.parse_seq_to_before_end(
-                        &token::Gt,
-                        SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_generic_arg(None),
-                    );
-                    match x {
-                        Ok((_, _, false)) => {
-                            if self.eat(&token::Gt) {
-                                e.span_suggestion_verbose(
-                                    binop.span.shrink_to_lo(),
-                                    TURBOFISH_SUGGESTION_STR,
-                                    "::".to_string(),
-                                    Applicability::MaybeIncorrect,
-                                )
-                                .emit();
-                                match self.parse_expr() {
-                                    Ok(_) => {
-                                        *expr =
-                                            self.mk_expr_err(expr.span.to(self.prev_token.span));
-                                        return Ok(());
-                                    }
-                                    Err(err) => {
-                                        *expr = self.mk_expr_err(expr.span);
-                                        err.cancel();
-                                    }
-                                }
+        if let ExprKind::Binary(binop, _, _) = &expr.kind
+            && let ast::BinOpKind::Lt = binop.node
+            && self.eat(&token::Comma)
+        {
+            let x = self.parse_seq_to_before_end(
+                &token::Gt,
+                SeqSep::trailing_allowed(token::Comma),
+                |p| p.parse_generic_arg(None),
+            );
+            match x {
+                Ok((_, _, false)) => {
+                    if self.eat(&token::Gt) {
+                        e.span_suggestion_verbose(
+                            binop.span.shrink_to_lo(),
+                            TURBOFISH_SUGGESTION_STR,
+                            "::".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                        match self.parse_expr() {
+                            Ok(_) => {
+                                *expr =
+                                    self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                return Ok(());
+                            }
+                            Err(err) => {
+                                *expr = self.mk_expr_err(expr.span);
+                                err.cancel();
                             }
                         }
-                        Err(err) => {
-                            err.cancel();
-                        }
-                        _ => {}
                     }
                 }
+                Err(err) => {
+                    err.cancel();
+                }
+                _ => {}
             }
         }
         Err(e)
@@ -784,12 +783,13 @@ impl<'a> Parser<'a> {
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
         if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
-            if let ExprKind::Field(_, ident) = l1.kind {
-                if ident.as_str().parse::<i32>().is_err() && !matches!(r1.kind, ExprKind::Lit(_)) {
-                    // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
-                    // suggestion being the only one to apply is high.
-                    return false;
-                }
+            if let ExprKind::Field(_, ident) = l1.kind
+                && ident.as_str().parse::<i32>().is_err()
+                && !matches!(r1.kind, ExprKind::Lit(_))
+            {
+                // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
+                // suggestion being the only one to apply is high.
+                return false;
             }
             let mut enclose = |left: Span, right: Span| {
                 err.multipart_suggestion(

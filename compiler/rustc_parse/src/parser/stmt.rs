@@ -48,15 +48,13 @@ impl<'a> Parser<'a> {
 
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtStmt(stmt) = &**nt {
-                let mut stmt = stmt.clone();
-                self.bump();
-                stmt.visit_attrs(|stmt_attrs| {
-                    attrs.prepend_to_nt_inner(stmt_attrs);
-                });
-                return Ok(Some(stmt));
-            }
+        if let token::Interpolated(nt) = &self.token.kind && let token::NtStmt(stmt) = &**nt {
+            let mut stmt = stmt.clone();
+            self.bump();
+            stmt.visit_attrs(|stmt_attrs| {
+                attrs.prepend_to_nt_inner(stmt_attrs);
+            });
+            return Ok(Some(stmt));
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
