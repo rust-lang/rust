@@ -429,6 +429,7 @@ E0720: include_str!("./error_codes/E0720.md"),
 E0722: include_str!("./error_codes/E0722.md"),
 E0724: include_str!("./error_codes/E0724.md"),
 E0725: include_str!("./error_codes/E0725.md"),
+E0726: include_str!("./error_codes/E0726.md"),
 E0727: include_str!("./error_codes/E0727.md"),
 E0728: include_str!("./error_codes/E0728.md"),
 E0729: include_str!("./error_codes/E0729.md"),
@@ -641,6 +642,5 @@ E0787: include_str!("./error_codes/E0787.md"),
     E0717, // rustc_promotable without stability attribute
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
-    E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 }
