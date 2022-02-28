@@ -375,15 +375,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if self.local_names[local].is_some() {
-                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Some(borrowed_local) = place.as_local() {
-                            if self.local_names[borrowed_local].is_some() && local != borrowed_local
-                            {
-                                should_note_order = true;
-                            }
-                        }
-                    }
+                if self.local_names[local].is_some()
+                    && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
+                    && let Some(borrowed_local) = place.as_local()
+                    && self.local_names[borrowed_local].is_some() && local != borrowed_local
+                {
+                    should_note_order = true;
                 }
 
                 BorrowExplanation::UsedLaterWhenDropped {

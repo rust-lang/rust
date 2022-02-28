@@ -74,7 +74,7 @@ use crate::html::format::{
     PrintWithSpace,
 };
 use crate::html::highlight;
-use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
@@ -1950,8 +1950,10 @@ fn small_url_encode(s: String) -> String {
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     let did = it.def_id.expect_def_id();
     let cache = cx.cache();
+
     if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
+        let mut id_map = IdMap::new();
 
         {
             let used_links_bor = &mut used_links;
@@ -1992,7 +1994,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
             }
 
-            let format_impls = |impls: Vec<&Impl>| {
+            let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
                 let mut links = FxHashSet::default();
 
                 let mut ret = impls
@@ -2001,13 +2003,14 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                         if let Some(ref i) = it.inner_impl().trait_ {
                             let i_display = format!("{:#}", i.print(cx));
                             let out = Escape(&i_display);
-                            let encoded = small_url_encode(format!("{:#}", i.print(cx)));
+                            let encoded =
+                                id_map.derive(small_url_encode(format!("impl-{:#}", i.print(cx))));
                             let prefix = match it.inner_impl().polarity {
                                 ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                                 ty::ImplPolarity::Negative => "!",
                             };
                             let generated =
-                                format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);
+                                format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
                             if links.insert(generated.clone()) { Some(generated) } else { None }
                         } else {
                             None
@@ -2023,9 +2026,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
-            let concrete_format = format_impls(concrete);
-            let synthetic_format = format_impls(synthetic);
-            let blanket_format = format_impls(blanket_impl);
+            let concrete_format = format_impls(concrete, &mut id_map);
+            let synthetic_format = format_impls(synthetic, &mut id_map);
+            let blanket_format = format_impls(blanket_impl, &mut id_map);
 
             if !concrete_format.is_empty() {
                 print_sidebar_block(

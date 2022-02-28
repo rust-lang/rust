@@ -236,13 +236,9 @@ pub fn get_codegen_backend(
     static LOAD: SyncOnceCell<unsafe fn() -> Box<dyn CodegenBackend>> = SyncOnceCell::new();
 
     let load = LOAD.get_or_init(|| {
-        #[cfg(feature = "llvm")]
-        const DEFAULT_CODEGEN_BACKEND: &str = "llvm";
+        let default_codegen_backend = option_env!("CFG_DEFAULT_CODEGEN_BACKEND").unwrap_or("llvm");
 
-        #[cfg(not(feature = "llvm"))]
-        const DEFAULT_CODEGEN_BACKEND: &str = "cranelift";
-
-        match backend_name.unwrap_or(DEFAULT_CODEGEN_BACKEND) {
+        match backend_name.unwrap_or(default_codegen_backend) {
             filename if filename.contains('.') => load_backend_from_dylib(filename.as_ref()),
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,

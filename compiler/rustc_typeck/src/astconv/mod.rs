@@ -1054,12 +1054,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut result = Vec::new();
 
         for ast_bound in ast_bounds {
-            if let Some(trait_ref) = ast_bound.trait_ref() {
-                if let Some(trait_did) = trait_ref.trait_def_id() {
-                    if self.tcx().trait_may_define_assoc_type(trait_did, assoc_name) {
-                        result.push(ast_bound.clone());
-                    }
-                }
+            if let Some(trait_ref) = ast_bound.trait_ref()
+                && let Some(trait_did) = trait_ref.trait_def_id()
+                && self.tcx().trait_may_define_assoc_type(trait_did, assoc_name)
+            {
+                result.push(ast_bound.clone());
             }
         }
 

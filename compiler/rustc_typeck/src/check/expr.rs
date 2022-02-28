@@ -810,10 +810,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Use the span of the trailing expression for our cause,
         // not the span of the entire function
         if !explicit_return {
-            if let ExprKind::Block(body, _) = return_expr.kind {
-                if let Some(last_expr) = body.expr {
-                    span = last_expr.span;
-                }
+            if let ExprKind::Block(body, _) = return_expr.kind && let Some(last_expr) = body.expr {
+                span = last_expr.span;
             }
         }
         ret_coercion.borrow_mut().coerce(

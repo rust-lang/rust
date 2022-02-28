@@ -685,9 +685,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat<'_>) -> bool {
-        if let PatKind::Binding(..) = inner.kind {
-            if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
-                if let ty::Dynamic(..) = mt.ty.kind() {
+        if let PatKind::Binding(..) = inner.kind
+            && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
+            && let ty::Dynamic(..) = mt.ty.kind()
+        {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
@@ -705,8 +706,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.emit();
                     return false;
                 }
-            }
-        }
         true
     }
 

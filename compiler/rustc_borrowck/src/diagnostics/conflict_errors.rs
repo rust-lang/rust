@@ -1921,17 +1921,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 err.span_label(assigned_span, format!("first assignment to {}", place_description));
             }
         }
-        if let Some(decl) = local_decl {
-            if let Some(name) = local_name {
-                if decl.can_be_made_mutable() {
-                    err.span_suggestion(
-                        decl.source_info.span,
-                        "consider making this binding mutable",
-                        format!("mut {}", name),
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
+        if let Some(decl) = local_decl
+            && let Some(name) = local_name
+            && decl.can_be_made_mutable()
+        {
+            err.span_suggestion(
+                decl.source_info.span,
+                "consider making this binding mutable",
+                format!("mut {}", name),
+                Applicability::MachineApplicable,
+            );
         }
         err.span_label(span, msg);
         self.buffer_error(err);
