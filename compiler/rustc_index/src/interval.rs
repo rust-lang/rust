@@ -12,12 +12,29 @@ use smallvec::SmallVec;
 mod tests;
 
 /// Stores a set of intervals on the indices.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct IntervalSet<I> {
     // Start, end
     map: SmallVec<[(I, I); 4]>,
     domain: usize,
     _data: PhantomData<I>,
+}
+
+impl<I: Ord + Idx + Step> std::fmt::Debug for IntervalSet<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        struct AsList<'a, I>(&'a IntervalSet<I>);
+
+        impl<'a, I: Idx + Ord + Step> std::fmt::Debug for AsList<'a, I> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.debug_list().entries(self.0.iter_intervals()).finish()
+            }
+        }
+
+        let mut s = f.debug_struct("IntervalSet");
+        s.field("domain_size", &self.domain);
+        s.field("set", &AsList(&self));
+        Ok(())
+    }
 }
 
 #[inline]

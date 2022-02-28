@@ -568,10 +568,16 @@ impl<Tag: Copy, Extra> Allocation<Tag, Extra> {
 
 /// A bitmask where each bit refers to the byte with the same index. If the bit is `true`, the byte
 /// is initialized. If it is `false` the byte is uninitialized.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
+#[derive(Clone, Eq, PartialEq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct InitMask {
     set: IntervalSet<usize>,
+}
+
+impl std::fmt::Debug for InitMask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("InitMask").field(&self.set).finish()
+    }
 }
 
 impl Ord for InitMask {
