@@ -217,15 +217,17 @@ pub enum AssertKind {
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
     kind: AssertKind,
-    left: &T,
-    right: &U,
+    left_val: &T,
+    right_val: &U,
+    left_name: &'static str,
+    right_name: &'static str,
     args: Option<fmt::Arguments<'_>>,
 ) -> !
 where
     T: fmt::Debug + ?Sized,
     U: fmt::Debug + ?Sized,
 {
-    assert_failed_inner(kind, &left, &right, args)
+    assert_failed_inner(kind, &left_val, &right_val, &left_name, &right_name, args)
 }
 
 /// Internal function for `assert_match!`
@@ -245,7 +247,14 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
             f.write_str(self.0)
         }
     }
-    assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);
+    assert_failed_inner(
+        AssertKind::Match,
+        &left,
+        &Pattern(right),
+        stringify!(&left),
+        stringify!(&right),
+        args,
+    );
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
@@ -254,8 +263,10 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,
-    upper_bounds: &dyn fmt::Debug,
-    target: &dyn fmt::Debug,
+    left_val: &dyn fmt::Debug,
+    right_val: &dyn fmt::Debug,
+    left_name: &'static str,
+    right_name: &'static str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
     let op = match kind {
@@ -266,17 +277,16 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
-            r#"assertion failed: `(upper_bounds {} target)`
-   Error: `{:?}`,
-   upper_bounds: `{:?}`,
-   target: `{:?}`"#,
-            op, args, upper_bounds, target,
+            r#"assertion failed: `({left_name} {} {right_name})`
+  {left_name}: `{:?}`,
+ {right_name}: `{:?}`: {}"#,
+            op, left_val, right_val, args
         ),
         None => panic!(
-            r#"assertion failed: `(upper_bounds {} target)`
-   upper_bounds: `{:?}`,
-   target: `{:?}`"#,
-            op, upper_bounds, target,
+            r#"assertion failed: `({left_name} {} {right_name})`
+  {left_name}: `{:?}`,
+ {right_name}: `{:?}`"#,
+            op, left_val, right_val,
         ),
     }
 }
