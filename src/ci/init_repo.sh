@@ -43,6 +43,11 @@ function fetch_github_commit_archive {
         curl -f -sSL -o $cached $2"
     mkdir $module
     touch "$module/.git"
+    # On Windows, the default behavior is to emulate symlinks by copying
+    # files. However, that ends up being order-dependent while extracting,
+    # which can cause a failure if the symlink comes first. This env var
+    # causes tar to use real symlinks instead, which are allowed to dangle.
+    export MSYS=winsymlinks:nativestrict
     tar -C $module --strip-components=1 -xf $cached
     rm $cached
 }
