@@ -18,6 +18,7 @@ use core::ptr::{self, NonNull};
 use core::slice;
 
 use crate::alloc::{Allocator, Global};
+use crate::box_storage::BoxStorage;
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
@@ -3051,7 +3052,8 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
 
         unsafe {
             let (other_buf, len, capacity, alloc) = other.into_raw_parts_with_alloc();
-            let buf = Box::from_raw_slice_parts_in(other_buf.cast(), capacity, alloc);
+            let buf =
+                crate::box_storage::from_raw_slice_parts_in(other_buf.cast(), capacity, alloc);
             VecDeque { tail: 0, head: len, buf }
         }
     }

@@ -71,6 +71,7 @@ use core::slice::{self, SliceIndex};
 
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
+use crate::box_storage::BoxStorage;
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 
@@ -686,7 +687,10 @@ impl<T, A: Allocator> Vec<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
         unsafe {
-            Vec { buf: Box::from_raw_slice_parts_in(ptr.cast(), capacity, alloc), len: length }
+            Vec {
+                buf: crate::box_storage::from_raw_slice_parts_in(ptr.cast(), capacity, alloc),
+                len: length,
+            }
         }
     }
 

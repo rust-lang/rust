@@ -209,6 +209,7 @@ mod boxed {
     pub use std::boxed::Box;
 }
 pub mod borrow;
+mod box_storage;
 pub mod collections;
 #[cfg(not(no_global_oom_handling))]
 pub mod ffi;

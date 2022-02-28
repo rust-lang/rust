@@ -1,7 +1,6 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
-use crate::boxed::Box;
 use core::fmt;
 use core::intrinsics::arith_offset;
 use core::iter::{
@@ -322,7 +321,11 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    let _ = Box::from_raw_slice_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
+                    let _ = crate::box_storage::from_raw_slice_parts_in(
+                        self.0.buf.as_ptr(),
+                        self.0.cap,
+                        alloc,
+                    );
                 }
             }
         }

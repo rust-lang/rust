@@ -1,4 +1,5 @@
 use crate::alloc::{Allocator, Global};
+use crate::box_storage::BoxStorage;
 use core::ptr::{self};
 use core::slice::{self};
 
