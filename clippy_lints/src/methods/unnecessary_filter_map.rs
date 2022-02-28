@@ -1,4 +1,6 @@
+use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
 use rustc_hir as hir;
@@ -20,6 +22,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg =
             mutated_variables(&body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
+        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, &body.value);
 
         let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, &body.value);
 
@@ -28,10 +31,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         found_mapping |= return_visitor.found_mapping;
         found_filtering |= return_visitor.found_filtering;
 
+        let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
             "map"
-        } else if !found_mapping && !mutates_arg {
-            let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
+        } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
             match cx.typeck_results().expr_ty(&body.value).kind() {
                 ty::Adt(adt, subst) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) => {
                     "filter"
