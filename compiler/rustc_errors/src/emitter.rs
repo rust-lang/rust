@@ -408,8 +408,8 @@ pub trait Emitter {
                             "this derive macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Bang, _) => "this macro invocation".into(),
-                        ExpnKind::Inlined => "the inlined copy of this code".into(),
-                        ExpnKind::Root => "in the crate root".into(),
+                        ExpnKind::Inlined => "this inlined function call".into(),
+                        ExpnKind::Root => "the crate root".into(),
                         ExpnKind::AstPass(kind) => kind.descr().into(),
                         ExpnKind::Desugaring(kind) => {
                             format!("this {} desugaring", kind.descr()).into()
