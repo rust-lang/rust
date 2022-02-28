@@ -205,6 +205,10 @@ impl TcpListener {
         unsupported()
     }
 
+    pub fn bind_with_backlog(_: io::Result<&SocketAddr>, _: usize) -> io::Result<TcpListener> {
+        unsupported()
+    }
+
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         unsupported()
     }

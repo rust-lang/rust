@@ -276,6 +276,10 @@ pub mod net {
             unimpl!();
         }
 
+        pub fn bind_with_backlog(_: io::Result<&SocketAddr>, _: usize) -> io::Result<TcpListener> {
+            unimpl!();
+        }
+
         pub fn socket(&self) -> &Socket {
             &self.inner
         }
