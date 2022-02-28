@@ -479,6 +479,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             load: &'ll Value,
             scalar: abi::Scalar,
         ) {
+            if !scalar.is_always_valid(bx) {
+                bx.noundef_metadata(load);
+            }
+
             match scalar.value {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
@@ -1212,6 +1216,16 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
+        }
+    }
+
+    fn noundef_metadata(&mut self, load: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(
+                load,
+                llvm::MD_noundef as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
+            );
         }
     }
 
