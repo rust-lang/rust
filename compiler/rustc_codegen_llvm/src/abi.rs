@@ -14,7 +14,6 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
-use rustc_session::config;
 use rustc_target::abi::call::ArgAbi;
 pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int};
@@ -71,25 +70,22 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
         ArgExtension::Sext => attrs.push(llvm::AttributeKind::SExt.create_attr(cx.llcx)),
     }
 
-    // Only apply remaining attributes when optimizing
-    if cx.sess().opts.optimize != config::OptLevel::No {
-        let deref = this.pointee_size.bytes();
-        if deref != 0 {
-            if regular.contains(ArgAttribute::NonNull) {
-                attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
-            } else {
-                attrs.push(llvm::CreateDereferenceableOrNullAttr(cx.llcx, deref));
-            }
-            regular -= ArgAttribute::NonNull;
+    let deref = this.pointee_size.bytes();
+    if deref != 0 {
+        if regular.contains(ArgAttribute::NonNull) {
+            attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
+        } else {
+            attrs.push(llvm::CreateDereferenceableOrNullAttr(cx.llcx, deref));
         }
-        for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
-            if regular.contains(attr) {
-                attrs.push(llattr.create_attr(cx.llcx));
-            }
+        regular -= ArgAttribute::NonNull;
+    }
+    for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
+        if regular.contains(attr) {
+            attrs.push(llattr.create_attr(cx.llcx));
         }
-        if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-            attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
-        }
+    }
+    if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
+        attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
     }
 
     attrs
