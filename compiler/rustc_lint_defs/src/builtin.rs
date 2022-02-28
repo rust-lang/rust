@@ -3774,8 +3774,21 @@ declare_lint! {
 }
 
 declare_lint! {
-    #[doc(hidden)]
-    /// Added for testing unsable lints; perma-unstable.
+    /// The `test_unstable_lint` lint tests unstable lints and is perma-unstable.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// #![allow(test_unstable_lint)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In order to test the behavior of unstable traits, a permanently-unstable
+    /// lint is required. This lint can be used to trigger warnings and errors
+    /// from the compiler related to unstable lints.
     pub TEST_UNSTABLE_LINT,
     Deny,
     "this unstable lint is only for testing",
