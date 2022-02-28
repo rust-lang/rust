@@ -81,3 +81,23 @@ pub struct FloatLongFloat {
 pub extern "C" fn structfloatlongfloat() -> FloatLongFloat {
     FloatLongFloat { f: 0.1, i: 123, g: 3.14 }
 }
+
+#[repr(C)]
+pub struct FloatFloat {
+    f: f32,
+    g: f32,
+}
+
+#[repr(C)]
+pub struct NestedStructs {
+    a: FloatFloat,
+    b: FloatFloat,
+}
+
+// CHECK: define inreg { float, float, float, float } @structnestestructs()
+// CHECK-NEXT: start:
+// CHECK-NEXT: ret { float, float, float, float } { float 0x3FB99999A0000000, float 0x3FF19999A0000000, float 0x40019999A0000000, float 0x400A666660000000 }
+#[no_mangle]
+pub extern "C" fn structnestestructs() -> NestedStructs {
+    NestedStructs { a: FloatFloat { f: 0.1, g: 1.1 }, b: FloatFloat { f: 2.2, g: 3.3 } }
+}
