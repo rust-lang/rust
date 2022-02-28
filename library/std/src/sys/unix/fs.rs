@@ -1683,8 +1683,21 @@ mod remove_dir_impl {
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
         let pcstr = cstr(p)?;
 
-        // entry is expected to be a directory, open as such
-        let fd = openat_nofollow_dironly(parent_fd, &pcstr)?;
+        // try opening as directory
+        let fd = match openat_nofollow_dironly(parent_fd, &pcstr) {
+            Err(err) if err.raw_os_error() == Some(libc::ENOTDIR) => {
+                // not a directory - don't traverse further
+                return match parent_fd {
+                    // unlink...
+                    Some(parent_fd) => {
+                        cvt(unsafe { unlinkat(parent_fd, pcstr.as_ptr(), 0) }).map(drop)
+                    }
+                    // ...unless this was supposed to be the deletion root directory
+                    None => Err(err),
+                };
+            }
+            result => result?,
+        };
 
         // open the directory passing ownership of the fd
         let (dir, fd) = fdreaddir(fd)?;
@@ -1697,19 +1710,13 @@ mod remove_dir_impl {
                 Some(false) => {
                     cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) })?;
                 }
-                None => match cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) }) {
-                    // type unknown - try to unlink
-                    Err(err)
-                        if err.raw_os_error() == Some(libc::EISDIR)
-                            || err.raw_os_error() == Some(libc::EPERM) =>
-                    {
-                        // if the file is a directory unlink fails with EISDIR on Linux and EPERM everyhwere else
-                        remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
-                    }
-                    result => {
-                        result?;
-                    }
-                },
+                None => {
+                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
+                    // if the process has the appropriate privileges. This however can causing orphaned
+                    // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
+                    // into it first instead of trying to unlink() it.
+                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
+                }
             }
         }
 
