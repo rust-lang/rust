@@ -3775,6 +3775,7 @@ declare_lint! {
 
 declare_lint! {
     #[doc(hidden)]
+    /// Added for testing unsable lints; perma-unstable.
     pub TEST_UNSTABLE_LINT,
     Deny,
     "this unstable lint is only for testing",
