@@ -49,11 +49,7 @@ pub trait Delegate<'tcx> {
 
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
-    fn mutate(
-        &mut self,
-        assignee_place: &PlaceWithHirId<'tcx>,
-        diag_expr_id: hir::HirId
-    );
+    fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
     /// The `place` should be a fake read because of specified `cause`.
     fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
