@@ -107,11 +107,19 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        debug!("mutate {:?}; diag_expr_id={:?}", assignee_place, diag_expr_id);
-        // Count mutations as a borrow.
-        self.places
-            .borrowed
-            .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));
+        debug!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
+        // Count mutations as a borrow when done through a projection.
+        //
+        // The goal here is to catch cases such as `x.y = 42`, since MIR will count this
+        // as a borrow of `x`, and we need to match that behavior.
+        //
+        // FIXME(eholk): this is probably still more conservative than we need to be. For example,
+        // we may need to count `*x = 42` as a borrow of `x`, since it overwrites all of `x`.
+        if !assignee_place.place.projections.is_empty() {
+            self.places
+                .borrowed
+                .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));
+        }
     }
 
     fn fake_read(
