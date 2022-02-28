@@ -228,10 +228,18 @@ fn assert_failed_inner(
 
     match args {
         Some(args) => panic!(
+<<<<<<< HEAD
             r#"assertion failed: `({left_name} {} {right_name})`
   {left_name}: `{:?}`,
  {right_name}: `{:?}`: {}"#,
             op, left_val, right_val, args
+=======
+            r#"assertion failed: `(upper_bounds {} target)`
+   Error: `{:?}`,
+   upper_bounds: `{:?}`,
+   target: `{:?}`"#,
+            op, args, upper_bounds, target,
+>>>>>>> 108f87e4604224132eedd8e3a6ec5d90f313764a
         ),
         None => panic!(
             r#"assertion failed: `({left_name} {} {right_name})`
