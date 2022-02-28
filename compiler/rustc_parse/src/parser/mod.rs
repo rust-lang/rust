@@ -15,7 +15,7 @@ pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
 pub(crate) use item::FnParseMode;
-pub use pat::{RecoverColon, RecoverComma};
+pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
@@ -97,15 +97,15 @@ macro_rules! maybe_whole {
 #[macro_export]
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
-        if $allow_qpath_recovery && $self.look_ahead(1, |t| t == &token::ModSep) {
-            if let token::Interpolated(nt) = &$self.token.kind {
-                if let token::NtTy(ty) = &**nt {
+        if $allow_qpath_recovery
+                    && $self.look_ahead(1, |t| t == &token::ModSep)
+                    && let token::Interpolated(nt) = &$self.token.kind
+                    && let token::NtTy(ty) = &**nt
+                {
                     let ty = ty.clone();
                     $self.bump();
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
-            }
-        }
     };
 }
 

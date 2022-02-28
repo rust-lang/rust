@@ -895,7 +895,7 @@ impl<T> BTreeSet<T> {
         self.drain_filter(|v| !f(v));
     }
 
-    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///

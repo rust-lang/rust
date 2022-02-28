@@ -102,14 +102,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<Item>> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtItem(item) = &**nt {
-                let mut item = item.clone();
-                self.bump();
+        if let token::Interpolated(nt) = &self.token.kind && let token::NtItem(item) = &**nt {
+            let mut item = item.clone();
+            self.bump();
 
-                attrs.prepend_to_nt_inner(&mut item.attrs);
-                return Ok(Some(item.into_inner()));
-            }
+            attrs.prepend_to_nt_inner(&mut item.attrs);
+            return Ok(Some(item.into_inner()));
         };
 
         let mut unclosed_delims = vec![];

@@ -840,7 +840,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(lhs.span, "cannot assign to this expression");
 
-        let mut parent = self.tcx.hir().get_parent_node(lhs.hir_id);
+        self.comes_from_while_condition(lhs.hir_id, |expr| {
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_lo(),
+                "you might have meant to use pattern destructuring",
+                "let ".to_string(),
+                Applicability::MachineApplicable,
+            );
+        });
+
+        err.emit();
+    }
+
+    // Check if an expression `original_expr_id` comes from the condition of a while loop,
+    // as opposed from the body of a while loop, which we can naively check by iterating
+    // parents until we find a loop...
+    pub(super) fn comes_from_while_condition(
+        &self,
+        original_expr_id: HirId,
+        then: impl FnOnce(&hir::Expr<'_>),
+    ) {
+        let mut parent = self.tcx.hir().get_parent_node(original_expr_id);
         while let Some(node) = self.tcx.hir().find(parent) {
             match node {
                 hir::Node::Expr(hir::Expr {
@@ -861,8 +881,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     ..
                 }) => {
-                    // Check if our lhs is a child of the condition of a while loop
-                    let expr_is_ancestor = std::iter::successors(Some(lhs.hir_id), |id| {
+                    // Check if our original expression is a child of the condition of a while loop
+                    let expr_is_ancestor = std::iter::successors(Some(original_expr_id), |id| {
                         self.tcx.hir().find_parent_node(*id)
                     })
                     .take_while(|id| *id != parent)
@@ -870,12 +890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // if it is, then we have a situation like `while Some(0) = value.get(0) {`,
                     // where `while let` was more likely intended.
                     if expr_is_ancestor {
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            "you might have meant to use pattern destructuring",
-                            "let ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
+                        then(expr);
                     }
                     break;
                 }
@@ -888,8 +903,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-
-        err.emit();
     }
 
     // A generic function for checking the 'then' and 'else' clauses in an 'if'

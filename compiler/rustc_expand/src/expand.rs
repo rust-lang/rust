@@ -20,7 +20,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{
-    AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
+    AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
 };
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
@@ -911,6 +911,7 @@ pub fn parse_ast_fragment<'a>(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
+            CommaRecoveryMode::LikelyTuple,
         )?),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms

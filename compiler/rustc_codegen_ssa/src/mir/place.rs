@@ -453,7 +453,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         for elem in place_ref.projection[base..].iter() {
             cg_base = match elem.clone() {
-                mir::ProjectionElem::Deref => bx.load_operand(cg_base).deref(bx.cx()),
+                mir::ProjectionElem::Deref => {
+                    // custom allocators can change box's abi, making it unable to be derefed directly
+                    if cg_base.layout.ty.is_box()
+                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. } | Abi::Uninhabited)
+                    {
+                        let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
+
+                        bx.load_operand(ptr).deref(bx.cx())
+                    } else {
+                        bx.load_operand(cg_base).deref(bx.cx())
+                    }
+                }
                 mir::ProjectionElem::Field(ref field, _) => {
                     cg_base.project_field(bx, field.index())
                 }

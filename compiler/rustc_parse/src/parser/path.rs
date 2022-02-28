@@ -658,13 +658,13 @@ impl<'a> Parser<'a> {
         &self,
         gen_arg: GenericArg,
     ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
-        if let GenericArg::Type(ty) = &gen_arg {
-            if let ast::TyKind::Path(qself, path) = &ty.kind {
-                if qself.is_none() && path.segments.len() == 1 {
-                    let seg = &path.segments[0];
-                    return Ok((seg.ident, seg.args.as_deref().cloned()));
-                }
-            }
+        if let GenericArg::Type(ty) = &gen_arg
+            && let ast::TyKind::Path(qself, path) = &ty.kind
+            && qself.is_none()
+            && path.segments.len() == 1
+        {
+            let seg = &path.segments[0];
+            return Ok((seg.ident, seg.args.as_deref().cloned()));
         }
         Err(gen_arg)
     }

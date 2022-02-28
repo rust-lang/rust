@@ -986,7 +986,7 @@ impl<K, V> BTreeMap<K, V> {
         self.drain_filter(|k, v| !f(k, v));
     }
 
-    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///

@@ -1,8 +1,8 @@
 use super::pat::Expected;
 use super::ty::{AllowPlus, IsAsCast};
 use super::{
-    BlockMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions, SemiColonMode, SeqSep,
-    TokenExpectType, TokenType,
+    BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
+    SemiColonMode, SeqSep, TokenExpectType, TokenType,
 };
 
 use rustc_ast as ast;
@@ -732,43 +732,42 @@ impl<'a> Parser<'a> {
         mut e: DiagnosticBuilder<'a, ErrorReported>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
-        if let ExprKind::Binary(binop, _, _) = &expr.kind {
-            if let ast::BinOpKind::Lt = binop.node {
-                if self.eat(&token::Comma) {
-                    let x = self.parse_seq_to_before_end(
-                        &token::Gt,
-                        SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_generic_arg(None),
-                    );
-                    match x {
-                        Ok((_, _, false)) => {
-                            if self.eat(&token::Gt) {
-                                e.span_suggestion_verbose(
-                                    binop.span.shrink_to_lo(),
-                                    TURBOFISH_SUGGESTION_STR,
-                                    "::".to_string(),
-                                    Applicability::MaybeIncorrect,
-                                )
-                                .emit();
-                                match self.parse_expr() {
-                                    Ok(_) => {
-                                        *expr =
-                                            self.mk_expr_err(expr.span.to(self.prev_token.span));
-                                        return Ok(());
-                                    }
-                                    Err(err) => {
-                                        *expr = self.mk_expr_err(expr.span);
-                                        err.cancel();
-                                    }
-                                }
+        if let ExprKind::Binary(binop, _, _) = &expr.kind
+            && let ast::BinOpKind::Lt = binop.node
+            && self.eat(&token::Comma)
+        {
+            let x = self.parse_seq_to_before_end(
+                &token::Gt,
+                SeqSep::trailing_allowed(token::Comma),
+                |p| p.parse_generic_arg(None),
+            );
+            match x {
+                Ok((_, _, false)) => {
+                    if self.eat(&token::Gt) {
+                        e.span_suggestion_verbose(
+                            binop.span.shrink_to_lo(),
+                            TURBOFISH_SUGGESTION_STR,
+                            "::".to_string(),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .emit();
+                        match self.parse_expr() {
+                            Ok(_) => {
+                                *expr =
+                                    self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                return Ok(());
+                            }
+                            Err(err) => {
+                                *expr = self.mk_expr_err(expr.span);
+                                err.cancel();
                             }
                         }
-                        Err(err) => {
-                            err.cancel();
-                        }
-                        _ => {}
                     }
                 }
+                Err(err) => {
+                    err.cancel();
+                }
+                _ => {}
             }
         }
         Err(e)
@@ -784,12 +783,13 @@ impl<'a> Parser<'a> {
         outer_op: &Spanned<AssocOp>,
     ) -> bool /* advanced the cursor */ {
         if let ExprKind::Binary(op, ref l1, ref r1) = inner_op.kind {
-            if let ExprKind::Field(_, ident) = l1.kind {
-                if ident.as_str().parse::<i32>().is_err() && !matches!(r1.kind, ExprKind::Lit(_)) {
-                    // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
-                    // suggestion being the only one to apply is high.
-                    return false;
-                }
+            if let ExprKind::Field(_, ident) = l1.kind
+                && ident.as_str().parse::<i32>().is_err()
+                && !matches!(r1.kind, ExprKind::Lit(_))
+            {
+                // The parser has encountered `foo.bar<baz`, the likelihood of the turbofish
+                // suggestion being the only one to apply is high.
+                return false;
             }
             let mut enclose = |left: Span, right: Span| {
                 err.multipart_suggestion(
@@ -2245,12 +2245,32 @@ impl<'a> Parser<'a> {
         first_pat
     }
 
+    crate fn maybe_recover_unexpected_block_label(&mut self) -> bool {
+        let Some(label) = self.eat_label().filter(|_| {
+            self.eat(&token::Colon) && self.token.kind == token::OpenDelim(token::Brace)
+        }) else {
+            return false;
+        };
+        let span = label.ident.span.to(self.prev_token.span);
+        let mut err = self.struct_span_err(span, "block label not supported here");
+        err.span_label(span, "not supported here");
+        err.tool_only_span_suggestion(
+            label.ident.span.until(self.token.span),
+            "remove this block label",
+            String::new(),
+            Applicability::MachineApplicable,
+        );
+        err.emit();
+        true
+    }
+
     /// Some special error handling for the "top-level" patterns in a match arm,
     /// `for` loop, `let`, &c. (in contrast to subpatterns within such).
     crate fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
         rc: RecoverComma,
+        rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
         if rc == RecoverComma::No || self.token != token::Comma {
             return Ok(());
@@ -2270,20 +2290,25 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            const MSG: &str = "try adding parentheses to match on a tuple...";
-
-            err.span_suggestion(
-                seq_span,
-                MSG,
-                format!("({})", seq_snippet),
+            err.multipart_suggestion(
+                &format!(
+                    "try adding parentheses to match on a tuple{}",
+                    if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
+                ),
+                vec![
+                    (seq_span.shrink_to_lo(), "(".to_string()),
+                    (seq_span.shrink_to_hi(), ")".to_string()),
+                ],
                 Applicability::MachineApplicable,
             );
-            err.span_suggestion(
-                seq_span,
-                "...or a vertical bar to match on multiple alternatives",
-                seq_snippet.replace(',', " |"),
-                Applicability::MachineApplicable,
-            );
+            if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+                err.span_suggestion(
+                    seq_span,
+                    "...or a vertical bar to match on multiple alternatives",
+                    seq_snippet.replace(',', " |"),
+                    Applicability::MachineApplicable,
+                );
+            }
         }
         Err(err)
     }
