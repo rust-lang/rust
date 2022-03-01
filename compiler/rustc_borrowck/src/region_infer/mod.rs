@@ -1992,7 +1992,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .find_map(|constraint| {
                 if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
                     // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
-                    // for perforamnce reasons. The error reporting code used by NLL only
+                    // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
                     Some(ObligationCauseCode::BindingObligation(
                         CRATE_DEF_ID.to_def_id(),
