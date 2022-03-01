@@ -257,12 +257,6 @@ pub fn get_version() -> (u32, u32, u32) {
     }
 }
 
-/// Returns `true` if this LLVM is Rust's bundled LLVM (and not system LLVM).
-pub fn is_rust_llvm() -> bool {
-    // Can be called without initializing LLVM
-    unsafe { llvm::LLVMRustIsRustLLVM() }
-}
-
 pub fn print_passes() {
     // Can be called without initializing LLVM
     unsafe {

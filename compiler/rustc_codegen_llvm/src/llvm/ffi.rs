@@ -1933,8 +1933,6 @@ extern "C" {
     pub fn LLVMRustVersionMinor() -> u32;
     pub fn LLVMRustVersionPatch() -> u32;
 
-    pub fn LLVMRustIsRustLLVM() -> bool;
-
     /// Add LLVM module flags.
     ///
     /// In order for Rust-C LTO to work, module flags must be compatible with Clang. What
