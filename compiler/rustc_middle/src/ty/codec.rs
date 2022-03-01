@@ -10,7 +10,7 @@ use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::{
     self,
-    interpret::{AllocId, Allocation},
+    interpret::{AllocId, ConstAllocation},
 };
 use crate::thir;
 use crate::traits;
@@ -147,6 +147,12 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         self.0.0.encode(e)
+    }
+}
+
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ConstAllocation<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.inner().encode(e)
     }
 }
 
@@ -355,8 +361,8 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for Allocation {
-    fn decode(decoder: &mut D) -> &'tcx Self {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ConstAllocation<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
         decoder.tcx().intern_const_alloc(Decodable::decode(decoder))
     }
 }
@@ -399,7 +405,6 @@ impl_decodable_via_ref! {
     &'tcx ty::List<Ty<'tcx>>,
     &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
     &'tcx traits::ImplSource<'tcx, ()>,
-    &'tcx Allocation,
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,

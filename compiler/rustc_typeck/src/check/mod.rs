@@ -553,7 +553,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id()) {
-        if alloc.relocations().len() != 0 {
+        if alloc.inner().relocations().len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \
                            simple list of bytes on the wasm target with no \
                            extra levels of indirection such as references";

@@ -126,7 +126,8 @@ pub use self::error::{
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar, ScalarMaybeUninit};
 
 pub use self::allocation::{
-    alloc_range, AllocRange, Allocation, InitChunk, InitChunkIter, InitMask, Relocations,
+    alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
+    Relocations,
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
@@ -343,7 +344,7 @@ impl<'s> AllocDecodingSession<'s> {
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
                 AllocDiscriminant::Alloc => {
-                    let alloc = <&'tcx Allocation as Decodable<_>>::decode(decoder);
+                    let alloc = <ConstAllocation<'tcx> as Decodable<_>>::decode(decoder);
                     // We already have a reserved `AllocId`.
                     let alloc_id = alloc_id.unwrap();
                     trace!("decoded alloc {:?}: {:#?}", alloc_id, alloc);
@@ -387,14 +388,14 @@ pub enum GlobalAlloc<'tcx> {
     /// This is also used to break the cycle in recursive statics.
     Static(DefId),
     /// The alloc ID points to memory.
-    Memory(&'tcx Allocation),
+    Memory(ConstAllocation<'tcx>),
 }
 
 impl<'tcx> GlobalAlloc<'tcx> {
     /// Panics if the `GlobalAlloc` does not refer to an `GlobalAlloc::Memory`
     #[track_caller]
     #[inline]
-    pub fn unwrap_memory(&self) -> &'tcx Allocation {
+    pub fn unwrap_memory(&self) -> ConstAllocation<'tcx> {
         match *self {
             GlobalAlloc::Memory(mem) => mem,
             _ => bug!("expected memory, got {:?}", self),
@@ -512,7 +513,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Statics with identical content will still point to the same `Allocation`, i.e.,
     /// their data will be deduplicated through `Allocation` interning -- but they
     /// are different places in memory and as such need different IDs.
-    pub fn create_memory_alloc(self, mem: &'tcx Allocation) -> AllocId {
+    pub fn create_memory_alloc(self, mem: ConstAllocation<'tcx>) -> AllocId {
         let id = self.reserve_alloc_id();
         self.set_alloc_id_memory(id, mem);
         id
@@ -543,7 +544,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
-    pub fn set_alloc_id_memory(self, id: AllocId, mem: &'tcx Allocation) {
+    pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         if let Some(old) = self.alloc_map.lock().alloc_map.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {}, but it was already existing as {:#?}", id, old);
         }
@@ -551,7 +552,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. May be called
     /// twice for the same `(AllocId, Allocation)` pair.
-    fn set_alloc_id_same_memory(self, id: AllocId, mem: &'tcx Allocation) {
+    fn set_alloc_id_same_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
         self.alloc_map.lock().alloc_map.insert_same(id, GlobalAlloc::Memory(mem));
     }
 }

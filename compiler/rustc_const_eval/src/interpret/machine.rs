@@ -13,8 +13,9 @@ use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, AllocRange, Allocation, Frame, ImmTy, InterpCx, InterpResult, LocalValue, MemPlace,
-    Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar, StackPopUnwind,
+    AllocId, AllocRange, Allocation, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
+    LocalValue, MemPlace, Memory, MemoryKind, OpTy, Operand, PlaceTy, Pointer, Provenance, Scalar,
+    StackPopUnwind,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -252,7 +253,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn before_access_global(
         _memory_extra: &Self::MemoryExtra,
         _alloc_id: AllocId,
-        _allocation: &Allocation,
+        _allocation: ConstAllocation<'tcx>,
         _static_def_id: Option<DefId>,
         _is_write: bool,
     ) -> InterpResult<'tcx> {

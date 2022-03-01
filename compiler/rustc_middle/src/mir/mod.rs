@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
-use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
+use crate::mir::interpret::{ConstAllocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};

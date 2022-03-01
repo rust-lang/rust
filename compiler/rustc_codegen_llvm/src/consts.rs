@@ -12,7 +12,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
+    read_target_uint, Allocation, ConstAllocation, ErrorHandled, GlobalAlloc, InitChunk, Pointer,
     Scalar as InterpScalar,
 };
 use rustc_middle::mir::mono::MonoItem;
@@ -25,7 +25,8 @@ use rustc_target::abi::{
 use std::ops::Range;
 use tracing::debug;
 
-pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
+pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
+    let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
@@ -127,7 +128,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> 
 pub fn codegen_static_initializer<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     def_id: DefId,
-) -> Result<(&'ll Value, &'tcx Allocation), ErrorHandled> {
+) -> Result<(&'ll Value, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_llvm(cx, alloc), alloc))
 }
@@ -370,6 +371,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 // Error has already been reported
                 return;
             };
+            let alloc = alloc.inner();
 
             let g = self.get_static(def_id);
 

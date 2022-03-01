@@ -62,13 +62,17 @@ impl<'a, T> PartialEq for Interned<'a, T> {
 
 impl<'a, T> Eq for Interned<'a, T> {}
 
-// In practice you can't intern any `T` that doesn't implement `Eq`, because
-// that's needed for hashing. Therefore, we won't be interning any `T` that
-// implements `PartialOrd` without also implementing `Ord`. So we can have the
-// bound `T: Ord` here and avoid duplication with the `Ord` impl below.
-impl<'a, T: Ord> PartialOrd for Interned<'a, T> {
+impl<'a, T: PartialOrd> PartialOrd for Interned<'a, T> {
     fn partial_cmp(&self, other: &Interned<'a, T>) -> Option<Ordering> {
-        Some(self.cmp(other))
+        // Pointer equality implies equality, due to the uniqueness constraint,
+        // but the contents must be compared otherwise.
+        if ptr::eq(self.0, other.0) {
+            Some(Ordering::Equal)
+        } else {
+            let res = self.0.partial_cmp(&other.0);
+            debug_assert_ne!(res, Some(Ordering::Equal));
+            res
+        }
     }
 }
 

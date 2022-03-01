@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
+    read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
 use rustc_middle::ty::ConstKind;
 use rustc_span::DUMMY_SP;
@@ -202,7 +202,7 @@ pub(crate) fn codegen_const_value<'tcx>(
                             &mut fx.constants_cx,
                             fx.module,
                             alloc_id,
-                            alloc.mutability,
+                            alloc.inner().mutability,
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -257,11 +257,15 @@ pub(crate) fn codegen_const_value<'tcx>(
 
 pub(crate) fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    alloc: &'tcx Allocation,
+    alloc: ConstAllocation<'tcx>,
 ) -> crate::pointer::Pointer {
     let alloc_id = fx.tcx.create_memory_alloc(alloc);
-    let data_id =
-        data_id_for_alloc_id(&mut fx.constants_cx, &mut *fx.module, alloc_id, alloc.mutability);
+    let data_id = data_id_for_alloc_id(
+        &mut fx.constants_cx,
+        &mut *fx.module,
+        alloc_id,
+        alloc.inner().mutability,
+    );
 
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
     if fx.clif_comments.enabled() {
@@ -361,7 +365,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
                     module
                         .declare_anonymous_data(
-                            alloc.mutability == rustc_hir::Mutability::Mut,
+                            alloc.inner().mutability == rustc_hir::Mutability::Mut,
                             false,
                         )
                         .unwrap()
@@ -386,6 +390,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         }
 
         let mut data_ctx = DataContext::new();
+        let alloc = alloc.inner();
         data_ctx.set_align(alloc.align.bytes());
 
         if let Some(section_name) = section_name {
@@ -429,7 +434,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     continue;
                 }
                 GlobalAlloc::Memory(target_alloc) => {
-                    data_id_for_alloc_id(cx, module, alloc_id, target_alloc.mutability)
+                    data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)

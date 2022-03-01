@@ -367,7 +367,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                             "the raw bytes of the constant ({}",
                             display_allocation(
                                 *ecx.tcx,
-                                ecx.tcx.global_alloc(alloc_id).unwrap_memory()
+                                ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner()
                             )
                         ));
                     },

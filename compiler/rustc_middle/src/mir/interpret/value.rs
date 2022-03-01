@@ -11,7 +11,7 @@ use rustc_target::abi::{HasDataLayout, Size};
 use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
-    AllocId, AllocRange, Allocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
@@ -34,13 +34,13 @@ pub enum ConstValue<'tcx> {
     Scalar(Scalar),
 
     /// Used only for `&[u8]` and `&str`
-    Slice { data: &'tcx Allocation, start: usize, end: usize },
+    Slice { data: ConstAllocation<'tcx>, start: usize, end: usize },
 
     /// A value not represented/representable by `Scalar` or `Slice`
     ByRef {
         /// The backing memory of the value, may contain more memory than needed for just the value
-        /// in order to share `Allocation`s between values
-        alloc: &'tcx Allocation,
+        /// in order to share `ConstAllocation`s between values
+        alloc: ConstAllocation<'tcx>,
         /// Offset into `alloc`
         offset: Size,
     },
@@ -603,11 +603,12 @@ impl<'tcx, Tag: Provenance> ScalarMaybeUninit<Tag> {
 pub fn get_slice_bytes<'tcx>(cx: &impl HasDataLayout, val: ConstValue<'tcx>) -> &'tcx [u8] {
     if let ConstValue::Slice { data, start, end } = val {
         let len = end - start;
-        data.get_bytes(
-            cx,
-            AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
-        )
-        .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
+        data.inner()
+            .get_bytes(
+                cx,
+                AllocRange { start: Size::from_bytes(start), size: Size::from_bytes(len) },
+            )
+            .unwrap_or_else(|err| bug!("const slice is invalid: {:?}", err))
     } else {
         bug!("expected const slice, but found another const value");
     }
