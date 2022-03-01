@@ -386,6 +386,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 this.write_scalar(Scalar::from_bool(res), dest)?;
             }
+            "simd_select" => {
+                let &[ref mask, ref yes, ref no] = check_arg_count(args)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (yes, yes_len) = this.operand_to_simd(yes)?;
+                let (no, no_len) = this.operand_to_simd(no)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, mask_len);
+                assert_eq!(dest_len, yes_len);
+                assert_eq!(dest_len, no_len);
+
+                for i in 0..dest_len {
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
+                    let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let mask = simd_element_to_bool(mask)?;
+                    let val = if mask { yes } else { no };
+                    this.write_immediate(*val, &dest.into())?;
+                }
+            }
 
             // Atomic operations
             "atomic_load" => this.atomic_load(args, dest, AtomicReadOp::SeqCst)?,
