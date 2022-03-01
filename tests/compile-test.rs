@@ -34,6 +34,7 @@ static TEST_DEPENDENCIES: &[&str] = &[
     "syn",
     "tokio",
     "parking_lot",
+    "rustc_semver",
 ];
 
 // Test dependencies may need an `extern crate` here to ensure that they show up
@@ -52,6 +53,8 @@ extern crate itertools;
 extern crate parking_lot;
 #[allow(unused_extern_crates)]
 extern crate quote;
+#[allow(unused_extern_crates)]
+extern crate rustc_semver;
 #[allow(unused_extern_crates)]
 extern crate syn;
 #[allow(unused_extern_crates)]
