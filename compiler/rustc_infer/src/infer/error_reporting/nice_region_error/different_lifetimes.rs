@@ -167,7 +167,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 if let Some(anon_reg) = self.tcx().is_suitable_region(sub) {
                     let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
 
-                    let generics = match self.tcx().hir().get(hir_id) {
+                    let node = self.tcx().hir().get(hir_id);
+                    let is_impl = matches!(&node, hir::Node::ImplItem(_));
+                    let generics = match node {
                         hir::Node::Item(&hir::Item {
                             kind: hir::ItemKind::Fn(_, ref generics, ..),
                             ..
@@ -209,8 +211,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         suggestions.push(new_param_suggestion);
                     }
 
+                    let mut sugg = String::from("consider introducing a named lifetime parameter");
+                    if is_impl {
+                        sugg.push_str(" and update trait if needed");
+                    }
                     err.multipart_suggestion(
-                        "consider introducing a named lifetime parameter",
+                        sugg.as_str(),
                         suggestions,
                         Applicability::MaybeIncorrect,
                     );
