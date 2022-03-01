@@ -680,15 +680,13 @@ impl<'tcx> Constructor<'tcx> {
     ///
     /// This means that the variant has a stdlib unstable feature marking it.
     pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self {
-            if let ty::Adt(adt, _) = pcx.ty.kind() {
-                let variant_def_id = adt.variants[*idx].def_id;
-                // Filter variants that depend on a disabled unstable feature.
-                return matches!(
-                    pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
-                    EvalResult::Deny { .. }
-                );
-            }
+        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
+            let variant_def_id = adt.variants[*idx].def_id;
+            // Filter variants that depend on a disabled unstable feature.
+            return matches!(
+                pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
+                EvalResult::Deny { .. }
+            );
         }
         false
     }
@@ -696,11 +694,9 @@ impl<'tcx> Constructor<'tcx> {
     /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
     /// attribute.
     pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
-        if let Constructor::Variant(idx) = self {
-            if let ty::Adt(adt, _) = pcx.ty.kind() {
-                let variant_def_id = adt.variants[*idx].def_id;
-                return pcx.cx.tcx.is_doc_hidden(variant_def_id);
-            }
+        if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
+            let variant_def_id = adt.variants[*idx].def_id;
+            return pcx.cx.tcx.is_doc_hidden(variant_def_id);
         }
         false
     }
