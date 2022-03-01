@@ -42,7 +42,7 @@
 //!   useful and (worse) less predictable. The user should have a clear
 //!   intuition when each particular assist is available.
 //! * Make small assists, which compose. Example: rather than auto-importing
-//!   enums in `fill_match_arms`, we use fully-qualified names. There's a
+//!   enums in `add_missing_match_arms`, we use fully-qualified names. There's a
 //!   separate assist to shorten a fully-qualified name.
 //! * Distinguish between assists and fixits for diagnostics. Internally, fixits
 //!   and assists are equivalent. They have the same "show a list + invoke a
