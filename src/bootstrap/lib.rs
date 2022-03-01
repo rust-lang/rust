@@ -339,6 +339,11 @@ impl Mode {
     }
 }
 
+pub enum CLang {
+    C,
+    Cxx,
+}
+
 impl Build {
     /// Creates a new set of build configuration from the `flags` on the command
     /// line and the filesystem `config`.
@@ -941,10 +946,15 @@ impl Build {
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo) -> Vec<String> {
+    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+        let base = match c {
+            CLang::C => &self.cc[&target],
+            CLang::Cxx => &self.cxx[&target],
+        };
+
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[&target]
+        let mut base = base
             .args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
