@@ -332,12 +332,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         let def_id = local_def_id.to_def_id();
 
         // Don't run unused pass for #[derive()]
-        if let Some(parent) = self.tcx.parent(def_id) {
-            if let DefKind::Impl = self.tcx.def_kind(parent.expect_local()) {
-                if self.tcx.has_attr(parent, sym::automatically_derived) {
-                    return;
-                }
-            }
+        if let Some(parent) = self.tcx.parent(def_id)
+            && let DefKind::Impl = self.tcx.def_kind(parent.expect_local())
+            && self.tcx.has_attr(parent, sym::automatically_derived)
+        {
+            return;
         }
 
         // Don't run unused pass for #[naked]
