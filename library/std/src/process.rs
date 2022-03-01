@@ -2030,6 +2030,11 @@ pub fn id() -> u32 {
 ///
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
+///
+/// Note that this trait is supposed to be used in standard library runtime,
+/// where returned value from main function is considered meaningful.
+/// On the other hand, implementing Termination in no-std environment, where
+/// there is no notion of `exit status`, has no effect or may possibly cause bugs.
 #[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 #[rustc_on_unimplemented(
