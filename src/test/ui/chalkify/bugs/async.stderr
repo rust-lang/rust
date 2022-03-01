@@ -28,6 +28,15 @@ note: required by a bound in `from_generator`
 LL |     T: Generator<ResumeTy, Yield = ()>,
    |                            ^^^^^^^^^^ required by this bound in `from_generator`
 
-error: aborting due to 2 previous errors
+error[E0280]: the requirement `<impl Future<Output = [async output]> as Future>::Output == u32` is not satisfied
+  --> $DIR/async.rs:7:29
+   |
+LL |   async fn foo(x: u32) -> u32 {
+   |  _____________________________^
+LL | |     x
+LL | | }
+   | |_^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
