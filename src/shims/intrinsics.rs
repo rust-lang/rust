@@ -8,7 +8,7 @@ use rustc_middle::{mir, mir::BinOp, ty, ty::FloatTy};
 use rustc_target::abi::{Align, Integer};
 
 use crate::*;
-use helpers::check_arg_count;
+use helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool};
 
 pub enum AtomicOp {
     MirOp(mir::BinOp, bool),
@@ -365,8 +365,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         // Special handling for boolean-returning operations
                         assert_eq!(ty, this.tcx.types.bool);
                         let val = val.to_bool().unwrap();
-                        let val = if val { -1 } else { 0 }; // SIMD uses all-1 as pattern for "true"
-                        let val = Scalar::from_int(val, dest.layout.size);
+                        let val = bool_to_simd_element(val, dest.layout.size);
                         this.write_scalar(val, &dest.into())?;
                     } else {
                         assert_eq!(ty, dest.layout.ty);
@@ -381,20 +380,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let mut res = false; // the neutral element
                 for i in 0..arg_len {
                     let op = this.read_immediate(&this.mplace_index(&arg, i)?.into())?;
-                    // We convert it to a *signed* integer and expect either 0 or -1 (the latter means all bits were set).
-                    let val = op.to_scalar()?.to_int(op.layout.size)?;
-                    let val = match val {
-                        0 => false,
-                        -1 => true,
-                        _ =>
-                            throw_ub_format!(
-                                "each element of a simd_reduce_any operand must be all-0-bits or all-1-bits"
-                            ),
-                    };
+                    let val = simd_element_to_bool(op)?;
                     res = res | val;
                 }
 
                 this.write_scalar(Scalar::from_bool(res), dest)?;
+            }
+            "simd_select" => {
+                let &[ref mask, ref yes, ref no] = check_arg_count(args)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (yes, yes_len) = this.operand_to_simd(yes)?;
+                let (no, no_len) = this.operand_to_simd(no)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, mask_len);
+                assert_eq!(dest_len, yes_len);
+                assert_eq!(dest_len, no_len);
+
+                for i in 0..dest_len {
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
+                    let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let mask = simd_element_to_bool(mask)?;
+                    let val = if mask { yes } else { no };
+                    this.write_immediate(*val, &dest.into())?;
+                }
             }
 
             // Atomic operations
