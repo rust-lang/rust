@@ -11,8 +11,9 @@ use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
+use super::UNNECESSARY_FIND_MAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>, name: &str) {
     if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
@@ -32,23 +33,30 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         found_filtering |= return_visitor.found_filtering;
 
         let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
-        let sugg = if !found_filtering {
-            "map"
-        } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
-            match cx.typeck_results().expr_ty(&body.value).kind() {
-                ty::Adt(adt, subst) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) => {
-                    "filter"
-                },
-                _ => return,
-            }
-        } else {
-            return;
-        };
+        let sugg =
+            if !found_filtering {
+                if name == "filter_map" { "map" } else { "map(..).next()" }
+            } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
+                match cx.typeck_results().expr_ty(&body.value).kind() {
+                    ty::Adt(adt, subst)
+                        if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) =>
+                    {
+                        if name == "filter_map" { "filter" } else { "find" }
+                    },
+                    _ => return,
+                }
+            } else {
+                return;
+            };
         span_lint(
             cx,
-            UNNECESSARY_FILTER_MAP,
+            if name == "filter_map" {
+                UNNECESSARY_FILTER_MAP
+            } else {
+                UNNECESSARY_FIND_MAP
+            },
             expr.span,
-            &format!("this `.filter_map` can be written more simply using `.{}`", sugg),
+            &format!("this `.{}` can be written more simply using `.{}`", name, sugg),
         );
     }
 }
