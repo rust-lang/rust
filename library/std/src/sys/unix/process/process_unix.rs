@@ -3,11 +3,11 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
+use core::ffi::NonZero_c_int;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
