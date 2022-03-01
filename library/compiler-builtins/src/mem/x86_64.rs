@@ -16,6 +16,8 @@
 // feature is present at compile-time. We don't bother detecting other features.
 // Note that ERMSB does not enhance the backwards (DF=1) "rep movsb".
 
+use core::mem;
+
 #[inline(always)]
 #[cfg(target_feature = "ermsb")]
 pub unsafe fn copy_forward(dest: *mut u8, src: *const u8, count: usize) {
@@ -97,4 +99,43 @@ pub unsafe fn set_bytes(dest: *mut u8, c: u8, count: usize) {
         in("rax") (c as u64) * 0x0101010101010101,
         options(att_syntax, nostack, preserves_flags)
     );
+}
+
+#[inline(always)]
+pub unsafe fn compare_bytes(
+    a: *const u8,
+    b: *const u8,
+    n: usize,
+) -> i32 {
+    unsafe fn cmp<T, U, F>(mut a: *const T, mut b: *const T, n: usize, f: F) -> i32
+    where
+        T: Clone + Copy + Eq,
+        U: Clone + Copy + Eq,
+        F: FnOnce(*const U, *const U, usize) -> i32,
+    {
+        for _ in 0..n / mem::size_of::<T>() {
+            if a.read_unaligned() != b.read_unaligned() {
+                return f(a.cast(), b.cast(), mem::size_of::<T>());
+            }
+            a = a.add(1);
+            b = b.add(1);
+        }
+        f(a.cast(), b.cast(), n % mem::size_of::<T>())
+    }
+    let c1 = |mut a: *const u8, mut b: *const u8, n| {
+        for _ in 0..n {
+            if a.read() != b.read() {
+                return i32::from(a.read()) - i32::from(b.read());
+            }
+            a = a.add(1);
+            b = b.add(1);
+        }
+        0
+    };
+    let c2 = |a: *const u16, b, n| cmp(a, b, n, c1);
+    let c4 = |a: *const u32, b, n| cmp(a, b, n, c2);
+    let c8 = |a: *const u64, b, n| cmp(a, b, n, c4);
+    let c16 = |a: *const u128, b, n| cmp(a, b, n, c8);
+    let c32 = |a: *const [u128; 2], b, n| cmp(a, b, n, c16);
+    c32(a.cast(), b.cast(), n)
 }

@@ -116,11 +116,13 @@ fn memset_nonzero() {
 
 #[test]
 fn memcmp_eq() {
-    let arr1: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-    let arr2: [u8; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-    unsafe {
-        assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8), 0);
-        assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 3), 0);
+    let arr1: [u8; 32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+    let arr2: [u8; 32] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31];
+    for i in 0..32 {
+        unsafe {
+            assert_eq!(memcmp(arr1.as_ptr(), arr2.as_ptr(), i), 0);
+            assert_eq!(memcmp(arr2.as_ptr(), arr1.as_ptr(), i), 0);
+        }
     }
 }
 
@@ -131,6 +133,32 @@ fn memcmp_ne() {
     unsafe {
         assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 8) < 0);
         assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 8) > 0);
+    }
+}
+
+#[test]
+fn memcmp_ne_16() {
+    let arr1: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    let arr2: [u8; 16] = [0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+    unsafe {
+        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 16) < 0);
+        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 16) > 0);
+    }
+}
+
+#[test]
+fn memcmp_ne_32() {
+    let arr1: [u8; 32] = [
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,
+    ];
+    let arr2: [u8; 32] = [
+        0, 1, 2, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0,
+    ];
+    unsafe {
+        assert!(memcmp(arr1.as_ptr(), arr2.as_ptr(), 32) < 0);
+        assert!(memcmp(arr2.as_ptr(), arr1.as_ptr(), 32) > 0);
     }
 }
 
