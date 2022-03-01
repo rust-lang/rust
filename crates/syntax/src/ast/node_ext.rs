@@ -764,6 +764,15 @@ impl ast::Meta {
     }
 }
 
+impl ast::GenericArgList {
+    pub fn lifetime_args(&self) -> impl Iterator<Item = ast::LifetimeArg> {
+        self.generic_args().filter_map(|arg| match arg {
+            ast::GenericArg::LifetimeArg(it) => Some(it),
+            _ => None,
+        })
+    }
+}
+
 impl ast::GenericParamList {
     pub fn lifetime_params(&self) -> impl Iterator<Item = ast::LifetimeParam> {
         self.generic_params().filter_map(|param| match param {

@@ -150,6 +150,7 @@ mod handlers {
     mod add_return_type;
     mod inline_call;
     mod inline_local_variable;
+    mod inline_type_alias;
     mod introduce_named_lifetime;
     mod invert_if;
     mod merge_imports;
@@ -231,6 +232,7 @@ mod handlers {
             inline_call::inline_call,
             inline_call::inline_into_callers,
             inline_local_variable::inline_local_variable,
+            inline_type_alias::inline_type_alias,
             introduce_named_generic::introduce_named_generic,
             introduce_named_lifetime::introduce_named_lifetime,
             invert_if::invert_if,
