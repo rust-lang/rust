@@ -989,7 +989,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
         //
-        // We cannot rely on the .o paths in the exectuable because they may have been
+        // We cannot rely on the .o paths in the executable because they may have been
         // remapped by --remap-path-prefix and therefore invalid, so we need to provide
         // the .o/.dwo paths explicitly.
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
