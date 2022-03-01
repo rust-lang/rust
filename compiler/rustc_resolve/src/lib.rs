@@ -260,6 +260,8 @@ enum ResolutionError<'a> {
         trait_item_span: Span,
         code: rustc_errors::DiagnosticId,
     },
+    /// Inline asm `sym` operand must refer to a `fn` or `static`.
+    InvalidAsmSym,
 }
 
 enum VisResolutionError<'a> {

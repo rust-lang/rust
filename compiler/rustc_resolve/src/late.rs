@@ -140,6 +140,10 @@ crate enum RibKind<'a> {
     /// We are inside of the type of a const parameter. Can't refer to any
     /// parameters.
     ConstParamTyRibKind,
+
+    /// We are inside a `sym` inline assembly operand. Can only refer to
+    /// globals.
+    InlineAsmSymRibKind,
 }
 
 impl RibKind<'_> {
@@ -153,7 +157,8 @@ impl RibKind<'_> {
             | ConstantItemRibKind(..)
             | ModuleRibKind(_)
             | MacroDefinition(_)
-            | ConstParamTyRibKind => false,
+            | ConstParamTyRibKind
+            | InlineAsmSymRibKind => false,
             AssocItemRibKind | ItemRibKind(_) | ForwardGenericParamBanRibKind => true,
         }
     }
@@ -722,6 +727,23 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         visit::walk_where_predicate(self, p);
         self.diagnostic_metadata.current_where_predicate = previous_value;
     }
+
+    fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
+        // This is similar to the code for AnonConst.
+        self.with_rib(ValueNS, InlineAsmSymRibKind, |this| {
+            this.with_rib(TypeNS, InlineAsmSymRibKind, |this| {
+                this.with_label_rib(InlineAsmSymRibKind, |this| {
+                    this.smart_resolve_path(
+                        sym.id,
+                        sym.qself.as_ref(),
+                        &sym.path,
+                        PathSource::Expr(None),
+                    );
+                    visit::walk_inline_asm_sym(this, sym);
+                });
+            })
+        });
+    }
 }
 
 impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
@@ -909,7 +931,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 | ConstantItemRibKind(..)
                 | ModuleRibKind(..)
                 | ForwardGenericParamBanRibKind
-                | ConstParamTyRibKind => {
+                | ConstParamTyRibKind
+                | InlineAsmSymRibKind => {
                     return false;
                 }
             }

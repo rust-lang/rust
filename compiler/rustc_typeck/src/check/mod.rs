@@ -427,16 +427,29 @@ fn typeck_with_fallback<'tcx>(
                             span,
                         }),
                         Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), .. })
-                        | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. })
-                            if asm.operands.iter().any(|(op, _op_sp)| match op {
-                                hir::InlineAsmOperand::Const { anon_const } => {
-                                    anon_const.hir_id == id
-                                }
-                                _ => false,
-                            }) =>
-                        {
-                            // Inline assembly constants must be integers.
-                            fcx.next_int_var()
+                        | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), .. }) => {
+                            let operand_ty = asm
+                                .operands
+                                .iter()
+                                .filter_map(|(op, _op_sp)| match op {
+                                    hir::InlineAsmOperand::Const { anon_const }
+                                        if anon_const.hir_id == id =>
+                                    {
+                                        // Inline assembly constants must be integers.
+                                        Some(fcx.next_int_var())
+                                    }
+                                    hir::InlineAsmOperand::SymFn { anon_const }
+                                        if anon_const.hir_id == id =>
+                                    {
+                                        Some(fcx.next_ty_var(TypeVariableOrigin {
+                                            kind: TypeVariableOriginKind::MiscVariable,
+                                            span,
+                                        }))
+                                    }
+                                    _ => None,
+                                })
+                                .next();
+                            operand_ty.unwrap_or_else(fallback)
                         }
                         _ => fallback(),
                     },

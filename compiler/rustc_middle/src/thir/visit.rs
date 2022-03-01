@@ -138,8 +138,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 match op {
                     In { expr, reg: _ }
                     | Out { expr: Some(expr), reg: _, late: _ }
-                    | InOut { expr, reg: _, late: _ }
-                    | SymFn { expr } => visitor.visit_expr(&visitor.thir()[*expr]),
+                    | InOut { expr, reg: _, late: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
                     SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
                         visitor.visit_expr(&visitor.thir()[*in_expr]);
                         if let Some(out_expr) = out_expr {
@@ -148,6 +147,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                     }
                     Out { expr: None, reg: _, late: _ }
                     | Const { value: _, span: _ }
+                    | SymFn { value: _, span: _ }
                     | SymStatic { def_id: _ } => {}
                 }
             }
