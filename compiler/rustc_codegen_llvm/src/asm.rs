@@ -312,11 +312,11 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl AsmMethods for CodegenCx<'_, '_> {
+impl<'tcx> AsmMethods<'tcx> for CodegenCx<'_, 'tcx> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],
-        operands: &[GlobalAsmOperandRef],
+        operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
     ) {
@@ -341,6 +341,29 @@ impl AsmMethods for CodegenCx<'_, '_> {
                             // template. Note that we don't need to escape $
                             // here unlike normal inline assembly.
                             template_str.push_str(string);
+                        }
+                        GlobalAsmOperandRef::SymFn { instance } => {
+                            let llval = self.get_fn(instance);
+                            self.add_compiler_used_global(llval);
+                            let symbol = llvm::build_string(|s| unsafe {
+                                llvm::LLVMRustGetMangledName(llval, s);
+                            })
+                            .expect("symbol is not valid UTF-8");
+                            template_str.push_str(&symbol);
+                        }
+                        GlobalAsmOperandRef::SymStatic { def_id } => {
+                            let llval = self
+                                .renamed_statics
+                                .borrow()
+                                .get(&def_id)
+                                .copied()
+                                .unwrap_or_else(|| self.get_static(def_id));
+                            self.add_compiler_used_global(llval);
+                            let symbol = llvm::build_string(|s| unsafe {
+                                llvm::LLVMRustGetMangledName(llval, s);
+                            })
+                            .expect("symbol is not valid UTF-8");
+                            template_str.push_str(&symbol);
                         }
                     }
                 }
