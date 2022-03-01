@@ -697,11 +697,21 @@ pub use macros::Debug;
 
 /// Format trait for an empty format, `{}`.
 ///
-/// `Display` is similar to [`Debug`], but `Display` is for user-facing
-/// output, and so cannot be derived.
+/// `Display` is similar to [`Debug`], but `Display` is for user-facing output,
+/// and so cannot be derived. When `Display` is implemented, the [`ToString`]
+/// trait is implemented automatically, adding the `to_string` method to all
+/// `Display` types.
+///
+/// A `Display` implementation should be lossless and infallible, otherwise it
+/// does not fit the API. For example, converting a path to a [`String`] is
+/// potentially lossy or fallible, so [`Path`] doesn’t implement `Display`
+/// directly (but offers a .display() method).
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
+/// [`Path`]: ../../std/path/struct.Path.html
+/// [`ToString`]: ../../std/string/trait.ToString.html
+/// [`String`]: ../../std/string/struct.String.html
 /// [module]: ../../std/fmt/index.html
 ///
 /// # Examples
