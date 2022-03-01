@@ -340,6 +340,32 @@ impl AtomicBool {
         unsafe { &mut *(v as *mut bool as *mut Self) }
     }
 
+    /// Get atomic access to a `&mut [bool]` slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, scoped_threads)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let mut some_bools = [false; 10];
+    /// let a = &*AtomicBool::from_mut_slice(&mut some_bools);
+    /// std::thread::scope(|s| {
+    ///     for i in 0..a.len() {
+    ///         s.spawn(move |_| a[i].store(true, Ordering::Relaxed));
+    ///     }
+    /// });
+    /// assert_eq!(some_bools, [true; 10]);
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic_equal_alignment = "8")]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn from_mut_slice(v: &mut [bool]) -> &mut [Self] {
+        // SAFETY: the mutable reference guarantees unique ownership, and
+        // alignment of both `bool` and `Self` is 1.
+        unsafe { &mut *(v as *mut [bool] as *mut [Self]) }
+    }
+
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other threads are
@@ -945,6 +971,42 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
+    /// Get atomic access to a slice of pointers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, scoped_threads)]
+    /// use std::ptr::null_mut;
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let mut some_ptrs = [null_mut::<String>(); 10];
+    /// let a = &*AtomicPtr::from_mut_slice(&mut some_ptrs);
+    /// std::thread::scope(|s| {
+    ///     for i in 0..a.len() {
+    ///         s.spawn(move |_| {
+    ///             let name = Box::new(format!("thread{i}"));
+    ///             a[i].store(Box::into_raw(name), Ordering::Relaxed);
+    ///         });
+    ///     }
+    /// });
+    /// for p in some_ptrs {
+    ///     assert!(!p.is_null());
+    ///     let name = unsafe { Box::from_raw(p) };
+    ///     println!("Hello, {name}!");
+    /// }
+    /// ```
+    #[inline]
+    #[cfg(target_has_atomic_equal_alignment = "ptr")]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn from_mut_slice(v: &mut [*mut T]) -> &mut [Self] {
+        // SAFETY:
+        //  - the mutable reference guarantees unique ownership.
+        //  - the alignment of `*mut T` and `Self` is the same on all platforms
+        //    supported by rust, as verified above.
+        unsafe { &mut *(v as *mut [*mut T] as *mut [Self]) }
+    }
+
     /// Consumes the atomic and returns the contained value.
     ///
     /// This is safe because passing `self` by value guarantees that no other threads are
@@ -1457,6 +1519,38 @@ macro_rules! atomic_int {
                 //  - the alignment of `$int_type` and `Self` is the
                 //    same, as promised by $cfg_align and verified above.
                 unsafe { &mut *(v as *mut $int_type as *mut Self) }
+            }
+
+            #[doc = concat!("Get atomic access to a `&mut [", stringify!($int_type), "]` slice.")]
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_from_mut, scoped_threads)]
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            /// let mut some_ints = [0; 10];
+            #[doc = concat!("let a = &*", stringify!($atomic_type), "::from_mut_slice(&mut some_ints);")]
+            /// std::thread::scope(|s| {
+            ///     for i in 0..a.len() {
+            ///         s.spawn(move |_| a[i].store(i as _, Ordering::Relaxed));
+            ///     }
+            /// });
+            /// for (i, n) in some_ints.into_iter().enumerate() {
+            ///     assert_eq!(i, n as usize);
+            /// }
+            /// ```
+            #[inline]
+            #[$cfg_align]
+            #[unstable(feature = "atomic_from_mut", issue = "76314")]
+            pub fn from_mut_slice(v: &mut [$int_type]) -> &mut [Self] {
+                use crate::mem::align_of;
+                let [] = [(); align_of::<Self>() - align_of::<$int_type>()];
+                // SAFETY:
+                //  - the mutable reference guarantees unique ownership.
+                //  - the alignment of `$int_type` and `Self` is the
+                //    same, as promised by $cfg_align and verified above.
+                unsafe { &mut *(v as *mut [$int_type] as *mut [Self]) }
             }
 
             /// Consumes the atomic and returns the contained value.
