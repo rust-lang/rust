@@ -364,6 +364,7 @@ mark_noop! {
     Level,
     LineColumn,
     Spacing,
+    JoinError,
     Bound<usize>,
 }
 
