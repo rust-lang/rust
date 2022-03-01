@@ -357,14 +357,12 @@ impl DebugCounters {
         if let Some(counters) = &self.some_counters {
             if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
                 if let CoverageKind::Expression { .. } = counter_kind {
-                    if let Some(block_label) = some_block_label {
-                        if debug_options().counter_format.block {
-                            return format!(
-                                "{}:({})",
-                                block_label,
-                                self.format_counter_kind(counter_kind)
-                            );
-                        }
+                    if let Some(label) = some_block_label && debug_options().counter_format.block {
+                        return format!(
+                            "{}:({})",
+                            label,
+                            self.format_counter_kind(counter_kind)
+                        );
                     }
                     return format!("({})", self.format_counter_kind(counter_kind));
                 }

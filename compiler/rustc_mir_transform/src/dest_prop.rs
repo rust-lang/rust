@@ -549,14 +549,15 @@ impl<'a> Conflicts<'a> {
                 target: _,
                 unwind: _,
             } => {
-                if let Some(place) = value.place() {
-                    if !place.is_indirect() && !dropped_place.is_indirect() {
-                        self.record_local_conflict(
-                            place.local,
-                            dropped_place.local,
-                            "DropAndReplace operand overlap",
-                        );
-                    }
+                if let Some(place) = value.place()
+                    && !place.is_indirect()
+                    && !dropped_place.is_indirect()
+                {
+                    self.record_local_conflict(
+                        place.local,
+                        dropped_place.local,
+                        "DropAndReplace operand overlap",
+                    );
                 }
             }
             TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
@@ -614,14 +615,15 @@ impl<'a> Conflicts<'a> {
                             for op in operands {
                                 match op {
                                     InlineAsmOperand::In { reg: _, value } => {
-                                        if let Some(p) = value.place() {
-                                            if !p.is_indirect() && !dest_place.is_indirect() {
-                                                self.record_local_conflict(
-                                                    p.local,
-                                                    dest_place.local,
-                                                    "asm! operand overlap",
-                                                );
-                                            }
+                                        if let Some(p) = value.place()
+                                            && !p.is_indirect()
+                                            && !dest_place.is_indirect()
+                                        {
+                                            self.record_local_conflict(
+                                                p.local,
+                                                dest_place.local,
+                                                "asm! operand overlap",
+                                            );
                                         }
                                     }
                                     InlineAsmOperand::Out {
@@ -643,24 +645,26 @@ impl<'a> Conflicts<'a> {
                                         in_value,
                                         out_place,
                                     } => {
-                                        if let Some(place) = in_value.place() {
-                                            if !place.is_indirect() && !dest_place.is_indirect() {
-                                                self.record_local_conflict(
-                                                    place.local,
-                                                    dest_place.local,
-                                                    "asm! operand overlap",
-                                                );
-                                            }
+                                        if let Some(place) = in_value.place()
+                                            && !place.is_indirect()
+                                            && !dest_place.is_indirect()
+                                        {
+                                            self.record_local_conflict(
+                                                place.local,
+                                                dest_place.local,
+                                                "asm! operand overlap",
+                                            );
                                         }
 
-                                        if let Some(place) = out_place {
-                                            if !place.is_indirect() && !dest_place.is_indirect() {
-                                                self.record_local_conflict(
-                                                    place.local,
-                                                    dest_place.local,
-                                                    "asm! operand overlap",
-                                                );
-                                            }
+                                        if let Some(place) = out_place
+                                            && !place.is_indirect()
+                                            && !dest_place.is_indirect()
+                                        {
+                                            self.record_local_conflict(
+                                                place.local,
+                                                dest_place.local,
+                                                "asm! operand overlap",
+                                            );
                                         }
                                     }
                                     InlineAsmOperand::Out { reg: _, late: _, place: None }
