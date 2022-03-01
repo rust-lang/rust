@@ -2061,6 +2061,20 @@ impl InlineAsmTemplatePiece {
     }
 }
 
+/// Inline assembly symbol operands get their own AST node that is somewhat
+/// similar to `AnonConst`.
+///
+/// The main difference is that we specifically don't assign it `DefId` in
+/// `DefCollector`. Instead this is deferred until AST lowering where we
+/// lower it to an `AnonConst` (for functions) or a `Path` (for statics)
+/// depending on what the path resolves to.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct InlineAsmSym {
+    pub id: NodeId,
+    pub qself: Option<QSelf>,
+    pub path: Path,
+}
+
 /// Inline assembly operand.
 ///
 /// E.g., `out("eax") result` as in `asm!("mov eax, 2", out("eax") result)`.
@@ -2090,7 +2104,7 @@ pub enum InlineAsmOperand {
         anon_const: AnonConst,
     },
     Sym {
-        expr: P<Expr>,
+        sym: InlineAsmSym,
     },
 }
 

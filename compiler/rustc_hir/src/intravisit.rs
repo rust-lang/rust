@@ -484,6 +484,9 @@ pub trait Visitor<'v>: Sized {
     fn visit_defaultness(&mut self, defaultness: &'v Defaultness) {
         walk_defaultness(self, defaultness);
     }
+    fn visit_inline_asm(&mut self, asm: &'v InlineAsm<'v>, id: HirId) {
+        walk_inline_asm(self, asm, id);
+    }
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hir_id: HirId) {
@@ -588,7 +591,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         }
         ItemKind::GlobalAsm(asm) => {
             visitor.visit_id(item.hir_id());
-            walk_inline_asm(visitor, asm);
+            visitor.visit_inline_asm(asm, item.hir_id());
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
             visitor.visit_id(item.hir_id());
@@ -648,12 +651,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
     }
 }
 
-fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>) {
-    for (op, _op_sp) in asm.operands {
+pub fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>, id: HirId) {
+    for (op, op_sp) in asm.operands {
         match op {
-            InlineAsmOperand::In { expr, .. }
-            | InlineAsmOperand::InOut { expr, .. }
-            | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+            InlineAsmOperand::In { expr, .. } | InlineAsmOperand::InOut { expr, .. } => {
+                visitor.visit_expr(expr)
+            }
             InlineAsmOperand::Out { expr, .. } => {
                 if let Some(expr) = expr {
                     visitor.visit_expr(expr);
@@ -665,7 +668,9 @@ fn walk_inline_asm<'v, V: Visitor<'v>>(visitor: &mut V, asm: &'v InlineAsm<'v>) 
                     visitor.visit_expr(out_expr);
                 }
             }
-            InlineAsmOperand::Const { anon_const } => visitor.visit_anon_const(anon_const),
+            InlineAsmOperand::Const { anon_const, .. }
+            | InlineAsmOperand::SymFn { anon_const, .. } => visitor.visit_anon_const(anon_const),
+            InlineAsmOperand::SymStatic { path, .. } => visitor.visit_qpath(path, id, *op_sp),
         }
     }
 }
@@ -1221,7 +1226,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            walk_inline_asm(visitor, asm);
+            visitor.visit_inline_asm(asm, expression.hir_id);
         }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);

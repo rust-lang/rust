@@ -1266,10 +1266,14 @@ impl<'a> State<'a> {
                         s.space();
                         s.print_expr(&anon_const.value);
                     }
-                    InlineAsmOperand::Sym { expr } => {
+                    InlineAsmOperand::Sym { sym } => {
                         s.word("sym");
                         s.space();
-                        s.print_expr(expr);
+                        if let Some(qself) = &sym.qself {
+                            s.print_qpath(&sym.path, qself, true);
+                        } else {
+                            s.print_path(&sym.path, true, 0);
+                        }
                     }
                 }
             }

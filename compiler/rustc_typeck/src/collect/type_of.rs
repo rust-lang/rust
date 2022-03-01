@@ -450,7 +450,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
                 | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
                     if asm.operands.iter().any(|(op, _op_sp)| match op {
-                        hir::InlineAsmOperand::Const { anon_const } => anon_const.hir_id == hir_id,
+                        hir::InlineAsmOperand::Const { anon_const }
+                        | hir::InlineAsmOperand::SymFn { anon_const } => anon_const.hir_id == hir_id,
                         _ => false,
                     }) =>
                 {
