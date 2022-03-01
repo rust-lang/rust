@@ -133,7 +133,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expected_arg_count = formal_input_tys.len();
 
         // expected_count, arg_count, error_code, sugg_unit, sugg_tuple_wrap_args
-        let mut error: Option<(usize, usize, &str, bool, Option<FnArgsAsTuple<'_>>)> = None;
+        let mut arg_count_error: Option<(usize, usize, &str, bool, Option<FnArgsAsTuple<'_>>)> =
+            None;
 
         // If the arguments should be wrapped in a tuple (ex: closures), unwrap them here
         let (formal_input_tys, expected_input_tys) = if tuple_arguments == TupleArguments {
@@ -143,7 +144,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(arg_types) => {
                     // Argument length differs
                     if arg_types.len() != provided_args.len() {
-                        error = Some((arg_types.len(), provided_args.len(), "E0057", false, None));
+                        arg_count_error =
+                            Some((arg_types.len(), provided_args.len(), "E0057", false, None));
                     }
                     let expected_input_tys = match expected_input_tys.get(0) {
                         Some(&ty) => match ty.kind() {
@@ -174,7 +176,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 (formal_input_tys.to_vec(), expected_input_tys)
             } else {
-                error = Some((expected_arg_count, supplied_arg_count, "E0060", false, None));
+                arg_count_error =
+                    Some((expected_arg_count, supplied_arg_count, "E0060", false, None));
                 (self.err_args(supplied_arg_count), vec![])
             }
         } else {
@@ -198,7 +201,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let sugg_tuple_wrap_args = self.suggested_tuple_wrap(expected_input_tys, provided_args);
 
-            error = Some((
+            arg_count_error = Some((
                 expected_arg_count,
                 supplied_arg_count,
                 "E0061",
@@ -231,6 +234,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
         let demand_compatible = |idx, final_arg_types: &mut Vec<Option<(Ty<'tcx>, Ty<'tcx>)>>| {
+            // Do not check argument compatibility if the number of args do not match
+            if arg_count_error.is_some() {
+                return;
+            }
+
             let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
             let provided_arg = &provided_args[idx];
@@ -328,7 +336,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If there was an error in parameter count, emit that here
-        if let Some((expected_count, arg_count, err_code, sugg_unit, sugg_tuple_wrap_args)) = error
+        if let Some((expected_count, arg_count, err_code, sugg_unit, sugg_tuple_wrap_args)) =
+            arg_count_error
         {
             let (span, start_span, args, ctor_of) = match &call_expr.kind {
                 hir::ExprKind::Call(
