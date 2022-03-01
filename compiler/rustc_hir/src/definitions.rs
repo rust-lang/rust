@@ -50,7 +50,7 @@ impl DefPathTable {
             // Continuing with colliding DefPathHashes can lead to correctness
             // issues. We must abort compilation.
             //
-            // The likelyhood of such a collision is very small, so actually
+            // The likelihood of such a collision is very small, so actually
             // running into one could be indicative of a poor hash function
             // being used.
             //
