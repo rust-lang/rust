@@ -740,15 +740,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
 #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
 #[inline]
 pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
-    // We arrange for this to typically be called with small types,
-    // so this reads-and-writes approach is actually better than using
-    // copy_nonoverlapping as it easily puts things in LLVM registers
-    // directly and doesn't end up inlining allocas.
-    // And LLVM actually optimizes it to 3×memcpy if called with
-    // a type larger than it's willing to keep in a register.
-    // Having typed reads and writes in MIR here is also good as
-    // it lets MIRI and CTFE understand them better, including things
-    // like enforcing type validity for them.
+    // Make sure the same operations are done on the two sides.
     // Importantly, read+copy_nonoverlapping+write introduces confusing
     // asymmetry to the behaviour where one value went through read+write
     // whereas the other was copied over by the intrinsic (see #94371).
@@ -756,10 +748,11 @@ pub(crate) const fn swap_simple<T>(x: &mut T, y: &mut T) {
     // SAFETY: exclusive references are always valid to read/write,
     // including being aligned, and nothing here panics so it's drop-safe.
     unsafe {
-        let a = ptr::read(x);
-        let b = ptr::read(y);
-        ptr::write(x, b);
-        ptr::write(y, a);
+        let mut z = MaybeUninit::<T>::uninit();
+        let z = z.as_mut_ptr();
+        ptr::copy_nonoverlapping(x, z, 1);
+        ptr::copy_nonoverlapping(y, x, 1);
+        ptr::copy_nonoverlapping(z, y, 1);
     }
 }
 
