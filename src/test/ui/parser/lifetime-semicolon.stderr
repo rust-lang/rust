@@ -3,6 +3,11 @@ error: expected one of `,`, `:`, `=`, or `>`, found `;`
    |
 LL | fn foo<'a, 'b>(x: &mut Foo<'a; 'b>) {}
    |                              ^ expected one of `,`, `:`, `=`, or `>`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | fn foo<'a, 'b>(x: &mut Foo<'a>; 'b>) {}
+   |                              +
 
 error: aborting due to previous error
 
