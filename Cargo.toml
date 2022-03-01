@@ -51,7 +51,6 @@ futures = "0.3"
 parking_lot = "0.11.2"
 tokio = { version = "1", features = ["io-util"] }
 rustc-semver = "1.1"
-num_cpus = "1.13"
 
 [build-dependencies]
 rustc_tools_util = { version = "0.2", path = "rustc_tools_util" }
