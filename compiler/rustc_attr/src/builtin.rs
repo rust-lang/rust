@@ -1,8 +1,7 @@
 //! Parsing and validation of builtin attributes
 
 use rustc_ast as ast;
-use rustc_ast::node_id::CRATE_NODE_ID;
-use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem};
+use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{struct_span_err, Applicability};
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
@@ -436,7 +435,12 @@ pub fn find_crate_name(sess: &Session, attrs: &[Attribute]) -> Option<Symbol> {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
+pub fn cfg_matches(
+    cfg: &ast::MetaItem,
+    sess: &ParseSess,
+    lint_node_id: NodeId,
+    features: Option<&Features>,
+) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg, sess, features);
         let error = |span, msg| {
@@ -470,7 +474,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                         sess.buffer_lint_with_diagnostic(
                             UNEXPECTED_CFGS,
                             cfg.span,
-                            CRATE_NODE_ID,
+                            lint_node_id,
                             "unexpected `cfg` condition name",
                             BuiltinLintDiagnostics::UnexpectedCfg(ident.span, name, None),
                         );
@@ -482,7 +486,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
                             sess.buffer_lint_with_diagnostic(
                                 UNEXPECTED_CFGS,
                                 cfg.span,
-                                CRATE_NODE_ID,
+                                lint_node_id,
                                 "unexpected `cfg` condition value",
                                 BuiltinLintDiagnostics::UnexpectedCfg(
                                     cfg.name_value_literal_span().unwrap(),
