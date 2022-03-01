@@ -539,6 +539,7 @@ symbols! {
         custom_inner_attributes,
         custom_test_frameworks,
         d,
+        d32,
         dbg_macro,
         dead_code,
         dealloc,
