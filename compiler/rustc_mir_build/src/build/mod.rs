@@ -877,14 +877,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt {
-                if let Some(ident) = arg.pat.simple_ident() {
-                    self.var_debug_info.push(VarDebugInfo {
-                        name: ident.name,
-                        source_info,
-                        value: VarDebugInfoContents::Place(arg_local.into()),
-                    });
-                }
+            if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {
+                self.var_debug_info.push(VarDebugInfo {
+                    name: ident.name,
+                    source_info,
+                    value: VarDebugInfoContents::Place(arg_local.into()),
+                });
             }
         }
 
