@@ -211,7 +211,7 @@ rustup toolchain link stage2 build/<host-triple>/stage2
 The `<host-triple>` would typically be one of the following:
 
 - Linux: `x86_64-unknown-linux-gnu`
-- Mac: `x86_64-apple-darwin`
+- Mac: `x86_64-apple-darwin` or `aarch64-apple-darwin`
 - Windows: `x86_64-pc-windows-msvc`
 
 Now you can run the `rustc` you built with. If you run with `-vV`, you
