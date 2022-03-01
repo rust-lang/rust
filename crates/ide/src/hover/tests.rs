@@ -3490,6 +3490,27 @@ const FOO$0: usize = 1 << 100;
             This is a doc
         "#]],
     );
+    check(
+        r#"
+/// This is a doc
+const FOO$0: &str = "bar";
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: &str = "bar"
+            ```
+
+            ---
+
+            This is a doc
+        "#]],
+    );
 }
 
 #[test]
