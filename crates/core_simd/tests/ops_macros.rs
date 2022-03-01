@@ -210,15 +210,21 @@ macro_rules! impl_signed_tests {
                     )
                 }
 
+                fn div_min_may_overflow<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(-1);
+                    assert_eq!(a / b, a);
+                }
+
+                fn rem_min_may_overflow<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(-1);
+                    assert_eq!(a % b, Vector::<LANES>::splat(0));
+                }
+
             }
 
             test_helpers::test_lanes_panic! {
-                fn div_min_overflow_panics<const LANES: usize>() {
-                    let a = Vector::<LANES>::splat(Scalar::MIN);
-                    let b = Vector::<LANES>::splat(-1);
-                    let _ = a / b;
-                }
-
                 fn div_by_all_zeros_panics<const LANES: usize>() {
                     let a = Vector::<LANES>::splat(42);
                     let b = Vector::<LANES>::splat(0);
@@ -230,12 +236,6 @@ macro_rules! impl_signed_tests {
                     let mut b = Vector::<LANES>::splat(21);
                     b[0] = 0 as _;
                     let _ = a / b;
-                }
-
-                fn rem_min_overflow_panic<const LANES: usize>() {
-                    let a = Vector::<LANES>::splat(Scalar::MIN);
-                    let b = Vector::<LANES>::splat(-1);
-                    let _ = a % b;
                 }
 
                 fn rem_zero_panic<const LANES: usize>() {

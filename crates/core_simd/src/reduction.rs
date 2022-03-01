@@ -14,24 +14,28 @@ macro_rules! impl_integer_reductions {
             /// Horizontal wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
             #[inline]
             pub fn horizontal_sum(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_add_ordered(self, 0) }
             }
 
             /// Horizontal wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
             #[inline]
             pub fn horizontal_product(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_mul_ordered(self, 1) }
             }
 
             /// Horizontal maximum.  Returns the maximum lane in the vector.
             #[inline]
             pub fn horizontal_max(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_max(self) }
             }
 
             /// Horizontal minimum.  Returns the minimum lane in the vector.
             #[inline]
             pub fn horizontal_min(self) -> $scalar {
+                // Safety: `self` is an integer vector
                 unsafe { simd_reduce_min(self) }
             }
         }
@@ -63,6 +67,7 @@ macro_rules! impl_float_reductions {
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_array().iter().sum()
                 } else {
+                    // Safety: `self` is a float vector
                     unsafe { simd_reduce_add_ordered(self, 0.) }
                 }
             }
@@ -74,6 +79,7 @@ macro_rules! impl_float_reductions {
                 if cfg!(all(target_arch = "x86", not(target_feature = "sse2"))) {
                     self.as_array().iter().product()
                 } else {
+                    // Safety: `self` is a float vector
                     unsafe { simd_reduce_mul_ordered(self, 1.) }
                 }
             }
@@ -84,6 +90,7 @@ macro_rules! impl_float_reductions {
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
             pub fn horizontal_max(self) -> $scalar {
+                // Safety: `self` is a float vector
                 unsafe { simd_reduce_max(self) }
             }
 
@@ -93,6 +100,7 @@ macro_rules! impl_float_reductions {
             /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
             #[inline]
             pub fn horizontal_min(self) -> $scalar {
+                // Safety: `self` is a float vector
                 unsafe { simd_reduce_min(self) }
             }
         }
