@@ -169,6 +169,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         <<: *step
 
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+        <<: *step
+
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
         <<: *step
@@ -192,10 +196,6 @@ x--expand-yaml-anchors--remove:
       # appropriate line endings.
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        <<: *step
-
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
         <<: *step
 
       - name: ensure line endings are correct
