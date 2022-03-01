@@ -3,7 +3,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
+use rustc_data_structures::intern::{InTy, Interned};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -1266,18 +1266,29 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(
                 _,
                 Ty(Interned(
-                    ty::TyS {
-                        kind:
-                            ty::Array(
-                                Ty(Interned(ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. }, _)),
-                                ty::Const(Interned(
-                                    ty::ConstS {
-                                        val: ty::ConstKind::Value(ConstValue::Scalar(int)),
-                                        ..
-                                    },
-                                    _,
-                                )),
-                            ),
+                    InTy {
+                        internee:
+                            ty::TyS {
+                                kind:
+                                    ty::Array(
+                                        Ty(Interned(
+                                            InTy {
+                                                internee:
+                                                    ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
+                                                ..
+                                            },
+                                            _,
+                                        )),
+                                        ty::Const(Interned(
+                                            ty::ConstS {
+                                                val: ty::ConstKind::Value(ConstValue::Scalar(int)),
+                                                ..
+                                            },
+                                            _,
+                                        )),
+                                    ),
+                                ..
+                            },
                         ..
                     },
                     _,
@@ -1439,7 +1450,11 @@ pub trait PrettyPrinter<'tcx>:
             // Byte/string slices, printed as (byte) string literals.
             (
                 ConstValue::Slice { data, start, end },
-                ty::Ref(_, Ty(Interned(ty::TyS { kind: ty::Slice(t), .. }, _)), _),
+                ty::Ref(
+                    _,
+                    Ty(Interned(InTy { internee: ty::TyS { kind: ty::Slice(t), .. }, .. }, _)),
+                    _,
+                ),
             ) if *t == u8_type => {
                 // The `inspect` here is okay since we checked the bounds, and there are
                 // no relocations (we have an active slice reference here). We don't use
@@ -1450,7 +1465,11 @@ pub trait PrettyPrinter<'tcx>:
             }
             (
                 ConstValue::Slice { data, start, end },
-                ty::Ref(_, Ty(Interned(ty::TyS { kind: ty::Str, .. }, _)), _),
+                ty::Ref(
+                    _,
+                    Ty(Interned(InTy { internee: ty::TyS { kind: ty::Str, .. }, .. }, _)),
+                    _,
+                ),
             ) => {
                 // The `inspect` here is okay since we checked the bounds, and there are no
                 // relocations (we have an active `str` reference here). We don't use this

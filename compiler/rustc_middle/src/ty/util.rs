@@ -13,7 +13,7 @@ use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::intern::Interned;
+use rustc_data_structures::intern::{InTy, Interned};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -427,7 +427,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         !impl_generics.region_param(ebr, self).pure_wrt_drop
                     }
                     GenericArgKind::Type(Ty(Interned(
-                        ty::TyS { kind: ty::Param(ref pt), .. },
+                        InTy { internee: ty::TyS { kind: ty::Param(ref pt), .. }, .. },
                         _,
                     ))) => !impl_generics.type_param(pt, self).pure_wrt_drop,
                     GenericArgKind::Const(Const(Interned(

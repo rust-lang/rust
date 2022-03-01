@@ -4,6 +4,8 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::ptr;
 
+use crate::fingerprint::Fingerprint;
+
 mod private {
     #[derive(Clone, Copy, Debug)]
     pub struct PrivateZst;
@@ -105,6 +107,77 @@ where
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.0.hash_stable(hcx, hasher);
+    }
+}
+
+/// A helper trait so that `Interned` things can cache stable hashes reproducibly.
+pub trait InternedHashingContext {
+    fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self));
+}
+
+#[derive(Copy, Clone)]
+pub struct InTy<T> {
+    pub internee: T,
+    pub stable_hash: Fingerprint,
+}
+
+impl<T: PartialEq> PartialEq for InTy<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.internee.eq(&other.internee)
+    }
+}
+
+impl<T: Eq> Eq for InTy<T> {}
+
+impl<T: Ord> PartialOrd for InTy<T> {
+    fn partial_cmp(&self, other: &InTy<T>) -> Option<Ordering> {
+        Some(self.internee.cmp(&other.internee))
+    }
+}
+
+impl<T: Ord> Ord for InTy<T> {
+    fn cmp(&self, other: &InTy<T>) -> Ordering {
+        self.internee.cmp(&other.internee)
+    }
+}
+
+impl<T> Deref for InTy<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        &self.internee
+    }
+}
+
+impl<T: Hash> Hash for InTy<T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.internee.hash(s)
+    }
+}
+
+impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for InTy<T> {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        let stable_hash = self.stable_hash;
+
+        if stable_hash == Fingerprint::ZERO {
+            // No cached hash available. This can only mean that incremental is disabled.
+            // We don't cache stable hashes in non-incremental mode, because they are used
+            // so rarely that the performance actually suffers.
+
+            // We need to build the hash as if we cached it and then hash that hash, as
+            // otherwise the hashes will differ between cached and non-cached mode.
+            let stable_hash: Fingerprint = {
+                let mut hasher = StableHasher::new();
+                hcx.with_def_path_and_no_spans(|hcx| self.internee.hash_stable(hcx, &mut hasher));
+                hasher.finish()
+            };
+            stable_hash.hash_stable(hcx, hasher);
+        } else {
+            stable_hash.hash_stable(hcx, hasher);
+        }
     }
 }
 
