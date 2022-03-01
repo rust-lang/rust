@@ -19,7 +19,7 @@ use rustc_span::symbol::{self, kw, sym, Symbol};
 use rustc_span::{BytePos, FileName, MultiSpan, Pos, RealFileName, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
-use pm::{Delimiter, Level, LineColumn, Spacing};
+use pm::{Delimiter, Level, LineColumn, Spacing, JoinError};
 use std::ops::Bound;
 use std::{ascii, panic};
 
@@ -816,12 +816,16 @@ impl server::Span for Rustc<'_, '_> {
     fn after(&mut self, span: Self::Span) -> Self::Span {
         span.shrink_to_hi()
     }
-    fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
+    fn join(&mut self, first: Self::Span, second: Self::Span) -> Result<Self::Span, JoinError> {
         let self_loc = self.sess().source_map().lookup_char_pos(first.lo());
         let other_loc = self.sess().source_map().lookup_char_pos(second.lo());
 
         if self_loc.file.name != other_loc.file.name {
-            return None;
+            return Err(JoinError::DifferentFile);
+        }
+
+        if first.ctxt() != second.ctxt() {
+            return Err(JoinError::DifferentHygiene);
         }
 
         Some(first.to(second))

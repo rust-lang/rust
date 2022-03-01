@@ -405,9 +405,9 @@ impl Span {
 
     /// Creates a new span encompassing `self` and `other`.
     ///
-    /// Returns `None` if `self` and `other` are from different files.
+    /// Returns `None` if `self` and `other` are from different files or have a different hygiene.
     #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn join(&self, other: Span) -> Option<Span> {
+    pub fn join(&self, other: Span) -> Result<Span, JoinError> {
         self.0.join(other.0).map(Span)
     }
 
@@ -844,6 +844,21 @@ pub enum Spacing {
     /// Additionally, single quote `'` can join with identifiers to form lifetimes: `'ident`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
+}
+
+/// Error returned by [`Span::join`] when it fails to join.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[unstable(feature = "proc_macro_span", issue = "54725")]
+pub enum JoinError {
+    /// The `other` span belongs to a different file than `self`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    DifferentFile,
+    /// The `other` span resolves at a different site than `self`.
+    ///
+    /// E.g.: [`Span::join`] will fail with this error when `self` has
+    /// call-site hygiene and `other` has mixed-site hygiene.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    DifferentHygiene,
 }
 
 impl Punct {

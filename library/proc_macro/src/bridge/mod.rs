@@ -8,7 +8,7 @@
 
 #![deny(unsafe_code)]
 
-use crate::{Delimiter, Level, LineColumn, Spacing};
+use crate::{Delimiter, JoinError, Level, LineColumn, Spacing};
 use std::fmt;
 use std::hash::Hash;
 use std::marker;
@@ -165,7 +165,7 @@ macro_rules! with_api {
                 fn end($self: $S::Span) -> LineColumn;
                 fn before($self: $S::Span) -> $S::Span;
                 fn after($self: $S::Span) -> $S::Span;
-                fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn join($self: $S::Span, other: $S::Span) -> Result<$S::Span, JoinError>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
                 fn save_span($self: $S::Span) -> usize;
@@ -388,6 +388,13 @@ rpc_encode_decode!(
     enum Spacing {
         Alone,
         Joint,
+    }
+);
+
+rpc_encode_decode!(
+    enum JoinError {
+        DifferentFile,
+        DifferentHygiene,
     }
 );
 
