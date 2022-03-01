@@ -1117,9 +1117,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
               goto endCheck;
             }
 
-            SmallVector<BasicBlock *, 2> predBlocks;
-            predBlocks.push_back(bi2->getSuccessor(0));
-            predBlocks.push_back(bi2->getSuccessor(1));
+            SmallVector<BasicBlock *, 3> predBlocks = {bi2->getSuccessor(0),
+                                                       bi2->getSuccessor(1)};
             for (int i = 0; i < 2; i++) {
               auto edge = std::make_pair(block, bi1->getSuccessor(i));
               if (done[edge].size() == 1) {
@@ -6455,19 +6454,20 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
       // If the src is constant simply zero d_dst and don't propagate to d_src
       // (which thus == src and may be illegal)
       if (srcConstant) {
-        SmallVector<Value *, 4> args;
-        args.push_back(shadowsLookedUp ? shadow_dst
-                                       : gutils->lookupM(shadow_dst, Builder2));
+        Value *args[] = {
+          shadowsLookedUp ? shadow_dst : gutils->lookupM(shadow_dst, Builder2),
+          ConstantInt::get(Type::getInt8Ty(MTI->getContext()), 0),
+          gutils->lookupM(length, Builder2),
+#if LLVM_VERSION_MAJOR <= 6
+          ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
+                           max(1U, dstalign)),
+#endif
+          ConstantInt::getFalse(MTI->getContext())
+        };
+
         if (args[0]->getType()->isIntegerTy())
           args[0] = Builder2.CreateIntToPtr(
               args[0], Type::getInt8PtrTy(MTI->getContext()));
-        args.push_back(ConstantInt::get(Type::getInt8Ty(MTI->getContext()), 0));
-        args.push_back(gutils->lookupM(length, Builder2));
-#if LLVM_VERSION_MAJOR <= 6
-        args.push_back(ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
-                                        max(1U, dstalign)));
-#endif
-        args.push_back(ConstantInt::getFalse(MTI->getContext()));
 
         Type *tys[] = {args[0]->getType(), args[2]->getType()};
         auto memsetIntr = Intrinsic::getDeclaration(
@@ -6485,7 +6485,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         }
 
       } else {
-        SmallVector<Value *, 4> args;
         auto dsto = shadowsLookedUp ? shadow_dst
                                     : gutils->lookupM(shadow_dst, Builder2);
         if (dsto->getType()->isIntegerTy())
@@ -6502,7 +6501,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
           dsto = Builder2.CreateConstInBoundsGEP1_64(dsto, offset);
 #endif
         }
-        args.push_back(Builder2.CreatePointerCast(dsto, secretpt));
         auto srco = shadowsLookedUp ? shadow_src
                                     : gutils->lookupM(shadow_src, Builder2);
         if (srco->getType()->isIntegerTy())
@@ -6519,17 +6517,19 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
           srco = Builder2.CreateConstInBoundsGEP1_64(srco, offset);
 #endif
         }
-        args.push_back(Builder2.CreatePointerCast(srco, secretpt));
-        args.push_back(Builder2.CreateUDiv(
-            gutils->lookupM(length, Builder2),
 
-            ConstantInt::get(length->getType(),
-                             Builder2.GetInsertBlock()
-                                     ->getParent()
-                                     ->getParent()
-                                     ->getDataLayout()
-                                     .getTypeAllocSizeInBits(secretty) /
-                                 8)));
+        Value *args[]{
+            Builder2.CreatePointerCast(dsto, secretpt),
+            Builder2.CreatePointerCast(srco, secretpt),
+            Builder2.CreateUDiv(
+                gutils->lookupM(length, Builder2),
+                ConstantInt::get(length->getType(),
+                                 Builder2.GetInsertBlock()
+                                         ->getParent()
+                                         ->getParent()
+                                         ->getDataLayout()
+                                         .getTypeAllocSizeInBits(secretty) /
+                                     8))};
 
         auto dmemcpy = ((intrinsic == Intrinsic::memcpy)
                             ? getOrInsertDifferentialFloatMemcpy
@@ -6554,7 +6554,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         return;
       }
 
-      SmallVector<Value *, 4> args;
       IRBuilder<> BuilderZ(gutils->getNewFromOriginal(MTI));
 
       // If src is inactive, then we should copy from the regular pointer
@@ -6578,7 +6577,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         dsto = BuilderZ.CreateConstInBoundsGEP1_64(dsto, offset);
 #endif
       }
-      args.push_back(dsto);
       auto srco = shadow_src;
       if (srco->getType()->isIntegerTy())
         srco = BuilderZ.CreateIntToPtr(srco,
@@ -6591,14 +6589,16 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
         srco = BuilderZ.CreateConstInBoundsGEP1_64(srco, offset);
 #endif
       }
-      args.push_back(srco);
-
-      args.push_back(length);
+      Value *args[] = {
+        dsto,
+        srco,
+        length,
 #if LLVM_VERSION_MAJOR <= 6
-      args.push_back(ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
-                                      max(1U, min(srcalign, dstalign))));
+        ConstantInt::get(Type::getInt32Ty(MTI->getContext()),
+                         max(1U, min(srcalign, dstalign))),
 #endif
-      args.push_back(isVolatile);
+        isVolatile
+      };
 
       //#if LLVM_VERSION_MAJOR >= 7
       Type *tys[] = {args[0]->getType(), args[1]->getType(),

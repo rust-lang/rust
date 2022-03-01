@@ -1290,8 +1290,7 @@ public:
       Value *orig_vec = EEI.getVectorOperand();
 
       if (!gutils->isConstantValue(orig_vec)) {
-        SmallVector<Value *, 4> sv;
-        sv.push_back(gutils->getNewFromOriginal(EEI.getIndexOperand()));
+        Value *sv[] = {gutils->getNewFromOriginal(EEI.getIndexOperand())};
 
         size_t size = 1;
         if (EEI.getType()->isSized())
@@ -1456,9 +1455,9 @@ public:
       for (size_t idx : SVI.getShuffleMask()) {
         auto opnum = (idx < l1) ? 0 : 1;
         auto opidx = (idx < l1) ? idx : (idx - l1);
-        SmallVector<Value *, 4> sv;
-        sv.push_back(
-            ConstantInt::get(Type::getInt32Ty(SVI.getContext()), opidx));
+        Value *sv[] = {
+            ConstantInt::get(Type::getInt32Ty(SVI.getContext()), opidx)};
+
         if (!gutils->isConstantValue(SVI.getOperand(opnum))) {
           size_t size = 1;
           if (SVI.getOperand(opnum)->getType()->isSized())
@@ -8593,8 +8592,7 @@ public:
             if (funcName.startswith("Faddeeva")) {
               Value *re = Builder2.CreateExtractValue(sq, 0);
               Value *im = Builder2.CreateExtractValue(sq, 1);
-              Value *reexp =
-                  Builder2.CreateCall(ExpF, std::vector<Value *>({re}));
+              Value *reexp = Builder2.CreateCall(ExpF, {re});
 
               Function *CosF = Intrinsic::getDeclaration(
                   gutils->oldFunc->getParent(), Intrinsic::cos, tys);
@@ -8604,18 +8602,14 @@ public:
               cal = UndefValue::get(x->getType());
               cal = Builder2.CreateInsertValue(
                   cal,
-                  Builder2.CreateFMul(
-                      reexp,
-                      Builder2.CreateCall(CosF, std::vector<Value *>({im}))),
+                  Builder2.CreateFMul(reexp, Builder2.CreateCall(CosF, {im})),
                   0);
               cal = Builder2.CreateInsertValue(
                   cal,
-                  Builder2.CreateFMul(
-                      reexp,
-                      Builder2.CreateCall(SinF, std::vector<Value *>({im}))),
+                  Builder2.CreateFMul(reexp, Builder2.CreateCall(SinF, {im})),
                   1);
             } else {
-              cal = Builder2.CreateCall(ExpF, std::vector<Value *>({sq}));
+              cal = Builder2.CreateCall(ExpF, {sq});
             }
 
             Value *factor = ConstantFP::get(
@@ -8698,7 +8692,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j0") ? "j1" : "j1f")
                                          : ((funcName == "y0") ? "y1" : "y1f"),
                     called->getFunctionType()),
-                std::vector<Value *>({x}));
+                {x});
             dx = Builder2.CreateFNeg(dx);
             dx = Builder2.CreateFMul(dx,
                                      diffe(orig->getArgOperand(0), Builder2));
@@ -8717,7 +8711,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j0") ? "j1" : "j1f")
                                          : ((funcName == "y0") ? "y1" : "y1f"),
                     called->getFunctionType()),
-                std::vector<Value *>({x}));
+                {x});
             dx = Builder2.CreateFNeg(dx);
             dx = Builder2.CreateFMul(dx, diffe(orig, Builder2));
             setDiffe(orig, Constant::getNullValue(orig->getType()), Builder2);
@@ -8755,7 +8749,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j1") ? "j0" : "j0f")
                                          : ((funcName == "y1") ? "y0" : "y0f"),
                     called->getFunctionType()),
-                std::vector<Value *>({x}));
+                {x});
 
             Type *intType =
                 Type::getIntNTy(called->getContext(), sizeof(int) * 8);
@@ -8766,7 +8760,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j1") ? "jn" : "jnf")
                                          : ((funcName == "y1") ? "yn" : "ynf"),
                     FT2),
-                std::vector<Value *>({ConstantInt::get(intType, 2), x}));
+                {ConstantInt::get(intType, 2), x});
             Value *dx = Builder2.CreateFSub(d0, d2);
             dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
             dx = Builder2.CreateFMul(dx,
@@ -8786,7 +8780,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j1") ? "j0" : "j0f")
                                          : ((funcName == "y1") ? "y0" : "y0f"),
                     called->getFunctionType()),
-                std::vector<Value *>({x}));
+                {x});
 
             Type *intType =
                 Type::getIntNTy(called->getContext(), sizeof(int) * 8);
@@ -8797,7 +8791,7 @@ public:
                     (funcName[0] == 'j') ? ((funcName == "j1") ? "jn" : "jnf")
                                          : ((funcName == "y1") ? "yn" : "ynf"),
                     FT2),
-                std::vector<Value *>({ConstantInt::get(intType, 2), x}));
+                {ConstantInt::get(intType, 2), x});
             Value *dx = Builder2.CreateFSub(d0, d2);
             dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
             dx = Builder2.CreateFMul(dx, diffe(orig, Builder2));
@@ -8834,15 +8828,11 @@ public:
 
             Value *d0 = Builder2.CreateCall(
                 called,
-                std::vector<Value *>(
-                    {Builder2.CreateSub(n, ConstantInt::get(n->getType(), 1)),
-                     x}));
+                {Builder2.CreateSub(n, ConstantInt::get(n->getType(), 1)), x});
 
             Value *d2 = Builder2.CreateCall(
                 called,
-                std::vector<Value *>(
-                    {Builder2.CreateAdd(n, ConstantInt::get(n->getType(), 1)),
-                     x}));
+                {Builder2.CreateAdd(n, ConstantInt::get(n->getType(), 1)), x});
 
             Value *dx = Builder2.CreateFSub(d0, d2);
             dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
@@ -8862,15 +8852,11 @@ public:
 
             Value *d0 = Builder2.CreateCall(
                 called,
-                std::vector<Value *>(
-                    {Builder2.CreateSub(n, ConstantInt::get(n->getType(), 1)),
-                     x}));
+                {Builder2.CreateSub(n, ConstantInt::get(n->getType(), 1)), x});
 
             Value *d2 = Builder2.CreateCall(
                 called,
-                std::vector<Value *>(
-                    {Builder2.CreateAdd(n, ConstantInt::get(n->getType(), 1)),
-                     x}));
+                {Builder2.CreateAdd(n, ConstantInt::get(n->getType(), 1)), x});
 
             Value *dx = Builder2.CreateFSub(d0, d2);
             dx = Builder2.CreateFMul(dx, ConstantFP::get(x->getType(), 0.5));
@@ -9660,8 +9646,7 @@ public:
 
       Value *ptrshadow =
           gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
-      Value *val =
-          BuilderZ.CreateCall(called, std::vector<Value *>({ptrshadow}));
+      Value *val = BuilderZ.CreateCall(called, {ptrshadow});
 
       gutils->replaceAWithB(placeholder, val);
       gutils->erase(placeholder);
@@ -9697,9 +9682,8 @@ public:
               gutils->invertPointerM(call.getArgOperand(0), BuilderZ);
           BuilderZ.CreateCall(
               called,
-              std::vector<Value *>(
-                  {ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
-                   gutils->getNewFromOriginal(call.getArgOperand(2))}));
+              {ptrshadow, gutils->getNewFromOriginal(call.getArgOperand(1)),
+               gutils->getNewFromOriginal(call.getArgOperand(2))});
 #if LLVM_VERSION_MAJOR > 7
           val = BuilderZ.CreateLoad(
               ptrshadow->getType()->getPointerElementType(), ptrshadow);

@@ -1422,17 +1422,15 @@ Function *PreProcessCache::preprocessForClone(Function *F,
             }
           }
 
-          SmallVector<Value *, 4> args;
-          args.push_back(
-              bb.CreateBitCast(antialloca, Type::getInt8PtrTy(g.getContext())));
-          args.push_back(
-              bb.CreateBitCast(&g, Type::getInt8PtrTy(g.getContext())));
-          args.push_back(ConstantInt::get(
-              Type::getInt64Ty(g.getContext()),
-              g.getParent()->getDataLayout().getTypeAllocSizeInBits(
-                  g.getValueType()) /
-                  8));
-          args.push_back(ConstantInt::getFalse(g.getContext()));
+          Value *args[] = {
+              bb.CreateBitCast(antialloca, Type::getInt8PtrTy(g.getContext())),
+              bb.CreateBitCast(&g, Type::getInt8PtrTy(g.getContext())),
+              ConstantInt::get(
+                  Type::getInt64Ty(g.getContext()),
+                  g.getParent()->getDataLayout().getTypeAllocSizeInBits(
+                      g.getValueType()) /
+                      8),
+              ConstantInt::getFalse(g.getContext())};
 
           Type *tys[] = {args[0]->getType(), args[1]->getType(),
                          args[2]->getType()};

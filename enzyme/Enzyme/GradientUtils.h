@@ -1944,8 +1944,8 @@ public:
     Value *ptr = getDifferential(val);
 
     if (idxs.size() != 0) {
-      SmallVector<Value *, 4> sv;
-      sv.push_back(ConstantInt::get(Type::getInt32Ty(val->getContext()), 0));
+      SmallVector<Value *, 4> sv = {
+          ConstantInt::get(Type::getInt32Ty(val->getContext()), 0)};
       for (auto i : idxs)
         sv.push_back(i);
 #if LLVM_VERSION_MAJOR > 7

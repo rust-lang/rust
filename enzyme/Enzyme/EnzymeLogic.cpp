@@ -2156,7 +2156,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
                                                size->getLimitedValue());
 #endif
-      std::vector<Value *> Idxs = {
+      Value *Idxs[] = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
       };
@@ -2181,7 +2181,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       // tapeMemory = B.CreateAlloca(j->getType());
       // B.CreateStore(j, tapeMemory);
     } else {
-      std::vector<Value *> Idxs = {
+      Value *Idxs[] = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
       };
@@ -2204,7 +2204,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         IRBuilder<> ib(inst->getNextNode());
         if (isa<PHINode>(inst))
           ib.SetInsertPoint(inst->getParent()->getFirstNonPHI());
-        std::vector<Value *> Idxs = {ib.getInt32(0), ib.getInt32(i)};
+        Value *Idxs[] = {ib.getInt32(0), ib.getInt32(i)};
         Value *gep = tapeMemory;
         if (!removeTapeStruct) {
 #if LLVM_VERSION_MAJOR > 7
