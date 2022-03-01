@@ -828,7 +828,7 @@ impl server::Span for Rustc<'_, '_> {
             return Err(JoinError::DifferentHygiene);
         }
 
-        Some(first.to(second))
+        Ok(first.to(second))
     }
     fn resolved_at(&mut self, span: Self::Span, at: Self::Span) -> Self::Span {
         span.with_ctxt(at.ctxt())
