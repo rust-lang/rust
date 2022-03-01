@@ -91,10 +91,8 @@ impl<'tcx> OnUnimplementedDirective {
                     )
                 })?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |item| {
-                if let Some(symbol) = item.value_str() {
-                    if parse_value(symbol).is_err() {
-                        errored = true;
-                    }
+                if let Some(symbol) = item.value_str() && parse_value(symbol).is_err() {
+                    errored = true;
                 }
                 true
             });
@@ -232,24 +230,22 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
-            if let Some(ref condition) = command.condition {
-                if !attr::eval_condition(
-                    condition,
-                    &tcx.sess.parse_sess,
-                    Some(tcx.features()),
-                    &mut |c| {
-                        c.ident().map_or(false, |ident| {
-                            let value = c.value_str().map(|s| {
-                                OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
-                            });
+            if let Some(ref condition) = command.condition && !attr::eval_condition(
+                condition,
+                &tcx.sess.parse_sess,
+                Some(tcx.features()),
+                &mut |c| {
+                    c.ident().map_or(false, |ident| {
+                        let value = c.value_str().map(|s| {
+                            OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
+                        });
 
-                            options.contains(&(ident.name, value))
-                        })
-                    },
-                ) {
-                    debug!("evaluate: skipping {:?} due to condition", command);
-                    continue;
-                }
+                        options.contains(&(ident.name, value))
+                    })
+                },
+            ) {
+                debug!("evaluate: skipping {:?} due to condition", command);
+                continue;
             }
             debug!("evaluate: {:?} succeeded", command);
             if let Some(ref message_) = command.message {

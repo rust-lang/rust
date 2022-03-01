@@ -579,24 +579,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     previous_stack,
                                     subobligations,
                                 );
-                                if let Ok(res) = res {
-                                    if res == EvaluatedToOk || res == EvaluatedToOkModuloRegions {
-                                        if let Some(key) =
-                                            ProjectionCacheKey::from_poly_projection_predicate(
-                                                self, data,
-                                            )
-                                        {
-                                            // If the result is something that we can cache, then mark this
-                                            // entry as 'complete'. This will allow us to skip evaluating the
-                                            // suboligations at all the next time we evaluate the projection
-                                            // predicate.
-                                            self.infcx
-                                                .inner
-                                                .borrow_mut()
-                                                .projection_cache()
-                                                .complete(key, res);
-                                        }
-                                    }
+                                if let Ok(eval_rslt) = res
+                                    && (eval_rslt == EvaluatedToOk || eval_rslt == EvaluatedToOkModuloRegions)
+                                    && let Some(key) =
+                                        ProjectionCacheKey::from_poly_projection_predicate(
+                                            self, data,
+                                        )
+                                {
+                                    // If the result is something that we can cache, then mark this
+                                    // entry as 'complete'. This will allow us to skip evaluating the
+                                    // suboligations at all the next time we evaluate the projection
+                                    // predicate.
+                                    self.infcx
+                                        .inner
+                                        .borrow_mut()
+                                        .projection_cache()
+                                        .complete(key, eval_rslt);
                                 }
                                 res
                             }

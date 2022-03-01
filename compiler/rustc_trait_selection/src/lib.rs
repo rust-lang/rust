@@ -10,19 +10,20 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(drain_filter)]
+#![feature(control_flow_enum)]
+#![feature(crate_visibility_modifier)]
 #![feature(derive_default_enum)]
+#![feature(drain_filter)]
 #![feature(hash_drain_filter)]
 #![feature(label_break_value)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![feature(crate_visibility_modifier)]
-#![feature(control_flow_enum)]
 #![recursion_limit = "512"] // For rustdoc
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;
