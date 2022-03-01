@@ -1,9 +1,10 @@
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::convert::FloatToInt;
 
 macro_rules! implement {
     {
-        $type:ty, $int_type:ty
+        $type:ty
     } => {
         impl<const LANES: usize> Simd<$type, LANES>
         where
@@ -18,20 +19,22 @@ macro_rules! implement {
             /// * Not be NaN
             /// * Not be infinite
             /// * Be representable in the return type, after truncating off its fractional part
+            ///
+            /// If these requirements are infeasible or costly, consider using the safe function [cast],
+            /// which saturates on conversion.
+            ///
+            /// [cast]: Simd::cast
             #[inline]
-            pub unsafe fn to_int_unchecked(self) -> Simd<$int_type, LANES> {
+            pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, LANES>
+            where
+                $type: FloatToInt<I>,
+                I: SimdElement,
+            {
                 unsafe { intrinsics::simd_cast(self) }
-            }
-
-            /// Creates a floating-point vector from an integer vector.  Rounds values that are
-            /// not exactly representable.
-            #[inline]
-            pub fn round_from_int(value: Simd<$int_type, LANES>) -> Self {
-                unsafe { intrinsics::simd_cast(value) }
             }
         }
     }
 }
 
-implement! { f32, i32 }
-implement! { f64, i64 }
+implement! { f32 }
+implement! { f64 }
