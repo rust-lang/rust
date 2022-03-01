@@ -1,15 +1,16 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
+#![allow(rustc::potential_query_instability)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
-#![feature(bool_to_option)]
+#![feature(let_chains)]
 #![feature(let_else)]
-#![feature(once_cell)]
 #![feature(min_specialization)]
+#![feature(once_cell)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
