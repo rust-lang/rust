@@ -683,34 +683,33 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let descr = self.tcx.def_kind(def_id).descr(def_id.to_def_id());
                 let mut err = lint.build(&format!("{} is never {}: `{}`", descr, participle, name));
                 let hir = self.tcx.hir();
-                if let Some(encl_scope) = hir.get_enclosing_scope(id) {
-                    if let Some(encl_def_id) = hir.opt_local_def_id(encl_scope) {
-                        if let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id) {
-                            let traits_str = ign_traits
-                                .iter()
-                                .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
-                                .collect::<Vec<_>>()
-                                .join(" and ");
-                            let plural_s = pluralize!(ign_traits.len());
-                            let article = if ign_traits.len() > 1 { "" } else { "a " };
-                            let is_are = if ign_traits.len() > 1 { "these are" } else { "this is" };
-                            let msg = format!(
-                                "`{}` has {}derived impl{} for the trait{} {}, but {} \
-                                 intentionally ignored during dead code analysis",
-                                self.tcx.item_name(encl_def_id.to_def_id()),
-                                article,
-                                plural_s,
-                                plural_s,
-                                traits_str,
-                                is_are
-                            );
-                            let multispan = ign_traits
-                                .iter()
-                                .map(|(_, impl_id)| self.tcx.def_span(*impl_id))
-                                .collect::<Vec<_>>();
-                            err.span_note(multispan, &msg);
-                        }
-                    }
+                if let Some(encl_scope) = hir.get_enclosing_scope(id)
+                    && let Some(encl_def_id) = hir.opt_local_def_id(encl_scope)
+                    && let Some(ign_traits) = self.ignored_derived_traits.get(&encl_def_id)
+                {
+                    let traits_str = ign_traits
+                        .iter()
+                        .map(|(trait_id, _)| format!("`{}`", self.tcx.item_name(*trait_id)))
+                        .collect::<Vec<_>>()
+                        .join(" and ");
+                    let plural_s = pluralize!(ign_traits.len());
+                    let article = if ign_traits.len() > 1 { "" } else { "a " };
+                    let is_are = if ign_traits.len() > 1 { "these are" } else { "this is" };
+                    let msg = format!(
+                        "`{}` has {}derived impl{} for the trait{} {}, but {} \
+                        intentionally ignored during dead code analysis",
+                        self.tcx.item_name(encl_def_id.to_def_id()),
+                        article,
+                        plural_s,
+                        plural_s,
+                        traits_str,
+                        is_are
+                    );
+                    let multispan = ign_traits
+                        .iter()
+                        .map(|(_, impl_id)| self.tcx.def_span(*impl_id))
+                        .collect::<Vec<_>>();
+                    err.span_note(multispan, &msg);
                 }
                 err.emit();
             });

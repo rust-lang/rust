@@ -10,6 +10,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_eq(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_eq(self, other)) }
     }
 
@@ -17,6 +19,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_ne(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_ne(self, other)) }
     }
 }
@@ -30,6 +34,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_lt(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_lt(self, other)) }
     }
 
@@ -37,6 +43,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_gt(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_gt(self, other)) }
     }
 
@@ -44,6 +52,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_le(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_le(self, other)) }
     }
 
@@ -51,6 +61,8 @@ where
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn lanes_ge(self, other: Self) -> Mask<T::Mask, LANES> {
+        // Safety: `self` is a vector, and the result of the comparison
+        // is always a valid mask.
         unsafe { Mask::from_int_unchecked(intrinsics::simd_ge(self, other)) }
     }
 }

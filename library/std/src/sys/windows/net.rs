@@ -407,11 +407,11 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BYTE)
+        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BYTE = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
+        let raw: c::BOOL = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 

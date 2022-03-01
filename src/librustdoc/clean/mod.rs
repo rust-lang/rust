@@ -891,13 +891,20 @@ fn clean_fn_decl_with_args(
 
 fn clean_fn_decl_from_did_and_sig(
     cx: &mut DocContext<'_>,
-    did: DefId,
+    did: Option<DefId>,
     sig: ty::PolyFnSig<'_>,
 ) -> FnDecl {
-    let mut names = if did.is_local() { &[] } else { cx.tcx.fn_arg_names(did) }.iter();
+    let mut names = did.map_or(&[] as &[_], |did| cx.tcx.fn_arg_names(did)).iter();
+
+    // We assume all empty tuples are default return type. This theoretically can discard `-> ()`,
+    // but shouldn't change any code meaning.
+    let output = match sig.skip_binder().output().clean(cx) {
+        Type::Tuple(inner) if inner.len() == 0 => DefaultReturn,
+        ty => Return(ty),
+    };
 
     FnDecl {
-        output: Return(sig.skip_binder().output().clean(cx)),
+        output,
         c_variadic: sig.skip_binder().c_variadic,
         inputs: Arguments {
             values: sig
@@ -1031,20 +1038,18 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 }
             };
 
-            let what_rustc_thinks =
+            let mut what_rustc_thinks =
                 Item::from_def_id_and_parts(local_did, Some(self.ident.name), inner, cx);
-            let parent_item = cx.tcx.hir().expect_item(cx.tcx.hir().get_parent_item(self.hir_id()));
-            if let hir::ItemKind::Impl(impl_) = &parent_item.kind {
-                if impl_.of_trait.is_some() {
-                    // Trait impl items always inherit the impl's visibility --
-                    // we don't want to show `pub`.
-                    Item { visibility: Inherited, ..what_rustc_thinks }
-                } else {
-                    what_rustc_thinks
-                }
-            } else {
-                panic!("found impl item with non-impl parent {:?}", parent_item);
+
+            let impl_ref = cx.tcx.parent(local_did).and_then(|did| cx.tcx.impl_trait_ref(did));
+
+            // Trait impl items always inherit the impl's visibility --
+            // we don't want to show `pub`.
+            if impl_ref.is_some() {
+                what_rustc_thinks.visibility = Inherited;
             }
+
+            what_rustc_thinks
         })
     }
 }
@@ -1069,7 +1074,7 @@ impl Clean<Item> for ty::AssocItem {
                     tcx.explicit_predicates_of(self.def_id),
                 );
                 let sig = tcx.fn_sig(self.def_id);
-                let mut decl = clean_fn_decl_from_did_and_sig(cx, self.def_id, sig);
+                let mut decl = clean_fn_decl_from_did_and_sig(cx, Some(self.def_id), sig);
 
                 if self.fn_has_self_parameter {
                     let self_ty = match self.container {
@@ -1199,7 +1204,18 @@ impl Clean<Item> for ty::AssocItem {
             }
         };
 
-        Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx)
+        let mut what_rustc_thinks =
+            Item::from_def_id_and_parts(self.def_id, Some(self.name), kind, cx);
+
+        let impl_ref = tcx.parent(self.def_id).and_then(|did| tcx.impl_trait_ref(did));
+
+        // Trait impl items always inherit the impl's visibility --
+        // we don't want to show `pub`.
+        if impl_ref.is_some() {
+            what_rustc_thinks.visibility = Visibility::Inherited;
+        }
+
+        what_rustc_thinks
     }
 }
 
@@ -1478,8 +1494,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let ty = cx.tcx.lift(*self).expect("FnPtr lift failed");
                 let sig = ty.fn_sig(cx.tcx);
-                let def_id = DefId::local(CRATE_DEF_INDEX);
-                let decl = clean_fn_decl_from_did_and_sig(cx, def_id, sig);
+                let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
                 BareFunction(box BareFunctionDecl {
                     unsafety: sig.unsafety(),
                     generic_params: Vec::new(),

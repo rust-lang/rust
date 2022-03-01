@@ -1111,24 +1111,55 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Warns against some misuses of `#[must_use]`
-    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, _target: Target) -> bool {
+    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         let node = self.tcx.hir().get(hir_id);
-        if let Some(fn_node) = node.fn_kind() {
-            if let rustc_hir::IsAsync::Async = fn_node.asyncness() {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build(
-                        "`must_use` attribute on `async` functions \
-                              applies to the anonymous `Future` returned by the \
-                              function, not the value within",
-                    )
-                    .span_label(
-                        span,
-                        "this attribute does nothing, the `Future`s \
-                                returned by async functions are already `must_use`",
-                    )
-                    .emit();
-                });
-            }
+        if let Some(kind) = node.fn_kind() && let rustc_hir::IsAsync::Async = kind.asyncness() {
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(
+                    "`must_use` attribute on `async` functions \
+                    applies to the anonymous `Future` returned by the \
+                    function, not the value within",
+                )
+                .span_label(
+                    span,
+                    "this attribute does nothing, the `Future`s \
+                    returned by async functions are already `must_use`",
+                )
+                .emit();
+            });
+        }
+
+        if !matches!(
+            target,
+            Target::Fn
+                | Target::Enum
+                | Target::Struct
+                | Target::Union
+                | Target::Method(_)
+                | Target::ForeignFn
+                // `impl Trait` in return position can trip
+                // `unused_must_use` if `Trait` is marked as
+                // `#[must_use]`
+                | Target::Trait
+        ) {
+            let article = match target {
+                Target::ExternCrate
+                | Target::OpaqueTy
+                | Target::Enum
+                | Target::Impl
+                | Target::Expression
+                | Target::Arm
+                | Target::AssocConst
+                | Target::AssocTy => "an",
+                _ => "a",
+            };
+
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(&format!(
+                    "`#[must_use]` has no effect when applied to {article} {target}"
+                ))
+                .emit();
+            });
         }
 
         // For now, its always valid

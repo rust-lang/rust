@@ -22,6 +22,7 @@ macro_rules! impl_uint_arith {
             /// ```
             #[inline]
             pub fn saturating_add(self, second: Self) -> Self {
+                // Safety: `self` is a vector
                 unsafe { simd_saturating_add(self, second) }
             }
 
@@ -41,6 +42,7 @@ macro_rules! impl_uint_arith {
             /// assert_eq!(sat, Simd::splat(0));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
+                // Safety: `self` is a vector
                 unsafe { simd_saturating_sub(self, second) }
             }
         })+
@@ -68,6 +70,7 @@ macro_rules! impl_int_arith {
             /// ```
             #[inline]
             pub fn saturating_add(self, second: Self) -> Self {
+                // Safety: `self` is a vector
                 unsafe { simd_saturating_add(self, second) }
             }
 
@@ -87,6 +90,7 @@ macro_rules! impl_int_arith {
             /// assert_eq!(sat, Simd::from_array([MIN, MIN, MIN, 0]));
             #[inline]
             pub fn saturating_sub(self, second: Self) -> Self {
+                // Safety: `self` is a vector
                 unsafe { simd_saturating_sub(self, second) }
             }
 
