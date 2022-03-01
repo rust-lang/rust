@@ -566,7 +566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, &'static str, String, Applicability, bool /* verbose */)> {
+    ) -> Option<(Span, String, String, Applicability, bool /* verbose */)> {
         let sess = self.sess();
         let sp = expr.span;
 
@@ -594,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let pos = sp.lo() + BytePos(1);
                                 return Some((
                                     sp.with_hi(pos),
-                                    "consider removing the leading `b`",
+                                    "consider removing the leading `b`".to_string(),
                                     String::new(),
                                     Applicability::MachineApplicable,
                                     true,
@@ -608,7 +608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                                 return Some((
                                     sp.shrink_to_lo(),
-                                    "consider adding a leading `b`",
+                                    "consider adding a leading `b`".to_string(),
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
                                     true,
@@ -668,7 +668,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some((
                                 sugg.0,
-                                sugg.1,
+                                sugg.1.to_string(),
                                 sugg.2,
                                 Applicability::MachineApplicable,
                                 false,
@@ -696,7 +696,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     return Some((
                                         left_expr.span.shrink_to_lo(),
                                         "consider dereferencing here to assign to the mutable \
-                                         borrowed piece of memory",
+                                         borrowed piece of memory"
+                                            .to_string(),
                                         "*".to_string(),
                                         Applicability::MachineApplicable,
                                         true,
@@ -708,14 +709,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some(match mutability {
                             hir::Mutability::Mut => (
                                 sp,
-                                "consider mutably borrowing here",
+                                "consider mutably borrowing here".to_string(),
                                 format!("{}&mut {}", prefix, sugg_expr),
                                 Applicability::MachineApplicable,
                                 false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
-                                "consider borrowing here",
+                                "consider borrowing here".to_string(),
                                 format!("{}&{}", prefix, sugg_expr),
                                 Applicability::MachineApplicable,
                                 false,
@@ -744,7 +745,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if sm.span_to_snippet(call_span).is_ok() {
                             return Some((
                                 sp.with_hi(call_span.lo()),
-                                "consider removing the borrow",
+                                "consider removing the borrow".to_string(),
                                 String::new(),
                                 Applicability::MachineApplicable,
                                 true,
@@ -757,7 +758,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if sm.span_to_snippet(expr.span).is_ok() {
                         return Some((
                             sp.with_hi(expr.span.lo()),
-                            "consider removing the borrow",
+                            "consider removing the borrow".to_string(),
                             String::new(),
                             Applicability::MachineApplicable,
                             true,
@@ -823,7 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } {
                                 return Some((
                                     span,
-                                    "consider dereferencing",
+                                    "consider dereferencing".to_string(),
                                     src,
                                     applicability,
                                     true,
@@ -834,60 +835,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ if sp == expr.span => {
-                if let Some(steps) = self.deref_steps(checked_ty, expected) {
-                    let expr = expr.peel_blocks();
+                if let Some(mut steps) = self.deref_steps(checked_ty, expected) {
+                    let mut expr = expr.peel_blocks();
+                    let mut prefix_span = expr.span.shrink_to_lo();
+                    let mut remove = String::new();
 
-                    if steps == 1 {
+                    // Try peeling off any existing `&` and `&mut` to reach our target type
+                    while steps > 0 {
                         if let hir::ExprKind::AddrOf(_, mutbl, inner) = expr.kind {
                             // If the expression has `&`, removing it would fix the error
-                            let prefix_span = expr.span.with_hi(inner.span.lo());
-                            let message = match mutbl {
-                                hir::Mutability::Not => "consider removing the `&`",
-                                hir::Mutability::Mut => "consider removing the `&mut`",
+                            prefix_span = prefix_span.with_hi(inner.span.lo());
+                            expr = inner;
+                            remove += match mutbl {
+                                hir::Mutability::Not => "&",
+                                hir::Mutability::Mut => "&mut ",
                             };
-                            let suggestion = String::new();
-                            return Some((
-                                prefix_span,
-                                message,
-                                suggestion,
-                                Applicability::MachineApplicable,
-                                false,
-                            ));
+                            steps -= 1;
+                        } else {
+                            break;
                         }
+                    }
+                    // If we've reached our target type with just removing `&`, then just print now.
+                    if steps == 0 {
+                        return Some((
+                            prefix_span,
+                            format!("consider removing the `{}`", remove.trim()),
+                            String::new(),
+                            // Do not remove `&&` to get to bool, because it might be something like
+                            // { a } && b, which we have a separate fixup suggestion that is more
+                            // likely correct...
+                            if remove.trim() == "&&" && expected == self.tcx.types.bool {
+                                Applicability::MaybeIncorrect
+                            } else {
+                                Applicability::MachineApplicable
+                            },
+                            true,
+                        ));
+                    }
 
-                        // For this suggestion to make sense, the type would need to be `Copy`,
-                        // or we have to be moving out of a `Box<T>`
-                        if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
-                            || checked_ty.is_box()
-                        {
-                            let message = if checked_ty.is_box() {
-                                "consider unboxing the value"
-                            } else if checked_ty.is_region_ptr() {
-                                "consider dereferencing the borrow"
-                            } else {
-                                "consider dereferencing the type"
-                            };
-                            let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                                Some(ident) => format!("{}: ", ident),
-                                None => String::new(),
-                            };
-                            let (span, suggestion) = if self.is_else_if_block(expr) {
-                                // Don't suggest nonsense like `else *if`
-                                return None;
-                            } else if let Some(expr) = self.maybe_get_block_expr(expr) {
-                                // prefix should be empty here..
-                                (expr.span.shrink_to_lo(), "*".to_string())
-                            } else {
-                                (expr.span.shrink_to_lo(), format!("{}*", prefix))
-                            };
-                            return Some((
-                                span,
-                                message,
-                                suggestion,
-                                Applicability::MachineApplicable,
-                                true,
-                            ));
-                        }
+                    // For this suggestion to make sense, the type would need to be `Copy`,
+                    // or we have to be moving out of a `Box<T>`
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                        // FIXME(compiler-errors): We can actually do this if the checked_ty is
+                        // `steps` layers of boxes, not just one, but this is easier and most likely.
+                        || (checked_ty.is_box() && steps == 1)
+                    {
+                        let deref_kind = if checked_ty.is_box() {
+                            "unboxing the value"
+                        } else if checked_ty.is_region_ptr() {
+                            "dereferencing the borrow"
+                        } else {
+                            "dereferencing the type"
+                        };
+
+                        // Suggest removing `&` if we have removed any, otherwise suggest just
+                        // dereferencing the remaining number of steps.
+                        let message = if remove.is_empty() {
+                            format!("consider {}", deref_kind)
+                        } else {
+                            format!(
+                                "consider removing the `{}` and {} instead",
+                                remove.trim(),
+                                deref_kind
+                            )
+                        };
+
+                        let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                            Some(ident) => format!("{}: ", ident),
+                            None => String::new(),
+                        };
+
+                        let (span, suggestion) = if self.is_else_if_block(expr) {
+                            // Don't suggest nonsense like `else *if`
+                            return None;
+                        } else if let Some(expr) = self.maybe_get_block_expr(expr) {
+                            // prefix should be empty here..
+                            (expr.span.shrink_to_lo(), "*".to_string())
+                        } else {
+                            (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
+                        };
+
+                        return Some((
+                            span,
+                            message,
+                            suggestion,
+                            Applicability::MachineApplicable,
+                            true,
+                        ));
                     }
                 }
             }

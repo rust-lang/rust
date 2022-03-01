@@ -218,9 +218,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.check_ref(expr, found, expected)
         {
             if verbose {
-                err.span_suggestion_verbose(sp, msg, suggestion, applicability);
+                err.span_suggestion_verbose(sp, &msg, suggestion, applicability);
             } else {
-                err.span_suggestion(sp, msg, suggestion, applicability);
+                err.span_suggestion(sp, &msg, suggestion, applicability);
             }
         } else if let (ty::FnDef(def_id, ..), true) =
             (&found.kind(), self.suggest_fn_call(err, expr, expected, found))

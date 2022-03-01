@@ -676,6 +676,12 @@ error[E0308]: mismatched types
    |
 LL |     if let Range { start: true, end } = t..&&false {}
    |                                            ^^^^^^^ expected `bool`, found `&&bool`
+   |
+help: consider removing the `&&`
+   |
+LL -     if let Range { start: true, end } = t..&&false {}
+LL +     if let Range { start: true, end } = t..false {}
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:83:8
@@ -866,6 +872,12 @@ error[E0308]: mismatched types
    |
 LL |     while let Range { start: true, end } = t..&&false {}
    |                                               ^^^^^^^ expected `bool`, found `&&bool`
+   |
+help: consider removing the `&&`
+   |
+LL -     while let Range { start: true, end } = t..&&false {}
+LL +     while let Range { start: true, end } = t..false {}
+   | 
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:147:11

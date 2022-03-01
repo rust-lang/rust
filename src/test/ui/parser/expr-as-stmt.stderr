@@ -170,6 +170,11 @@ LL | fn revenge_from_mars() -> bool {
 LL |     { true } && { true }
    |              ^^^^^^^^^^^ expected `bool`, found `&&bool`
    |
+help: consider removing the `&&`
+   |
+LL -     { true } && { true }
+LL +     { true } { true }
+   | 
 help: parentheses are required to parse this as an expression
    |
 LL |     ({ true }) && { true }
