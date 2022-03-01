@@ -59,7 +59,7 @@ pub enum ParamName {
     ///
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
-    Fresh(usize),
+    Fresh(LocalDefId),
 
     /// Indicates an illegal name was given and an error has been
     /// reported (so we should squelch other derived errors). Occurs
@@ -3303,7 +3303,7 @@ mod size_asserts {
     rustc_data_structures::static_assert_size!(super::Expr<'static>, 56);
     rustc_data_structures::static_assert_size!(super::Pat<'static>, 88);
     rustc_data_structures::static_assert_size!(super::QPath<'static>, 24);
-    rustc_data_structures::static_assert_size!(super::Ty<'static>, 80);
+    rustc_data_structures::static_assert_size!(super::Ty<'static>, 72);
 
     rustc_data_structures::static_assert_size!(super::Item<'static>, 184);
     rustc_data_structures::static_assert_size!(super::TraitItem<'static>, 128);
