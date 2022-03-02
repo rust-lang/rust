@@ -218,9 +218,9 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     // The file may be empty, which leads to the diagnostic machinery not emitting this
     // note. This is a relatively simple way to detect that case and emit a span-less
     // note instead.
-    if tcx.sess.source_map().lookup_line(sp.lo()).is_ok() {
-        err.set_span(sp);
-        err.span_label(sp, &note);
+    if tcx.sess.source_map().lookup_line(sp.hi()).is_ok() {
+        err.set_span(sp.shrink_to_hi());
+        err.span_label(sp.shrink_to_hi(), &note);
     } else {
         err.note(&note);
     }
