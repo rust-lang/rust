@@ -224,36 +224,30 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             // projection coming from another associated type. See
             // `src/test/ui/associated-types/point-at-type-on-obligation-failure.rs` and
             // `traits-assoc-type-in-supertrait-bad.rs`.
-            if let Some(ty::Projection(projection_ty)) = proj.term.ty().map(|ty| ty.kind()) {
-                if let Some(&impl_item_id) =
+            if let Some(ty::Projection(projection_ty)) = proj.term.ty().map(|ty| ty.kind())
+                && let Some(&impl_item_id) =
                     tcx.impl_item_implementor_ids(impl_def_id).get(&projection_ty.item_def_id)
-                {
-                    if let Some(impl_item_span) = items
-                        .iter()
-                        .find(|item| item.id.def_id.to_def_id() == impl_item_id)
-                        .map(fix_span)
-                    {
-                        cause.span = impl_item_span;
-                    }
-                }
+                && let Some(impl_item_span) = items
+                    .iter()
+                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .map(fix_span)
+            {
+                cause.span = impl_item_span;
             }
         }
         ty::PredicateKind::Trait(pred) => {
             // An associated item obligation born out of the `trait` failed to be met. An example
             // can be seen in `ui/associated-types/point-at-type-on-obligation-failure-2.rs`.
             debug!("extended_cause_with_original_assoc_item_obligation trait proj {:?}", pred);
-            if let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = *pred.self_ty().kind() {
-                if let Some(&impl_item_id) =
+            if let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = *pred.self_ty().kind()
+                && let Some(&impl_item_id) =
                     tcx.impl_item_implementor_ids(impl_def_id).get(&item_def_id)
-                {
-                    if let Some(impl_item_span) = items
-                        .iter()
-                        .find(|item| item.id.def_id.to_def_id() == impl_item_id)
-                        .map(fix_span)
-                    {
-                        cause.span = impl_item_span;
-                    }
-                }
+                && let Some(impl_item_span) = items
+                    .iter()
+                    .find(|item| item.id.def_id.to_def_id() == impl_item_id)
+                    .map(fix_span)
+            {
+                cause.span = impl_item_span;
             }
         }
         _ => {}

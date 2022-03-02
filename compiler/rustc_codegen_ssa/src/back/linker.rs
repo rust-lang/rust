@@ -1338,7 +1338,7 @@ impl<'a> Linker for WasmLd<'a> {
         }
 
         // LLD will hide these otherwise-internal symbols since it only exports
-        // symbols explicity passed via the `--export` flags above and hides all
+        // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of tooling use this, so be sure these
         // symbols make their way out of the linker as well.
         self.cmd.arg("--export=__heap_base");

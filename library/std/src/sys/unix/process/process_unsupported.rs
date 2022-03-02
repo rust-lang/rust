@@ -3,12 +3,12 @@ use crate::fmt;
 use crate::io;
 use crate::io::ErrorKind;
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::process::process_common::*;
 use crate::sys::unix::unsupported::*;
+use core::ffi::NonZero_c_int;
 
 use libc::{c_int, pid_t};
 

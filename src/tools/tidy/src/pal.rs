@@ -46,7 +46,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     // pointer regardless of the target architecture. As a result,
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
-    "library/core/src/ffi.rs",
+    "library/core/src/ffi/mod.rs",
     "library/std/src/sys/", // Platform-specific code for std lives here.
     "library/std/src/os",   // Platform-specific public interfaces
     // Temporary `std` exceptions

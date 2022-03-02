@@ -633,24 +633,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
         match *operand {
             Operand::Copy(l) | Operand::Move(l) => {
-                if let Some(value) = self.get_const(l) {
-                    if self.should_const_prop(&value) {
-                        // FIXME(felix91gr): this code only handles `Scalar` cases.
-                        // For now, we're not handling `ScalarPair` cases because
-                        // doing so here would require a lot of code duplication.
-                        // We should hopefully generalize `Operand` handling into a fn,
-                        // and use it to do const-prop here and everywhere else
-                        // where it makes sense.
-                        if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
-                            ScalarMaybeUninit::Scalar(scalar),
-                        )) = *value
-                        {
-                            *operand = self.operand_from_scalar(
-                                scalar,
-                                value.layout.ty,
-                                self.source_info.unwrap().span,
-                            );
-                        }
+                if let Some(value) = self.get_const(l) && self.should_const_prop(&value) {
+                    // FIXME(felix91gr): this code only handles `Scalar` cases.
+                    // For now, we're not handling `ScalarPair` cases because
+                    // doing so here would require a lot of code duplication.
+                    // We should hopefully generalize `Operand` handling into a fn,
+                    // and use it to do const-prop here and everywhere else
+                    // where it makes sense.
+                    if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
+                        ScalarMaybeUninit::Scalar(scalar),
+                    )) = *value
+                    {
+                        *operand = self.operand_from_scalar(
+                            scalar,
+                            value.layout.ty,
+                            self.source_info.unwrap().span,
+                        );
                     }
                 }
             }
@@ -1086,15 +1084,13 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 // This will return None if the above `const_prop` invocation only "wrote" a
                 // type whose creation requires no write. E.g. a generator whose initial state
                 // consists solely of uninitialized memory (so it doesn't capture any locals).
-                if let Some(ref value) = self.get_const(place) {
-                    if self.should_const_prop(value) {
-                        trace!("replacing {:?} with {:?}", rval, value);
-                        self.replace_with_const(rval, value, source_info);
-                        if can_const_prop == ConstPropMode::FullConstProp
-                            || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
-                        {
-                            trace!("propagated into {:?}", place);
-                        }
+                if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
+                    trace!("replacing {:?} with {:?}", rval, value);
+                    self.replace_with_const(rval, value, source_info);
+                    if can_const_prop == ConstPropMode::FullConstProp
+                        || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                    {
+                        trace!("propagated into {:?}", place);
                     }
                 }
                 match can_const_prop {
