@@ -2898,7 +2898,7 @@ pub unsafe fn _mm256_cvtss_f32(a: __m256) -> f32 {
     simd_extract(a, 0)
 }
 
-/// LLVM intrinsics used in the above functions
+// LLVM intrinsics used in the above functions
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.avx.addsub.pd.256"]
