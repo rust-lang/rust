@@ -1,28 +1,157 @@
+//! Platform-specific types, as defined by C.
+//!
+//! Code that interacts via FFI will almost certainly be using the
+//! base types provided by C, which aren't nearly as nicely defined
+//! as Rust's primitive types. This module provides types which will
+//! match those defined by C, so that code that interacts with C will
+//! refer to the correct types.
+
 #![stable(feature = "", since = "1.30.0")]
 #![allow(non_camel_case_types)]
 
-//! Utilities related to foreign function interface (FFI) bindings.
-
 use crate::fmt;
 use crate::marker::PhantomData;
+use crate::num::*;
 use crate::ops::{Deref, DerefMut};
 
-/// Equivalent to C's `void` type when used as a [pointer].
+macro_rules! type_alias_no_nz {
+    {
+      $Docfile:tt, $Alias:ident = $Real:ty;
+      $( $Cfg:tt )*
+    } => {
+        #[doc = include_str!($Docfile)]
+        $( $Cfg )*
+        #[unstable(feature = "core_ffi_c", issue = "94501")]
+        pub type $Alias = $Real;
+    }
+}
+
+// To verify that the NonZero types in this file's macro invocations correspond
+//
+//  perl -n < library/std/src/os/raw/mod.rs -e 'next unless m/type_alias\!/; die "$_ ?" unless m/, (c_\w+) = (\w+), NonZero_(\w+) = NonZero(\w+)/; die "$_ ?" unless $3 eq $1 and $4 eq ucfirst $2'
+//
+// NB this does not check that the main c_* types are right.
+
+macro_rules! type_alias {
+    {
+      $Docfile:tt, $Alias:ident = $Real:ty, $NZAlias:ident = $NZReal:ty;
+      $( $Cfg:tt )*
+    } => {
+        type_alias_no_nz! { $Docfile, $Alias = $Real; $( $Cfg )* }
+
+        #[doc = concat!("Type alias for `NonZero` version of [`", stringify!($Alias), "`]")]
+        #[unstable(feature = "raw_os_nonzero", issue = "82363")]
+        $( $Cfg )*
+        pub type $NZAlias = $NZReal;
+    }
+}
+
+type_alias! { "c_char.md", c_char = c_char_definition::c_char, NonZero_c_char = c_char_definition::NonZero_c_char;
+// Make this type alias appear cfg-dependent so that Clippy does not suggest
+// replacing `0 as c_char` with `0_i8`/`0_u8`. This #[cfg(all())] can be removed
+// after the false positive in https://github.com/rust-lang/rust-clippy/issues/8093
+// is fixed.
+#[cfg(all())]
+#[doc(cfg(all()))] }
+type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
+type_alias! { "c_uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
+type_alias! { "c_short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
+type_alias! { "c_ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
+type_alias! { "c_int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
+type_alias! { "c_uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
+type_alias! { "c_long.md", c_long = i32, NonZero_c_long = NonZeroI32;
+#[doc(cfg(all()))]
+#[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "c_ulong.md", c_ulong = u32, NonZero_c_ulong = NonZeroU32;
+#[doc(cfg(all()))]
+#[cfg(any(target_pointer_width = "32", windows))] }
+type_alias! { "c_long.md", c_long = i64, NonZero_c_long = NonZeroI64;
+#[doc(cfg(all()))]
+#[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "c_ulong.md", c_ulong = u64, NonZero_c_ulong = NonZeroU64;
+#[doc(cfg(all()))]
+#[cfg(all(target_pointer_width = "64", not(windows)))] }
+type_alias! { "c_longlong.md", c_longlong = i64, NonZero_c_longlong = NonZeroI64; }
+type_alias! { "c_ulonglong.md", c_ulonglong = u64, NonZero_c_ulonglong = NonZeroU64; }
+type_alias_no_nz! { "c_float.md", c_float = f32; }
+type_alias_no_nz! { "c_double.md", c_double = f64; }
+
+/// Equivalent to C's `size_t` type, from `stddef.h` (or `cstddef` for C++).
 ///
-/// In essence, `*const c_void` is equivalent to C's `const void*`
-/// and `*mut c_void` is equivalent to C's `void*`. That said, this is
-/// *not* the same as C's `void` return type, which is Rust's `()` type.
+/// This type is currently always [`usize`], however in the future there may be
+/// platforms where this is not the case.
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub type c_size_t = usize;
+
+/// Equivalent to C's `ptrdiff_t` type, from `stddef.h` (or `cstddef` for C++).
 ///
-/// To model pointers to opaque types in FFI, until `extern type` is
-/// stabilized, it is recommended to use a newtype wrapper around an empty
-/// byte array. See the [Nomicon] for details.
+/// This type is currently always [`isize`], however in the future there may be
+/// platforms where this is not the case.
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub type c_ptrdiff_t = isize;
+
+/// Equivalent to C's `ssize_t` (on POSIX) or `SSIZE_T` (on Windows) type.
 ///
-/// One could use `std::os::raw::c_void` if they want to support old Rust
-/// compiler down to 1.1.0. After Rust 1.30.0, it was re-exported by
-/// this definition. For more information, please read [RFC 2521].
-///
-/// [Nomicon]: https://doc.rust-lang.org/nomicon/ffi.html#representing-opaque-structs
-/// [RFC 2521]: https://github.com/rust-lang/rfcs/blob/master/text/2521-c_void-reunification.md
+/// This type is currently always [`isize`], however in the future there may be
+/// platforms where this is not the case.
+#[unstable(feature = "c_size_t", issue = "88345")]
+pub type c_ssize_t = isize;
+
+mod c_char_definition {
+    cfg_if! {
+        // These are the targets on which c_char is unsigned.
+        if #[cfg(any(
+            all(
+                target_os = "linux",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "hexagon",
+                    target_arch = "powerpc",
+                    target_arch = "powerpc64",
+                    target_arch = "s390x",
+                    target_arch = "riscv64",
+                    target_arch = "riscv32"
+                )
+            ),
+            all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
+            all(target_os = "l4re", target_arch = "x86_64"),
+            all(
+                target_os = "freebsd",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc",
+                    target_arch = "powerpc64",
+                    target_arch = "riscv64"
+                )
+            ),
+            all(
+                target_os = "netbsd",
+                any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
+            ),
+            all(target_os = "openbsd", target_arch = "aarch64"),
+            all(
+                target_os = "vxworks",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc64",
+                    target_arch = "powerpc"
+                )
+            ),
+            all(target_os = "fuchsia", target_arch = "aarch64")
+        ))] {
+            pub type c_char = u8;
+            pub type NonZero_c_char = crate::num::NonZeroU8;
+        } else {
+            // On every other target, c_char is signed.
+            pub type c_char = i8;
+            pub type NonZero_c_char = crate::num::NonZeroI8;
+        }
+    }
+}
+
 // N.B., for LLVM to recognize the void pointer type and by extension
 //     functions like malloc(), we need to have it represented as i8* in
 //     LLVM bitcode. The enum used here ensures this and prevents misuse
@@ -31,6 +160,7 @@ use crate::ops::{Deref, DerefMut};
 //     otherwise and we need at least one variant as otherwise the enum
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
+#[doc = include_str!("c_void.md")]
 #[repr(u8)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {

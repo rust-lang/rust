@@ -5,9 +5,9 @@
 #![unstable(issue = "none", feature = "windows_c")]
 
 use crate::mem;
-use crate::os::raw::NonZero_c_ulong;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
 use crate::ptr;
+use core::ffi::NonZero_c_ulong;
 
 use libc::{c_void, size_t, wchar_t};
 

@@ -2,11 +2,11 @@ use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
+use core::ffi::NonZero_c_int;
 use libc::RTP_ID;
 use libc::{self, c_char, c_int};
 
