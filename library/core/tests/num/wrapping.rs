@@ -308,3 +308,13 @@ fn wrapping_int_api() {
         }
     }
 }
+
+#[test]
+fn wrapping_const() {
+    // Specifically the wrapping behavior of division and remainder is subtle,
+    // see https://github.com/rust-lang/rust/pull/94512.
+    const _: () = {
+        assert!(i32::MIN.wrapping_div(-1) == i32::MIN);
+        assert!(i32::MIN.wrapping_rem(-1) == 0);
+    };
+}
