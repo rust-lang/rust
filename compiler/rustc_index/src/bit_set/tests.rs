@@ -340,6 +340,37 @@ fn chunked_bitset() {
     assert_eq!(b10000.count(), 6000);
     b10000.assert_valid();
     b10000b.assert_valid();
+
+    //-----------------------------------------------------------------------
+
+    let mut b6900 = ChunkedBitSet::<usize>::new_empty(6900);
+    b6900.insert(3);
+    b6900.insert(17);
+    b6900.insert(68);
+    b6900.insert(2000);
+    b6900.insert(2500);
+
+    let mut b6900b = BitSet::<usize>::new_empty(6900);
+    b6900b.insert(17);
+    b6900b.insert(42);
+    b6900b.insert(68);
+    b6900b.insert(2000);
+    b6900b.insert(4200);
+
+    b6900.subtract(&b6900b);
+    b6900.assert_valid();
+    assert!(b6900.contains(3));
+    assert!(b6900.contains(2500));
+    assert_eq!(b6900.count(), 2);
+
+    b6900.union(&b6900b);
+    b6900.assert_valid();
+    assert_eq!(b6900.count(), 7);
+
+    b6900.subtract(&BitSet::<usize>::new_filled(6900));
+    b6900.assert_valid();
+    assert_eq!(b6900.count(), 0);
+    assert_eq!(b6900.chunks(), vec![Zeros(2048), Zeros(2048), Zeros(2048), Zeros(756)],);
 }
 
 #[test]
