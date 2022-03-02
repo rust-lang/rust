@@ -371,6 +371,14 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
 
         debug!("is_borrowed_temporary: {:?}", self.drop_ranges.is_borrowed_temporary(expr));
 
+        // Typically, the value produced by an expression is consumed by its parent in some way,
+        // so we only have to check if the parent contains a yield (note that the parent may, for
+        // example, store the value into a local variable, but then we already consider local
+        // variables to be live across their scope).
+        //
+        // However, in the case of temporary values, we are going to store the value into a
+        // temporary on the stack that is live for the current temporary scope and then return a
+        // reference to it. That value may be live across the entire temporary scope.
         let scope = if self.drop_ranges.is_borrowed_temporary(expr) {
             self.region_scope_tree.temporary_scope(expr.hir_id.local_id)
         } else {

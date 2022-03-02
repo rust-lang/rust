@@ -51,8 +51,8 @@ pub trait Delegate<'tcx> {
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
-        // In most cases, treating a copy as a borrow is the right thing, so we forward
-        // this to the borrow callback by default.
+        // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
+        // we treat a copy of `x` as a borrow of `x`.
         self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow, false)
     }
 
