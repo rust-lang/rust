@@ -32,7 +32,9 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported, FatalError};
+use rustc_errors::{
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{MultiSpan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -877,7 +879,7 @@ impl<'a> Parser<'a> {
     fn recover_missing_braces_around_closure_body(
         &mut self,
         closure_spans: ClosureSpans,
-        mut expect_err: DiagnosticBuilder<'_, ErrorReported>,
+        mut expect_err: DiagnosticBuilder<'_, ErrorGuaranteed>,
     ) -> PResult<'a, ()> {
         let initial_semicolon = self.token.span;
 
@@ -1429,7 +1431,7 @@ impl<'a> Parser<'a> {
 crate fn make_unclosed_delims_error(
     unmatched: UnmatchedBrace,
     sess: &ParseSess,
-) -> Option<DiagnosticBuilder<'_, ErrorReported>> {
+) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;

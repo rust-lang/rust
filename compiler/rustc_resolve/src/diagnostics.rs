@@ -3,7 +3,9 @@ use std::ptr;
 use rustc_ast::{self as ast, Path};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
@@ -110,7 +112,7 @@ impl<'a> Resolver<'a> {
         &self,
         span: Span,
         resolution_error: ResolutionError<'_>,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterFunction(outer_res, has_generic_params) => {
                 let mut err = struct_span_err!(
@@ -627,7 +629,7 @@ impl<'a> Resolver<'a> {
     crate fn report_vis_error(
         &self,
         vis_resolution_error: VisResolutionError<'_>,
-    ) -> ErrorReported {
+    ) -> ErrorGuaranteed {
         match vis_resolution_error {
             VisResolutionError::Relative2018(span, path) => {
                 let mut err = self.session.struct_span_err(

@@ -32,7 +32,7 @@ use super::FnCtxt;
 
 use crate::hir::def_id::DefId;
 use crate::type_error_struct;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::Mutability;
@@ -86,13 +86,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         t: Ty<'tcx>,
         span: Span,
-    ) -> Result<Option<PointerKind<'tcx>>, ErrorReported> {
+    ) -> Result<Option<PointerKind<'tcx>>, ErrorGuaranteed> {
         debug!("pointer_kind({:?}, {:?})", t, span);
 
         let t = self.resolve_vars_if_possible(t);
 
         if t.references_error() {
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
 
         if self.type_is_known_to_be_sized_modulo_regions(t, span) {
@@ -142,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx
                     .sess
                     .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         })
     }
@@ -150,7 +150,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 #[derive(Copy, Clone)]
 pub enum CastError {
-    ErrorReported,
+    ErrorGuaranteed,
 
     CastToBool,
     CastToChar,
@@ -167,9 +167,9 @@ pub enum CastError {
     UnknownCastPtrKind,
 }
 
-impl From<ErrorReported> for CastError {
-    fn from(ErrorReported: ErrorReported) -> Self {
-        CastError::ErrorReported
+impl From<ErrorGuaranteed> for CastError {
+    fn from(ErrorGuaranteed: ErrorGuaranteed) -> Self {
+        CastError::ErrorGuaranteed
     }
 }
 
@@ -179,7 +179,7 @@ fn make_invalid_casting_error<'a, 'tcx>(
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
     fcx: &FnCtxt<'a, 'tcx>,
-) -> DiagnosticBuilder<'a, ErrorReported> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     type_error_struct!(
         sess,
         span,
@@ -199,7 +199,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         cast_ty: Ty<'tcx>,
         cast_span: Span,
         span: Span,
-    ) -> Result<CastCheck<'tcx>, ErrorReported> {
+    ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let check = CastCheck { expr, expr_ty, cast_ty, cast_span, span };
 
         // For better error messages, check for some obviously unsized
@@ -208,7 +208,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         match cast_ty.kind() {
             ty::Dynamic(..) | ty::Slice(..) => {
                 check.report_cast_to_unsized_type(fcx);
-                Err(ErrorReported)
+                Err(ErrorGuaranteed)
             }
             _ => Ok(check),
         }
@@ -216,7 +216,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     fn report_cast_error(&self, fcx: &FnCtxt<'a, 'tcx>, e: CastError) {
         match e {
-            CastError::ErrorReported => {
+            CastError::ErrorGuaranteed => {
                 // an error has already been reported
             }
             CastError::NeedDeref => {

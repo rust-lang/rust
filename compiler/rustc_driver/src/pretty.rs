@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::map as hir_map;
@@ -479,7 +479,7 @@ fn print_with_analysis(
     tcx: TyCtxt<'_>,
     ppm: PpMode,
     ofile: Option<&Path>,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     tcx.analysis(())?;
     let out = match ppm {
         Mir => {

@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
@@ -23,7 +23,7 @@ use rustc_span::symbol::sym;
 use std::path::PathBuf;
 use std::result;
 
-pub type Result<T> = result::Result<T, ErrorReported>;
+pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
 /// Represents a compiler session.
 ///

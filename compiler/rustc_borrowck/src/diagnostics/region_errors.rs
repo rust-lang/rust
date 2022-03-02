@@ -1,6 +1,6 @@
 //! Error reporting machinery for lifetime errors.
 
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::NiceRegionError,
     error_reporting::unexpected_hidden_region_diagnostic, NllRegionVariableOrigin,
@@ -389,7 +389,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo,
         kind: ReturnConstraint,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut diag = self
@@ -469,7 +469,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -573,7 +573,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report_general_error(
         &self,
         errci: &ErrorConstraintInfo,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,

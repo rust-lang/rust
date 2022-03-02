@@ -5,7 +5,7 @@ use crate::ty::{
     TyCtxt, TypeFoldable,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
@@ -264,7 +264,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.val().try_eval(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(ErrorReported) => tcx.const_error(self.ty()),
+                Err(ErrorGuaranteed) => tcx.const_error(self.ty()),
             }
         } else {
             self

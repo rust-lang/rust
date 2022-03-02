@@ -1,7 +1,7 @@
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::*;
 use crate::infer::InferCtxt;
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 
@@ -46,17 +46,17 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
         self.try_report_named_anon_conflict().or_else(|| self.try_report_placeholder_conflict())
     }
 
-    pub fn try_report(&self) -> Option<ErrorReported> {
+    pub fn try_report(&self) -> Option<ErrorGuaranteed> {
         self.try_report_from_nll()
             .map(|mut diag| {
                 diag.emit();
-                ErrorReported
+                ErrorGuaranteed
             })
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
             .or_else(|| self.try_report_anon_anon_conflict())

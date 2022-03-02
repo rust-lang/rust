@@ -5,7 +5,7 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_incremental::DepGraphFuture;
 use rustc_lint::LintStore;
@@ -123,7 +123,7 @@ impl<'tcx> Queries<'tcx> {
         self.parse.compute(|| {
             passes::parse(self.session(), &self.compiler.input).map_err(|mut parse_error| {
                 parse_error.emit();
-                ErrorReported
+                ErrorGuaranteed
             })
         })
     }

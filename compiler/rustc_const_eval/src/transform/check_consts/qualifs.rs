@@ -2,7 +2,7 @@
 //!
 //! See the `Qualif` trait for more info.
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
@@ -17,7 +17,7 @@ use super::ConstCx;
 pub fn in_any_value_of_ty<'tcx>(
     cx: &ConstCx<'_, 'tcx>,
     ty: Ty<'tcx>,
-    tainted_by_errors: Option<ErrorReported>,
+    tainted_by_errors: Option<ErrorGuaranteed>,
 ) -> ConstQualifs {
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),

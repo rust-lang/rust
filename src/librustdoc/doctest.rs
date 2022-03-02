@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ColorConfig, ErrorReported, FatalError};
+use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit;
@@ -44,7 +44,7 @@ crate struct GlobalTestOptions {
     crate attrs: Vec<String>,
 }
 
-crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
+crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -154,14 +154,14 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
 
             let unused_extern_reports = collector.unused_extern_reports.clone();
             let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-            let ret: Result<_, ErrorReported> =
+            let ret: Result<_, ErrorGuaranteed> =
                 Ok((collector.tests, unused_extern_reports, compiling_test_count));
             ret
         })
     });
     let (tests, unused_extern_reports, compiling_test_count) = match res {
         Ok(res) => res,
-        Err(ErrorReported) => return Err(ErrorReported),
+        Err(ErrorGuaranteed) => return Err(ErrorGuaranteed),
     };
 
     run_tests(test_args, nocapture, tests);
@@ -619,7 +619,7 @@ crate fn make_test(
     });
     let (already_has_main, already_has_extern_crate, found_macro) = match result {
         Ok(result) => result,
-        Err(ErrorReported) => {
+        Err(ErrorGuaranteed) => {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
             return (s.to_owned(), 0, false);

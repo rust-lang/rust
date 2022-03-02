@@ -5,7 +5,7 @@
 use crate::check::FnCtxt;
 
 use rustc_data_structures::stable_map::FxHashMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -80,8 +80,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             mem::take(&mut self.typeck_results.borrow_mut().treat_byte_string_as_slice);
 
         if self.is_tainted_by_errors() {
-            // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
-            wbcx.typeck_results.tainted_by_errors = Some(ErrorReported);
+            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
+            wbcx.typeck_results.tainted_by_errors = Some(ErrorGuaranteed);
         }
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
@@ -661,8 +661,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // to mark the `TypeckResults` as tainted in that case, so that downstream
         // users of the typeck results don't produce extra errors, or worse, ICEs.
         if resolver.replaced_with_error {
-            // FIXME(eddyb) keep track of `ErrorReported` from where the error was emitted.
-            self.typeck_results.tainted_by_errors = Some(ErrorReported);
+            // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
+            self.typeck_results.tainted_by_errors = Some(ErrorGuaranteed);
         }
 
         x

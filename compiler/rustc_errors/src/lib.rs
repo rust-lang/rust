@@ -54,7 +54,7 @@ mod snippet;
 mod styled_buffer;
 pub use snippet::Style;
 
-pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorReported>>;
+pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
@@ -682,7 +682,7 @@ impl Handler {
         &self,
         span: impl Into<MultiSpan>,
         msg: &str,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut result = self.struct_err(msg);
         result.set_span(span);
         result
@@ -694,7 +694,7 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut result = self.struct_span_err(span, msg);
         result.code(code);
         result
@@ -702,7 +702,7 @@ impl Handler {
 
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
+    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         DiagnosticBuilder::new_guaranteeing_error::<{ Level::Error { lint: false } }>(self, msg)
     }
 
@@ -717,7 +717,7 @@ impl Handler {
         &self,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut result = self.struct_err(msg);
         result.code(code);
         result
@@ -728,7 +728,7 @@ impl Handler {
         &self,
         span: impl Into<MultiSpan>,
         msg: &str,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut result = self.struct_fatal(msg);
         result.set_span(span);
         result
@@ -740,14 +740,14 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut result = self.struct_span_fatal(span, msg);
         result.code(code);
         result
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorReported> {
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         DiagnosticBuilder::new_guaranteeing_error::<{ Level::Fatal }>(self, msg)
     }
 
@@ -1343,6 +1343,6 @@ pub fn add_elided_lifetime_in_path_suggestion(
 // Useful type to use with `Result<>` indicate that an error has already
 // been reported to the user, so no need to continue checking.
 #[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq)]
-pub struct ErrorReported;
+pub struct ErrorGuaranteed;
 
-rustc_data_structures::impl_stable_hash_via_hash!(ErrorReported);
+rustc_data_structures::impl_stable_hash_via_hash!(ErrorGuaranteed);

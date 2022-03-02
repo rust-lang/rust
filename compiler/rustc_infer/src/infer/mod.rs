@@ -14,7 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -1475,9 +1475,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sp: Span,
         mk_diag: M,
         actual_ty: Ty<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
-        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorReported>,
+        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
@@ -1498,7 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }
@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected: ty::Const<'tcx>,
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let trace = TypeTrace::consts(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }

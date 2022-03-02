@@ -1,4 +1,4 @@
-use rustc_errors::{DiagnosticBuilder, ErrorReported};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc_infer::infer::region_constraints::Constraint;
@@ -124,7 +124,7 @@ trait TypeOpInfo<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 
     fn base_universe(&self) -> ty::UniverseIndex;
 
@@ -134,7 +134,7 @@ trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>>;
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>;
 
     fn report_error(
         &self,
@@ -196,7 +196,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not prove {}", self.canonical_query.value.value.predicate));
         err
@@ -212,7 +212,7 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -243,7 +243,7 @@ where
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = tcx.sess.struct_span_err(span, "higher-ranked lifetime error");
         err.note(&format!("could not normalize `{}`", self.canonical_query.value.value.value));
         err
@@ -259,7 +259,7 @@ where
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -304,7 +304,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
         tcx.sess.struct_span_err(span, "higher-ranked lifetime error")
@@ -320,7 +320,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         tcx.infer_ctxt().enter_with_canonical(
             cause.span,
             &self.canonical_query,
@@ -345,7 +345,7 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
-) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
     let tcx = infcx.tcx;
 
     // We generally shouldn't have errors here because the query was

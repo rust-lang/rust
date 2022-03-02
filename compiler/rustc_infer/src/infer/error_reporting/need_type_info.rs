@@ -1,7 +1,7 @@
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::infer::{InferCtxt, Symbol};
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorReported,
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Namespace};
@@ -490,7 +490,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         arg: GenericArg<'tcx>,
         impl_candidates: Vec<ty::TraitRef<'tcx>>,
         error_code: TypeAnnotationNeeded,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
@@ -915,7 +915,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         kind: hir::GeneratorKind,
         span: Span,
         ty: Ty<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let ty = self.resolve_vars_if_possible(ty);
         let data = self.extract_inference_diagnostics_data(ty.into(), None);
 

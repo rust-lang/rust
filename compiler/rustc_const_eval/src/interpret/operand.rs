@@ -4,7 +4,7 @@
 use std::convert::TryFrom;
 use std::fmt::Write;
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
@@ -565,7 +565,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val.val() {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
+            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorGuaranteed)),
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())

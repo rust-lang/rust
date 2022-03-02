@@ -80,7 +80,7 @@ use std::io;
 use std::process;
 
 use rustc_driver::{abort_on_err, describe_lints};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -178,7 +178,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorReported),
+        _ => Err(ErrorGuaranteed),
     });
     process::exit(exit_code);
 }
@@ -671,7 +671,7 @@ fn usage(argv0: &str) {
 }
 
 /// A result type used by several functions under `main()`.
-type MainResult = Result<(), ErrorReported>;
+type MainResult = Result<(), ErrorGuaranteed>;
 
 fn main_args(at_args: &[String]) -> MainResult {
     let args = rustc_driver::args::arg_expand_all(at_args);
@@ -691,7 +691,7 @@ fn main_args(at_args: &[String]) -> MainResult {
     // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
+        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorGuaranteed) },
     };
     rustc_interface::util::run_in_thread_pool_with_globals(
         options.edition,
@@ -705,7 +705,7 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
         Ok(()) => Ok(()),
         Err(err) => {
             diag.struct_err(&err).emit();
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }

@@ -2,7 +2,7 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
@@ -17,7 +17,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         impl_item_def_id: DefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let msg = "impl has stricter requirements than trait";
         let sp = self.tcx.sess.source_map().guess_head_span(error_span);
 
@@ -40,7 +40,7 @@ pub fn report_object_safety_error<'tcx>(
     span: Span,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
-) -> DiagnosticBuilder<'tcx, ErrorReported> {
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),

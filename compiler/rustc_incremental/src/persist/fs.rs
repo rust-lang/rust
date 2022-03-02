@@ -106,7 +106,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
 
@@ -204,7 +204,7 @@ pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
     stable_crate_id: StableCrateId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
         return Ok(());
     }
@@ -230,7 +230,7 @@ pub fn prepare_session_directory(
                 crate_dir.display(),
                 err
             ));
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
     };
 
@@ -482,7 +482,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorReported> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGuaranteed> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
@@ -496,7 +496,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
                 path.display(),
                 err
             ));
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }
@@ -505,7 +505,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
 fn lock_directory(
     sess: &Session,
     session_dir: &Path,
-) -> Result<(flock::Lock, PathBuf), ErrorReported> {
+) -> Result<(flock::Lock, PathBuf), ErrorGuaranteed> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -546,7 +546,7 @@ fn lock_directory(
                 }
             }
             err.emit();
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }

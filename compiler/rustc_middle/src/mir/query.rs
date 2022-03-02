@@ -4,7 +4,7 @@ use crate::mir::{Body, Promoted};
 use crate::ty::{self, Ty, TyCtxt};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
@@ -245,7 +245,7 @@ pub struct BorrowCheckResult<'tcx> {
     pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
-    pub tainted_by_errors: Option<ErrorReported>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 /// The result of the `mir_const_qualif` query.
@@ -259,7 +259,7 @@ pub struct ConstQualifs {
     pub needs_drop: bool,
     pub needs_non_const_drop: bool,
     pub custom_eq: bool,
-    pub tainted_by_errors: Option<ErrorReported>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 /// After we borrow check a closure, we are left with various

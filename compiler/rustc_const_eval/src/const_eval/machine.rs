@@ -1,4 +1,4 @@
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
@@ -251,7 +251,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
-                    throw_inval!(AlreadyReported(ErrorReported {}));
+                    throw_inval!(AlreadyReported(ErrorGuaranteed {}));
                 } else {
                     let path = ecx.tcx.def_path_str(def.did);
                     Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))

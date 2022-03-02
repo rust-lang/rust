@@ -4,7 +4,7 @@ use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_
 use super::*;
 
 use rustc_attr as attr;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -623,13 +623,13 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
         match origin {
             hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
             _ => opaque_type_cycle_error(tcx, def_id, span),
         }
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     } else {
         Ok(())
     }
@@ -760,7 +760,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
                             InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
-                        let _: Result<_, rustc_errors::ErrorReported> = check_type_bounds(
+                        let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,

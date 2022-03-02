@@ -260,7 +260,7 @@ TrivialTypeFoldableAndLiftImpls! {
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
-    ::rustc_errors::ErrorReported,
+    ::rustc_errors::ErrorGuaranteed,
 }
 
 ///////////////////////////////////////////////////////////////////////////

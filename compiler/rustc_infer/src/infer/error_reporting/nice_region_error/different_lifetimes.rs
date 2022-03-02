@@ -7,7 +7,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::{GenericParamKind, Ty};
 use rustc_middle::ty::Region;
@@ -49,7 +49,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// ```
     ///
     /// It will later be extended to trait objects.
-    pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorGuaranteed> {
         let (span, sub, sup) = self.regions()?;
 
         if let Some(RegionResolutionError::ConcreteFailure(
@@ -148,7 +148,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut err);
 
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 
     fn suggest_adding_lifetime_params(

@@ -19,7 +19,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::Node;
@@ -178,7 +178,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(ErrorReported) = tables.tainted_by_errors {
+    if let Some(ErrorGuaranteed) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
         errors.set_tainted_by_errors();
     }
@@ -2292,11 +2292,11 @@ mod error {
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorReported>)>,
+            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
         /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     }
 
     impl BorrowckErrors<'_> {
@@ -2310,8 +2310,8 @@ mod error {
 
         // FIXME(eddyb) this is a suboptimal API because `tainted_by_errors` is
         // set before any emission actually happens (weakening the guarantee).
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorReported>) {
-            self.tainted_by_errors = Some(ErrorReported {});
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+            self.tainted_by_errors = Some(ErrorGuaranteed {});
             t.buffer(&mut self.buffered);
         }
 
@@ -2320,12 +2320,12 @@ mod error {
         }
 
         pub fn set_tainted_by_errors(&mut self) {
-            self.tainted_by_errors = Some(ErrorReported {});
+            self.tainted_by_errors = Some(ErrorGuaranteed {});
         }
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorReported>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
             self.errors.buffer_error(t);
         }
 
@@ -2336,7 +2336,7 @@ mod error {
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorReported>),
+            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2349,7 +2349,7 @@ mod error {
             }
         }
 
-        pub fn emit_errors(&mut self) -> Option<ErrorReported> {
+        pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
@@ -2374,7 +2374,7 @@ mod error {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorReported>)> {
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorGuaranteed>)> {
             self.errors.buffered_move_errors.get(move_out_indices)
         }
     }

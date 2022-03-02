@@ -1,6 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -51,7 +51,7 @@ pub trait NonConstOp<'tcx>: std::fmt::Debug {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported>;
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
 }
 
 #[derive(Debug)]
@@ -69,7 +69,7 @@ impl<'tcx> NonConstOp<'tcx> for FloatingPointOp {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_floating_point_arithmetic,
@@ -87,7 +87,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallIndirect {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         ccx.tcx.sess.struct_span_err(span, "function pointers are not allowed in const fn")
     }
 }
@@ -107,7 +107,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         _: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallNonConst { caller, callee, substs, span, from_hir_call } = *self;
         let ConstCx { tcx, param_env, .. } = *ccx;
 
@@ -332,7 +332,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
         let mut err = ccx.tcx.sess.struct_span_err(
@@ -370,7 +370,7 @@ impl<'tcx> NonConstOp<'tcx> for FnPtrCast {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_fn_fn_ptr_basics,
@@ -395,7 +395,7 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             feature_err(&ccx.tcx.sess.parse_sess, sym::const_async_blocks, span, &msg)
@@ -412,7 +412,7 @@ impl<'tcx> NonConstOp<'tcx> for HeapAllocation {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -440,7 +440,7 @@ impl<'tcx> NonConstOp<'tcx> for InlineAsm {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -460,7 +460,7 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -492,7 +492,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientCellBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_refs_to_cell,
@@ -512,7 +512,7 @@ impl<'tcx> NonConstOp<'tcx> for CellBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -563,7 +563,7 @@ impl<'tcx> NonConstOp<'tcx> for MutBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let raw = match self.0 {
             hir::BorrowKind::Raw => "raw ",
             hir::BorrowKind::Ref => "",
@@ -606,7 +606,7 @@ impl<'tcx> NonConstOp<'tcx> for TransientMutBorrow {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let raw = match self.0 {
             hir::BorrowKind::Raw => "raw ",
             hir::BorrowKind::Ref => "",
@@ -637,7 +637,7 @@ impl<'tcx> NonConstOp<'tcx> for MutDeref {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -655,7 +655,7 @@ impl<'tcx> NonConstOp<'tcx> for PanicNonStr {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         ccx.tcx.sess.struct_span_err(
             span,
             "argument to `panic!()` in a const context must have type `&str`",
@@ -673,7 +673,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrComparison {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = ccx
             .tcx
             .sess
@@ -697,7 +697,7 @@ impl<'tcx> NonConstOp<'tcx> for RawMutPtrDeref {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         feature_err(
             &ccx.tcx.sess.parse_sess,
             sym::const_mut_refs,
@@ -717,7 +717,7 @@ impl<'tcx> NonConstOp<'tcx> for RawPtrToIntCast {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = ccx
             .tcx
             .sess
@@ -746,7 +746,7 @@ impl<'tcx> NonConstOp<'tcx> for StaticAccess {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -776,7 +776,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
         &self,
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         struct_span_err!(
             ccx.tcx.sess,
             span,
@@ -811,7 +811,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_mut_refs,
@@ -845,7 +845,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_fn_fn_ptr_basics,
@@ -866,7 +866,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_impl_trait,
@@ -900,7 +900,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             let mut err = feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_fn_trait_bound,
@@ -943,7 +943,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             let mut err = feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_fn_trait_bound,
@@ -974,7 +974,7 @@ pub mod ty {
             &self,
             ccx: &ConstCx<'_, 'tcx>,
             span: Span,
-        ) -> DiagnosticBuilder<'tcx, ErrorReported> {
+        ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
             feature_err(
                 &ccx.tcx.sess.parse_sess,
                 sym::const_trait_bound_opt_out,

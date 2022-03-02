@@ -97,7 +97,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
@@ -491,7 +491,7 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
+pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
@@ -537,7 +537,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
+    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorGuaranteed) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

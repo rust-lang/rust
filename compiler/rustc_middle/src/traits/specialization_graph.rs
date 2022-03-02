@@ -2,7 +2,7 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_span::symbol::sym;
 
@@ -243,11 +243,11 @@ pub fn ancestors<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,
-) -> Result<Ancestors<'tcx>, ErrorReported> {
+) -> Result<Ancestors<'tcx>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
 
     if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     } else {
         Ok(Ancestors {
             trait_def_id,

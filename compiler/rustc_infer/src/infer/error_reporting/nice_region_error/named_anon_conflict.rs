@@ -2,7 +2,7 @@
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
@@ -10,7 +10,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// an anonymous region, emit an descriptive diagnostic error.
     pub(super) fn try_report_named_anon_conflict(
         &self,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorReported>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (span, sub, sup) = self.regions()?;
 
         debug!(

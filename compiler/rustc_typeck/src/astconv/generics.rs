@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -602,7 +602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             correct: if lifetimes_correct && args_correct {
                 Ok(())
             } else {
-                Err(GenericArgCountMismatch { reported: Some(ErrorReported), invalid_args })
+                Err(GenericArgCountMismatch { reported: Some(ErrorGuaranteed), invalid_args })
             },
         }
     }

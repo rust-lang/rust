@@ -16,7 +16,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -57,7 +57,7 @@ impl Error {
         self,
         sp: impl Into<MultiSpan>,
         handler: &Handler,
-    ) -> DiagnosticBuilder<'_, ErrorReported> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         match self {
             Error::UselessDocComment => {
                 let mut err = struct_span_err!(
@@ -159,7 +159,7 @@ impl<'a> Parser<'a> {
         &self,
         sp: S,
         err: Error,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         err.span_err(sp, self.diagnostic())
     }
 
@@ -167,7 +167,7 @@ impl<'a> Parser<'a> {
         &self,
         sp: S,
         m: &str,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
         self.sess.source_map().span_to_snippet(span)
     }
 
-    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorReported> {
+    pub(super) fn expected_ident_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = self.struct_span_err(
             self.token.span,
             &format!("expected identifier, found {}", super::token_descr(&self.token)),
@@ -729,7 +729,7 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a, ErrorReported>,
+        mut e: DiagnosticBuilder<'a, ErrorGuaranteed>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
@@ -1451,7 +1451,7 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_closing_delimiter(
         &mut self,
         tokens: &[TokenKind],
-        mut err: DiagnosticBuilder<'a, ErrorReported>,
+        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
     ) -> PResult<'a, bool> {
         let mut pos = None;
         // We want to use the last closing delim that would apply.
@@ -1822,7 +1822,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorReported> {
+    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.prev_token.span);
@@ -2028,7 +2028,7 @@ impl<'a> Parser<'a> {
     pub fn recover_const_arg(
         &mut self,
         start: Span,
-        mut err: DiagnosticBuilder<'a, ErrorReported>,
+        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
     ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
@@ -2095,7 +2095,7 @@ impl<'a> Parser<'a> {
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
     pub fn dummy_const_arg_needs_braces(
         &self,
-        mut err: DiagnosticBuilder<'a, ErrorReported>,
+        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
         span: Span,
     ) -> GenericArg {
         err.multipart_suggestion(
@@ -2115,7 +2115,7 @@ impl<'a> Parser<'a> {
     pub(super) fn incorrect_move_async_order_found(
         &self,
         move_async_span: Span,
-    ) -> DiagnosticBuilder<'a, ErrorReported> {
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err =
             self.struct_span_err(move_async_span, "the order of `move` and `async` is incorrect");
         err.span_suggestion_verbose(

@@ -62,7 +62,7 @@ crate fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, spa
 }
 
 fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorReported>,
+    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,

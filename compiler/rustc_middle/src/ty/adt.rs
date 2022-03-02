@@ -6,7 +6,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -424,7 +424,7 @@ impl<'tcx> AdtDef {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                    ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
                         "enum discriminant evaluation failed"
                     }
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",
