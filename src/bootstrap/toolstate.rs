@@ -24,7 +24,7 @@ const OS: Option<&str> = None;
 
 type ToolstateData = HashMap<Box<str>, ToolState>;
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, Eq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq, PartialOrd)]
 #[serde(rename_all = "kebab-case")]
 /// Whether a tool can be compiled, tested or neither
 pub enum ToolState {
@@ -47,13 +47,6 @@ impl fmt::Display for ToolState {
                 ToolState::BuildFail => "build-fail",
             }
         )
-    }
-}
-
-impl Default for ToolState {
-    fn default() -> Self {
-        // err on the safe side
-        ToolState::BuildFail
     }
 }
 
@@ -466,13 +459,11 @@ fn publish_test_results(current_toolstate: &ToolstateData) {
     t!(fs::write(&history_path, file));
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct RepoState {
     tool: String,
     windows: ToolState,
     linux: ToolState,
-    commit: String,
-    datetime: String,
 }
 
 impl RepoState {
