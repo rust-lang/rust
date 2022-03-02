@@ -49,6 +49,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(methods::SEARCH_IS_SOME),
     LintId::of(methods::SKIP_WHILE_NEXT),
     LintId::of(methods::UNNECESSARY_FILTER_MAP),
+    LintId::of(methods::UNNECESSARY_FIND_MAP),
     LintId::of(methods::USELESS_ASREF),
     LintId::of(misc::SHORT_CIRCUIT_STATEMENT),
     LintId::of(misc_early::UNNEEDED_WILDCARD_PATTERN),

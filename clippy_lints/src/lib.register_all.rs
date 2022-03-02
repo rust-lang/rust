@@ -190,6 +190,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::SUSPICIOUS_SPLITN),
     LintId::of(methods::UNINIT_ASSUMED_INIT),
     LintId::of(methods::UNNECESSARY_FILTER_MAP),
+    LintId::of(methods::UNNECESSARY_FIND_MAP),
     LintId::of(methods::UNNECESSARY_FOLD),
     LintId::of(methods::UNNECESSARY_LAZY_EVALUATIONS),
     LintId::of(methods::UNNECESSARY_TO_OWNED),

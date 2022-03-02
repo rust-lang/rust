@@ -1309,7 +1309,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `filter_map` calls which could be replaced by `filter` or `map`.
+    /// Checks for `filter_map` calls that could be replaced by `filter` or `map`.
     /// More specifically it checks if the closure provided is only performing one of the
     /// filter or map operations and suggests the appropriate option.
     ///
@@ -1335,6 +1335,36 @@ declare_clippy_lint! {
     pub UNNECESSARY_FILTER_MAP,
     complexity,
     "using `filter_map` when a more succinct alternative exists"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `find_map` calls that could be replaced by `find` or `map`. More
+    /// specifically it checks if the closure provided is only performing one of the
+    /// find or map operations and suggests the appropriate option.
+    ///
+    /// ### Why is this bad?
+    /// Complexity. The intent is also clearer if only a single
+    /// operation is being performed.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let _ = (0..3).find_map(|x| if x > 2 { Some(x) } else { None });
+    ///
+    /// // As there is no transformation of the argument this could be written as:
+    /// let _ = (0..3).find(|&x| x > 2);
+    /// ```
+    ///
+    /// ```rust
+    /// let _ = (0..4).find_map(|x| Some(x + 1));
+    ///
+    /// // As there is no conditional check on the argument this could be written as:
+    /// let _ = (0..4).map(|x| x + 1).next();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub UNNECESSARY_FIND_MAP,
+    complexity,
+    "using `find_map` when a more succinct alternative exists"
 }
 
 declare_clippy_lint! {
@@ -2020,6 +2050,7 @@ impl_lint_pass!(Methods => [
     USELESS_ASREF,
     UNNECESSARY_FOLD,
     UNNECESSARY_FILTER_MAP,
+    UNNECESSARY_FIND_MAP,
     INTO_ITER_ON_REF,
     SUSPICIOUS_MAP,
     UNINIT_ASSUMED_INIT,
@@ -2305,8 +2336,11 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 extend_with_drain::check(cx, expr, recv, arg);
             },
             ("filter_map", [arg]) => {
-                unnecessary_filter_map::check(cx, expr, arg);
+                unnecessary_filter_map::check(cx, expr, arg, name);
                 filter_map_identity::check(cx, expr, arg, span);
+            },
+            ("find_map", [arg]) => {
+                unnecessary_filter_map::check(cx, expr, arg, name);
             },
             ("flat_map", [arg]) => {
                 flat_map_identity::check(cx, expr, arg, span);
