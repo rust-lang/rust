@@ -191,16 +191,13 @@ impl CoverageSpan {
     /// If the span is part of a macro, and the macro is visible (expands directly to the given
     /// body_span), returns the macro name symbol.
     pub fn visible_macro(&self, body_span: Span) -> Option<Symbol> {
-        if let Some(current_macro) = self.current_macro() {
-            if self
-                .expn_span
-                .parent_callsite()
-                .unwrap_or_else(|| bug!("macro must have a parent"))
-                .ctxt()
-                == body_span.ctxt()
-            {
-                return Some(current_macro);
-            }
+        if let Some(current_macro) = self.current_macro() && self
+            .expn_span
+            .parent_callsite()
+            .unwrap_or_else(|| bug!("macro must have a parent"))
+            .ctxt() == body_span.ctxt()
+        {
+            return Some(current_macro);
         }
         None
     }
@@ -584,21 +581,19 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// In either case, no more spans will match the span of `pending_dups`, so
     /// add the `pending_dups` if they don't overlap `curr`, and clear the list.
     fn check_pending_dups(&mut self) {
-        if let Some(dup) = self.pending_dups.last() {
-            if dup.span != self.prev().span {
-                debug!(
-                    "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
-                    previous iteration, or prev started a new disjoint span"
-                );
-                if dup.span.hi() <= self.curr().span.lo() {
-                    let pending_dups = self.pending_dups.split_off(0);
-                    for dup in pending_dups.into_iter() {
-                        debug!("    ...adding at least one pending={:?}", dup);
-                        self.push_refined_span(dup);
-                    }
-                } else {
-                    self.pending_dups.clear();
+        if let Some(dup) = self.pending_dups.last() && dup.span != self.prev().span {
+            debug!(
+                "    SAME spans, but pending_dups are NOT THE SAME, so BCBs matched on \
+                previous iteration, or prev started a new disjoint span"
+            );
+            if dup.span.hi() <= self.curr().span.lo() {
+                let pending_dups = self.pending_dups.split_off(0);
+                for dup in pending_dups.into_iter() {
+                    debug!("    ...adding at least one pending={:?}", dup);
+                    self.push_refined_span(dup);
                 }
+            } else {
+                self.pending_dups.clear();
             }
         }
     }

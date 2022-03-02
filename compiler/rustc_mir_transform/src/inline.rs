@@ -724,12 +724,11 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
     ) -> Local {
         // Reuse the operand if it is a moved temporary.
-        if let Operand::Move(place) = &arg {
-            if let Some(local) = place.as_local() {
-                if caller_body.local_kind(local) == LocalKind::Temp {
-                    return local;
-                }
-            }
+        if let Operand::Move(place) = &arg
+            && let Some(local) = place.as_local()
+            && caller_body.local_kind(local) == LocalKind::Temp
+        {
+            return local;
         }
 
         // Otherwise, create a temporary for the argument.
