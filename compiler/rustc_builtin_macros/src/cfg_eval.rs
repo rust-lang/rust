@@ -201,7 +201,7 @@ impl CfgEval<'_, '_> {
 
         // Re-parse the tokens, setting the `capture_cfg` flag to save extra information
         // to the captured `AttrAnnotatedTokenStream` (specifically, we capture
-        // `AttrAnnotatedTokenTree::AttributesData` for all occurences of `#[cfg]` and `#[cfg_attr]`)
+        // `AttrAnnotatedTokenTree::AttributesData` for all occurrences of `#[cfg]` and `#[cfg_attr]`)
         let mut parser =
             rustc_parse::stream_to_parser(&self.cfg.sess.parse_sess, orig_tokens, None);
         parser.capture_cfg = true;
