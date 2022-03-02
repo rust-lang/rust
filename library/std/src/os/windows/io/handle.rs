@@ -28,6 +28,10 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
 ///
+/// This type's `.to_owned()` implementation returns another `BorrowedHandle`
+/// rather than an `OwnedHandle`. It just makes a trivial copy of the raw
+/// handle, which is then borrowed under the same lifetime.
+///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
 #[derive(Copy, Clone)]
 #[repr(transparent)]
