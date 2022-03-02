@@ -1098,42 +1098,43 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     );
                 }
             }
-            if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..] {
-                if fields.len() == found_args.len() && is_closure {
-                    let sugg = format!(
-                        "|({}){}|",
-                        found_args
-                            .iter()
-                            .map(|arg| match arg {
-                                ArgKind::Arg(name, _) => name.to_owned(),
-                                _ => "_".to_owned(),
-                            })
-                            .collect::<Vec<String>>()
-                            .join(", "),
-                        // add type annotations if available
-                        if found_args.iter().any(|arg| match arg {
-                            ArgKind::Arg(_, ty) => ty != "_",
-                            _ => false,
-                        }) {
-                            format!(
-                                ": ({})",
-                                fields
-                                    .iter()
-                                    .map(|(_, ty)| ty.to_owned())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
-                            )
-                        } else {
-                            String::new()
-                        },
-                    );
-                    err.span_suggestion_verbose(
-                        found_span,
-                        "change the closure to accept a tuple instead of individual arguments",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
+            if let &[ArgKind::Tuple(_, ref fields)] = &expected_args[..]
+                && fields.len() == found_args.len()
+                && is_closure
+            {
+                let sugg = format!(
+                    "|({}){}|",
+                    found_args
+                        .iter()
+                        .map(|arg| match arg {
+                            ArgKind::Arg(name, _) => name.to_owned(),
+                            _ => "_".to_owned(),
+                        })
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    // add type annotations if available
+                    if found_args.iter().any(|arg| match arg {
+                        ArgKind::Arg(_, ty) => ty != "_",
+                        _ => false,
+                    }) {
+                        format!(
+                            ": ({})",
+                            fields
+                                .iter()
+                                .map(|(_, ty)| ty.to_owned())
+                                .collect::<Vec<String>>()
+                                .join(", ")
+                        )
+                    } else {
+                        String::new()
+                    },
+                );
+                err.span_suggestion_verbose(
+                    found_span,
+                    "change the closure to accept a tuple instead of individual arguments",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
             }
         }
 
@@ -2231,16 +2232,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             if obligated_types.iter().any(|ot| ot == &self_ty) {
                 return true;
             }
-            if let ty::Adt(def, substs) = self_ty.kind() {
-                if let [arg] = &substs[..] {
-                    if let ty::subst::GenericArgKind::Type(ty) = arg.unpack() {
-                        if let ty::Adt(inner_def, _) = ty.kind() {
-                            if inner_def == def {
-                                return true;
-                            }
-                        }
-                    }
-                }
+            if let ty::Adt(def, substs) = self_ty.kind()
+                && let [arg] = &substs[..]
+                && let ty::subst::GenericArgKind::Type(ty) = arg.unpack()
+                && let ty::Adt(inner_def, _) = ty.kind()
+                && inner_def == def
+            {
+                return true;
             }
         }
         false
