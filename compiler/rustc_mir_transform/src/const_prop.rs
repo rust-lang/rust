@@ -1196,12 +1196,21 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                             AssertKind::RemainderByZero(op) => {
                                 Some(AssertKind::RemainderByZero(eval_to_int(op)))
                             }
+                            AssertKind::Overflow(bin_op @ (BinOp::Div | BinOp::Rem), op1, op2) => {
+                                // Division overflow is *UB* in the MIR, and different than the
+                                // other overflow checks.
+                                Some(AssertKind::Overflow(
+                                    *bin_op,
+                                    eval_to_int(op1),
+                                    eval_to_int(op2),
+                                ))
+                            }
                             AssertKind::BoundsCheck { ref len, ref index } => {
                                 let len = eval_to_int(len);
                                 let index = eval_to_int(index);
                                 Some(AssertKind::BoundsCheck { len, index })
                             }
-                            // Overflow is are already covered by checks on the binary operators.
+                            // Remaining overflow errors are already covered by checks on the binary operators.
                             AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => None,
                             // Need proper const propagator for these.
                             _ => None,
