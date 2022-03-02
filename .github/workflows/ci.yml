@@ -104,6 +104,9 @@ jobs:
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         if: success() && !env.SKIP_JOB
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+        if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
         if: success() && !env.SKIP_JOB
@@ -118,9 +121,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        if: success() && !env.SKIP_JOB
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
@@ -502,6 +502,9 @@ jobs:
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         if: success() && !env.SKIP_JOB
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+        if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
         if: success() && !env.SKIP_JOB
@@ -516,9 +519,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        if: success() && !env.SKIP_JOB
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
@@ -615,6 +615,9 @@ jobs:
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
         if: success() && !env.SKIP_JOB
+      - name: checkout submodules
+        run: src/ci/scripts/checkout-submodules.sh
+        if: success() && !env.SKIP_JOB
       - name: install MSYS2
         run: src/ci/scripts/install-msys2.sh
         if: success() && !env.SKIP_JOB
@@ -629,9 +632,6 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: disable git crlf conversion
         run: src/ci/scripts/disable-git-crlf-conversion.sh
-        if: success() && !env.SKIP_JOB
-      - name: checkout submodules
-        run: src/ci/scripts/checkout-submodules.sh
         if: success() && !env.SKIP_JOB
       - name: ensure line endings are correct
         run: src/ci/scripts/verify-line-endings.sh
