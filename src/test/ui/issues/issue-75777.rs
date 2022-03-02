@@ -1,8 +1,6 @@
 // Regression test for #75777.
 // Checks that a boxed future can be properly constructed.
 
-#![feature(future_readiness_fns)]
-
 use std::future::{self, Future};
 use std::pin::Pin;
 

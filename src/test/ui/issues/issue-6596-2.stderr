@@ -1,5 +1,5 @@
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `$`
-  --> $DIR/issue-6596-2.rs:5:16
+  --> $DIR/issue-6596-2.rs:3:16
    |
 LL |         { $inp $nonexistent }
    |                ^^^^^^^^^^^^ expected one of 8 possible tokens

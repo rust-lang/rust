@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(recover)]
 
 use std::panic::UnwindSafe;
 

@@ -1,5 +1,5 @@
-#![feature(try_trait)]
 // edition:2018
+
 fn main() {}
 
 fn a_function() -> u32 {
