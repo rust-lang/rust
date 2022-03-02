@@ -26,21 +26,21 @@ LL |         unused_mut,
    |         ^^^^^^^^^^
 
 warning: this lint expectation is unfulfilled
-  --> $DIR/expect_nested_lint_levels.rs:23:5
-   |
-LL |     unused_mut,
-   |     ^^^^^^^^^^
-   |
-   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
-   = note: this `expect` is overridden by a `warn` attribute before the `unused_mut` lint is triggered
-
-warning: this lint expectation is unfulfilled
   --> $DIR/expect_nested_lint_levels.rs:7:5
    |
 LL |     unused_mut,
    |     ^^^^^^^^^^
    |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
    = note: this `expect` is overridden by a `allow` attribute before the `unused_mut` lint is triggered
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/expect_nested_lint_levels.rs:24:5
+   |
+LL |     unused_mut,
+   |     ^^^^^^^^^^
+   |
+   = note: this `expect` is overridden by a `warn` attribute before the `unused_mut` lint is triggered
 
 warning: this lint expectation is unfulfilled
   --> $DIR/expect_nested_lint_levels.rs:43:10

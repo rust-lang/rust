@@ -1,5 +1,4 @@
 use crate::builtin;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_middle::{lint::LintExpectation, ty::TyCtxt};
 use rustc_session::lint::LintExpectationId;
@@ -11,8 +10,7 @@ pub fn check_expectations(tcx: TyCtxt<'_>) {
     }
 
     let fulfilled_expectations = tcx.sess.diagnostic().steal_fulfilled_expectation_ids();
-    let lint_expectations: &FxHashMap<LintExpectationId, LintExpectation> =
-        &tcx.lint_levels(()).lint_expectations;
+    let lint_expectations = &tcx.lint_levels(()).lint_expectations;
 
     for (id, expectation) in lint_expectations {
         if !fulfilled_expectations.contains(id) {

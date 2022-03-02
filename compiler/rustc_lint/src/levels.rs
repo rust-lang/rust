@@ -45,7 +45,7 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 
 pub struct LintLevelsBuilder<'s> {
     sess: &'s Session,
-    lint_expectations: FxHashMap<LintExpectationId, LintExpectation>,
+    lint_expectations: Vec<(LintExpectationId, LintExpectation)>,
     /// Each expectation has a stable and an unstable identifier. This map
     /// is used to map from unstable to stable [`LintExpectationId`]s.
     expectation_id_map: FxHashMap<LintExpectationId, LintExpectationId>,
@@ -355,7 +355,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         }
                         if let Level::Expect(expect_id) = level {
                             self.lint_expectations
-                                .insert(expect_id, LintExpectation::new(reason, sp));
+                                .push((expect_id, LintExpectation::new(reason, sp)));
                         }
                     }
 
@@ -374,7 +374,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations
-                                        .insert(expect_id, LintExpectation::new(reason, sp));
+                                        .push((expect_id, LintExpectation::new(reason, sp)));
                                 }
                             }
                             Err((Some(ids), ref new_lint_name)) => {
@@ -414,7 +414,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations
-                                        .insert(expect_id, LintExpectation::new(reason, sp));
+                                        .push((expect_id, LintExpectation::new(reason, sp)));
                                 }
                             }
                             Err((None, _)) => {
@@ -511,7 +511,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         }
                         if let Level::Expect(expect_id) = level {
                             self.lint_expectations
-                                .insert(expect_id, LintExpectation::new(reason, sp));
+                                .push((expect_id, LintExpectation::new(reason, sp)));
                         }
                     } else {
                         panic!("renamed lint does not exist: {}", new_name);

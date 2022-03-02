@@ -159,7 +159,7 @@ pub struct LintLevelMap {
     ///
     /// The [`LintExpectationId`] is stored as a part of the [`Expect`](Level::Expect)
     /// lint level.
-    pub lint_expectations: FxHashMap<LintExpectationId, LintExpectation>,
+    pub lint_expectations: Vec<(LintExpectationId, LintExpectation)>,
     pub sets: LintLevelSets,
     pub id_to_set: FxHashMap<HirId, LintStackIndex>,
 }
