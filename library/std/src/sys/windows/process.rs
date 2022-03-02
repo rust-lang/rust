@@ -309,19 +309,6 @@ impl Command {
         si.hStdOutput = stdout.as_raw_handle();
         si.hStdError = stderr.as_raw_handle();
 
-        // `CreateProcessW` fails with `ERROR_FILE_NOT_FOUND` if any of the
-        // stdio handles are null, so if we have null handles, set them to
-        // `INVALID_HANDLE_VALUE`.
-        if si.hStdInput.is_null() {
-            si.hStdInput = c::INVALID_HANDLE_VALUE;
-        }
-        if si.hStdOutput.is_null() {
-            si.hStdOutput = c::INVALID_HANDLE_VALUE;
-        }
-        if si.hStdError.is_null() {
-            si.hStdError = c::INVALID_HANDLE_VALUE;
-        }
-
         let program = to_u16s(&program)?;
         unsafe {
             cvt(c::CreateProcessW(
