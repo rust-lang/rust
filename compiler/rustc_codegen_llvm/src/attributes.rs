@@ -28,12 +28,6 @@ pub fn apply_to_llfn(llfn: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     }
 }
 
-pub fn remove_from_llfn(llfn: &Value, idx: AttributePlace, attrs: &[AttributeKind]) {
-    if !attrs.is_empty() {
-        llvm::RemoveFunctionAttributes(llfn, idx, attrs);
-    }
-}
-
 pub fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[&Attribute]) {
     if !attrs.is_empty() {
         llvm::AddCallSiteAttributes(callsite, idx, attrs);
@@ -215,38 +209,23 @@ pub fn non_lazy_bind_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute
     }
 }
 
-/// Returns attributes to remove and to add, respectively,
-/// to set the default optimizations attrs on a function.
+/// Get the default optimizations attrs for a function.
 #[inline]
 pub(crate) fn default_optimisation_attrs<'ll>(
     cx: &CodegenCx<'ll, '_>,
-) -> (
-    // Attributes to remove
-    SmallVec<[AttributeKind; 3]>,
-    // Attributes to add
-    SmallVec<[&'ll Attribute; 2]>,
-) {
-    let mut to_remove = SmallVec::new();
-    let mut to_add = SmallVec::new();
+) -> SmallVec<[&'ll Attribute; 2]> {
+    let mut attrs = SmallVec::new();
     match cx.sess().opts.optimize {
         OptLevel::Size => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
         OptLevel::SizeMin => {
-            to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
-            to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
-        }
-        OptLevel::No => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_remove.push(llvm::AttributeKind::OptimizeForSize);
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            attrs.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
+            attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
         }
         _ => {}
     }
-    (to_remove, to_add)
+    attrs
 }
 
 /// Composite function which sets LLVM attributes for function depending on its AST (`#[attribute]`)
@@ -258,25 +237,17 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
-    let mut to_remove = SmallVec::<[_; 4]>::new();
     let mut to_add = SmallVec::<[_; 16]>::new();
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
-            let (to_remove_opt, to_add_opt) = default_optimisation_attrs(cx);
-            to_remove.extend(to_remove_opt);
-            to_add.extend(to_add_opt);
-        }
-        OptimizeAttr::Speed => {
-            to_remove.push(llvm::AttributeKind::MinSize);
-            to_remove.push(llvm::AttributeKind::OptimizeForSize);
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
+            to_add.extend(default_optimisation_attrs(cx));
         }
         OptimizeAttr::Size => {
             to_add.push(llvm::AttributeKind::MinSize.create_attr(cx.llcx));
             to_add.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));
-            to_remove.push(llvm::AttributeKind::OptimizeNone);
         }
+        OptimizeAttr::Speed => {}
     }
 
     let inline = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -421,7 +392,6 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("target-features"), &val));
     }
 
-    attributes::remove_from_llfn(llfn, Function, &to_remove);
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
 

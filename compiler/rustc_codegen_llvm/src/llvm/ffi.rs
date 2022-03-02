@@ -1202,12 +1202,6 @@ extern "C" {
         Attrs: *const &'a Attribute,
         AttrsLen: size_t,
     );
-    pub fn LLVMRustRemoveFunctionAttributes(
-        Fn: &Value,
-        index: c_uint,
-        Attrs: *const AttributeKind,
-        AttrsLen: size_t,
-    );
 
     // Operations on parameters
     pub fn LLVMIsAArgument(Val: &Value) -> Option<&Value>;
