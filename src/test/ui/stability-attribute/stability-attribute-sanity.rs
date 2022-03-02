@@ -65,6 +65,7 @@ fn multiple3() { }
 pub const fn multiple4() { }
 
 #[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
+//~^ ERROR feature `a` is declared stable since 1.0.0
 #[rustc_deprecated(since = "invalid", reason = "text")]
 fn invalid_deprecation_version() {}
 
