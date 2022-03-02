@@ -601,10 +601,11 @@ impl<'s> LintLevelsBuilder<'s> {
     fn check_gated_lint(&self, lint_id: LintId, span: Span) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
             if !self.sess.features_untracked().enabled(feature) {
+                let lint = builtin::UNKNOWN_LINTS;
                 let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
-                struct_lint_level(self.sess, lint_id.lint, level, src, Some(span.into()), |lint| {
+                struct_lint_level(self.sess, lint, level, src, Some(span.into()), |lint_db| {
                     let mut db =
-                        lint.build(&format!("unknown lint: `{}`", lint_id.lint.name_lower()));
+                        lint_db.build(&format!("unknown lint: `{}`", lint_id.lint.name_lower()));
                     db.note(&format!("the `{}` lint is unstable", lint_id.lint.name_lower(),));
                     add_feature_diagnostics(&mut db, &self.sess.parse_sess, feature);
                     db.emit();

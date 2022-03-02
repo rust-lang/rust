@@ -3786,7 +3786,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// In order to test the behavior of unstable traits, a permanently-unstable
+    /// In order to test the behavior of unstable lints, a permanently-unstable
     /// lint is required. This lint can be used to trigger warnings and errors
     /// from the compiler related to unstable lints.
     pub TEST_UNSTABLE_LINT,
