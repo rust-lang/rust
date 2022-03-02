@@ -3,7 +3,7 @@
 // of the enclosing functions don't get lost.
 //
 // Unfortunately, the order that debuginfo gets emitted into LLVM IR becomes a bit hard
-// to predict once async fns are involved.
+// to predict once async fns are involved, so DAG allows any order.
 //
 // Note that the test does not check async-fns when targeting MSVC because debuginfo for
 // those does not follow the enum-fallback encoding yet and thus is incomplete.
@@ -27,24 +27,24 @@
 // CHECK: ![[generic_async_block_NAMESPACE:[0-9]+]] = !DINamespace(name: "generic_async_block"
 
 // function_containing_closure<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<u32>", scope: ![[function_containing_closure_NAMESPACE]]
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<u32>", scope: ![[function_containing_closure_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<u32>", scope: ![[function_containing_closure_NAMESPACE]]
+// MSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<u32>", scope: ![[function_containing_closure_NAMESPACE]]
 
 // generic_async_function<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_function_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_function_NAMESPACE]]
 
 // generic_async_function<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<u32>", scope: ![[generic_async_function_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_fn_env#0}<u32>", scope: ![[generic_async_function_NAMESPACE]]
 
 // generic_async_block<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_block_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[generic_async_block_NAMESPACE]]
 
 // generic_async_block<u32>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<u32>", scope: ![[generic_async_block_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{async_block_env#0}<u32>", scope: ![[generic_async_block_NAMESPACE]]
 
 // function_containing_closure<Foo>()
-// NONMSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
-// MSVC: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
+// NONMSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "{closure_env#0}<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
+// MSVC-DAG: !DICompositeType(tag: DW_TAG_structure_type, name: "closure_env$0<debuginfo_generic_closure_env_names::Foo>", scope: ![[function_containing_closure_NAMESPACE]]
 
 
 #![crate_type = "lib"]
