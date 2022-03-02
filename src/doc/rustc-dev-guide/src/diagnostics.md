@@ -459,8 +459,8 @@ The possible values of [`Applicability`][appl] are:
 
 - `MachineApplicable`: Can be applied mechanically.
 - `HasPlaceholders`: Cannot be applied mechanically because it has placeholder
-  text in the suggestions. For example: ``try adding a type: `let x:
-  <type>` ``.
+  text in the suggestions. For example: ```try adding a type: `let x:
+  <type>` ```.
 - `MaybeIncorrect`: Cannot be applied mechanically because the suggestion may
   or may not be a good one.
 - `Unspecified`: Cannot be applied mechanically because we don't know which
