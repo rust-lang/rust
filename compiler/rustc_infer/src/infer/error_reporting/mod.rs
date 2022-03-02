@@ -606,17 +606,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
-                if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
-                    if ty.is_box() && ty.boxed_ty() == found {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            err.span_suggestion(
-                                span,
-                                "consider dereferencing the boxed value",
-                                format!("*{}", snippet),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                    }
+                if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
+                    && ty.is_box() && ty.boxed_ty() == found
+                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                {
+                    err.span_suggestion(
+                        span,
+                        "consider dereferencing the boxed value",
+                        format!("*{}", snippet),
+                        Applicability::MachineApplicable,
+                    );
                 }
             }
             ObligationCauseCode::Pattern { origin_expr: false, span: Some(span), .. } => {
@@ -1748,13 +1747,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id.to_def_id());
 
-        if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values {
-            if let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind() {
-                if let Some(def_id) = def_id.as_local() {
-                    let span = self.tcx.def_span(def_id);
-                    diag.span_note(span, "this closure does not fulfill the lifetime requirements");
-                }
-            }
+        if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
+            && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()
+            && let Some(def_id) = def_id.as_local()
+        {
+            let span = self.tcx.def_span(def_id);
+            diag.span_note(span, "this closure does not fulfill the lifetime requirements");
         }
 
         // It reads better to have the error origin as the final
@@ -2046,19 +2044,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // containing a single character, perhaps the user meant to write `'c'` to
                         // specify a character literal (issue #92479)
                         (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
-                                if let Some(code) =
-                                    code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
-                                {
-                                    if code.chars().count() == 1 {
-                                        err.span_suggestion(
-                                            span,
-                                            "if you meant to write a `char` literal, use single quotes",
-                                            format!("'{}'", code),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    }
-                                }
+                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                                && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                                && code.chars().count() == 1
+                            {
+                                err.span_suggestion(
+                                    span,
+                                    "if you meant to write a `char` literal, use single quotes",
+                                    format!("'{}'", code),
+                                    Applicability::MachineApplicable,
+                                );
                             }
                         }
                         // If a string was expected and the found expression is a character literal,
@@ -2080,18 +2075,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         _ => {}
                     }
                 }
-                if let MatchExpressionArm(box MatchExpressionArmCause { source, .. }) =
-                    *trace.cause.code()
+                let code = trace.cause.code();
+                if let &MatchExpressionArm(box MatchExpressionArmCause { source, .. }) = code
+                    && let hir::MatchSource::TryDesugar = source
+                    && let Some((expected_ty, found_ty)) = self.values_str(trace.values)
                 {
-                    if let hir::MatchSource::TryDesugar = source {
-                        if let Some((expected_ty, found_ty)) = self.values_str(trace.values) {
-                            err.note(&format!(
-                                "`?` operator cannot convert from `{}` to `{}`",
-                                found_ty.content(),
-                                expected_ty.content(),
-                            ));
-                        }
-                    }
+                    err.note(&format!(
+                        "`?` operator cannot convert from `{}` to `{}`",
+                        found_ty.content(),
+                        expected_ty.content(),
+                    ));
                 }
                 err
             }

@@ -304,10 +304,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // check below for a common case, here purely as an
                 // optimization.
                 let b_universe = self.var_infos[b_vid].universe;
-                if let ReEmpty(a_universe) = *a_region {
-                    if a_universe == b_universe {
-                        return false;
-                    }
+                if let ReEmpty(a_universe) = *a_region && a_universe == b_universe {
+                    return false;
                 }
 
                 let mut lub = self.lub_concrete_regions(a_region, cur_region);
@@ -324,10 +322,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 // tighter bound than `'static`.
                 //
                 // (This might e.g. arise from being asked to prove `for<'a> { 'b: 'a }`.)
-                if let ty::RePlaceholder(p) = *lub {
-                    if b_universe.cannot_name(p.universe) {
-                        lub = self.tcx().lifetimes.re_static;
-                    }
+                if let ty::RePlaceholder(p) = *lub && b_universe.cannot_name(p.universe) {
+                    lub = self.tcx().lifetimes.re_static;
                 }
 
                 debug!("Expanding value of {:?} from {:?} to {:?}", b_vid, cur_region, lub);
