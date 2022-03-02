@@ -56,6 +56,7 @@
 #![feature(nonzero_ops)]
 #![feature(unwrap_infallible)]
 #![feature(decl_macro)]
+#![feature(drain_filter)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
