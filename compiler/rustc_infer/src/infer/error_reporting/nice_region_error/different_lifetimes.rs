@@ -166,59 +166,61 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if lifetime_sub.name.is_elided() && lifetime_sup.name.is_elided() {
                 if let Some(anon_reg) = self.tcx().is_suitable_region(sub) {
                     let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
-                    if let hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Fn(_, ref generics, ..),
-                        ..
-                    }) = self.tcx().hir().get(hir_id)
-                    {
-                        let (suggestion_param_name, introduce_new) = generics
-                            .params
-                            .iter()
-                            .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
-                            .and_then(|p| self.tcx().sess.source_map().span_to_snippet(p.span).ok())
-                            .map(|name| (name, false))
-                            .unwrap_or_else(|| ("'a".to_string(), true));
 
-                        let mut suggestions = vec![
-                            if let hir::LifetimeName::Underscore = lifetime_sub.name {
-                                (lifetime_sub.span, suggestion_param_name.clone())
-                            } else {
-                                (
-                                    lifetime_sub.span.shrink_to_hi(),
-                                    suggestion_param_name.clone() + " ",
-                                )
-                            },
-                            if let hir::LifetimeName::Underscore = lifetime_sup.name {
-                                (lifetime_sup.span, suggestion_param_name.clone())
-                            } else {
-                                (
-                                    lifetime_sup.span.shrink_to_hi(),
-                                    suggestion_param_name.clone() + " ",
-                                )
-                            },
-                        ];
+                    let node = self.tcx().hir().get(hir_id);
+                    let is_impl = matches!(&node, hir::Node::ImplItem(_));
+                    let generics = match node {
+                        hir::Node::Item(&hir::Item {
+                            kind: hir::ItemKind::Fn(_, ref generics, ..),
+                            ..
+                        })
+                        | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
+                        | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
+                        _ => return,
+                    };
 
-                        if introduce_new {
-                            let new_param_suggestion = match &generics.params {
-                                [] => (generics.span, format!("<{}>", suggestion_param_name)),
-                                [first, ..] => (
-                                    first.span.shrink_to_lo(),
-                                    format!("{}, ", suggestion_param_name),
-                                ),
-                            };
+                    let (suggestion_param_name, introduce_new) = generics
+                        .params
+                        .iter()
+                        .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                        .and_then(|p| self.tcx().sess.source_map().span_to_snippet(p.span).ok())
+                        .map(|name| (name, false))
+                        .unwrap_or_else(|| ("'a".to_string(), true));
 
-                            suggestions.push(new_param_suggestion);
-                        }
+                    let mut suggestions = vec![
+                        if let hir::LifetimeName::Underscore = lifetime_sub.name {
+                            (lifetime_sub.span, suggestion_param_name.clone())
+                        } else {
+                            (lifetime_sub.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
+                        },
+                        if let hir::LifetimeName::Underscore = lifetime_sup.name {
+                            (lifetime_sup.span, suggestion_param_name.clone())
+                        } else {
+                            (lifetime_sup.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
+                        },
+                    ];
 
-                        err.multipart_suggestion(
-                            "consider introducing a named lifetime parameter",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.note(
-                            "each elided lifetime in input position becomes a distinct lifetime",
-                        );
+                    if introduce_new {
+                        let new_param_suggestion = match &generics.params {
+                            [] => (generics.span, format!("<{}>", suggestion_param_name)),
+                            [first, ..] => {
+                                (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name))
+                            }
+                        };
+
+                        suggestions.push(new_param_suggestion);
                     }
+
+                    let mut sugg = String::from("consider introducing a named lifetime parameter");
+                    if is_impl {
+                        sugg.push_str(" and update trait if needed");
+                    }
+                    err.multipart_suggestion(
+                        sugg.as_str(),
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.note("each elided lifetime in input position becomes a distinct lifetime");
                 }
             }
         }
