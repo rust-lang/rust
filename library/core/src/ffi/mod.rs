@@ -117,7 +117,7 @@ mod c_char_definition {
             all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
             all(target_os = "l4re", target_arch = "x86_64"),
             all(
-                target_os = "freebsd",
+                any(target_os = "freebsd", target_os = "openbsd"),
                 any(
                     target_arch = "aarch64",
                     target_arch = "arm",
@@ -130,7 +130,6 @@ mod c_char_definition {
                 target_os = "netbsd",
                 any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
             ),
-            all(target_os = "openbsd", target_arch = "aarch64"),
             all(
                 target_os = "vxworks",
                 any(
