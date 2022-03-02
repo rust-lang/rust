@@ -130,7 +130,16 @@ mod c_char_definition {
                 target_os = "netbsd",
                 any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
             ),
-            all(target_os = "openbsd", target_arch = "aarch64"),
+            all(
+                target_os = "openbsd",
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc",
+                    target_arch = "powerpc64",
+                    target_arch = "riscv64",
+                ),
+            ),
             all(
                 target_os = "vxworks",
                 any(
