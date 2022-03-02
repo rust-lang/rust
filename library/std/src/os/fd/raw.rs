@@ -5,9 +5,7 @@
 use crate::fs;
 use crate::io;
 use crate::os::raw;
-#[cfg(all(doc, unix))]
-use crate::os::unix::io::AsFd;
-#[cfg(all(doc, target_os = "wasi"))]
+#[cfg(doc)]
 use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
