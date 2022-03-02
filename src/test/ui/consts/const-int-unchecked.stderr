@@ -266,7 +266,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:134:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_div(i32::MIN, -1) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow executing `unchecked_div`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow in signed division (dividing MIN by -1)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:137:25
@@ -278,7 +278,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:139:25
    |
 LL | const _: i32 = unsafe { std::intrinsics::unchecked_rem(i32::MIN, -1) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow executing `unchecked_rem`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overflow in signed remainder (dividing MIN by -1)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-int-unchecked.rs:144:25
