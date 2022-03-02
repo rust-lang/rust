@@ -1,4 +1,5 @@
 use rustc_arena::TypedArena;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
@@ -2434,7 +2435,7 @@ fn add_upstream_native_libraries(
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }

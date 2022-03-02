@@ -551,11 +551,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 // attribute is expanded. Therefore, we don't need to configure the tokens
                 // Derive macros *can* see the results of cfg-expansion - they are handled
                 // specially in `fully_expand_fragment`
-                cfg: StripUnconfigured {
-                    sess: &self.cx.sess,
-                    features: self.cx.ecfg.features,
-                    config_tokens: false,
-                },
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
@@ -1538,12 +1533,20 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
 
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
-    cfg: StripUnconfigured<'a>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
+    fn cfg(&self) -> StripUnconfigured<'_> {
+        StripUnconfigured {
+            sess: &self.cx.sess,
+            features: self.cx.ecfg.features,
+            config_tokens: false,
+            lint_node_id: self.cx.current_expansion.lint_node_id,
+        }
+    }
+
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
         let expn_id = LocalExpnId::fresh_empty();
         let vis = kind.placeholder_visibility();
@@ -1683,7 +1686,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr: ast::Attribute,
         pos: usize,
     ) -> bool {
-        let res = self.cfg.cfg_true(&attr);
+        let res = self.cfg().cfg_true(&attr);
         if res {
             // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
             // and some tools like rustdoc and clippy rely on that. Find a way to remove them
@@ -1696,7 +1699,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_attr(&self, node: &mut impl AstLike, attr: ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
-            attrs.splice(pos..pos, self.cfg.expand_cfg_attr(attr, false));
+            attrs.splice(pos..pos, self.cfg().expand_cfg_attr(attr, false));
         });
     }
 
@@ -1718,7 +1721,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         continue;
                     }
                     _ => {
-                        Node::pre_flat_map_node_collect_attr(&self.cfg, &attr);
+                        Node::pre_flat_map_node_collect_attr(&self.cfg(), &attr);
                         self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
                             .make_ast::<Node>()
                     }
@@ -1882,7 +1885,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
-            self.cfg.maybe_emit_expr_attr_err(attr);
+            self.cfg().maybe_emit_expr_attr_err(attr);
         }
         self.visit_node(node)
     }
