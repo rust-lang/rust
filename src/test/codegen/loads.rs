@@ -35,7 +35,7 @@ pub fn load_ref<'a>(x: &&'a i32) -> &'a i32 {
 // CHECK-LABEL: @load_ref_higher_alignment
 #[no_mangle]
 pub fn load_ref_higher_alignment<'a>(x: &&'a Align16) -> &'a Align16 {
-// CHECK: load %Align16*, %Align16** %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META:[0-9]+]], !noundef !{{[0-9]+}}
+// CHECK: load {{%Align16|i128}}*, {{%Align16|i128}}** %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
