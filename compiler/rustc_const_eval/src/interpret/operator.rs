@@ -196,16 +196,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 _ => None,
             };
             if let Some(op) = op {
+                let l = self.sign_extend(l, left_layout) as i128;
                 let r = self.sign_extend(r, right_layout) as i128;
-                // We need a special check for overflowing remainder:
-                // "int_min % -1" overflows and returns 0, but after casting things to a larger int
-                // type it does *not* overflow nor give an unrepresentable result!
-                if bin_op == Rem {
-                    if r == -1 && l == (1 << (size.bits() - 1)) {
-                        return Ok((Scalar::from_int(0, size), true, left_layout.ty));
+
+                // We need a special check for overflowing Rem and Div since they are *UB*
+                // on overflow, which can happen with "int_min $OP -1".
+                if matches!(bin_op, Rem | Div) {
+                    if l == size.signed_int_min() && r == -1 {
+                        if bin_op == Rem {
+                            throw_ub!(RemainderOverflow)
+                        } else {
+                            throw_ub!(DivisionOverflow)
+                        }
                     }
                 }
-                let l = self.sign_extend(l, left_layout) as i128;
 
                 let (result, oflo) = op(l, r);
                 // This may be out-of-bounds for the result type, so we have to truncate ourselves.
