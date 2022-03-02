@@ -18,9 +18,10 @@
 //!
 //! Unless stated otherwise, all intrinsics for binary operations require SIMD vectors of equal types and lengths.
 
-/// These intrinsics aren't linked directly from LLVM and are mostly undocumented, however they are
-/// mostly lowered to the matching LLVM instructions by the compiler in a fairly straightforward manner.
-/// The associated LLVM instruction or intrinsic is documented alongside each Rust intrinsic function.
+
+// These intrinsics aren't linked directly from LLVM and are mostly undocumented, however they are
+// mostly lowered to the matching LLVM instructions by the compiler in a fairly straightforward manner.
+// The associated LLVM instruction or intrinsic is documented alongside each Rust intrinsic function.
 extern "platform-intrinsic" {
     /// add/fadd
     pub(crate) fn simd_add<T>(x: T, y: T) -> T;
