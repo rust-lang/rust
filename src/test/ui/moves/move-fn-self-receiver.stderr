@@ -119,12 +119,14 @@ error[E0382]: use of moved value: `implicit_into_iter`
 LL |     let implicit_into_iter = vec![true];
    |         ------------------ move occurs because `implicit_into_iter` has type `Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in implicit_into_iter {}
-   |                 ------------------
-   |                 |
-   |                 `implicit_into_iter` moved due to this implicit call to `.into_iter()`
-   |                 help: consider borrowing to avoid moving into the for loop: `&implicit_into_iter`
+   |                 ------------------ `implicit_into_iter` moved due to this implicit call to `.into_iter()`
 LL |     implicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
+   |
+LL |     for _val in &implicit_into_iter {}
+   |                 +
 
 error[E0382]: use of moved value: `explicit_into_iter`
   --> $DIR/move-fn-self-receiver.rs:67:5
