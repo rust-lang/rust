@@ -362,11 +362,13 @@ impl Merge for TomlConfig {
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of
 // rustbuild.
-macro_rules! derive_merge {
+macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
         $($field:ident: $field_ty:ty,)*
     }) => {
         $(#[$attr])*
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields, rename_all = "kebab-case")]
         struct $name {
             $($field: $field_ty,)*
         }
@@ -383,10 +385,9 @@ macro_rules! derive_merge {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global build decisions.
-    #[derive(Deserialize, Default)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    #[derive(Default)]
     struct Build {
         build: Option<String>,
         host: Option<Vec<String>>,
@@ -429,10 +430,8 @@ derive_merge! {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global install decisions.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Install {
         prefix: Option<String>,
         sysconfdir: Option<String>,
@@ -444,10 +443,8 @@ derive_merge! {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the LLVM build is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Llvm {
         skip_rebuild: Option<bool>,
         optimize: Option<bool>,
@@ -479,9 +476,7 @@ derive_merge! {
     }
 }
 
-derive_merge! {
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+define_config! {
     struct Dist {
         sign_folder: Option<String>,
         gpg_password_file: Option<String>,
@@ -505,10 +500,8 @@ impl Default for StringOrBool {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the Rust build is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Rust {
         optimize: Option<bool>,
         debug: Option<bool>,
@@ -560,10 +553,8 @@ derive_merge! {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how each build target is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct TomlTarget {
         cc: Option<String>,
         cxx: Option<String>,
