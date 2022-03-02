@@ -500,15 +500,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
         let (res, overflow, _ty) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
-        if overflow || res.assert_bits(a.layout.size) != 0 {
-            // Then, check if `b` is -1, which is the "MIN / -1" case.
-            let minus1 = Scalar::from_int(-1, dest.layout.size);
-            let b_scalar = b.to_scalar().unwrap();
-            if b_scalar == minus1 {
-                throw_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
-            } else {
-                throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b,)
-            }
+        assert!(!overflow); // All overflow is UB, so this should never return on overflow.
+        if res.assert_bits(a.layout.size) != 0 {
+            throw_ub_format!("exact_div: {} cannot be divided by {} without remainder", a, b)
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
