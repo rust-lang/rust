@@ -233,6 +233,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
     RemainderByZero,
+    /// Signed division overflowed (INT_MIN / -1).
+    DivisionOverflow,
+    /// Signed remainder overflowed (INT_MIN % -1).
+    RemainderOverflow,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
@@ -310,6 +314,8 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
+            DivisionOverflow => write!(f, "overflow in signed division (dividing MIN by -1)"),
+            RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
             InvalidVtableDropFn(sig) => write!(
