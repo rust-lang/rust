@@ -11,6 +11,7 @@
 #![feature(extern_types)]
 #![feature(once_cell)]
 #![feature(nll)]
+#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -32,6 +33,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{ErrorReported, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
@@ -126,8 +128,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
+        target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
-        back::write::target_machine_factory(sess, optlvl)
+        back::write::target_machine_factory(sess, optlvl, target_features)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
@@ -249,6 +252,11 @@ impl LlvmCodegenBackend {
 impl CodegenBackend for LlvmCodegenBackend {
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
+    }
+
+    fn provide(&self, providers: &mut Providers) {
+        providers.global_backend_features =
+            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
     }
 
     fn print(&self, req: PrintRequest, sess: &Session) {

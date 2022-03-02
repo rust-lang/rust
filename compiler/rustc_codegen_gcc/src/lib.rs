@@ -132,7 +132,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         base::compile_codegen_unit(tcx, cgu_name)
     }
 
-    fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel) -> TargetMachineFactoryFn<Self> {
+    fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel, _features: &[String]) -> TargetMachineFactoryFn<Self> {
         // TODO(antoyo): set opt level.
         Arc::new(|_| {
             Ok(())

@@ -79,13 +79,11 @@ pub fn sanitize_attrs<'ll>(
     }
     if enabled.contains(SanitizerSet::MEMTAG) {
         // Check to make sure the mte target feature is actually enabled.
-        let sess = cx.tcx.sess;
-        let features = llvm_util::llvm_global_features(sess).join(",");
-        let mte_feature_enabled = features.rfind("+mte");
-        let mte_feature_disabled = features.rfind("-mte");
-
-        if mte_feature_enabled.is_none() || (mte_feature_disabled > mte_feature_enabled) {
-            sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+        let features = cx.tcx.global_backend_features(());
+        let mte_feature =
+            features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
+        if let None | Some("-mte") = mte_feature {
+            cx.tcx.sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -382,10 +380,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     let mut function_features = function_features
         .iter()
         .flat_map(|feat| {
-            llvm_util::to_llvm_feature(cx.tcx.sess, feat)
-                .into_iter()
-                .map(|f| format!("+{}", f))
-                .collect::<Vec<String>>()
+            llvm_util::to_llvm_features(cx.tcx.sess, feat).into_iter().map(|f| format!("+{}", f))
         })
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match x {
             InstructionSetAttr::ArmA32 => "-thumb-mode".to_string(),
@@ -418,10 +413,11 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     }
 
     if !function_features.is_empty() {
-        let mut global_features = llvm_util::llvm_global_features(cx.tcx.sess);
-        global_features.extend(function_features.into_iter());
-        let features = global_features.join(",");
-        let val = CString::new(features).unwrap();
+        let global_features = cx.tcx.global_backend_features(()).iter().map(|s| &s[..]);
+        let val = global_features
+            .chain(function_features.iter().map(|s| &s[..]))
+            .intersperse(",")
+            .collect::<SmallCStr>();
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("target-features"), &val));
     }
 

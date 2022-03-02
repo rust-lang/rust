@@ -1944,4 +1944,13 @@ rustc_queries! {
         no_hash
         desc { "performing HIR wf-checking for predicate {:?} at item {:?}", key.0, key.1 }
     }
+
+
+    /// The list of backend features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
+    /// `--target` and similar).
+    query global_backend_features(_: ()) -> Vec<String> {
+        storage(ArenaCacheSelector<'tcx>)
+        eval_always
+        desc { "computing the backend features for CLI flags" }
+    }
 }
