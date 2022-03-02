@@ -2999,11 +2999,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };
 
-    providers.lookup_stability = |tcx, id| tcx.stability().local_stability(id.expect_local());
-    providers.lookup_const_stability =
-        |tcx, id| tcx.stability().local_const_stability(id.expect_local());
-    providers.lookup_deprecation_entry =
-        |tcx, id| tcx.stability().local_deprecation_entry(id.expect_local());
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.output_filenames = |tcx, ()| &tcx.output_filenames;

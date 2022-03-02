@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:21:63
+  --> $DIR/explore-issue-38412.rs:19:63
    |
 LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_undeclared_pub: _, .. } =
    |                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let Record { a_stable_pub: _, a_unstable_declared_pub: _, a_unstable_un
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:30:5
+  --> $DIR/explore-issue-38412.rs:28:5
    |
 LL |     r.a_unstable_undeclared_pub;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,25 +17,25 @@ LL |     r.a_unstable_undeclared_pub;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `b_crate` of struct `Record` is private
-  --> $DIR/explore-issue-38412.rs:31:7
+  --> $DIR/explore-issue-38412.rs:29:7
    |
 LL |     r.b_crate;
    |       ^^^^^^^ private field
 
 error[E0616]: field `c_mod` of struct `Record` is private
-  --> $DIR/explore-issue-38412.rs:32:7
+  --> $DIR/explore-issue-38412.rs:30:7
    |
 LL |     r.c_mod;
    |       ^^^^^ private field
 
 error[E0616]: field `d_priv` of struct `Record` is private
-  --> $DIR/explore-issue-38412.rs:33:7
+  --> $DIR/explore-issue-38412.rs:31:7
    |
 LL |     r.d_priv;
    |       ^^^^^^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:37:5
+  --> $DIR/explore-issue-38412.rs:35:5
    |
 LL |     t.2;
    |     ^^^
@@ -44,25 +44,25 @@ LL |     t.2;
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0616]: field `3` of struct `Tuple` is private
-  --> $DIR/explore-issue-38412.rs:38:7
+  --> $DIR/explore-issue-38412.rs:36:7
    |
 LL |     t.3;
    |       ^ private field
 
 error[E0616]: field `4` of struct `Tuple` is private
-  --> $DIR/explore-issue-38412.rs:39:7
+  --> $DIR/explore-issue-38412.rs:37:7
    |
 LL |     t.4;
    |       ^ private field
 
 error[E0616]: field `5` of struct `Tuple` is private
-  --> $DIR/explore-issue-38412.rs:40:7
+  --> $DIR/explore-issue-38412.rs:38:7
    |
 LL |     t.5;
    |       ^ private field
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:44:7
+  --> $DIR/explore-issue-38412.rs:42:7
    |
 LL |     r.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL |     r.unstable_undeclared_trait_method();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:48:7
+  --> $DIR/explore-issue-38412.rs:46:7
    |
 LL |     r.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     r.unstable_undeclared();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0624]: associated function `pub_crate` is private
-  --> $DIR/explore-issue-38412.rs:50:7
+  --> $DIR/explore-issue-38412.rs:48:7
    |
 LL |     r.pub_crate();
    |       ^^^^^^^^^ private associated function
@@ -91,7 +91,7 @@ LL |         pub(crate) fn pub_crate(&self) -> i32 { self.d_priv }
    |         ------------------------------------- private associated function defined here
 
 error[E0624]: associated function `pub_mod` is private
-  --> $DIR/explore-issue-38412.rs:51:7
+  --> $DIR/explore-issue-38412.rs:49:7
    |
 LL |     r.pub_mod();
    |       ^^^^^^^ private associated function
@@ -102,7 +102,7 @@ LL |         pub(in m) fn pub_mod(&self) -> i32 { self.d_priv }
    |         ---------------------------------- private associated function defined here
 
 error[E0624]: associated function `private` is private
-  --> $DIR/explore-issue-38412.rs:52:7
+  --> $DIR/explore-issue-38412.rs:50:7
    |
 LL |     r.private();
    |       ^^^^^^^ private associated function
@@ -113,7 +113,7 @@ LL |         fn private(&self) -> i32 { self.d_priv }
    |         ------------------------ private associated function defined here
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:57:7
+  --> $DIR/explore-issue-38412.rs:55:7
    |
 LL |     t.unstable_undeclared_trait_method();
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +122,7 @@ LL |     t.unstable_undeclared_trait_method();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_undeclared'
-  --> $DIR/explore-issue-38412.rs:61:7
+  --> $DIR/explore-issue-38412.rs:59:7
    |
 LL |     t.unstable_undeclared();
    |       ^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ LL |     t.unstable_undeclared();
    = help: add `#![feature(unstable_undeclared)]` to the crate attributes to enable
 
 error[E0624]: associated function `pub_crate` is private
-  --> $DIR/explore-issue-38412.rs:63:7
+  --> $DIR/explore-issue-38412.rs:61:7
    |
 LL |     t.pub_crate();
    |       ^^^^^^^^^ private associated function
@@ -142,7 +142,7 @@ LL |         pub(crate) fn pub_crate(&self) -> i32 { self.0 }
    |         ------------------------------------- private associated function defined here
 
 error[E0624]: associated function `pub_mod` is private
-  --> $DIR/explore-issue-38412.rs:64:7
+  --> $DIR/explore-issue-38412.rs:62:7
    |
 LL |     t.pub_mod();
    |       ^^^^^^^ private associated function
@@ -153,7 +153,7 @@ LL |         pub(in m) fn pub_mod(&self) -> i32 { self.0 }
    |         ---------------------------------- private associated function defined here
 
 error[E0624]: associated function `private` is private
-  --> $DIR/explore-issue-38412.rs:65:7
+  --> $DIR/explore-issue-38412.rs:63:7
    |
 LL |     t.private();
    |       ^^^^^^^ private associated function

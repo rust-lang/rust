@@ -2,7 +2,6 @@
 // through the `MyBox` struct.
 
 #![allow(dead_code)]
-#![feature(rustc_error)]
 
 trait Test {
     fn foo(&self) { }
