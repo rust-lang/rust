@@ -1,5 +1,3 @@
-#![feature(pub_restricted)]
-
 mod a {}
 
 pub (a) fn afn() {} //~ incorrect visibility restriction

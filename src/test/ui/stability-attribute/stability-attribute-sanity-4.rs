@@ -19,10 +19,12 @@ mod bogus_attribute_types_2 {
 
     #[stable(feature = "a", since = "b")]
     #[rustc_deprecated] //~ ERROR malformed `rustc_deprecated` attribute
+                        //~^ ERROR missing 'since'
     fn f5() { }
 
     #[stable(feature = "a", since = "b")]
     #[rustc_deprecated = "a"] //~ ERROR malformed `rustc_deprecated` attribute
+                              //~^ ERROR missing 'since'
     fn f6() { }
 }
 

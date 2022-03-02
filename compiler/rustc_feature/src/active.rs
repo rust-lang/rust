@@ -2,6 +2,7 @@
 
 use super::{to_nonzero, Feature, State};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -47,6 +48,8 @@ macro_rules! declare_features {
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features.
             pub declared_lib_features: Vec<(Symbol, Span)>,
+            /// Features enabled for this crate.
+            pub active_features: FxHashSet<Symbol>,
             $(
                 $(#[doc = $doc])*
                 pub $feature: bool
@@ -56,6 +59,11 @@ macro_rules! declare_features {
         impl Features {
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
+            }
+
+            /// Is the given feature active?
+            pub fn active(&self, feature: Symbol) -> bool {
+                self.active_features.contains(&feature)
             }
 
             /// Is the given feature enabled?

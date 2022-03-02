@@ -110,17 +110,23 @@ error: invalid deprecation version found
    |
 LL | #[stable(feature = "a", since = "1.0.0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid deprecation version
-LL | #[rustc_deprecated(since = "invalid", reason = "text")]
+...
 LL | fn invalid_deprecation_version() {}
    | ----------------------------------- the stability attribute annotates this item
 
 error[E0549]: rustc_deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:71:1
+  --> $DIR/stability-attribute-sanity.rs:72:1
    |
 LL | #[rustc_deprecated(since = "a", reason = "text")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since b
+  --> $DIR/stability-attribute-sanity.rs:67:1
+   |
+LL | #[stable(feature = "a", since = "1.0.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0550.
 For more information about an error, try `rustc --explain E0539`.

@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<() as Bar>::Foo == ()`
-  --> $DIR/issue-63355.rs:34:20
+  --> $DIR/issue-63355.rs:33:20
    |
 LL | pub type FooImpl = impl Foo;
    |                    -------- the found opaque type
@@ -7,7 +7,7 @@ LL | pub type BarImpl = impl Bar<Foo = FooImpl>;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<() as Bar>::Foo == ()`
    |
 note: expected this to be `()`
-  --> $DIR/issue-63355.rs:24:16
+  --> $DIR/issue-63355.rs:23:16
    |
 LL |     type Foo = FooImpl;
    |                ^^^^^^^
