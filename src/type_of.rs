@@ -224,7 +224,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     }
 
     fn scalar_gcc_type_at<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>, scalar: &abi::Scalar, offset: Size) -> Type<'gcc> {
-        match scalar.value {
+        match scalar.primitive() {
             Int(i, true) => cx.type_from_integer(i),
             Int(i, false) => cx.type_from_unsigned_integer(i),
             F32 => cx.type_f32(),
@@ -282,7 +282,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
                 Size::ZERO
             }
             else {
-                a.value.size(cx).align_to(b.value.align(cx).abi)
+                a.size(cx).align_to(b.align(cx).abi)
             };
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
