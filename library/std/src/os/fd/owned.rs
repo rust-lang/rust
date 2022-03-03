@@ -21,6 +21,10 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// descriptor, so it can be used in FFI in places where a file descriptor is
 /// passed as an argument, it is not captured or consumed, and it never has the
 /// value `-1`.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedFd`
+/// rather than an `OwnedFd`. It just makes a trivial copy of the raw file
+/// descriptor, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -62,7 +66,7 @@ impl BorrowedFd<'_> {
     /// the returned `BorrowedFd`, and it must not have the value `-1`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_fd(fd: RawFd) -> Self {
+    pub unsafe fn borrow_raw(fd: RawFd) -> Self {
         assert_ne!(fd, u32::MAX as RawFd);
         // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
         unsafe { Self { fd, _phantom: PhantomData } }
@@ -231,7 +235,7 @@ impl AsFd for OwnedFd {
         // Safety: `OwnedFd` and `BorrowedFd` have the same validity
         // invariants, and the `BorrowdFd` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedFd::borrow_raw_fd(self.as_raw_fd()) }
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 

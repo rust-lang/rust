@@ -23,6 +23,21 @@ fn b() -> Result<(), ()> {
     //~| HELP try adding an expression
 }
 
+fn c() -> Option<()> {
+    for _ in [1, 2] {
+        //~^ ERROR mismatched types
+        f();
+    }
+    //~^ HELP try adding an expression
+}
+
+fn d() -> Option<()> {
+    c()?
+    //~^ ERROR incompatible types
+    //~| HELP try removing this `?`
+    //~| HELP try adding an expression
+}
+
 fn main() {
     let _: Option<()> = while false {};
     //~^ ERROR mismatched types

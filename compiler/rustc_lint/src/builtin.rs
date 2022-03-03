@@ -1086,6 +1086,16 @@ impl EarlyLintPass for UnusedDocComment {
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
         warn_if_doc(cx, param.ident.span, "generic parameters", &param.attrs);
     }
+
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
+        warn_if_doc(cx, block.span, "block", &block.attrs());
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::ForeignMod(_) = item.kind {
+            warn_if_doc(cx, item.span, "extern block", &item.attrs);
+        }
+    }
 }
 
 declare_lint! {

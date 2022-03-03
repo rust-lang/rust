@@ -21,6 +21,10 @@ use crate::sys::cvt;
 /// so it can be used in FFI in places where a socket is passed as an argument,
 /// it is not captured or consumed, and it never has the value
 /// `INVALID_SOCKET`.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedSocket`
+/// rather than an `OwnedSocket`. It just makes a trivial copy of the raw
+/// socket, which is then borrowed under the same lifetime.
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 #[rustc_layout_scalar_valid_range_start(0)]
@@ -67,7 +71,7 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_socket(socket: RawSocket) -> Self {
+    pub unsafe fn borrow_raw(socket: RawSocket) -> Self {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
@@ -239,14 +243,14 @@ impl AsSocket for OwnedSocket {
         // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
         // invariants, and the `BorrowdSocket` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
 impl AsSocket for crate::net::TcpStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -267,7 +271,7 @@ impl From<OwnedSocket> for crate::net::TcpStream {
 impl AsSocket for crate::net::TcpListener {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -288,7 +292,7 @@ impl From<OwnedSocket> for crate::net::TcpListener {
 impl AsSocket for crate::net::UdpSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
