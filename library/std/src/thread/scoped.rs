@@ -240,7 +240,6 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// ```
     /// #![feature(scoped_threads)]
-    /// #![feature(thread_is_running)]
     ///
     /// use std::thread;
     ///
@@ -274,7 +273,6 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// ```
     /// #![feature(scoped_threads)]
-    /// #![feature(thread_is_running)]
     ///
     /// use std::thread;
     ///
