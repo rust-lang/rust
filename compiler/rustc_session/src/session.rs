@@ -331,6 +331,13 @@ impl Session {
     pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_allow(msg)
     }
+    pub fn struct_expect(
+        &self,
+        msg: &str,
+        id: lint::LintExpectationId,
+    ) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_expect(msg, id)
+    }
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,

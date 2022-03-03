@@ -7,17 +7,15 @@ use rustc_errors::{struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::LevelAndSource;
-use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::lint::{
-    struct_lint_level, LintLevelMap, LintLevelSets, LintLevelSource, LintSet, LintStackIndex,
-    COMMAND_LINE,
+    struct_lint_level, LevelAndSource, LintDiagnosticBuilder, LintExpectation, LintLevelMap,
+    LintLevelSets, LintLevelSource, LintSet, LintStackIndex, COMMAND_LINE,
 };
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    Level, Lint, LintId,
+    Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::parse::feature_err;
 use rustc_session::Session;
@@ -34,16 +32,23 @@ fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {
 
     builder.levels.id_to_set.reserve(krate.owners.len() + 1);
 
-    let push = builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), true);
+    let push =
+        builder.levels.push(tcx.hir().attrs(hir::CRATE_HIR_ID), true, Some(hir::CRATE_HIR_ID));
+
     builder.levels.register_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
     builder.levels.pop(push);
 
+    builder.levels.update_unstable_expectation_ids();
     builder.levels.build_map()
 }
 
 pub struct LintLevelsBuilder<'s> {
     sess: &'s Session,
+    lint_expectations: Vec<(LintExpectationId, LintExpectation)>,
+    /// Each expectation has a stable and an unstable identifier. This map
+    /// is used to map from unstable to stable [`LintExpectationId`]s.
+    expectation_id_map: FxHashMap<LintExpectationId, LintExpectationId>,
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, LintStackIndex>,
     cur: LintStackIndex,
@@ -66,6 +71,8 @@ impl<'s> LintLevelsBuilder<'s> {
     ) -> Self {
         let mut builder = LintLevelsBuilder {
             sess,
+            lint_expectations: Default::default(),
+            expectation_id_map: Default::default(),
             sets: LintLevelSets::new(),
             cur: COMMAND_LINE,
             id_to_set: Default::default(),
@@ -226,13 +233,24 @@ impl<'s> LintLevelsBuilder<'s> {
     ///   `#[allow]`
     ///
     /// Don't forget to call `pop`!
-    pub(crate) fn push(&mut self, attrs: &[ast::Attribute], is_crate_node: bool) -> BuilderPush {
+    pub(crate) fn push(
+        &mut self,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+        source_hir_id: Option<HirId>,
+    ) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
         let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
-        for attr in attrs {
-            let Some(level) = Level::from_symbol(attr.name_or_empty()) else {
-                continue
+        for (attr_index, attr) in attrs.iter().enumerate() {
+            let level = match Level::from_attr(attr) {
+                None => continue,
+                Some(Level::Expect(unstable_id)) if let Some(hir_id) = source_hir_id => {
+                    let stable_id = self.create_stable_id(unstable_id, hir_id, attr_index);
+
+                    Level::Expect(stable_id)
+                }
+                Some(lvl) => lvl,
             };
 
             let Some(mut metas) = attr.meta_item_list() else {
@@ -285,9 +303,17 @@ impl<'s> LintLevelsBuilder<'s> {
                 }
             }
 
-            for li in metas {
+            for (lint_index, li) in metas.iter_mut().enumerate() {
+                let level = match level {
+                    Level::Expect(mut id) => {
+                        id.set_lint_index(Some(lint_index as u16));
+                        Level::Expect(id)
+                    }
+                    level => level,
+                };
+
                 let sp = li.span();
-                let mut meta_item = match li {
+                let meta_item = match li {
                     ast::NestedMetaItem::MetaItem(meta_item) if meta_item.is_word() => meta_item,
                     _ => {
                         let mut err = bad_attr(sp);
@@ -327,6 +353,10 @@ impl<'s> LintLevelsBuilder<'s> {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
+                        if let Level::Expect(expect_id) = level {
+                            self.lint_expectations
+                                .push((expect_id, LintExpectation::new(reason, sp)));
+                        }
                     }
 
                     CheckLintNameResult::Tool(result) => {
@@ -341,6 +371,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                 );
                                 for id in ids {
                                     self.insert_spec(&mut specs, *id, (level, src));
+                                }
+                                if let Level::Expect(expect_id) = level {
+                                    self.lint_expectations
+                                        .push((expect_id, LintExpectation::new(reason, sp)));
                                 }
                             }
                             Err((Some(ids), ref new_lint_name)) => {
@@ -377,6 +411,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                 );
                                 for id in ids {
                                     self.insert_spec(&mut specs, *id, (level, src));
+                                }
+                                if let Level::Expect(expect_id) = level {
+                                    self.lint_expectations
+                                        .push((expect_id, LintExpectation::new(reason, sp)));
                                 }
                             }
                             Err((None, _)) => {
@@ -471,6 +509,10 @@ impl<'s> LintLevelsBuilder<'s> {
                             self.check_gated_lint(id, attr.span);
                             self.insert_spec(&mut specs, id, (level, src));
                         }
+                        if let Level::Expect(expect_id) = level {
+                            self.lint_expectations
+                                .push((expect_id, LintExpectation::new(reason, sp)));
+                        }
                     } else {
                         panic!("renamed lint does not exist: {}", new_name);
                     }
@@ -519,6 +561,20 @@ impl<'s> LintLevelsBuilder<'s> {
         BuilderPush { prev, changed: prev != self.cur }
     }
 
+    fn create_stable_id(
+        &mut self,
+        unstable_id: LintExpectationId,
+        hir_id: HirId,
+        attr_index: usize,
+    ) -> LintExpectationId {
+        let stable_id =
+            LintExpectationId::Stable { hir_id, attr_index: attr_index as u16, lint_index: None };
+
+        self.expectation_id_map.insert(unstable_id, stable_id);
+
+        stable_id
+    }
+
     /// Checks if the lint is gated on a feature that is not enabled.
     fn check_gated_lint(&self, lint_id: LintId, span: Span) {
         if let Some(feature) = lint_id.lint.feature_gate {
@@ -562,8 +618,16 @@ impl<'s> LintLevelsBuilder<'s> {
         self.id_to_set.insert(id, self.cur);
     }
 
+    fn update_unstable_expectation_ids(&self) {
+        self.sess.diagnostic().update_unstable_expectation_id(&self.expectation_id_map);
+    }
+
     pub fn build_map(self) -> LintLevelMap {
-        LintLevelMap { sets: self.sets, id_to_set: self.id_to_set }
+        LintLevelMap {
+            sets: self.sets,
+            id_to_set: self.id_to_set,
+            lint_expectations: self.lint_expectations,
+        }
     }
 }
 
@@ -579,7 +643,8 @@ impl LintLevelMapBuilder<'_> {
     {
         let is_crate_hir = id == hir::CRATE_HIR_ID;
         let attrs = self.tcx.hir().attrs(id);
-        let push = self.levels.push(attrs, is_crate_hir);
+        let push = self.levels.push(attrs, is_crate_hir, Some(id));
+
         if push.changed {
             self.levels.register_id(id);
         }

@@ -51,6 +51,7 @@ pub mod builtin;
 mod context;
 mod early;
 mod enum_intrinsics_non_enums;
+mod expect;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;

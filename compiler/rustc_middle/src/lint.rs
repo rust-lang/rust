@@ -8,7 +8,7 @@ use rustc_index::vec::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::{
     builtin::{self, FORBIDDEN_LINT_GROUPS},
-    FutureIncompatibilityReason, Level, Lint, LintId,
+    FutureIncompatibilityReason, Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::{DiagnosticMessageId, Session};
 use rustc_span::hygiene::MacroKind;
@@ -153,6 +153,13 @@ impl LintLevelSets {
 
 #[derive(Debug)]
 pub struct LintLevelMap {
+    /// This is a collection of lint expectations as described in RFC 2383, that
+    /// can be fulfilled during this compilation session. This means that at least
+    /// one expected lint is currently registered in the lint store.
+    ///
+    /// The [`LintExpectationId`] is stored as a part of the [`Expect`](Level::Expect)
+    /// lint level.
+    pub lint_expectations: Vec<(LintExpectationId, LintExpectation)>,
     pub sets: LintLevelSets,
     pub id_to_set: FxHashMap<HirId, LintStackIndex>,
 }
@@ -178,11 +185,30 @@ impl LintLevelMap {
 impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let LintLevelMap { ref sets, ref id_to_set } = *self;
+        let LintLevelMap { ref sets, ref id_to_set, ref lint_expectations } = *self;
 
         id_to_set.hash_stable(hcx, hasher);
+        lint_expectations.hash_stable(hcx, hasher);
 
         hcx.while_hashing_spans(true, |hcx| sets.hash_stable(hcx, hasher))
+    }
+}
+
+/// This struct represents a lint expectation and holds all required information
+/// to emit the `unfulfilled_lint_expectations` lint if it is unfulfilled after
+/// the `LateLintPass` has completed.
+#[derive(Clone, Debug, HashStable)]
+pub struct LintExpectation {
+    /// The reason for this expectation that can optionally be added as part of
+    /// the attribute. It will be displayed as part of the lint message.
+    pub reason: Option<Symbol>,
+    /// The [`Span`] of the attribute that this expectation originated from.
+    pub emission_span: Span,
+}
+
+impl LintExpectation {
+    pub fn new(reason: Option<Symbol>, attr_span: Span) -> Self {
+        Self { reason, emission_span: attr_span }
     }
 }
 
@@ -225,6 +251,9 @@ pub fn explain_lint_level_source(
                 Level::Forbid => "-F",
                 Level::Allow => "-A",
                 Level::ForceWarn => "--force-warn",
+                Level::Expect(_) => {
+                    unreachable!("the expect level does not have a commandline flag")
+                }
             };
             let hyphen_case_lint_name = name.replace('_', "-");
             if lint_flag_val.as_str() == name {
@@ -314,6 +343,16 @@ pub fn struct_lint_level<'s, 'd>(
                     return;
                 }
             }
+            (Level::Expect(expect_id), _) => {
+                // This case is special as we actually allow the lint itself in this context, but
+                // we can't return early like in the case for `Level::Allow` because we still
+                // need the lint diagnostic to be emitted to `rustc_error::HanderInner`.
+                //
+                // We can also not mark the lint expectation as fulfilled here right away, as it
+                // can still be cancelled in the decorate function. All of this means that we simply
+                // create a `DiagnosticBuilder` and continue as we would for warnings.
+                sess.struct_expect("", expect_id)
+            }
             (Level::Warn | Level::ForceWarn, Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn | Level::ForceWarn, None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
@@ -344,6 +383,17 @@ pub fn struct_lint_level<'s, 'd>(
                 // `diag_span_note_once` called for a diagnostic that isn't emitted.
                 return;
             }
+        }
+
+        // Lint diagnostics that are covered by the expect level will not be emitted outside
+        // the compiler. It is therefore not necessary to add any information for the user.
+        // This will therefore directly call the decorate function which will in turn emit
+        // the `Diagnostic`.
+        if let Level::Expect(_) = level {
+            let name = lint.name_lower();
+            err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
+            decorate(LintDiagnosticBuilder::new(err));
+            return;
         }
 
         explain_lint_level_source(sess, lint, level, src, &mut err);

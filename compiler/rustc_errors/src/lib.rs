@@ -20,11 +20,12 @@ extern crate tracing;
 
 pub use emitter::ColorConfig;
 
+use rustc_lint_defs::LintExpectationId;
 use Level::*;
 
 use emitter::{is_case_difference, Emitter, EmitterWriter};
 use registry::Registry;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
@@ -450,6 +451,22 @@ struct HandlerInner {
     deduplicated_warn_count: usize,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
+
+    /// Expected [`Diagnostic`]s store a [`LintExpectationId`] as part of
+    /// the lint level. [`LintExpectationId`]s created early during the compilation
+    /// (before `HirId`s have been defined) are not stable and can therefore not be
+    /// stored on disk. This buffer stores these diagnostics until the ID has been
+    /// replaced by a stable [`LintExpectationId`]. The [`Diagnostic`]s are the
+    /// submitted for storage and added to the list of fulfilled expectations.
+    unstable_expect_diagnostics: Vec<Diagnostic>,
+
+    /// expected diagnostic will have the level `Expect` which additionally
+    /// carries the [`LintExpectationId`] of the expectation that can be
+    /// marked as fulfilled. This is a collection of all [`LintExpectationId`]s
+    /// that have been marked as fulfilled this way.
+    ///
+    /// [RFC-2383]: https://rust-lang.github.io/rfcs/2383-lint-reasons.html
+    fulfilled_expectations: FxHashSet<LintExpectationId>,
 }
 
 /// A key denoting where from a diagnostic was stashed.
@@ -570,6 +587,8 @@ impl Handler {
                 emitted_diagnostics: Default::default(),
                 stashed_diagnostics: Default::default(),
                 future_breakage_diagnostics: Vec::new(),
+                unstable_expect_diagnostics: Vec::new(),
+                fulfilled_expectations: Default::default(),
             }),
         }
     }
@@ -675,6 +694,11 @@ impl Handler {
     /// Construct a builder at the `Allow` level with the `msg`.
     pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Allow, msg)
+    }
+
+    /// Construct a builder at the `Expect` level with the `msg`.
+    pub fn struct_expect(&self, msg: &str, id: LintExpectationId) -> DiagnosticBuilder<'_, ()> {
+        DiagnosticBuilder::new(self, Level::Expect(id), msg)
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
@@ -906,6 +930,48 @@ impl Handler {
     pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
         self.inner.borrow_mut().emit_unused_externs(lint_level, unused_externs)
     }
+
+    pub fn update_unstable_expectation_id(
+        &self,
+        unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
+    ) {
+        let diags = std::mem::take(&mut self.inner.borrow_mut().unstable_expect_diagnostics);
+        if diags.is_empty() {
+            return;
+        }
+
+        let mut inner = self.inner.borrow_mut();
+        for mut diag in diags.into_iter() {
+            let mut unstable_id = diag
+                .level
+                .get_expectation_id()
+                .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
+
+            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
+            // The lint index inside the attribute is manually transferred here.
+            let lint_index = unstable_id.get_lint_index();
+            unstable_id.set_lint_index(None);
+            let mut stable_id = *unstable_to_stable
+                .get(&unstable_id)
+                .expect("each unstable `LintExpectationId` must have a matching stable id");
+
+            stable_id.set_lint_index(lint_index);
+            diag.level = Level::Expect(stable_id);
+            inner.fulfilled_expectations.insert(stable_id);
+
+            (*TRACK_DIAGNOSTICS)(&diag);
+        }
+    }
+
+    /// This methods steals all [`LintExpectationId`]s that are stored inside
+    /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
+    pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
+        assert!(
+            self.inner.borrow().unstable_expect_diagnostics.is_empty(),
+            "`HandlerInner::unstable_expect_diagnostics` should be empty at this point",
+        );
+        std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
+    }
 }
 
 impl HandlerInner {
@@ -951,9 +1017,21 @@ impl HandlerInner {
             return;
         }
 
+        // The `LintExpectationId` can be stable or unstable depending on when it was created.
+        // Diagnostics created before the definition of `HirId`s are unstable and can not yet
+        // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
+        // a stable one by the `LintLevelsBuilder`.
+        if let Level::Expect(LintExpectationId::Unstable { .. }) = diagnostic.level {
+            self.unstable_expect_diagnostics.push(diagnostic.clone());
+            return;
+        }
+
         (*TRACK_DIAGNOSTICS)(diagnostic);
 
-        if diagnostic.level == Allow {
+        if let Level::Expect(expectation_id) = diagnostic.level {
+            self.fulfilled_expectations.insert(expectation_id);
+            return;
+        } else if diagnostic.level == Allow {
             return;
         }
 
@@ -1250,6 +1328,7 @@ pub enum Level {
     Help,
     FailureNote,
     Allow,
+    Expect(LintExpectationId),
 }
 
 impl fmt::Display for Level {
@@ -1275,7 +1354,7 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan)).set_intense(true);
             }
             FailureNote => {}
-            Allow => unreachable!(),
+            Allow | Expect(_) => unreachable!(),
         }
         spec
     }
@@ -1289,11 +1368,19 @@ impl Level {
             Help => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
+            Expect(_) => panic!("Shouldn't call on expected error"),
         }
     }
 
     pub fn is_failure_note(&self) -> bool {
         matches!(*self, FailureNote)
+    }
+
+    pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
+        match self {
+            Level::Expect(id) => Some(*id),
+            _ => None,
+        }
     }
 }
 

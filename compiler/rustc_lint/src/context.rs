@@ -109,6 +109,7 @@ struct LintGroup {
     depr: Option<LintAlias>,
 }
 
+#[derive(Debug)]
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
     /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
@@ -377,6 +378,9 @@ impl LintStore {
                     Level::ForceWarn => "--force-warn",
                     Level::Deny => "-D",
                     Level::Forbid => "-F",
+                    Level::Expect(_) => {
+                        unreachable!("lints with the level of `expect` should not run this code");
+                    }
                 },
                 lint_name
             );
