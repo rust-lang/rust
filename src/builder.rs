@@ -1064,7 +1064,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let val_type = value.get_type();
         match (type_is_pointer(val_type), type_is_pointer(dest_ty)) {
             (false, true) => {
-                // NOTE: Projecting a field of a pointer type will attemp a cast from a signed char to
+                // NOTE: Projecting a field of a pointer type will attempt a cast from a signed char to
                 // a pointer, which is not supported by gccjit.
                 return self.cx.context.new_cast(None, self.inttoptr(value, val_type.make_pointer()), dest_ty);
             },
