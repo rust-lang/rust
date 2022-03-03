@@ -267,12 +267,6 @@ extern "C" LLVMAttributeRef LLVMRustCreateAttrNoValue(LLVMContextRef C,
   return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 
-extern "C" LLVMAttributeRef LLVMRustCreateAttrStringValue(LLVMContextRef C,
-                                                          const char *Name,
-                                                          const char *Value) {
-  return wrap(Attribute::get(*unwrap(C), StringRef(Name), StringRef(Value)));
-}
-
 extern "C" LLVMAttributeRef LLVMRustCreateAlignmentAttr(LLVMContextRef C,
                                                         uint64_t Bytes) {
   return wrap(Attribute::getWithAlignment(*unwrap(C), llvm::Align(Bytes)));
