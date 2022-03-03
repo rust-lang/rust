@@ -963,10 +963,8 @@ where
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("TypeGeneralizer::regions(a={:?})", a);
 
-        if let ty::ReLateBound(debruijn, _) = *a {
-            if debruijn < self.first_free_index {
-                return Ok(a);
-            }
+        if let ty::ReLateBound(debruijn, _) = *a && debruijn < self.first_free_index {
+            return Ok(a);
         }
 
         // For now, we just always create a fresh region variable to

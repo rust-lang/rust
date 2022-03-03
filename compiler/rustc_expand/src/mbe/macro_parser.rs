@@ -345,6 +345,38 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree]) -> MatcherPos<'root, 't
 /// token tree. The depth of the `NamedMatch` structure will therefore depend
 /// only on the nesting depth of `ast::TTSeq`s in the originating
 /// token tree it was derived from.
+///
+/// In layman's terms: `NamedMatch` will form a tree representing nested matches of a particular
+/// meta variable. For example, if we are matching the following macro against the following
+/// invocation...
+///
+/// ```rust
+/// macro_rules! foo {
+///   ($($($x:ident),+);+) => {}
+/// }
+///
+/// foo!(a, b, c, d; a, b, c, d, e);
+/// ```
+///
+/// Then, the tree will have the following shape:
+///
+/// ```rust
+/// MatchedSeq([
+///   MatchedSeq([
+///     MatchedNonterminal(a),
+///     MatchedNonterminal(b),
+///     MatchedNonterminal(c),
+///     MatchedNonterminal(d),
+///   ]),
+///   MatchedSeq([
+///     MatchedNonterminal(a),
+///     MatchedNonterminal(b),
+///     MatchedNonterminal(c),
+///     MatchedNonterminal(d),
+///     MatchedNonterminal(e),
+///   ])
+/// ])
+/// ```
 #[derive(Debug, Clone)]
 crate enum NamedMatch {
     MatchedSeq(Lrc<NamedMatchVec>),
