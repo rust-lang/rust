@@ -5,7 +5,6 @@
 
 // This fails on lldb 6.0.1 on x86-64 Fedora 28; so mark it macOS-only
 // for now.
-// only-macos
 
 // aux-build:cross_crate_spans.rs
 extern crate cross_crate_spans;

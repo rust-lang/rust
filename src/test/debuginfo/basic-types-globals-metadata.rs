@@ -1,5 +1,4 @@
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 // gdb-command:run
@@ -11,7 +10,7 @@
 // gdb-check:type = isize
 // gdbg-command:whatis 'basic_types_globals_metadata::C'
 // gdbr-command:whatis basic_types_globals_metadata::C
-// gdb-check:type = char
+// gdb-check:type = char32_t
 // gdbg-command:whatis 'basic_types_globals_metadata::I8'
 // gdbr-command:whatis basic_types_globals_metadata::I8
 // gdb-check:type = i8
