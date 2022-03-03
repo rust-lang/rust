@@ -116,6 +116,9 @@ pub fn main() {
     assert_eq!(100i8.wrapping_rem(10), 0);
     assert_eq!((-128i8).wrapping_rem(-1), 0);
 
+    assert_eq!(i32::MIN.wrapping_div(-1), i32::MIN);
+    assert_eq!(i32::MIN.wrapping_rem(-1), 0);
+
     assert_eq!(100i8.wrapping_neg(), -100);
     assert_eq!((-128i8).wrapping_neg(), -128);
 
