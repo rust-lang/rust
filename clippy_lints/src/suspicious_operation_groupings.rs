@@ -399,9 +399,9 @@ fn if_statment_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
 
 fn append_opt_vecs<A>(target_opt: Option<Vec<A>>, source_opt: Option<Vec<A>>) -> Option<Vec<A>> {
     match (target_opt, source_opt) {
-        (Some(mut target), Some(mut source)) => {
+        (Some(mut target), Some(source)) => {
             target.reserve(source.len());
-            for op in source.drain(..) {
+            for op in source {
                 target.push(op);
             }
             Some(target)
@@ -436,9 +436,9 @@ fn chained_binops_helper<'expr>(left_outer: &'expr Expr, right_outer: &'expr Exp
             chained_binops_helper(left_left, left_right),
             chained_binops_helper(right_left, right_right),
         ) {
-            (Some(mut left_ops), Some(mut right_ops)) => {
+            (Some(mut left_ops), Some(right_ops)) => {
                 left_ops.reserve(right_ops.len());
-                for op in right_ops.drain(..) {
+                for op in right_ops {
                     left_ops.push(op);
                 }
                 Some(left_ops)

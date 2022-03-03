@@ -32,6 +32,7 @@ mod iter_nth;
 mod iter_nth_zero;
 mod iter_overeager_cloned;
 mod iter_skip_next;
+mod iter_with_drain;
 mod iterator_step_by_zero;
 mod manual_saturating_arithmetic;
 mod manual_str_repeat;
@@ -1120,6 +1121,31 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for use of `.drain(..)` on `Vec` and `VecDeque` for iteration.
+    ///
+    /// ### Why is this bad?
+    /// `.into_iter()` is simpler with better performance.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let mut foo = vec![0, 1, 2, 3];
+    /// let bar: HashSet<usize> = foo.drain(..).collect();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// let foo = vec![0, 1, 2, 3];
+    /// let bar: HashSet<usize> = foo.into_iter().collect();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ITER_WITH_DRAIN,
+    perf,
+    "replace `.drain(..)` with `.into_iter()`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for use of `.get().unwrap()` (or
     /// `.get_mut().unwrap`) on a standard library type which implements `Index`
     ///
@@ -2047,6 +2073,7 @@ impl_lint_pass!(Methods => [
     GET_UNWRAP,
     STRING_EXTEND_CHARS,
     ITER_CLONED_COLLECT,
+    ITER_WITH_DRAIN,
     USELESS_ASREF,
     UNNECESSARY_FOLD,
     UNNECESSARY_FILTER_MAP,
@@ -2326,6 +2353,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 },
                 Some(("map", [_, arg], _)) => suspicious_map::check(cx, expr, recv, arg),
                 _ => {},
+            },
+            ("drain", [arg]) => {
+                iter_with_drain::check(cx, expr, recv, span, arg);
             },
             ("expect", [_]) => match method_call(recv) {
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
