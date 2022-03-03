@@ -390,7 +390,7 @@ pub struct CReaderCacheKey {
 /// - `Ty` (which contains a reference to a `Interned<TyS>`) or `Interned<TyS>`
 ///   should be used everywhere instead of `TyS`. In particular, `Ty` has most
 ///   of the relevant methods.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq)]
 #[allow(rustc::usage_of_ty_tykind)]
 crate struct TyS<'tcx> {
     /// This field shouldn't be used directly and may be removed in the future.
@@ -436,7 +436,7 @@ crate struct TyS<'tcx> {
 static_assert_size!(TyS<'_>, 56);
 
 /// Use this rather than `TyS`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, TyS<'tcx>>);
@@ -841,7 +841,7 @@ pub struct CoercePredicate<'tcx> {
 }
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable)]
 pub enum Term<'tcx> {
     Ty(Ty<'tcx>),
@@ -1150,7 +1150,7 @@ pub type PlaceholderRegion = Placeholder<BoundRegionKind>;
 pub type PlaceholderType = Placeholder<BoundVar>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
-#[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
+#[derive(TyEncodable, TyDecodable)]
 pub struct BoundConst<'tcx> {
     pub var: BoundVar,
     pub ty: Ty<'tcx>,

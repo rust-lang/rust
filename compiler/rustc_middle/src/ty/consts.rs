@@ -20,7 +20,7 @@ pub use kind::*;
 pub use valtree::*;
 
 /// Use this rather than `ConstS`, whenever possible.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
 pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
 
@@ -34,7 +34,7 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
 }
 
 /// Typed constant value.
-#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
+#[derive(PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct ConstS<'tcx> {
     pub ty: Ty<'tcx>,
     pub val: ConstKind<'tcx>,

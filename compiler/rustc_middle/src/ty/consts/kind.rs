@@ -12,7 +12,7 @@ use rustc_target::abi::Size;
 
 use super::ScalarInt;
 /// An unevaluated, potentially generic, constant.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Lift)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Lift)]
 #[derive(Hash, HashStable)]
 pub struct Unevaluated<'tcx, P = Option<Promoted>> {
     pub def: ty::WithOptConstParam<DefId>,
@@ -43,7 +43,7 @@ impl<'tcx, P: Default> Unevaluated<'tcx, P> {
 }
 
 /// Represents a constant in Rust.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Hash, HashStable)]
 pub enum ConstKind<'tcx> {
     /// A const generic parameter.
