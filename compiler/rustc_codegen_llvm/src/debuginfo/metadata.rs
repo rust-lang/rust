@@ -1120,11 +1120,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
         ),
         // Fields:
         |cx, owner| build_upvar_field_di_nodes(cx, closure_env_type, owner),
-        // Generics:
-        |_| {
-            // FIXME(mw): Should we specify generic parameters for closures?
-            smallvec![]
-        },
+        NO_GENERICS,
     )
 }
 
@@ -1177,10 +1173,6 @@ fn build_union_type_di_node<'ll, 'tcx>(
         |cx| build_generic_type_param_di_nodes(cx, union_type),
     )
 }
-
-//=-----------------------------------------------------------------------------
-// Enums
-//=-----------------------------------------------------------------------------
 
 // FIXME(eddyb) maybe precompute this? Right now it's computed once
 // per generator monomorphization, but it doesn't depend on substs.

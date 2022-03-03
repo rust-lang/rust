@@ -110,8 +110,6 @@ fn tag_base_type<'ll, 'tcx>(
         _ => false,
     });
 
-    // FIXME(mw): Why are niche and regular tags treated differently? Because we want to preserve
-    //            the sign?
     match enum_type_and_layout.layout.variants() {
         // A single-variant enum has no discriminant.
         Variants::Single { .. } => {
@@ -119,6 +117,7 @@ fn tag_base_type<'ll, 'tcx>(
         }
 
         Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, tag, .. } => {
+            // Niche tags are always normalized to unsized integers of the correct size.
             match tag.value {
                 Primitive::Int(t, _) => t,
                 Primitive::F32 => Integer::I32,
@@ -134,12 +133,19 @@ fn tag_base_type<'ll, 'tcx>(
         }
 
         Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, .. } => {
+            // Direct tags preserve the sign.
             tag.value.to_ty(cx.tcx)
         }
     }
 }
 
-/// This is a helper function. FIXME: elaborate docs.
+/// Build a DW_TAG_enumeration_type debuginfo node, with the given base type and variants.
+/// This is a helper function and does not register anything in the type map by itself.
+///
+/// `variants` is an iterator of (discr-value, variant-name).
+///
+// NOTE: Handling of discriminant values is somewhat inconsistent. They can appear as u128,
+//       u64, and i64. Here everything gets mapped to i64 because that's what LLVM's API expects.
 fn build_enumeration_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     type_name: &str,
@@ -147,13 +153,14 @@ fn build_enumeration_type_di_node<'ll, 'tcx>(
     variants: &mut dyn Iterator<Item = (Discr<'tcx>, Cow<'tcx, str>)>,
     containing_scope: &'ll DIType,
 ) -> &'ll DIType {
+    let is_unsigned = match base_type.kind() {
+        ty::Int(_) => false,
+        ty::Uint(_) => true,
+        _ => bug!("build_enumeration_type_di_node() called with non-integer tag type."),
+    };
+
     let enumerator_di_nodes: SmallVec<Option<&'ll DIType>> = variants
         .map(|(discr, variant_name)| {
-            let is_unsigned = match discr.ty.kind() {
-                ty::Int(_) => false,
-                ty::Uint(_) => true,
-                _ => bug!("build_enumeration_type_di_node() called with non-integer tag type."),
-            };
             unsafe {
                 Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                     DIB(cx),

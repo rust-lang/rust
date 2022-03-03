@@ -410,9 +410,9 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             variant_member_info.variant_name.len(),
             file_di_node,
             line_number,
-            enum_type_and_layout.size.bits(), // FIXME: Unused?
-            enum_type_and_layout.align.abi.bits() as u32, // FIXME: Unused?
-            Size::ZERO.bits(),                // FIXME: Unused?
+            enum_type_and_layout.size.bits(),
+            enum_type_and_layout.align.abi.bits() as u32,
+            Size::ZERO.bits(),
             discr_value.map(|v| cx.const_u64(v)),
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
