@@ -12,13 +12,12 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::build_helper::{t, up_to_date};
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::{Config, TargetSelection};
 use crate::tool::{self, prepare_tool_cargo, SourceType, Tool};
-use crate::util::symlink_dir;
+use crate::util::{symlink_dir, t, up_to_date};
 use crate::Mode;
 
 macro_rules! submodule_helper {

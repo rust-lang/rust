@@ -14,14 +14,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::build_helper::{output, t};
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
-use crate::util::{exe, is_dylib, timeit};
+use crate::util::{exe, is_dylib, output, t, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {

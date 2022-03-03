@@ -1,6 +1,6 @@
 //! Runs rustfmt on the repository.
 
-use crate::build_helper::{output, t};
+use crate::util::{output, t};
 use crate::Build;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;

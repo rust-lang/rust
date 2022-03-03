@@ -9,10 +9,10 @@ use std::process;
 
 use getopts::Options;
 
-use crate::build_helper::t;
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
+use crate::util::t;
 use crate::{Build, DocTests};
 
 pub enum Color {
