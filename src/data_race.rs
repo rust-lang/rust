@@ -553,7 +553,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         let old = this.allow_data_races_mut(|this| this.read_immediate(&place.into()))?;
-        let lt = this.overflowing_binary_op(mir::BinOp::Lt, &old, &rhs)?.0.to_bool()?;
+        let lt = this.binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar()?.to_bool()?;
 
         let new_val = if min {
             if lt { &old } else { &rhs }
@@ -593,11 +593,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriEvalContextExt<'mir, 'tcx> {
         // Read as immediate for the sake of `binary_op()`
         let old = this.allow_data_races_mut(|this| this.read_immediate(&(place.into())))?;
         // `binary_op` will bail if either of them is not a scalar.
-        let eq = this.overflowing_binary_op(mir::BinOp::Eq, &old, expect_old)?.0;
+        let eq = this.binary_op(mir::BinOp::Eq, &old, expect_old)?;
         // If the operation would succeed, but is "weak", fail some portion
         // of the time, based on `rate`.
         let rate = this.memory.extra.cmpxchg_weak_failure_rate;
-        let cmpxchg_success = eq.to_bool()?
+        let cmpxchg_success = eq.to_scalar()?.to_bool()?
             && (!can_fail_spuriously || this.memory.extra.rng.get_mut().gen::<f64>() < rate);
         let res = Immediate::ScalarPair(
             old.to_scalar_or_uninit(),
