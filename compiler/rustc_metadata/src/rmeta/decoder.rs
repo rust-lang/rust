@@ -942,7 +942,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_variant(self, kind: &EntryKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
         let data = match kind {
-            EntryKind::Variant(data) | EntryKind::Struct(data, _) | EntryKind::Union(data, _) => {
+            EntryKind::Variant(data) | EntryKind::Struct(data) | EntryKind::Union(data) => {
                 data.decode(self)
             }
             _ => bug!(),
@@ -988,12 +988,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         let kind = self.kind(item_id);
         let did = self.local_def_id(item_id);
 
-        let (adt_kind, repr) = match kind {
-            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
-            EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
-            EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
+        let adt_kind = match kind {
+            EntryKind::Enum => ty::AdtKind::Enum,
+            EntryKind::Struct(_) => ty::AdtKind::Struct,
+            EntryKind::Union(_) => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
+        let repr = self.root.tables.repr_options.get(self, item_id).unwrap().decode(self);
 
         let variants = if let ty::AdtKind::Enum = adt_kind {
             self.root
@@ -1171,7 +1172,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     callback(exp);
                 }
             }
-            EntryKind::Enum(..) | EntryKind::Trait(..) => {}
+            EntryKind::Enum | EntryKind::Trait(..) => {}
             _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
@@ -1186,7 +1187,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn module_expansion(self, id: DefIndex, sess: &Session) -> ExpnId {
         match self.kind(id) {
-            EntryKind::Mod(_) | EntryKind::Enum(_) | EntryKind::Trait(_) => {
+            EntryKind::Mod(_) | EntryKind::Enum | EntryKind::Trait(_) => {
                 self.get_expn_that_defined(id, sess)
             }
             _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
@@ -1239,7 +1240,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_ctor_def_id_and_kind(self, node_id: DefIndex) -> Option<(DefId, CtorKind)> {
         match self.kind(node_id) {
-            EntryKind::Struct(data, _) | EntryKind::Variant(data) => {
+            EntryKind::Struct(data) | EntryKind::Variant(data) => {
                 let vdata = data.decode(self);
                 vdata.ctor.map(|index| (self.local_def_id(index), vdata.ctor_kind))
             }

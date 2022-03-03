@@ -325,6 +325,7 @@ define_tables! {
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
     expn_that_defined: Table<DefIndex, Lazy<ExpnId>>,
     unused_generic_params: Table<DefIndex, Lazy<FiniteBitSet<u32>>>,
+    repr_options: Table<DefIndex, Lazy<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire
     // `DefPathTable` up front, since we may only ever use a few
@@ -347,11 +348,11 @@ enum EntryKind {
     TypeParam,
     ConstParam,
     OpaqueTy,
-    Enum(ReprOptions),
+    Enum,
     Field,
     Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>, ReprOptions),
-    Union(Lazy<VariantData>, ReprOptions),
+    Struct(Lazy<VariantData>),
+    Union(Lazy<VariantData>),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<[ModChild]>),

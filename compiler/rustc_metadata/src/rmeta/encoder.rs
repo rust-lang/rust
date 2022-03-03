@@ -1154,7 +1154,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr()));
+        record!(self.tables.repr_options[def_id] <- adt_def.repr());
+        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data)));
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1418,10 +1419,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_explicit_item_bounds(def_id);
                 EntryKind::OpaqueTy
             }
-            hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr()),
+            hir::ItemKind::Enum(..) => {
+                let adt_def = self.tcx.adt_def(def_id);
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
+                EntryKind::Enum
+            }
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
-                let variant = adt_def.non_enum_variant();
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -1430,29 +1435,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .ctor_hir_id()
                     .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
 
-                EntryKind::Struct(
-                    self.lazy(VariantData {
-                        ctor_kind: variant.ctor_kind,
-                        discr: variant.discr,
-                        ctor,
-                        is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                    }),
-                    adt_def.repr(),
-                )
+                let variant = adt_def.non_enum_variant();
+                EntryKind::Struct(self.lazy(VariantData {
+                    ctor_kind: variant.ctor_kind,
+                    discr: variant.discr,
+                    ctor,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
+                }))
             }
             hir::ItemKind::Union(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
-                let variant = adt_def.non_enum_variant();
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
 
-                EntryKind::Union(
-                    self.lazy(VariantData {
-                        ctor_kind: variant.ctor_kind,
-                        discr: variant.discr,
-                        ctor: None,
-                        is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                    }),
-                    adt_def.repr(),
-                )
+                let variant = adt_def.non_enum_variant();
+                EntryKind::Union(self.lazy(VariantData {
+                    ctor_kind: variant.ctor_kind,
+                    discr: variant.discr,
+                    ctor: None,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
+                }))
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 record!(self.tables.impl_defaultness[def_id] <- defaultness);
