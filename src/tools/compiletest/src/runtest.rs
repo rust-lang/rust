@@ -263,19 +263,11 @@ impl<'test> TestCx<'test> {
             Ui | MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
         };
-        if test_should_run {
-            self.run_if_enabled()
-        } else {
-            WillExecute::No
-        }
+        if test_should_run { self.run_if_enabled() } else { WillExecute::No }
     }
 
     fn run_if_enabled(&self) -> WillExecute {
-        if self.config.run_enabled() {
-            WillExecute::Yes
-        } else {
-            WillExecute::Disabled
-        }
+        if self.config.run_enabled() { WillExecute::Yes } else { WillExecute::Disabled }
     }
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
@@ -2029,11 +2021,7 @@ impl<'test> TestCx<'test> {
             Some(ref s) => s
                 .split(' ')
                 .filter_map(|s| {
-                    if s.chars().all(|c| c.is_whitespace()) {
-                        None
-                    } else {
-                        Some(s.to_owned())
-                    }
+                    if s.chars().all(|c| c.is_whitespace()) { None } else { Some(s.to_owned()) }
                 })
                 .collect(),
             None => Vec::new(),
@@ -2092,11 +2080,7 @@ impl<'test> TestCx<'test> {
     /// The revision, ignored for incremental compilation since it wants all revisions in
     /// the same directory.
     fn safe_revision(&self) -> Option<&str> {
-        if self.config.mode == Incremental {
-            None
-        } else {
-            self.revision
-        }
+        if self.config.mode == Incremental { None } else { self.revision }
     }
 
     /// Gets the absolute path to the directory where all output for the given
@@ -2251,11 +2235,7 @@ impl<'test> TestCx<'test> {
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "freebsd") {
-            "ISO-8859-1"
-        } else {
-            "UTF-8"
-        }
+        if cfg!(target_os = "freebsd") { "ISO-8859-1" } else { "UTF-8" }
     }
 
     fn run_rustdoc_test(&self) {
@@ -3045,11 +3025,7 @@ impl<'test> TestCx<'test> {
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
                 {
-                    if self.props.stderr_per_bitwidth {
-                        &stderr_bits
-                    } else {
-                        UI_STDERR
-                    }
+                    if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR }
                 },
                 UI_STDOUT,
             ),
@@ -3746,11 +3722,7 @@ impl<'test> TestCx<'test> {
         for output_file in files {
             println!("Actual {} saved to {}", kind, output_file.display());
         }
-        if self.config.bless {
-            0
-        } else {
-            1
-        }
+        if self.config.bless { 0 } else { 1 }
     }
 
     fn prune_duplicate_output(&self, mode: CompareMode, kind: &str, canon_content: &str) {

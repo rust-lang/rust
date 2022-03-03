@@ -1022,9 +1022,11 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    debug_assert!(up_var_tys
-        .iter()
-        .all(|&t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)));
+    debug_assert!(
+        up_var_tys
+            .iter()
+            .all(|&t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
+    );
 
     let capture_names = closure_saved_names_of_captured_variables(cx.tcx, def_id);
     let layout = cx.layout_of(closure_or_generator_ty);
