@@ -10,7 +10,7 @@ use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Printer};
 use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
 use rustc_middle::{mir, ty};
-use rustc_target::abi::{Abi, HasDataLayout, Size, TagEncoding};
+use rustc_target::abi::{self, Abi, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
@@ -268,14 +268,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
         // However, `MaybeUninit<u64>` is considered a `Scalar` as far as its layout is concerned --
         // and yet cannot be represented by an interpreter `Scalar`, since we have to handle the
-        // case where some of the bytes are initialized and others are not. So, we only permit
-        // reads from `Scalar`s and `ScalarPair`s that cannot be uninitialized.
+        // case where some of the bytes are initialized and others are not. So, we need an extra
+        // check that walks over the type of `mplace` to make sure it is truly correct to treat this
+        // like a `Scalar` (or `ScalarPair`).
         match mplace.layout.abi {
-            Abi::Scalar(..) => {
+            Abi::Scalar(abi::Scalar::Initialized { .. }) => {
                 let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
                 Ok(Some(ImmTy { imm: scalar.into(), layout: mplace.layout }))
             }
-            Abi::ScalarPair(a, b) => {
+            Abi::ScalarPair(
+                abi::Scalar::Initialized { value: a, .. },
+                abi::Scalar::Initialized { value: b, .. },
+            ) => {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
