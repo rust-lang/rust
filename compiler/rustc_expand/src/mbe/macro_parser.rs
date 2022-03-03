@@ -184,17 +184,8 @@ struct MatcherPos<'root, 'tt> {
     /// in this matcher.
     match_hi: usize,
 
-    // The following fields are used if we are matching a repetition. If we aren't, they should be
-    // `None`.
-    /// The KleeneOp of this sequence if we are in a repetition.
-    seq_op: Option<mbe::KleeneOp>,
-
-    /// The separator if we are in a repetition.
-    sep: Option<Token>,
-
-    /// The "parent" matcher position if we are in a repetition. That is, the matcher position just
-    /// before we enter the sequence.
-    up: Option<MatcherPosHandle<'root, 'tt>>,
+    /// This field is only used if we are matching a repetition.
+    repetition: Option<MatcherPosRepetition<'root, 'tt>>,
 
     /// Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
     /// a delimited token tree (e.g., something wrapped in `(` `)`) or to get the contents of a doc
@@ -217,6 +208,19 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
         let matches = Lrc::make_mut(&mut self.matches[idx]);
         matches.push(m);
     }
+}
+
+#[derive(Clone)]
+struct MatcherPosRepetition<'root, 'tt> {
+    /// The KleeneOp of this sequence.
+    seq_op: mbe::KleeneOp,
+
+    /// The separator.
+    sep: Option<Token>,
+
+    /// The "parent" matcher position. That is, the matcher position just before we enter the
+    /// sequence.
+    up: MatcherPosHandle<'root, 'tt>,
 }
 
 // Lots of MatcherPos instances are created at runtime. Allocating them on the
@@ -326,10 +330,8 @@ fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree]) -> MatcherPos<'root, 't
         // Haven't descended into any delimiters, so empty stack
         stack: smallvec![],
 
-        // Haven't descended into any sequences, so both of these are `None`.
-        seq_op: None,
-        sep: None,
-        up: None,
+        // Haven't descended into any sequences, so this is `None`.
+        repetition: None,
     }
 }
 
@@ -476,7 +478,7 @@ fn inner_parse_loop<'root, 'tt>(
             // We are repeating iff there is a parent. If the matcher is inside of a repetition,
             // then we could be at the end of a sequence or at the beginning of the next
             // repetition.
-            if item.up.is_some() {
+            if let Some(repetition) = &item.repetition {
                 // At this point, regardless of whether there is a separator, we should add all
                 // matches from the complete repetition of the sequence to the shared, top-level
                 // `matches` list (actually, `up.matches`, which could itself not be the top-level,
@@ -487,7 +489,7 @@ fn inner_parse_loop<'root, 'tt>(
                 // NOTE: removing the condition `idx == len` allows trailing separators.
                 if idx == len {
                     // Get the `up` matcher
-                    let mut new_pos = item.up.clone().unwrap();
+                    let mut new_pos = repetition.up.clone();
 
                     // Add matches from this repetition to the `matches` of `up`
                     for idx in item.match_lo..item.match_hi {
@@ -502,14 +504,14 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // Check if we need a separator.
-                if idx == len && item.sep.is_some() {
+                if idx == len && repetition.sep.is_some() {
                     // We have a separator, and it is the current token. We can advance past the
                     // separator token.
-                    if item.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
+                    if repetition.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
                         item.idx += 1;
                         next_items.push(item);
                     }
-                } else if item.seq_op != Some(mbe::KleeneOp::ZeroOrOne) {
+                } else if repetition.seq_op != mbe::KleeneOp::ZeroOrOne {
                     // We don't need a separator. Move the "dot" back to the beginning of the
                     // matcher and try to match again UNLESS we are only allowed to have _one_
                     // repetition.
@@ -548,14 +550,16 @@ fn inner_parse_loop<'root, 'tt>(
                     let matches = create_matches(item.matches.len());
                     cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
                         stack: smallvec![],
-                        sep: seq.separator.clone(),
-                        seq_op: Some(seq.kleene.op),
                         idx: 0,
                         matches,
                         match_lo: item.match_cur,
                         match_cur: item.match_cur,
                         match_hi: item.match_cur + seq.num_captures,
-                        up: Some(item),
+                        repetition: Some(MatcherPosRepetition {
+                            up: item,
+                            sep: seq.separator.clone(),
+                            seq_op: seq.kleene.op,
+                        }),
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     })));
                 }
