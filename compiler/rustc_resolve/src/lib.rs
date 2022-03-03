@@ -3207,7 +3207,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            ImportKind::ExternCrate { source, target, .. } => {
+            ImportKind::ExternCrate { source, target } => {
                 suggestion = Some(format!(
                     "extern crate {} as {};",
                     source.unwrap_or(target.name),
