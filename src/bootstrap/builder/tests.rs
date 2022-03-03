@@ -3,7 +3,7 @@ use crate::config::{Config, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
-    let mut config = Config::parse(&[cmd.to_owned()], true);
+    let mut config = Config::parse(&[cmd.to_owned()]);
     // don't save toolstates
     config.save_toolstates = None;
     config.dry_run = true;

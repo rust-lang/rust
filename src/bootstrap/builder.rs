@@ -883,7 +883,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
@@ -1249,7 +1249,7 @@ impl<'a> Builder<'a> {
             .env("RUSTC_STAGE", stage.to_string())
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
-            .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+            .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
                 if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
@@ -1263,7 +1263,7 @@ impl<'a> Builder<'a> {
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
         // Don't override RUSTC so that the `cargo-clippy` in path will be run.
         if cmd != "clippy" {
-            cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"));
+            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
         }
 
         // Dealing with rpath here is a little special, so let's go into some

@@ -619,7 +619,7 @@ impl Config {
         config
     }
 
-    pub fn parse(args: &[String], unit_test: bool) -> Config {
+    pub fn parse(args: &[String]) -> Config {
         let flags = Flags::parse(&args);
 
         let mut config = Config::default_opts();
@@ -681,26 +681,13 @@ impl Config {
 
         let build = toml.build.unwrap_or_default();
 
-        set(&mut config.out, build.build_dir.map(String::into));
+        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
+        set(&mut config.out, build.build_dir.map(PathBuf::from));
         // NOTE: Bootstrap spawns various commands with different working directories.
         // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
-
-        // FIXME: using `canonicalize()` makes this a lot more complicated than it needs to be -
-        // if/when `std::path::absolute` lands, we should use that instead.
-
-        // HACK: in tests, we override the build directory manually.
-        // Avoid creating a directory we won't actually need.
-        // (The original motivation for this is that CI uses read-only directories.)
-        if !config.out.is_absolute() && !unit_test {
-            // canonicalize() gives a hard error if the directory doesn't exist
-            t!(
-                fs::create_dir_all(&config.out),
-                format!("failed to create build dir: {}", config.out.display())
-            );
-            config.out = t!(
-                config.out.canonicalize(),
-                format!("failed to canonicalize {}", config.out.display())
-            );
+        if !config.out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            config.out = crate::util::absolute(&config.out);
         }
 
         if config.dry_run {

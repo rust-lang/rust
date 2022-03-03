@@ -730,7 +730,7 @@ impl Step for RustdocTheme {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let rustdoc = builder.out.join("bootstrap/debug/rustdoc");
+        let rustdoc = builder.bootstrap_out.join("rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
             .arg(builder.src.join("src/librustdoc/html/static/css/themes").to_str().unwrap())
