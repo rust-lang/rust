@@ -1737,8 +1737,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Deduplicate and ensure a deterministic order.
-        all_fake_borrows.sort();
-        all_fake_borrows.dedup();
+        // all_fake_borrows.sort();
+        // all_fake_borrows.dedup();
 
         debug!("add_fake_borrows all_fake_borrows = {:?}", all_fake_borrows);
 
