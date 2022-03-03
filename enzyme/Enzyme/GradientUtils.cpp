@@ -798,8 +798,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
         if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
           pidx = invertPointerM(dli->getOperand(0), BuilderM);
         } else {
-          pidx =
-              lookupM(invertPointerM(dli->getOperand(0), BuilderM), BuilderM);
+          pidx = lookupM(invertPointerM(dli->getOperand(0), BuilderM), BuilderM,
+                         available);
         }
 
         if (pidx == nullptr)
