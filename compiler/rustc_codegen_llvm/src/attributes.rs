@@ -1,10 +1,6 @@
 //! Set and unset common attributes on LLVM values.
 
-use std::ffi::CString;
-
-use cstr::cstr;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
@@ -103,11 +99,11 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
         fp = FramePointer::Always;
     }
     let attr_value = match fp {
-        FramePointer::Always => cstr!("all"),
-        FramePointer::NonLeaf => cstr!("non-leaf"),
+        FramePointer::Always => "all",
+        FramePointer::NonLeaf => "non-leaf",
         FramePointer::MayOmit => return None,
     };
-    Some(llvm::CreateAttrStringValue(cx.llcx, cstr!("frame-pointer"), attr_value))
+    Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
 
 /// Tell LLVM what instrument function to insert.
@@ -119,11 +115,11 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
 
         // The function name varies on platforms.
         // See test/CodeGen/mcount.c in clang.
-        let mcount_name = CString::new(cx.sess().target.mcount.as_str().as_bytes()).unwrap();
+        let mcount_name = cx.sess().target.mcount.as_str();
 
         Some(llvm::CreateAttrStringValue(
             cx.llcx,
-            cstr!("instrument-function-entry-inlined"),
+            "instrument-function-entry-inlined",
             &mcount_name,
         ))
     } else {
@@ -159,20 +155,20 @@ fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
         StackProbeType::None => return None,
         // Request LLVM to generate the probes inline. If the given LLVM version does not support
         // this, no probe is generated at all (even if the attribute is specified).
-        StackProbeType::Inline => cstr!("inline-asm"),
+        StackProbeType::Inline => "inline-asm",
         // Flag our internal `__rust_probestack` function as the stack probe symbol.
         // This is defined in the `compiler-builtins` crate for each architecture.
-        StackProbeType::Call => cstr!("__rust_probestack"),
+        StackProbeType::Call => "__rust_probestack",
         // Pick from the two above based on the LLVM version.
         StackProbeType::InlineOrCall { min_llvm_version_for_inline } => {
             if llvm_util::get_version() < min_llvm_version_for_inline {
-                cstr!("__rust_probestack")
+                "__rust_probestack"
             } else {
-                cstr!("inline-asm")
+                "inline-asm"
             }
         }
     };
-    Some(llvm::CreateAttrStringValue(cx.llcx, cstr!("probe-stack"), attr_value))
+    Some(llvm::CreateAttrStringValue(cx.llcx, "probe-stack", attr_value))
 }
 
 fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
@@ -187,15 +183,13 @@ fn stackprotector_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
 }
 
 pub fn target_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll Attribute {
-    let target_cpu = SmallCStr::new(llvm_util::target_cpu(cx.tcx.sess));
-    llvm::CreateAttrStringValue(cx.llcx, cstr!("target-cpu"), target_cpu.as_c_str())
+    let target_cpu = llvm_util::target_cpu(cx.tcx.sess);
+    llvm::CreateAttrStringValue(cx.llcx, "target-cpu", target_cpu)
 }
 
 pub fn tune_cpu_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    llvm_util::tune_cpu(cx.tcx.sess).map(|tune| {
-        let tune_cpu = SmallCStr::new(tune);
-        llvm::CreateAttrStringValue(cx.llcx, cstr!("tune-cpu"), tune_cpu.as_c_str())
-    })
+    llvm_util::tune_cpu(cx.tcx.sess)
+        .map(|tune_cpu| llvm::CreateAttrStringValue(cx.llcx, "tune-cpu", tune_cpu))
 }
 
 /// Get the `NonLazyBind` LLVM attribute,
@@ -280,7 +274,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     }
 
     if cx.sess().opts.debugging_opts.profile_sample_use.is_some() {
-        to_add.push(llvm::CreateAttrString(cx.llcx, cstr!("use-sample-profile")));
+        to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
     // FIXME: none of these three functions interact with source level attributes.
@@ -310,7 +304,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         attributes::apply_to_llfn(llfn, AttributePlace::ReturnValue, &[no_alias]);
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::CMSE_NONSECURE_ENTRY) {
-        to_add.push(llvm::CreateAttrString(cx.llcx, cstr!("cmse_nonsecure_entry")));
+        to_add.push(llvm::CreateAttrString(cx.llcx, "cmse_nonsecure_entry"));
     }
     if let Some(align) = codegen_fn_attrs.alignment {
         llvm::set_alignment(llfn, align as usize);
@@ -363,12 +357,12 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // If this function is an import from the environment but the wasm
         // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("wasm-import-module"), &module));
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", &module));
 
             let name =
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));
-            let name = CString::new(name.as_str()).unwrap();
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("wasm-import-name"), &name));
+            let name = name.as_str();
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
         }
 
         // The `"wasm"` abi on wasm targets automatically enables the
@@ -388,13 +382,13 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         let val = global_features
             .chain(function_features.iter().map(|s| &s[..]))
             .intersperse(",")
-            .collect::<SmallCStr>();
-        to_add.push(llvm::CreateAttrStringValue(cx.llcx, cstr!("target-features"), &val));
+            .collect::<String>();
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &val));
     }
 
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
 
-fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<CString> {
-    tcx.wasm_import_module_map(id.krate).get(&id).map(|s| CString::new(&s[..]).unwrap())
+fn wasm_import_module(tcx: TyCtxt<'_>, id: DefId) -> Option<&String> {
+    tcx.wasm_import_module_map(id.krate).get(&id)
 }
