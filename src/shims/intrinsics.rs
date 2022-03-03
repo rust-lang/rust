@@ -316,6 +316,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // SIMD operations
             #[rustfmt::skip]
+            | "simd_neg"
+            | "simd_fabs" => {
+                let &[ref op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+                    let val = match intrinsic_name {
+                        "simd_neg" => this.unary_op(mir::UnOp::Neg, &op)?.to_scalar()?,
+                        "simd_fabs" => {
+                            // Works for f32 and f64.
+                            let ty::Float(float_ty) = op.layout.ty.kind() else {
+                                bug!("simd_fabs operand is not a float")
+                            };
+                            let op = op.to_scalar()?;
+                            // FIXME: Using host floats.
+                            match float_ty {
+                                FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
+                                FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
+                            }
+                        }
+                        _ => bug!(),
+                    };
+                    this.write_scalar(val, &dest.into())?;
+                }
+            }
+            #[rustfmt::skip]
             | "simd_add"
             | "simd_sub"
             | "simd_mul"
@@ -374,12 +405,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
             }
             "simd_reduce_any" => {
-                let &[ref arg] = check_arg_count(args)?;
-                let (arg, arg_len) = this.operand_to_simd(arg)?;
+                let &[ref op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
 
                 let mut res = false; // the neutral element
-                for i in 0..arg_len {
-                    let op = this.read_immediate(&this.mplace_index(&arg, i)?.into())?;
+                for i in 0..op_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
                     let val = simd_element_to_bool(op)?;
                     res = res | val;
                 }
