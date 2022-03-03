@@ -38,7 +38,7 @@ use crate::ops::Try;
 /// }
 /// ```
 ///
-/// This will print "('a', 1), ('b', 2), ('c', 3)".
+/// This will print `('a', 1), ('b', 2), ('c', 3)`.
 ///
 /// Now consider this twist where we add a call to `rev`. This version will
 /// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
