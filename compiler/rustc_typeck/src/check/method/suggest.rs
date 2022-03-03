@@ -1122,14 +1122,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 _ => false,
             });
-        let mut preds: Vec<_> = errors
+        let preds: Vec<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Trait(pred) => Some(pred),
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
+        // preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
         let def_ids = preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {

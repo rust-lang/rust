@@ -464,8 +464,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     }
                 }
                 let all_len = self.place_cache.len();
-                self.place_cache.sort_unstable();
-                self.place_cache.dedup();
+                // self.place_cache.sort_unstable();
+                // self.place_cache.dedup();
                 let has_duplicates = all_len != self.place_cache.len();
                 if has_duplicates {
                     self.fail(
