@@ -1553,7 +1553,21 @@ pub enum StatementKind<'tcx> {
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
     FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
-    /// Write the discriminant for a variant to the enum Place.
+    /// Initialize the place with the given variant and all fields uninit.
+    ///
+    /// If `place` is an ADT, this corresponds to the Rust code `place = Variant(uninit, uninit,
+    /// uninit)`. If each of the fields is initialized after the `SetDiscriminant`, the place is
+    /// completely initialized. Of course, you cannot initialize the fields first, as
+    /// `SetDiscriminant` invalidates them.
+    ///
+    /// Computing the `Rvalue::Discriminant` of this place after `SetDiscriminant` is not
+    /// necessarily well defined if the fields have not also been initialized. See [#91095][91095]
+    /// for discussion around this topic.
+    ///
+    /// If `place` is a generator, then this invalidates only those fields which are not also
+    /// present in another variant. Those fields that are present in another variant are unchanged.
+    ///
+    /// [91095]: https://github.com/rust-lang/rust/issues/91095
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
 
     /// Start a live range for the storage of the local.
