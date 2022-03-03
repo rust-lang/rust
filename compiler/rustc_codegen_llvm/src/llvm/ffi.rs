@@ -576,12 +576,12 @@ pub enum PassKind {
     Module,
 }
 
-/// LLVMRustThinLTOData
+// LLVMRustThinLTOData
 extern "C" {
     pub type ThinLTOData;
 }
 
-/// LLVMRustThinLTOBuffer
+// LLVMRustThinLTOBuffer
 extern "C" {
     pub type ThinLTOBuffer;
 }
