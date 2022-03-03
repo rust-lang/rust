@@ -261,6 +261,7 @@
 #![feature(const_socketaddr)]
 #![feature(const_trait_impl)]
 #![feature(container_error_extra)]
+#![feature(c_size_t)]
 #![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(core_panic)]
