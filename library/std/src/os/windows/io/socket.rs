@@ -71,7 +71,7 @@ impl BorrowedSocket<'_> {
     /// `INVALID_SOCKET`.
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_socket(socket: RawSocket) -> Self {
+    pub unsafe fn borrow_raw(socket: RawSocket) -> Self {
         debug_assert_ne!(socket, c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
     }
@@ -243,14 +243,14 @@ impl AsSocket for OwnedSocket {
         // Safety: `OwnedSocket` and `BorrowedSocket` have the same validity
         // invariants, and the `BorrowdSocket` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
 impl AsSocket for crate::net::TcpStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -271,7 +271,7 @@ impl From<OwnedSocket> for crate::net::TcpStream {
 impl AsSocket for crate::net::TcpListener {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
@@ -292,7 +292,7 @@ impl From<OwnedSocket> for crate::net::TcpListener {
 impl AsSocket for crate::net::UdpSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
-        unsafe { BorrowedSocket::borrow_raw_socket(self.as_raw_socket()) }
+        unsafe { BorrowedSocket::borrow_raw(self.as_raw_socket()) }
     }
 }
 
