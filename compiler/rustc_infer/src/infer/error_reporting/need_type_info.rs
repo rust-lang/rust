@@ -114,28 +114,25 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Match(scrutinee, [_, arm], MatchSource::ForLoopDesugar) = expr.kind {
-            if let Some(pat) = arm.pat.for_loop_some() {
-                if let Some(ty) = self.node_ty_contains_target(pat.hir_id) {
-                    self.found_for_loop_iter = Some(scrutinee);
-                    self.found_node_ty = Some(ty);
-                    return;
-                }
-            }
+        if let ExprKind::Match(scrutinee, [_, arm], MatchSource::ForLoopDesugar) = expr.kind
+            && let Some(pat) = arm.pat.for_loop_some()
+            && let Some(ty) = self.node_ty_contains_target(pat.hir_id)
+        {
+            self.found_for_loop_iter = Some(scrutinee);
+            self.found_node_ty = Some(ty);
+            return;
         }
-        if let ExprKind::MethodCall(segment, exprs, _) = expr.kind {
-            if segment.ident.span == self.target_span
-                && Some(self.target)
-                    == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
-                        typeck_results
-                            .borrow()
-                            .node_type_opt(exprs.first().unwrap().hir_id)
-                            .map(Into::into)
-                    })
-            {
-                self.found_exact_method_call = Some(&expr);
-                return;
-            }
+        if let ExprKind::MethodCall(segment, exprs, _) = expr.kind
+            && segment.ident.span == self.target_span
+            && Some(self.target) == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
+                typeck_results
+                    .borrow()
+                    .node_type_opt(exprs.first().unwrap().hir_id)
+                    .map(Into::into)
+            })
+        {
+            self.found_exact_method_call = Some(&expr);
+            return;
         }
 
         // FIXME(const_generics): Currently, any uninferred `const` generics arguments
@@ -602,10 +599,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         );
 
         let use_diag = local_visitor.found_use_diagnostic.as_ref();
-        if let Some(use_diag) = use_diag {
-            if use_diag.applies_to(err_span) {
-                use_diag.attach_note(&mut err);
-            }
+        if let Some(use_diag) = use_diag && use_diag.applies_to(err_span) {
+            use_diag.attach_note(&mut err);
         }
 
         let param_type = arg_data.kind.descr();
@@ -736,29 +731,27 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
                 //    |
                 //    = note: cannot satisfy `Impl: Into<_>`
-                if !impl_candidates.is_empty() && e.span.contains(span) {
-                    if let Some(expr) = exprs.first() {
-                        if let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind {
-                            if let [path_segment] = path.segments {
-                                let candidate_len = impl_candidates.len();
-                                let suggestions = impl_candidates.iter().map(|candidate| {
-                                    format!(
-                                        "{}::{}({})",
-                                        candidate, segment.ident, path_segment.ident
-                                    )
-                                });
-                                err.span_suggestions(
-                                    e.span,
-                                    &format!(
-                                        "use the fully qualified path for the potential candidate{}",
-                                        pluralize!(candidate_len),
-                                    ),
-                                    suggestions,
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-                        }
-                    };
+                if !impl_candidates.is_empty() && e.span.contains(span)
+                    && let Some(expr) = exprs.first()
+                    && let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
+                    && let [path_segment] = path.segments
+                {
+                    let candidate_len = impl_candidates.len();
+                    let suggestions = impl_candidates.iter().map(|candidate| {
+                        format!(
+                            "{}::{}({})",
+                            candidate, segment.ident, path_segment.ident
+                        )
+                    });
+                    err.span_suggestions(
+                        e.span,
+                        &format!(
+                            "use the fully qualified path for the potential candidate{}",
+                            pluralize!(candidate_len),
+                        ),
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
                 // Suggest specifying type params or point out the return type of the call:
                 //

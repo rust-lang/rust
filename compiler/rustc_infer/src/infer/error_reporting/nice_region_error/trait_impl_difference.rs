@@ -23,51 +23,39 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let error = self.error.as_ref()?;
         debug!("try_report_impl_not_conforming_to_trait {:?}", error);
         if let RegionResolutionError::SubSupConflict(
-            _,
-            var_origin,
-            sub_origin,
-            _sub,
-            sup_origin,
-            _sup,
-            _,
-        ) = error.clone()
+                _, var_origin, sub_origin, _sub, sup_origin, _sup, _,
+            ) = error.clone()
+            && let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin)
+            && let (
+                sub_expected_found @ Some((sub_expected, sub_found)),
+                sup_expected_found @ Some(_),
+                CompareImplMethodObligation { trait_item_def_id, .. },
+            ) = (sub_trace.values.ty(), sup_trace.values.ty(), sub_trace.cause.code())
+            && sup_expected_found == sub_expected_found
         {
-            if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin) {
-                if let (
-                    sub_expected_found @ Some((sub_expected, sub_found)),
-                    sup_expected_found @ Some(_),
-                    CompareImplMethodObligation { trait_item_def_id, .. },
-                ) = (&sub_trace.values.ty(), &sup_trace.values.ty(), sub_trace.cause.code())
-                {
-                    if sup_expected_found == sub_expected_found {
-                        self.emit_err(
-                            var_origin.span(),
-                            *sub_expected,
-                            *sub_found,
-                            *trait_item_def_id,
-                        );
-                        return Some(ErrorGuaranteed);
-                    }
-                }
-            }
+            self.emit_err(
+                var_origin.span(),
+                sub_expected,
+                sub_found,
+                *trait_item_def_id,
+            );
+            return Some(ErrorGuaranteed);
         }
         if let RegionResolutionError::ConcreteFailure(origin, _, _)
-        | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
-        {
-            if let SubregionOrigin::CompareImplTypeObligation {
+            | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
+            && let SubregionOrigin::CompareImplTypeObligation {
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
             } = origin
-            {
-                self.emit_associated_type_err(
-                    span,
-                    self.infcx.tcx.item_name(impl_item_def_id),
-                    impl_item_def_id,
-                    trait_item_def_id,
-                );
-                return Some(ErrorGuaranteed);
-            }
+        {
+            self.emit_associated_type_err(
+                span,
+                self.infcx.tcx.item_name(impl_item_def_id),
+                impl_item_def_id,
+                trait_item_def_id,
+            );
+            return Some(ErrorGuaranteed);
         }
         None
     }
