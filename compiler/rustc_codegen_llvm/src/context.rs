@@ -269,36 +269,36 @@ pub unsafe fn create_module<'ll>(
         }
     }
 
-    if sess.target.arch == "aarch64" {
-        let BranchProtection { bti, pac_ret: pac } = sess.opts.debugging_opts.branch_protection;
-
-        llvm::LLVMRustAddModuleFlag(
-            llmod,
-            llvm::LLVMModFlagBehavior::Error,
-            "branch-target-enforcement\0".as_ptr().cast(),
-            bti.into(),
-        );
-
-        llvm::LLVMRustAddModuleFlag(
-            llmod,
-            llvm::LLVMModFlagBehavior::Error,
-            "sign-return-address\0".as_ptr().cast(),
-            pac.is_some().into(),
-        );
-        let pac_opts = pac.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
-        llvm::LLVMRustAddModuleFlag(
-            llmod,
-            llvm::LLVMModFlagBehavior::Error,
-            "sign-return-address-all\0".as_ptr().cast(),
-            pac_opts.leaf.into(),
-        );
-        let is_bkey: bool = pac_opts.key != PAuthKey::A;
-        llvm::LLVMRustAddModuleFlag(
-            llmod,
-            llvm::LLVMModFlagBehavior::Error,
-            "sign-return-address-with-bkey\0".as_ptr().cast(),
-            is_bkey.into(),
-        );
+    if let Some(BranchProtection { bti, pac_ret }) = sess.opts.debugging_opts.branch_protection {
+        if sess.target.arch != "aarch64" {
+            sess.err("-Zbranch-protection is only supported on aarch64");
+        } else {
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                "branch-target-enforcement\0".as_ptr().cast(),
+                bti.into(),
+            );
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                "sign-return-address\0".as_ptr().cast(),
+                pac_ret.is_some().into(),
+            );
+            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                "sign-return-address-all\0".as_ptr().cast(),
+                pac_opts.leaf.into(),
+            );
+            llvm::LLVMRustAddModuleFlag(
+                llmod,
+                llvm::LLVMModFlagBehavior::Error,
+                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                u32::from(pac_opts.key == PAuthKey::B),
+            );
+        }
     }
 
     // Pass on the control-flow protection flags to LLVM (equivalent to `-fcf-protection` in Clang).
