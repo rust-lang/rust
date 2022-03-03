@@ -21,7 +21,7 @@ pub enum MyBool {
 #[repr(align(16))]
 pub struct Align16(u128);
 
-// CHECK: @ptr_alignment_helper({}** {{.*}} align [[PTR_ALIGNMENT:[0-9]+]]
+// CHECK: @ptr_alignment_helper({}** {{.*}}align [[PTR_ALIGNMENT:[0-9]+]]
 #[no_mangle]
 pub fn ptr_alignment_helper(x: &&()) {}
 
