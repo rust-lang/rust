@@ -1841,7 +1841,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_stmt(&mut self, mut node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
         // changing that requires some compatibility measures.
         if node.is_expr() {
@@ -1863,7 +1863,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.is_trailing_mac = false;
                     res
                 }
-                _ => assign_id!(self, &mut node.id, || noop_flat_map_stmt(node, self)),
+                _ => noop_flat_map_stmt(node, self),
             };
         }
 
