@@ -35,16 +35,18 @@ declare { double, double } @__enzyme_fwddiff({ double, double } ({ double, doubl
 ; CHECK-NEXT:   %12 = call fast double @llvm.sin.f64(double %8)
 ; CHECK-NEXT:   %13 = fmul fast double %9, %12
 ; CHECK-NEXT:   %14 = fmul fast double %11, 0xBFF20DD750429B6D
-; CHECK-NEXT:   %15 = fmul fast double %13, 0xBFF20DD750429B6D
-; CHECK-NEXT:   %16 = extractvalue { double, double } %"in'", 0
-; CHECK-NEXT:   %17 = extractvalue { double, double } %"in'", 1
-; CHECK-DAG:    %[[a18:.+]] = fmul fast double %14, %16
-; CHECK-DAG:    %[[a19:.+]] = fmul fast double %15, %17
-; CHECK-NEXT:   %20 = fsub fast double %[[a18]], %[[a19]]
-; CHECK-NEXT:   %21 = insertvalue { double, double } undef, double %20, 0
-; CHECK-DAG:    %[[a22:.+]] = fmul fast double %15, %16
-; CHECK-DAG:    %[[a23:.+]] = fmul fast double %14, %17
-; CHECK-NEXT:   %24 = fadd fast double %[[a22]], %[[a23]]
-; CHECK-NEXT:   %25 = insertvalue { double, double } %21, double %24, 1
-; CHECK-NEXT:   ret { double, double } %25
+; CHECK-NEXT:   %15 = insertvalue { double, double } undef, double %14, 0
+; CHECK-NEXT:   %16 = fmul fast double %13, 0xBFF20DD750429B6D
+; CHECK-NEXT:   %17 = insertvalue { double, double } %15, double %16, 1
+; CHECK-NEXT:   %18 = extractvalue { double, double } %"in'", 0
+; CHECK-NEXT:   %19 = extractvalue { double, double } %"in'", 1
+; CHECK-DAG:    %[[a20:.+]] = fmul fast double %14, %18
+; CHECK-DAG:    %[[a21:.+]] = fmul fast double %16, %19
+; CHECK-NEXT:   %22 = fsub fast double %[[a20]], %[[a21]]
+; CHECK-NEXT:   %23 = insertvalue { double, double } %17, double %22, 0
+; CHECK-DAG:    %[[a24:.+]] = fmul fast double %16, %18
+; CHECK-DAG:    %[[a25:.+]] = fmul fast double %14, %19
+; CHECK-NEXT:   %26 = fadd fast double %[[a24]], %[[a25]]
+; CHECK-NEXT:   %27 = insertvalue { double, double } %23, double %26, 1
+; CHECK-NEXT:   ret { double, double } %27
 ; CHECK-NEXT: }

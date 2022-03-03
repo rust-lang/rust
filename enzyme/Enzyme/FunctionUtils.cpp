@@ -1784,11 +1784,7 @@ FunctionType *getFunctionTypeForClone(
     ArgTypes.push_back(I);
     if (constant_args[argno] == DIFFE_TYPE::DUP_ARG ||
         constant_args[argno] == DIFFE_TYPE::DUP_NONEED) {
-      if (width > 1) {
-        ArgTypes.push_back(ArrayType::get(I, width));
-      } else {
-        ArgTypes.push_back(I);
-      }
+      ArgTypes.push_back(GradientUtils::getShadowType(I, width));
     } else if (constant_args[argno] == DIFFE_TYPE::OUT_DIFF) {
       RetTypes.push_back(I);
     }

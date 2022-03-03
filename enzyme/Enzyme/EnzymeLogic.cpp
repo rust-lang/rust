@@ -739,9 +739,11 @@ void calculateUnusedValuesInFunction(
         if (auto obj_op = dyn_cast<CallInst>(inst)) {
           Function *called = getFunctionFromCall((CallInst *)obj_op);
           if (called && isDeallocationFunction(*called, TLI)) {
-            if ((mode == DerivativeMode::ReverseModePrimal ||
+            if (mode == DerivativeMode::ForwardMode ||
+                mode == DerivativeMode::ForwardModeSplit ||
+                (mode == DerivativeMode::ReverseModePrimal ||
                  mode == DerivativeMode::ReverseModeCombined) &&
-                gutils->forwardDeallocations.count(obj_op))
+                    gutils->forwardDeallocations.count(obj_op))
               return UseReq::Need;
             return UseReq::Recur;
           }
@@ -2365,16 +2367,17 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
 void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
                       BasicBlock *oBB, DIFFE_TYPE retType, ReturnType retVal) {
+  ReturnInst *inst = dyn_cast<ReturnInst>(oBB->getTerminator());
+  // In forward mode we only need to update the return value
+  if (inst == nullptr)
+    return;
 
-  BasicBlock *nBB = cast<BasicBlock>(gutils->getNewFromOriginal(oBB));
+  ReturnInst *newInst = cast<ReturnInst>(gutils->getNewFromOriginal(inst));
+  BasicBlock *nBB = newInst->getParent();
   assert(nBB);
   IRBuilder<> nBuilder(nBB);
   nBuilder.setFastMathFlags(getFast());
 
-  ReturnInst *inst = dyn_cast_or_null<ReturnInst>(oBB->getTerminator());
-  // In forward mode we only need to update the return value
-  if (inst == nullptr)
-    return;
   SmallVector<Value *, 2> retargs;
 
   Value *toret = UndefValue::get(gutils->newFunc->getReturnType());
@@ -2432,7 +2435,7 @@ void createTerminator(TypeResults &TR, DiffeGradientUtils *gutils,
   }
   }
 
-  gutils->erase(gutils->getNewFromOriginal(inst));
+  gutils->erase(newInst);
   nBuilder.CreateRet(toret);
   return;
 }

@@ -298,6 +298,94 @@ Function *getOrInsertDifferentialFloatMemmove(Module &M, Type *T,
                                             srcaddr);
 }
 
+Function *getOrInsertCheckedFree(Module &M, CallInst *call, Type *Ty,
+                                 unsigned width) {
+  FunctionType *FreeTy = call->getFunctionType();
+#if LLVM_VERSION_MAJOR >= 11
+  Value *Free = call->getCalledOperand();
+#else
+  Value *Free = call->getCalledValue();
+#endif
+  AttributeList FreeAttributes = call->getAttributes();
+  CallingConv::ID CallingConvention = call->getCallingConv();
+  DebugLoc DebugLoc = call->getDebugLoc();
+
+  std::string name = "__enzyme_checked_free_" + std::to_string(width);
+
+  SmallVector<Type *, 3> types;
+  types.push_back(Ty);
+  for (unsigned i = 0; i < width; i++) {
+    types.push_back(Ty);
+  }
+
+  FunctionType *FT =
+      FunctionType::get(Type::getVoidTy(M.getContext()), types, false);
+
+#if LLVM_VERSION_MAJOR >= 9
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT).getCallee());
+#else
+  Function *F = cast<Function>(M.getOrInsertFunction(name, FT));
+#endif
+
+  if (!F->empty())
+    return F;
+
+  F->setLinkage(Function::LinkageTypes::InternalLinkage);
+  F->addFnAttr(Attribute::ArgMemOnly);
+  F->addFnAttr(Attribute::NoUnwind);
+
+  BasicBlock *entry = BasicBlock::Create(M.getContext(), "entry", F);
+  BasicBlock *free0 = BasicBlock::Create(M.getContext(), "free0", F);
+  BasicBlock *end = BasicBlock::Create(M.getContext(), "end", F);
+
+  IRBuilder<> EntryBuilder(entry);
+  IRBuilder<> Free0Builder(free0);
+  IRBuilder<> EndBuilder(end);
+
+  auto primal = F->arg_begin();
+  Argument *first_shadow = F->arg_begin() + 1;
+  F->addParamAttr(0, Attribute::NoCapture);
+  F->addParamAttr(1, Attribute::NoCapture);
+
+  Value *isNotEqual = EntryBuilder.CreateICmpNE(primal, first_shadow);
+  EntryBuilder.CreateCondBr(isNotEqual, free0, end);
+
+  CallInst *CI = Free0Builder.CreateCall(FreeTy, Free, {first_shadow});
+  CI->setAttributes(FreeAttributes);
+  CI->setCallingConv(CallingConvention);
+  CI->setDebugLoc(DebugLoc);
+
+  if (width > 1) {
+    Value *checkResult = EntryBuilder.getTrue();
+    BasicBlock *free1 = BasicBlock::Create(M.getContext(), "free1", F);
+    IRBuilder<> Free1Builder(free1);
+
+    for (unsigned i = 0; i < width; i++) {
+      F->addParamAttr(i + 1, Attribute::NoCapture);
+      Argument *shadow = F->arg_begin() + i + 1;
+
+      if (i < width - 1) {
+        Argument *nextShadow = F->arg_begin() + i + 2;
+        Value *isNotEqual = Free0Builder.CreateICmpNE(shadow, nextShadow);
+        checkResult = Free0Builder.CreateAnd(isNotEqual, checkResult);
+
+        CallInst *CI = Free1Builder.CreateCall(FreeTy, Free, {nextShadow});
+        CI->setAttributes(FreeAttributes);
+        CI->setCallingConv(CallingConvention);
+        CI->setDebugLoc(DebugLoc);
+      }
+    }
+    Free0Builder.CreateCondBr(checkResult, free1, end);
+    Free1Builder.CreateBr(end);
+  } else {
+    Free0Builder.CreateBr(end);
+  }
+
+  EndBuilder.CreateRetVoid();
+
+  return F;
+}
+
 /// Create function to computer nearest power of two
 llvm::Value *nextPowerOfTwo(llvm::IRBuilder<> &B, llvm::Value *V) {
   assert(V->getType()->isIntegerTy());

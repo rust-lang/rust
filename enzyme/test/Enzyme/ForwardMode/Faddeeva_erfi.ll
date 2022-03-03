@@ -1,4 +1,4 @@
-; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -sroa -instsimplify -simplifycfg -adce -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme-preopt=false -mem2reg -instsimplify -instcombine -simplifycfg -adce -S | FileCheck %s
 
 declare { double, double } @Faddeeva_erfi({ double, double }, double)
 
@@ -25,8 +25,8 @@ declare { double, double } @__enzyme_fwddiff({ double, double } ({ double, doubl
 ; CHECK-DAG:    %[[a2:.+]] = fmul fast double %0, %0
 ; CHECK-DAG:    %[[a3:.+]] = fmul fast double %1, %1
 ; CHECK-NEXT:   %4 = fsub fast double %[[a2]], %[[a3]]
-; CHECK-NEXT:   %5 = fmul fast double %0, %1
-; CHECK-NEXT:   %6 = fadd fast double %5, %5
+; CHECK-DAG:    %[[a5:.+]] = fmul fast double %0, {{(%1|%5)}}
+; CHECK-DAG:    %[[a6:.+]] = fadd fast double {{(%5|%1)}}, {{(%5|%1)}}
 ; CHECK-NEXT:   %7 = call fast double @llvm.exp.f64(double %4)
 ; CHECK-NEXT:   %8 = call fast double @llvm.cos.f64(double %6)
 ; CHECK-NEXT:   %9 = fmul fast double %7, %8

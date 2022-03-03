@@ -60,6 +60,7 @@
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/Support/Casting.h"
 
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
 #include "ActivityAnalysis.h"
