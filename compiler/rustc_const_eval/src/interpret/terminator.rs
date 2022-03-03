@@ -39,7 +39,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let mut target_block = targets.otherwise();
 
                 for (const_int, target) in targets.iter() {
-                    // Compare using binary_op, to also support pointer values
+                    // Compare using MIR BinOp::Eq, to also support pointer values.
+                    // (Avoiding `self.binary_op` as that does some redundant layout computation.)
                     let res = self
                         .overflowing_binary_op(
                             mir::BinOp::Eq,
