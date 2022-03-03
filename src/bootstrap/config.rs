@@ -731,7 +731,11 @@ impl Config {
 
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            match toml::from_str(&contents) {
+            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+            // TomlConfig and sub types to be monomorphized 5x by toml.
+            match toml::from_str(&contents)
+                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            {
                 Ok(table) => table,
                 Err(err) => {
                     println!("failed to parse TOML configuration '{}': {}", file.display(), err);
