@@ -928,7 +928,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 /// performing that replacement, we'll turn all remaining infer type params to use their name from
 /// their definition, and replace all the `[type error]`s back to being infer so they display in
 /// the output as `_`. If we didn't go through `[type error]`, we would either show all type params
-/// by their name *or* `_`, neither of which is desireable: we want to show all types that we could
+/// by their name *or* `_`, neither of which is desirable: we want to show all types that we could
 /// infer as `_` to reduce verbosity and avoid telling the user about unnecessary type annotations.
 struct ResolvedTypeParamEraser<'tcx> {
     tcx: TyCtxt<'tcx>,

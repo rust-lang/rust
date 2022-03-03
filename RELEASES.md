@@ -1060,7 +1060,7 @@ Version 1.52.1 (2021-05-10)
 This release disables incremental compilation, unless the user has explicitly
 opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
 
-This is due to the widespread, and frequently occuring, breakage encountered by
+This is due to the widespread, and frequently occurring, breakage encountered by
 Rust users due to newly enabled incremental verification in 1.52.0. Notably,
 Rust users **should** upgrade to 1.52.0 or 1.52.1: the bugs that are detected by
 newly added incremental verification are still present in past stable versions,

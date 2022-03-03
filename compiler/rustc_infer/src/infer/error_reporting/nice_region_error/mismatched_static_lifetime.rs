@@ -58,7 +58,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 bug!("Node not an impl.");
             };
 
-            // Next, let's figure out the set of trait objects with implict static bounds
+            // Next, let's figure out the set of trait objects with implicit static bounds
             let ty = self.tcx().type_of(*impl_def_id);
             let mut v = super::static_impl_trait::TraitObjectVisitor(FxHashSet::default());
             v.visit_ty(ty);

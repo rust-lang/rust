@@ -369,12 +369,12 @@ pub fn target_cpu(sess: &Session) -> &str {
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
 pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<String> {
-    // Features that come earlier are overriden by conflicting features later in the string.
+    // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
-    // * Features from -Ctarget-cpu=*; are overriden by [^1]
-    // * Features implied by --target; are overriden by
-    // * Features from -Ctarget-feature; are overriden by
+    // * Features from -Ctarget-cpu=*; are overridden by [^1]
+    // * Features implied by --target; are overridden by
+    // * Features from -Ctarget-feature; are overridden by
     // * function specific features.
     //
     // [^1]: target-cpu=native is handled here, other target-cpu values are handled implicitly
@@ -383,7 +383,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     // FIXME(nagisa): it isn't clear what's the best interaction between features implied by
     // `-Ctarget-cpu` and `--target` are. On one hand, you'd expect CLI arguments to always
     // override anything that's implicit, so e.g. when there's no `--target` flag, features implied
-    // the host target are overriden by `-Ctarget-cpu=*`. On the other hand, what about when both
+    // the host target are overridden by `-Ctarget-cpu=*`. On the other hand, what about when both
     // `--target` and `-Ctarget-cpu=*` are specified? Both then imply some target features and both
     // flags are specified by the user on the CLI. It isn't as clear-cut which order of precedence
     // should be taken in cases like these.
