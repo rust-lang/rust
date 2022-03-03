@@ -2,6 +2,7 @@ use crate::interface::{Compiler, Result};
 use crate::proc_macro_decls;
 use crate::util;
 
+use ast::CRATE_NODE_ID;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
@@ -188,7 +189,7 @@ pub fn register_plugins<'a>(
         )
     });
 
-    let (krate, features) = rustc_expand::config::features(sess, krate);
+    let (krate, features) = rustc_expand::config::features(sess, krate, CRATE_NODE_ID);
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
