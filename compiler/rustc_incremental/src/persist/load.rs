@@ -27,7 +27,7 @@ pub enum LoadResult<T> {
     },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// An error occured.
+    /// An error occurred.
     Error {
         #[allow(missing_docs)]
         message: String,

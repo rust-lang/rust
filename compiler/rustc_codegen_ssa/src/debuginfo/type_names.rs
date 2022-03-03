@@ -1,6 +1,6 @@
 // Type Names for Debug Info.
 
-// Notes on targetting MSVC:
+// Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
 // even if the argument is explicitly a symbol name.
 // As such, there are many things that cause parsing issues:
