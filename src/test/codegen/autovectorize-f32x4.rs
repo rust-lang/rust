@@ -18,6 +18,7 @@ pub fn auto_vectorize_direct(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
 }
 
 // CHECK-LABEL: @auto_vectorize_loop
+#[no_mangle]
 pub fn auto_vectorize_loop(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
 // CHECK: load <4 x float>
 // CHECK: load <4 x float>
