@@ -49,7 +49,7 @@ pub fn placeholder(
         AstFragmentKind::Crate => AstFragment::Crate(ast::Crate {
             attrs: Default::default(),
             items: Default::default(),
-            span,
+            spans: ast::ModSpans { inner_span: span, ..Default::default() },
             id,
             is_placeholder: true,
         }),

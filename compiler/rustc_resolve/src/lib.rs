@@ -1282,7 +1282,7 @@ impl<'a> Resolver<'a> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.span,
+            krate.spans.inner_span,
             session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
@@ -1295,7 +1295,7 @@ impl<'a> Resolver<'a> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
+        let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();

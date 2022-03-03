@@ -112,7 +112,7 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
     fn visit_crate(&mut self, c: &mut ast::Crate) {
         let prev_tests = mem::take(&mut self.tests);
         noop_visit_crate(c, self);
-        self.add_test_cases(ast::CRATE_NODE_ID, c.span, prev_tests);
+        self.add_test_cases(ast::CRATE_NODE_ID, c.spans.inner_span, prev_tests);
 
         // Create a main function to run our tests
         c.items.push(mk_main(&mut self.cx));

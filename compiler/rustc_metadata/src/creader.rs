@@ -899,7 +899,7 @@ impl<'a> CrateLoader<'a> {
 
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
-        let span = krate.span.shrink_to_lo();
+        let span = krate.spans.inner_span.shrink_to_lo();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {

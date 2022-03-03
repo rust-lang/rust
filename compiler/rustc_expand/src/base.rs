@@ -67,7 +67,7 @@ impl Annotatable {
             Annotatable::Param(ref p) => p.span,
             Annotatable::FieldDef(ref sf) => sf.span,
             Annotatable::Variant(ref v) => v.span,
-            Annotatable::Crate(ref c) => c.span,
+            Annotatable::Crate(ref c) => c.spans.inner_span,
         }
     }
 

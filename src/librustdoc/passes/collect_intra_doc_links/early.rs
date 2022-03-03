@@ -39,7 +39,7 @@ crate fn early_resolve_intra_doc_links(
 
     // Overridden `visit_item` below doesn't apply to the crate root,
     // so we have to visit its attributes and reexports separately.
-    loader.load_links_in_attrs(&krate.attrs, krate.span);
+    loader.load_links_in_attrs(&krate.attrs, krate.spans.inner_span);
     loader.process_module_children_or_reexports(CRATE_DEF_ID.to_def_id());
     visit::walk_crate(&mut loader, krate);
     loader.add_foreign_traits_in_scope();

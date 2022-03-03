@@ -331,7 +331,7 @@ pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
 pub fn fake_token_stream_for_crate(sess: &ParseSess, krate: &ast::Crate) -> TokenStream {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, sess, Some(krate.span))
+    parse_stream_from_source_str(filename, source, sess, Some(krate.spans.inner_span))
 }
 
 pub fn parse_cfg_attr(
