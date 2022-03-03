@@ -16,11 +16,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::build_helper::up_to_date;
-use crate::build_helper::{output, t};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
-use crate::util::{self, exe};
+use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo};
 
 pub struct Meta {

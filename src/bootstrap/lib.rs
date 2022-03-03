@@ -118,12 +118,12 @@ use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
 
-use crate::build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{exe, libdir, CiEnv};
+use crate::util::{
+    exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed, CiEnv,
+};
 
-mod build_helper;
 mod builder;
 mod cache;
 mod cc_detect;

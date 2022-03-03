@@ -9,7 +9,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::build_helper::t;
+use crate::util::t;
 use crate::Build;
 
 pub fn clean(build: &Build, all: bool) {
