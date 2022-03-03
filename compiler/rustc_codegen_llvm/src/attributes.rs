@@ -378,13 +378,12 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         }
     }
 
-    if !function_features.is_empty() {
-        let global_features = cx.tcx.global_backend_features(()).iter().map(|s| &s[..]);
-        let val = global_features
-            .chain(function_features.iter().map(|s| &s[..]))
-            .intersperse(",")
-            .collect::<SmallStr<1024>>();
-        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &val));
+    let global_features = cx.tcx.global_backend_features(()).iter().map(|s| s.as_str());
+    let function_features = function_features.iter().map(|s| s.as_str());
+    let target_features =
+        global_features.chain(function_features).intersperse(",").collect::<SmallStr<1024>>();
+    if !target_features.is_empty() {
+        to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }
 
     attributes::apply_to_llfn(llfn, Function, &to_add);

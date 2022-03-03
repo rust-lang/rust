@@ -29,7 +29,7 @@ pub unsafe fn apple() -> u32 {
     peach()
 }
 
-// target features same as global (not reflected or overriden in IR)
+// target features same as global
 #[no_mangle]
 pub unsafe fn banana() -> u32 {
 // CHECK-LABEL: @banana()
@@ -43,5 +43,5 @@ pub unsafe fn banana() -> u32 {
 // COMPAT-SAME: "target-features"="+avx2,+avx,+avx"
 // INCOMPAT-SAME: "target-features"="-avx2,-avx,+avx"
 // CHECK: attributes [[BANANAATTRS]]
-// CHECK-NOT: target-features
-// CHECK-SAME: }
+// COMPAT-SAME: "target-features"="+avx2,+avx"
+// INCOMPAT-SAME: "target-features"="-avx2,-avx"
