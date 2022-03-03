@@ -1,3 +1,4 @@
 fn f(t:for<>t?)
-//~^ ERROR: expected one of
-//~| ERROR: invalid `?` in type
+//~^ ERROR: expected parameter name
+//~| ERROR: expected one of
+//~| ERROR: expected one of
