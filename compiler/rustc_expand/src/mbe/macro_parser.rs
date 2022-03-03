@@ -154,7 +154,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 /// lifetime. By separating `'tt` from `'root`, we can show that.
 #[derive(Clone)]
 struct MatcherPos<'root, 'tt> {
-    /// The token or sequence of tokens that make up the matcher
+    /// The token or sequence of tokens that make up the matcher. `elts` is short for "elements".
     top_elts: TokenTreeOrTokenTreeSlice<'tt>,
 
     /// The position of the "dot" in this matcher
@@ -203,6 +203,33 @@ struct MatcherPos<'root, 'tt> {
 rustc_data_structures::static_assert_size!(MatcherPos<'_, '_>, 192);
 
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
+    /// Generates the top-level matcher position in which the "dot" is before the first token of
+    /// the matcher `ms`.
+    fn new(ms: &'tt [TokenTree]) -> Self {
+        let match_idx_hi = count_names(ms);
+        MatcherPos {
+            // Start with the top level matcher given to us.
+            top_elts: TtSeq(ms),
+
+            // The "dot" is before the first token of the matcher.
+            idx: 0,
+
+            // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in
+            // `top_elts`. `match_lo` for `top_elts` is 0 and `match_hi` is `match_idx_hi`.
+            // `match_cur` is 0 since we haven't actually matched anything yet.
+            matches: create_matches(match_idx_hi),
+            match_lo: 0,
+            match_cur: 0,
+            match_hi: match_idx_hi,
+
+            // Haven't descended into any delimiters, so this is empty.
+            stack: smallvec![],
+
+            // Haven't descended into any sequences, so this is `None`.
+            repetition: None,
+        }
+    }
+
     /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
         let matches = Lrc::make_mut(&mut self.matches[idx]);
@@ -312,33 +339,6 @@ fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
         vec![empty_matches; len]
     }
     .into_boxed_slice()
-}
-
-/// Generates the top-level matcher position in which the "dot" is before the first token of the
-/// matcher `ms`.
-fn initial_matcher_pos<'root, 'tt>(ms: &'tt [TokenTree]) -> MatcherPos<'root, 'tt> {
-    let match_idx_hi = count_names(ms);
-    let matches = create_matches(match_idx_hi);
-    MatcherPos {
-        // Start with the top level matcher given to us
-        top_elts: TtSeq(ms), // "elts" is an abbr. for "elements"
-        // The "dot" is before the first token of the matcher
-        idx: 0,
-
-        // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in `top_elts`.
-        // `match_lo` for `top_elts` is 0 and `match_hi` is `matches.len()`. `match_cur` is 0 since
-        // we haven't actually matched anything yet.
-        matches,
-        match_lo: 0,
-        match_cur: 0,
-        match_hi: match_idx_hi,
-
-        // Haven't descended into any delimiters, so empty stack
-        stack: smallvec![],
-
-        // Haven't descended into any sequences, so this is `None`.
-        repetition: None,
-    }
 }
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
@@ -642,7 +642,7 @@ pub(super) fn parse_tt(
     //
     // This MatcherPos instance is allocated on the stack. All others -- and
     // there are frequently *no* others! -- are allocated on the heap.
-    let mut initial = initial_matcher_pos(ms);
+    let mut initial = MatcherPos::new(ms);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
     let mut next_items = Vec::new();
 
