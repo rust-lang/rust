@@ -56,8 +56,6 @@ pub trait FromRawHandle {
     ///
     /// The `handle` passed in must:
     ///   - be a valid an open handle,
-    ///   - be a handle opened for synchronous I/O, *without* the
-    ///     `FILE_FLAG_OVERLAPPED` flag, and
     ///   - be a handle for a resource that may be freed via [`CloseHandle`]
     ///     (as opposed to `RegCloseKey` or other close functions).
     ///
