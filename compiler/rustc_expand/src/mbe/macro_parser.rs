@@ -266,6 +266,12 @@ impl<'root, 'tt> DerefMut for MatcherPosHandle<'root, 'tt> {
     }
 }
 
+enum EofItems<'root, 'tt> {
+    None,
+    One(MatcherPosHandle<'root, 'tt>),
+    Multiple,
+}
+
 /// Represents the possible results of an attempted parse.
 crate enum ParseResult<T> {
     /// Parsed successfully.
@@ -449,10 +455,10 @@ fn inner_parse_loop<'root, 'tt>(
     sess: &ParseSess,
     cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
-    eof_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+    eof_items: &mut EofItems<'root, 'tt>,
     token: &Token,
-) -> ParseResult<()> {
+) -> Result<(), (rustc_span::Span, String)> {
     // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
         // When unzipped trees end, remove them. This corresponds to backtracking out of a
@@ -522,7 +528,10 @@ fn inner_parse_loop<'root, 'tt>(
             } else {
                 // If we are not in a repetition, then being at the end of a matcher means that we
                 // have reached the potential end of the input.
-                eof_items.push(item);
+                *eof_items = match eof_items {
+                    EofItems::None => EofItems::One(item),
+                    EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
+                }
             }
         } else {
             // We are in the middle of a matcher. Look at what token in the matcher we are trying
@@ -567,7 +576,7 @@ fn inner_parse_loop<'root, 'tt>(
                 // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, None) => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
-                        return Error(span, "missing fragment specifier".to_string());
+                        return Err((span, "missing fragment specifier".to_string()));
                     }
                 }
 
@@ -615,7 +624,7 @@ fn inner_parse_loop<'root, 'tt>(
     }
 
     // Yay a successful parse (so far)!
-    Success(())
+    Ok(())
 }
 
 /// Use the given sequence of token trees (`ms`) as a matcher. Match the token
@@ -638,12 +647,13 @@ pub(super) fn parse_tt(
     let mut next_items = Vec::new();
 
     loop {
+        assert!(next_items.is_empty());
+
         // Matcher positions black-box parsed by parser.rs (`parser`)
         let mut bb_items = SmallVec::new();
 
         // Matcher positions that would be valid if the macro invocation was over now
-        let mut eof_items = SmallVec::new();
-        assert!(next_items.is_empty());
+        let mut eof_items = EofItems::None;
 
         // Process `cur_items` until either we have finished the input or we need to get some
         // parsing from the black-box parser done. The result is that `next_items` will contain a
@@ -652,34 +662,34 @@ pub(super) fn parse_tt(
             parser.sess,
             &mut cur_items,
             &mut next_items,
-            &mut eof_items,
             &mut bb_items,
+            &mut eof_items,
             &parser.token,
         ) {
-            Success(_) => {}
-            Failure(token, msg) => return Failure(token, msg),
-            Error(sp, msg) => return Error(sp, msg),
-            ErrorReported => return ErrorReported,
+            Ok(()) => {}
+            Err((sp, msg)) => return Error(sp, msg),
         }
 
         // inner parse loop handled all cur_items, so it's empty
         assert!(cur_items.is_empty());
 
-        // We need to do some post processing after the `inner_parser_loop`.
+        // We need to do some post processing after the `inner_parse_loop`.
         //
         // Error messages here could be improved with links to original rules.
 
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
         if parser.token == token::Eof {
-            return if eof_items.len() == 1 {
-                let matches =
-                    eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                nameize(parser.sess, ms, matches)
-            } else if eof_items.len() > 1 {
-                Error(parser.token.span, "ambiguity: multiple successful parses".to_string())
-            } else {
-                Failure(
+            return match eof_items {
+                EofItems::One(mut eof_item) => {
+                    let matches =
+                        eof_item.matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
+                    nameize(parser.sess, ms, matches)
+                }
+                EofItems::Multiple => {
+                    Error(parser.token.span, "ambiguity: multiple successful parses".to_string())
+                }
+                EofItems::None => Failure(
                     Token::new(
                         token::Eof,
                         if parser.token.span.is_dummy() {
@@ -689,12 +699,12 @@ pub(super) fn parse_tt(
                         },
                     ),
                     "missing tokens in macro arguments",
-                )
+                ),
             };
         }
-        // Performance hack: eof_items may share matchers via Rc with other things that we want
-        // to modify. Dropping eof_items now may drop these refcounts to 1, preventing an
-        // unnecessary implicit clone later in Rc::make_mut.
+        // Performance hack: `eof_items` may share matchers via `Rc` with other things that we want
+        // to modify. Dropping `eof_items` now may drop these refcounts to 1, preventing an
+        // unnecessary implicit clone later in `Rc::make_mut`.
         drop(eof_items);
 
         // If there are no possible next positions AND we aren't waiting for the black-box parser,
