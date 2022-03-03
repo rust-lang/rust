@@ -97,6 +97,18 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
                         ]);
                     }
                 },
+                ast::LetStmt(it) => {
+                    if it.semicolon_token().is_none() {
+                        append.insert(node.clone(), vec![
+                            SyntheticToken {
+                                kind: SyntaxKind::SEMICOLON,
+                                text: ";".into(),
+                                range: end_range,
+                                id: EMPTY_ID,
+                            },
+                        ]);
+                    }
+                },
                 _ => (),
             }
         }
@@ -225,6 +237,34 @@ fn foo() {
 "#,
             expect![[r#"
 fn foo () {a . __ra_fixup ; bar () ;}
+"#]],
+        )
+    }
+
+    #[test]
+    fn incomplete_let() {
+        check(
+            r#"
+fn foo() {
+    let x = a
+}
+"#,
+            expect![[r#"
+fn foo () {let x = a ;}
+"#]],
+        )
+    }
+
+    #[test]
+    fn incomplete_field_expr_in_let() {
+        check(
+            r#"
+fn foo() {
+    let x = a.
+}
+"#,
+            expect![[r#"
+fn foo () {let x = a . __ra_fixup ;}
 "#]],
         )
     }
