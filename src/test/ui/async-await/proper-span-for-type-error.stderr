@@ -6,10 +6,11 @@ LL |     a().await
    |
    = note:   expected enum `Result<(), i32>`
            found unit type `()`
-help: try wrapping the expression in `Ok`
+help: try adding an expression at the end of the block
    |
-LL |     Ok(a().await)
-   |     +++         +
+LL ~     a().await;
+LL ~     Ok(())
+   |
 
 error: aborting due to previous error
 
