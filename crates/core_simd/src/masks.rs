@@ -181,6 +181,13 @@ where
         self.0.to_int()
     }
 
+    /// Converts the mask to a mask of any other lane size.
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn cast<U: MaskElement>(self) -> Mask<U, LANES> {
+        Mask(self.0.convert())
+    }
+
     /// Tests the value of the specified lane.
     ///
     /// # Safety
