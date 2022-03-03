@@ -233,7 +233,7 @@ pub(super) fn transcribe<'a>(
                         } else {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::None` to maintain parsing priorities.
-                            // `Interpolated` is currenty used for such groups in rustc parser.
+                            // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
                             TokenTree::token(token::Interpolated(nt.clone()), sp)
                         };

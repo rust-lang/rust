@@ -847,7 +847,7 @@ impl server::Span for Rustc<'_, '_> {
     /// the `quote` proc-macro. This will save the span of
     /// "hello" into the metadata of `my_proc_macro`. As a result,
     /// the body of `my_proc_macro` (after expansion) will end
-    /// up containg a call that looks like this:
+    /// up containing a call that looks like this:
     /// `proc_macro::Ident::new("hello", proc_macro::Span::recover_proc_macro_span(0))`
     ///
     /// where `0` is the id returned by this function.
