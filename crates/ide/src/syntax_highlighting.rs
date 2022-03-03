@@ -206,6 +206,7 @@ fn traverse(
 
     let mut current_macro_call: Option<ast::MacroCall> = None;
     let mut current_attr_call = None;
+    let mut current_derive_call = None;
     let mut current_macro: Option<ast::Macro> = None;
     let mut macro_highlighter = MacroHighlighter::default();
     let mut inside_attribute = false;
@@ -249,7 +250,7 @@ fn traverse(
                     };
                     match adt {
                         Some(adt) if sema.is_derive_annotated(&adt) => {
-                            current_attr_call = Some(adt.into());
+                            current_derive_call = Some(ast::Item::from(adt));
                         }
                         _ => (),
                     }
@@ -273,7 +274,10 @@ fn traverse(
                     macro_highlighter = MacroHighlighter::default();
                 }
                 Some(item) if current_attr_call.as_ref().map_or(false, |it| *it == item) => {
-                    current_attr_call = None
+                    current_attr_call = None;
+                }
+                Some(item) if current_derive_call.as_ref().map_or(false, |it| *it == item) => {
+                    current_derive_call = None;
                 }
                 None if ast::Attr::can_cast(node.kind()) => inside_attribute = false,
                 _ => (),
@@ -301,17 +305,19 @@ fn traverse(
         // as calling `descend_into_macros_single` gets rather expensive if done for every single token
         // additionally, do not descend into comments, descending maps down to doc attributes which get
         // tagged as string literals.
-        let descend_token = (current_macro_call.is_some() || current_attr_call.is_some())
+        let descend_token = (current_macro_call.is_some()
+            || current_attr_call.is_some()
+            || current_derive_call.is_some())
             && element.kind() != COMMENT;
         let element_to_highlight = if descend_token {
             let token = match &element {
                 NodeOrToken::Node(_) => continue,
                 NodeOrToken::Token(tok) => tok.clone(),
             };
-            let in_mcall_outside_tt = current_macro_call.is_some()
+            let in_mcall_outside_tt = current_attr_call.is_none()
                 && token.parent().as_ref().map(SyntaxNode::kind) != Some(TOKEN_TREE);
             let token = match in_mcall_outside_tt {
-                // not in the macros token tree, don't attempt to descend
+                // not in the macros/derives token tree, don't attempt to descend
                 true => token,
                 false => sema.descend_into_macros_single(token),
             };

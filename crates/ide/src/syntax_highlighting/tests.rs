@@ -327,9 +327,7 @@ impl<'a> Foo<'_, 'a, 'static>
 where
     'a: 'a,
     'static: 'static
-{
-
-}
+{}
 "#,
         expect_file!["./test_data/highlight_lifetimes.html"],
         false,
