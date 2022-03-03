@@ -1,7 +1,7 @@
 // Utility Functions.
 
 use super::namespace::item_namespace;
-use super::CrateDebugContext;
+use super::CodegenUnitDebugContext;
 
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
@@ -35,7 +35,7 @@ pub fn create_DIArray<'ll>(
 #[inline]
 pub fn debug_context<'a, 'll, 'tcx>(
     cx: &'a CodegenCx<'ll, 'tcx>,
-) -> &'a CrateDebugContext<'ll, 'tcx> {
+) -> &'a CodegenUnitDebugContext<'ll, 'tcx> {
     cx.dbg_cx.as_ref().unwrap()
 }
 

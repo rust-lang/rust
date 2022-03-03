@@ -33,10 +33,10 @@
 // gdb-check:type = type_names::mod1::Enum2
 
 // gdb-command:whatis generic_enum_1
-// gdb-check:type = type_names::mod1::mod2::Enum3
+// gdb-check:type = type_names::mod1::mod2::Enum3<type_names::mod1::Struct2>
 
 // gdb-command:whatis generic_enum_2
-// gdb-check:type = type_names::mod1::mod2::Enum3
+// gdb-check:type = type_names::mod1::mod2::Enum3<type_names::Struct1>
 
 // TUPLES
 // gdb-command:whatis tuple1
@@ -159,10 +159,10 @@
 
 // FOREIGN TYPES
 // gdb-command:whatis foreign1
-// gdb-check:type = *mut ForeignType1
+// gdb-check:type = *mut type_names::{extern#0}::ForeignType1
 
 // gdb-command:whatis foreign2
-// gdb-check:type = *mut ForeignType2
+// gdb-check:type = *mut type_names::mod1::{extern#0}::ForeignType2
 
 // === CDB TESTS ==================================================================================
 
@@ -178,9 +178,9 @@
 // cdb-command:dv /t *_enum_*
 // cdb-check:union enum$<type_names::Enum1> simple_enum_1 = [...]
 // cdb-check:union enum$<type_names::Enum1> simple_enum_2 = [...]
-// cdb-check:type_names::mod1::Enum2 simple_enum_3 = [...]
-// cdb-check:type_names::mod1::mod2::Enum3 generic_enum_1 = [...]
-// cdb-check:type_names::mod1::mod2::Enum3 generic_enum_2 = [...]
+// cdb-check:union enum$<type_names::mod1::Enum2> simple_enum_3 = [...]
+// cdb-check:union enum$<type_names::mod1::mod2::Enum3<type_names::mod1::Struct2> > generic_enum_1 = [...]
+// cdb-check:union enum$<type_names::mod1::mod2::Enum3<type_names::Struct1> > generic_enum_2 = [...]
 
 // TUPLES
 // cdb-command:dv /t tuple*
@@ -258,8 +258,8 @@
 
 // FOREIGN TYPES
 // cdb-command:dv /t foreign*
-// cdb-check:struct ForeignType2 * foreign2 = [...]
-// cdb-check:struct ForeignType1 * foreign1 = [...]
+// cdb-check:struct type_names::mod1::extern$0::ForeignType2 * foreign2 = [...]
+// cdb-check:struct type_names::extern$0::ForeignType1 * foreign1 = [...]
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
@@ -283,7 +283,6 @@ extern "C" {
 }
 
 mod mod1 {
-    pub use self::Enum2::{Variant1, Variant2};
     pub struct Struct2;
 
     pub enum Enum2 {
@@ -367,14 +366,14 @@ fn main() {
     // Enums
     let simple_enum_1 = Variant1;
     let simple_enum_2 = Variant2(0);
-    let simple_enum_3 = mod1::Variant2(Struct1);
+    let simple_enum_3 = mod1::Enum2::Variant2(Struct1);
 
     let generic_enum_1: mod1::mod2::Enum3<mod1::Struct2> = mod1::mod2::Variant1;
     let generic_enum_2 = mod1::mod2::Variant2(Struct1);
 
     // Tuples
     let tuple1 = (8u32, Struct1, mod1::mod2::Variant2(mod1::Struct2));
-    let tuple2 = ((Struct1, mod1::mod2::Struct3), mod1::Variant1, 'x');
+    let tuple2 = ((Struct1, mod1::mod2::Struct3), mod1::Enum2::Variant1, 'x');
 
     // Box
     let box1 = (Box::new(1f32), 0i32);
@@ -404,7 +403,7 @@ fn main() {
 
     let vec1 = vec![0_usize, 2, 3];
     let slice1 = &*vec1;
-    let vec2 = vec![mod1::Variant2(Struct1)];
+    let vec2 = vec![mod1::Enum2::Variant2(Struct1)];
     let slice2 = &*vec2;
 
     // Trait Objects

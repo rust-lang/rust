@@ -18,12 +18,14 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtDef, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
 use std::fmt::Write;
+
+use crate::debuginfo::wants_c_like_enum_debuginfo;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -71,7 +73,9 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            if def.is_enum() && cpp_like_debuginfo {
+            let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).expect("layout error");
+
+            if def.is_enum() && cpp_like_debuginfo && !wants_c_like_enum_debuginfo(ty_and_layout) {
                 msvc_enum_fallback(tcx, t, def, substs, output, visited);
             } else {
                 push_item_name(tcx, def.did(), qualified, output);

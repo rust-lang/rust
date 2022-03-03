@@ -95,7 +95,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub isize_ty: &'ll Type,
 
     pub coverage_cx: Option<coverageinfo::CrateCoverageContext<'ll, 'tcx>>,
-    pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
+    pub dbg_cx: Option<debuginfo::CodegenUnitDebugContext<'ll, 'tcx>>,
 
     eh_personality: Cell<Option<&'ll Value>>,
     eh_catch_typeinfo: Cell<Option<&'ll Value>>,
@@ -396,8 +396,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         };
 
         let dbg_cx = if tcx.sess.opts.debuginfo != DebugInfo::None {
-            let dctx = debuginfo::CrateDebugContext::new(llmod);
-            debuginfo::metadata::compile_unit_metadata(tcx, codegen_unit.name().as_str(), &dctx);
+            let dctx = debuginfo::CodegenUnitDebugContext::new(llmod);
+            debuginfo::metadata::build_compile_unit_di_node(
+                tcx,
+                codegen_unit.name().as_str(),
+                &dctx,
+            );
             Some(dctx)
         } else {
             None
