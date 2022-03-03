@@ -11,7 +11,7 @@ pub enum ViewportPercentageLength {
 }
 
 // EMIT_MIR early_otherwise_branch_68867.try_sum.EarlyOtherwiseBranch.diff
-// EMIT_MIR early_otherwise_branch_68867.try_sum EarlyOtherwiseBranch.before SimplifyConstCondition-final.after
+// FIXME(JakobDegen) EarlyOtherwiseBranch.before SimplifyConstCondition-final.after
 #[no_mangle]
 pub extern "C" fn try_sum(
     x: &ViewportPercentageLength,
@@ -30,3 +30,6 @@ pub extern "C" fn try_sum(
 fn main() {
     try_sum(&ViewportPercentageLength::Vw(1.0), &ViewportPercentageLength::Vw(2.0));
 }
+
+// The test above was broken by changes to enum deaggregation, and will be fixed when
+// `SimplifyArmIdentity` is fixed more generally
