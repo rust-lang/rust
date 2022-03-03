@@ -313,6 +313,28 @@ macro_rules! die {
 }
 
 #[test]
+fn test_lifetime_highlighting() {
+    check_highlighting(
+        r#"
+//- minicore: derive
+
+#[derive()]
+struct Foo<'a, 'b, 'c> where 'a: 'a, 'static: 'static {
+    field: &'a (),
+    field2: &'static (),
+}
+impl<'a> Foo<'_, 'a, 'static>
+where
+    'a: 'a,
+    'static: 'static
+{}
+"#,
+        expect_file!["./test_data/highlight_lifetimes.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_string_highlighting() {
     // The format string detection is based on macro-expansion,
     // thus, we have to copy the macro definition from `std`
