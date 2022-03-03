@@ -561,8 +561,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         if self.conv == Conv::CCmseNonSecureCall {
             // This will probably get ignored on all targets but those supporting the TrustZone-M
             // extension (thumbv8m targets).
-            let cmse_nonsecure_call =
-                llvm::CreateAttrString(bx.cx.llcx, cstr::cstr!("cmse_nonsecure_call"));
+            let cmse_nonsecure_call = llvm::CreateAttrString(bx.cx.llcx, "cmse_nonsecure_call");
             attributes::apply_to_callsite(
                 callsite,
                 llvm::AttributePlace::Function,
