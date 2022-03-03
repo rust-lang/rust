@@ -20,7 +20,7 @@ use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams};
+use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -87,8 +87,8 @@ where
         impl2_ref.iter().flat_map(|tref| tref.substs.types()),
     )
     .any(|(ty1, ty2)| {
-        let t1 = fast_reject::simplify_type(tcx, ty1, SimplifyParams::No);
-        let t2 = fast_reject::simplify_type(tcx, ty2, SimplifyParams::No);
+        let t1 = fast_reject::simplify_type(tcx, ty1, TreatParams::AsPlaceholders);
+        let t2 = fast_reject::simplify_type(tcx, ty2, TreatParams::AsPlaceholders);
 
         if let (Some(t1), Some(t2)) = (t1, t2) {
             // Simplified successfully
