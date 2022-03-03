@@ -2,7 +2,7 @@ use crate::mir::interpret::{AllocRange, ConstValue, GlobalAlloc, Pointer, Proven
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
@@ -777,8 +777,8 @@ pub trait PrettyPrinter<'tcx>:
         // by looking up the projections associated with the def_id.
         let bounds = self.tcx().explicit_item_bounds(def_id);
 
-        let mut traits = BTreeMap::new();
-        let mut fn_traits = BTreeMap::new();
+        let mut traits = FxIndexMap::default();
+        let mut fn_traits = FxIndexMap::default();
         let mut is_sized = false;
 
         for (predicate, _) in bounds {
@@ -954,11 +954,11 @@ pub trait PrettyPrinter<'tcx>:
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
-        traits: &mut BTreeMap<
+        traits: &mut FxIndexMap<
             ty::PolyTraitRef<'tcx>,
-            BTreeMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
+            FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
-        fn_traits: &mut BTreeMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
+        fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
     ) {
         let trait_def_id = trait_ref.def_id();
 

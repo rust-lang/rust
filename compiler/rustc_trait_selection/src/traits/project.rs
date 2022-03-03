@@ -20,6 +20,7 @@ use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -517,7 +518,7 @@ pub struct BoundVarReplacer<'me, 'tcx> {
     // the `var` (but we *could* bring that into scope if we were to track them as we pass them).
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     // The current depth relative to *this* folding, *not* the entire normalization. In other words,
     // the depth of binders we've passed here.
     current_index: ty::DebruijnIndex,
@@ -537,11 +538,12 @@ impl<'me, 'tcx> BoundVarReplacer<'me, 'tcx> {
         T,
         BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     ) {
         let mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion> = BTreeMap::new();
         let mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy> = BTreeMap::new();
-        let mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> = BTreeMap::new();
+        let mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundVar> =
+            FxIndexMap::default();
 
         let mut replacer = BoundVarReplacer {
             infcx,
@@ -653,7 +655,7 @@ pub struct PlaceholderReplacer<'me, 'tcx> {
     infcx: &'me InferCtxt<'me, 'tcx>,
     mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
     mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-    mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+    mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
     universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
     current_index: ty::DebruijnIndex,
 }
@@ -663,7 +665,7 @@ impl<'me, 'tcx> PlaceholderReplacer<'me, 'tcx> {
         infcx: &'me InferCtxt<'me, 'tcx>,
         mapped_regions: BTreeMap<ty::PlaceholderRegion, ty::BoundRegion>,
         mapped_types: BTreeMap<ty::PlaceholderType, ty::BoundTy>,
-        mapped_consts: BTreeMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
+        mapped_consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundVar>,
         universe_indices: &'me Vec<Option<ty::UniverseIndex>>,
         value: T,
     ) -> T {
