@@ -473,7 +473,7 @@ fn locals_live_across_suspend_points<'tcx>(
     // for.
     let requires_storage_results = MaybeRequiresStorage::new(body, &borrowed_locals_results)
         .into_engine(tcx, body_ref)
-        .iterate_to_fixpoint();
+        .iterate_reachable_to_fixpoint();
     let mut requires_storage_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &requires_storage_results);
 

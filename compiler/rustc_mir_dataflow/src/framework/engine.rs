@@ -181,8 +181,47 @@ where
         self
     }
 
-    /// Computes the fixpoint for this dataflow problem and returns it.
+    /// Computes the fixpoint for this dataflow problem over all basic blocks and returns the
+    /// fixpoint.
     pub fn iterate_to_fixpoint(self) -> Results<'tcx, A>
+    where
+        A::Domain: DebugWithContext<A>,
+    {
+        let mut dirty_queue: WorkQueue<BasicBlock> =
+            WorkQueue::with_none(self.body.basic_blocks().len());
+
+        self.body.basic_blocks().indices().for_each(|bb| {
+            dirty_queue.insert(bb);
+        });
+
+        self.iterate_to_fixpoint_inner(dirty_queue)
+    }
+
+    /// Computes the fixpoint for this dataflow problem over the reachable basic blocks and returns
+    /// the fixpoint.
+    pub fn iterate_reachable_to_fixpoint(self) -> Results<'tcx, A>
+    where
+        A::Domain: DebugWithContext<A>,
+    {
+        let mut dirty_queue: WorkQueue<BasicBlock> =
+            WorkQueue::with_none(self.body.basic_blocks().len());
+
+        if A::Direction::is_forward() {
+            for (bb, _) in traversal::reverse_postorder(self.body) {
+                dirty_queue.insert(bb);
+            }
+        } else {
+            // Reverse post-order on the reverse CFG may generate a better iteration order for
+            // backward dataflow analyses, but probably not enough to matter.
+            for (bb, _) in traversal::postorder(self.body) {
+                dirty_queue.insert(bb);
+            }
+        }
+
+        self.iterate_to_fixpoint_inner(dirty_queue)
+    }
+
+    fn iterate_to_fixpoint_inner(self, mut dirty_queue: WorkQueue<BasicBlock>) -> Results<'tcx, A>
     where
         A::Domain: DebugWithContext<A>,
     {
@@ -196,21 +235,6 @@ where
             pass_name,
             ..
         } = self;
-
-        let mut dirty_queue: WorkQueue<BasicBlock> =
-            WorkQueue::with_none(body.basic_blocks().len());
-
-        if A::Direction::is_forward() {
-            for (bb, _) in traversal::reverse_postorder(body) {
-                dirty_queue.insert(bb);
-            }
-        } else {
-            // Reverse post-order on the reverse CFG may generate a better iteration order for
-            // backward dataflow analyses, but probably not enough to matter.
-            for (bb, _) in traversal::postorder(body) {
-                dirty_queue.insert(bb);
-            }
-        }
 
         // `state` is not actually used between iterations;
         // this is just an optimization to avoid reallocating
