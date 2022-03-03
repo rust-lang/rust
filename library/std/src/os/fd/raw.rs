@@ -5,6 +5,8 @@
 use crate::fs;
 use crate::io;
 use crate::os::raw;
+#[cfg(doc)]
+use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
@@ -24,9 +26,14 @@ pub type RawFd = raw::c_int;
 pub trait AsRawFd {
     /// Extracts the raw file descriptor.
     ///
-    /// This method does **not** pass ownership of the raw file descriptor
-    /// to the caller. The descriptor is only guaranteed to be valid while
-    /// the original object has not yet been destroyed.
+    /// This function is typically used to **borrow** an owned file descriptor.
+    /// When used in this way, this method does **not** pass ownership of the
+    /// raw file descriptor to the caller, and the file descriptor is only
+    /// guaranteed to be valid while the original object has not yet been
+    /// destroyed.
+    ///
+    /// However, borrowing is not strictly required. See [`AsFd::as_fd`]
+    /// for an API which strictly borrows a file descriptor.
     ///
     /// # Example
     ///
@@ -55,15 +62,18 @@ pub trait FromRawFd {
     /// Constructs a new instance of `Self` from the given raw file
     /// descriptor.
     ///
-    /// This function **consumes ownership** of the specified file
-    /// descriptor. The returned object will take responsibility for closing
-    /// it when the object goes out of scope.
+    /// This function is typically used to **consume ownership** of the
+    /// specified file descriptor. When used in this way, the returned object
+    /// will take responsibility for closing it when the object goes out of
+    /// scope.
     ///
-    /// This function is also unsafe as the primitives currently returned
-    /// have the contract that they are the sole owner of the file
-    /// descriptor they are wrapping. Usage of this function could
-    /// accidentally allow violating this contract which can cause memory
-    /// unsafety in code that relies on it being true.
+    /// However, consuming ownership is not strictly required. Use a
+    /// [`From<OwnedFd>::from`] implementation for an API which strictly
+    /// consumes ownership.
+    ///
+    /// # Safety
+    ///
+    /// The `fd` passed in must be a valid an open file descriptor.
     ///
     /// # Example
     ///
@@ -94,9 +104,13 @@ pub trait FromRawFd {
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
     ///
-    /// This function **transfers ownership** of the underlying file descriptor
-    /// to the caller. Callers are then the unique owners of the file descriptor
-    /// and must close the descriptor once it's no longer needed.
+    /// This function is typically used to **transfer ownership** of the underlying
+    /// file descriptor to the caller. When used in this way, callers are then the unique
+    /// owners of the file descriptor and must close it once it's no longer needed.
+    ///
+    /// However, transferring ownership is not strictly required. Use a
+    /// [`Into<OwnedFd>::into`] implementation for an API which strictly
+    /// transfers ownership.
     ///
     /// # Example
     ///
