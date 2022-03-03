@@ -188,7 +188,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val = self.read_scalar(&args[0])?.check_init()?;
                 let bits = val.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
-                    Abi::Scalar(scalar) => scalar.value,
+                    Abi::Scalar(scalar) => scalar.primitive(),
                     _ => span_bug!(
                         self.cur_span(),
                         "{} called on invalid type {:?}",

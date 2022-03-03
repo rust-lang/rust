@@ -265,6 +265,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }));
         };
 
+        // It may seem like all types with `Scalar` or `ScalarPair` ABI are fair game at this point.
+        // However, `MaybeUninit<u64>` is considered a `Scalar` as far as its layout is concerned --
+        // and yet cannot be represented by an interpreter `Scalar`, since we have to handle the
+        // case where some of the bytes are initialized and others are not. So, we only permit
+        // reads from `Scalar`s and `ScalarPair`s that cannot be uninitialized.
         match mplace.layout.abi {
             Abi::Scalar(..) => {
                 let scalar = alloc.read_scalar(alloc_range(Size::ZERO, mplace.layout.size))?;
@@ -274,7 +279,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We checked `ptr_align` above, so all fields will have the alignment they need.
                 // We would anyway check against `ptr_align.restrict_for_offset(b_offset)`,
                 // which `ptr.offset(b_offset)` cannot possibly fail to satisfy.
-                let (a, b) = (a.value, b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
@@ -676,7 +680,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         //   may be a pointer. This is `tag_val.layout`; we just use it for sanity checks.
 
         // Get layout for tag.
-        let tag_layout = self.layout_of(tag_scalar_layout.value.to_int_ty(*self.tcx))?;
+        let tag_layout = self.layout_of(tag_scalar_layout.primitive().to_int_ty(*self.tcx))?;
 
         // Read tag and sanity-check `tag_layout`.
         let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;

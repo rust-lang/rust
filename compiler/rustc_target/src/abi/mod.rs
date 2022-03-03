@@ -752,6 +752,10 @@ pub struct WrappingRange {
 }
 
 impl WrappingRange {
+    pub fn full(size: Size) -> Self {
+        Self { start: 0, end: size.unsigned_int_max() }
+    }
+
     /// Returns `true` if `v` is contained in the range.
     #[inline(always)]
     pub fn contains(&self, v: u128) -> bool {
@@ -799,13 +803,23 @@ impl fmt::Debug for WrappingRange {
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[derive(HashStable_Generic)]
-pub struct Scalar {
-    pub value: Primitive,
+pub enum Scalar {
+    Initialized {
+        value: Primitive,
 
-    // FIXME(eddyb) always use the shortest range, e.g., by finding
-    // the largest space between two consecutive valid values and
-    // taking everything else as the (shortest) valid range.
-    pub valid_range: WrappingRange,
+        // FIXME(eddyb) always use the shortest range, e.g., by finding
+        // the largest space between two consecutive valid values and
+        // taking everything else as the (shortest) valid range.
+        valid_range: WrappingRange,
+    },
+    Union {
+        /// Even for unions, we need to use the correct registers for the kind of
+        /// values inside the union, so we keep the `Primitive` type around. We
+        /// also use it to compute the size of the scalar.
+        /// However, unions never have niches and even allow undef,
+        /// so there is no `valid_range`.
+        value: Primitive,
+    },
 }
 
 impl Scalar {
@@ -813,14 +827,58 @@ impl Scalar {
     pub fn is_bool(&self) -> bool {
         matches!(
             self,
-            Scalar { value: Int(I8, false), valid_range: WrappingRange { start: 0, end: 1 } }
+            Scalar::Initialized {
+                value: Int(I8, false),
+                valid_range: WrappingRange { start: 0, end: 1 }
+            }
         )
+    }
+
+    /// Get the primitive representation of this type, ignoring the valid range and whether the
+    /// value is allowed to be undefined (due to being a union).
+    pub fn primitive(&self) -> Primitive {
+        match *self {
+            Scalar::Initialized { value, .. } | Scalar::Union { value } => value,
+        }
+    }
+
+    pub fn align(self, cx: &impl HasDataLayout) -> AbiAndPrefAlign {
+        self.primitive().align(cx)
+    }
+
+    pub fn size(self, cx: &impl HasDataLayout) -> Size {
+        self.primitive().size(cx)
+    }
+
+    #[inline]
+    pub fn to_union(&self) -> Self {
+        Self::Union { value: self.primitive() }
+    }
+
+    #[inline]
+    pub fn valid_range(&self, cx: &impl HasDataLayout) -> WrappingRange {
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { value } => WrappingRange::full(value.size(cx)),
+        }
+    }
+
+    #[inline]
+    /// Allows the caller to mutate the valid range. This operation will panic if attempted on a union.
+    pub fn valid_range_mut(&mut self) -> &mut WrappingRange {
+        match self {
+            Scalar::Initialized { valid_range, .. } => valid_range,
+            Scalar::Union { .. } => panic!("cannot change the valid range of a union"),
+        }
     }
 
     /// Returns `true` if all possible numbers are valid, i.e `valid_range` covers the whole layout
     #[inline]
     pub fn is_always_valid<C: HasDataLayout>(&self, cx: &C) -> bool {
-        self.valid_range.is_full_for(self.value.size(cx))
+        match *self {
+            Scalar::Initialized { valid_range, .. } => valid_range.is_full_for(self.size(cx)),
+            Scalar::Union { .. } => true,
+        }
     }
 }
 
@@ -988,7 +1046,7 @@ impl Abi {
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
-            Abi::Scalar(scal) => match scal.value {
+            Abi::Scalar(scal) => match scal.primitive() {
                 Primitive::Int(_, signed) => signed,
                 _ => false,
             },
@@ -1060,17 +1118,19 @@ pub enum TagEncoding {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
-    pub scalar: Scalar,
+    pub value: Primitive,
+    pub valid_range: WrappingRange,
 }
 
 impl Niche {
     pub fn from_scalar<C: HasDataLayout>(cx: &C, offset: Size, scalar: Scalar) -> Option<Self> {
-        let niche = Niche { offset, scalar };
+        let Scalar::Initialized { value, valid_range } = scalar else { return None };
+        let niche = Niche { offset, value, valid_range };
         if niche.available(cx) > 0 { Some(niche) } else { None }
     }
 
     pub fn available<C: HasDataLayout>(&self, cx: &C) -> u128 {
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1083,7 +1143,7 @@ impl Niche {
     pub fn reserve<C: HasDataLayout>(&self, cx: &C, count: u128) -> Option<(u128, Scalar)> {
         assert!(count > 0);
 
-        let Scalar { value, valid_range: v } = self.scalar;
+        let Self { value, valid_range: v, .. } = *self;
         let size = value.size(cx);
         assert!(size.bits() <= 128);
         let max_value = size.unsigned_int_max();
@@ -1107,12 +1167,12 @@ impl Niche {
         // If niche zero is already reserved, the selection of bounds are of little interest.
         let move_start = |v: WrappingRange| {
             let start = v.start.wrapping_sub(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_start(start) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_start(start) }))
         };
         let move_end = |v: WrappingRange| {
             let start = v.end.wrapping_add(1) & max_value;
             let end = v.end.wrapping_add(count) & max_value;
-            Some((start, Scalar { value, valid_range: v.with_end(end) }))
+            Some((start, Scalar::Initialized { value, valid_range: v.with_end(end) }))
         };
         let distance_end_zero = max_value - v.end;
         if v.start > v.end {
@@ -1172,8 +1232,8 @@ pub struct LayoutS<'a> {
 impl<'a> LayoutS<'a> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
-        let size = scalar.value.size(cx);
-        let align = scalar.value.align(cx);
+        let size = scalar.size(cx);
+        let align = scalar.align(cx);
         LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
@@ -1325,7 +1385,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.abi {
-            Abi::Scalar(scalar) => scalar.value.is_float(),
+            Abi::Scalar(scalar) => scalar.primitive().is_float(),
             Abi::Aggregate { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_fp_element(cx)
@@ -1371,7 +1431,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         let scalar_allows_raw_init = move |s: Scalar| -> bool {
             if zero {
                 // The range must contain 0.
-                s.valid_range.contains(0)
+                s.valid_range(cx).contains(0)
             } else {
                 // The range must include all values.
                 s.is_always_valid(cx)

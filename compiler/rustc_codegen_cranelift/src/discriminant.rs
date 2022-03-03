@@ -105,7 +105,7 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
     // Decode the discriminant (specifically if it's niche-encoded).
     match *tag_encoding {
         TagEncoding::Direct => {
-            let signed = match tag_scalar.value {
+            let signed = match tag_scalar.primitive() {
                 Int(_, signed) => signed,
                 _ => false,
             };

@@ -189,12 +189,15 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // that will take care to make it UB to leave the range, just
                 // like for transmute).
                 (abi::Abi::Scalar(caller), abi::Abi::Scalar(callee)) => {
-                    caller.value == callee.value
+                    caller.primitive() == callee.primitive()
                 }
                 (
                     abi::Abi::ScalarPair(caller1, caller2),
                     abi::Abi::ScalarPair(callee1, callee2),
-                ) => caller1.value == callee1.value && caller2.value == callee2.value,
+                ) => {
+                    caller1.primitive() == callee1.primitive()
+                        && caller2.primitive() == callee2.primitive()
+                }
                 // Be conservative
                 _ => false,
             }

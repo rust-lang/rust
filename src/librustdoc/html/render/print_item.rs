@@ -1769,7 +1769,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
 
                     let tag_size = if let TagEncoding::Niche { .. } = tag_encoding {
                         0
-                    } else if let Primitive::Int(i, _) = tag.value {
+                    } else if let Primitive::Int(i, _) = tag.primitive() {
                         i.size().bytes()
                     } else {
                         span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
