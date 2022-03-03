@@ -505,25 +505,23 @@ fn inner_parse_loop<'root, 'tt>(
                         item.idx += 1;
                         next_items.push(item);
                     }
-                }
-                // We don't need a separator. Move the "dot" back to the beginning of the matcher
-                // and try to match again UNLESS we are only allowed to have _one_ repetition.
-                else if item.seq_op != Some(mbe::KleeneOp::ZeroOrOne) {
+                } else if item.seq_op != Some(mbe::KleeneOp::ZeroOrOne) {
+                    // We don't need a separator. Move the "dot" back to the beginning of the
+                    // matcher and try to match again UNLESS we are only allowed to have _one_
+                    // repetition.
                     item.match_cur = item.match_lo;
                     item.idx = 0;
                     cur_items.push(item);
                 }
-            }
-            // If we are not in a repetition, then being at the end of a matcher means that we have
-            // reached the potential end of the input.
-            else {
+            } else {
+                // If we are not in a repetition, then being at the end of a matcher means that we
+                // have reached the potential end of the input.
                 eof_items.push(item);
             }
-        }
-        // We are in the middle of a matcher.
-        else {
-            // Look at what token in the matcher we are trying to match the current token (`token`)
-            // against. Depending on that, we may generate new items.
+        } else {
+            // We are in the middle of a matcher. Look at what token in the matcher we are trying
+            // to match the current token (`token`) against. Depending on that, we may generate new
+            // items.
             match item.top_elts.get_tt(idx) {
                 // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
@@ -666,17 +664,14 @@ pub(super) fn parse_tt(
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
         // either the parse is ambiguous (which should never happen) or there is a syntax error.
         if parser.token == token::Eof {
-            if eof_items.len() == 1 {
+            return if eof_items.len() == 1 {
                 let matches =
                     eof_items[0].matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                return nameize(parser.sess, ms, matches);
+                nameize(parser.sess, ms, matches)
             } else if eof_items.len() > 1 {
-                return Error(
-                    parser.token.span,
-                    "ambiguity: multiple successful parses".to_string(),
-                );
+                Error(parser.token.span, "ambiguity: multiple successful parses".to_string())
             } else {
-                return Failure(
+                Failure(
                     Token::new(
                         token::Eof,
                         if parser.token.span.is_dummy() {
@@ -686,8 +681,8 @@ pub(super) fn parse_tt(
                         },
                     ),
                     "missing tokens in macro arguments",
-                );
-            }
+                )
+            };
         }
         // Performance hack: eof_items may share matchers via Rc with other things that we want
         // to modify. Dropping eof_items now may drop these refcounts to 1, preventing an
@@ -699,9 +694,10 @@ pub(super) fn parse_tt(
         if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.token.clone(), "no rules expected this token in macro call");
         }
-        // Another possibility is that we need to call out to parse some rust nonterminal
-        // (black-box) parser. However, if there is not EXACTLY ONE of these, something is wrong.
-        else if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+
+        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
+            // We need to call out to parse some rust nonterminal (black-box) parser. But something
+            // is wrong, because there is not EXACTLY ONE of these.
             let nts = bb_items
                 .iter()
                 .map(|item| match item.top_elts.get_tt(item.idx) {
@@ -723,15 +719,15 @@ pub(super) fn parse_tt(
                 ),
             );
         }
-        // Dump all possible `next_items` into `cur_items` for the next iteration.
-        else if !next_items.is_empty() {
-            // Now process the next token
+
+        if !next_items.is_empty() {
+            // Dump all possible `next_items` into `cur_items` for the next iteration. Then process
+            // the next token.
             cur_items.extend(next_items.drain(..));
             parser.to_mut().bump();
-        }
-        // Finally, we have the case where we need to call the black-box parser to get some
-        // nonterminal.
-        else {
+        } else {
+            // Finally, we have the case where we need to call the black-box parser to get some
+            // nonterminal.
             assert_eq!(bb_items.len(), 1);
 
             let mut item = bb_items.pop().unwrap();
