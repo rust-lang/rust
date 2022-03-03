@@ -1267,3 +1267,34 @@ fn test() {
         "#]],
     );
 }
+
+#[test]
+fn bug_11242() {
+    // FIXME: wrong, should be u32
+    check_types(
+        r#"
+fn foo<A, B>()
+where
+    A: IntoIterator<Item = u32>,
+    B: IntoIterator<Item = usize>,
+{
+    let _x: <A as IntoIterator>::Item;
+     // ^^ {unknown}
+}
+
+pub trait Iterator {
+    type Item;
+}
+
+pub trait IntoIterator {
+    type Item;
+    type IntoIter: Iterator<Item = Self::Item>;
+}
+
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
+}
+"#,
+    );
+}

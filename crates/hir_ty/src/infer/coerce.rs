@@ -555,8 +555,10 @@ impl<'a> InferenceContext<'a> {
                 );
             }
             Solution::Ambig(Guidance::Definite(subst)) => {
+                // FIXME need to record an obligation here
                 canonicalized.apply_solution(&mut self.table, subst)
             }
+            // FIXME actually we maybe should also accept unknown guidance here
             _ => return Err(TypeError),
         };
         let unsize =
