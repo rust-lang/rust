@@ -56,7 +56,7 @@ use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::source_map::{MultiSpan, SourceMap};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
 use rustc_type_ir::TypeFlags;
@@ -114,7 +114,7 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, ConstS<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
-    layout: InternedSet<'tcx, Layout>,
+    layout: InternedSet<'tcx, LayoutS<'tcx>>,
     adt_def: InternedSet<'tcx, AdtDef>,
 }
 
@@ -2146,6 +2146,7 @@ direct_interners! {
     region: mk_region(RegionKind): Region -> Region<'tcx>,
     const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
 }
 
 macro_rules! direct_interners_old {
@@ -2186,7 +2187,6 @@ macro_rules! direct_interners_old {
 
 // FIXME: eventually these should all be converted to `direct_interners`.
 direct_interners_old! {
-    layout: intern_layout(Layout),
     adt_def: intern_adt_def(AdtDef),
 }
 

@@ -392,7 +392,7 @@ impl Collector<'_> {
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
                 // nearest multiple of 4 bytes.
-                (layout.size.bytes_usize() + 3) & !3
+                (layout.size().bytes_usize() + 3) & !3
             })
             .sum()
     }

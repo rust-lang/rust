@@ -1,3 +1,4 @@
+use crate::stable_hasher::{HashStable, StableHasher};
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -95,6 +96,15 @@ impl<'a, T> Hash for Interned<'a, T> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         // Pointer hashing is sufficient, due to the uniqueness constraint.
         ptr::hash(self.0, s)
+    }
+}
+
+impl<T, CTX> HashStable<CTX> for Interned<'_, T>
+where
+    T: HashStable<CTX>,
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.0.hash_stable(hcx, hasher);
     }
 }
 
