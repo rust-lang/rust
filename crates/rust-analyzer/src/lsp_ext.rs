@@ -233,7 +233,7 @@ pub enum InlayHints {}
 impl Request for InlayHints {
     type Params = InlayHintsParams;
     type Result = Vec<InlayHint>;
-    const METHOD: &'static str = "rust-analyzer/inlayHints";
+    const METHOD: &'static str = "experimental/inlayHints";
 }
 
 #[derive(Serialize, Deserialize, Debug)]

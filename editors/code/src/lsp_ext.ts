@@ -104,7 +104,7 @@ export interface InlayHintsParams {
     textDocument: lc.TextDocumentIdentifier;
     range: lc.Range;
 }
-export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void>("rust-analyzer/inlayHints");
+export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void>("experimental/inlayHints");
 
 export interface SsrParams {
     query: string;

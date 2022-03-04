@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 5b53b92c9f9d6650
+lsp_ext.rs hash: e32fdde032ff6ebc
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -562,11 +562,11 @@ Expands macro call at a given position.
 
 ## Inlay Hints
 
-**Method:** `rust-analyzer/inlayHints`
+**Method:** `experimental/inlayHints`
 
 This request is sent from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
 Generally, the client should re-query inlay hints after every modification.
-Note that we plan to move this request to `experimental/inlayHints`, as it is not really Rust-specific, but the current API is not necessary the right one.
+Until it gets upstreamed, this follows the VS Code API.
 Upstream issues: https://github.com/microsoft/language-server-protocol/issues/956 , https://github.com/rust-analyzer/rust-analyzer/issues/2797
 
 **Request:**
@@ -581,9 +581,12 @@ interface InlayHintsParams {
 
 ```typescript
 interface InlayHint {
-    kind: "TypeHint" | "ParameterHint" | "ChainingHint",
-    range: Range,
-    label: string,
+    position: Position;
+    label: string | InlayHintLabelPart[];
+    tooltip?: string | MarkdownString | undefined;
+    kind?: InlayHintKind;
+    paddingLeft?: boolean;
+    paddingRight?: boolean;
 }
 ```
 
