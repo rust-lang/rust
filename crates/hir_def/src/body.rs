@@ -237,10 +237,11 @@ pub struct Mark {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
+    pub or_pats: FxHashMap<PatId, Arc<[PatId]>>,
     pub labels: Arena<Label>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
@@ -355,6 +356,18 @@ impl Body {
             .map(move |block| (*block, db.block_def_map(*block).expect("block ID without DefMap")))
     }
 
+    pub fn pattern_representative(&self, pat: PatId) -> PatId {
+        self.or_pats.get(&pat).and_then(|pats| pats.first().copied()).unwrap_or(pat)
+    }
+
+    /// Retrieves all ident patterns this pattern shares the ident with.
+    pub fn ident_patterns_for<'slf>(&'slf self, pat: &'slf PatId) -> &'slf [PatId] {
+        match self.or_pats.get(pat) {
+            Some(pats) => &**pats,
+            None => std::slice::from_ref(pat),
+        }
+    }
+
     fn new(
         db: &dyn DefDatabase,
         expander: Expander,
@@ -365,8 +378,9 @@ impl Body {
     }
 
     fn shrink_to_fit(&mut self) {
-        let Self { _c: _, body_expr: _, block_scopes, exprs, labels, params, pats } = self;
+        let Self { _c: _, body_expr: _, block_scopes, or_pats, exprs, labels, params, pats } = self;
         block_scopes.shrink_to_fit();
+        or_pats.shrink_to_fit();
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
         params.shrink_to_fit();

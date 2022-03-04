@@ -293,8 +293,18 @@ fn rename_reference(
         (file_id, source_edit_from_references(references, def, new_name))
     }));
 
-    let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
-    source_change.insert_source_edit(file_id, edit);
+    let mut insert_def_edit = |def| {
+        let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
+        source_change.insert_source_edit(file_id, edit);
+        Ok(())
+    };
+    match def {
+        Definition::Local(l) => l
+            .associated_locals(sema.db)
+            .iter()
+            .try_for_each(|&local| insert_def_edit(Definition::Local(local))),
+        def => insert_def_edit(def),
+    }?;
     Ok(source_change)
 }
 

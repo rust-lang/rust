@@ -2084,4 +2084,53 @@ fn foo() {
 "#,
         )
     }
+
+    #[test]
+    fn rename_multi_local() {
+        check(
+            "bar",
+            r#"
+fn foo((foo$0 | foo | foo): ()) {
+    foo;
+    let foo;
+}
+"#,
+            r#"
+fn foo((bar | bar | bar): ()) {
+    bar;
+    let foo;
+}
+"#,
+        );
+        check(
+            "bar",
+            r#"
+fn foo((foo | foo$0 | foo): ()) {
+    foo;
+    let foo;
+}
+"#,
+            r#"
+fn foo((bar | bar | bar): ()) {
+    bar;
+    let foo;
+}
+"#,
+        );
+        check(
+            "bar",
+            r#"
+fn foo((foo | foo | foo): ()) {
+    foo$0;
+    let foo;
+}
+"#,
+            r#"
+fn foo((bar | bar | bar): ()) {
+    bar;
+    let foo;
+}
+"#,
+        );
+    }
 }

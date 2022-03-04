@@ -310,6 +310,10 @@ impl Definition {
 
     pub fn usages<'a>(self, sema: &'a Semantics<RootDatabase>) -> FindUsages<'a> {
         FindUsages {
+            local_repr: match self {
+                Definition::Local(local) => Some(local.representative(sema.db)),
+                _ => None,
+            },
             def: self,
             sema,
             scope: None,
@@ -325,6 +329,7 @@ pub struct FindUsages<'a> {
     sema: &'a Semantics<'a, RootDatabase>,
     scope: Option<SearchScope>,
     include_self_kw_refs: Option<hir::Type>,
+    local_repr: Option<hir::Local>,
     search_self_mod: bool,
 }
 
@@ -593,6 +598,19 @@ impl<'a> FindUsages<'a> {
         sink: &mut dyn FnMut(FileId, FileReference) -> bool,
     ) -> bool {
         match NameRefClass::classify(self.sema, name_ref) {
+            Some(NameRefClass::Definition(def @ Definition::Local(local)))
+                if matches!(
+                    self.local_repr, Some(repr) if repr == local.representative(self.sema.db)
+                ) =>
+            {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: ast::NameLike::NameRef(name_ref.clone()),
+                    category: ReferenceCategory::new(&def, name_ref),
+                };
+                sink(file_id, reference)
+            }
             Some(NameRefClass::Definition(def)) if def == self.def => {
                 let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
                 let reference = FileReference {
@@ -622,7 +640,7 @@ impl<'a> FindUsages<'a> {
                     Definition::Field(_) if field == self.def => {
                         ReferenceCategory::new(&field, name_ref)
                     }
-                    Definition::Local(l) if local == l => {
+                    Definition::Local(_) if matches!(self.local_repr, Some(repr) if repr == local.representative(self.sema.db)) => {
                         ReferenceCategory::new(&Definition::Local(local), name_ref)
                     }
                     _ => return false,
@@ -666,6 +684,21 @@ impl<'a> FindUsages<'a> {
                     category: None,
                 };
                 sink(file_id, reference)
+            }
+            Some(NameClass::Definition(def @ Definition::Local(local))) if def != self.def => {
+                if matches!(
+                    self.local_repr,
+                    Some(repr) if local.representative(self.sema.db) == repr
+                ) {
+                    let FileRange { file_id, range } = self.sema.original_range(name.syntax());
+                    let reference = FileReference {
+                        range,
+                        name: ast::NameLike::Name(name.clone()),
+                        category: None,
+                    };
+                    return sink(file_id, reference);
+                }
+                false
             }
             // Resolve trait impl function definitions to the trait definition's version if self.def is the trait definition's
             Some(NameClass::Definition(def)) if def != self.def => {
