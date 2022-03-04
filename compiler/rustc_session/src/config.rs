@@ -13,6 +13,7 @@ use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::abi::{Align, TargetDataLayout};
 use rustc_target::spec::{LinkerFlavor, SplitDebuginfo, Target, TargetTriple, TargetWarnings};
+use rustc_target::spec::{PanicStrategy, SanitizerSet, TARGETS};
 
 use rustc_serialize::json;
 
@@ -1025,13 +1026,19 @@ pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig 
 pub struct CheckCfg<T = String> {
     /// The set of all `names()`, if None no name checking is performed
     pub names_valid: Option<FxHashSet<T>>,
+    /// Is well known values activated
+    pub well_known_values: bool,
     /// The set of all `values()`
     pub values_valid: FxHashMap<T, FxHashSet<T>>,
 }
 
 impl<T> Default for CheckCfg<T> {
     fn default() -> Self {
-        CheckCfg { names_valid: Default::default(), values_valid: Default::default() }
+        CheckCfg {
+            names_valid: Default::default(),
+            values_valid: Default::default(),
+            well_known_values: false,
+        }
     }
 }
 
@@ -1047,6 +1054,7 @@ impl<T> CheckCfg<T> {
                 .iter()
                 .map(|(a, b)| (f(a), b.iter().map(|b| f(b)).collect()))
                 .collect(),
+            well_known_values: self.well_known_values,
         }
     }
 }
@@ -1060,8 +1068,9 @@ pub fn to_crate_check_config(cfg: CheckCfg) -> CrateCheckConfig {
 
 impl CrateCheckConfig {
     /// Fills a `CrateCheckConfig` with well-known configuration names.
-    pub fn fill_well_known(&mut self) {
-        // NOTE: This should be kept in sync with `default_configuration`
+    fn fill_well_known_names(&mut self) {
+        // NOTE: This should be kept in sync with `default_configuration` and
+        // `fill_well_known_values`
         const WELL_KNOWN_NAMES: &[Symbol] = &[
             sym::unix,
             sym::windows,
@@ -1086,11 +1095,106 @@ impl CrateCheckConfig {
             sym::doctest,
             sym::feature,
         ];
+
+        // We only insert well-known names if `names()` was activated
         if let Some(names_valid) = &mut self.names_valid {
-            for &name in WELL_KNOWN_NAMES {
-                names_valid.insert(name);
-            }
+            names_valid.extend(WELL_KNOWN_NAMES);
         }
+    }
+
+    /// Fills a `CrateCheckConfig` with well-known configuration values.
+    fn fill_well_known_values(&mut self) {
+        if !self.well_known_values {
+            return;
+        }
+
+        // NOTE: This should be kept in sync with `default_configuration` and
+        // `fill_well_known_names`
+
+        let panic_values = &PanicStrategy::all();
+
+        let atomic_values = &[
+            sym::ptr,
+            sym::integer(8usize),
+            sym::integer(16usize),
+            sym::integer(32usize),
+            sym::integer(64usize),
+            sym::integer(128usize),
+        ];
+
+        let sanitize_values = SanitizerSet::all()
+            .into_iter()
+            .map(|sanitizer| Symbol::intern(sanitizer.as_str().unwrap()));
+
+        // No-values
+        for name in [
+            sym::unix,
+            sym::windows,
+            sym::debug_assertions,
+            sym::proc_macro,
+            sym::test,
+            sym::doc,
+            sym::doctest,
+            sym::target_thread_local,
+        ] {
+            self.values_valid.entry(name).or_default();
+        }
+
+        // Pre-defined values
+        self.values_valid.entry(sym::panic).or_default().extend(panic_values);
+        self.values_valid.entry(sym::sanitize).or_default().extend(sanitize_values);
+        self.values_valid.entry(sym::target_has_atomic).or_default().extend(atomic_values);
+        self.values_valid
+            .entry(sym::target_has_atomic_load_store)
+            .or_default()
+            .extend(atomic_values);
+        self.values_valid
+            .entry(sym::target_has_atomic_equal_alignment)
+            .or_default()
+            .extend(atomic_values);
+
+        // Target specific values
+        for target in
+            TARGETS.iter().map(|target| Target::expect_builtin(&TargetTriple::from_triple(target)))
+        {
+            self.values_valid
+                .entry(sym::target_os)
+                .or_default()
+                .insert(Symbol::intern(&target.options.os));
+            self.values_valid
+                .entry(sym::target_family)
+                .or_default()
+                .extend(target.options.families.iter().map(|family| Symbol::intern(family)));
+            self.values_valid
+                .entry(sym::target_arch)
+                .or_default()
+                .insert(Symbol::intern(&target.arch));
+            self.values_valid
+                .entry(sym::target_endian)
+                .or_default()
+                .insert(Symbol::intern(&target.options.endian.as_str()));
+            self.values_valid
+                .entry(sym::target_env)
+                .or_default()
+                .insert(Symbol::intern(&target.options.env));
+            self.values_valid
+                .entry(sym::target_abi)
+                .or_default()
+                .insert(Symbol::intern(&target.options.abi));
+            self.values_valid
+                .entry(sym::target_vendor)
+                .or_default()
+                .insert(Symbol::intern(&target.options.vendor));
+            self.values_valid
+                .entry(sym::target_pointer_width)
+                .or_default()
+                .insert(sym::integer(target.pointer_width));
+        }
+    }
+
+    pub fn fill_well_known(&mut self) {
+        self.fill_well_known_names();
+        self.fill_well_known_values();
     }
 
     /// Fills a `CrateCheckConfig` with configuration names and values that are actually active.

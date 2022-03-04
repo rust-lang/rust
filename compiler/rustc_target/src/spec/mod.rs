@@ -186,11 +186,15 @@ impl PanicStrategy {
         }
     }
 
-    pub fn desc_symbol(&self) -> Symbol {
+    pub const fn desc_symbol(&self) -> Symbol {
         match *self {
             PanicStrategy::Unwind => sym::unwind,
             PanicStrategy::Abort => sym::abort,
         }
+    }
+
+    pub const fn all() -> [Symbol; 2] {
+        [Self::Abort.desc_symbol(), Self::Unwind.desc_symbol()]
     }
 }
 
@@ -614,7 +618,7 @@ impl SanitizerSet {
     /// Return sanitizer's name
     ///
     /// Returns none if the flags is a set of sanitizers numbering not exactly one.
-    fn as_str(self) -> Option<&'static str> {
+    pub fn as_str(self) -> Option<&'static str> {
         Some(match self {
             SanitizerSet::ADDRESS => "address",
             SanitizerSet::CFI => "cfi",
@@ -2135,6 +2139,18 @@ impl Target {
             base,
             TargetWarnings { unused_fields: remaining_keys.cloned().collect(), incorrect_type },
         ))
+    }
+
+    /// Load a built-in target
+    pub fn expect_builtin(target_triple: &TargetTriple) -> Target {
+        match *target_triple {
+            TargetTriple::TargetTriple(ref target_triple) => {
+                load_builtin(target_triple).expect("built-in target")
+            }
+            TargetTriple::TargetPath(..) => {
+                panic!("built-in targets doens't support target-paths")
+            }
+        }
     }
 
     /// Search for a JSON file specifying the given target triple.

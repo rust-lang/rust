@@ -1063,6 +1063,7 @@ symbols! {
         proc_macro_path_invoc,
         profiler_builtins,
         profiler_runtime,
+        ptr,
         ptr_guaranteed_eq,
         ptr_guaranteed_ne,
         ptr_null,

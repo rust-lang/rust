@@ -1,6 +1,10 @@
-// Check that a an empty values() is rejected
+// Check warning for unexpected cfg value
 //
-// check-fail
+// check-pass
 // compile-flags: --check-cfg=values() -Z unstable-options
+
+#[cfg(test = "value")]
+//~^ WARNING unexpected `cfg` condition value
+pub fn f() {}
 
 fn main() {}
