@@ -46,6 +46,11 @@ jobs:
           - name: x86_64-gnu-llvm-12
             os: ubuntu-20.04-xl
             env: {}
+          - name: dist-x86_64-msvc-alt
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
+              SCRIPT: python x.py dist
+            os: windows-latest-xl
           - name: x86_64-gnu-tools
             env:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
