@@ -1506,11 +1506,11 @@ impl Type {
     }
 
     crate fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
-        let (self_, trait_, assoc) = match self {
-            QPath { self_type, trait_, assoc, .. } => (self_type, trait_, assoc),
-            _ => return None,
-        };
-        Some((&self_, trait_.def_id(), *assoc.clone()))
+        if let QPath { self_type, trait_, assoc, .. } = self {
+            Some((&self_type, trait_.def_id(), *assoc.clone()))
+        } else {
+            None
+        }
     }
 
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
