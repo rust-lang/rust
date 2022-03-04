@@ -259,8 +259,8 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         Definition::Local(_) => SymbolKind::Local,
         Definition::GenericParam(gp) => match gp {
             hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
-            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
             hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
+            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
         },
         Definition::Label(_) => SymbolKind::Label,
         Definition::BuiltinAttr(_) => SymbolKind::BuiltinAttr,

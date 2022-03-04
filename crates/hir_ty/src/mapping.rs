@@ -6,7 +6,7 @@
 use chalk_solve::rust_ir;
 
 use base_db::salsa::{self, InternKey};
-use hir_def::{ConstParamId, LifetimeParamId, TraitId, TypeAliasId, TypeParamId};
+use hir_def::{LifetimeParamId, TraitId, TypeAliasId, TypeOrConstParamId};
 
 use crate::{
     chalk_db, db::HirDatabase, AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId,
@@ -119,14 +119,14 @@ pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
     salsa::InternKey::from_intern_id(id.0)
 }
 
-pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeParamId {
+pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeOrConstParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_type_param_id(interned_id)
+    db.lookup_intern_type_or_const_param_id(interned_id)
 }
 
-pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeParamId) -> PlaceholderIndex {
-    let interned_id = db.intern_type_param_id(id);
+pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> PlaceholderIndex {
+    let interned_id = db.intern_type_or_const_param_id(id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
         idx: salsa::InternKey::as_intern_id(&interned_id).as_usize(),
@@ -137,12 +137,6 @@ pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> L
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
     db.lookup_intern_lifetime_param_id(interned_id)
-}
-
-pub fn const_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> ConstParamId {
-    assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = salsa::InternKey::from_intern_id(salsa::InternId::from(idx.idx));
-    db.lookup_intern_const_param_id(interned_id)
 }
 
 pub fn to_chalk_trait_id(id: TraitId) -> ChalkTraitId {

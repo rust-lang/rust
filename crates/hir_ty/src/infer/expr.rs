@@ -10,6 +10,7 @@ use std::{
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
 use hir_def::{
     expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Ordering, Statement, UnaryOp},
+    generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
     FieldId, FunctionId, ItemContainerId, Lookup,
@@ -1037,8 +1038,15 @@ impl<'a> InferenceContext<'a> {
         let total_len = parent_params + type_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown
-        for _ in def_generics.iter_parent() {
-            substs.push(self.table.new_type_var());
+        for (_id, param) in def_generics.iter_parent() {
+            match param {
+                TypeOrConstParamData::TypeParamData(_) => {
+                    substs.push(self.table.new_type_var());
+                }
+                TypeOrConstParamData::ConstParamData(_) => {
+                    // FIXME: here we should do something
+                }
+            }
         }
         // handle provided type arguments
         if let Some(generic_args) = generic_args {

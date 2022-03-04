@@ -367,20 +367,33 @@ impl AttrsWithOwner {
             AttrDefId::FunctionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::TypeAliasId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::GenericParamId(it) => match it {
-                GenericParamId::TypeParamId(it) => {
-                    let src = it.parent.child_source(db);
+                GenericParamId::ConstParamId(it) => {
+                    let src = it.parent().child_source(db);
                     RawAttrs::from_attrs_owner(
                         db,
-                        src.with_value(
-                            src.value[it.local_id].as_ref().either(|it| it as _, |it| it as _),
-                        ),
+                        src.with_value(src.value[it.local_id()].as_ref().either(
+                            |it| match it {
+                                ast::TypeOrConstParam::Type(it) => it as _,
+                                ast::TypeOrConstParam::Const(it) => it as _,
+                            },
+                            |it| it as _,
+                        )),
+                    )
+                }
+                GenericParamId::TypeParamId(it) => {
+                    let src = it.parent().child_source(db);
+                    RawAttrs::from_attrs_owner(
+                        db,
+                        src.with_value(src.value[it.local_id()].as_ref().either(
+                            |it| match it {
+                                ast::TypeOrConstParam::Type(it) => it as _,
+                                ast::TypeOrConstParam::Const(it) => it as _,
+                            },
+                            |it| it as _,
+                        )),
                     )
                 }
                 GenericParamId::LifetimeParamId(it) => {
-                    let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
-                }
-                GenericParamId::ConstParamId(it) => {
                     let src = it.parent.child_source(db);
                     RawAttrs::from_attrs_owner(db, src.with_value(&src.value[it.local_id]))
                 }
@@ -454,17 +467,29 @@ impl AttrsWithOwner {
             ),
             AttrDefId::ImplId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::GenericParamId(id) => match id {
+                GenericParamId::ConstParamId(id) => {
+                    id.parent().child_source(db).map(|source| match &source[id.local_id()] {
+                        Either::Left(ast::TypeOrConstParam::Type(id)) => {
+                            ast::AnyHasAttrs::new(id.clone())
+                        }
+                        Either::Left(ast::TypeOrConstParam::Const(id)) => {
+                            ast::AnyHasAttrs::new(id.clone())
+                        }
+                        Either::Right(id) => ast::AnyHasAttrs::new(id.clone()),
+                    })
+                }
                 GenericParamId::TypeParamId(id) => {
-                    id.parent.child_source(db).map(|source| match &source[id.local_id] {
-                        Either::Left(id) => ast::AnyHasAttrs::new(id.clone()),
+                    id.parent().child_source(db).map(|source| match &source[id.local_id()] {
+                        Either::Left(ast::TypeOrConstParam::Type(id)) => {
+                            ast::AnyHasAttrs::new(id.clone())
+                        }
+                        Either::Left(ast::TypeOrConstParam::Const(id)) => {
+                            ast::AnyHasAttrs::new(id.clone())
+                        }
                         Either::Right(id) => ast::AnyHasAttrs::new(id.clone()),
                     })
                 }
                 GenericParamId::LifetimeParamId(id) => id
-                    .parent
-                    .child_source(db)
-                    .map(|source| ast::AnyHasAttrs::new(source[id.local_id].clone())),
-                GenericParamId::ConstParamId(id) => id
                     .parent
                     .child_source(db)
                     .map(|source| ast::AnyHasAttrs::new(source[id.local_id].clone())),

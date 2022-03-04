@@ -124,20 +124,23 @@ impl Definition {
                 src.with_value(name.syntax()).original_file_range_opt(sema.db)
             }
             Definition::GenericParam(generic_param) => match generic_param {
-                hir::GenericParam::TypeParam(type_param) => {
-                    let src = type_param.source(sema.db)?;
+                hir::GenericParam::LifetimeParam(lifetime_param) => {
+                    let src = lifetime_param.source(sema.db)?;
+                    src.with_value(src.value.lifetime()?.syntax()).original_file_range_opt(sema.db)
+                }
+                _ => {
+                    let x = match generic_param {
+                        hir::GenericParam::TypeParam(it) => it.merge(),
+                        hir::GenericParam::ConstParam(it) => it.merge(),
+                        hir::GenericParam::LifetimeParam(_) => return None,
+                    };
+                    let src = x.source(sema.db)?;
                     let name = match &src.value {
-                        Either::Left(type_param) => type_param.name()?,
-                        Either::Right(_trait) => return None,
+                        Either::Left(x) => x.name()?,
+                        Either::Right(_) => return None,
                     };
                     src.with_value(name.syntax()).original_file_range_opt(sema.db)
                 }
-                hir::GenericParam::LifetimeParam(lifetime_param) => {
-                    let src = lifetime_param.source(sema.db)?;
-                    let lifetime = src.value.lifetime()?;
-                    src.with_value(lifetime.syntax()).original_file_range_opt(sema.db)
-                }
-                hir::GenericParam::ConstParam(it) => name_range(it, sema),
             },
             Definition::Label(label) => {
                 let src = label.source(sema.db);

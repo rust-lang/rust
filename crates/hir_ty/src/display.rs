@@ -10,7 +10,7 @@ use hir_def::{
     body,
     db::DefDatabase,
     find_path,
-    generics::TypeParamProvenance,
+    generics::{TypeOrConstParamData, TypeParamProvenance},
     intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
@@ -23,7 +23,6 @@ use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
-    const_from_placeholder_idx,
     db::HirDatabase,
     from_assoc_type_id, from_foreign_def_id, from_placeholder_idx, lt_from_placeholder_idx,
     mapping::from_chalk,
@@ -319,10 +318,10 @@ impl HirDisplay for Const {
             ConstValue::BoundVar(idx) => idx.hir_fmt(f),
             ConstValue::InferenceVar(..) => write!(f, "_"),
             ConstValue::Placeholder(idx) => {
-                let id = const_from_placeholder_idx(f.db, idx);
+                let id = from_placeholder_idx(f.db, idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.consts[id.local_id];
-                write!(f, "{}", param_data.name)
+                let param_data = &generics.params.types[id.local_id];
+                write!(f, "{}", param_data.name().unwrap())
             }
             ConstValue::Concrete(c) => write!(f, "{}", c.interned),
         }
@@ -682,34 +681,39 @@ impl HirDisplay for Ty {
                 let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
                 let param_data = &generics.params.types[id.local_id];
-                match param_data.provenance {
-                    TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
-                        write!(f, "{}", param_data.name.clone().unwrap_or_else(Name::missing))?
-                    }
-                    TypeParamProvenance::ArgumentImplTrait => {
-                        let substs = generics.type_params_subst(f.db);
-                        let bounds =
-                            f.db.generic_predicates(id.parent)
-                                .iter()
-                                .map(|pred| pred.clone().substitute(Interner, &substs))
-                                .filter(|wc| match &wc.skip_binders() {
-                                    WhereClause::Implemented(tr) => {
-                                        &tr.self_type_parameter(Interner) == self
-                                    }
-                                    WhereClause::AliasEq(AliasEq {
-                                        alias: AliasTy::Projection(proj),
-                                        ty: _,
-                                    }) => &proj.self_type_parameter(Interner) == self,
-                                    _ => false,
-                                })
-                                .collect::<Vec<_>>();
-                        let krate = id.parent.module(f.db.upcast()).krate();
-                        write_bounds_like_dyn_trait_with_prefix(
-                            "impl",
-                            &bounds,
-                            SizedByDefault::Sized { anchor: krate },
-                            f,
-                        )?;
+                match param_data {
+                    TypeOrConstParamData::TypeParamData(p) => match p.provenance {
+                        TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
+                            write!(f, "{}", p.name.clone().unwrap_or_else(Name::missing))?
+                        }
+                        TypeParamProvenance::ArgumentImplTrait => {
+                            let substs = generics.type_params_subst(f.db);
+                            let bounds =
+                                f.db.generic_predicates(id.parent)
+                                    .iter()
+                                    .map(|pred| pred.clone().substitute(Interner, &substs))
+                                    .filter(|wc| match &wc.skip_binders() {
+                                        WhereClause::Implemented(tr) => {
+                                            &tr.self_type_parameter(Interner) == self
+                                        }
+                                        WhereClause::AliasEq(AliasEq {
+                                            alias: AliasTy::Projection(proj),
+                                            ty: _,
+                                        }) => &proj.self_type_parameter(Interner) == self,
+                                        _ => false,
+                                    })
+                                    .collect::<Vec<_>>();
+                            let krate = id.parent.module(f.db.upcast()).krate();
+                            write_bounds_like_dyn_trait_with_prefix(
+                                "impl",
+                                &bounds,
+                                SizedByDefault::Sized { anchor: krate },
+                                f,
+                            )?;
+                        }
+                    },
+                    TypeOrConstParamData::ConstParamData(p) => {
+                        write!(f, "{}", p.name)?;
                     }
                 }
             }

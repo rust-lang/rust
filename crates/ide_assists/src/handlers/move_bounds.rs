@@ -23,8 +23,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let type_param_list = ctx.find_node_at_offset::<ast::GenericParamList>()?;
 
-    let mut type_params = type_param_list.type_params();
-    if type_params.all(|p| p.type_bound_list().is_none()) {
+    let mut type_params = type_param_list.type_or_const_params();
+    if type_params.all(|p| match p {
+        ast::TypeOrConstParam::Type(t) => t.type_bound_list().is_none(),
+        ast::TypeOrConstParam::Const(_) => true,
+    }) {
         return None;
     }
 
@@ -50,7 +53,11 @@ pub(crate) fn move_bounds_to_where_clause(acc: &mut Assists, ctx: &AssistContext
                 }
             };
 
-            for type_param in type_param_list.type_params() {
+            for toc_param in type_param_list.type_or_const_params() {
+                let type_param = match toc_param {
+                    ast::TypeOrConstParam::Type(x) => x,
+                    ast::TypeOrConstParam::Const(_) => continue,
+                };
                 if let Some(tbl) = type_param.type_bound_list() {
                     if let Some(predicate) = build_predicate(type_param) {
                         where_clause.add_predicate(predicate)

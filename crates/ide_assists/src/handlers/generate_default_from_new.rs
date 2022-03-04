@@ -85,21 +85,23 @@ fn generate_trait_impl_text_from_impl(impl_: &ast::Impl, trait_text: &str, code:
 
     if let Some(generic_params) = &generic_params {
         let lifetimes = generic_params.lifetime_params().map(|lt| format!("{}", lt.syntax()));
-        let type_params = generic_params.type_params().map(|type_param| {
-            let mut buf = String::new();
-            if let Some(it) = type_param.name() {
-                format_to!(buf, "{}", it.syntax());
+        let toc_params = generic_params.type_or_const_params().map(|toc_param| match toc_param {
+            ast::TypeOrConstParam::Type(type_param) => {
+                let mut buf = String::new();
+                if let Some(it) = type_param.name() {
+                    format_to!(buf, "{}", it.syntax());
+                }
+                if let Some(it) = type_param.colon_token() {
+                    format_to!(buf, "{} ", it);
+                }
+                if let Some(it) = type_param.type_bound_list() {
+                    format_to!(buf, "{}", it.syntax());
+                }
+                buf
             }
-            if let Some(it) = type_param.colon_token() {
-                format_to!(buf, "{} ", it);
-            }
-            if let Some(it) = type_param.type_bound_list() {
-                format_to!(buf, "{}", it.syntax());
-            }
-            buf
+            ast::TypeOrConstParam::Const(const_param) => const_param.syntax().to_string(),
         });
-        let const_params = generic_params.const_params().map(|t| t.syntax().to_string());
-        let generics = lifetimes.chain(type_params).chain(const_params).format(", ");
+        let generics = lifetimes.chain(toc_params).format(", ");
         format_to!(buf, "<{}>", generics);
     }
 

@@ -482,9 +482,9 @@ impl From<PathResolution> for Definition {
             }
             PathResolution::Local(local) => Definition::Local(local),
             PathResolution::TypeParam(par) => Definition::GenericParam(par.into()),
+            PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
             PathResolution::Macro(def) => Definition::Macro(def),
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
-            PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
             PathResolution::BuiltinAttr(attr) => Definition::BuiltinAttr(attr),
             PathResolution::ToolModule(tool) => Definition::ToolModule(tool),
         }

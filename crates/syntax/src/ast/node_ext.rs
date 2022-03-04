@@ -638,6 +638,21 @@ impl ast::TypeBound {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum TypeOrConstParam {
+    Type(ast::TypeParam),
+    Const(ast::ConstParam),
+}
+
+impl TypeOrConstParam {
+    pub fn name(&self) -> Option<ast::Name> {
+        match self {
+            TypeOrConstParam::Type(x) => x.name(),
+            TypeOrConstParam::Const(x) => x.name(),
+        }
+    }
+}
+
 pub enum VisibilityKind {
     In(ast::Path),
     PubCrate,
@@ -746,16 +761,11 @@ impl ast::GenericParamList {
             ast::GenericParam::TypeParam(_) | ast::GenericParam::ConstParam(_) => None,
         })
     }
-    pub fn type_params(&self) -> impl Iterator<Item = ast::TypeParam> {
+    pub fn type_or_const_params(&self) -> impl Iterator<Item = ast::TypeOrConstParam> {
         self.generic_params().filter_map(|param| match param {
-            ast::GenericParam::TypeParam(it) => Some(it),
-            ast::GenericParam::LifetimeParam(_) | ast::GenericParam::ConstParam(_) => None,
-        })
-    }
-    pub fn const_params(&self) -> impl Iterator<Item = ast::ConstParam> {
-        self.generic_params().filter_map(|param| match param {
-            ast::GenericParam::ConstParam(it) => Some(it),
-            ast::GenericParam::TypeParam(_) | ast::GenericParam::LifetimeParam(_) => None,
+            ast::GenericParam::TypeParam(it) => Some(ast::TypeOrConstParam::Type(it)),
+            ast::GenericParam::LifetimeParam(_) => None,
+            ast::GenericParam::ConstParam(it) => Some(ast::TypeOrConstParam::Const(it)),
         })
     }
 }

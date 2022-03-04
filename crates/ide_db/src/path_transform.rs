@@ -1,6 +1,7 @@
 //! See [`PathTransform`].
 
 use crate::helpers::mod_path_to_ast;
+use either::Either;
 use hir::{HirDisplay, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
@@ -94,15 +95,20 @@ impl<'a> PathTransform<'a> {
             // a default type. If they do, go for that type from `hir` to `ast` so
             // the resulting change can be applied correctly.
             .zip(self.substs.iter().map(Some).chain(std::iter::repeat(None)))
-            .filter_map(|(k, v)| match v {
-                Some(v) => Some((k, v.clone())),
-                None => {
-                    let default = k.default(db)?;
-                    Some((
-                        k,
-                        ast::make::ty(&default.display_source_code(db, source_module.into()).ok()?),
-                    ))
-                }
+            .filter_map(|(k, v)| match k.split(db) {
+                Either::Left(_) => None,
+                Either::Right(t) => match v {
+                    Some(v) => Some((k, v.clone())),
+                    None => {
+                        let default = t.default(db)?;
+                        Some((
+                            k,
+                            ast::make::ty(
+                                &default.display_source_code(db, source_module.into()).ok()?,
+                            ),
+                        ))
+                    }
+                },
             })
             .collect();
         let res = Ctx { substs: substs_by_param, target_module, source_scope: self.source_scope };
@@ -111,7 +117,7 @@ impl<'a> PathTransform<'a> {
 }
 
 struct Ctx<'a> {
-    substs: FxHashMap<hir::TypeParam, ast::Type>,
+    substs: FxHashMap<hir::TypeOrConstParam, ast::Type>,
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
 }
@@ -150,7 +156,7 @@ impl<'a> Ctx<'a> {
 
         match resolution {
             hir::PathResolution::TypeParam(tp) => {
-                if let Some(subst) = self.substs.get(&tp) {
+                if let Some(subst) = self.substs.get(&tp.merge()) {
                     let parent = path.syntax().parent()?;
                     if let Some(parent) = ast::Path::cast(parent.clone()) {
                         // Path inside path means that there is an associated

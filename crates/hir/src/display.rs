@@ -1,7 +1,9 @@
 //! HirDisplay implementations for various hir types.
 use hir_def::{
     adt::VariantData,
-    generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
+    generics::{
+        TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
+    },
     type_ref::{TypeBound, TypeRef},
     AdtId, GenericDefId,
 };
@@ -16,8 +18,8 @@ use syntax::SmolStr;
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
-    LifetimeParam, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeParam, Union,
-    Variant,
+    LifetimeParam, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeOrConstParam,
+    TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -226,8 +228,17 @@ impl HirDisplay for GenericParam {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
             GenericParam::TypeParam(it) => it.hir_fmt(f),
-            GenericParam::LifetimeParam(it) => it.hir_fmt(f),
             GenericParam::ConstParam(it) => it.hir_fmt(f),
+            GenericParam::LifetimeParam(it) => it.hir_fmt(f),
+        }
+    }
+}
+
+impl HirDisplay for TypeOrConstParam {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self.split(f.db) {
+            either::Either::Left(x) => x.hir_fmt(f),
+            either::Either::Right(x) => x.hir_fmt(f),
         }
     }
 }
@@ -239,11 +250,11 @@ impl HirDisplay for TypeParam {
             return Ok(());
         }
 
-        let bounds = f.db.generic_predicates_for_param(self.id.parent, self.id, None);
-        let substs = TyBuilder::type_params_subst(f.db, self.id.parent);
+        let bounds = f.db.generic_predicates_for_param(self.id.parent(), self.id.into(), None);
+        let substs = TyBuilder::type_params_subst(f.db, self.id.parent());
         let predicates: Vec<_> =
             bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();
-        let krate = self.id.parent.krate(f.db).id;
+        let krate = self.id.parent().krate(f.db).id;
         let sized_trait =
             f.db.lang_item(krate, SmolStr::new_inline("sized"))
                 .and_then(|lang_item| lang_item.as_trait());
@@ -276,11 +287,11 @@ impl HirDisplay for ConstParam {
 fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
     if params.lifetimes.is_empty()
-        && params.consts.is_empty()
         && params
             .types
             .iter()
-            .all(|(_, param)| !matches!(param.provenance, TypeParamProvenance::TypeParamList))
+            .filter_map(|x| x.1.type_param())
+            .all(|param| !matches!(param.provenance, TypeParamProvenance::TypeParamList))
     {
         return Ok(());
     }
@@ -300,22 +311,26 @@ fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), H
         write!(f, "{}", lifetime.name)?;
     }
     for (_, ty) in params.types.iter() {
-        if ty.provenance != TypeParamProvenance::TypeParamList {
-            continue;
-        }
-        if let Some(name) = &ty.name {
-            delim(f)?;
-            write!(f, "{}", name)?;
-            if let Some(default) = &ty.default {
-                write!(f, " = ")?;
-                default.hir_fmt(f)?;
+        if let Some(name) = &ty.name() {
+            match ty {
+                TypeOrConstParamData::TypeParamData(ty) => {
+                    if ty.provenance != TypeParamProvenance::TypeParamList {
+                        continue;
+                    }
+                    delim(f)?;
+                    write!(f, "{}", name)?;
+                    if let Some(default) = &ty.default {
+                        write!(f, " = ")?;
+                        default.hir_fmt(f)?;
+                    }
+                }
+                TypeOrConstParamData::ConstParamData(c) => {
+                    delim(f)?;
+                    write!(f, "const {}: ", name)?;
+                    c.ty.hir_fmt(f)?;
+                }
             }
         }
-    }
-    for (_, konst) in params.consts.iter() {
-        delim(f)?;
-        write!(f, "const {}: ", konst.name)?;
-        konst.ty.hir_fmt(f)?;
     }
 
     write!(f, ">")?;
@@ -328,7 +343,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
     // unnamed type targets are displayed inline with the argument itself, e.g. `f: impl Y`.
     let is_unnamed_type_target = |target: &WherePredicateTypeTarget| match target {
         WherePredicateTypeTarget::TypeRef(_) => false,
-        WherePredicateTypeTarget::TypeParam(id) => params.types[*id].name.is_none(),
+        WherePredicateTypeTarget::TypeOrConstParam(id) => params.types[*id].name().is_none(),
     };
 
     let has_displayable_predicate = params
@@ -344,7 +359,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
 
     let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter| match target {
         WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f),
-        WherePredicateTypeTarget::TypeParam(id) => match &params.types[*id].name {
+        WherePredicateTypeTarget::TypeOrConstParam(id) => match &params.types[*id].name() {
             Some(name) => write!(f, "{}", name),
             None => write!(f, "{{unnamed}}"),
         },

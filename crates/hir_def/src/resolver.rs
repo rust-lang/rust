@@ -15,7 +15,7 @@ use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr::{ExprId, LabelId, PatId},
-    generics::GenericParams,
+    generics::{GenericParams, TypeOrConstParamData},
     intern::Interned,
     item_scope::{BuiltinShadowMode, BUILTIN_SCOPE},
     nameres::DefMap,
@@ -25,7 +25,7 @@ use crate::{
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeParamId, VariantId,
+    TypeOrConstParamId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -195,7 +195,9 @@ impl Resolver {
                     if let Some(local_id) = params.find_type_by_name(first_name) {
                         let idx = if path.segments().len() == 1 { None } else { Some(1) };
                         return Some((
-                            TypeNs::GenericParam(TypeParamId { local_id, parent: *def }),
+                            TypeNs::GenericParam(
+                                TypeOrConstParamId { local_id, parent: *def }.into(),
+                            ),
                             idx,
                         ));
                     }
@@ -285,14 +287,18 @@ impl Resolver {
                 Scope::ExprScope(_) => continue,
 
                 Scope::GenericParams { params, def } if n_segments > 1 => {
-                    if let Some(local_id) = params.find_type_by_name(first_name) {
-                        let ty = TypeNs::GenericParam(TypeParamId { local_id, parent: *def });
+                    if let Some(local_id) = params.find_type_or_const_by_name(first_name) {
+                        let ty = TypeNs::GenericParam(
+                            TypeOrConstParamId { local_id, parent: *def }.into(),
+                        );
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
                 Scope::GenericParams { params, def } if n_segments == 1 => {
-                    if let Some(local_id) = params.find_const_by_name(first_name) {
-                        let val = ValueNs::GenericParam(ConstParamId { local_id, parent: *def });
+                    if let Some(local_id) = params.find_type_or_const_by_name(first_name) {
+                        let val = ValueNs::GenericParam(
+                            TypeOrConstParamId { local_id, parent: *def }.into(),
+                        );
                         return Some(ResolveValueResult::ValueNs(val));
                     }
                 }
@@ -521,14 +527,21 @@ impl Scope {
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
                 for (local_id, param) in params.types.iter() {
-                    if let Some(name) = &param.name {
-                        let id = TypeParamId { parent, local_id };
-                        acc.add(name, ScopeDef::GenericParam(id.into()))
+                    if let Some(name) = &param.name() {
+                        let id = TypeOrConstParamId { parent, local_id };
+                        let data = &db.generic_params(parent).types[local_id];
+                        acc.add(
+                            name,
+                            ScopeDef::GenericParam(match data {
+                                TypeOrConstParamData::TypeParamData(_) => {
+                                    GenericParamId::TypeParamId(id.into())
+                                }
+                                TypeOrConstParamData::ConstParamData(_) => {
+                                    GenericParamId::ConstParamId(id.into())
+                                }
+                            }),
+                        );
                     }
-                }
-                for (local_id, param) in params.consts.iter() {
-                    let id = ConstParamId { parent, local_id };
-                    acc.add(&param.name, ScopeDef::GenericParam(id.into()))
                 }
                 for (local_id, param) in params.lifetimes.iter() {
                     let id = LifetimeParamId { parent, local_id };
