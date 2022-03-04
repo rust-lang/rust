@@ -163,10 +163,10 @@ enum RawFrame {
 }
 
 struct BacktraceSymbol {
-    name: Option<Vec<u8>>,
-    filename: Option<BytesOrWide>,
-    lineno: Option<u32>,
-    colno: Option<u32>,
+    pub name: Option<Vec<u8>>,
+    pub filename: Option<BytesOrWide>,
+    pub lineno: Option<u32>,
+    pub colno: Option<u32>,
 }
 
 enum BytesOrWide {
