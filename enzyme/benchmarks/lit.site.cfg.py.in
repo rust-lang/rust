@@ -42,8 +42,6 @@ config.excludes = ['Inputs']
 config.substitutions.append(('%bench', config.bench_flags))
 config.substitutions.append(('%blink', config.bench_link))
 config.substitutions.append(('%bldpath', config.bench_ldpath))
-config.substitutions.append(('%desired_wd', ''
-                                         + "@ENZYME_SOURCE_DIR@/benchmarks/"))
 
 config.substitutions.append(('%shlibext', config.llvm_shlib_ext))
 config.substitutions.append(('%lli', config.llvm_tools_dir + "/lli" + (" --jit-kind=mcjit" if int(config.llvm_ver) >= 13 else "")

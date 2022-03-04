@@ -8,7 +8,7 @@ sudo apt install gcc g++ gfortran cmake libboost-all-dev python autoconf libblas
 
 # Disable hyperthreading/etc
 cd "$BENCHDIR"
-sudo ./hyper.sh
+sudo ../hyper.sh
 
 # Build LLVM 8
 git clone https://github.com/llvm/llvm-project -b release/8.x ~/llvm-project

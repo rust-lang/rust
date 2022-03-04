@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/ode && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ode-unopt.ll ode-opt.ll ode.o results.txt VERBOSE=1 -f %s
+# RUN: cd %S-const && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ode-unopt.ll ode-opt.ll results.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 
@@ -10,8 +10,8 @@ ode-adept-unopt.ll: ode-adept.cpp
 	#clang++ $(BENCH) $^ -O1 -Xclang -disable-llvm-passes -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
 
 ode-unopt.ll: ode.cpp
-	clang++ $(BENCH) $^ -O2 -fno-use-cxa-atexit -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
-	#clang++ $(BENCH) $^ -O1 -Xclang -disable-llvm-passes -fno-use-cxa-atexit -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm -Xclang -new-struct-path-tbaa
+	clang++ $(BENCH) $^ -O2 -fno-use-cxa-atexit -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
+	#clang++ $(BENCH) $^ -O1 -Xclang -disable-llvm-passes -fno-use-cxa-atexit -fno-exceptions -fno-vectorize -fno-slp-vectorize -ffast-math -fno-unroll-loops -o $@ -S -emit-llvm
 
 ode-raw.ll: ode-adept-unopt.ll ode-unopt.ll
 	opt ode-unopt.ll $(LOAD) -enzyme -o ode-enzyme.ll -S
@@ -22,7 +22,7 @@ ode-raw.ll: ode-adept-unopt.ll ode-unopt.ll
 	#opt $^ -O2 -o $@ -S
 
 ode.o: ode-opt.ll
-	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
+	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
 results.txt: ode.o
-	./$^ 1000000 | tee $@
+	./$^ 30000000 | tee $@

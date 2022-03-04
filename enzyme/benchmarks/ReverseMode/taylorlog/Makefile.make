@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/taylorlog && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B taylorlog-raw.ll taylorlog-opt.ll results.txt VERBOSE=1 -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B taylorlog-raw.ll taylorlog-opt.ll results.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 

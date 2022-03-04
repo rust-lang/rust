@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/ode-const && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ode-unopt.ll ode-opt.ll resultsafter.txt VERBOSE=1 -f %s
+# RUN: cd %S-const && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ode-unopt.ll ode-opt.ll resultsafter.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 

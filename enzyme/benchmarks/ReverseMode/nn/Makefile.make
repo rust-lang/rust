@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/logsumexp && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B results.txt VERBOSE=1 -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B results.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 
@@ -14,8 +14,11 @@ clean:
 %-opt.ll: %-raw.ll
 	opt $^ -O2 -o $@ -S
 	
-logsumexp.o: logsumexp-opt.ll
+%.o: %-c-opt.ll
+	clang $^ -o $@
+
+nn.o: nn-opt.ll
 	clang++ $^ -o $@ -lblas $(BENCHLINK) -lm
 
-results.txt: logsumexp.o
-	./$^ 10000000 10 | tee $@
+results.txt: nn.o
+	./$^ | tee $@

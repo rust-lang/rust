@@ -1,4 +1,4 @@
-# RUN: if [ %llvmver -ge 12 ] || [ %llvmver -le 9 ]; then cd %desired_wd/gmm && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B gmm-unopt.ll gmm-raw.ll results.txt -f %s; fi
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B lstm-raw.ll results.txt -f %s
 
 .PHONY: clean
 
@@ -16,8 +16,8 @@ clean:
 	opt $^ -o $@ -S
 	#opt $^ -O2 -o $@ -S
 
-gmm.o: gmm-opt.ll
+lstm.o: lstm-opt.ll
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK) -lm
 
-results.txt: gmm.o
+results.txt: lstm.o
 	./$^ | tee $@

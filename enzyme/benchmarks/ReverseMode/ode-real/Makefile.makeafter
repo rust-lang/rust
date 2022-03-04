@@ -1,4 +1,4 @@
-# RUN: cd %desired_wd/fft && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B fft-unopt.ll fft-raw.ll fft-opt.ll resultsafter.txt VERBOSE=1 -f %s
+# RUN: cd %S && LD_LIBRARY_PATH="%bldpath:$LD_LIBRARY_PATH" BENCH="%bench" BENCHLINK="%blink" LOAD="%loadEnzyme" make -B ode-raw.ll ode-opt.ll resultsafter.txt VERBOSE=1 -f %s
 
 .PHONY: clean
 
@@ -16,8 +16,17 @@ clean:
 	#opt $^ -o $@ -S
 	opt $^ -O2 -o $@ -S
 
-fft.o: fft-opt.ll
+ode.o: ode-opt.ll
 	clang++ -O2 $^ -o $@ -lblas $(BENCHLINK)
 
-resultsafter.txt: fft.o
-	./$^ 1048576 | tee $@
+resultsafter.txt: ode.o
+	./$^ 1000 | tee $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
+	./$^ 1000 >> $@
