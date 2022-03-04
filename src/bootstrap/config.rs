@@ -647,7 +647,8 @@ impl Config {
         let get_toml = |file: &Path| {
             use std::process;
 
-            let contents = t!(fs::read_to_string(file), "`include` config not found");
+            let contents =
+                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
             match toml::from_str(&contents) {
                 Ok(table) => table,
                 Err(err) => {
@@ -657,14 +658,24 @@ impl Config {
             }
         };
 
-        // check --config first, then `$RUST_BOOTSTRAP_CONFIG` first, then `config.toml`
+        // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
         let toml_path = flags
             .config
             .clone()
-            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from))
-            .unwrap_or_else(|| PathBuf::from("config.toml"));
-        let mut toml =
-            if toml_path.exists() { get_toml(&toml_path) } else { TomlConfig::default() };
+            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from));
+        let using_default_path = toml_path.is_none();
+        let mut toml_path = toml_path.unwrap_or_else(|| PathBuf::from("config.toml"));
+        if using_default_path && !toml_path.exists() {
+            toml_path = config.src.join(toml_path);
+        }
+
+        // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
+        // but not if `config.toml` hasn't been created.
+        let mut toml = if !using_default_path || toml_path.exists() {
+            get_toml(&toml_path)
+        } else {
+            TomlConfig::default()
+        };
 
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
