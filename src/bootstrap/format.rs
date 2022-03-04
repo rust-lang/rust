@@ -97,7 +97,12 @@ pub fn format(build: &Build, check: bool, paths: &[PathBuf]) {
                 });
             for untracked_path in untracked_paths {
                 eprintln!("skip untracked path {} during rustfmt invocations", untracked_path);
-                ignore_fmt.add(&format!("!{}", untracked_path)).expect(&untracked_path);
+                // The leading `/` makes it an exact match against the
+                // repository root, rather than a glob. Without that, if you
+                // have `foo.rs` in the repository root it will also match
+                // against anything like `compiler/rustc_foo/src/foo.rs`,
+                // preventing the latter from being formatted.
+                ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
         } else {
             eprintln!("Not in git tree. Skipping git-aware format checks");
