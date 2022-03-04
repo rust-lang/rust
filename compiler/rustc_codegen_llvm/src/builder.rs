@@ -477,6 +477,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             bx: &mut Builder<'a, 'll, 'tcx>,
             load: &'ll Value,
             scalar: abi::Scalar,
+            layout: TyAndLayout<'tcx>,
+            offset: Size,
         ) {
             if !scalar.is_always_valid(bx) {
                 bx.noundef_metadata(load);
@@ -488,10 +490,18 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                         bx.range_metadata(load, scalar.valid_range);
                     }
                 }
-                abi::Pointer if !scalar.valid_range.contains(0) => {
-                    bx.nonnull_metadata(load);
+                abi::Pointer => {
+                    if !scalar.valid_range.contains(0) {
+                        bx.nonnull_metadata(load);
+                    }
+
+                    if let Some(pointee) = layout.pointee_info_at(bx, offset) {
+                        if let Some(_) = pointee.safe {
+                            bx.align_metadata(load, pointee.align);
+                        }
+                    }
                 }
-                _ => {}
+                abi::F32 | abi::F64 => {}
             }
         }
 
@@ -509,7 +519,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(place.layout.llvm_type(self), place.llval, place.align);
                 if let abi::Abi::Scalar(scalar) = place.layout.abi {
-                    scalar_load_metadata(self, load, scalar);
+                    scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
                 load
             });
@@ -518,17 +528,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
             let pair_ty = place.layout.llvm_type(self);
 
-            let mut load = |i, scalar: abi::Scalar, align| {
+            let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = self.struct_gep(pair_ty, place.llval, i as u64);
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
-                scalar_load_metadata(self, load, scalar);
+                scalar_load_metadata(self, load, scalar, layout, offset);
                 self.to_immediate_scalar(load, scalar)
             };
 
             OperandValue::Pair(
-                load(0, a, place.align),
-                load(1, b, place.align.restrict_for_offset(b_offset)),
+                load(0, a, place.layout, place.align, Size::ZERO),
+                load(1, b, place.layout, place.align.restrict_for_offset(b_offset), b_offset),
             )
         } else {
             OperandValue::Ref(place.llval, None, place.align)
@@ -1205,6 +1215,18 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
+        }
+    }
+
+    fn align_metadata(&mut self, load: &'ll Value, align: Align) {
+        unsafe {
+            let v = [self.cx.const_u64(align.bytes())];
+
+            llvm::LLVMSetMetadata(
+                load,
+                llvm::MD_align as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+            );
         }
     }
 

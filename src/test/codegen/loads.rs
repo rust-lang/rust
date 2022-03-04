@@ -18,21 +18,47 @@ pub enum MyBool {
     False,
 }
 
+#[repr(align(16))]
+pub struct Align16(u128);
+
+// CHECK: @ptr_alignment_helper({}** {{.*}}align [[PTR_ALIGNMENT:[0-9]+]]
+#[no_mangle]
+pub fn ptr_alignment_helper(x: &&()) {}
+
 // CHECK-LABEL: @load_ref
 #[no_mangle]
 pub fn load_ref<'a>(x: &&'a i32) -> &'a i32 {
-// Alignment of a reference itself is target dependent, so just match any alignment:
-// the main thing we care about here is !nonnull and !noundef.
-// CHECK: load i32*, i32** %x, align {{[0-9]+}}, !nonnull !{{[0-9]+}}, !noundef !{{[0-9]+}}
+// CHECK: load i32*, i32** %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META:[0-9]+]], !noundef !{{[0-9]+}}
+    *x
+}
+
+// CHECK-LABEL: @load_ref_higher_alignment
+#[no_mangle]
+pub fn load_ref_higher_alignment<'a>(x: &&'a Align16) -> &'a Align16 {
+// CHECK: load {{%Align16|i128}}*, {{%Align16|i128}}** %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META:[0-9]+]], !noundef !{{[0-9]+}}
+    *x
+}
+
+// CHECK-LABEL: @load_scalar_pair
+#[no_mangle]
+pub fn load_scalar_pair<'a>(x: &(&'a i32, &'a Align16)) -> (&'a i32, &'a Align16) {
+// CHECK: load i32*, i32** %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
+// CHECK: load i64*, i64** %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META]], !noundef !{{[0-9]+}}
+    *x
+}
+
+// CHECK-LABEL: @load_raw_pointer
+#[no_mangle]
+pub fn load_raw_pointer<'a>(x: &*const i32) -> *const i32 {
+// loaded raw pointer should not have !nonnull, !align, or !noundef metadata
+// CHECK: load i32*, i32** %x, align [[PTR_ALIGNMENT]]{{$}}
     *x
 }
 
 // CHECK-LABEL: @load_box
 #[no_mangle]
 pub fn load_box<'a>(x: Box<Box<i32>>) -> Box<i32> {
-// Alignment of a box itself is target dependent, so just match any alignment:
-// the main thing we care about here is !nonnull and !noundef.
-// CHECK: load i32*, i32** %x, align {{[0-9]+}}, !nonnull !{{[0-9]+}}, !noundef !{{[0-9]+}}
+// CHECK: load i32*, i32** %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
     *x
 }
 
@@ -120,5 +146,7 @@ pub fn small_struct_alignment(x: Bytes) -> Bytes {
     x
 }
 
-// CHECK: ![[BOOL_RANGE]] = !{i8 0, i8 2}
-// CHECK: ![[NONZEROU16_RANGE]] = !{i16 1, i16 0}
+// CHECK-DAG: ![[BOOL_RANGE]] = !{i8 0, i8 2}
+// CHECK-DAG: ![[NONZEROU16_RANGE]] = !{i16 1, i16 0}
+// CHECK-DAG: ![[ALIGN_4_META]] = !{i64 4}
+// CHECK-DAG: ![[ALIGN_16_META]] = !{i64 16}

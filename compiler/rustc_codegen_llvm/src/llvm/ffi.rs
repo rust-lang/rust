@@ -441,6 +441,7 @@ pub enum MetadataType {
     MD_nontemporal = 9,
     MD_mem_parallel_loop_access = 10,
     MD_nonnull = 11,
+    MD_align = 17,
     MD_type = 19,
     MD_noundef = 29,
 }
