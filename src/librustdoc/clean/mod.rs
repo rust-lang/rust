@@ -1551,7 +1551,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 })
             }
             ty::Adt(def, substs) => {
-                let did = def.did;
+                let did = def.did();
                 let kind = match def.adt_kind() {
                     AdtKind::Struct => ItemType::Struct,
                     AdtKind::Union => ItemType::Union,

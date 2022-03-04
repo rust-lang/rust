@@ -813,7 +813,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     | ty::Foreign(did)
                     | ty::FnDef(did, _)
                     | ty::Generator(did, ..) => Some(did),
-                    ty::Adt(def, _) => Some(def.did),
+                    ty::Adt(def, _) => Some(def.did()),
                     _ => None,
                 };
 
@@ -1467,7 +1467,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 ty::Bool => Some(0),
                 ty::Char => Some(1),
                 ty::Str => Some(2),
-                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did) => Some(2),
+                ty::Adt(def, _) if tcx.is_diagnostic_item(sym::String, def.did()) => Some(2),
                 ty::Int(..)
                 | ty::Uint(..)
                 | ty::Float(..)

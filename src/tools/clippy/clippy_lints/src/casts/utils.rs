@@ -34,10 +34,10 @@ pub(super) fn enum_value_nbits(value: EnumValue) -> u64 {
     .into()
 }
 
-pub(super) fn enum_ty_to_nbits(adt: &AdtDef, tcx: TyCtxt<'_>) -> u64 {
+pub(super) fn enum_ty_to_nbits(adt: AdtDef<'_>, tcx: TyCtxt<'_>) -> u64 {
     let mut explicit = 0i128;
     let (start, end) = adt
-        .variants
+        .variants()
         .iter()
         .fold((0, i128::MIN), |(start, end), variant| match variant.discr {
             VariantDiscr::Relative(x) => match explicit.checked_add(i128::from(x)) {

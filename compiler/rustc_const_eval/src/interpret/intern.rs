@@ -174,7 +174,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: CompileTimeMachine<'mir, 'tcx, const_eval::Memory
         }
 
         if let Some(def) = mplace.layout.ty.ty_adt_def() {
-            if Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type() {
+            if Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type() {
                 // We are crossing over an `UnsafeCell`, we can mutate again. This means that
                 // References we encounter inside here are interned as pointing to mutable
                 // allocations.

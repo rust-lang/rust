@@ -74,7 +74,7 @@ fn push_debuginfo_type_name<'tcx>(
             if def.is_enum() && cpp_like_debuginfo {
                 msvc_enum_fallback(tcx, t, def, substs, output, visited);
             } else {
-                push_item_name(tcx, def.did, qualified, output);
+                push_item_name(tcx, def.did(), qualified, output);
                 push_generic_params_internal(tcx, substs, output, visited);
             }
         }
@@ -405,15 +405,15 @@ fn push_debuginfo_type_name<'tcx>(
     fn msvc_enum_fallback<'tcx>(
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
-        def: &AdtDef,
+        def: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        let layout = tcx.layout_of(tcx.param_env(def.did).and(ty)).expect("layout error");
+        let layout = tcx.layout_of(tcx.param_env(def.did()).and(ty)).expect("layout error");
 
         output.push_str("enum$<");
-        push_item_name(tcx, def.did, true, output);
+        push_item_name(tcx, def.did(), true, output);
         push_generic_params_internal(tcx, substs, output, visited);
 
         if let Variants::Multiple {
@@ -435,14 +435,14 @@ fn push_debuginfo_type_name<'tcx>(
             let max = dataful_discriminant_range.end;
             let max = tag.value.size(&tcx).truncate(max);
 
-            let dataful_variant_name = def.variants[*dataful_variant].name.as_str();
+            let dataful_variant_name = def.variant(*dataful_variant).name.as_str();
 
             output.push_str(&format!(", {}, {}, {}", min, max, dataful_variant_name));
         } else if let Variants::Single { index: variant_idx } = &layout.variants {
             // Uninhabited enums can't be constructed and should never need to be visualized so
             // skip this step for them.
-            if def.variants.len() != 0 {
-                let variant = def.variants[*variant_idx].name.as_str();
+            if def.variants().len() != 0 {
+                let variant = def.variant(*variant_idx).name.as_str();
 
                 output.push_str(&format!(", {}", variant));
             }

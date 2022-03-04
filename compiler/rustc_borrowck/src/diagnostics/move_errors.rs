@@ -388,7 +388,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         let ty = move_place.ty(self.body, self.infcx.tcx).ty;
         let def_id = match *ty.kind() {
-            ty::Adt(self_def, _) => self_def.did,
+            ty::Adt(self_def, _) => self_def.did(),
             ty::Foreign(def_id)
             | ty::FnDef(def_id, _)
             | ty::Closure(def_id, _)

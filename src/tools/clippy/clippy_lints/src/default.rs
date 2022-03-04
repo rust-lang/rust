@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             then {
                 // TODO: Work out a way to put "whatever the imported way of referencing
                 // this type in this file" rather than a fully-qualified type.
-                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did));
+                let replacement = format!("{}::default()", cx.tcx.def_path_str(def.did()));
                 span_lint_and_sugg(
                     cx,
                     DEFAULT_TRAIT_ACCESS,
@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 if let Some(adt) = binding_type.ty_adt_def();
                 if adt.is_struct();
                 let variant = adt.non_enum_variant();
-                if adt.did.is_local() || !variant.is_field_list_non_exhaustive();
+                if adt.did().is_local() || !variant.is_field_list_non_exhaustive();
                 let module_did = cx.tcx.parent_module(stmt.hir_id).to_def_id();
                 if variant
                     .fields
@@ -216,7 +216,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     if let ty::Adt(adt_def, substs) = binding_type.kind();
                     if !substs.is_empty();
                     then {
-                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did);
+                        let adt_def_ty_name = cx.tcx.item_name(adt_def.did());
                         let generic_args = substs.iter().collect::<Vec<_>>();
                         let tys_str = generic_args
                             .iter()

@@ -336,7 +336,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                 ProjectionElem::Field(..) => {
                     let ty = place_base.ty(&self.body.local_decls, self.tcx).ty;
                     if let ty::Adt(def, _) = ty.kind() {
-                        if self.tcx.layout_scalar_valid_range(def.did)
+                        if self.tcx.layout_scalar_valid_range(def.did())
                             != (Bound::Unbounded, Bound::Unbounded)
                         {
                             let details = if is_mut_use {

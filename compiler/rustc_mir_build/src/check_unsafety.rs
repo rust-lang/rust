@@ -162,7 +162,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
             ExprKind::Field { lhs, .. } => {
                 if let ty::Adt(adt_def, _) = self.thir[lhs].ty.kind() {
                     if (Bound::Unbounded, Bound::Unbounded)
-                        != self.tcx.layout_scalar_valid_range(adt_def.did)
+                        != self.tcx.layout_scalar_valid_range(adt_def.did())
                     {
                         self.found = true;
                     }
@@ -242,7 +242,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         visit::walk_pat(self, pat);
                         self.in_union_destructure = old_in_union_destructure;
                     } else if (Bound::Unbounded, Bound::Unbounded)
-                        != self.tcx.layout_scalar_valid_range(adt_def.did)
+                        != self.tcx.layout_scalar_valid_range(adt_def.did())
                     {
                         let old_inside_adt = std::mem::replace(&mut self.inside_adt, true);
                         visit::walk_pat(self, pat);
@@ -386,7 +386,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 user_ty: _,
                 fields: _,
                 base: _,
-            }) => match self.tcx.layout_scalar_valid_range(adt_def.did) {
+            }) => match self.tcx.layout_scalar_valid_range(adt_def.did()) {
                 (Bound::Unbounded, Bound::Unbounded) => {}
                 _ => self.requires_unsafe(expr.span, InitializingTypeWith),
             },

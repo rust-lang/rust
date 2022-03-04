@@ -40,7 +40,7 @@ impl<'tcx> PlaceTy<'tcx> {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {
                         assert!(adt_def.is_enum());
-                        &adt_def.variants[variant_index]
+                        &adt_def.variant(variant_index)
                     }
                 };
                 let field_def = &variant_def.fields[f.index()];

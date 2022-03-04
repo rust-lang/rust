@@ -269,7 +269,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                     let arg_is_panic_info = match *inputs[0].kind() {
                         ty::Ref(region, ty, mutbl) => match *ty.kind() {
                             ty::Adt(ref adt, _) => {
-                                adt.did == panic_info_did
+                                adt.did() == panic_info_did
                                     && mutbl == hir::Mutability::Not
                                     && !region.is_static()
                             }
@@ -310,7 +310,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                 let span = hir.span(fn_id);
                 if inputs.len() == 1 {
                     let arg_is_alloc_layout = match inputs[0].kind() {
-                        ty::Adt(ref adt, _) => adt.did == alloc_layout_did,
+                        ty::Adt(ref adt, _) => adt.did() == alloc_layout_did,
                         _ => false,
                     };
 
@@ -345,7 +345,7 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
-    if def.repr.simd() {
+    if def.repr().simd() {
         check_simd(tcx, span, def_id);
     }
 
@@ -1086,7 +1086,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
             }
 
             let len = if let ty::Array(_ty, c) = e.kind() {
-                c.try_eval_usize(tcx, tcx.param_env(def.did))
+                c.try_eval_usize(tcx, tcx.param_env(def.did()))
             } else {
                 Some(fields.len() as u64)
             };
@@ -1137,10 +1137,10 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
     }
 }
 
-pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
-    let repr = def.repr;
+pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
+    let repr = def.repr();
     if repr.packed() {
-        for attr in tcx.get_attrs(def.did).iter() {
+        for attr in tcx.get_attrs(def.did()).iter() {
             for r in attr::find_repr_attrs(&tcx.sess, attr) {
                 if let attr::ReprPacked(pack) = r
                     && let Some(repr_pack) = repr.pack
@@ -1165,7 +1165,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
             )
             .emit();
         } else {
-            if let Some(def_spans) = check_packed_inner(tcx, def.did, &mut vec![]) {
+            if let Some(def_spans) = check_packed_inner(tcx, def.did(), &mut vec![]) {
                 let mut err = struct_span_err!(
                     tcx.sess,
                     sp,
@@ -1190,7 +1190,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                             &if first {
                                 format!(
                                     "`{}` contains a field of type `{}`",
-                                    tcx.type_of(def.did),
+                                    tcx.type_of(def.did()),
                                     ident
                                 )
                             } else {
@@ -1214,16 +1214,16 @@ pub(super) fn check_packed_inner(
 ) -> Option<Vec<(DefId, Span)>> {
     if let ty::Adt(def, substs) = tcx.type_of(def_id).kind() {
         if def.is_struct() || def.is_union() {
-            if def.repr.align.is_some() {
-                return Some(vec![(def.did, DUMMY_SP)]);
+            if def.repr().align.is_some() {
+                return Some(vec![(def.did(), DUMMY_SP)]);
             }
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
                 if let ty::Adt(def, _) = field.ty(tcx, substs).kind() {
-                    if !stack.contains(&def.did) {
-                        if let Some(mut defs) = check_packed_inner(tcx, def.did, stack) {
-                            defs.push((def.did, field.ident(tcx).span));
+                    if !stack.contains(&def.did()) {
+                        if let Some(mut defs) = check_packed_inner(tcx, def.did(), stack) {
+                            defs.push((def.did(), field.ident(tcx).span));
                             return Some(defs);
                         }
                     }
@@ -1236,8 +1236,8 @@ pub(super) fn check_packed_inner(
     None
 }
 
-pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty::AdtDef) {
-    if !adt.repr.transparent() {
+pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtDef<'tcx>) {
+    if !adt.repr().transparent() {
         return;
     }
     let sp = tcx.sess.source_map().guess_head_span(sp);
@@ -1252,9 +1252,9 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: &'tcx ty
         .emit();
     }
 
-    if adt.variants.len() != 1 {
-        bad_variant_count(tcx, adt, sp, adt.did);
-        if adt.variants.is_empty() {
+    if adt.variants().len() != 1 {
+        bad_variant_count(tcx, adt, sp, adt.did());
+        if adt.variants().is_empty() {
             // Don't bother checking the fields. No variants (and thus no fields) exist.
             return;
         }
@@ -1317,7 +1317,7 @@ fn check_enum<'tcx>(
         }
     }
 
-    let repr_type_ty = def.repr.discr_type().to_ty(tcx);
+    let repr_type_ty = def.repr().discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
         if !tcx.features().repr128 {
             feature_err(
@@ -1336,7 +1336,7 @@ fn check_enum<'tcx>(
         }
     }
 
-    if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
+    if tcx.adt_def(def_id).repr().int.is_none() && tcx.features().arbitrary_enum_discriminant {
         let is_unit = |var: &hir::Variant<'_>| matches!(var.data, hir::VariantData::Unit(..));
 
         let has_disr = |var: &hir::Variant<'_>| var.disr_expr.is_some();
@@ -1355,7 +1355,7 @@ fn check_enum<'tcx>(
     for ((_, discr), v) in iter::zip(def.discriminants(tcx), vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
-            let variant_did = def.variants[VariantIdx::new(i)].def_id;
+            let variant_did = def.variant(VariantIdx::new(i)).def_id;
             let variant_i_hir_id = tcx.hir().local_def_id_to_hir_id(variant_did.expect_local());
             let variant_i = tcx.hir().expect_variant(variant_i_hir_id);
             let i_span = match variant_i.disr_expr {

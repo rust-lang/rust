@@ -705,14 +705,14 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
     block: &'mir mir::BasicBlockData<'tcx>,
     switch_on: mir::Place<'tcx>,
-) -> Option<(mir::Place<'tcx>, &'tcx ty::AdtDef)> {
+) -> Option<(mir::Place<'tcx>, ty::AdtDef<'tcx>)> {
     for statement in block.statements.iter().rev() {
         match &statement.kind {
             mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated)))
                 if *lhs == switch_on =>
             {
-                match &discriminated.ty(body, tcx).ty.kind() {
-                    ty::Adt(def, _) => return Some((*discriminated, def)),
+                match discriminated.ty(body, tcx).ty.kind() {
+                    ty::Adt(def, _) => return Some((*discriminated, *def)),
 
                     // `Rvalue::Discriminant` is also used to get the active yield point for a
                     // generator, but we do not need edge-specific effects in that case. This may

@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.tcx.features().exhaustive_patterns
                             && !v
@@ -276,7 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 )
                                 .is_empty()
                     }
-                }) && (adt_def.did.is_local()
+                }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place_builder = match_pair.place.downcast(adt_def, variant_index);

@@ -406,7 +406,7 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => Ok(a),
 
         (&ty::Adt(a_def, a_substs), &ty::Adt(b_def, b_substs)) if a_def == b_def => {
-            let substs = relation.relate_item_substs(a_def.did, a_substs, b_substs)?;
+            let substs = relation.relate_item_substs(a_def.did(), a_substs, b_substs)?;
             Ok(tcx.mk_adt(a_def, substs))
         }
 

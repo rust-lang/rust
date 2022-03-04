@@ -109,7 +109,7 @@ pub enum TyKind<'tcx> {
     ///
     /// Note that generic parameters in fields only get lazily substituted
     /// by using something like `adt_def.all_fields().map(|field| field.ty(tcx, substs))`.
-    Adt(&'tcx AdtDef, SubstsRef<'tcx>),
+    Adt(AdtDef<'tcx>, SubstsRef<'tcx>),
 
     /// An unsized FFI type that is opaque to Rust. Written as `extern type T`.
     Foreign(DefId),
@@ -1903,7 +1903,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_simd(self) -> bool {
         match self.kind() {
-            Adt(def, _) => def.repr.simd(),
+            Adt(def, _) => def.repr().simd(),
             _ => false,
         }
     }
@@ -1919,7 +1919,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn simd_size_and_type(self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         match self.kind() {
             Adt(def, substs) => {
-                assert!(def.repr.simd(), "`simd_size_and_type` called on non-SIMD type");
+                assert!(def.repr().simd(), "`simd_size_and_type` called on non-SIMD type");
                 let variant = def.non_enum_variant();
                 let f0_ty = variant.fields[0].ty(tcx, substs);
 
@@ -2153,9 +2153,9 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn ty_adt_def(self) -> Option<&'tcx AdtDef> {
+    pub fn ty_adt_def(self) -> Option<AdtDef<'tcx>> {
         match self.kind() {
-            Adt(adt, _) => Some(adt),
+            Adt(adt, _) => Some(*adt),
             _ => None,
         }
     }
@@ -2194,7 +2194,7 @@ impl<'tcx> Ty<'tcx> {
         variant_index: VariantIdx,
     ) -> Option<Discr<'tcx>> {
         match self.kind() {
-            TyKind::Adt(adt, _) if adt.variants.is_empty() => {
+            TyKind::Adt(adt, _) if adt.variants().is_empty() => {
                 // This can actually happen during CTFE, see
                 // https://github.com/rust-lang/rust/issues/89765.
                 None
@@ -2212,7 +2212,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of the discriminant of this type.
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
-            ty::Adt(adt, _) if adt.is_enum() => adt.repr.discr_type().to_ty(tcx),
+            ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
 
             ty::Param(_) | ty::Projection(_) | ty::Opaque(..) | ty::Infer(ty::TyVar(_)) => {

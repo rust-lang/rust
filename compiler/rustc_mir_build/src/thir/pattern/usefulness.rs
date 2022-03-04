@@ -325,7 +325,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
             }
             _ => false,
         }

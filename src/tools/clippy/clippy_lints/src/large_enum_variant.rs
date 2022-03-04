@@ -81,11 +81,11 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
         if let ItemKind::Enum(ref def, _) = item.kind {
             let ty = cx.tcx.type_of(item.def_id);
             let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
-            if adt.variants.len() <= 1 {
+            if adt.variants().len() <= 1 {
                 return;
             }
             let mut variants_size: Vec<VariantInfo> = Vec::new();
-            for (i, variant) in adt.variants.iter().enumerate() {
+            for (i, variant) in adt.variants().iter().enumerate() {
                 let mut fields_size = Vec::new();
                 for (i, f) in variant.fields.iter().enumerate() {
                     let ty = cx.tcx.type_of(f.did);

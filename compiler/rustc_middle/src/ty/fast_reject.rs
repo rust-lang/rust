@@ -86,7 +86,7 @@ pub fn simplify_type<'tcx>(
         ty::Int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::Uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::Float(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::Adt(def, _) => Some(AdtSimplifiedType(def.did)),
+        ty::Adt(def, _) => Some(AdtSimplifiedType(def.did())),
         ty::Str => Some(StrSimplifiedType),
         ty::Array(..) => Some(ArraySimplifiedType),
         ty::Slice(..) => Some(SliceSimplifiedType),

@@ -202,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     let descr_pre = &format!("{}boxed ", descr_pre);
                     check_must_use_ty(cx, boxed_ty, expr, span, descr_pre, descr_post, plural_len)
                 }
-                ty::Adt(def, _) => check_must_use_def(cx, def.did, span, descr_pre, descr_post),
+                ty::Adt(def, _) => check_must_use_def(cx, def.did(), span, descr_pre, descr_post),
                 ty::Opaque(def, _) => {
                     let mut has_emitted = false;
                     for &(predicate, _) in cx.tcx.explicit_item_bounds(def) {

@@ -726,7 +726,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                 );
                 return StatementEquality::NotEqual;
             }
-            let variant_is_fieldless = adt.variants[variant_index].fields.is_empty();
+            let variant_is_fieldless = adt.variant(variant_index).fields.is_empty();
             if !variant_is_fieldless {
                 trace!("NO: variant {:?} was not fieldless", variant_index);
                 return StatementEquality::NotEqual;

@@ -299,15 +299,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     if e.hir_id == id {
                         if let Some(span) = expr.span.find_ancestor_inside(block_span) {
-                            let return_suggestions =
-                                if self.tcx.is_diagnostic_item(sym::Result, expected_adt.did) {
-                                    vec!["Ok(())".to_string()]
-                                } else if self.tcx.is_diagnostic_item(sym::Option, expected_adt.did)
-                                {
-                                    vec!["None".to_string(), "Some(())".to_string()]
-                                } else {
-                                    return;
-                                };
+                            let return_suggestions = if self
+                                .tcx
+                                .is_diagnostic_item(sym::Result, expected_adt.did())
+                            {
+                                vec!["Ok(())".to_string()]
+                            } else if self.tcx.is_diagnostic_item(sym::Option, expected_adt.did()) {
+                                vec!["None".to_string(), "Some(())".to_string()]
+                            } else {
+                                return;
+                            };
                             if let Some(indent) =
                                 self.tcx.sess.source_map().indentation_before(span.shrink_to_lo())
                             {
@@ -333,7 +334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let compatible_variants: Vec<String> = expected_adt
-                .variants
+                .variants()
                 .iter()
                 .filter(|variant| variant.fields.len() == 1)
                 .filter_map(|variant| {
@@ -378,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.multipart_suggestions(
                         &format!(
                             "try wrapping the expression in a variant of `{}`",
-                            self.tcx.def_path_str(expected_adt.did)
+                            self.tcx.def_path_str(expected_adt.did())
                         ),
                         compatible_variants.into_iter().map(|variant| {
                             vec![

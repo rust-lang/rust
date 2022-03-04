@@ -667,8 +667,8 @@ enum FfiResult<'tcx> {
     FfiUnsafe { ty: Ty<'tcx>, reason: String, help: Option<String> },
 }
 
-crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: &ty::AdtDef) -> bool {
-    tcx.get_attrs(def.did).iter().any(|a| a.has_name(sym::rustc_nonnull_optimization_guaranteed))
+crate fn nonnull_optimization_guaranteed<'tcx>(tcx: TyCtxt<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
+    tcx.get_attrs(def.did()).iter().any(|a| a.has_name(sym::rustc_nonnull_optimization_guaranteed))
 }
 
 /// `repr(transparent)` structs can have a single non-ZST field, this function returns that
@@ -692,8 +692,8 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
         ty::FnPtr(_) => true,
         ty::Ref(..) => true,
         ty::Adt(def, _) if def.is_box() && matches!(mode, CItemKind::Definition) => true,
-        ty::Adt(def, substs) if def.repr.transparent() && !def.is_union() => {
-            let marked_non_null = nonnull_optimization_guaranteed(tcx, &def);
+        ty::Adt(def, substs) if def.repr().transparent() && !def.is_union() => {
+            let marked_non_null = nonnull_optimization_guaranteed(tcx, *def);
 
             if marked_non_null {
                 return true;
@@ -701,11 +701,11 @@ fn ty_is_known_nonnull<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, mode: CItemKi
 
             // Types with a `#[repr(no_niche)]` attribute have their niche hidden.
             // The attribute is used by the UnsafeCell for example (the only use so far).
-            if def.repr.hide_niche() {
+            if def.repr().hide_niche() {
                 return false;
             }
 
-            def.variants
+            def.variants()
                 .iter()
                 .filter_map(|variant| transparent_newtype_field(cx.tcx, variant))
                 .any(|field| ty_is_known_nonnull(cx, field.ty(tcx, substs), mode))
@@ -721,8 +721,10 @@ fn get_nullable_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
     Some(match *ty.kind() {
         ty::Adt(field_def, field_substs) => {
             let inner_field_ty = {
-                let first_non_zst_ty =
-                    field_def.variants.iter().filter_map(|v| transparent_newtype_field(cx.tcx, v));
+                let first_non_zst_ty = field_def
+                    .variants()
+                    .iter()
+                    .filter_map(|v| transparent_newtype_field(cx.tcx, v));
                 debug_assert_eq!(
                     first_non_zst_ty.clone().count(),
                     1,
@@ -771,7 +773,7 @@ crate fn repr_nullable_ptr<'tcx>(
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(cx, ty = {:?})", ty);
     if let ty::Adt(ty_def, substs) = ty.kind() {
-        let field_ty = match &ty_def.variants.raw[..] {
+        let field_ty = match &ty_def.variants().raw[..] {
             [var_one, var_two] => match (&var_one.fields[..], &var_two.fields[..]) {
                 ([], [field]) | ([field], []) => field.ty(cx.tcx, substs),
                 _ => return None,
@@ -845,13 +847,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &self,
         cache: &mut FxHashSet<Ty<'tcx>>,
         ty: Ty<'tcx>,
-        def: &ty::AdtDef,
+        def: ty::AdtDef<'tcx>,
         variant: &ty::VariantDef,
         substs: SubstsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         use FfiResult::*;
 
-        if def.repr.transparent() {
+        if def.repr().transparent() {
             // Can assume that at most one field is not a ZST, so only check
             // that field's type for FFI-safety.
             if let Some(field) = transparent_newtype_field(self.cx.tcx, variant) {
@@ -925,7 +927,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     AdtKind::Struct | AdtKind::Union => {
                         let kind = if def.is_struct() { "struct" } else { "union" };
 
-                        if !def.repr.c() && !def.repr.transparent() {
+                        if !def.repr().c() && !def.repr().transparent() {
                             return FfiUnsafe {
                                 ty,
                                 reason: format!("this {} has unspecified layout", kind),
@@ -939,7 +941,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         let is_non_exhaustive =
                             def.non_enum_variant().is_field_list_non_exhaustive();
-                        if is_non_exhaustive && !def.did.is_local() {
+                        if is_non_exhaustive && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: format!("this {} is non-exhaustive", kind),
@@ -958,14 +960,15 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         self.check_variant_for_ffi(cache, ty, def, def.non_enum_variant(), substs)
                     }
                     AdtKind::Enum => {
-                        if def.variants.is_empty() {
+                        if def.variants().is_empty() {
                             // Empty enums are okay... although sort of useless.
                             return FfiSafe;
                         }
 
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
-                        if !def.repr.c() && !def.repr.transparent() && def.repr.int.is_none() {
+                        if !def.repr().c() && !def.repr().transparent() && def.repr().int.is_none()
+                        {
                             // Special-case types like `Option<extern fn()>`.
                             if repr_nullable_ptr(self.cx, ty, self.mode).is_none() {
                                 return FfiUnsafe {
@@ -981,7 +984,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             }
                         }
 
-                        if def.is_variant_list_non_exhaustive() && !def.did.is_local() {
+                        if def.is_variant_list_non_exhaustive() && !def.did().is_local() {
                             return FfiUnsafe {
                                 ty,
                                 reason: "this enum is non-exhaustive".into(),
@@ -990,7 +993,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         }
 
                         // Check the contained variants.
-                        for variant in &def.variants {
+                        for variant in def.variants() {
                             let is_non_exhaustive = variant.is_field_list_non_exhaustive();
                             if is_non_exhaustive && !variant.def_id.is_local() {
                                 return FfiUnsafe {
@@ -1161,7 +1164,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
             diag.note(note);
             if let ty::Adt(def, _) = ty.kind() {
-                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did) {
+                if let Some(sp) = self.cx.tcx.hir().span_if_local(def.did()) {
                     diag.span_note(sp, "the type is defined here");
                 }
             }
@@ -1464,9 +1467,9 @@ impl InvalidAtomicOrdering {
             && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
             // skip extension traits, only lint functions from the standard library
             && cx.tcx.trait_id_of_impl(impl_did).is_none()
-            && let Some(parent) = cx.tcx.parent(adt.did)
+            && let Some(parent) = cx.tcx.parent(adt.did())
             && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
-            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did))
+            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
         {
             return Some((method_path.ident.name, args));
         }

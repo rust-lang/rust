@@ -128,7 +128,7 @@ pub struct Block {
 #[derive(Debug, HashStable)]
 pub struct Adt<'tcx> {
     /// The ADT we're constructing.
-    pub adt_def: &'tcx AdtDef,
+    pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
     pub substs: SubstsRef<'tcx>,
@@ -617,7 +617,7 @@ pub enum PatKind<'tcx> {
     /// `Foo(...)` or `Foo{...}` or `Foo`, where `Foo` is a variant name from an ADT with
     /// multiple variants.
     Variant {
-        adt_def: &'tcx AdtDef,
+        adt_def: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
@@ -714,7 +714,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
             PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
                 let variant = match *self.kind {
                     PatKind::Variant { adt_def, variant_index, .. } => {
-                        Some(&adt_def.variants[variant_index])
+                        Some(adt_def.variant(variant_index))
                     }
                     _ => self.ty.ty_adt_def().and_then(|adt| {
                         if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }

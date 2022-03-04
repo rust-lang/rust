@@ -154,8 +154,8 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
 
                     create_err(&format!(
                         "the trait `DispatchFromDyn` may only be implemented \
@@ -168,7 +168,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
                     return;
                 }
 
-                if def_a.repr.c() || def_a.repr.packed() {
+                if def_a.repr().c() || def_a.repr().packed() {
                     create_err(
                         "structs implementing `DispatchFromDyn` may not have \
                              `#[repr(packed)]` or `#[repr(C)]`",
@@ -353,8 +353,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 if def_a.is_struct() && def_b.is_struct() =>
             {
                 if def_a != def_b {
-                    let source_path = tcx.def_path_str(def_a.did);
-                    let target_path = tcx.def_path_str(def_b.did);
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
                     struct_span_err!(
                         tcx.sess,
                         span,

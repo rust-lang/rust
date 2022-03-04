@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                     let mut impls = HirIdSet::default();
                                     cx.tcx.for_each_impl(default_trait_id, |d| {
                                         if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                                            if let Some(local_def_id) = ty_def.did.as_local() {
+                                            if let Some(local_def_id) = ty_def.did().as_local() {
                                                 impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                             }
                                         }
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                                 if_chain! {
                                     if let Some(ref impling_types) = self.impling_types;
                                     if let Some(self_def) = cx.tcx.type_of(self_def_id).ty_adt_def();
-                                    if let Some(self_local_did) = self_def.did.as_local();
+                                    if let Some(self_local_did) = self_def.did().as_local();
                                     let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
                                     if impling_types.contains(&self_id);
                                     then {

@@ -1166,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(self_ty) = self_ty =>
             {
                 let adt_def = self_ty.ty_adt_def().unwrap();
-                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did, self_ty });
+                user_self_ty = Some(UserSelfTy { impl_def_id: adt_def.did(), self_ty });
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {

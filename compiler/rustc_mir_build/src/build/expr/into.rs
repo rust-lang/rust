@@ -332,7 +332,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
 
                 let field_names: Vec<_> =
-                    (0..adt_def.variants[variant_index].fields.len()).map(Field::new).collect();
+                    (0..adt_def.variant(variant_index).fields.len()).map(Field::new).collect();
 
                 let fields: Vec<_> = if let Some(FruInfo { base, field_types }) = base {
                     let place_builder =
@@ -367,7 +367,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                 });
                 let adt = Box::new(AggregateKind::Adt(
-                    adt_def.did,
+                    adt_def.did(),
                     variant_index,
                     substs,
                     user_ty,

@@ -141,7 +141,7 @@ pub(super) fn check<'tcx>(
                                 then {
                                     diag.note(&format!(
                                         "two instances of the same generic type (`{}`) may have different layouts",
-                                        cx.tcx.item_name(from_def.did)
+                                        cx.tcx.item_name(from_def.did())
                                     ));
                                 } else {
                                     if from_ty_orig.peel_refs() != from_ty {
@@ -304,13 +304,13 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     ty = sized_ty;
                     continue;
                 }
-                if def.repr.inhibit_struct_field_reordering_opt() {
+                if def.repr().inhibit_struct_field_reordering_opt() {
                     ReducedTy::OrderedFields(ty)
                 } else {
                     ReducedTy::UnorderedFields(ty)
                 }
             },
-            ty::Adt(def, _) if def.is_enum() && (def.variants.is_empty() || is_c_void(cx, ty)) => {
+            ty::Adt(def, _) if def.is_enum() && (def.variants().is_empty() || is_c_void(cx, ty)) => {
                 ReducedTy::TypeErasure
             },
             ty::Foreign(_) => ReducedTy::TypeErasure,

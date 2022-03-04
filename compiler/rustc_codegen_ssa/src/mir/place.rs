@@ -149,7 +149,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             _ if !field.is_unsized() => return simple(),
             ty::Slice(..) | ty::Str | ty::Foreign(..) => return simple(),
             ty::Adt(def, _) => {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     // FIXME(eddyb) generalize the adjustment when we
                     // start supporting packing to larger alignments.
                     assert_eq!(self.layout.align.abi.bytes(), 1);

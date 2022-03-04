@@ -259,7 +259,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 if self.tcx.has_attr(trait_of, sym::rustc_trivial_field_reads) {
                     let trait_ref = self.tcx.impl_trait_ref(impl_of).unwrap();
                     if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind() {
-                        if let Some(adt_def_id) = adt_def.did.as_local() {
+                        if let Some(adt_def_id) = adt_def.did().as_local() {
                             self.ignored_derived_traits
                                 .entry(adt_def_id)
                                 .or_default()
@@ -297,7 +297,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 match item.kind {
                     hir::ItemKind::Struct(..) | hir::ItemKind::Union(..) => {
                         let def = self.tcx.adt_def(item.def_id);
-                        self.repr_has_repr_c = def.repr.c();
+                        self.repr_has_repr_c = def.repr().c();
 
                         intravisit::walk_item(self, &item);
                     }
@@ -328,8 +328,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         self.repr_has_repr_c = had_repr_c;
     }
 
-    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &[hir::ExprField<'_>]) {
-        if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
+    fn mark_as_used_if_union(&mut self, adt: ty::AdtDef<'tcx>, fields: &[hir::ExprField<'_>]) {
+        if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did().is_local() {
             for field in fields {
                 let index = self.tcx.field_index(field.hir_id, self.typeck_results());
                 self.insert_def_id(adt.non_enum_variant().fields[index].did);
@@ -382,8 +382,8 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
             hir::ExprKind::Struct(ref qpath, ref fields, _) => {
                 let res = self.typeck_results().qpath_res(qpath, expr.hir_id);
                 self.handle_res(res);
-                if let ty::Adt(ref adt, _) = self.typeck_results().expr_ty(expr).kind() {
-                    self.mark_as_used_if_union(adt, fields);
+                if let ty::Adt(adt, _) = self.typeck_results().expr_ty(expr).kind() {
+                    self.mark_as_used_if_union(*adt, fields);
                 }
             }
             _ => (),

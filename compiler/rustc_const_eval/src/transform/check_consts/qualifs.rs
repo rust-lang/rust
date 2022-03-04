@@ -71,7 +71,7 @@ pub trait Qualif {
     /// Returning `true` for `in_adt_inherently` but `false` for `in_any_value_of_ty` is unsound.
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool;
 }
@@ -96,12 +96,12 @@ impl Qualif for HasMutInterior {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         // Exactly one type, `UnsafeCell`, has the `HasMutInterior` qualif inherently.
         // It arises structurally for all other types.
-        Some(adt.did) == cx.tcx.lang_items().unsafe_cell_type()
+        Some(adt.did()) == cx.tcx.lang_items().unsafe_cell_type()
     }
 }
 
@@ -126,7 +126,7 @@ impl Qualif for NeedsDrop {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         adt.has_dtor(cx.tcx)
@@ -205,7 +205,7 @@ impl Qualif for NeedsNonConstDrop {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         _: SubstsRef<'tcx>,
     ) -> bool {
         adt.has_non_const_dtor(cx.tcx)
@@ -233,7 +233,7 @@ impl Qualif for CustomEq {
 
     fn in_adt_inherently<'tcx>(
         cx: &ConstCx<'_, 'tcx>,
-        adt: &'tcx AdtDef,
+        adt: AdtDef<'tcx>,
         substs: SubstsRef<'tcx>,
     ) -> bool {
         let ty = cx.tcx.mk_ty(ty::Adt(adt, substs));

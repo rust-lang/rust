@@ -17,7 +17,7 @@ use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef, UserSubsts};
 use crate::ty::TyKind::*;
 use crate::ty::{
-    self, AdtDef, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
+    self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, ConstVid, DefIdTree, ExistentialPredicate, FloatTy,
     FloatVar, FloatVid, GenericParamDefKind, InferConst, InferTy, IntTy, IntVar, IntVid, List,
     ParamConst, ParamTy, PolyFnSig, Predicate, PredicateKind, PredicateS, ProjectionTy, Region,
@@ -115,7 +115,7 @@ pub struct CtxtInterners<'tcx> {
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
     layout: InternedSet<'tcx, LayoutS<'tcx>>,
-    adt_def: InternedSet<'tcx, AdtDef>,
+    adt_def: InternedSet<'tcx, AdtDefData>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -1123,8 +1123,8 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
-    ) -> &'tcx ty::AdtDef {
-        self.intern_adt_def(ty::AdtDef::new(self, did, kind, variants, repr))
+    ) -> ty::AdtDef<'tcx> {
+        self.intern_adt_def(ty::AdtDefData::new(self, did, kind, variants, repr))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.
@@ -2147,47 +2147,7 @@ direct_interners! {
     const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
     const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
     layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
-}
-
-macro_rules! direct_interners_old {
-    ($($name:ident: $method:ident($ty:ty),)+) => {
-        $(impl<'tcx> Borrow<$ty> for InternedInSet<'tcx, $ty> {
-            fn borrow<'a>(&'a self) -> &'a $ty {
-                &self.0
-            }
-        }
-
-        impl<'tcx> PartialEq for InternedInSet<'tcx, $ty> {
-            fn eq(&self, other: &Self) -> bool {
-                // The `Borrow` trait requires that `x.borrow() == y.borrow()`
-                // equals `x == y`.
-                self.0 == other.0
-            }
-        }
-
-        impl<'tcx> Eq for InternedInSet<'tcx, $ty> {}
-
-        impl<'tcx> Hash for InternedInSet<'tcx, $ty> {
-            fn hash<H: Hasher>(&self, s: &mut H) {
-                // The `Borrow` trait requires that `x.borrow().hash(s) ==
-                // x.hash(s)`.
-                self.0.hash(s)
-            }
-        }
-
-        impl<'tcx> TyCtxt<'tcx> {
-            pub fn $method(self, v: $ty) -> &'tcx $ty {
-                self.interners.$name.intern(v, |v| {
-                    InternedInSet(self.interners.arena.alloc(v))
-                }).0
-            }
-        })+
-    }
-}
-
-// FIXME: eventually these should all be converted to `direct_interners`.
-direct_interners_old! {
-    adt_def: intern_adt_def(AdtDef),
+    adt_def: intern_adt_def(AdtDefData): AdtDef -> AdtDef<'tcx>,
 }
 
 macro_rules! slice_interners {
@@ -2341,7 +2301,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_adt(self, def: &'tcx AdtDef, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
+    pub fn mk_adt(self, def: AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
         // Take a copy of substs so that we own the vectors inside.
         self.mk_ty(Adt(def, substs))
     }
@@ -2563,12 +2523,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_place_downcast(
         self,
         place: Place<'tcx>,
-        adt_def: &'tcx AdtDef,
+        adt_def: AdtDef<'tcx>,
         variant_index: VariantIdx,
     ) -> Place<'tcx> {
         self.mk_place_elem(
             place,
-            PlaceElem::Downcast(Some(adt_def.variants[variant_index].name), variant_index),
+            PlaceElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index),
         )
     }
 

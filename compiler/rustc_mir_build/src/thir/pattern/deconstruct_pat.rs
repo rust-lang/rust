@@ -681,7 +681,7 @@ impl<'tcx> Constructor<'tcx> {
     /// This means that the variant has a stdlib unstable feature marking it.
     pub(super) fn is_unstable_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
-            let variant_def_id = adt.variants[*idx].def_id;
+            let variant_def_id = adt.variant(*idx).def_id;
             // Filter variants that depend on a disabled unstable feature.
             return matches!(
                 pcx.cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),
@@ -695,13 +695,13 @@ impl<'tcx> Constructor<'tcx> {
     /// attribute.
     pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
-            let variant_def_id = adt.variants[*idx].def_id;
+            let variant_def_id = adt.variant(*idx).def_id;
             return pcx.cx.tcx.is_doc_hidden(variant_def_id);
         }
         false
     }
 
-    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
+    fn variant_index_for_adt(&self, adt: ty::AdtDef<'tcx>) -> VariantIdx {
         match *self {
             Variant(idx) => idx,
             Single => {
@@ -725,7 +725,7 @@ impl<'tcx> Constructor<'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         1
                     } else {
-                        let variant = &adt.variants[self.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(self.variant_index_for_adt(*adt));
                         Fields::list_variant_nonhidden_fields(pcx.cx, pcx.ty, variant).count()
                     }
                 }
@@ -973,10 +973,10 @@ impl<'tcx> SplitWildcard<'tcx> {
                 // exception is if the pattern is at the top level, because we want empty matches to be
                 // considered exhaustive.
                 let is_secretly_empty =
-                    def.variants.is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
+                    def.variants().is_empty() && !is_exhaustive_pat_feature && !pcx.is_top_level;
 
                 let mut ctors: SmallVec<[_; 1]> = def
-                    .variants
+                    .variants()
                     .iter_enumerated()
                     .filter(|(_, v)| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
@@ -1179,7 +1179,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
     ) -> impl Iterator<Item = (Field, Ty<'tcx>)> + Captures<'a> + Captures<'p> {
         let ty::Adt(adt, substs) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
-        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+        let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
 
         variant.fields.iter().enumerate().filter_map(move |(i, field)| {
             let ty = field.ty(cx.tcx, substs);
@@ -1213,7 +1213,7 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                         // patterns. If we're here we can assume this is a box pattern.
                         Fields::wildcards_from_tys(cx, once(substs.type_at(0)))
                     } else {
-                        let variant = &adt.variants[constructor.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(constructor.variant_index_for_adt(*adt));
                         let tys = Fields::list_variant_nonhidden_fields(cx, ty, variant)
                             .map(|(_, ty)| ty);
                         Fields::wildcards_from_tys(cx, tys)
@@ -1346,7 +1346,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                             PatKind::Variant { variant_index, .. } => Variant(*variant_index),
                             _ => bug!(),
                         };
-                        let variant = &adt.variants[ctor.variant_index_for_adt(adt)];
+                        let variant = &adt.variant(ctor.variant_index_for_adt(*adt));
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
@@ -1459,15 +1459,15 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     PatKind::Deref { subpattern: subpatterns.next().unwrap() }
                 }
                 ty::Adt(adt_def, substs) => {
-                    let variant_index = self.ctor.variant_index_for_adt(adt_def);
-                    let variant = &adt_def.variants[variant_index];
+                    let variant_index = self.ctor.variant_index_for_adt(*adt_def);
+                    let variant = &adt_def.variant(variant_index);
                     let subpatterns = Fields::list_variant_nonhidden_fields(cx, self.ty, variant)
                         .zip(subpatterns)
                         .map(|((field, _ty), pattern)| FieldPat { field, pattern })
                         .collect();
 
                     if adt_def.is_enum() {
-                        PatKind::Variant { adt_def, substs, variant_index, subpatterns }
+                        PatKind::Variant { adt_def: *adt_def, substs, variant_index, subpatterns }
                     } else {
                         PatKind::Leaf { subpatterns }
                     }
@@ -1640,9 +1640,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 ty::Adt(..) | ty::Tuple(..) => {
                     let variant = match self.ty.kind() {
-                        ty::Adt(adt, _) => {
-                            Some(&adt.variants[self.ctor.variant_index_for_adt(adt)])
-                        }
+                        ty::Adt(adt, _) => Some(adt.variant(self.ctor.variant_index_for_adt(*adt))),
                         ty::Tuple(_) => None,
                         _ => unreachable!(),
                     };

@@ -370,7 +370,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Adt(def, _) => {
                     let variant = if let Some(idx) = variant_index {
                         assert!(def.is_enum());
-                        &def.variants[idx]
+                        &def.variant(idx)
                     } else {
                         def.non_enum_variant()
                     };
@@ -701,7 +701,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
             BorrowedContentSource::OverloadedDeref(ty) => ty
                 .ty_adt_def()
-                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did())? {
                     name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
                     _ => None,
                 })
@@ -731,7 +731,7 @@ impl<'tcx> BorrowedContentSource<'tcx> {
             }
             BorrowedContentSource::OverloadedDeref(ty) => ty
                 .ty_adt_def()
-                .and_then(|adt| match tcx.get_diagnostic_name(adt.did)? {
+                .and_then(|adt| match tcx.get_diagnostic_name(adt.did())? {
                     name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
                     _ => None,
                 })

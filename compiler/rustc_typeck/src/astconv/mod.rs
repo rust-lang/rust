@@ -1788,9 +1788,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let ty::Adt(adt_def, _) = qself_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
-                    .variants
+                    .variants()
                     .iter()
-                    .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident(tcx), adt_def.did));
+                    .find(|vd| tcx.hygienic_eq(assoc_ident, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
                     if permit_variants {
                         tcx.check_stability(variant_def.def_id, Some(hir_ref_id), span, None);
@@ -1845,7 +1845,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggested_name) = find_best_match_for_name(
                         &adt_def
-                            .variants
+                            .variants()
                             .iter()
                             .map(|variant| variant.name)
                             .collect::<Vec<Symbol>>(),
@@ -1865,7 +1865,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         );
                     }
 
-                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
+                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
                         let sp = tcx.sess.source_map().guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
@@ -2154,7 +2154,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let adt_def = self_ty.map(|t| t.ty_adt_def().unwrap());
                 let (generics_def_id, index) = if let Some(adt_def) = adt_def {
                     debug_assert!(adt_def.is_enum());
-                    (adt_def.did, last)
+                    (adt_def.did(), last)
                 } else if last >= 1 && segments[last - 1].args.is_some() {
                     // Everything but the penultimate segment should have no
                     // parameters at all.

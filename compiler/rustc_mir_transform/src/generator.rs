@@ -210,7 +210,7 @@ struct SuspensionPoint<'tcx> {
 
 struct TransformVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    state_adt_ref: &'tcx AdtDef,
+    state_adt_ref: AdtDef<'tcx>,
     state_substs: SubstsRef<'tcx>,
 
     // The type of the discriminant in the generator struct
@@ -243,11 +243,11 @@ impl<'tcx> TransformVisitor<'tcx> {
         val: Operand<'tcx>,
         source_info: SourceInfo,
     ) -> impl Iterator<Item = Statement<'tcx>> {
-        let kind = AggregateKind::Adt(self.state_adt_ref.did, idx, self.state_substs, None, None);
-        assert_eq!(self.state_adt_ref.variants[idx].fields.len(), 1);
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_substs, None, None);
+        assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
         let ty = self
             .tcx
-            .type_of(self.state_adt_ref.variants[idx].fields[0].did)
+            .type_of(self.state_adt_ref.variant(idx).fields[0].did)
             .subst(self.tcx, self.state_substs);
         expand_aggregate(
             Place::return_place(),

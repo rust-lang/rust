@@ -395,17 +395,17 @@ fn check_for_bindings_named_same_as_variants(
             && let pat_ty = cx.typeck_results.pat_ty(p).peel_refs()
             && let ty::Adt(edef, _) = pat_ty.kind()
             && edef.is_enum()
-            && edef.variants.iter().any(|variant| {
+            && edef.variants().iter().any(|variant| {
                 variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
             })
         {
-            let variant_count = edef.variants.len();
+            let variant_count = edef.variants().len();
             cx.tcx.struct_span_lint_hir(
                 BINDINGS_WITH_VARIANT_NAME,
                 p.hir_id,
                 p.span,
                 |lint| {
-                    let ty_path = cx.tcx.def_path_str(edef.did);
+                    let ty_path = cx.tcx.def_path_str(edef.did());
                     let mut err = lint.build(&format!(
                         "pattern binding `{}` is named the same as one \
                          of the variants of the type `{}`",
@@ -573,7 +573,7 @@ fn non_exhaustive_match<'p, 'tcx>(
 ) {
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
-        ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
+        ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),
         _ => false,
     };
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
@@ -609,7 +609,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     };
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did.is_local() => true,
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
         _ => false,
     };
 
@@ -762,17 +762,17 @@ fn adt_defined_here<'p, 'tcx>(
     if let ty::Adt(def, _) = ty.kind() {
         let mut spans = vec![];
         if witnesses.len() < 5 {
-            for sp in maybe_point_at_variant(cx, def, witnesses.iter()) {
+            for sp in maybe_point_at_variant(cx, *def, witnesses.iter()) {
                 spans.push(sp);
             }
         }
         let def_span = cx
             .tcx
             .hir()
-            .get_if_local(def.did)
+            .get_if_local(def.did())
             .and_then(|node| node.ident())
             .map(|ident| ident.span)
-            .unwrap_or_else(|| cx.tcx.def_span(def.did));
+            .unwrap_or_else(|| cx.tcx.def_span(def.did()));
         let mut span: MultiSpan =
             if spans.is_empty() { def_span.into() } else { spans.clone().into() };
 
@@ -786,17 +786,17 @@ fn adt_defined_here<'p, 'tcx>(
 
 fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    def: &AdtDef,
+    def: AdtDef<'tcx>,
     patterns: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
 ) -> Vec<Span> {
     use Constructor::*;
     let mut covered = vec![];
     for pattern in patterns {
         if let Variant(variant_index) = pattern.ctor() {
-            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did != def.did {
+            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did() != def.did() {
                 continue;
             }
-            let sp = def.variants[*variant_index].ident(cx.tcx).span;
+            let sp = def.variant(*variant_index).ident(cx.tcx).span;
             if covered.contains(&sp) {
                 // Don't point at variants that have already been covered due to other patterns to avoid
                 // visual clutter.

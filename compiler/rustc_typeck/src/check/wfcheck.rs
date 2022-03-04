@@ -995,7 +995,7 @@ fn check_type_defn<'tcx, F>(
 {
     for_item(tcx, item).with_fcx(|fcx| {
         let variants = lookup_fields(fcx);
-        let packed = tcx.adt_def(item.def_id).repr.packed();
+        let packed = tcx.adt_def(item.def_id).repr().packed();
 
         for variant in &variants {
             // For DST, or when drop needs to copy things around, all

@@ -40,13 +40,13 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
                 tcx,
                 drop_impl_did.expect_local(),
                 dtor_self_type,
-                adt_def.did,
+                adt_def.did(),
             )?;
 
             ensure_drop_predicates_are_implied_by_item_defn(
                 tcx,
                 dtor_predicates,
-                adt_def.did.expect_local(),
+                adt_def.did().expect_local(),
                 self_to_impl_substs,
             )
         }

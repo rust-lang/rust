@@ -157,7 +157,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // `['b => 'a, U => T]` and thus get the requirement that `T:
                 // 'a` holds for `Foo`.
                 debug!("Adt");
-                if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did) {
+                if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did()) {
                     for (unsubstituted_predicate, &span) in unsubstituted_predicates {
                         // `unsubstituted_predicate` is `U: 'b` in the
                         // example above.  So apply the substitution to
@@ -178,7 +178,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 // let _: () = substs.region_at(0);
                 check_explicit_predicates(
                     tcx,
-                    def.did,
+                    def.did(),
                     substs,
                     required_predicates,
                     explicit_map,

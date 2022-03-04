@@ -38,22 +38,22 @@ struct ExprVisitor<'tcx> {
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     let ty::Adt(def, substs) = *ty.kind() else { return ty };
 
-    if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
+    if def.variants().len() == 2 && !def.repr().c() && def.repr().int.is_none() {
         let data_idx;
 
         let one = VariantIdx::new(1);
         let zero = VariantIdx::new(0);
 
-        if def.variants[zero].fields.is_empty() {
+        if def.variant(zero).fields.is_empty() {
             data_idx = one;
-        } else if def.variants[one].fields.is_empty() {
+        } else if def.variant(one).fields.is_empty() {
             data_idx = zero;
         } else {
             return ty;
         }
 
-        if def.variants[data_idx].fields.len() == 1 {
-            return def.variants[data_idx].fields[0].ty(tcx, substs);
+        if def.variant(data_idx).fields.len() == 1 {
+            return def.variant(data_idx).fields[0].ty(tcx, substs);
         }
     }
 
@@ -165,7 +165,7 @@ impl<'tcx> ExprVisitor<'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, mutbl: _ }) if self.is_thin_ptr_ty(ty) => {
                 Some(asm_ty_isize)
             }
-            ty::Adt(adt, substs) if adt.repr.simd() => {
+            ty::Adt(adt, substs) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
                 let elem_ty = fields[0].ty(self.tcx, substs);
                 match elem_ty.kind() {

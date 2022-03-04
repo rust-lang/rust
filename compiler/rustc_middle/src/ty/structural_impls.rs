@@ -33,13 +33,13 @@ impl fmt::Debug for ty::TraitDef {
     }
 }
 
-impl fmt::Debug for ty::AdtDef {
+impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
                 f.write_str(
                     &FmtPrinter::new(tcx, Namespace::TypeNS)
-                        .print_def_path(self.did, &[])?
+                        .print_def_path(self.did(), &[])?
                         .into_buffer(),
                 )
             })
@@ -672,7 +672,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
 // TypeFoldable implementations.
 
 /// AdtDefs are basically the same as a DefId.
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {
+impl<'tcx> TypeFoldable<'tcx> for ty::AdtDef<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         _folder: &mut F,

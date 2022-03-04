@@ -267,7 +267,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 match layout.variants {
                     Variants::Single { index } => {
                         // Inside a variant
-                        PathElem::Field(def.variants[index].fields[field].name)
+                        PathElem::Field(def.variant(index).fields[field].name)
                     }
                     Variants::Multiple { .. } => bug!("we handled variants above"),
                 }
@@ -734,7 +734,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         new_op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
         let name = match old_op.layout.ty.kind() {
-            ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].name),
+            ty::Adt(adt, _) => PathElem::Variant(adt.variant(variant_id).name),
             // Generators also have variants
             ty::Generator(..) => PathElem::GeneratorState(variant_id),
             _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
@@ -771,7 +771,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         // Special check preventing `UnsafeCell` in the inner part of constants
         if let Some(def) = op.layout.ty.ty_adt_def() {
             if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. }))
-                && Some(def.did) == self.ecx.tcx.lang_items().unsafe_cell_type()
+                && Some(def.did()) == self.ecx.tcx.lang_items().unsafe_cell_type()
             {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }

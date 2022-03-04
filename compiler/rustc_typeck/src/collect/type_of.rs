@@ -464,7 +464,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
                 Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => tcx
                     .adt_def(tcx.hir().get_parent_item(hir_id))
-                    .repr
+                    .repr()
                     .discr_type()
                     .to_ty(tcx),
 

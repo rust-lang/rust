@@ -582,7 +582,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if let (&ty::Adt(exp_adt, _), &ty::Adt(found_adt, _)) =
                     (exp_found.expected.kind(), exp_found.found.kind())
                 {
-                    report_path_match(err, exp_adt.did, found_adt.did);
+                    report_path_match(err, exp_adt.did(), found_adt.did());
                 }
             }
             TypeError::Traits(ref exp_found) => {
@@ -914,7 +914,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 return Some(());
             }
             if let ty::Adt(def, _) = ta.kind() {
-                let path_ = self.tcx.def_path_str(def.did);
+                let path_ = self.tcx.def_path_str(def.did());
                 if path_ == other_path {
                     self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, other_ty);
                     return Some(());
@@ -1126,12 +1126,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // process starts here
         match (t1.kind(), t2.kind()) {
             (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
-                let sub_no_defaults_1 = self.strip_generic_default_params(def1.did, sub1);
-                let sub_no_defaults_2 = self.strip_generic_default_params(def2.did, sub2);
+                let did1 = def1.did();
+                let did2 = def2.did();
+                let sub_no_defaults_1 = self.strip_generic_default_params(did1, sub1);
+                let sub_no_defaults_2 = self.strip_generic_default_params(did2, sub2);
                 let mut values = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
-                let path1 = self.tcx.def_path_str(def1.did);
-                let path2 = self.tcx.def_path_str(def2.did);
-                if def1.did == def2.did {
+                let path1 = self.tcx.def_path_str(did1);
+                let path2 = self.tcx.def_path_str(did2);
+                if did1 == did2 {
                     // Easy case. Replace same types with `_` to shorten the output and highlight
                     // the differing ones.
                     //     let x: Foo<Bar, Qux> = y::<Foo<Quz, Qux>>();

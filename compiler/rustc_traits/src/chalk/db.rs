@@ -166,13 +166,13 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AdtDatum<RustInterner<'tcx>>> {
         let adt_def = adt_id.0;
 
-        let bound_vars = bound_vars_for_item(self.interner.tcx, adt_def.did);
+        let bound_vars = bound_vars_for_item(self.interner.tcx, adt_def.did());
         let binders = binders_for(self.interner, bound_vars);
 
-        let where_clauses = self.where_clauses_for(adt_def.did, bound_vars);
+        let where_clauses = self.where_clauses_for(adt_def.did(), bound_vars);
 
         let variants: Vec<_> = adt_def
-            .variants
+            .variants()
             .iter()
             .map(|variant| chalk_solve::rust_ir::AdtVariantDatum {
                 fields: variant
@@ -189,7 +189,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 chalk_solve::rust_ir::AdtDatumBound { variants, where_clauses },
             ),
             flags: chalk_solve::rust_ir::AdtFlags {
-                upstream: !adt_def.did.is_local(),
+                upstream: !adt_def.did().is_local(),
                 fundamental: adt_def.is_fundamental(),
                 phantom_data: adt_def.is_phantom_data(),
             },
@@ -209,9 +209,9 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         let int = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Int(i)).intern(self.interner);
         let uint = |i| chalk_ir::TyKind::Scalar(chalk_ir::Scalar::Uint(i)).intern(self.interner);
         Arc::new(chalk_solve::rust_ir::AdtRepr {
-            c: adt_def.repr.c(),
-            packed: adt_def.repr.packed(),
-            int: adt_def.repr.int.map(|i| match i {
+            c: adt_def.repr().c(),
+            packed: adt_def.repr().packed(),
+            int: adt_def.repr().int.map(|i| match i {
                 attr::IntType::SignedInt(ty) => match ty {
                     ast::IntTy::Isize => int(chalk_ir::IntTy::Isize),
                     ast::IntTy::I8 => int(chalk_ir::IntTy::I8),
@@ -354,7 +354,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             let trait_ref = self.interner.tcx.impl_trait_ref(impl_def_id).unwrap();
             let self_ty = trait_ref.self_ty();
             let provides = match (self_ty.kind(), chalk_ty) {
-                (&ty::Adt(impl_adt_def, ..), Adt(id, ..)) => impl_adt_def.did == id.0.did,
+                (&ty::Adt(impl_adt_def, ..), Adt(id, ..)) => impl_adt_def.did() == id.0.did(),
                 (_, AssociatedType(_ty_id, ..)) => {
                     // FIXME(chalk): See https://github.com/rust-lang/rust/pull/77152#discussion_r494484774
                     false
@@ -671,7 +671,7 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         &self,
         adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
-        let variances = self.interner.tcx.variances_of(adt_id.0.did);
+        let variances = self.interner.tcx.variances_of(adt_id.0.did());
         chalk_ir::Variances::from_iter(
             self.interner,
             variances.iter().map(|v| v.lower_into(self.interner)),

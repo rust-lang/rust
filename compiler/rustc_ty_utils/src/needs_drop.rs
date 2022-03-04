@@ -16,7 +16,7 @@ fn needs_drop_raw<'tcx>(tcx: TyCtxt<'tcx>, query: ty::ParamEnvAnd<'tcx, Ty<'tcx>
     // parameter without a `Copy` bound, then we conservatively return that it
     // needs drop.
     let adt_has_dtor =
-        |adt_def: &ty::AdtDef| adt_def.destructor(tcx).map(|_| DtorType::Significant);
+        |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     let res =
         drop_tys_helper(tcx, query.value, query.param_env, adt_has_dtor, false).next().is_some();
 
@@ -78,7 +78,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(&ty::AdtDef, SubstsRef<'tcx>) -> NeedsDropResult<I>,
+    F: Fn(ty::AdtDef<'tcx>, SubstsRef<'tcx>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -193,7 +193,7 @@ fn drop_tys_helper<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     param_env: rustc_middle::ty::ParamEnv<'tcx>,
-    adt_has_dtor: impl Fn(&ty::AdtDef) -> Option<DtorType>,
+    adt_has_dtor: impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType>,
     only_significant: bool,
 ) -> impl Iterator<Item = NeedsDropResult<Ty<'tcx>>> {
     fn with_query_cache<'tcx>(
@@ -203,7 +203,7 @@ fn drop_tys_helper<'tcx>(
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
             match subty.kind() {
                 ty::Adt(adt_id, subst) => {
-                    for subty in tcx.adt_drop_tys(adt_id.did)? {
+                    for subty in tcx.adt_drop_tys(adt_id.did())? {
                         vec.push(subty.subst(tcx, subst));
                     }
                 }
@@ -213,7 +213,7 @@ fn drop_tys_helper<'tcx>(
         })
     }
 
-    let adt_components = move |adt_def: &ty::AdtDef, substs: SubstsRef<'tcx>| {
+    let adt_components = move |adt_def: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             Ok(Vec::new())
@@ -260,9 +260,9 @@ fn drop_tys_helper<'tcx>(
 
 fn adt_consider_insignificant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
-) -> impl Fn(&ty::AdtDef) -> Option<DtorType> + 'tcx {
-    move |adt_def: &ty::AdtDef| {
-        let is_marked_insig = tcx.has_attr(adt_def.did, sym::rustc_insignificant_dtor);
+) -> impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType> + 'tcx {
+    move |adt_def: ty::AdtDef<'tcx>| {
+        let is_marked_insig = tcx.has_attr(adt_def.did(), sym::rustc_insignificant_dtor);
         if is_marked_insig {
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
@@ -281,11 +281,14 @@ fn adt_consider_insignificant_dtor<'tcx>(
     }
 }
 
-fn adt_drop_tys(tcx: TyCtxt<'_>, def_id: DefId) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
+fn adt_drop_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> Result<&ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
     // This is for the "adt_drop_tys" query, that considers all `Drop` impls, therefore all dtors are
     // significant.
     let adt_has_dtor =
-        |adt_def: &ty::AdtDef| adt_def.destructor(tcx).map(|_| DtorType::Significant);
+        |adt_def: ty::AdtDef<'tcx>| adt_def.destructor(tcx).map(|_| DtorType::Significant);
     // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_substs)`
     drop_tys_helper(tcx, tcx.type_of(def_id), tcx.param_env(def_id), adt_has_dtor, false)
         .collect::<Result<Vec<_>, _>>()

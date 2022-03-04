@@ -15,7 +15,7 @@ use crate::mir::{
 use crate::thir;
 use crate::traits;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::Span;
@@ -156,6 +156,12 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ConstAllocation<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AdtDef<'tcx> {
+    fn encode(&self, e: &mut E) -> Result<(), E::Error> {
+        self.0.0.encode(e)
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AllocId {
     fn encode(&self, e: &mut E) -> Result<(), E::Error> {
         e.encode_alloc_id(self)
@@ -178,8 +184,7 @@ encodable_via_deref! {
     &'tcx mir::Body<'tcx>,
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion,
-    &'tcx ty::AdtDef
+    &'tcx mir::coverage::CodeRegion
 }
 
 pub trait TyDecoder<'tcx>: Decoder {
@@ -367,6 +372,12 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ConstAllocation<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for AdtDef<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.tcx().intern_adt_def(Decodable::decode(decoder))
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [(ty::Predicate<'tcx>, Span)] {
     fn decode(decoder: &mut D) -> &'tcx Self {
         decoder.tcx().arena.alloc_from_iter(
@@ -409,8 +420,7 @@ impl_decodable_via_ref! {
     &'tcx mir::UnsafetyCheckResult,
     &'tcx mir::BorrowCheckResult<'tcx>,
     &'tcx mir::coverage::CodeRegion,
-    &'tcx ty::List<ty::BoundVariableKind>,
-    &'tcx ty::AdtDef
+    &'tcx ty::List<ty::BoundVariableKind>
 }
 
 #[macro_export]

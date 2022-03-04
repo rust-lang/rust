@@ -855,7 +855,7 @@ fn is_multivariant_adt(ty: Ty<'_>) -> bool {
             }
             AdtKind::Enum => def.is_variant_list_non_exhaustive(),
         };
-        def.variants.len() > 1 || (!def.did.is_local() && is_non_exhaustive)
+        def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
     } else {
         false
     }

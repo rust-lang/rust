@@ -2,7 +2,7 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
-use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
+use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::def::{
     DefKind,
@@ -439,7 +439,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             Err(ResolutionFailure::NotResolved {
                                 item_id,
                                 module_id,
-                                partial_res: Some(Res::Def(DefKind::Enum, def.did)),
+                                partial_res: Some(Res::Def(DefKind::Enum, def.did())),
                                 unresolved: variant_field_name.to_string().into(),
                             }
                             .into())
@@ -686,7 +686,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::FnDef(..) => panic!("type alias to a function definition"),
             ty::FnPtr(_) => Res::Primitive(Fn),
             ty::Never => Res::Primitive(Never),
-            ty::Adt(&ty::AdtDef { did, .. }, _) | ty::Foreign(did) => {
+            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
                 Res::Def(self.cx.tcx.def_kind(did), did)
             }
             ty::Projection(_)
@@ -779,7 +779,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 if ns == TypeNS && def_kind == DefKind::Enum {
                     match tcx.type_of(did).kind() {
                         ty::Adt(adt_def, _) => {
-                            for variant in &adt_def.variants {
+                            for variant in adt_def.variants() {
                                 if variant.name == item_name {
                                     return Some((
                                         root_res,
@@ -1002,8 +1002,8 @@ fn trait_impls_for<'a>(
             let saw_impl = impl_type == ty
                 || match (impl_type.kind(), ty.kind()) {
                     (ty::Adt(impl_def, _), ty::Adt(ty_def, _)) => {
-                        debug!("impl def_id: {:?}, ty def_id: {:?}", impl_def.did, ty_def.did);
-                        impl_def.did == ty_def.did
+                        debug!("impl def_id: {:?}, ty def_id: {:?}", impl_def.did(), ty_def.did());
+                        impl_def.did() == ty_def.did()
                     }
                     _ => false,
                 };

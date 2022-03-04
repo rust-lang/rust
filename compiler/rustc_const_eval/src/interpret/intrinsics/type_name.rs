@@ -1,3 +1,4 @@
+use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::CrateNum;
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::mir::interpret::{Allocation, ConstAllocation};
@@ -56,7 +57,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             }
 
             // Types with identity (print the module path).
-            ty::Adt(&ty::AdtDef { did: def_id, .. }, substs)
+            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), substs)
             | ty::FnDef(def_id, substs)
             | ty::Opaque(def_id, substs)
             | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })

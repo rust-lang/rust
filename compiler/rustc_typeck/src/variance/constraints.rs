@@ -283,7 +283,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Adt(def, substs) => {
-                self.add_constraints_from_substs(current, def.did, substs, variance);
+                self.add_constraints_from_substs(current, def.did(), substs, variance);
             }
 
             ty::Projection(ref data) => {

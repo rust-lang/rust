@@ -640,7 +640,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());
             }
             ty::Adt(def, _) => {
-                self.assemble_inherent_impl_candidates_for_type(def.did);
+                self.assemble_inherent_impl_candidates_for_type(def.did());
             }
             ty::Foreign(did) => {
                 self.assemble_inherent_impl_candidates_for_type(did);

@@ -946,7 +946,7 @@ enum TestKind<'tcx> {
     /// Test what enum variant a value is.
     Switch {
         /// The enum type being tested.
-        adt_def: &'tcx ty::AdtDef,
+        adt_def: ty::AdtDef<'tcx>,
         /// The set of variants that we should create a branch for. We also
         /// create an additional "otherwise" case.
         variants: BitSet<VariantIdx>,

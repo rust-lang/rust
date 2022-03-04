@@ -524,7 +524,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             {
                                 Some(type_metadata(cx, impl_self_ty))
                             } else {
-                                Some(namespace::item_namespace(cx, def.did))
+                                Some(namespace::item_namespace(cx, def.did()))
                             }
                         }
                         _ => None,

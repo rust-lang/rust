@@ -268,7 +268,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 
         ty::Adt(def, substs) => {
             let DtorckConstraint { dtorck_types, outlives, overflows } =
-                tcx.at(span).adt_dtorck_constraint(def.did)?;
+                tcx.at(span).adt_dtorck_constraint(def.did())?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
             constraints.dtorck_types.extend(dtorck_types.iter().map(|t| t.subst(tcx, substs)));
