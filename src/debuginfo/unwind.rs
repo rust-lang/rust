@@ -99,7 +99,7 @@ impl UnwindContext {
         let (eh_frame, eh_frame_len, _) = Vec::into_raw_parts(eh_frame);
 
         // =======================================================================
-        // Everything after this line up to the end of the file is loosly based on
+        // Everything after this line up to the end of the file is loosely based on
         // https://github.com/bytecodealliance/wasmtime/blob/4471a82b0c540ff48960eca6757ccce5b1b5c3e4/crates/jit/src/unwind/systemv.rs
         #[cfg(target_os = "macos")]
         {
