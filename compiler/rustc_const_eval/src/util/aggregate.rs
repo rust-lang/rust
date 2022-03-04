@@ -50,27 +50,21 @@ pub fn expand_aggregate<'tcx>(
         _ => None,
     };
 
-    operands
-        .enumerate()
-        .map(move |(i, (op, ty))| {
-            let lhs_field = if let AggregateKind::Array(_) = kind {
-                let offset = u64::try_from(i).unwrap();
-                tcx.mk_place_elem(
-                    lhs,
-                    ProjectionElem::ConstantIndex {
-                        offset,
-                        min_length: offset + 1,
-                        from_end: false,
-                    },
-                )
-            } else {
-                let field = Field::new(active_field_index.unwrap_or(i));
-                tcx.mk_place_field(lhs, field, ty)
-            };
-            Statement {
-                source_info,
-                kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
-            }
-        })
-        .chain(set_discriminant)
+    let op_iter = operands.enumerate().map(move |(i, (op, ty))| {
+        let lhs_field = if let AggregateKind::Array(_) = kind {
+            let offset = u64::try_from(i).unwrap();
+            tcx.mk_place_elem(
+                lhs,
+                ProjectionElem::ConstantIndex { offset, min_length: offset + 1, from_end: false },
+            )
+        } else {
+            let field = Field::new(active_field_index.unwrap_or(i));
+            tcx.mk_place_field(lhs, field, ty)
+        };
+        Statement {
+            source_info,
+            kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
+        }
+    });
+    set_discriminant.into_iter().chain(op_iter)
 }
