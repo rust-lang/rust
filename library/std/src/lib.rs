@@ -270,6 +270,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(maybe_uninit_slice)]

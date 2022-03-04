@@ -37,6 +37,7 @@
 #![feature(future_join)]
 #![feature(future_poll_fn)]
 #![feature(array_from_fn)]
+#![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(try_find)]
 #![feature(inline_const)]
