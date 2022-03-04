@@ -44,6 +44,7 @@ store.register_lints(&[
     assign_ops::ASSIGN_OP_PATTERN,
     assign_ops::MISREFACTORED_ASSIGN_OP,
     async_yields_async::ASYNC_YIELDS_ASYNC,
+    attrs::ALLOW_ATTRIBUTES_WITHOUT_REASON,
     attrs::BLANKET_CLIPPY_RESTRICTION_LINTS,
     attrs::DEPRECATED_CFG_ATTR,
     attrs::DEPRECATED_SEMVER,
