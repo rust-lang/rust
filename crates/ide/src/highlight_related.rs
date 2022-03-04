@@ -98,24 +98,37 @@ fn highlight_references(
             range,
             category: access,
         });
+    let mut res = FxHashSet::default();
 
-    let declarations = defs.iter().flat_map(|def| {
-        match def {
-            &Definition::Module(module) => {
+    let mut def_to_hl_range = |def| {
+        let hl_range = match def {
+            Definition::Module(module) => {
                 Some(NavigationTarget::from_module_to_decl(sema.db, module))
             }
             def => def.try_to_nav(sema.db),
         }
         .filter(|decl| decl.file_id == file_id)
-        .and_then(|decl| {
-            let range = decl.focus_range?;
+        .and_then(|decl| decl.focus_range)
+        .map(|range| {
             let category =
                 references::decl_mutability(&def, node, range).then(|| ReferenceCategory::Write);
-            Some(HighlightedRange { range, category })
-        })
-    });
+            HighlightedRange { range, category }
+        });
+        if let Some(hl_range) = hl_range {
+            res.insert(hl_range);
+        }
+    };
+    for &def in &defs {
+        match def {
+            Definition::Local(local) => local
+                .associated_locals(sema.db)
+                .iter()
+                .for_each(|&local| def_to_hl_range(Definition::Local(local))),
+            def => def_to_hl_range(def),
+        }
+    }
 
-    let res: FxHashSet<_> = declarations.chain(usages).collect();
+    res.extend(usages);
     if res.is_empty() {
         None
     } else {
@@ -332,6 +345,7 @@ mod tests {
 
     use super::*;
 
+    #[track_caller]
     fn check(ra_fixture: &str) {
         let config = HighlightRelatedConfig {
             break_points: true,
@@ -343,6 +357,7 @@ mod tests {
         check_with_config(ra_fixture, config);
     }
 
+    #[track_caller]
     fn check_with_config(ra_fixture: &str, config: HighlightRelatedConfig) {
         let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
 
@@ -1053,13 +1068,15 @@ fn function(field: u32) {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() {
     let x$0 = 5;
     let y = x * 2;
-}"#;
-
-        check_with_config(ra_fixture, config);
+}
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1071,7 +1088,8 @@ fn foo() {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() {
     let x$0 = 5;
     let y = x * 2;
@@ -1079,11 +1097,13 @@ fn foo() {
     loop {
         break;
     }
-}"#;
+}
+"#,
+            config.clone(),
+        );
 
-        check_with_config(ra_fixture, config.clone());
-
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() {
     let x = 5;
     let y = x * 2;
@@ -1093,9 +1113,10 @@ fn foo() {
         break;
 //      ^^^^^
     }
-}"#;
-
-        check_with_config(ra_fixture, config);
+}
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1107,17 +1128,20 @@ fn foo() {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 async fn foo() {
     let x$0 = 5;
     let y = x * 2;
 
     0.await;
-}"#;
+}
+"#,
+            config.clone(),
+        );
 
-        check_with_config(ra_fixture, config.clone());
-
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
     async fn foo() {
 //  ^^^^^
         let x = 5;
@@ -1125,9 +1149,10 @@ async fn foo() {
 
         0.await$0;
 //        ^^^^^
-}"#;
-
-        check_with_config(ra_fixture, config);
+}
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1139,7 +1164,8 @@ async fn foo() {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() -> i32 {
     let x$0 = 5;
     let y = x * 2;
@@ -1149,11 +1175,13 @@ fn foo() -> i32 {
     }
 
     0?
-}"#;
+}
+"#,
+            config.clone(),
+        );
 
-        check_with_config(ra_fixture, config.clone());
-
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() ->$0 i32 {
     let x = 5;
     let y = x * 2;
@@ -1165,9 +1193,9 @@ fn foo() ->$0 i32 {
 
     0?
 //   ^
-"#;
-
-        check_with_config(ra_fixture, config);
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1179,14 +1207,16 @@ fn foo() ->$0 i32 {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() {
     loop {
         break$0;
     }
-}"#;
-
-        check_with_config(ra_fixture, config);
+}
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1198,12 +1228,14 @@ fn foo() {
             yield_points: false,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 async$0 fn foo() {
     0.await;
-}"#;
-
-        check_with_config(ra_fixture, config);
+}
+"#,
+            config,
+        );
     }
 
     #[test]
@@ -1215,15 +1247,68 @@ async$0 fn foo() {
             yield_points: true,
         };
 
-        let ra_fixture = r#"
+        check_with_config(
+            r#"
 fn foo() ->$0 i32 {
     if true {
         return -1;
     }
 
     42
-}"#;
+}"#,
+            config,
+        );
+    }
 
-        check_with_config(ra_fixture, config);
+    #[test]
+    fn test_hl_multi_local() {
+        check(
+            r#"
+fn foo((
+    foo$0
+  //^^^
+    | foo
+    //^^^
+    | foo
+    //^^^
+): ()) {
+    foo;
+  //^^^read
+    let foo;
+}
+"#,
+        );
+        check(
+            r#"
+fn foo((
+    foo
+  //^^^
+    | foo$0
+    //^^^
+    | foo
+    //^^^
+): ()) {
+    foo;
+  //^^^read
+    let foo;
+}
+"#,
+        );
+        check(
+            r#"
+fn foo((
+    foo
+  //^^^
+    | foo
+    //^^^
+    | foo
+    //^^^
+): ()) {
+    foo$0;
+  //^^^read
+    let foo;
+}
+"#,
+        );
     }
 }

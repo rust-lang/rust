@@ -2036,6 +2036,11 @@ impl GenericDef {
     }
 }
 
+/// A single local definition.
+///
+/// If the definition of this is part of a "MultiLocal", that is a local that has multiple declarations due to or-patterns
+/// then this only references a single one of those.
+/// To retrieve the other locals you should use [`Local::associated_locals`]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBodyId,
@@ -2107,12 +2112,28 @@ impl Local {
         Type::new(db, krate, def, ty)
     }
 
+    pub fn associated_locals(self, db: &dyn HirDatabase) -> Box<[Local]> {
+        let body = db.body(self.parent);
+        body.ident_patterns_for(&self.pat_id)
+            .iter()
+            .map(|&pat_id| Local { parent: self.parent, pat_id })
+            .collect()
+    }
+
+    /// If this local is part of a multi-local, retrieve the representative local.
+    /// That is the local that references are being resolved to.
+    pub fn representative(self, db: &dyn HirDatabase) -> Local {
+        let body = db.body(self.parent);
+        Local { pat_id: body.pattern_representative(self.pat_id), ..self }
+    }
+
     pub fn source(self, db: &dyn HirDatabase) -> InFile<Either<ast::IdentPat, ast::SelfParam>> {
         let (_body, source_map) = db.body_with_source_map(self.parent);
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db.upcast());
-        src.map(|ast| {
-            ast.map_left(|it| it.cast().unwrap().to_node(&root)).map_right(|it| it.to_node(&root))
+        src.map(|ast| match ast {
+            Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
+            Either::Right(it) => Either::Right(it.to_node(&root)),
         })
     }
 }

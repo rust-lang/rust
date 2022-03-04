@@ -206,6 +206,7 @@ fn inline_usage(
         return None;
     }
 
+    // FIXME: Handle multiple local definitions
     let bind_pat = match local.source(sema.db).value {
         Either::Left(ident) => ident,
         _ => return None,
