@@ -7,14 +7,37 @@ use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::str;
-use std::time::Instant;
-
-use build_helper::t;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
+
+/// A helper macro to `unwrap` a result except also print out details like:
+///
+/// * The file/line of the panic
+/// * The expression that failed
+/// * The error itself
+///
+/// This is currently used judiciously throughout the build system rather than
+/// using a `Result` with `try!`, but this may change one day...
+macro_rules! t {
+    ($e:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {}", stringify!($e), e),
+        }
+    };
+    // it can show extra info in the second parameter
+    ($e:expr, $extra:expr) => {
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
+        }
+    };
+}
+pub(crate) use t;
 
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
@@ -300,4 +323,120 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
         Some(s) if !s.is_empty() => Some(s),
         _ => None,
     }
+}
+
+pub fn run(cmd: &mut Command, print_cmd_on_fail: bool) {
+    if !try_run(cmd, print_cmd_on_fail) {
+        std::process::exit(1);
+    }
+}
+
+pub fn try_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
+    let status = match cmd.status() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+    };
+    if !status.success() && print_cmd_on_fail {
+        println!(
+            "\n\ncommand did not execute successfully: {:?}\n\
+             expected success, got: {}\n\n",
+            cmd, status
+        );
+    }
+    status.success()
+}
+
+pub fn run_suppressed(cmd: &mut Command) {
+    if !try_run_suppressed(cmd) {
+        std::process::exit(1);
+    }
+}
+
+pub fn try_run_suppressed(cmd: &mut Command) -> bool {
+    let output = match cmd.output() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        println!(
+            "\n\ncommand did not execute successfully: {:?}\n\
+             expected success, got: {}\n\n\
+             stdout ----\n{}\n\
+             stderr ----\n{}\n\n",
+            cmd,
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    output.status.success()
+}
+
+pub fn make(host: &str) -> PathBuf {
+    if host.contains("dragonfly")
+        || host.contains("freebsd")
+        || host.contains("netbsd")
+        || host.contains("openbsd")
+    {
+        PathBuf::from("gmake")
+    } else {
+        PathBuf::from("make")
+    }
+}
+
+#[track_caller]
+pub fn output(cmd: &mut Command) -> String {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        panic!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}",
+            cmd, output.status
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
+}
+
+/// Returns the last-modified time for `path`, or zero if it doesn't exist.
+pub fn mtime(path: &Path) -> SystemTime {
+    fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
+}
+
+/// Returns `true` if `dst` is up to date given that the file or files in `src`
+/// are used to generate it.
+///
+/// Uses last-modified time checks to verify this.
+pub fn up_to_date(src: &Path, dst: &Path) -> bool {
+    if !dst.exists() {
+        return false;
+    }
+    let threshold = mtime(dst);
+    let meta = match fs::metadata(src) {
+        Ok(meta) => meta,
+        Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
+    };
+    if meta.is_dir() {
+        dir_up_to_date(src, threshold)
+    } else {
+        meta.modified().unwrap_or(UNIX_EPOCH) <= threshold
+    }
+}
+
+fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
+    t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
+        let meta = t!(e.metadata());
+        if meta.is_dir() {
+            dir_up_to_date(&e.path(), threshold)
+        } else {
+            meta.modified().unwrap_or(UNIX_EPOCH) < threshold
+        }
+    })
+}
+
+fn fail(s: &str) -> ! {
+    println!("\n\n{}\n\n", s);
+    std::process::exit(1);
 }

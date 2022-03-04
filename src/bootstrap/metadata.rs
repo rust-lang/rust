@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use build_helper::output;
 use serde::Deserialize;
 
 use crate::cache::INTERNER;
+use crate::util::output;
 use crate::{Build, Crate};
 
 #[derive(Deserialize)]

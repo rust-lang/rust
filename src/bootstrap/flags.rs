@@ -7,12 +7,12 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use build_helper::t;
 use getopts::Options;
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
+use crate::util::t;
 use crate::{Build, DocTests};
 
 pub enum Color {
