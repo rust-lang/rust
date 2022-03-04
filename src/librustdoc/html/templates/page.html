@@ -54,7 +54,7 @@
             href="{{static_root_path|safe}}theme{{page.resource_suffix}}.css"> {#- -#}
     {%- endif -%}
     {%- if !layout.favicon.is_empty() -%}
-        <link rel="shortcut icon" href="{{layout.favicon}}"> {#- -#}
+        <link rel="icon" href="{{layout.favicon}}"> {#- -#}
     {%- else -%}
         <link rel="alternate icon" type="image/png" {# -#}
             href="{{static_root_path|safe}}favicon-16x16{{page.resource_suffix}}.png"> {#- -#}

@@ -59,7 +59,7 @@ This form of the `doc` attribute lets you control the favicon of your docs.
 #![doc(html_favicon_url = "https://example.com/favicon.ico")]
 ```
 
-This will put `<link rel="shortcut icon" href="{}">` into your docs, where
+This will put `<link rel="icon" href="{}">` into your docs, where
 the string for the attribute goes into the `{}`.
 
 If you don't use this attribute, there will be no favicon.
