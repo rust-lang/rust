@@ -5,9 +5,9 @@
 /// collection of some kind.
 ///
 /// If you want to create a collection from the contents of an iterator, the
-/// [`Iterator::collect()`] method is preferred. However, the compiler is
-/// sometimes unable to infer the full type of the collection. In these cases,
-/// [`FromIterator::from_iter()`] can be more concise and readable. See the
+/// [`Iterator::collect()`] method is preferred. However, when you need to
+/// specify the container type, [`FromIterator::from_iter()`] can be more
+/// readable than using a turbofish (e.g. `::<Vec<_>>()`). See the
 /// [`Iterator::collect()`] documentation for more examples of its use.
 ///
 /// See also: [`IntoIterator`].
