@@ -86,6 +86,11 @@ impl HirDisplay for Function {
             // The former will ignore lifetime arguments currently.
             type_ref.hir_fmt(f)?;
         }
+
+        if data.is_varargs() {
+            write!(f, ", ...")?;
+        }
+
         write!(f, ")")?;
 
         // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.

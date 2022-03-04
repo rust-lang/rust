@@ -1758,6 +1758,30 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
 }
 
 #[test]
+fn test_hover_variadic_function() {
+    check(
+        r#"
+extern "C" {
+    pub fn foo(bar: i32, ...) -> i32;
+}
+
+fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            pub unsafe fn foo(bar: i32, ...) -> i32
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_trait_has_impl_action() {
     check_actions(
         r#"trait foo$0() {}"#,
