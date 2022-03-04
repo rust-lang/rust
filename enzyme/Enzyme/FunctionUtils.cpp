@@ -1057,7 +1057,7 @@ Function *PreProcessCache::preprocessForClone(Function *F,
   if (mode == DerivativeMode::ReverseModeGradient)
     mode = DerivativeMode::ReverseModePrimal;
   if (mode == DerivativeMode::ForwardModeSplit)
-    mode = DerivativeMode::ForwardMode;
+    mode = DerivativeMode::ReverseModePrimal;
 
   // If we've already processed this, return the previous version
   // and derive aliasing information

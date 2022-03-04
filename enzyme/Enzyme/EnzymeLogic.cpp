@@ -82,14 +82,6 @@ cl::opt<bool> looseTypeAnalysis("enzyme-loose-types", cl::init(false),
                                 cl::Hidden,
                                 cl::desc("Allow looser use of types"));
 
-cl::opt<bool> cache_reads_always("enzyme-cache-always", cl::init(false),
-                                 cl::Hidden,
-                                 cl::desc("Force always caching of all reads"));
-
-cl::opt<bool> cache_reads_never("enzyme-cache-never", cl::init(false),
-                                cl::Hidden,
-                                cl::desc("Disable caching of all reads"));
-
 cl::opt<bool> nonmarkedglobals_inactiveloads(
     "enzyme_nonmarkedglobals_inactiveloads", cl::init(true), cl::Hidden,
     cl::desc("Consider loads of nonmarked globals to be inactive"));
@@ -1480,11 +1472,167 @@ static FnTypeInfo preventTypeAnalysisLoops(const FnTypeInfo &oldTypeInfo_,
   return oldTypeInfo;
 }
 
+void restoreCache(
+    DiffeGradientUtils *gutils,
+    const std::map<std::pair<Instruction *, CacheType>, int> &mapping,
+    const SmallPtrSetImpl<BasicBlock *> &guaranteedUnreachable) {
+  // One must use this temporary map to first create all the replacements
+  // prior to actually replacing to ensure that getSubLimits has the same
+  // behavior and unwrap behavior for all replacements.
+  std::vector<std::pair<Value *, Value *>> newIToNextI;
+
+  for (const auto &m : mapping) {
+    if (m.first.second == CacheType::Self &&
+        gutils->knownRecomputeHeuristic.count(m.first.first)) {
+      assert(gutils->knownRecomputeHeuristic.count(m.first.first));
+      if (!isa<CallInst>(m.first.first)) {
+        auto newi = gutils->getNewFromOriginal(m.first.first);
+        if (auto PN = dyn_cast<PHINode>(newi))
+          if (gutils->fictiousPHIs.count(PN)) {
+            assert(gutils->fictiousPHIs[PN] == m.first.first);
+            gutils->fictiousPHIs.erase(PN);
+          }
+        IRBuilder<> BuilderZ(newi->getNextNode());
+        if (isa<PHINode>(m.first.first)) {
+          BuilderZ.SetInsertPoint(
+              cast<Instruction>(newi)->getParent()->getFirstNonPHI());
+        }
+        Value *nexti =
+            gutils->cacheForReverse(BuilderZ, newi, m.second,
+                                    /*ignoreType*/ false, /*replace*/ false);
+        newIToNextI.emplace_back(newi, nexti);
+      } else {
+        auto newi = gutils->getNewFromOriginal((Value *)m.first.first);
+        newIToNextI.emplace_back(newi, newi);
+      }
+    }
+  }
+
+  std::map<Value *, std::vector<Instruction *>> unwrapToOrig;
+  for (auto pair : gutils->unwrappedLoads)
+    unwrapToOrig[pair.second].push_back(const_cast<Instruction *>(pair.first));
+  gutils->unwrappedLoads.clear();
+
+  for (auto pair : newIToNextI) {
+    auto newi = pair.first;
+    auto nexti = pair.second;
+    if (newi != nexti) {
+      gutils->replaceAWithB(newi, nexti);
+    }
+  }
+
+  // This most occur after all the replacements have been made
+  // in the previous loop, lest a loop bound being unwrapped use
+  // a value being replaced.
+  for (auto pair : newIToNextI) {
+    auto newi = pair.first;
+    auto nexti = pair.second;
+    for (auto V : unwrapToOrig[newi]) {
+      ValueToValueMapTy available;
+      if (auto MD = hasMetadata(V, "enzyme_available")) {
+        for (auto &pair : MD->operands()) {
+          auto tup = cast<MDNode>(pair);
+          auto val = cast<ValueAsMetadata>(tup->getOperand(1))->getValue();
+          assert(val);
+          available[cast<ValueAsMetadata>(tup->getOperand(0))->getValue()] =
+              val;
+        }
+      }
+      IRBuilder<> lb(V);
+      // This must disallow caching here as otherwise performing the loop in
+      // the wrong order may result in first replacing the later unwrapped
+      // value, caching it, then attempting to reuse it for an earlier
+      // replacement.
+      Value *nval = gutils->unwrapM(nexti, lb, available,
+                                    UnwrapMode::LegalFullUnwrapNoTapeReplace,
+                                    /*scope*/ nullptr, /*permitCache*/ false);
+      assert(nval);
+      V->replaceAllUsesWith(nval);
+      V->eraseFromParent();
+    }
+  }
+
+  // Erasure happens after to not erase the key of unwrapToOrig
+  for (auto pair : newIToNextI) {
+    auto newi = pair.first;
+    auto nexti = pair.second;
+    if (newi != nexti) {
+      if (auto inst = dyn_cast<Instruction>(newi))
+        gutils->erase(inst);
+    }
+  }
+
+  // TODO also can consider switch instance as well
+  // TODO can also insert to topLevel as well [note this requires putting the
+  // intrinsic at the correct location]
+  for (auto &BB : *gutils->oldFunc) {
+    std::vector<BasicBlock *> unreachables;
+    std::vector<BasicBlock *> reachables;
+    for (auto Succ : successors(&BB)) {
+      if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
+        unreachables.push_back(Succ);
+      } else {
+        reachables.push_back(Succ);
+      }
+    }
+
+    if (unreachables.size() == 0 || reachables.size() == 0)
+      continue;
+
+    if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
+
+      Value *condition = gutils->getNewFromOriginal(bi->getCondition());
+
+      Constant *repVal = (bi->getSuccessor(0) == unreachables[0])
+                             ? ConstantInt::getFalse(condition->getContext())
+                             : ConstantInt::getTrue(condition->getContext());
+
+      for (auto UI = condition->use_begin(), E = condition->use_end();
+           UI != E;) {
+        Use &U = *UI;
+        ++UI;
+        U.set(repVal);
+      }
+    }
+    if (reachables.size() == 1)
+      if (auto si = dyn_cast<SwitchInst>(BB.getTerminator())) {
+        Value *condition = gutils->getNewFromOriginal(si->getCondition());
+
+        Constant *repVal = nullptr;
+        if (si->getDefaultDest() == reachables[0]) {
+          std::set<int64_t> cases;
+          for (auto c : si->cases()) {
+            // TODO this doesnt work with unsigned 64 bit ints or higher
+            // integer widths
+            cases.insert(cast<ConstantInt>(c.getCaseValue())->getSExtValue());
+          }
+          int64_t legalNot = 0;
+          while (cases.count(legalNot))
+            legalNot++;
+          repVal = ConstantInt::getSigned(condition->getType(), legalNot);
+        } else {
+          for (auto c : si->cases()) {
+            if (c.getCaseSuccessor() == reachables[0]) {
+              repVal = c.getCaseValue();
+            }
+          }
+        }
+        assert(repVal);
+        for (auto UI = condition->use_begin(), E = condition->use_end();
+             UI != E;) {
+          Use &U = *UI;
+          ++UI;
+          U.set(repVal);
+        }
+      }
+  }
+}
+
 //! return structtype if recursive function
 const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
-    bool returnUsed, const FnTypeInfo &oldTypeInfo_,
+    bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &oldTypeInfo_,
     const std::map<Argument *, bool> _uncacheable_args, bool forceAnonymousTape,
     bool AtomicAdd, bool omp) {
   if (returnUsed)
@@ -1497,11 +1645,12 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
   FnTypeInfo oldTypeInfo = preventTypeAnalysisLoops(oldTypeInfo_, todiff);
 
   assert(constant_args.size() == todiff->getFunctionType()->getNumParams());
-  AugmentedCacheKey tup = std::make_tuple(
-      todiff, retType, constant_args,
-      std::map<Argument *, bool>(_uncacheable_args.begin(),
-                                 _uncacheable_args.end()),
-      returnUsed, oldTypeInfo, forceAnonymousTape, AtomicAdd, omp);
+  AugmentedCacheKey tup =
+      std::make_tuple(todiff, retType, constant_args,
+                      std::map<Argument *, bool>(_uncacheable_args.begin(),
+                                                 _uncacheable_args.end()),
+                      returnUsed, shadowReturnUsed, oldTypeInfo,
+                      forceAnonymousTape, AtomicAdd, omp);
   auto found = AugmentedCachedFunctions.find(tup);
   if (found != AugmentedCachedFunctions.end()) {
     return found->second;
@@ -1510,8 +1659,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   // TODO make default typing (not just constant)
 
-  if (hasMetadata(todiff, "enzyme_augment")) {
-    auto md = todiff->getMetadata("enzyme_augment");
+  if (auto md = hasMetadata(todiff, "enzyme_augment")) {
     if (!isa<MDTuple>(md)) {
       llvm::errs() << *todiff << "\n";
       llvm::errs() << *md << "\n";
@@ -1532,8 +1680,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     }
 
     if (hasconstant) {
-      EmitWarning("NoCustom", todiff->getEntryBlock().begin()->getDebugLoc(),
-                  todiff, &todiff->getEntryBlock(),
+      EmitWarning("NoCustom", todiff,
                   "Massaging provided custom augmented forward pass to handle "
                   "constant argumented");
       SmallVector<Type *, 3> dupargs;
@@ -1591,8 +1738,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
         act_idx++;
       }
       auto &aug = CreateAugmentedPrimal(
-          todiff, retType, next_constant_args, TA, returnUsed, oldTypeInfo_,
-          _uncacheable_args, forceAnonymousTape, AtomicAdd, omp);
+          todiff, retType, next_constant_args, TA, returnUsed, shadowReturnUsed,
+          oldTypeInfo_, _uncacheable_args, forceAnonymousTape, AtomicAdd, omp);
       auto cal = bb.CreateCall(aug.fn, fwdargs);
       cal->setCallingConv(aug.fn->getCallingConv());
 
@@ -1682,7 +1829,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   GradientUtils *gutils = GradientUtils::CreateFromClone(
       *this, todiff, TLI, TA, retType, constant_args,
-      /*returnUsed*/ returnUsed, returnMapping, omp);
+      /*returnUsed*/ returnUsed, /*shadowReturnUsed*/ shadowReturnUsed,
+      returnMapping, omp);
   gutils->AtomicAdd = AtomicAdd;
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -1952,7 +2100,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 
   //! Keep track of inverted pointers we may need to return
   ValueToValueMapTy invertedRetPs;
-  if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
+  if (shadowReturnUsed) {
     for (BasicBlock &BB : *gutils->oldFunc) {
       if (auto ri = dyn_cast<ReturnInst>(BB.getTerminator())) {
         if (Value *orig_oldval = ri->getReturnValue()) {
@@ -2109,60 +2257,66 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
     Value *tapeMemory;
     if (recursive && !omp) {
       auto i64 = Type::getInt64Ty(NewF->getContext());
-      ConstantInt *size;
-      tapeMemory = CallInst::CreateMalloc(
-          NewF->getEntryBlock().getFirstNonPHI(), i64, tapeType,
-          size = ConstantInt::get(
-              i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(
-                       tapeType) /
-                       8),
-          nullptr, nullptr, "tapemem");
-      CallInst *malloccall = dyn_cast<CallInst>(tapeMemory);
-      if (malloccall == nullptr) {
-        malloccall =
-            cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
-      }
-      for (auto attr : {Attribute::NoAlias, Attribute::NonNull}) {
+      ConstantInt *size = ConstantInt::get(
+          i64,
+          NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(tapeType) /
+              8);
+      Value *memory;
+      if (!size->isZero()) {
+        tapeMemory =
+            CallInst::CreateMalloc(NewF->getEntryBlock().getFirstNonPHI(), i64,
+                                   tapeType, size, nullptr, nullptr, "tapemem");
+        CallInst *malloccall = dyn_cast<CallInst>(tapeMemory);
+        if (malloccall == nullptr) {
+          malloccall =
+              cast<CallInst>(cast<Instruction>(tapeMemory)->getOperand(0));
+        }
+        for (auto attr : {Attribute::NoAlias, Attribute::NonNull}) {
 #if LLVM_VERSION_MAJOR >= 14
-        malloccall->addRetAttr(attr);
+          malloccall->addRetAttr(attr);
 #else
-        malloccall->addAttribute(AttributeList::ReturnIndex, attr);
+          malloccall->addAttribute(AttributeList::ReturnIndex, attr);
 #endif
-      }
-      if (EnzymeZeroCache) {
-        IRBuilder<> B(malloccall->getNextNode());
-        Value *args[] = {
-            malloccall,
-            ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
-            malloccall->getArgOperand(0),
-            ConstantInt::getFalse(malloccall->getContext())};
-        Type *tys[] = {args[0]->getType(), args[2]->getType()};
+        }
+        if (EnzymeZeroCache) {
+          IRBuilder<> B(malloccall->getNextNode());
+          Value *args[] = {
+              malloccall,
+              ConstantInt::get(Type::getInt8Ty(malloccall->getContext()), 0),
+              malloccall->getArgOperand(0),
+              ConstantInt::getFalse(malloccall->getContext())};
+          Type *tys[] = {args[0]->getType(), args[2]->getType()};
 
-        B.CreateCall(Intrinsic::getDeclaration(NewF->getParent(),
-                                               Intrinsic::memset, tys),
-                     args);
-      }
+          B.CreateCall(Intrinsic::getDeclaration(NewF->getParent(),
+                                                 Intrinsic::memset, tys),
+                       args);
+        }
 #if LLVM_VERSION_MAJOR >= 14
-      malloccall->addDereferenceableRetAttr(size->getLimitedValue());
+        malloccall->addDereferenceableRetAttr(size->getLimitedValue());
 #ifndef FLANG
-      AttrBuilder B(malloccall->getContext());
+        AttrBuilder B(malloccall->getContext());
 #else
-      AttrBuilder B;
+        AttrBuilder B;
 #endif
-      B.addDereferenceableOrNullAttr(size->getLimitedValue());
-      malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
-          malloccall->getContext(), B));
+        B.addDereferenceableOrNullAttr(size->getLimitedValue());
+        malloccall->setAttributes(malloccall->getAttributes().addRetAttributes(
+            malloccall->getContext(), B));
 #else
-      malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
-                                         size->getLimitedValue());
-      malloccall->addDereferenceableOrNullAttr(llvm::AttributeList::ReturnIndex,
-                                               size->getLimitedValue());
+        malloccall->addDereferenceableAttr(llvm::AttributeList::ReturnIndex,
+                                           size->getLimitedValue());
+        malloccall->addDereferenceableOrNullAttr(
+            llvm::AttributeList::ReturnIndex, size->getLimitedValue());
 #endif
+        memory = malloccall;
+      } else {
+        memory =
+            ConstantPointerNull::get(Type::getInt8PtrTy(NewF->getContext()));
+      }
       Value *Idxs[] = {
           ib.getInt32(0),
           ib.getInt32(returnMapping.find(AugmentedStruct::Tape)->second),
       };
-      assert(malloccall);
+      assert(memory);
       assert(ret);
       Value *gep = ret;
       if (!removeStruct) {
@@ -2174,7 +2328,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
 #endif
         cast<GetElementPtrInst>(gep)->setIsInBounds(true);
       }
-      ib.CreateStore(malloccall, gep);
+      ib.CreateStore(memory, gep);
     } else if (omp) {
       j->setName("tape");
       tapeMemory = j;
@@ -2256,7 +2410,7 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       ib.CreateStore(actualrv, gep);
     }
 
-    if (retType == DIFFE_TYPE::DUP_ARG || retType == DIFFE_TYPE::DUP_NONEED) {
+    if (shadowReturnUsed) {
       assert(invertedRetPs[ri]);
       if (!isa<UndefValue>(invertedRetPs[ri])) {
         Value *gep =
@@ -2888,8 +3042,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 
       auto &aug = CreateAugmentedPrimal(
           key.todiff, key.retType, key.constant_args, TA, key.returnUsed,
-          key.typeInfo, key.uncacheable_args, /*forceAnonymousTape*/ false,
-          key.AtomicAdd, omp);
+          key.shadowReturnUsed, key.typeInfo, key.uncacheable_args,
+          /*forceAnonymousTape*/ false, key.AtomicAdd, omp);
 
       SmallVector<Value *, 4> fwdargs;
       for (auto &a : NewF->args())
@@ -3481,159 +3635,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                              key.retType);
   }
 
-  if (key.mode != DerivativeMode::ReverseModeCombined) {
-    // One must use this temporary map to first create all the replacements
-    // prior to actually replacing to ensure that getSubLimits has the same
-    // behavior and unwrap behavior for all replacements.
-    std::vector<std::pair<Value *, Value *>> newIToNextI;
-
-    for (const auto &m : mapping) {
-      if (m.first.second == CacheType::Self &&
-          gutils->knownRecomputeHeuristic.count(m.first.first)) {
-        assert(gutils->knownRecomputeHeuristic.count(m.first.first));
-        if (!isa<CallInst>(m.first.first)) {
-          auto newi = gutils->getNewFromOriginal(m.first.first);
-          if (auto PN = dyn_cast<PHINode>(newi))
-            if (gutils->fictiousPHIs.count(PN)) {
-              assert(gutils->fictiousPHIs[PN] == m.first.first);
-              gutils->fictiousPHIs.erase(PN);
-            }
-          IRBuilder<> BuilderZ(newi->getNextNode());
-          if (isa<PHINode>(m.first.first)) {
-            BuilderZ.SetInsertPoint(
-                cast<Instruction>(newi)->getParent()->getFirstNonPHI());
-          }
-          Value *nexti =
-              gutils->cacheForReverse(BuilderZ, newi, m.second,
-                                      /*ignoreType*/ false, /*replace*/ false);
-          newIToNextI.emplace_back(newi, nexti);
-        } else {
-          auto newi = gutils->getNewFromOriginal((Value *)m.first.first);
-          newIToNextI.emplace_back(newi, newi);
-        }
-      }
-    }
-
-    std::map<Value *, std::vector<Instruction *>> unwrapToOrig;
-    for (auto pair : gutils->unwrappedLoads)
-      unwrapToOrig[pair.second].push_back(
-          const_cast<Instruction *>(pair.first));
-    gutils->unwrappedLoads.clear();
-
-    for (auto pair : newIToNextI) {
-      auto newi = pair.first;
-      auto nexti = pair.second;
-      if (newi != nexti) {
-        gutils->replaceAWithB(newi, nexti);
-      }
-    }
-
-    // This most occur after all the replacements have been made
-    // in the previous loop, lest a loop bound being unwrapped use
-    // a value being replaced.
-    for (auto pair : newIToNextI) {
-      auto newi = pair.first;
-      auto nexti = pair.second;
-      for (auto V : unwrapToOrig[newi]) {
-        ValueToValueMapTy available;
-        if (auto MD = hasMetadata(V, "enzyme_available")) {
-          for (auto &pair : MD->operands()) {
-            auto tup = cast<MDNode>(pair);
-            auto val = cast<ValueAsMetadata>(tup->getOperand(1))->getValue();
-            assert(val);
-            available[cast<ValueAsMetadata>(tup->getOperand(0))->getValue()] =
-                val;
-          }
-        }
-        IRBuilder<> lb(V);
-        // This must disallow caching here as otherwise performing the loop in
-        // the wrong order may result in first replacing the later unwrapped
-        // value, caching it, then attempting to reuse it for an earlier
-        // replacement.
-        Value *nval = gutils->unwrapM(nexti, lb, available,
-                                      UnwrapMode::LegalFullUnwrapNoTapeReplace,
-                                      /*scope*/ nullptr, /*permitCache*/ false);
-        assert(nval);
-        V->replaceAllUsesWith(nval);
-        V->eraseFromParent();
-      }
-    }
-
-    // Erasure happens after to not erase the key of unwrapToOrig
-    for (auto pair : newIToNextI) {
-      auto newi = pair.first;
-      auto nexti = pair.second;
-      if (newi != nexti) {
-        if (auto inst = dyn_cast<Instruction>(newi))
-          gutils->erase(inst);
-      }
-    }
-
-    // TODO also can consider switch instance as well
-    // TODO can also insert to topLevel as well [note this requires putting the
-    // intrinsic at the correct location]
-    for (auto &BB : *gutils->oldFunc) {
-      std::vector<BasicBlock *> unreachables;
-      std::vector<BasicBlock *> reachables;
-      for (auto Succ : successors(&BB)) {
-        if (guaranteedUnreachable.find(Succ) != guaranteedUnreachable.end()) {
-          unreachables.push_back(Succ);
-        } else {
-          reachables.push_back(Succ);
-        }
-      }
-
-      if (unreachables.size() == 0 || reachables.size() == 0)
-        continue;
-
-      if (auto bi = dyn_cast<BranchInst>(BB.getTerminator())) {
-
-        Value *condition = gutils->getNewFromOriginal(bi->getCondition());
-
-        Constant *repVal = (bi->getSuccessor(0) == unreachables[0])
-                               ? ConstantInt::getFalse(condition->getContext())
-                               : ConstantInt::getTrue(condition->getContext());
-
-        for (auto UI = condition->use_begin(), E = condition->use_end();
-             UI != E;) {
-          Use &U = *UI;
-          ++UI;
-          U.set(repVal);
-        }
-      }
-      if (reachables.size() == 1)
-        if (auto si = dyn_cast<SwitchInst>(BB.getTerminator())) {
-          Value *condition = gutils->getNewFromOriginal(si->getCondition());
-
-          Constant *repVal = nullptr;
-          if (si->getDefaultDest() == reachables[0]) {
-            std::set<int64_t> cases;
-            for (auto c : si->cases()) {
-              // TODO this doesnt work with unsigned 64 bit ints or higher
-              // integer widths
-              cases.insert(cast<ConstantInt>(c.getCaseValue())->getSExtValue());
-            }
-            int64_t legalNot = 0;
-            while (cases.count(legalNot))
-              legalNot++;
-            repVal = ConstantInt::getSigned(condition->getType(), legalNot);
-          } else {
-            for (auto c : si->cases()) {
-              if (c.getCaseSuccessor() == reachables[0]) {
-                repVal = c.getCaseValue();
-              }
-            }
-          }
-          assert(repVal);
-          for (auto UI = condition->use_begin(), E = condition->use_end();
-               UI != E;) {
-            Use &U = *UI;
-            ++UI;
-            U.set(repVal);
-          }
-        }
-    }
-  }
+  if (key.mode == DerivativeMode::ReverseModeGradient)
+    restoreCache(gutils, mapping, guaranteedUnreachable);
 
   gutils->eraseFictiousPHIs();
 
@@ -3759,9 +3762,10 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
 Function *EnzymeLogic::CreateForwardDiff(
     Function *todiff, DIFFE_TYPE retType,
     const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
-    bool returnUsed, DerivativeMode mode, unsigned width,
+    bool returnUsed, DerivativeMode mode, bool freeMemory, unsigned width,
     llvm::Type *additionalArg, const FnTypeInfo &oldTypeInfo_,
-    const std::map<Argument *, bool> _uncacheable_args, bool omp) {
+    const std::map<Argument *, bool> _uncacheable_args,
+    const AugmentedReturn *augmenteddata, bool omp) {
   assert(retType != DIFFE_TYPE::OUT_DIFF);
 
   assert(mode == DerivativeMode::ForwardMode ||
@@ -3793,8 +3797,9 @@ Function *EnzymeLogic::CreateForwardDiff(
     }
   }
 
-  if (hasMetadata(todiff, "enzyme_derivative")) {
-    auto md = todiff->getMetadata("enzyme_derivative");
+  if (auto md = hasMetadata(todiff, (mode == DerivativeMode::ForwardMode)
+                                        ? "enzyme_derivative"
+                                        : "enzyme_splitderivative")) {
     if (!isa<MDTuple>(md)) {
       llvm::errs() << *todiff << "\n";
       llvm::errs() << *md << "\n";
@@ -3862,6 +3867,11 @@ Function *EnzymeLogic::CreateForwardDiff(
         break;
       }
     }
+    if (augmenteddata && augmenteddata->returns.find(AugmentedStruct::Tape) !=
+                             augmenteddata->returns.end()) {
+      assert(additionalArg);
+      curTypes.push_back(additionalArg);
+    }
     if (legal) {
       Type *RT = todiff->getReturnType();
       if (returnUsed && retType != DIFFE_TYPE::CONSTANT) {
@@ -3905,6 +3915,12 @@ Function *EnzymeLogic::CreateForwardDiff(
           legal = false;
           break;
         }
+      }
+      if (augmenteddata && augmenteddata->returns.find(AugmentedStruct::Tape) !=
+                               augmenteddata->returns.end()) {
+        foundArg->setName("tapeArg");
+        nextArgs.push_back(foundArg);
+        foundArg++;
       }
 
       BasicBlock *BB = BasicBlock::Create(NewF->getContext(), "entry", NewF);
@@ -3954,6 +3970,8 @@ Function *EnzymeLogic::CreateForwardDiff(
 
   insert_or_assign2<ForwardCacheKey, Function *>(ForwardCachedFunctions, tup,
                                                  gutils->newFunc);
+
+  gutils->FreeMemory = freeMemory;
 
   const SmallPtrSet<BasicBlock *, 4> guaranteedUnreachable =
       getGuaranteedUnreachable(gutils->oldFunc);
@@ -4035,8 +4053,9 @@ Function *EnzymeLogic::CreateForwardDiff(
   }
 
   AdjointGenerator<const AugmentedReturn *> *maker;
-  if (mode == DerivativeMode::ForwardModeSplit) {
 
+  std::unique_ptr<const std::map<Instruction *, bool>> can_modref_map;
+  if (mode == DerivativeMode::ForwardModeSplit) {
     std::map<Argument *, bool> _uncacheable_argsPP;
     {
       auto in_arg = todiff->arg_begin();
@@ -4048,7 +4067,7 @@ Function *EnzymeLogic::CreateForwardDiff(
       }
     }
 
-    // TODO gutils->computeGuaranteedFrees(guaranteedUnreachable, TR);
+    gutils->computeGuaranteedFrees(guaranteedUnreachable, TR);
     CacheAnalysis CA(
         gutils->allocationsWithGuaranteedFree,
         gutils->rematerializableAllocations, TR, gutils->OrigAA,
@@ -4058,15 +4077,13 @@ Function *EnzymeLogic::CreateForwardDiff(
         _uncacheable_argsPP, mode, omp);
     const std::map<CallInst *, const std::map<Argument *, bool>>
         uncacheable_args_map = CA.compute_uncacheable_args_for_callsites();
-
-    const std::map<Instruction *, bool> can_modref_map =
-        CA.compute_uncacheable_load_map();
-    gutils->can_modref_map = &can_modref_map;
-
-    std::map<std::pair<Instruction *, CacheType>, int> mapping;
+    can_modref_map = std::make_unique<const std::map<Instruction *, bool>>(
+        CA.compute_uncacheable_load_map());
+    gutils->can_modref_map = can_modref_map.get();
 
     auto getIndex = [&](Instruction *I, CacheType u) -> unsigned {
-      return gutils->getIndex(std::make_pair(I, u), mapping);
+      assert(augmenteddata);
+      return gutils->getIndex(std::make_pair(I, u), augmenteddata->tapeIndices);
     };
 
     gutils->computeMinCache(TR, guaranteedUnreachable);
@@ -4074,9 +4091,53 @@ Function *EnzymeLogic::CreateForwardDiff(
     maker = new AdjointGenerator<const AugmentedReturn *>(
         mode, gutils, constant_args, retType, TR, getIndex,
         uncacheable_args_map,
-        /*returnuses*/ nullptr, nullptr, nullptr, unnecessaryValues,
+        /*returnuses*/ nullptr, augmenteddata, nullptr, unnecessaryValues,
         unnecessaryInstructions, unnecessaryStores, guaranteedUnreachable,
         nullptr);
+
+    if (additionalArg) {
+      auto v = gutils->newFunc->arg_end();
+      v--;
+      Value *additionalValue = v;
+      assert(augmenteddata);
+
+      // TODO VERIFY THIS
+      if (augmenteddata->tapeType &&
+          augmenteddata->tapeType != additionalValue->getType()) {
+        IRBuilder<> BuilderZ(gutils->inversionAllocs);
+        if (!augmenteddata->tapeType->isEmptyTy()) {
+          auto tapep = BuilderZ.CreatePointerCast(
+              additionalValue, PointerType::getUnqual(augmenteddata->tapeType));
+#if LLVM_VERSION_MAJOR > 7
+          LoadInst *truetape =
+              BuilderZ.CreateLoad(augmenteddata->tapeType, tapep, "truetape");
+#else
+          LoadInst *truetape = BuilderZ.CreateLoad(tapep, "truetape");
+#endif
+          truetape->setMetadata("enzyme_mustcache",
+                                MDNode::get(truetape->getContext(), {}));
+
+          if (!omp && gutils->FreeMemory) {
+            CallInst *ci =
+                cast<CallInst>(CallInst::CreateFree(additionalValue, truetape));
+            ci->moveAfter(truetape);
+            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          }
+          additionalValue = truetape;
+        } else {
+          if (gutils->FreeMemory) {
+            CallInst *ci = cast<CallInst>(
+                CallInst::CreateFree(additionalValue, gutils->inversionAllocs));
+            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+            BuilderZ.Insert(ci);
+          }
+          additionalValue = UndefValue::get(augmenteddata->tapeType);
+        }
+      }
+
+      // TODO here finish up making recursive structs simply pass in i8*
+      gutils->setTape(additionalValue);
+    }
   } else {
 
     maker = new AdjointGenerator<const AugmentedReturn *>(
@@ -4136,6 +4197,9 @@ Function *EnzymeLogic::CreateForwardDiff(
 
     createTerminator(TR, gutils, &oBB, retType, retVal);
   }
+
+  if (mode == DerivativeMode::ForwardModeSplit && augmenteddata)
+    restoreCache(gutils, augmenteddata->tapeIndices, guaranteedUnreachable);
 
   gutils->eraseFictiousPHIs();
 

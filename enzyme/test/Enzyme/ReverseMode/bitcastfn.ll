@@ -324,8 +324,7 @@ attributes #8 = { noreturn nounwind "correctly-rounded-divide-sqrt-fp-math"="fal
 ; TODO no need for malloc/free
 ; CHECK: define internal i8* @augmented_indir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 0)
-; CHECK-NEXT:   ret i8* %malloccall
+; CHECK-NEXT:   ret i8* null
 ; CHECK-NEXT: }
 
 ; CHECK: define internal void @diffeindir(%"class.boost::array.1"* dereferenceable(8) %x, %"class.boost::array.1"* %"x'", i8* %tapeArg)

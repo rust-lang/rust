@@ -51,10 +51,8 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal { i8*, double } @augmented_square(double %x)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 0)
 ; CHECK-NEXT:   %mul = fmul fast double %x, %x
-; CHECK-NEXT:   %[[iv1:.+]] = insertvalue { i8*, double } undef, i8* %malloccall, 0
-; CHECK-NEXT:   %[[iv2:.+]] = insertvalue { i8*, double } %[[iv1]], double %mul, 1
+; CHECK-NEXT:   %[[iv2:.+]] = insertvalue { i8*, double } { i8* null, double undef }, double %mul, 1
 ; CHECK-NEXT:   ret { i8*, double } %[[iv2]]
 ; CHECK-NEXT: }
 

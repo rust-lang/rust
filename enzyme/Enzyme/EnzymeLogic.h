@@ -237,7 +237,8 @@ public:
       std::tuple<llvm::Function *, DIFFE_TYPE /*retType*/,
                  std::vector<DIFFE_TYPE> /*constant_args*/,
                  std::map<llvm::Argument *, bool> /*uncacheable_args*/,
-                 bool /*returnUsed*/, const FnTypeInfo, bool, bool, bool>;
+                 bool /*returnUsed*/, bool /*shadowReturnUsed*/,
+                 const FnTypeInfo, bool, bool, bool>;
   std::map<AugmentedCacheKey, AugmentedReturn> AugmentedCachedFunctions;
   std::map<AugmentedCacheKey, bool> AugmentedCachedFinished;
 
@@ -255,7 +256,7 @@ public:
   const AugmentedReturn &CreateAugmentedPrimal(
       llvm::Function *todiff, DIFFE_TYPE retType,
       const std::vector<DIFFE_TYPE> &constant_args, TypeAnalysis &TA,
-      bool returnUsed, const FnTypeInfo &typeInfo,
+      bool returnUsed, bool shadowReturnUsed, const FnTypeInfo &typeInfo,
       const std::map<llvm::Argument *, bool> _uncacheable_args,
       bool forceAnonymousTape, bool AtomicAdd, bool omp = false);
 
@@ -291,21 +292,16 @@ public:
   CreateForwardDiff(llvm::Function *todiff, DIFFE_TYPE retType,
                     const std::vector<DIFFE_TYPE> &constant_args,
                     TypeAnalysis &TA, bool returnValue, DerivativeMode mode,
-                    unsigned width, llvm::Type *additionalArg,
+                    bool freeMemory, unsigned width, llvm::Type *additionalArg,
                     const FnTypeInfo &typeInfo,
                     const std::map<llvm::Argument *, bool> _uncacheable_args,
-                    bool omp = false);
+                    const AugmentedReturn *augmented, bool omp = false);
 
   void clear();
 };
 
 extern "C" {
 extern llvm::cl::opt<bool> looseTypeAnalysis;
-
-extern llvm::cl::opt<bool> cache_reads_always;
-
-extern llvm::cl::opt<bool> cache_reads_never;
-
 extern llvm::cl::opt<bool> nonmarkedglobals_inactiveloads;
 };
 

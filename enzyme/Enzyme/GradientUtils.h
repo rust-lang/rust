@@ -1008,25 +1008,33 @@ public:
     llvm::errs() << "end invertedPointers\n";
   }
 
+  int getIndex(
+      std::pair<Instruction *, CacheType> idx,
+      const std::map<std::pair<Instruction *, CacheType>, int> &mapping) {
+    assert(tape);
+    auto found = mapping.find(idx);
+    if (found == mapping.end()) {
+      llvm::errs() << "oldFunc: " << *oldFunc << "\n";
+      llvm::errs() << "newFunc: " << *newFunc << "\n";
+      llvm::errs() << " <mapping>\n";
+      for (auto &p : mapping) {
+        llvm::errs() << "   idx: " << *p.first.first << ", " << p.first.second
+                     << " pos=" << p.second << "\n";
+      }
+      llvm::errs() << " </mapping>\n";
+
+      llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
+      assert(0 && "could not find index in mapping");
+    }
+    return found->second;
+  }
+
   int getIndex(std::pair<Instruction *, CacheType> idx,
                std::map<std::pair<Instruction *, CacheType>, int> &mapping) {
     if (tape) {
-      if (mapping.find(idx) == mapping.end()) {
-        llvm::errs() << "oldFunc: " << *oldFunc << "\n";
-        llvm::errs() << "newFunc: " << *newFunc << "\n";
-        llvm::errs() << " <mapping>\n";
-        for (auto &p : mapping) {
-          llvm::errs() << "   idx: " << *p.first.first << ", " << p.first.second
-                       << " pos=" << p.second << "\n";
-        }
-        llvm::errs() << " </mapping>\n";
-
-        if (mapping.find(idx) == mapping.end()) {
-          llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
-          assert(0 && "could not find index in mapping");
-        }
-      }
-      return mapping[idx];
+      return getIndex(
+          idx,
+          (const std::map<std::pair<Instruction *, CacheType>, int> &)mapping);
     } else {
       if (mapping.find(idx) != mapping.end()) {
         return mapping[idx];
@@ -1143,6 +1151,7 @@ public:
   CreateFromClone(EnzymeLogic &Logic, Function *todiff, TargetLibraryInfo &TLI,
                   TypeAnalysis &TA, DIFFE_TYPE retType,
                   const std::vector<DIFFE_TYPE> &constant_args, bool returnUsed,
+                  bool shadowReturnUsed,
                   std::map<AugmentedStruct, int> &returnMapping, bool omp);
 
 #if LLVM_VERSION_MAJOR >= 10

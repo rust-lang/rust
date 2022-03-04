@@ -46,12 +46,12 @@ bb13:                                             ; preds = %bb12, %bb9, %bb8, %
 
 ; CHECK: define internal { double } @diffejulia_euroad_1769(double %arg, i64 %i5, double %differeturn)
 ; CHECK-NEXT: bb:
-; CHECK-NEXT:   %0 = icmp eq i64 7, %i5
-; CHECK-NEXT:   %1 = icmp eq i64 12, %i5
-; CHECK-NEXT:   %2 = or i1 %1, %0
-; CHECK-NEXT:   %3 = select {{(fast )?}}i1 %1, double %differeturn, double 0.000000e+00
+; CHECK-DAG:   %[[i0:.+]] = icmp eq i64 7, %i5
+; CHECK-DAG:   %[[i1:.+]] = icmp eq i64 12, %i5
+; CHECK-NEXT:   %2 = or i1 %[[i1]], %[[i0]]
+; CHECK-NEXT:   %3 = select {{(fast )?}}i1 %[[i1]], double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   %4 = select {{(fast )?}}i1 %2, double 0.000000e+00, double %differeturn
-; CHECK-NEXT:   %5 = select {{(fast )?}}i1 %0, double %differeturn, double 0.000000e+00
+; CHECK-NEXT:   %5 = select {{(fast )?}}i1 %[[i0]], double %differeturn, double 0.000000e+00
 ; CHECK-NEXT:   switch i64 %i5, label %invertbb9 [
 ; CHECK-NEXT:     i64 12, label %invertbb
 ; CHECK-NEXT:     i64 7, label %invertbb7
