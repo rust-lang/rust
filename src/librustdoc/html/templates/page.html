@@ -108,15 +108,8 @@
                     {%- endif -%}
                 </a> {#- -#}
                 <nav class="sub"> {#- -#}
-                    <div class="theme-picker"> {#- -#}
-                        <button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"> {#- -#}
-                            <img width="22" height="22" alt="Pick another theme!" {# -#}
-                             src="{{static_root_path|safe}}brush{{page.resource_suffix}}.svg"> {#- -#}
-                        </button> {#- -#}
-                        <div id="theme-choices" role="menu"></div> {#- -#}
-                    </div> {#- -#}
-                    <form class="search-form"> {#- -#}
-                        <div class="search-container"> {#- -#}
+                    <div class="search-container"> {#- -#}
+                        <form class="search-form"> {#- -#}
                             <span></span> {#- This empty span is a hacky fix for Safari - See #93184 -#}
                             <input {# -#}
                                 class="search-input" {# -#}
@@ -125,13 +118,20 @@
                                 spellcheck="false" {# -#}
                                 placeholder="Click or press ‘S’ to search, ‘?’ for more options…" {# -#}
                                 type="search"> {#- -#}
-                            <button type="button" id="help-button" title="help">?</button> {#- -#}
-                            <a id="settings-menu" href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
-                                <img width="22" height="22" alt="Change settings" {# -#}
-                                     src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
-                            </a> {#- -#}
+                        </form> {#- -#}
+                        <button type="button" id="help-button" title="help">?</button> {#- -#}
+                        <div class="theme-picker"> {#- -#}
+                            <button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"> {#- -#}
+                                <img width="22" height="22" alt="Pick another theme!" {# -#}
+                                 src="{{static_root_path|safe}}brush{{page.resource_suffix}}.svg"> {#- -#}
+                            </button> {#- -#}
+                            <div id="theme-choices" role="menu"></div> {#- -#}
                         </div> {#- -#}
-                    </form> {#- -#}
+                        <a id="settings-menu" href="{{page.root_path|safe}}settings.html" title="settings"> {#- -#}
+                            <img width="22" height="22" alt="Change settings" {# -#}
+                                 src="{{static_root_path|safe}}wheel{{page.resource_suffix}}.svg"> {#- -#}
+                        </a> {#- -#}
+                    </div> {#- -#}
                 </nav> {#- -#}
             </div> {#- -#}
             <section id="main-content" class="content">{{- content|safe -}}</section> {#- -#}

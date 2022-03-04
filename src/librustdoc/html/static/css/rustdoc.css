@@ -791,7 +791,13 @@ nav.main .separator {
 	margin: 0 20px;
 }
 nav.sum { text-align: right; }
-nav.sub form { display: inline; }
+nav.sub form {
+	flex-grow: 1;
+}
+
+nav.sub form input {
+	height: 100%;
+}
 
 a {
 	text-decoration: none;
@@ -883,6 +889,7 @@ table,
 	position: relative;
 	display: flex;
 	height: 34px;
+	width: 100%;
 }
 .search-container > * {
 	height: 100%;
@@ -1379,16 +1386,13 @@ pre.rust {
 }
 
 .theme-picker {
-	position: absolute;
-	left: -38px;
-	top: 4px;
+	position: relative;
 }
-
 .theme-picker button {
 	outline: none;
 }
 
-#settings-menu, #help-button {
+#settings-menu, #help-button, .theme-picker {
 	margin-left: 4px;
 	outline: none;
 }
@@ -1425,7 +1429,7 @@ pre.rust {
 	display: none;
 	position: absolute;
 	left: 0;
-	top: 28px;
+	top: 31px;
 	border: 1px solid;
 	border-radius: 3px;
 	z-index: 1;
@@ -1832,7 +1836,7 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	}
 
 	/* Space is at a premium on mobile, so remove the theme-picker icon. */
-	#theme-picker {
+	.theme-picker {
 		display: none;
 		width: 0;
 	}
