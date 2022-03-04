@@ -27,9 +27,6 @@ export function activateInlayHints(ctx: Ctx) {
                     if (hints == null) {
                         return [];
                     } else {
-                        for (let hint of hints) {
-                            hint.position = new vscode.Position(hint.position.line, hint.position.character);
-                        }
                         return hints;
                     }
                 }
