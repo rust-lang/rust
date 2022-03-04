@@ -39,6 +39,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
     ("thumb2", Some(sym::arm_target_feature)),
+    ("d32", Some(sym::arm_target_feature)),
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[

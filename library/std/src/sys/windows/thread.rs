@@ -1,11 +1,13 @@
+use crate::convert::TryInto;
 use crate::ffi::CStr;
 use crate::io;
 use crate::num::NonZeroUsize;
-use crate::os::windows::io::{AsRawHandle, FromRawHandle};
+use crate::os::windows::io::AsRawHandle;
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::handle::Handle;
 use crate::sys::stack_overflow;
+use crate::sys_common::FromInner;
 use crate::time::Duration;
 
 use libc::c_void;
@@ -40,13 +42,13 @@ impl Thread {
             ptr::null_mut(),
         );
 
-        return if ret as usize == 0 {
+        return if let Ok(handle) = ret.try_into() {
+            Ok(Thread { handle: Handle::from_inner(handle) })
+        } else {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
             Err(io::Error::last_os_error())
-        } else {
-            Ok(Thread { handle: Handle::from_raw_handle(ret) })
         };
 
         extern "system" fn thread_start(main: *mut c_void) -> c::DWORD {

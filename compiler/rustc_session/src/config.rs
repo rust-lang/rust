@@ -2509,7 +2509,6 @@ fn parse_pretty(debugging_opts: &DebuggingOptions, efmt: ErrorOutputType) -> Opt
     let first = match debugging_opts.unpretty.as_deref()? {
         "normal" => Source(PpSourceMode::Normal),
         "identified" => Source(PpSourceMode::Identified),
-        "everybody_loops" => Source(PpSourceMode::EveryBodyLoops),
         "expanded" => Source(PpSourceMode::Expanded),
         "expanded,identified" => Source(PpSourceMode::ExpandedIdentified),
         "expanded,hygiene" => Source(PpSourceMode::ExpandedHygiene),
@@ -2645,8 +2644,6 @@ impl fmt::Display for CrateType {
 pub enum PpSourceMode {
     /// `-Zunpretty=normal`
     Normal,
-    /// `-Zunpretty=everybody_loops`
-    EveryBodyLoops,
     /// `-Zunpretty=expanded`
     Expanded,
     /// `-Zunpretty=identified`
@@ -2678,7 +2675,7 @@ pub enum PpHirMode {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
     /// Options that print the source code, i.e.
-    /// `-Zunpretty=normal` and `-Zunpretty=everybody_loops`
+    /// `-Zunpretty=normal` and `-Zunpretty=expanded`
     Source(PpSourceMode),
     AstTree(PpAstTreeMode),
     /// Options that print the HIR, i.e. `-Zunpretty=hir`
@@ -2700,7 +2697,7 @@ impl PpMode {
         match *self {
             Source(Normal | Identified) | AstTree(PpAstTreeMode::Normal) => false,
 
-            Source(Expanded | EveryBodyLoops | ExpandedIdentified | ExpandedHygiene)
+            Source(Expanded | ExpandedIdentified | ExpandedHygiene)
             | AstTree(PpAstTreeMode::Expanded)
             | Hir(_)
             | HirTree

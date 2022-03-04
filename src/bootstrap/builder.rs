@@ -26,7 +26,7 @@ use crate::run;
 use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
-use crate::{Build, DocTests, GitRepo, Mode};
+use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
@@ -1511,7 +1511,7 @@ impl<'a> Builder<'a> {
             let cc = ccacheify(&self.cc(target));
             cargo.env(format!("CC_{}", target.triple), &cc);
 
-            let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
+            let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
             cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
 
             if let Some(ar) = self.ar(target) {
@@ -1523,9 +1523,10 @@ impl<'a> Builder<'a> {
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
+                let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
                     .env(format!("CXX_{}", target.triple), &cxx)
-                    .env(format!("CXXFLAGS_{}", target.triple), cflags);
+                    .env(format!("CXXFLAGS_{}", target.triple), cxxflags);
             }
         }
 

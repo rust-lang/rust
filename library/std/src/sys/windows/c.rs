@@ -6,6 +6,7 @@
 
 use crate::mem;
 use crate::os::raw::{c_char, c_int, c_long, c_longlong, c_uint, c_ulong, c_ushort};
+use crate::os::windows::io::{BorrowedHandle, HandleOrInvalid, HandleOrNull};
 use crate::ptr;
 use core::ffi::NonZero_c_ulong;
 
@@ -886,7 +887,7 @@ extern "system" {
         lpParameter: LPVOID,
         dwCreationFlags: DWORD,
         lpThreadId: LPDWORD,
-    ) -> HANDLE;
+    ) -> HandleOrNull;
     pub fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
     pub fn SwitchToThread() -> BOOL;
     pub fn Sleep(dwMilliseconds: DWORD);
@@ -950,14 +951,14 @@ extern "system" {
         dwOptions: DWORD,
     ) -> BOOL;
     pub fn ReadFile(
-        hFile: HANDLE,
+        hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
         nNumberOfBytesToRead: DWORD,
         lpNumberOfBytesRead: LPDWORD,
         lpOverlapped: LPOVERLAPPED,
     ) -> BOOL;
     pub fn WriteFile(
-        hFile: HANDLE,
+        hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
         nNumberOfBytesToWrite: DWORD,
         lpNumberOfBytesWritten: LPDWORD,
@@ -981,7 +982,7 @@ extern "system" {
         dwCreationDisposition: DWORD,
         dwFlagsAndAttributes: DWORD,
         hTemplateFile: HANDLE,
-    ) -> HANDLE;
+    ) -> HandleOrInvalid;
 
     pub fn FindFirstFileW(fileName: LPCWSTR, findFileData: LPWIN32_FIND_DATAW) -> HANDLE;
     pub fn FindNextFileW(findFile: HANDLE, findFileData: LPWIN32_FIND_DATAW) -> BOOL;

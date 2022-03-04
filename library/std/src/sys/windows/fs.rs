@@ -1,5 +1,6 @@
 use crate::os::windows::prelude::*;
 
+use crate::convert::TryInto;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io::{self, Error, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
@@ -294,10 +295,10 @@ impl File {
                 ptr::null_mut(),
             )
         };
-        if handle == c::INVALID_HANDLE_VALUE {
-            Err(Error::last_os_error())
+        if let Ok(handle) = handle.try_into() {
+            Ok(File { handle: Handle::from_inner(handle) })
         } else {
-            unsafe { Ok(File { handle: Handle::from_raw_handle(handle) }) }
+            Err(Error::last_os_error())
         }
     }
 
