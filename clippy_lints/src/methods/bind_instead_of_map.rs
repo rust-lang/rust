@@ -145,7 +145,7 @@ pub(crate) trait BindInsteadOfMap {
         if_chain! {
             if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def();
             if let Ok(vid) = cx.tcx.lang_items().require(Self::VARIANT_LANG_ITEM);
-            if Some(adt.did) == cx.tcx.parent(vid);
+            if Some(adt.did()) == cx.tcx.parent(vid);
             then {} else { return false; }
         }
 

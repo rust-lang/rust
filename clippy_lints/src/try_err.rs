@@ -151,11 +151,11 @@ fn result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
 fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
         if let ty::Adt(def, subst) = ty.kind();
-        if match_def_path(cx, def.did, &paths::POLL);
+        if match_def_path(cx, def.did(), &paths::POLL);
         let ready_ty = subst.type_at(0);
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym::Result, ready_def.did);
+        if cx.tcx.is_diagnostic_item(sym::Result, ready_def.did());
         then {
             Some(ready_subst.type_at(1))
         } else {
@@ -168,15 +168,15 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
 fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     if_chain! {
         if let ty::Adt(def, subst) = ty.kind();
-        if match_def_path(cx, def.did, &paths::POLL);
+        if match_def_path(cx, def.did(), &paths::POLL);
         let ready_ty = subst.type_at(0);
 
         if let ty::Adt(ready_def, ready_subst) = ready_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym::Option, ready_def.did);
+        if cx.tcx.is_diagnostic_item(sym::Option, ready_def.did());
         let some_ty = ready_subst.type_at(0);
 
         if let ty::Adt(some_def, some_subst) = some_ty.kind();
-        if cx.tcx.is_diagnostic_item(sym::Result, some_def.did);
+        if cx.tcx.is_diagnostic_item(sym::Result, some_def.did());
         then {
             Some(some_subst.type_at(1))
         } else {

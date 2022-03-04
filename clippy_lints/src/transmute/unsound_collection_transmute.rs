@@ -11,11 +11,11 @@ use rustc_span::symbol::sym;
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
-            if from_adt.did != to_adt.did {
+            if from_adt.did() != to_adt.did() {
                 return false;
             }
             if !matches!(
-                cx.tcx.get_diagnostic_name(to_adt.did),
+                cx.tcx.get_diagnostic_name(to_adt.did()),
                 Some(
                     sym::BTreeMap
                         | sym::BTreeSet

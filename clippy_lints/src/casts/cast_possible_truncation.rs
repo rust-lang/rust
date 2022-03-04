@@ -116,15 +116,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
                 && let Res::Def(DefKind::Ctor(..), id) = cx.qpath_res(p, cast_expr.hir_id)
             {
                 let i = def.variant_index_with_ctor_id(id);
-                let variant = &def.variants[i];
-                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, def, i));
+                let variant = def.variant(i);
+                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, *def, i));
                 (nbits, Some(variant))
             } else {
-                (utils::enum_ty_to_nbits(def, cx.tcx), None)
+                (utils::enum_ty_to_nbits(*def, cx.tcx), None)
             };
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
-            let cast_from_ptr_size = def.repr.int.map_or(true, |ty| {
+            let cast_from_ptr_size = def.repr().int.map_or(true, |ty| {
                 matches!(
                     ty,
                     IntType::SignedInt(ast::IntTy::Isize) | IntType::UnsignedInt(ast::UintTy::Usize)

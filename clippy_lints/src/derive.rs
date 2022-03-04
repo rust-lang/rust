@@ -315,7 +315,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &T
             let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).map_or(false, |impls| {
                 impls
                     .iter()
-                    .any(|&id| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did == adt.did))
+                    .any(|&id| matches!(cx.tcx.type_of(id).kind(), ty::Adt(adt, _) if ty_adt.did() == adt.did()))
             });
             if !has_copy_impl {
                 return;
@@ -357,10 +357,10 @@ fn check_unsafe_derive_deserialize<'tcx>(
         if let Some(trait_def_id) = trait_ref.trait_def_id();
         if match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE);
         if let ty::Adt(def, _) = ty.kind();
-        if let Some(local_def_id) = def.did.as_local();
+        if let Some(local_def_id) = def.did().as_local();
         let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
         if !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
-        if cx.tcx.inherent_impls(def.did)
+        if cx.tcx.inherent_impls(def.did())
             .iter()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp));

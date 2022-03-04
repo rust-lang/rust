@@ -268,7 +268,7 @@ pub fn match_trait_method(cx: &LateContext<'_>, expr: &Expr<'_>, path: &[&str]) 
 pub fn is_diag_item_method(cx: &LateContext<'_>, def_id: DefId, diag_item: Symbol) -> bool {
     if let Some(impl_did) = cx.tcx.impl_of_method(def_id) {
         if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
-            return cx.tcx.is_diagnostic_item(diag_item, adt.did);
+            return cx.tcx.is_diagnostic_item(diag_item, adt.did());
         }
     }
     false
@@ -657,7 +657,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
                 if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def() {
                     return std_types_symbols
                         .iter()
-                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did));
+                        .any(|&symbol| cx.tcx.is_diagnostic_item(symbol, adt.did()));
                 }
             }
         }

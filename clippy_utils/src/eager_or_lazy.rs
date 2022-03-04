@@ -73,7 +73,7 @@ fn fn_eagerness<'tcx>(
         // than marker traits.
         // Due to the limited operations on these types functions should be fairly cheap.
         if def
-            .variants
+            .variants()
             .iter()
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
