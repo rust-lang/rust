@@ -152,7 +152,7 @@ fn _assert_send_sync() {
 #[unstable(feature = "backtrace_frames", issue = "79676")]
 pub struct BacktraceFrame {
     frame: RawFrame,
-    symbols: Vec<BacktraceSymbol>,
+    pub symbols: Vec<BacktraceSymbol>,
 }
 
 #[derive(Debug)]
