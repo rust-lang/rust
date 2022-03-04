@@ -9,7 +9,7 @@ test = false
 [dependencies]
 bitflags = "1.2.1"
 cc = "1.0.69"
-itertools = "0.10"
+itertools = "0.10.1"
 tracing = "0.1"
 libc = "0.2.50"
 jobserver = "0.1.22"
