@@ -1,4 +1,4 @@
-use crate::spec::{StackProbeType, Target};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
@@ -21,6 +21,6 @@ pub fn target() -> Target {
             f64:32:64-f80:32-n8:16:32-S128"
             .to_string(),
         arch: "x86".to_string(),
-        options: base,
+        options: TargetOptions { supported_sanitizers: SanitizerSet::ADDRESS, ..base },
     }
 }

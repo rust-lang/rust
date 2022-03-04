@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, StackProbeType, Target};
+use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
@@ -16,6 +16,6 @@ pub fn target() -> Target {
         data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .to_string(),
         arch: "x86_64".to_string(),
-        options: base,
+        options: TargetOptions { supported_sanitizers: SanitizerSet::ADDRESS, ..base },
     }
 }
