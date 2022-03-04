@@ -1176,11 +1176,12 @@ extern "C" {
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
-    pub fn LLVMRustCreateAttrString(C: &Context, Name: *const c_char) -> &Attribute;
-    pub fn LLVMRustCreateAttrStringValue(
+    pub fn LLVMCreateStringAttribute(
         C: &Context,
         Name: *const c_char,
+        NameLen: c_uint,
         Value: *const c_char,
+        ValueLen: c_uint,
     ) -> &Attribute;
     pub fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
     pub fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
