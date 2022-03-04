@@ -24,7 +24,7 @@ use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var};
 use crate::Crate as CargoCrate;
-use crate::{envify, DocTests, GitRepo, Mode};
+use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -1509,7 +1509,9 @@ note: if you're sure you want to do this, please open an issue as to why. In the
                 .arg("--cxx")
                 .arg(builder.cxx(target).unwrap())
                 .arg("--cflags")
-                .arg(builder.cflags(target, GitRepo::Rustc).join(" "));
+                .arg(builder.cflags(target, GitRepo::Rustc, CLang::C).join(" "))
+                .arg("--cxxflags")
+                .arg(builder.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" "));
             copts_passed = true;
             if let Some(ar) = builder.ar(target) {
                 cmd.arg("--ar").arg(ar);
@@ -1520,7 +1522,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--llvm-components").arg("");
         }
         if !copts_passed {
-            cmd.arg("--cc").arg("").arg("--cxx").arg("").arg("--cflags").arg("");
+            cmd.arg("--cc")
+                .arg("")
+                .arg("--cxx")
+                .arg("")
+                .arg("--cflags")
+                .arg("")
+                .arg("--cxxflags")
+                .arg("");
         }
 
         if builder.remote_tested(target) {

@@ -21,7 +21,7 @@ use build_helper::{output, t};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
 use crate::util::{self, exe};
-use crate::GitRepo;
+use crate::{CLang, GitRepo};
 use build_helper::up_to_date;
 
 pub struct Meta {
@@ -529,7 +529,7 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm).join(" ").into();
+    let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cflags {
         cflags.push(" ");
         cflags.push(s);
@@ -545,22 +545,14 @@ fn configure_cmake(
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(&format!(" --target={}", target));
     }
-    if let Some(flags) = env::var_os("CFLAGS") {
-        cflags.push(" ");
-        cflags.push(flags);
-    }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm).join(" ").into();
+    let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(&format!(" --target={}", target));
-    }
-    if let Some(flags) = env::var_os("CXXFLAGS") {
-        cxxflags.push(" ");
-        cxxflags.push(flags);
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -583,7 +575,7 @@ fn configure_cmake(
         ldflags.push_all(flags);
     }
 
-    if let Some(flags) = env::var_os("LDFLAGS") {
+    if let Some(flags) = get_var("LDFLAGS", &builder.config.build.triple, &target.triple) {
         ldflags.push_all(&flags);
     }
 
@@ -594,6 +586,16 @@ fn configure_cmake(
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
         cfg.env("RUSTC_LOG", "sccache=warn");
     }
+}
+
+// Adapted from https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2347-L2365
+fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
+    let kind = if host == target { "HOST" } else { "TARGET" };
+    let target_u = target.replace("-", "_");
+    env::var_os(&format!("{}_{}", var_base, target))
+        .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
+        .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
+        .or_else(|| env::var_os(var_base))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
