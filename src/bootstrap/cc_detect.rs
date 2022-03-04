@@ -29,7 +29,7 @@ use std::{env, iter};
 use build_helper::output;
 
 use crate::config::{Target, TargetSelection};
-use crate::{Build, GitRepo};
+use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
 // so use some simplified logic here. First we respect the environment variable `AR`, then
@@ -109,7 +109,7 @@ pub fn find(build: &mut Build) {
         };
 
         build.cc.insert(target, compiler.clone());
-        let cflags = build.cflags(target, GitRepo::Rustc);
+        let cflags = build.cflags(target, GitRepo::Rustc, CLang::C);
 
         // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
         // We'll need one anyways if the target triple is also a host triple
@@ -142,8 +142,9 @@ pub fn find(build: &mut Build) {
         build.verbose(&format!("CC_{} = {:?}", &target.triple, build.cc(target)));
         build.verbose(&format!("CFLAGS_{} = {:?}", &target.triple, cflags));
         if let Ok(cxx) = build.cxx(target) {
+            let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
             build.verbose(&format!("CXX_{} = {:?}", &target.triple, cxx));
-            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target.triple, cflags));
+            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target.triple, cxxflags));
         }
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target.triple, ar));
