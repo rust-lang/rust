@@ -59,6 +59,7 @@ pub struct BorrowedHandle<'handle> {
 /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
 ///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+#[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedHandle {
     handle: RawHandle,
