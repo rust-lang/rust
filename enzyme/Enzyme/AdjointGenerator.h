@@ -975,15 +975,15 @@ public:
       BasicBlock *oBB = phi.getParent();
       BasicBlock *nBB = gutils->getNewFromOriginal(oBB);
 
-      IRBuilder<> diffeBuilder(nBB->getFirstNonPHI());
-      diffeBuilder.setFastMathFlags(getFast());
-
       IRBuilder<> phiBuilder(&phi);
       getForwardBuilder(phiBuilder);
+      phiBuilder.SetInsertPoint(
+          gutils->getNewFromOriginal(&phi)->getNextNode());
 
       Type *diffeType = gutils->getShadowType(phi.getType());
 
       auto newPhi = phiBuilder.CreatePHI(diffeType, 1, phi.getName() + "'");
+
       for (unsigned int i = 0; i < phi.getNumIncomingValues(); ++i) {
         auto val = phi.getIncomingValue(i);
         auto block = phi.getIncomingBlock(i);
@@ -1000,7 +1000,10 @@ public:
         }
       }
 
+      IRBuilder<> diffeBuilder(nBB->getFirstNonPHI());
+      diffeBuilder.setFastMathFlags(getFast());
       setDiffe(&phi, newPhi, diffeBuilder);
+
       return;
     }
     }

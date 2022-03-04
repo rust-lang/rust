@@ -51,16 +51,16 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast i8* %tapeArg to { i64**, double** }*
 ; CHECK-NEXT:   %truetape = load { i64**, double** }, { i64**, double** }* %0
-; CHECK-NEXT:   %1 = extractvalue { i64**, double** } %truetape, 0
-; CHECK-NEXT:   %2 = extractvalue { i64**, double** } %truetape, 1
+; CHECK-NEXT:   %[[i1:.+]] = extractvalue { i64**, double** } %truetape, 0
+; CHECK-NEXT:   %[[i2:.+]] = extractvalue { i64**, double** } %truetape, 1
 ; CHECK-NEXT:   br label %loop
 
 ; CHECK: loop:                                             ; preds = %end, %entry
 ; CHECK-NEXT:   %iv = phi i64 [ %iv.next, %end ], [ 0, %entry ]
 ; CHECK-NEXT:   %"sum'" = phi {{(fast )?}}double [ %8, %end ], [ 0.000000e+00, %entry ]
 ; CHECK-NEXT:   %iv.next = add nuw nsw i64 %iv, 1
-; CHECK-NEXT:   %3 = getelementptr inbounds i64*, i64** %1, i64 %iv
-; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %2, i64 %iv
+; CHECK-NEXT:   %3 = getelementptr inbounds i64*, i64** %[[i1]], i64 %iv
+; CHECK-NEXT:   %4 = getelementptr inbounds double*, double** %[[i2]], i64 %iv
 ; CHECK-NEXT:   %.pre = load i64*, i64** %3, align 8, !invariant.group !1
 ; CHECK-NEXT:   %.pre2 = load double*, double** %4, align 8, !invariant.group !2
 ; CHECK-NEXT:   br label %body

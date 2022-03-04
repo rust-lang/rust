@@ -1315,6 +1315,7 @@ void TypeAnalyzer::visitStoreInst(StoreInst &I) {
 template <typename T>
 std::set<std::vector<T>> getSet(const std::vector<std::set<T>> &todo,
                                 size_t idx) {
+  assert(idx < todo.size());
   std::set<std::vector<T>> out;
   if (idx == 0) {
     for (auto val : todo[0]) {
@@ -1406,6 +1407,7 @@ void TypeAnalyzer::visitGetElementPtrInst(GetElementPtrInst &gep) {
     if (idnext.back().size() == 0)
       return;
   }
+  assert(idnext.size() != 0);
 
   TypeTree upTree;
   TypeTree downTree;
