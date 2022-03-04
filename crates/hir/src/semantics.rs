@@ -70,7 +70,7 @@ impl PathResolution {
             | PathResolution::Local(_)
             | PathResolution::Macro(_)
             | PathResolution::ConstParam(_) => None,
-            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam(param.merge().into())),
+            PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
             PathResolution::AssocItem(AssocItem::Const(_) | AssocItem::Function(_)) => None,
             PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {

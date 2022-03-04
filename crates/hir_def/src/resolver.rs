@@ -25,7 +25,7 @@ use crate::{
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
     LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeOrConstParamId, VariantId,
+    TypeOrConstParamId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -68,7 +68,7 @@ enum Scope {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeNs {
     SelfType(ImplId),
-    GenericParam(TypeOrConstParamId),
+    GenericParam(TypeParamId),
     AdtId(AdtId),
     AdtSelfType(AdtId),
     // Yup, enum variants are added to the types ns, but any usage of variant as
@@ -192,7 +192,7 @@ impl Resolver {
                 Scope::GenericParams { .. } | Scope::ImplDefScope(_) if skip_to_mod => continue,
 
                 Scope::GenericParams { params, def } => {
-                    if let Some(local_id) = params.find_type_or_const_by_name(first_name) {
+                    if let Some(local_id) = params.find_type_by_name(first_name) {
                         let idx = if path.segments().len() == 1 { None } else { Some(1) };
                         return Some((
                             TypeNs::GenericParam(

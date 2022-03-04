@@ -365,6 +365,13 @@ impl GenericParams {
         where_predicates.shrink_to_fit();
     }
 
+    pub fn find_type_by_name(&self, name: &Name) -> Option<LocalTypeOrConstParamId> {
+        self.types
+            .iter()
+            .filter(|x| matches!(x.1, TypeOrConstParamData::TypeParamData(_)))
+            .find_map(|(id, p)| if p.name().as_ref() == Some(&name) { Some(id) } else { None })
+    }
+
     pub fn find_type_or_const_by_name(&self, name: &Name) -> Option<LocalTypeOrConstParamId> {
         self.types
             .iter()

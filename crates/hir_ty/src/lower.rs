@@ -372,7 +372,7 @@ impl<'a> TyLoweringContext<'a> {
                 _ => return None,
             };
         match resolution {
-            TypeNs::GenericParam(param_id) => Some(param_id),
+            TypeNs::GenericParam(param_id) => Some(param_id.into()),
             _ => None,
         }
     }
@@ -991,9 +991,9 @@ fn named_associated_type_shorthand_candidates<R>(
                 return res;
             }
             // Handle `Self::Type` referring to own associated type in trait definitions
-            if let GenericDefId::TraitId(trait_id) = param_id.parent {
+            if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let generics = generics(db.upcast(), trait_id.into());
-                if generics.params.types[param_id.local_id].is_trait_self() {
+                if generics.params.types[param_id.local_id()].is_trait_self() {
                     let trait_ref = TyBuilder::trait_ref(db, trait_id)
                         .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                         .build();

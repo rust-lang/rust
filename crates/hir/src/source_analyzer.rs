@@ -34,7 +34,7 @@ use syntax::{
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, BuiltinAttr, BuiltinType, Const, Field,
     Function, Local, MacroDef, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
-    TypeOrConstParam, Variant,
+    Variant,
 };
 use base_db::CrateId;
 
@@ -609,10 +609,7 @@ fn resolve_hir_path_(
 
         let res = match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-            TypeNs::GenericParam(id) => match (TypeOrConstParam { id }).split(db) {
-                either::Either::Left(x) => PathResolution::ConstParam(x),
-                either::Either::Right(x) => PathResolution::TypeParam(x),
-            },
+            TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
                 PathResolution::Def(Adt::from(it).into())
             }
@@ -706,10 +703,7 @@ fn resolve_hir_path_qualifier(
 
     resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
         TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-        TypeNs::GenericParam(id) => match (TypeOrConstParam { id }).split(db) {
-            either::Either::Left(x) => PathResolution::ConstParam(x),
-            either::Either::Right(x) => PathResolution::TypeParam(x),
-        },
+        TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
         TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => PathResolution::Def(Adt::from(it).into()),
         TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
         TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
