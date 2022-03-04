@@ -326,7 +326,7 @@ fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
         if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
         then {
-            layout.layout.size.bytes() == 0
+            layout.layout.size().bytes() == 0
         } else {
             false
         }
