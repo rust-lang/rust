@@ -52,7 +52,7 @@ fn test_run_basic() {
 }
 
 #[test]
-fn test_is_running() {
+fn test_is_finished() {
     let b = Arc::new(Barrier::new(2));
     let t = thread::spawn({
         let b = b.clone();
@@ -63,14 +63,14 @@ fn test_is_running() {
     });
 
     // Thread is definitely running here, since it's still waiting for the barrier.
-    assert_eq!(t.is_running(), true);
+    assert_eq!(t.is_finished(), false);
 
     // Unblock the barrier.
     b.wait();
 
-    // Now check that t.is_running() becomes false within a reasonable time.
+    // Now check that t.is_finished() becomes true within a reasonable time.
     let start = Instant::now();
-    while t.is_running() {
+    while !t.is_finished() {
         assert!(start.elapsed() < Duration::from_secs(2));
         thread::sleep(Duration::from_millis(15));
     }
