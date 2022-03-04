@@ -2457,9 +2457,11 @@ take_tests! {
     (take_last_mut_empty, (), None, &mut []),
 }
 
+#[cfg(not(miri))] // unused in Miri
 const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
 
 // can't be a constant due to const mutability rules
+#[cfg(not(miri))] // unused in Miri
 macro_rules! empty_max_mut {
     () => {
         &mut [(); usize::MAX] as _
