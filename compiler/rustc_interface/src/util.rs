@@ -1,7 +1,5 @@
 use libloading::Library;
-use rustc_ast::mut_visit::{visit_clobber, MutVisitor, *};
-use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Term};
+use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[cfg(parallel_compiler)]
@@ -13,7 +11,6 @@ use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
 #[cfg(parallel_compiler)]
 use rustc_query_impl::QueryCtxt;
-use rustc_resolve::{self, Resolver};
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
@@ -25,12 +22,10 @@ use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::{sym, Symbol};
-use smallvec::SmallVec;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::lazy::SyncOnceCell;
 use std::mem;
-use std::ops::DerefMut;
 #[cfg(not(parallel_compiler))]
 use std::panic;
 use std::path::{Path, PathBuf};
@@ -662,214 +657,6 @@ pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
 pub fn non_durable_rename(src: &Path, dst: &Path) -> std::io::Result<()> {
     let _ = std::fs::remove_file(dst);
     std::fs::rename(src, dst)
-}
-
-/// Replaces function bodies with `loop {}` (an infinite loop). This gets rid of
-/// all semantic errors in the body while still satisfying the return type,
-/// except in certain cases, see below for more.
-///
-/// This pass is known as `everybody_loops`. Very punny.
-///
-/// As of March 2021, `everybody_loops` is only used for the
-/// `-Z unpretty=everybody_loops` debugging option.
-///
-/// FIXME: Currently the `everybody_loops` transformation is not applied to:
-///  * `const fn`; support could be added, but hasn't. Originally `const fn`
-///    was skipped due to issue #43636 that `loop` was not supported for
-///    const evaluation.
-///  * `impl Trait`, due to issue #43869 that functions returning impl Trait cannot be diverging.
-///    Solving this may require `!` to implement every trait, which relies on the an even more
-///    ambitious form of the closed RFC #1637. See also [#34511].
-///
-/// [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
-pub struct ReplaceBodyWithLoop<'a, 'b> {
-    within_static_or_const: bool,
-    nested_blocks: Option<Vec<ast::Block>>,
-    resolver: &'a mut Resolver<'b>,
-}
-
-impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
-    pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
-        ReplaceBodyWithLoop { within_static_or_const: false, nested_blocks: None, resolver }
-    }
-
-    fn run<R, F: FnOnce(&mut Self) -> R>(&mut self, is_const: bool, action: F) -> R {
-        let old_const = mem::replace(&mut self.within_static_or_const, is_const);
-        let old_blocks = self.nested_blocks.take();
-        let ret = action(self);
-        self.within_static_or_const = old_const;
-        self.nested_blocks = old_blocks;
-        ret
-    }
-
-    fn should_ignore_fn(ret_ty: &ast::FnRetTy) -> bool {
-        let ast::FnRetTy::Ty(ref ty) = ret_ty else {
-            return false;
-        };
-        fn involves_impl_trait(ty: &ast::Ty) -> bool {
-            match ty.kind {
-                ast::TyKind::ImplTrait(..) => true,
-                ast::TyKind::Slice(ref subty)
-                | ast::TyKind::Array(ref subty, _)
-                | ast::TyKind::Ptr(ast::MutTy { ty: ref subty, .. })
-                | ast::TyKind::Rptr(_, ast::MutTy { ty: ref subty, .. })
-                | ast::TyKind::Paren(ref subty) => involves_impl_trait(subty),
-                ast::TyKind::Tup(ref tys) => any_involves_impl_trait(tys.iter()),
-                ast::TyKind::Path(_, ref path) => {
-                    path.segments.iter().any(|seg| match seg.args.as_deref() {
-                        None => false,
-                        Some(&ast::GenericArgs::AngleBracketed(ref data)) => {
-                            data.args.iter().any(|arg| match arg {
-                                ast::AngleBracketedArg::Arg(arg) => match arg {
-                                    ast::GenericArg::Type(ty) => involves_impl_trait(ty),
-                                    ast::GenericArg::Lifetime(_) | ast::GenericArg::Const(_) => {
-                                        false
-                                    }
-                                },
-                                ast::AngleBracketedArg::Constraint(c) => match c.kind {
-                                    ast::AssocConstraintKind::Bound { .. } => true,
-                                    ast::AssocConstraintKind::Equality { ref term } => {
-                                        match term {
-                                            Term::Ty(ty) => involves_impl_trait(ty),
-                                            // FIXME(...): This should check if the constant
-                                            // involves a trait impl, but for now ignore.
-                                            Term::Const(_) => false,
-                                        }
-                                    }
-                                },
-                            })
-                        }
-                        Some(&ast::GenericArgs::Parenthesized(ref data)) => {
-                            any_involves_impl_trait(data.inputs.iter())
-                                || ReplaceBodyWithLoop::should_ignore_fn(&data.output)
-                        }
-                    })
-                }
-                _ => false,
-            }
-        }
-
-        fn any_involves_impl_trait<'a, I: Iterator<Item = &'a P<ast::Ty>>>(mut it: I) -> bool {
-            it.any(|subty| involves_impl_trait(subty))
-        }
-
-        involves_impl_trait(ty)
-    }
-
-    fn is_sig_const(sig: &ast::FnSig) -> bool {
-        matches!(sig.header.constness, ast::Const::Yes(_))
-            || ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
-    }
-}
-
-impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
-    fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
-        let is_const = match i {
-            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(box ast::Fn { ref sig, .. }) => Self::is_sig_const(sig),
-            _ => false,
-        };
-        self.run(is_const, |s| noop_visit_item_kind(i, s))
-    }
-
-    fn flat_map_trait_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        let is_const = match i.kind {
-            ast::AssocItemKind::Const(..) => true,
-            ast::AssocItemKind::Fn(box ast::Fn { ref sig, .. }) => Self::is_sig_const(sig),
-            _ => false,
-        };
-        self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
-    }
-
-    fn flat_map_impl_item(&mut self, i: P<ast::AssocItem>) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        self.flat_map_trait_item(i)
-    }
-
-    fn visit_anon_const(&mut self, c: &mut ast::AnonConst) {
-        self.run(true, |s| noop_visit_anon_const(c, s))
-    }
-
-    fn visit_block(&mut self, b: &mut P<ast::Block>) {
-        fn stmt_to_block(
-            rules: ast::BlockCheckMode,
-            s: Option<ast::Stmt>,
-            resolver: &mut Resolver<'_>,
-        ) -> ast::Block {
-            ast::Block {
-                stmts: s.into_iter().collect(),
-                rules,
-                id: resolver.next_node_id(),
-                span: rustc_span::DUMMY_SP,
-                tokens: None,
-                could_be_bare_literal: false,
-            }
-        }
-
-        fn block_to_stmt(b: ast::Block, resolver: &mut Resolver<'_>) -> ast::Stmt {
-            let expr = P(ast::Expr {
-                id: resolver.next_node_id(),
-                kind: ast::ExprKind::Block(P(b), None),
-                span: rustc_span::DUMMY_SP,
-                attrs: AttrVec::new(),
-                tokens: None,
-            });
-
-            ast::Stmt {
-                id: resolver.next_node_id(),
-                kind: ast::StmtKind::Expr(expr),
-                span: rustc_span::DUMMY_SP,
-            }
-        }
-
-        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
-        let loop_expr = P(ast::Expr {
-            kind: ast::ExprKind::Loop(P(empty_block), None),
-            id: self.resolver.next_node_id(),
-            span: rustc_span::DUMMY_SP,
-            attrs: AttrVec::new(),
-            tokens: None,
-        });
-
-        let loop_stmt = ast::Stmt {
-            id: self.resolver.next_node_id(),
-            span: rustc_span::DUMMY_SP,
-            kind: ast::StmtKind::Expr(loop_expr),
-        };
-
-        if self.within_static_or_const {
-            noop_visit_block(b, self)
-        } else {
-            visit_clobber(b.deref_mut(), |b| {
-                let mut stmts = vec![];
-                for s in b.stmts {
-                    let old_blocks = self.nested_blocks.replace(vec![]);
-
-                    stmts.extend(self.flat_map_stmt(s).into_iter().filter(|s| s.is_item()));
-
-                    // we put a Some in there earlier with that replace(), so this is valid
-                    let new_blocks = self.nested_blocks.take().unwrap();
-                    self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
-                }
-
-                let mut new_block = ast::Block { stmts, ..b };
-
-                if let Some(old_blocks) = self.nested_blocks.as_mut() {
-                    //push our fresh block onto the cache and yield an empty block with `loop {}`
-                    if !new_block.stmts.is_empty() {
-                        old_blocks.push(new_block);
-                    }
-
-                    stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
-                } else {
-                    //push `loop {}` onto the end of our fresh block and yield that
-                    new_block.stmts.push(loop_stmt);
-
-                    new_block
-                }
-            })
-        }
-    }
 }
 
 /// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"
