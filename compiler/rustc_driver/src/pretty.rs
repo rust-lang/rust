@@ -42,7 +42,7 @@ where
     F: FnOnce(&dyn PrinterSupport) -> A,
 {
     match *ppmode {
-        Normal | EveryBodyLoops | Expanded => {
+        Normal | Expanded => {
             let annotation = NoAnn { sess, tcx };
             f(&annotation)
         }

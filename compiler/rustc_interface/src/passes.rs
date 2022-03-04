@@ -3,7 +3,6 @@ use crate::proc_macro_decls;
 use crate::util;
 
 use ast::CRATE_NODE_ID;
-use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::{self as ast, visit};
 use rustc_borrowck as mir_borrowck;
 use rustc_codegen_ssa::back::link::emit_metadata;
@@ -29,7 +28,7 @@ use rustc_plugin_impl as plugin;
 use rustc_query_impl::{OnDiskCache, Queries as TcxQueries};
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_serialize::json;
-use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType, PpMode, PpSourceMode};
+use rustc_session::config::{CrateType, Input, OutputFilenames, OutputType};
 use rustc_session::cstore::{MetadataLoader, MetadataLoaderDyn};
 use rustc_session::lint;
 use rustc_session::output::{filename_for_input, filename_for_metadata};
@@ -384,11 +383,6 @@ pub fn configure_and_expand(
         rustc_builtin_macros::test_harness::inject(sess, resolver, &mut krate)
     });
 
-    if let Some(PpMode::Source(PpSourceMode::EveryBodyLoops)) = sess.opts.pretty {
-        tracing::debug!("replacing bodies with loop {{}}");
-        util::ReplaceBodyWithLoop::new(resolver).visit_crate(&mut krate);
-    }
-
     let has_proc_macro_decls = sess.time("AST_validation", || {
         rustc_ast_passes::ast_validation::check_crate(sess, &krate, resolver.lint_buffer())
     });
@@ -457,18 +451,12 @@ pub fn configure_and_expand(
     });
 
     // Add all buffered lints from the `ParseSess` to the `Session`.
-    // The ReplaceBodyWithLoop pass may have deleted some AST nodes, potentially
-    // causing a delay_span_bug later if a buffered lint refers to such a deleted
-    // AST node (issue #87308). Since everybody_loops is for pretty-printing only,
-    // anyway, we simply skip all buffered lints here.
-    if !matches!(sess.opts.pretty, Some(PpMode::Source(PpSourceMode::EveryBodyLoops))) {
-        sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
-            info!("{} parse sess buffered_lints", buffered_lints.len());
-            for early_lint in buffered_lints.drain(..) {
-                resolver.lint_buffer().add_early_lint(early_lint);
-            }
-        });
-    }
+    sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
+        info!("{} parse sess buffered_lints", buffered_lints.len());
+        for early_lint in buffered_lints.drain(..) {
+            resolver.lint_buffer().add_early_lint(early_lint);
+        }
+    });
 
     // Gate identifiers containing invalid Unicode codepoints that were recovered during lexing.
     sess.parse_sess.bad_unicode_identifiers.with_lock(|identifiers| {
