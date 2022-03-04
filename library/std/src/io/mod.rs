@@ -268,8 +268,6 @@ pub use self::buffered::WriterPanicked;
 pub use self::stdio::set_output_capture;
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
-#[unstable(feature = "stdio_locked", issue = "86845")]
-pub use self::stdio::{stderr_locked, stdin_locked, stdout_locked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter},
