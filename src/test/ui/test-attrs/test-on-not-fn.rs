@@ -58,7 +58,7 @@ macro_rules! foo {
     () => {};
 }
 
-#[test] //~ ERROR: the `#[test]` attribute may only be used on a non-associated function
+#[test] //~ WARN: the `#[test]` attribute may only be used on a non-associated function
 foo!();
 
 // make sure it doesn't erroneously trigger on a real test
