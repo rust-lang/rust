@@ -1,0 +1,17 @@
+error[E0061]: this function takes 1 argument but 2 arguments were supplied
+  --> $DIR/wrong_argument_ice-3.rs:9:16
+   |
+LL |         groups.push(new_group, vec![process]);
+   |                ^^^^ ---------  ------------- supplied 2 arguments
+   |                |
+   |                expected 1 argument
+   |
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+   |
+LL |     pub fn push(&mut self, value: T) {
+   |            ^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.
