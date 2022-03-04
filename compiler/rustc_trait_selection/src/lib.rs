@@ -17,6 +17,7 @@
 #![feature(derive_default_enum)]
 #![feature(hash_drain_filter)]
 #![feature(label_break_value)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(crate_visibility_modifier)]

@@ -35,34 +35,14 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
     debug!("is_const_evaluatable({:?})", uv);
-    if infcx.tcx.features().generic_const_exprs {
-        let tcx = infcx.tcx;
+    let tcx = infcx.tcx;
+
+    if tcx.features().generic_const_exprs {
         match AbstractConst::new(tcx, uv)? {
             // We are looking at a generic abstract constant.
             Some(ct) => {
-                for pred in param_env.caller_bounds() {
-                    match pred.kind().skip_binder() {
-                        ty::PredicateKind::ConstEvaluatable(uv) => {
-                            if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
-                                // Try to unify with each subtree in the AbstractConst to allow for
-                                // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
-                                // predicate for `(N + 1) * 2`
-                                let result =
-                                    walk_abstract_const(tcx, b_ct, |b_ct| {
-                                        match try_unify(tcx, ct, b_ct) {
-                                            true => ControlFlow::BREAK,
-                                            false => ControlFlow::CONTINUE,
-                                        }
-                                    });
-
-                                if let ControlFlow::Break(()) = result {
-                                    debug!("is_const_evaluatable: abstract_const ~~> ok");
-                                    return Ok(());
-                                }
-                            }
-                        }
-                        _ => {} // don't care
-                    }
+                if satisfied_from_param_env(tcx, ct, param_env)? {
+                    return Ok(());
                 }
 
                 // We were unable to unify the abstract constant with
@@ -163,6 +143,33 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         }
     }
 
+    // If we're evaluating a foreign constant, under a nightly compiler without generic
+    // const exprs, AND it would've passed if that expression had been evaluated with
+    // generic const exprs, then suggest using generic const exprs.
+    if concrete.is_err()
+        && tcx.sess.is_nightly_build()
+        && !uv.def.did.is_local()
+        && !tcx.features().generic_const_exprs
+        && let Ok(Some(ct)) = AbstractConst::new(tcx, uv)
+        && satisfied_from_param_env(tcx, ct, param_env) == Ok(true)
+    {
+        tcx.sess
+            .struct_span_fatal(
+                // Slightly better span than just using `span` alone
+                if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def.did) } else { span },
+                "failed to evaluate generic const expression",
+            )
+            .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
+            .span_suggestion_verbose(
+                rustc_span::DUMMY_SP,
+                "consider enabling this feature",
+                "#![feature(generic_const_exprs)]\n".to_string(),
+                rustc_errors::Applicability::MaybeIncorrect,
+            )
+            .emit();
+        rustc_errors::FatalError.raise();
+    }
+
     debug!(?concrete, "is_const_evaluatable");
     match concrete {
         Err(ErrorHandled::TooGeneric) => Err(match uv.has_infer_types_or_consts() {
@@ -176,6 +183,37 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
         Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
         Ok(_) => Ok(()),
     }
+}
+
+fn satisfied_from_param_env<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ct: AbstractConst<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<bool, NotConstEvaluatable> {
+    for pred in param_env.caller_bounds() {
+        match pred.kind().skip_binder() {
+            ty::PredicateKind::ConstEvaluatable(uv) => {
+                if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
+                    // Try to unify with each subtree in the AbstractConst to allow for
+                    // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
+                    // predicate for `(N + 1) * 2`
+                    let result =
+                        walk_abstract_const(tcx, b_ct, |b_ct| match try_unify(tcx, ct, b_ct) {
+                            true => ControlFlow::BREAK,
+                            false => ControlFlow::CONTINUE,
+                        });
+
+                    if let ControlFlow::Break(()) = result {
+                        debug!("is_const_evaluatable: abstract_const ~~> ok");
+                        return Ok(true);
+                    }
+                }
+            }
+            _ => {} // don't care
+        }
+    }
+
+    Ok(false)
 }
 
 /// A tree representing an anonymous constant.
