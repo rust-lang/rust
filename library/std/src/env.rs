@@ -338,10 +338,43 @@ impl Error for VarError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
+    // Safety: This isn't sound. See #27970 for details.
+    unsafe { _set_var(key.as_ref(), value.as_ref()) }
+}
+
+/// Sets the environment variable `key` to the value `value` for the currently running
+/// process.
+///
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign `'='`
+/// or the NUL character `'\0'`, or when `value` contains the NUL character.
+///
+/// # Safety
+///
+/// Some platforms only expose non-threadsafe APIs for altering the environment.
+/// On these platforms, you must ensure this method is not called when the
+/// program is multithreaded and any other thread could be reading or writing
+/// the environment.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unsafe_env)]
+/// use std::env;
+///
+/// let key = "KEY";
+/// unsafe { env::set(key, "VALUE"); } // Make sure you're single-threaded!
+/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+/// ```
+#[unstable(feature = "unsafe_env", issue = "none")]
+pub unsafe fn set<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     _set_var(key.as_ref(), value.as_ref())
 }
 
-fn _set_var(key: &OsStr, value: &OsStr) {
+// Safety: This can only be called when the program is single-threaded or when
+// no other thread touches the environment.
+unsafe fn _set_var(key: &OsStr, value: &OsStr) {
     os_imp::setenv(key, value).unwrap_or_else(|e| {
         panic!("failed to set environment variable `{:?}` to `{:?}`: {}", key, value, e)
     })
@@ -380,10 +413,46 @@ fn _set_var(key: &OsStr, value: &OsStr) {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: AsRef<OsStr>>(key: K) {
+    // Safety: This isn't sound. See #27970 for details.
+    unsafe { _remove_var(key.as_ref()) }
+}
+
+/// Removes an environment variable from the environment of the currently running process.
+///
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
+///
+/// # Safety
+///
+/// Some platforms only expose non-threadsafe APIs for altering the environment.
+/// On these platforms, you must ensure this method is not called when the
+/// program is multithreaded and any other thread could be reading or writing
+/// the environment.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(unsafe_env)]
+/// use std::env;
+///
+/// let key = "KEY";
+/// unsafe { env::set(key, "VALUE"); } // Make sure you're single-threaded!
+/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+///
+/// unsafe { env::unset(key); } // Make sure you're single-threaded!
+/// assert!(env::var(key).is_err());
+/// ```
+#[unstable(feature = "unsafe_env", issue = "none")]
+pub unsafe fn unset<K: AsRef<OsStr>>(key: K) {
     _remove_var(key.as_ref())
 }
 
-fn _remove_var(key: &OsStr) {
+// Safety: This can only be called when the program is single-threaded or when
+// no other thread touches the environment.
+unsafe fn _remove_var(key: &OsStr) {
     os_imp::unsetenv(key)
         .unwrap_or_else(|e| panic!("failed to remove environment variable `{:?}`: {}", key, e))
 }

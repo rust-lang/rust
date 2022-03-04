@@ -538,23 +538,21 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     }
 }
 
-pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
+// Safety: This can only be called when the program is single-threaded.
+pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let k = CString::new(k.as_bytes())?;
     let v = CString::new(v.as_bytes())?;
 
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    let _guard = ENV_LOCK.write();
+    cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
 }
 
-pub fn unsetenv(n: &OsStr) -> io::Result<()> {
+// Safety: This can only be called when the program is single-threaded.
+pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+    let _guard = ENV_LOCK.write();
+    cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
 }
 
 #[cfg(not(target_os = "espidf"))]
