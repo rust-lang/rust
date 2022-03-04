@@ -1,5 +1,5 @@
 use super::pat::Expected;
-use super::ty::{AllowPlus, IsAsCast};
+use super::ty::{AllowPlus, RecoverQuestionMark};
 use super::{
     BlockMode, CommaRecoveryMode, Parser, PathStyle, RecoverColon, RecoverComma, Restrictions,
     SemiColonMode, SeqSep, TokenExpectType, TokenType,
@@ -1049,9 +1049,9 @@ impl<'a> Parser<'a> {
     pub(super) fn maybe_recover_from_question_mark(
         &mut self,
         ty: P<Ty>,
-        is_as_cast: IsAsCast,
+        recover_question_mark: RecoverQuestionMark,
     ) -> P<Ty> {
-        if let IsAsCast::Yes = is_as_cast {
+        if let RecoverQuestionMark::No = recover_question_mark {
             return ty;
         }
         if self.token == token::Question {
