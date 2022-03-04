@@ -388,11 +388,32 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
         let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
         let self_type = self.self_ty().clean(cx);
         Type::QPath {
-            name: cx.tcx.associated_item(self.item_def_id).name,
+            assoc: Box::new(projection_to_path_segment(*self, cx)),
             self_def_id: self_type.def_id(&cx.cache),
             self_type: box self_type,
             trait_,
         }
+    }
+}
+
+fn projection_to_path_segment(ty: ty::ProjectionTy<'_>, cx: &mut DocContext<'_>) -> PathSegment {
+    let item = cx.tcx.associated_item(ty.item_def_id);
+    let generics = cx.tcx.generics_of(ty.item_def_id);
+    PathSegment {
+        name: item.name,
+        args: GenericArgs::AngleBracketed {
+            args: ty.substs[generics.parent_count..]
+                .iter()
+                .map(|ty| match ty.unpack() {
+                    ty::subst::GenericArgKind::Lifetime(lt) => {
+                        GenericArg::Lifetime(lt.clean(cx).unwrap())
+                    }
+                    ty::subst::GenericArgKind::Type(ty) => GenericArg::Type(ty.clean(cx)),
+                    ty::subst::GenericArgKind::Const(c) => GenericArg::Const(Box::new(c.clean(cx))),
+                })
+                .collect(),
+            bindings: Default::default(),
+        },
     }
 }
 
@@ -601,8 +622,8 @@ fn clean_ty_generics(
         })
         .collect::<Vec<GenericParamDef>>();
 
-    // param index -> [(DefId of trait, associated type name, type)]
-    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, Symbol, Ty<'_>)>>::default();
+    // param index -> [(DefId of trait, associated type name and generics, type)]
+    let mut impl_trait_proj = FxHashMap::<u32, Vec<(DefId, PathSegment, Ty<'_>)>>::default();
 
     let where_predicates = preds
         .predicates
@@ -648,8 +669,9 @@ fn clean_ty_generics(
 
                     let proj = projection
                         .map(|p| (p.skip_binder().projection_ty.clean(cx), p.skip_binder().term));
-                    if let Some(((_, trait_did, name), rhs)) =
-                        proj.as_ref().and_then(|(lhs, rhs)| Some((lhs.projection()?, rhs)))
+                    if let Some(((_, trait_did, name), rhs)) = proj
+                        .as_ref()
+                        .and_then(|(lhs, rhs): &(Type, _)| Some((lhs.projection()?, rhs)))
                     {
                         // FIXME(...): Remove this unwrap()
                         impl_trait_proj.entry(param_idx).or_default().push((
@@ -992,9 +1014,10 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     TyMethodItem(t)
                 }
                 hir::TraitItemKind::Type(bounds, ref default) => {
+                    let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
                     let bounds = bounds.iter().filter_map(|x| x.clean(cx)).collect();
                     let default = default.map(|t| t.clean(cx));
-                    AssocTypeItem(bounds, default)
+                    AssocTypeItem(Box::new(generics), bounds, default)
                 }
             };
             let what_rustc_thinks =
@@ -1026,15 +1049,9 @@ impl Clean<Item> for hir::ImplItem<'_> {
                 }
                 hir::ImplItemKind::TyAlias(ref hir_ty) => {
                     let type_ = hir_ty.clean(cx);
+                    let generics = self.generics.clean(cx);
                     let item_type = hir_ty_to_ty(cx.tcx, hir_ty).clean(cx);
-                    TypedefItem(
-                        Typedef {
-                            type_,
-                            generics: Generics::default(),
-                            item_type: Some(item_type),
-                        },
-                        true,
-                    )
+                    TypedefItem(Typedef { type_, generics, item_type: Some(item_type) }, true)
                 }
             };
 
@@ -1140,35 +1157,79 @@ impl Clean<Item> for ty::AssocItem {
             ty::AssocKind::Type => {
                 let my_name = self.name;
 
+                fn param_eq_arg(param: &GenericParamDef, arg: &GenericArg) -> bool {
+                    match (&param.kind, arg) {
+                        (GenericParamDefKind::Type { .. }, GenericArg::Type(Type::Generic(ty)))
+                            if *ty == param.name =>
+                        {
+                            true
+                        }
+                        (
+                            GenericParamDefKind::Lifetime { .. },
+                            GenericArg::Lifetime(Lifetime(lt)),
+                        ) if *lt == param.name => true,
+                        (GenericParamDefKind::Const { .. }, GenericArg::Const(c)) => {
+                            match &c.kind {
+                                ConstantKind::TyConst { expr } => expr == param.name.as_str(),
+                                _ => false,
+                            }
+                        }
+                        _ => false,
+                    }
+                }
+
                 if let ty::TraitContainer(_) = self.container {
                     let bounds = tcx.explicit_item_bounds(self.def_id);
                     let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
-                    let generics = clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
+                    let mut generics =
+                        clean_ty_generics(cx, tcx.generics_of(self.def_id), predicates);
+                    // Filter out the bounds that are (likely?) directly attached to the associated type,
+                    // as opposed to being located in the where clause.
                     let mut bounds = generics
                         .where_predicates
-                        .iter()
-                        .filter_map(|pred| {
-                            let (name, self_type, trait_, bounds) = match *pred {
-                                WherePredicate::BoundPredicate {
-                                    ty: QPath { ref name, ref self_type, ref trait_, .. },
-                                    ref bounds,
-                                    ..
-                                } => (name, self_type, trait_, bounds),
-                                _ => return None,
-                            };
-                            if *name != my_name {
-                                return None;
+                        .drain_filter(|pred| match *pred {
+                            WherePredicate::BoundPredicate {
+                                ty: QPath { ref assoc, ref self_type, ref trait_, .. },
+                                ..
+                            } => {
+                                if assoc.name != my_name {
+                                    return false;
+                                }
+                                if trait_.def_id() != self.container.id() {
+                                    return false;
+                                }
+                                match **self_type {
+                                    Generic(ref s) if *s == kw::SelfUpper => {}
+                                    _ => return false,
+                                }
+                                match &assoc.args {
+                                    GenericArgs::AngleBracketed { args, bindings } => {
+                                        if !bindings.is_empty()
+                                            || generics
+                                                .params
+                                                .iter()
+                                                .zip(args)
+                                                .any(|(param, arg)| !param_eq_arg(param, arg))
+                                        {
+                                            return false;
+                                        }
+                                    }
+                                    GenericArgs::Parenthesized { .. } => {
+                                        // The only time this happens is if we're inside the rustdoc for Fn(),
+                                        // which only has one associated type, which is not a GAT, so whatever.
+                                    }
+                                }
+                                true
                             }
-                            if trait_.def_id() != self.container.id() {
-                                return None;
-                            }
-                            match **self_type {
-                                Generic(ref s) if *s == kw::SelfUpper => {}
-                                _ => return None,
-                            }
-                            Some(bounds)
+                            _ => false,
                         })
-                        .flat_map(|i| i.iter().cloned())
+                        .flat_map(|pred| {
+                            if let WherePredicate::BoundPredicate { bounds, .. } = pred {
+                                bounds
+                            } else {
+                                unreachable!()
+                            }
+                        })
                         .collect::<Vec<_>>();
                     // Our Sized/?Sized bound didn't get handled when creating the generics
                     // because we didn't actually get our whole set of bounds until just now
@@ -1188,7 +1249,7 @@ impl Clean<Item> for ty::AssocItem {
                         None
                     };
 
-                    AssocTypeItem(bounds, ty.map(|t| t.clean(cx)))
+                    AssocTypeItem(Box::new(generics), bounds, ty.map(|t| t.clean(cx)))
                 } else {
                     // FIXME: when could this happen? Associated items in inherent impls?
                     let type_ = tcx.type_of(self.def_id).clean(cx);
@@ -1259,7 +1320,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             };
             register_res(cx, trait_.res);
             Type::QPath {
-                name: p.segments.last().expect("segments were empty").ident.name,
+                assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
                 self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
                 self_type: box qself.clean(cx),
                 trait_,
@@ -1276,7 +1337,7 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
             register_res(cx, trait_.res);
             Type::QPath {
-                name: segment.ident.name,
+                assoc: Box::new(segment.clean(cx)),
                 self_def_id: res.opt_def_id(),
                 self_type: box qself.clean(cx),
                 trait_,
@@ -1548,7 +1609,16 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let mut bindings = vec![];
                 for pb in obj.projection_bounds() {
                     bindings.push(TypeBinding {
-                        name: cx.tcx.associated_item(pb.item_def_id()).name,
+                        assoc: projection_to_path_segment(
+                            pb.skip_binder()
+                                .lift_to_tcx(cx.tcx)
+                                .unwrap()
+                                // HACK(compiler-errors): Doesn't actually matter what self
+                                // type we put here, because we're only using the GAT's substs.
+                                .with_self_ty(cx.tcx, cx.tcx.types.self_param)
+                                .projection_ty,
+                            cx,
+                        ),
                         kind: TypeBindingKind::Equality { term: pb.skip_binder().term.clean(cx) },
                     });
                 }
@@ -1614,10 +1684,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                         == trait_ref.skip_binder()
                                     {
                                         Some(TypeBinding {
-                                            name: cx
-                                                .tcx
-                                                .associated_item(proj.projection_ty.item_def_id)
-                                                .name,
+                                            assoc: projection_to_path_segment(
+                                                proj.projection_ty,
+                                                cx,
+                                            ),
                                             kind: TypeBindingKind::Equality {
                                                 term: proj.term.clean(cx),
                                             },
@@ -2160,7 +2230,10 @@ fn clean_maybe_renamed_foreign_item(
 
 impl Clean<TypeBinding> for hir::TypeBinding<'_> {
     fn clean(&self, cx: &mut DocContext<'_>) -> TypeBinding {
-        TypeBinding { name: self.ident.name, kind: self.kind.clean(cx) }
+        TypeBinding {
+            assoc: PathSegment { name: self.ident.name, args: self.gen_args.clean(cx) },
+            kind: self.kind.clean(cx),
+        }
     }
 }
 

@@ -86,7 +86,7 @@ crate trait DocFolder: Sized {
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | AssocConstItem(_, _)
-            | AssocTypeItem(_, _)
+            | AssocTypeItem(..)
             | KeywordItem(_) => kind,
         }
     }

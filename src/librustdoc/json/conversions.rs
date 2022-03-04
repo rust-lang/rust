@@ -154,7 +154,11 @@ impl FromWithTcx<clean::Constant> for Constant {
 
 impl FromWithTcx<clean::TypeBinding> for TypeBinding {
     fn from_tcx(binding: clean::TypeBinding, tcx: TyCtxt<'_>) -> Self {
-        TypeBinding { name: binding.name.to_string(), binding: binding.kind.into_tcx(tcx) }
+        TypeBinding {
+            name: binding.assoc.name.to_string(),
+            args: binding.assoc.args.into_tcx(tcx),
+            binding: binding.kind.into_tcx(tcx),
+        }
     }
 }
 
@@ -222,8 +226,9 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         AssocConstItem(ty, default) => {
             ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: default.map(|c| c.expr(tcx)) }
         }
-        AssocTypeItem(g, t) => ItemEnum::AssocType {
-            bounds: g.into_iter().map(|x| x.into_tcx(tcx)).collect(),
+        AssocTypeItem(g, b, t) => ItemEnum::AssocType {
+            generics: (*g).into_tcx(tcx),
+            bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
             default: t.map(|x| x.into_tcx(tcx)),
         },
         // `convert_item` early returns `None` for striped items
@@ -444,11 +449,12 @@ impl FromWithTcx<clean::Type> for Type {
                 mutable: mutability == ast::Mutability::Mut,
                 type_: Box::new((*type_).into_tcx(tcx)),
             },
-            QPath { name, self_type, trait_, .. } => {
+            QPath { assoc, self_type, trait_, .. } => {
                 // FIXME: should `trait_` be a clean::Path equivalent in JSON?
                 let trait_ = clean::Type::Path { path: trait_ }.into_tcx(tcx);
                 Type::QualifiedPath {
-                    name: name.to_string(),
+                    name: assoc.name.to_string(),
+                    args: Box::new(assoc.args.clone().into_tcx(tcx)),
                     self_type: Box::new((*self_type).into_tcx(tcx)),
                     trait_: Box::new(trait_),
                 }

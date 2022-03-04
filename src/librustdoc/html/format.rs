@@ -961,7 +961,7 @@ fn fmt_type<'cx>(
                 write!(f, "impl {}", print_generic_bounds(bounds, cx))
             }
         }
-        clean::QPath { ref name, ref self_type, ref trait_, ref self_def_id } => {
+        clean::QPath { ref assoc, ref self_type, ref trait_, ref self_def_id } => {
             let should_show_cast = !trait_.segments.is_empty()
                 && self_def_id
                     .zip(Some(trait_.def_id()))
@@ -994,14 +994,15 @@ fn fmt_type<'cx>(
                     write!(
                         f,
                         "<a class=\"associatedtype\" href=\"{url}#{shortty}.{name}\" \
-                                    title=\"type {path}::{name}\">{name}</a>",
+                                    title=\"type {path}::{name}\">{name}</a>{args}",
                         url = url,
                         shortty = ItemType::AssocType,
-                        name = name,
+                        name = assoc.name,
                         path = join_with_double_colon(path),
+                        args = assoc.args.print(cx),
                     )?;
                 }
-                _ => write!(f, "{}", name)?,
+                _ => write!(f, "{}{:#}", assoc.name, assoc.args.print(cx))?,
             }
             Ok(())
         }
@@ -1457,7 +1458,12 @@ impl clean::TypeBinding {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
-            f.write_str(self.name.as_str())?;
+            f.write_str(self.assoc.name.as_str())?;
+            if f.alternate() {
+                write!(f, "{:#}", self.assoc.args.print(cx))?;
+            } else {
+                write!(f, "{}", self.assoc.args.print(cx))?;
+            }
             match self.kind {
                 clean::TypeBindingKind::Equality { ref term } => {
                     if f.alternate() {
