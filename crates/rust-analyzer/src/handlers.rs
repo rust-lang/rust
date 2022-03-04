@@ -1324,7 +1324,11 @@ pub(crate) fn handle_inlay_hints(
     let range = params
         .range
         .map(|range| {
-            from_proto::file_range(&snap, TextDocumentIdentifier::new(document_uri.to_owned()), range)
+            from_proto::file_range(
+                &snap,
+                TextDocumentIdentifier::new(document_uri.to_owned()),
+                range,
+            )
         })
         .transpose()?;
     Ok(snap
