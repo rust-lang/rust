@@ -288,9 +288,6 @@ jobs:
           - name: mingw-check
             <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-12
-            <<: *job-linux-xl
-
           - name: dist-x86_64-msvc-alt
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
