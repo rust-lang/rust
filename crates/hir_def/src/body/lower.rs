@@ -97,6 +97,8 @@ pub(super) fn lower(
         },
         expander,
         statements_in_scope: Vec::new(),
+        name_to_pat_grouping: Default::default(),
+        is_lowering_inside_or_pat: false,
     }
     .collect(params, body)
 }
@@ -107,6 +109,9 @@ struct ExprCollector<'a> {
     body: Body,
     source_map: BodySourceMap,
     statements_in_scope: Vec<Statement>,
+    // a poor-mans union-find?
+    name_to_pat_grouping: FxHashMap<Name, Vec<PatId>>,
+    is_lowering_inside_or_pat: bool,
 }
 
 impl ExprCollector<'_> {
@@ -706,14 +711,12 @@ impl ExprCollector<'_> {
     }
 
     fn collect_pat(&mut self, pat: ast::Pat) -> PatId {
-        let mut name_to_pat = FxHashMap::default();
-        let pat_id = self.collect_pat_(&mut name_to_pat, false, pat);
-        for pats in name_to_pat.into_values() {
+        let pat_id = self.collect_pat_(pat);
+        for (_, pats) in self.name_to_pat_grouping.drain() {
             let pats = Arc::<[_]>::from(pats);
-            for &pat in &*pats {
-                self.body.or_pats.insert(pat, pats.clone());
-            }
+            self.body.or_pats.extend(pats.iter().map(|&pat| (pat, pats.clone())));
         }
+        self.is_lowering_inside_or_pat = false;
         pat_id
     }
 
@@ -724,21 +727,15 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn collect_pat_(
-        &mut self,
-        name_to_pat: &mut FxHashMap<Name, Vec<PatId>>,
-        in_or_pat: bool,
-        pat: ast::Pat,
-    ) -> PatId {
+    fn collect_pat_(&mut self, pat: ast::Pat) -> PatId {
         let pattern = match &pat {
             ast::Pat::IdentPat(bp) => {
                 let name = bp.name().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
 
-                let key = in_or_pat.then(|| name.clone());
+                let key = self.is_lowering_inside_or_pat.then(|| name.clone());
                 let annotation =
                     BindingAnnotation::new(bp.mut_token().is_some(), bp.ref_token().is_some());
-                let subpat =
-                    bp.pat().map(|subpat| self.collect_pat_(name_to_pat, in_or_pat, subpat));
+                let subpat = bp.pat().map(|subpat| self.collect_pat_(subpat));
                 let pattern = if annotation == BindingAnnotation::Unannotated && subpat.is_none() {
                     // This could also be a single-segment path pattern. To
                     // decide that, we need to try resolving the name.
@@ -774,14 +771,14 @@ impl ExprCollector<'_> {
                 let ptr = AstPtr::new(&pat);
                 let pat = self.alloc_pat(pattern, Either::Left(ptr));
                 if let Some(key) = key {
-                    name_to_pat.entry(key).or_default().push(pat);
+                    self.name_to_pat_grouping.entry(key).or_default().push(pat);
                 }
                 return pat;
             }
             ast::Pat::TupleStructPat(p) => {
                 let path =
                     p.path().and_then(|path| self.expander.parse_path(self.db, path)).map(Box::new);
-                let (args, ellipsis) = self.collect_tuple_pat(name_to_pat, in_or_pat, p.fields());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::TupleStruct { path, args, ellipsis }
             }
             ast::Pat::RefPat(p) => {
@@ -795,12 +792,13 @@ impl ExprCollector<'_> {
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => {
-                let pats = p.pats().map(|p| self.collect_pat_(name_to_pat, true, p)).collect();
+                self.is_lowering_inside_or_pat = true;
+                let pats = p.pats().map(|p| self.collect_pat_(p)).collect();
                 Pat::Or(pats)
             }
-            ast::Pat::ParenPat(p) => return self.collect_pat_opt_(name_to_pat, in_or_pat, p.pat()),
+            ast::Pat::ParenPat(p) => return self.collect_pat_opt_(p.pat()),
             ast::Pat::TuplePat(p) => {
-                let (args, ellipsis) = self.collect_tuple_pat(name_to_pat, in_or_pat, p.fields());
+                let (args, ellipsis) = self.collect_tuple_pat(p.fields());
                 Pat::Tuple { args, ellipsis }
             }
             ast::Pat::WildcardPat(_) => Pat::Wild,
@@ -813,7 +811,7 @@ impl ExprCollector<'_> {
                     .fields()
                     .filter_map(|f| {
                         let ast_pat = f.pat()?;
-                        let pat = self.collect_pat_(name_to_pat, in_or_pat, ast_pat);
+                        let pat = self.collect_pat_(ast_pat);
                         let name = f.field_name()?.as_name();
                         Some(RecordFieldPat { name, pat })
                     })
@@ -832,15 +830,9 @@ impl ExprCollector<'_> {
 
                 // FIXME properly handle `RestPat`
                 Pat::Slice {
-                    prefix: prefix
-                        .into_iter()
-                        .map(|p| self.collect_pat_(name_to_pat, in_or_pat, p))
-                        .collect(),
-                    slice: slice.map(|p| self.collect_pat_(name_to_pat, in_or_pat, p)),
-                    suffix: suffix
-                        .into_iter()
-                        .map(|p| self.collect_pat_(name_to_pat, in_or_pat, p))
-                        .collect(),
+                    prefix: prefix.into_iter().map(|p| self.collect_pat_(p)).collect(),
+                    slice: slice.map(|p| self.collect_pat_(p)),
+                    suffix: suffix.into_iter().map(|p| self.collect_pat_(p)).collect(),
                 }
             }
             ast::Pat::LiteralPat(lit) => {
@@ -863,7 +855,7 @@ impl ExprCollector<'_> {
                 Pat::Missing
             }
             ast::Pat::BoxPat(boxpat) => {
-                let inner = self.collect_pat_opt_(name_to_pat, in_or_pat, boxpat.pat());
+                let inner = self.collect_pat_opt_(boxpat.pat());
                 Pat::Box { inner }
             }
             ast::Pat::ConstBlockPat(const_block_pat) => {
@@ -879,7 +871,7 @@ impl ExprCollector<'_> {
                     let macro_ptr = AstPtr::new(&call);
                     let mut pat = None;
                     self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
-                        pat = Some(this.collect_pat_opt_(name_to_pat, in_or_pat, expanded_pat));
+                        pat = Some(this.collect_pat_opt_(expanded_pat));
                     });
 
                     match pat {
@@ -896,31 +888,21 @@ impl ExprCollector<'_> {
         self.alloc_pat(pattern, Either::Left(ptr))
     }
 
-    fn collect_pat_opt_(
-        &mut self,
-        name_to_pat: &mut FxHashMap<Name, Vec<PatId>>,
-        in_or_pat: bool,
-        pat: Option<ast::Pat>,
-    ) -> PatId {
+    fn collect_pat_opt_(&mut self, pat: Option<ast::Pat>) -> PatId {
         match pat {
-            Some(pat) => self.collect_pat_(name_to_pat, in_or_pat, pat),
+            Some(pat) => self.collect_pat_(pat),
             None => self.missing_pat(),
         }
     }
 
-    fn collect_tuple_pat(
-        &mut self,
-        name_to_pat: &mut FxHashMap<Name, Vec<PatId>>,
-        in_or_pat: bool,
-        args: AstChildren<ast::Pat>,
-    ) -> (Box<[PatId]>, Option<usize>) {
+    fn collect_tuple_pat(&mut self, args: AstChildren<ast::Pat>) -> (Box<[PatId]>, Option<usize>) {
         // Find the location of the `..`, if there is one. Note that we do not
         // consider the possibility of there being multiple `..` here.
         let ellipsis = args.clone().position(|p| matches!(p, ast::Pat::RestPat(_)));
         // We want to skip the `..` pattern here, since we account for it above.
         let args = args
             .filter(|p| !matches!(p, ast::Pat::RestPat(_)))
-            .map(|p| self.collect_pat_(name_to_pat, in_or_pat, p))
+            .map(|p| self.collect_pat_(p))
             .collect();
 
         (args, ellipsis)

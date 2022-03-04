@@ -237,7 +237,7 @@ pub struct Mark {
 }
 
 /// The body of an item (function, const etc.).
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Body {
     pub exprs: Arena<Expr>,
     pub pats: Arena<Pat>,
@@ -353,7 +353,7 @@ impl Body {
     ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + '_ {
         self.block_scopes
             .iter()
-            .map(move |block| (*block, db.block_def_map(*block).expect("block ID without DefMap")))
+            .map(move |&block| (block, db.block_def_map(block).expect("block ID without DefMap")))
     }
 
     pub fn pattern_representative(&self, pat: PatId) -> PatId {

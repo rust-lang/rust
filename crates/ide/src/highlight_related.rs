@@ -1071,7 +1071,7 @@ fn function(field: u32) {
         check_with_config(
             r#"
 fn foo() {
-    let x = 5;
+    let x$0 = 5;
     let y = x * 2;
 }
 "#,
@@ -1091,7 +1091,7 @@ fn foo() {
         check_with_config(
             r#"
 fn foo() {
-    let x = 5;
+    let x$0 = 5;
     let y = x * 2;
 
     loop {
@@ -1108,7 +1108,7 @@ fn foo() {
     let x = 5;
     let y = x * 2;
 
-    loop {
+    loop$0 {
 //  ^^^^
         break;
 //      ^^^^^
@@ -1131,7 +1131,7 @@ fn foo() {
         check_with_config(
             r#"
 async fn foo() {
-    let x = 5;
+    let x$0 = 5;
     let y = x * 2;
 
     0.await;
@@ -1147,7 +1147,7 @@ async fn foo() {
         let x = 5;
         let y = x * 2;
 
-        0.await;
+        0.await$0;
 //        ^^^^^
 }
 "#,
@@ -1167,7 +1167,7 @@ async fn foo() {
         check_with_config(
             r#"
 fn foo() -> i32 {
-    let x = 5;
+    let x$0 = 5;
     let y = x * 2;
 
     if true {
@@ -1182,7 +1182,7 @@ fn foo() -> i32 {
 
         check_with_config(
             r#"
-fn foo() -> i32 {
+fn foo() ->$0 i32 {
     let x = 5;
     let y = x * 2;
 
@@ -1211,7 +1211,7 @@ fn foo() -> i32 {
             r#"
 fn foo() {
     loop {
-        break;
+        break$0;
     }
 }
 "#,
@@ -1230,7 +1230,7 @@ fn foo() {
 
         check_with_config(
             r#"
-async fn foo() {
+async$0 fn foo() {
     0.await;
 }
 "#,
@@ -1249,7 +1249,7 @@ async fn foo() {
 
         check_with_config(
             r#"
-fn foo() -> i32 {
+fn foo() ->$0 i32 {
     if true {
         return -1;
     }
