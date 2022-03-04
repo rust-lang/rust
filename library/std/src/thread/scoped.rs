@@ -301,7 +301,7 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     }
 }
 
-impl<'scope, 'env> fmt::Debug for Scope<'scope, 'env> {
+impl fmt::Debug for Scope<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("num_running_threads", &self.data.num_running_threads.load(Ordering::Relaxed))
