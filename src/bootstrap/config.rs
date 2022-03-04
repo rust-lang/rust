@@ -387,7 +387,7 @@ macro_rules! derive_merge {
 
 derive_merge! {
     /// TOML representation of various global build decisions.
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize, Default)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Build {
         build: Option<String>,
@@ -434,7 +434,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of various global install decisions.
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Install {
         prefix: Option<String>,
@@ -449,7 +449,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of how the LLVM build is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Llvm {
         skip_rebuild: Option<bool>,
@@ -483,7 +483,7 @@ derive_merge! {
 }
 
 derive_merge! {
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Dist {
         sign_folder: Option<String>,
@@ -510,7 +510,7 @@ impl Default for StringOrBool {
 
 derive_merge! {
     /// TOML representation of how the Rust build is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Rust {
         optimize: Option<bool>,
@@ -565,7 +565,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of how each build target is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct TomlTarget {
         cc: Option<String>,
@@ -1187,7 +1187,7 @@ fn set<T>(field: &mut T, val: Option<T>) {
 
 fn threads_from_config(v: u32) -> u32 {
     match v {
-        0 => num_cpus::get() as u32,
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
         n => n,
     }
 }
