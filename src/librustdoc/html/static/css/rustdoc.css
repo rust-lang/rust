@@ -1835,12 +1835,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 		margin-left: 32px;
 	}
 
-	/* Space is at a premium on mobile, so remove the theme-picker icon. */
-	.theme-picker {
-		display: none;
-		width: 0;
-	}
-
 	.content {
 		margin-left: 0px;
 	}
