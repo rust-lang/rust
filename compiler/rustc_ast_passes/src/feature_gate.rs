@@ -420,6 +420,31 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
         }
+
+        // Emit errors for non-staged-api crates.
+        if !self.features.staged_api {
+            if attr.has_name(sym::rustc_deprecated)
+                || attr.has_name(sym::unstable)
+                || attr.has_name(sym::stable)
+                || attr.has_name(sym::rustc_const_unstable)
+                || attr.has_name(sym::rustc_const_stable)
+            {
+                struct_span_err!(
+                    self.sess,
+                    attr.span,
+                    E0734,
+                    "stability attributes may not be used outside of the standard library",
+                )
+                .emit();
+            }
+        } else {
+            if attr.has_name(sym::deprecated) {
+                self.sess
+                    .struct_span_err(attr.span, "`#[deprecated]` cannot be used in staged API")
+                    .span_label(attr.span, "use `#[rustc_deprecated]` instead")
+                    .emit();
+            }
+        }
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {

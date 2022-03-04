@@ -1,11 +1,11 @@
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-78957.rs:6:16
+  --> $DIR/issue-78957.rs:5:16
    |
 LL | pub struct Foo<#[inline] const N: usize>;
    |                ^^^^^^^^^       - not a function or closure
 
 error: attribute should be applied to a function
-  --> $DIR/issue-78957.rs:8:16
+  --> $DIR/issue-78957.rs:7:16
    |
 LL | pub struct Bar<#[cold] const N: usize>;
    |                ^^^^^^^       - not a function
@@ -18,19 +18,19 @@ LL | #![deny(unused_attributes)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-78957.rs:11:23
+  --> $DIR/issue-78957.rs:10:23
    |
 LL | pub struct Baz<#[repr(C)] const N: usize>;
    |                       ^         - not a struct, enum, or union
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-78957.rs:14:17
+  --> $DIR/issue-78957.rs:13:17
    |
 LL | pub struct Foo2<#[inline] 'a>(PhantomData<&'a ()>);
    |                 ^^^^^^^^^ -- not a function or closure
 
 error: attribute should be applied to a function
-  --> $DIR/issue-78957.rs:16:17
+  --> $DIR/issue-78957.rs:15:17
    |
 LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
    |                 ^^^^^^^ -- not a function
@@ -38,19 +38,19 @@ LL | pub struct Bar2<#[cold] 'a>(PhantomData<&'a ()>);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-78957.rs:19:24
+  --> $DIR/issue-78957.rs:18:24
    |
 LL | pub struct Baz2<#[repr(C)] 'a>(PhantomData<&'a ()>);
    |                        ^   -- not a struct, enum, or union
 
 error[E0518]: attribute should be applied to function or closure
-  --> $DIR/issue-78957.rs:22:17
+  --> $DIR/issue-78957.rs:21:17
    |
 LL | pub struct Foo3<#[inline] T>(PhantomData<T>);
    |                 ^^^^^^^^^ - not a function or closure
 
 error: attribute should be applied to a function
-  --> $DIR/issue-78957.rs:24:17
+  --> $DIR/issue-78957.rs:23:17
    |
 LL | pub struct Bar3<#[cold] T>(PhantomData<T>);
    |                 ^^^^^^^ - not a function
@@ -58,7 +58,7 @@ LL | pub struct Bar3<#[cold] T>(PhantomData<T>);
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error[E0517]: attribute should be applied to a struct, enum, or union
-  --> $DIR/issue-78957.rs:27:24
+  --> $DIR/issue-78957.rs:26:24
    |
 LL | pub struct Baz3<#[repr(C)] T>(PhantomData<T>);
    |                        ^   - not a struct, enum, or union

@@ -922,11 +922,17 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
+                sess.time("unused_lib_feature_checking", || {
+                    rustc_passes::stability::check_unused_or_stable_features(tcx)
+                });
+            },
+            {
                 // We force these querie to run,
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
                 tcx.ensure().limits(());
+                tcx.ensure().stability_index(());
             }
         );
     });
@@ -997,11 +1003,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                     {
                         tcx.hir()
                             .par_for_each_module(|module| tcx.ensure().check_mod_deathness(module));
-                    },
-                    {
-                        sess.time("unused_lib_feature_checking", || {
-                            rustc_passes::stability::check_unused_or_stable_features(tcx)
-                        });
                     },
                     {
                         sess.time("lint_checking", || {

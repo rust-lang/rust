@@ -4,7 +4,6 @@
 // ignore-wasm32
 
 #![feature(naked_functions)]
-#![feature(or_patterns)]
 #![feature(asm_const, asm_sym, asm_unwind)]
 #![crate_type = "lib"]
 

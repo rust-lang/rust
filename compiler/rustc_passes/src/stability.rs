@@ -1,13 +1,12 @@
 //! A pass that annotates every item and method with its stability level,
 //! propagating default levels lexically from parent to children ast nodes.
 
-use rustc_ast::Attribute;
 use rustc_attr::{self as attr, ConstStability, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, CRATE_DEF_INDEX};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Generics, HirId, Item, TraitRef, Ty, TyKind, Variant};
@@ -113,12 +112,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     {
         let attrs = self.tcx.get_attrs(def_id.to_def_id());
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
-        let mut did_error = false;
-        if !self.tcx.features().staged_api {
-            did_error = self.forbid_staged_api_attrs(def_id, attrs, inherit_deprecation.clone());
-        }
 
-        let depr = if did_error { None } else { attr::find_deprecation(&self.tcx.sess, attrs) };
+        let depr = attr::find_deprecation(&self.tcx.sess, attrs);
         let mut is_deprecated = false;
         if let Some((depr, span)) = &depr {
             is_deprecated = true;
@@ -148,16 +143,15 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if self.tcx.features().staged_api {
-            if let Some(a) = attrs.iter().find(|a| a.has_name(sym::deprecated)) {
-                self.tcx
-                    .sess
-                    .struct_span_err(a.span, "`#[deprecated]` cannot be used in staged API")
-                    .span_label(a.span, "use `#[rustc_deprecated]` instead")
-                    .span_label(item_sp, "")
-                    .emit();
+        if !self.tcx.features().staged_api {
+            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // -Zforce-unstable-if-unmarked is set.
+            if let Some(stab) = self.parent_stab {
+                if inherit_deprecation.yes() && stab.level.is_unstable() {
+                    self.index.stab_map.insert(def_id, stab);
+                }
             }
-        } else {
+
             self.recurse_with_stability_attrs(
                 depr.map(|(d, _)| DeprecationEntry::local(d, def_id)),
                 None,
@@ -328,47 +322,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         if let Some(orig_parent_const_stab) = replaced_parent_const_stab {
             self.parent_const_stab = orig_parent_const_stab;
         }
-    }
-
-    // returns true if an error occurred, used to suppress some spurious errors
-    fn forbid_staged_api_attrs(
-        &mut self,
-        def_id: LocalDefId,
-        attrs: &[Attribute],
-        inherit_deprecation: InheritDeprecation,
-    ) -> bool {
-        // Emit errors for non-staged-api crates.
-        let unstable_attrs = [
-            sym::unstable,
-            sym::stable,
-            sym::rustc_deprecated,
-            sym::rustc_const_unstable,
-            sym::rustc_const_stable,
-        ];
-        let mut has_error = false;
-        for attr in attrs {
-            let name = attr.name_or_empty();
-            if unstable_attrs.contains(&name) {
-                struct_span_err!(
-                    self.tcx.sess,
-                    attr.span,
-                    E0734,
-                    "stability attributes may not be used outside of the standard library",
-                )
-                .emit();
-                has_error = true;
-            }
-        }
-
-        // Propagate unstability.  This can happen even for non-staged-api crates in case
-        // -Zforce-unstable-if-unmarked is set.
-        if let Some(stab) = self.parent_stab {
-            if inherit_deprecation.yes() && stab.level.is_unstable() {
-                self.index.stab_map.insert(def_id, stab);
-            }
-        }
-
-        has_error
     }
 }
 
@@ -654,27 +607,11 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 }
 
 fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
-    let is_staged_api =
-        tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
-    let mut staged_api = FxHashMap::default();
-    staged_api.insert(LOCAL_CRATE, is_staged_api);
     let mut index = Index {
-        staged_api,
         stab_map: Default::default(),
         const_stab_map: Default::default(),
         depr_map: Default::default(),
-        active_features: Default::default(),
     };
-
-    let active_lib_features = &tcx.features().declared_lib_features;
-    let active_lang_features = &tcx.features().declared_lang_features;
-
-    // Put the active features into a map for quick lookup.
-    index.active_features = active_lib_features
-        .iter()
-        .map(|&(s, ..)| s)
-        .chain(active_lang_features.iter().map(|&(s, ..)| s))
-        .collect();
 
     {
         let mut annotator = Annotator {
@@ -728,7 +665,16 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_unstable_api_usage, stability_index, ..*providers };
+    *providers = Providers {
+        check_mod_unstable_api_usage,
+        stability_index,
+        lookup_stability: |tcx, id| tcx.stability().local_stability(id.expect_local()),
+        lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id.expect_local()),
+        lookup_deprecation_entry: |tcx, id| {
+            tcx.stability().local_deprecation_entry(id.expect_local())
+        },
+        ..*providers
+    };
 }
 
 struct Checker<'tcx> {
@@ -884,9 +830,10 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
-    let access_levels = &tcx.privacy_access_levels(());
-
-    if tcx.stability().staged_api[&LOCAL_CRATE] {
+    let is_staged_api =
+        tcx.sess.opts.debugging_opts.force_unstable_if_unmarked || tcx.features().staged_api;
+    if is_staged_api {
+        let access_levels = &tcx.privacy_access_levels(());
         let mut missing = MissingStabilityAnnotations { tcx, access_levels };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
         tcx.hir().walk_toplevel_module(&mut missing);
@@ -907,7 +854,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;
-    let mut remaining_lib_features = FxHashMap::default();
+    let mut remaining_lib_features = FxIndexMap::default();
     for (feature, span) in declared_lib_features {
         if !tcx.sess.opts.unstable_features.is_nightly_build() {
             struct_span_err!(
@@ -934,7 +881,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     remaining_lib_features.remove(&sym::libc);
     remaining_lib_features.remove(&sym::test);
 
-    let check_features = |remaining_lib_features: &mut FxHashMap<_, _>, defined_features: &[_]| {
+    let check_features = |remaining_lib_features: &mut FxIndexMap<_, _>, defined_features: &[_]| {
         for &(feature, since) in defined_features {
             if let Some(since) = since {
                 if let Some(span) = remaining_lib_features.get(&feature) {
