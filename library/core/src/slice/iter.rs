@@ -62,6 +62,7 @@ fn size_from_ptr<T>(_: *const T) -> usize {
 /// [`iter`]: slice::iter
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Iter<'a, T: 'a> {
     ptr: NonNull<T>,
     end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
@@ -182,6 +183,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// [`iter_mut`]: slice::iter_mut
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct IterMut<'a, T: 'a> {
     ptr: NonNull<T>,
     end: *mut T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
@@ -339,6 +341,7 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 /// [`split`]: slice::split
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Split<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -469,6 +472,7 @@ impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
 /// [`split_inclusive`]: slice::split_inclusive
 /// [slices]: slice
 #[stable(feature = "split_inclusive", since = "1.51.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct SplitInclusive<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -589,6 +593,7 @@ impl<T, P> FusedIterator for SplitInclusive<'_, T, P> where P: FnMut(&T) -> bool
 /// [`split_mut`]: slice::split_mut
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct SplitMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -718,6 +723,7 @@ impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
 /// [`split_inclusive_mut`]: slice::split_inclusive_mut
 /// [slices]: slice
 #[stable(feature = "split_inclusive", since = "1.51.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct SplitInclusiveMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -841,6 +847,7 @@ impl<T, P> FusedIterator for SplitInclusiveMut<'_, T, P> where P: FnMut(&T) -> b
 /// [`rsplit`]: slice::rsplit
 /// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RSplit<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -937,6 +944,7 @@ impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
 /// [`rsplit_mut`]: slice::rsplit_mut
 /// [slices]: slice
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RSplitMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1059,6 +1067,7 @@ impl<T, I: SplitIter<Item = T>> Iterator for GenericSplitN<I> {
 /// [`splitn`]: slice::splitn
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct SplitN<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1099,6 +1108,7 @@ where
 /// [`rsplitn`]: slice::rsplitn
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RSplitN<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1138,6 +1148,7 @@ where
 /// [`splitn_mut`]: slice::splitn_mut
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct SplitNMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1178,6 +1189,7 @@ where
 /// [`rsplitn_mut`]: slice::rsplitn_mut
 /// [slices]: slice
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RSplitNMut<'a, T: 'a, P>
 where
     P: FnMut(&T) -> bool,
@@ -1222,6 +1234,7 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Windows<'a, T: 'a> {
     v: &'a [T],
     size: NonZeroUsize,
@@ -1370,6 +1383,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Chunks<'a, T: 'a> {
     v: &'a [T],
     chunk_size: usize,
@@ -1553,6 +1567,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksMut<'a, T: 'a> {
     v: &'a mut [T],
     chunk_size: usize,
@@ -1722,6 +1737,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksMut<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksExact<'a, T: 'a> {
     v: &'a [T],
     rem: &'a [T],
@@ -1881,6 +1897,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "chunks_exact", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ChunksExactMut<'a, T: 'a> {
     v: &'a mut [T],
     rem: &'a mut [T],
@@ -2034,6 +2051,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExactMut<'a, T> {
 /// [slices]: slice
 #[derive(Debug, Clone, Copy)]
 #[unstable(feature = "array_windows", issue = "75027")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayWindows<'a, T: 'a, const N: usize> {
     slice_head: *const T,
     num: usize,
@@ -2156,6 +2174,7 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 /// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayChunks<'a, T: 'a, const N: usize> {
     iter: Iter<'a, [T; N]>,
     rem: &'a [T],
@@ -2282,6 +2301,7 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunks<'
 /// [slices]: slice
 #[derive(Debug)]
 #[unstable(feature = "array_chunks", issue = "74985")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
     iter: IterMut<'a, [T; N]>,
     rem: &'a mut [T],
@@ -2396,6 +2416,7 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunksMu
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunks<'a, T: 'a> {
     v: &'a [T],
     chunk_size: usize,
@@ -2569,6 +2590,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksMut<'a, T: 'a> {
     v: &'a mut [T],
     chunk_size: usize,
@@ -2742,6 +2764,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksMut<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksExact<'a, T: 'a> {
     v: &'a [T],
     rem: &'a [T],
@@ -2905,6 +2928,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
 /// [slices]: slice
 #[derive(Debug)]
 #[stable(feature = "rchunks", since = "1.31.0")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct RChunksExactMut<'a, T: 'a> {
     v: &'a mut [T],
     rem: &'a mut [T],
@@ -3071,6 +3095,7 @@ unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
 /// [`group_by`]: slice::group_by
 /// [slices]: slice
 #[unstable(feature = "slice_group_by", issue = "80552")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct GroupBy<'a, T: 'a, P> {
     slice: &'a [T],
     predicate: P,
@@ -3157,6 +3182,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for GroupBy<'a, T, P> {
 /// [`group_by_mut`]: slice::group_by_mut
 /// [slices]: slice
 #[unstable(feature = "slice_group_by", issue = "80552")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct GroupByMut<'a, T: 'a, P> {
     slice: &'a mut [T],
     predicate: P,
