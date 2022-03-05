@@ -41,7 +41,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return_ty
             };
 
-        self.check_lhs_assignable(lhs, "E0067", op.span, |_| {});
+        self.check_lhs_assignable(lhs, "E0067", op.span, |err| {
+            if let Ref(_, rty, hir::Mutability::Mut) = lhs_ty.kind() {
+                if self
+                    .lookup_op_method(*rty, Some(rhs_ty), Some(rhs), Op::Binary(op, IsAssign::Yes))
+                    .is_ok()
+                {
+                    // Suppress this error, since we already emitted
+                    // a deref suggestion in check_overloaded_binop
+                    err.delay_as_bug();
+                }
+            }
+        });
 
         ty
     }
@@ -404,8 +415,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, missing_trait, use_output)
                     }
                 };
-                if let Ref(_, rty, _) = lhs_ty.kind() {
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span)
+                if let Ref(_, rty, mutability) = lhs_ty.kind() {
+                    let is_copy =
+                        self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span);
+                    // We should suggest `a + b` => `*a + b` if `a` is copy, and suggest
+                    // `a += b` => `*a += b` if a is a mut ref.
+                    // FIXME: This could be done any time lhs_ty is DerefMut into something that
+                    // is compatible with rhs_ty, and not _just_ `&mut` (for IsAssign::Yes).
+                    if ((is_assign == IsAssign::No && is_copy)
+                        || (is_assign == IsAssign::Yes && *mutability == hir::Mutability::Mut))
                         && self
                             .lookup_op_method(
                                 *rty,

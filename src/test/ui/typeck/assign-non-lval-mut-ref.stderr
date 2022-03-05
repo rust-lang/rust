@@ -1,16 +1,30 @@
 error[E0070]: invalid left-hand side of assignment
   --> $DIR/assign-non-lval-mut-ref.rs:5:27
    |
-LL |     x.last_mut().unwrap() = 2usize;
+LL |     x.last_mut().unwrap() = 2;
    |     --------------------- ^
    |     |
    |     cannot assign to this expression
    |
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
-LL |     *x.last_mut().unwrap() = 2usize;
+LL |     *x.last_mut().unwrap() = 2;
    |     +
 
-error: aborting due to previous error
+error[E0368]: binary assignment operation `+=` cannot be applied to type `&mut usize`
+  --> $DIR/assign-non-lval-mut-ref.rs:7:5
+   |
+LL |     x.last_mut().unwrap() += 1;
+   |     ---------------------^^^^^
+   |     |
+   |     cannot use `+=` on type `&mut usize`
+   |
+help: `+=` can be used on `usize`, you can dereference `x.last_mut().unwrap()`
+   |
+LL |     *x.last_mut().unwrap() += 1;
+   |     +
 
-For more information about this error, try `rustc --explain E0070`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0070, E0368.
+For more information about an error, try `rustc --explain E0070`.

@@ -1058,6 +1058,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.check_lhs_assignable(lhs, "E0070", span, |err| {
             let rhs_ty = self.check_expr(&rhs);
 
+            // FIXME: This could be done any time lhs_ty is DerefMut into something that
+            // is compatible with rhs_ty, and not _just_ `&mut`
             if let ty::Ref(_, lhs_inner_ty, hir::Mutability::Mut) = lhs_ty.kind() {
                 if self.can_coerce(rhs_ty, *lhs_inner_ty) {
                     err.span_suggestion_verbose(
