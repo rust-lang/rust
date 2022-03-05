@@ -51,6 +51,15 @@ pub trait Delegate<'tcx> {
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
 
+    /// The path at `binding_place` is a binding that is being initialized.
+    ///
+    /// This covers cases such as `let x = 42;`
+    fn bind(&mut self, binding_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        // Bindings can normally be treated as a regular assignment, so by default we
+        // forward this to the mutate callback.
+        self.mutate(binding_place, diag_expr_id)
+    }
+
     /// The `place` should be a fake read because of specified `cause`.
     fn fake_read(&mut self, place: Place<'tcx>, cause: FakeReadCause, diag_expr_id: hir::HirId);
 }
@@ -648,11 +657,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     let pat_ty = return_if_err!(mc.node_ty(pat.hir_id));
                     debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                    // Each match binding is effectively an assignment to the
-                    // binding being produced.
                     let def = Res::Local(canonical_id);
                     if let Ok(ref binding_place) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
-                        delegate.mutate(binding_place, binding_place.hir_id);
+                        delegate.bind(binding_place, binding_place.hir_id);
                     }
 
                     // It is also a borrow or copy/move of the value being matched.

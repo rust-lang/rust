@@ -6,14 +6,14 @@ use crate::{
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::hir::map::Map;
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 
 pub(super) fn find_consumed_and_borrowed<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     def_id: DefId,
     body: &'tcx Body<'tcx>,
 ) -> ConsumedAndBorrowedPlaces {
-    let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx.hir());
+    let mut expr_use_visitor = ExprUseDelegate::new(fcx.tcx, fcx.param_env);
     expr_use_visitor.consume_body(fcx, def_id, body);
     expr_use_visitor.places
 }
@@ -36,14 +36,16 @@ pub(super) struct ConsumedAndBorrowedPlaces {
 /// Interesting values are those that are either dropped or borrowed. For dropped values, we also
 /// record the parent expression, which is the point where the drop actually takes place.
 struct ExprUseDelegate<'tcx> {
-    hir: Map<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    param_env: ParamEnv<'tcx>,
     places: ConsumedAndBorrowedPlaces,
 }
 
 impl<'tcx> ExprUseDelegate<'tcx> {
-    fn new(hir: Map<'tcx>) -> Self {
+    fn new(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Self {
         Self {
-            hir,
+            tcx,
+            param_env,
             places: ConsumedAndBorrowedPlaces {
                 consumed: <_>::default(),
                 borrowed: <_>::default(),
@@ -77,7 +79,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        let parent = match self.hir.find_parent_node(place_with_id.hir_id) {
+        let parent = match self.tcx.hir().find_parent_node(place_with_id.hir_id) {
             Some(parent) => parent,
             None => place_with_id.hir_id,
         };
@@ -107,11 +109,22 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         assignee_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
     ) {
-        debug!("mutate {:?}; diag_expr_id={:?}", assignee_place, diag_expr_id);
-        // Count mutations as a borrow.
-        self.places
-            .borrowed
-            .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));
+        debug!("mutate {assignee_place:?}; diag_expr_id={diag_expr_id:?}");
+        // If the type being assigned needs dropped, then the mutation counts as a borrow
+        // since it is essentially doing `Drop::drop(&mut x); x = new_value;`.
+        if assignee_place.place.base_ty.needs_drop(self.tcx, self.param_env) {
+            self.places
+                .borrowed
+                .insert(TrackedValue::from_place_with_projections_allowed(assignee_place));
+        }
+    }
+
+    fn bind(
+        &mut self,
+        binding_place: &expr_use_visitor::PlaceWithHirId<'tcx>,
+        diag_expr_id: HirId,
+    ) {
+        debug!("bind {binding_place:?}; diag_expr_id={diag_expr_id:?}");
     }
 
     fn fake_read(
