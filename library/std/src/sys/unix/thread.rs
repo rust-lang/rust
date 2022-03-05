@@ -384,6 +384,11 @@ fn cgroup2_quota() -> usize {
     use crate::path::PathBuf;
 
     let mut quota = usize::MAX;
+    if cfg!(miri) {
+        // Attempting to open a file fails under default flags due to isolation.
+        // And Miri does not have parallelism anyway.
+        return quota;
+    }
 
     let _: Option<()> = try {
         let mut buf = Vec::with_capacity(128);
