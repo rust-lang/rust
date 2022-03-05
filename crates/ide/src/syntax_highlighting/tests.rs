@@ -335,6 +335,26 @@ where
 }
 
 #[test]
+fn test_keyword_highlighting() {
+    check_highlighting(
+        r#"
+extern crate self;
+
+use crate;
+use self;
+mod __ {
+    use super::*;
+}
+
+struct __ where Self:;
+fn __(_: Self) {}
+"#,
+        expect_file!["./test_data/highlight_keywords.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_string_highlighting() {
     // The format string detection is based on macro-expansion,
     // thus, we have to copy the macro definition from `std`

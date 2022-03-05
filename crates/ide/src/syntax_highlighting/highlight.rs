@@ -190,12 +190,13 @@ fn keyword(
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![true] | T![false] => HlTag::BoolLiteral.into(),
-        T![Self] => return Some(HlTag::Symbol(SymbolKind::SelfType).into()),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
-        // self, crate and super are handled as either a Name or NameRef already, unless they
+        // self, crate, super and `Self` are handled as either a Name or NameRef already, unless they
         // are inside unmapped token trees
-        T![self] | T![crate] | T![super] if parent_matches::<ast::NameRef>(&token) => return None,
+        T![self] | T![crate] | T![super] | T![Self] if parent_matches::<ast::NameRef>(&token) => {
+            return None
+        }
         T![self] if parent_matches::<ast::Name>(&token) => return None,
         T![ref] => match token.parent().and_then(ast::IdentPat::cast) {
             Some(ident) if sema.is_unsafe_ident_pat(&ident) => h | HlMod::Unsafe,
@@ -270,12 +271,13 @@ fn highlight_name_ref(
         }
         NameRefClass::FieldShorthand { .. } => SymbolKind::Field.into(),
     };
-    if name_ref.self_token().is_some() {
-        h.tag = HlTag::Symbol(SymbolKind::SelfParam);
-    }
-    if name_ref.crate_token().is_some() || name_ref.super_token().is_some() {
-        h.tag = HlTag::Keyword;
-    }
+
+    h.tag = match name_ref.token_kind() {
+        T![Self] => HlTag::Symbol(SymbolKind::SelfType),
+        T![self] => HlTag::Symbol(SymbolKind::SelfParam),
+        T![super] | T![crate] => HlTag::Keyword,
+        _ => h.tag,
+    };
     h
 }
 

@@ -1297,7 +1297,7 @@
             {
                 "id": "selfTypeKeyword",
                 "description": "Style for the self type keyword",
-                "superType": "typeParameter"
+                "superType": "keyword"
             },
             {
                 "id": "semicolon",
