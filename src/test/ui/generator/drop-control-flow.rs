@@ -1,10 +1,6 @@
 // build-pass
 // compile-flags: -Zdrop-tracking
 
-// FIXME(eholk): temporarily disabled while drop range tracking is disabled
-// (see generator_interior.rs:27)
-// ignore-test
-
 // A test to ensure generators capture values that were conditionally dropped,
 // and also that values that are dropped along all paths to a yield do not get
 // included in the generator type.
