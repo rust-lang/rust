@@ -61,13 +61,37 @@ fn not_primitive_op(a: usize, b: String, c: &str) -> usize {
 struct A;
 
 impl A {
-    fn method(&self, a: usize, b: usize) -> usize {
-        if a == 0 { 1 } else { self.method(a - 1, b + 1) }
+    fn method(a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { A::method(a - 1, b - 1) }
+    }
+
+    fn method2(&self, a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { self.method2(a - 1, b + 1) }
+    }
+}
+
+trait B {
+    fn hello(a: usize, b: usize) -> usize;
+
+    fn hello2(&self, a: usize, b: usize) -> usize;
+}
+
+impl B for A {
+    fn hello(a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { A::hello(a - 1, b + 1) }
+    }
+
+    fn hello2(&self, a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { self.hello2(a - 1, b + 1) }
     }
 }
 
 fn ignore(a: usize, _: usize) -> usize {
     if a == 1 { 1 } else { ignore(a - 1, 0) }
+}
+
+fn ignore2(a: usize, _b: usize) -> usize {
+    if a == 1 { 1 } else { ignore2(a - 1, _b) }
 }
 
 fn main() {}

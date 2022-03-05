@@ -6,6 +6,7 @@ use rustc_ast::{walk_list, Label, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
+use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{
     Arm, Block, Body, Expr, ExprKind, Guard, HirId, Let, Local, Pat, PatKind, Path, PathSegment, QPath, Stmt, StmtKind,
@@ -22,12 +23,13 @@ use rustc_span::Span;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for arguments that are only used in recursion with no side-effects.
+    ///
+    /// ### Why is this bad?
+    /// It could contain a useless calculation and can make function simpler.
+    ///
     /// The arguments can be involved in calculations and assignments but as long as
     /// the calculations have no side-effects (function calls or mutating dereference)
     /// and the assigned variables are also only in recursion, it is useless.
-    ///
-    /// ### Why is this bad?
-    /// The could contain a useless calculation and can make function simpler.
     ///
     /// ### Known problems
     /// In some cases, this would not catch all useless arguments.
@@ -51,6 +53,8 @@ declare_clippy_lint! {
     /// - closure usage
     /// - some `break` relative operations
     /// - struct pattern binding
+    ///
+    /// Also, when you recurse the function name with path segments, it is not possible to detect.
     ///
     /// ### Example
     /// ```rust
@@ -93,9 +97,20 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         _: &'tcx rustc_hir::FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         _: Span,
-        _: HirId,
+        id: HirId,
     ) {
         if let FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) = kind {
+            let data = cx.tcx.def_path(cx.tcx.hir().local_def_id(id).to_def_id()).data;
+            if data.len() > 1 {
+                match data.get(data.len() - 2) {
+                    Some(DisambiguatedDefPathData {
+                        data: DefPathData::Impl,
+                        disambiguator,
+                    }) if *disambiguator != 0 => return,
+                    _ => {},
+                }
+            }
+
             let ty_res = cx.typeck_results();
             let param_span = body
                 .params

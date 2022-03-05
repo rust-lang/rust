@@ -61,10 +61,10 @@ LL | fn not_primitive(a: usize, b: String) -> usize {
    |                            ^ help: if this is intentional, prefix with an underscore: `_b`
 
 error: parameter is only used in recursion
-  --> $DIR/only_used_in_recursion.rs:64:32
+  --> $DIR/only_used_in_recursion.rs:68:33
    |
-LL |     fn method(&self, a: usize, b: usize) -> usize {
-   |                                ^ help: if this is intentional, prefix with an underscore: `_b`
+LL |     fn method2(&self, a: usize, b: usize) -> usize {
+   |                                 ^ help: if this is intentional, prefix with an underscore: `_b`
 
 error: aborting due to 11 previous errors
 
