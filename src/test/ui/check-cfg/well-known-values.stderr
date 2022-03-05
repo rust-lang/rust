@@ -23,7 +23,9 @@ warning: unexpected `cfg` condition value
   --> $DIR/well-known-values.rs:21:7
    |
 LL | #[cfg(unix = "aa")]
-   |       ^^^^^^^^^^^
+   |       ^^^^-------
+   |           |
+   |           help: remove the value
    |
    = note: no expected value for `unix`
 
