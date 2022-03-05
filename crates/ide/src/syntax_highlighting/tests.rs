@@ -113,11 +113,11 @@ struct Foo {
     x: u32,
 }
 
-trait Bar where Self: {
+trait Bar {
     fn bar(&self) -> i32;
 }
 
-impl Bar for Foo where Self: {
+impl Bar for Foo {
     fn bar(&self) -> i32 {
         self.x
     }
@@ -264,7 +264,7 @@ pub enum Bool { True, False }
 
 impl Bool {
     pub const fn to_primitive(self) -> bool {
-        matches!(self, Self::True)
+        true
     }
 }
 const USAGE_OF_BOOL:bool = Bool::True.to_primitive();
@@ -346,6 +346,10 @@ mod __ {
     use super::*;
 }
 
+macro_rules! void {
+    ($($tt:tt)) => {}
+}
+void!(Self);
 struct __ where Self:;
 fn __(_: Self) {}
 "#,
