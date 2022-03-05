@@ -39,6 +39,7 @@ impl<'tcx> EnvVars<'tcx> {
     pub(crate) fn init<'mir>(
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
         mut excluded_env_vars: Vec<String>,
+        forwarded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.os.as_str();
         if target_os == "windows" {
@@ -47,9 +48,14 @@ impl<'tcx> EnvVars<'tcx> {
             excluded_env_vars.push("TERM".to_owned());
         }
 
-        if ecx.machine.communicate() {
+        // Skip the loop entirely if we don't want to forward anything.
+        if ecx.machine.communicate() || !forwarded_env_vars.is_empty() {
             for (name, value) in env::vars() {
-                if !excluded_env_vars.contains(&name) {
+                let forward = match ecx.machine.communicate() {
+                    true => !excluded_env_vars.contains(&name),
+                    false => forwarded_env_vars.contains(&name),
+                };
+                if forward {
                     let var_ptr = match target_os {
                         "linux" | "macos" =>
                             alloc_env_var_as_c_str(name.as_ref(), value.as_ref(), ecx)?,
