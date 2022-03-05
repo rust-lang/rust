@@ -26,18 +26,28 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
             &format!("can't pass `{}` to variadic function", self.ty),
             self.code(),
         );
+        
 
         if self.ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
 
         if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
-            err.span_suggestion(
-                self.span,
-                &format!("cast the value to `{}`", self.cast_ty),
-                format!("{} as {}", snippet, self.cast_ty),
-                Applicability::MachineApplicable,
-            );
+            if self.ty.is_fn() {
+                err.span_suggestion(
+                    self.span,
+                    "cast the value to a function pointer",
+                    format!("{} as {}", snippet, self.cast_ty),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_suggestion(
+                    self.span,
+                    &format!("cast the value to `{}`", self.cast_ty),
+                    format!("{} as {}", snippet, self.cast_ty),
+                    Applicability::MachineApplicable,
+                );
+            }
         } else {
             err.help(&format!("cast the value to `{}`", self.cast_ty));
         }
