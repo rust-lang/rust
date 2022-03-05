@@ -167,13 +167,10 @@ fn convert_path(
             }
         }
         ast::PathSegmentKind::SelfTypeKw => {
-            let mut res = prefix.unwrap_or_else(|| {
-                ModPath::from_kind(
-                    segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
-                )
-            });
-            res.segments.push(known::SELF_TYPE);
-            res
+            if prefix.is_some() {
+                return None;
+            }
+            ModPath::from_segments(PathKind::Plain, Some(known::SELF_TYPE))
         }
         ast::PathSegmentKind::CrateKw => {
             if prefix.is_some() {
