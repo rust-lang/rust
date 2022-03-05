@@ -140,7 +140,8 @@ pub(crate) struct InferenceTable<'a> {
 
 pub(crate) struct InferenceTableSnapshot {
     var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
-    // FIXME: snapshot type_variable_table, pending_obligations?
+    // FIXME: snapshot pending_obligations?
+    type_variable_table_snapshot: Vec<TypeVariableData>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -356,12 +357,14 @@ impl<'a> InferenceTable<'a> {
     }
 
     pub(crate) fn snapshot(&mut self) -> InferenceTableSnapshot {
-        let snapshot = self.var_unification_table.snapshot();
-        InferenceTableSnapshot { var_table_snapshot: snapshot }
+        let var_table_snapshot = self.var_unification_table.snapshot();
+        let type_variable_table_snapshot = self.type_variable_table.clone();
+        InferenceTableSnapshot { var_table_snapshot, type_variable_table_snapshot }
     }
 
     pub(crate) fn rollback_to(&mut self, snapshot: InferenceTableSnapshot) {
         self.var_unification_table.rollback_to(snapshot.var_table_snapshot);
+        self.type_variable_table = snapshot.type_variable_table_snapshot;
     }
 
     /// Checks an obligation without registering it. Useful mostly to check
