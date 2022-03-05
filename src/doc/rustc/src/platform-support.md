@@ -73,7 +73,8 @@ Tier Policy.
 
 All tier 2 targets with host tools support the full standard library.
 
-**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
+**NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
+so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | notes
 -------|-------
@@ -114,7 +115,8 @@ The `std` column in the table below has the following meanings:
 
 [`no_std`]: https://rust-embedded.github.io/book/intro/no-std.html
 
-**NOTE:** Tier 2 targets currently do not build the `rust-docs` component.
+**NOTE:** The `rust-docs` component is not usually built for tier 2 targets,
+so Rustup may install the documentation for a similar tier 1 target instead.
 
 target | std | notes
 -------|:---:|-------
