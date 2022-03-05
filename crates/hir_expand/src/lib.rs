@@ -890,19 +890,27 @@ impl ExpandTo {
             MACRO_PAT => ExpandTo::Pattern,
             MACRO_TYPE => ExpandTo::Type,
 
-            ARG_LIST | TRY_EXPR | TUPLE_EXPR | PAREN_EXPR | ARRAY_EXPR | FOR_EXPR | PATH_EXPR
-            | CLOSURE_EXPR | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM | MATCH_GUARD
-            | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR | FIELD_EXPR
-            | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR
-            | LET_EXPR | IF_EXPR | WHILE_EXPR => ExpandTo::Expr,
-            LET_STMT => {
-                // FIXME: Handle LHS Pattern
-                ExpandTo::Expr
-            }
-
+            ARG_LIST | ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BREAK_EXPR | CALL_EXPR | CAST_EXPR
+            | CLOSURE_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR | INDEX_EXPR | LET_EXPR
+            | MATCH_ARM | MATCH_EXPR | MATCH_GUARD | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR
+            | PREFIX_EXPR | RANGE_EXPR | RECORD_EXPR_FIELD | REF_EXPR | RETURN_EXPR | TRY_EXPR
+            | TUPLE_EXPR | WHILE_EXPR => ExpandTo::Expr,
             _ => {
-                // Unknown , Just guess it is `Items`
-                ExpandTo::Items
+                match ast::LetStmt::cast(parent) {
+                    Some(let_stmt) => {
+                        if let Some(true) = let_stmt.initializer().map(|it| it.syntax() == syn) {
+                            ExpandTo::Expr
+                        } else if let Some(true) = let_stmt.ty().map(|it| it.syntax() == syn) {
+                            ExpandTo::Type
+                        } else {
+                            ExpandTo::Pattern
+                        }
+                    }
+                    None => {
+                        // Unknown , Just guess it is `Items`
+                        ExpandTo::Items
+                    }
+                }
             }
         }
     }
