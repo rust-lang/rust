@@ -69,7 +69,14 @@ pub(crate) fn moniker(
     let file = sema.parse(file_id).syntax().clone();
     let current_crate = crate_for_file(db, file_id)?;
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
-        IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | COMMENT => 2,
+        IDENT
+        | INT_NUMBER
+        | LIFETIME_IDENT
+        | T![self]
+        | T![super]
+        | T![crate]
+        | T![Self]
+        | COMMENT => 2,
         kind if kind.is_trivia() => 0,
         _ => 1,
     })?;

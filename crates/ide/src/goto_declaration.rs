@@ -18,7 +18,7 @@ pub(crate) fn goto_declaration(
     let file = sema.parse(position.file_id).syntax().clone();
     let original_token = file
         .token_at_offset(position.offset)
-        .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate]))?;
+        .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
     let range = original_token.text_range();
     let info: Vec<NavigationTarget> = sema
         .descend_into_macros(original_token)

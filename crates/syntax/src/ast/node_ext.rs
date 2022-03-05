@@ -183,6 +183,7 @@ impl ast::Attr {
 pub enum PathSegmentKind {
     Name(ast::NameRef),
     Type { type_ref: Option<ast::Type>, trait_ref: Option<ast::PathType> },
+    SelfTypeKw,
     SelfKw,
     SuperKw,
     CrateKw,
@@ -204,6 +205,10 @@ impl ast::PathSegment {
         self.name_ref().and_then(|it| it.self_token())
     }
 
+    pub fn self_type_token(&self) -> Option<SyntaxToken> {
+        self.name_ref().and_then(|it| it.Self_token())
+    }
+
     pub fn super_token(&self) -> Option<SyntaxToken> {
         self.name_ref().and_then(|it| it.super_token())
     }
@@ -211,6 +216,7 @@ impl ast::PathSegment {
     pub fn kind(&self) -> Option<PathSegmentKind> {
         let res = if let Some(name_ref) = self.name_ref() {
             match name_ref.syntax().first_token().map(|it| it.kind()) {
+                Some(T![Self]) => PathSegmentKind::SelfTypeKw,
                 Some(T![self]) => PathSegmentKind::SelfKw,
                 Some(T![super]) => PathSegmentKind::SuperKw,
                 Some(T![crate]) => PathSegmentKind::CrateKw,

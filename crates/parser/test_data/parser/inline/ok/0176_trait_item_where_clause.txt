@@ -13,7 +13,7 @@ SOURCE_FILE
           PATH
             PATH_SEGMENT
               NAME_REF
-                IDENT "Self"
+                SELF_TYPE_KW "Self"
         COLON ":"
         WHITESPACE " "
         TYPE_BOUND_LIST

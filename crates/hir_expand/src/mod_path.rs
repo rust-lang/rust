@@ -5,7 +5,11 @@ use std::{
     iter,
 };
 
-use crate::{db::AstDatabase, hygiene::Hygiene, name::Name};
+use crate::{
+    db::AstDatabase,
+    hygiene::Hygiene,
+    name::{known, Name},
+};
 use base_db::CrateId;
 use either::Either;
 use syntax::{ast, AstNode};
@@ -161,6 +165,15 @@ fn convert_path(
                     ))
                 }
             }
+        }
+        ast::PathSegmentKind::SelfTypeKw => {
+            let mut res = prefix.unwrap_or_else(|| {
+                ModPath::from_kind(
+                    segment.coloncolon_token().map_or(PathKind::Plain, |_| PathKind::Abs),
+                )
+            });
+            res.segments.push(known::SELF_TYPE);
+            res
         }
         ast::PathSegmentKind::CrateKw => {
             if prefix.is_some() {

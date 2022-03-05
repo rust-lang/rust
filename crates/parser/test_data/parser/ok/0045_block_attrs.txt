@@ -199,7 +199,7 @@ SOURCE_FILE
                                       PATH
                                         PATH_SEGMENT
                                           NAME_REF
-                                            IDENT "Self"
+                                            SELF_TYPE_KW "Self"
                                   R_ANGLE ">"
           R_PAREN ")"
         WHITESPACE " "

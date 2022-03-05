@@ -3,7 +3,7 @@
 use crate::intern::Interned;
 
 use either::Either;
-use hir_expand::name::{name, AsName};
+use hir_expand::name::{known, name, AsName};
 use syntax::ast::{self, AstNode, HasTypeBounds};
 
 use super::AssociatedTypeBinding;
@@ -52,6 +52,10 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                         break;
                     }
                 }
+            }
+            ast::PathSegmentKind::SelfTypeKw => {
+                segments.push(known::SELF_TYPE);
+                generic_args.push(None)
             }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
