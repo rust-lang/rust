@@ -525,6 +525,7 @@ impl ExprCollector<'_> {
 
                 self.alloc_expr(Expr::MacroStmts { tail }, syntax_ptr)
             }
+            ast::Expr::UnderscoreExpr(_) => return None,
         })
     }
 

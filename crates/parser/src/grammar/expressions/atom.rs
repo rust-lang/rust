@@ -81,6 +81,17 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
         T![if] => if_expr(p),
         T![let] => let_expr(p),
 
+        T![_] => {
+            // test destructuring_assignment_wildcard_pat
+            // fn foo() {
+            //     _ = 1;
+            //     Some(_) = None;
+            // }
+            let m = p.start();
+            p.bump(T![_]);
+            m.complete(p, UNDERSCORE_EXPR)
+        }
+
         T![loop] => loop_expr(p, None),
         T![box] => box_expr(p, None),
         T![for] => for_expr(p, None),

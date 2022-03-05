@@ -262,6 +262,7 @@ pub struct ExternBlock {
 impl ast::HasAttrs for ExternBlock {}
 impl ast::HasDocComments for ExternBlock {}
 impl ExternBlock {
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
     pub fn abi(&self) -> Option<Abi> { support::child(&self.syntax) }
     pub fn extern_item_list(&self) -> Option<ExternItemList> { support::child(&self.syntax) }
 }
@@ -1063,6 +1064,15 @@ impl LetExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UnderscoreExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasAttrs for UnderscoreExpr {}
+impl UnderscoreExpr {
+    pub fn underscore_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![_]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StmtList {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1522,6 +1532,7 @@ pub enum Expr {
     WhileExpr(WhileExpr),
     YieldExpr(YieldExpr),
     LetExpr(LetExpr),
+    UnderscoreExpr(UnderscoreExpr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2673,6 +2684,17 @@ impl AstNode for LetExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for UnderscoreExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNDERSCORE_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for StmtList {
     fn can_cast(kind: SyntaxKind) -> bool { kind == STMT_LIST }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3337,6 +3359,9 @@ impl From<YieldExpr> for Expr {
 impl From<LetExpr> for Expr {
     fn from(node: LetExpr) -> Expr { Expr::LetExpr(node) }
 }
+impl From<UnderscoreExpr> for Expr {
+    fn from(node: UnderscoreExpr) -> Expr { Expr::UnderscoreExpr(node) }
+}
 impl AstNode for Expr {
     fn can_cast(kind: SyntaxKind) -> bool {
         match kind {
@@ -3345,7 +3370,7 @@ impl AstNode for Expr {
             | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
-            | YIELD_EXPR | LET_EXPR => true,
+            | YIELD_EXPR | LET_EXPR | UNDERSCORE_EXPR => true,
             _ => false,
         }
     }
@@ -3383,6 +3408,7 @@ impl AstNode for Expr {
             WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
             YIELD_EXPR => Expr::YieldExpr(YieldExpr { syntax }),
             LET_EXPR => Expr::LetExpr(LetExpr { syntax }),
+            UNDERSCORE_EXPR => Expr::UnderscoreExpr(UnderscoreExpr { syntax }),
             _ => return None,
         };
         Some(res)
@@ -3421,6 +3447,7 @@ impl AstNode for Expr {
             Expr::WhileExpr(it) => &it.syntax,
             Expr::YieldExpr(it) => &it.syntax,
             Expr::LetExpr(it) => &it.syntax,
+            Expr::UnderscoreExpr(it) => &it.syntax,
         }
     }
 }
@@ -3887,6 +3914,7 @@ impl AstNode for AnyHasAttrs {
             | WHILE_EXPR
             | YIELD_EXPR
             | LET_EXPR
+            | UNDERSCORE_EXPR
             | STMT_LIST
             | RECORD_EXPR_FIELD_LIST
             | RECORD_EXPR_FIELD
@@ -4542,6 +4570,11 @@ impl std::fmt::Display for YieldExpr {
     }
 }
 impl std::fmt::Display for LetExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UnderscoreExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

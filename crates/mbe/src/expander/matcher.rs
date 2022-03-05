@@ -690,9 +690,19 @@ fn match_meta_var(kind: &str, input: &mut TtIter) -> ExpandResult<Option<Fragmen
         "item" => parser::PrefixEntryPoint::Item,
         "vis" => parser::PrefixEntryPoint::Vis,
         "expr" => {
+            // `expr` should not match underscores.
+            // HACK: Macro expansion should not be done using "rollback and try another alternative".
+            // rustc [explicitly checks the next token][0].
+            // [0]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
+            match input.peek_n(0) {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it))) if it.text == "_" => {
+                    return ExpandResult::only_err(ExpandError::NoMatchingRule)
+                }
+                _ => {}
+            };
             return input
                 .expect_fragment(parser::PrefixEntryPoint::Expr)
-                .map(|tt| tt.map(Fragment::Expr))
+                .map(|tt| tt.map(Fragment::Expr));
         }
         _ => {
             let tt_result = match kind {

@@ -593,7 +593,16 @@ pub(crate) fn record_expr_field_list(p: &mut Parser) {
             T![.] if p.at(T![..]) => {
                 m.abandon(p);
                 p.bump(T![..]);
-                expr(p);
+
+                // test destructuring_assignment_struct_rest_pattern
+                // fn foo() {
+                //     S { .. } = S {};
+                // }
+
+                // We permit `.. }` on the left-hand side of a destructuring assignment.
+                if !p.at(T!['}']) {
+                    expr(p);
+                }
             }
             T!['{'] => {
                 error_block(p, "expected a field");

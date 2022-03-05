@@ -179,7 +179,7 @@ impl Module {
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
         //get updated by ADT section given below or if it is not, then we dont need to do any operation
-        self.body_items.clone().into_iter().for_each(|item| {
+        self.body_items.iter().cloned().for_each(|item| {
             match_ast! {
                 match (item.syntax()) {
                     ast::Adt(it) => {
@@ -238,6 +238,11 @@ impl Module {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
                             let node_def = Definition::Function(nod.into());
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
+                        }
+                    },
+                    ast::Macro(it) => {
+                        if let Some(nod) = ctx.sema.to_def(&it) {
+                            self.expand_and_group_usages_file_wise(ctx, Definition::Macro(nod), &mut refs);
                         }
                     },
                     _ => (),
@@ -781,7 +786,6 @@ fn get_replacements_for_visibilty_change(
             ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
             //Associated item's visibility should not be changed
             ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it),
-            ast::Item::MacroRules(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Static(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -1374,6 +1378,27 @@ mod modname {
             }
             ",
         )
+    }
+
+    #[test]
+    fn test_extract_module_macro_rules() {
+        check_assist(
+            extract_module,
+            r"
+$0macro_rules! m {
+    () => {};
+}$0
+m! {}
+            ",
+            r"
+mod modname {
+    macro_rules! m {
+        () => {};
+    }
+}
+modname::m! {}
+            ",
+        );
     }
 
     #[test]
