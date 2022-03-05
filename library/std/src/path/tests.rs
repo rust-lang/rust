@@ -1710,15 +1710,18 @@ fn test_unix_absolute() {
     let relative = "a/b";
     let mut expected = crate::env::current_dir().unwrap();
     expected.push(relative);
-    assert_eq!(absolute(relative).unwrap(), expected);
+    assert_eq!(absolute(relative).unwrap().as_os_str(), expected.as_os_str());
 
     // Test how components are collected.
-    assert_eq!(absolute("/a/b/c").unwrap(), Path::new("/a/b/c"));
-    assert_eq!(absolute("/a//b/c").unwrap(), Path::new("/a/b/c"));
-    assert_eq!(absolute("//a/b/c").unwrap(), Path::new("//a/b/c"));
-    assert_eq!(absolute("///a/b/c").unwrap(), Path::new("/a/b/c"));
-    assert_eq!(absolute("/a/b/c/").unwrap(), Path::new("/a/b/c/"));
-    assert_eq!(absolute("/a/./b/../c/.././..").unwrap(), Path::new("/a/b/../c/../.."));
+    assert_eq!(absolute("/a/b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("/a//b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("//a/b/c").unwrap().as_os_str(), Path::new("//a/b/c").as_os_str());
+    assert_eq!(absolute("///a/b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("/a/b/c/").unwrap().as_os_str(), Path::new("/a/b/c/").as_os_str());
+    assert_eq!(
+        absolute("/a/./b/../c/.././..").unwrap().as_os_str(),
+        Path::new("/a/b/../c/../..").as_os_str()
+    );
 
     // Test leading `.` and `..` components
     let curdir = crate::env::current_dir().unwrap();
