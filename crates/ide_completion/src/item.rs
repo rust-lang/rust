@@ -260,6 +260,7 @@ impl CompletionItemKind {
                 SymbolKind::Macro => "ma",
                 SymbolKind::Module => "md",
                 SymbolKind::SelfParam => "sp",
+                SymbolKind::SelfType => "sy",
                 SymbolKind::Static => "sc",
                 SymbolKind::Struct => "st",
                 SymbolKind::ToolModule => "tm",

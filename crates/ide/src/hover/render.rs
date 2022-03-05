@@ -545,7 +545,6 @@ fn keyword_hints(
                 },
             }
         }
-
         T![fn] => {
             let module = match ast::FnPtrType::cast(parent) {
                 // treat fn keyword inside function pointer type as primitive
@@ -554,7 +553,7 @@ fn keyword_hints(
             };
             KeywordHint::new(token.text().to_string(), module)
         }
-
+        T![Self] => KeywordHint::new(token.text().to_string(), "self_upper_keyword".into()),
         _ => KeywordHint::new(token.text().to_string(), format!("{}_keyword", token.text())),
     }
 }

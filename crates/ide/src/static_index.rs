@@ -126,7 +126,7 @@ impl StaticIndex<'_> {
         let tokens = tokens.filter(|token| {
             matches!(
                 token.kind(),
-                IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate]
+                IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self]
             )
         });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };

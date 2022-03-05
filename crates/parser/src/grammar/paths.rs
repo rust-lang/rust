@@ -1,10 +1,10 @@
 use super::*;
 
 pub(super) const PATH_FIRST: TokenSet =
-    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![:], T![<]]);
+    TokenSet::new(&[IDENT, T![self], T![super], T![crate], T![Self], T![:], T![<]]);
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
-    is_use_path_start(p) || p.at(T![<])
+    is_use_path_start(p) || p.at(T![<]) || p.at(T![Self])
 }
 
 pub(super) fn is_use_path_start(p: &Parser) -> bool {
@@ -88,7 +88,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             }
             // test crate_path
             // use crate::foo;
-            T![self] | T![super] | T![crate] => {
+            T![self] | T![super] | T![crate] | T![Self] => {
                 let m = p.start();
                 p.bump_any();
                 m.complete(p, NAME_REF);

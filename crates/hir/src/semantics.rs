@@ -10,7 +10,10 @@ use hir_def::{
     resolver::{self, HasResolver, Resolver, TypeNs},
     AsMacroCall, FunctionId, TraitId, VariantId,
 };
-use hir_expand::{name::AsName, ExpansionInfo, MacroCallId};
+use hir_expand::{
+    name::{known, AsName},
+    ExpansionInfo, MacroCallId,
+};
 use hir_ty::Interner;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -910,13 +913,14 @@ impl<'db> SemanticsImpl<'db> {
 
     fn resolve_extern_crate(&self, extern_crate: &ast::ExternCrate) -> Option<Crate> {
         let krate = self.scope(extern_crate.syntax()).krate()?;
-        krate.dependencies(self.db).into_iter().find_map(|dep| {
-            if dep.name == extern_crate.name_ref()?.as_name() {
-                Some(dep.krate)
-            } else {
-                None
-            }
-        })
+        let name = extern_crate.name_ref()?.as_name();
+        if name == known::SELF_PARAM {
+            return Some(krate);
+        }
+        krate
+            .dependencies(self.db)
+            .into_iter()
+            .find_map(|dep| (dep.name == name).then(|| dep.krate))
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {

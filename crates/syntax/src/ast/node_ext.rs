@@ -34,6 +34,10 @@ impl ast::NameRef {
     pub fn as_tuple_field(&self) -> Option<usize> {
         self.text().parse().ok()
     }
+
+    pub fn token_kind(&self) -> SyntaxKind {
+        self.syntax().first_token().map_or(SyntaxKind::ERROR, |it| it.kind())
+    }
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
@@ -183,6 +187,7 @@ impl ast::Attr {
 pub enum PathSegmentKind {
     Name(ast::NameRef),
     Type { type_ref: Option<ast::Type>, trait_ref: Option<ast::PathType> },
+    SelfTypeKw,
     SelfKw,
     SuperKw,
     CrateKw,
@@ -204,16 +209,21 @@ impl ast::PathSegment {
         self.name_ref().and_then(|it| it.self_token())
     }
 
+    pub fn self_type_token(&self) -> Option<SyntaxToken> {
+        self.name_ref().and_then(|it| it.Self_token())
+    }
+
     pub fn super_token(&self) -> Option<SyntaxToken> {
         self.name_ref().and_then(|it| it.super_token())
     }
 
     pub fn kind(&self) -> Option<PathSegmentKind> {
         let res = if let Some(name_ref) = self.name_ref() {
-            match name_ref.syntax().first_token().map(|it| it.kind()) {
-                Some(T![self]) => PathSegmentKind::SelfKw,
-                Some(T![super]) => PathSegmentKind::SuperKw,
-                Some(T![crate]) => PathSegmentKind::CrateKw,
+            match name_ref.token_kind() {
+                T![Self] => PathSegmentKind::SelfTypeKw,
+                T![self] => PathSegmentKind::SelfKw,
+                T![super] => PathSegmentKind::SuperKw,
+                T![crate] => PathSegmentKind::CrateKw,
                 _ => PathSegmentKind::Name(name_ref),
             }
         } else {

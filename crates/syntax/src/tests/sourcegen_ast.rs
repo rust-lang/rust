@@ -297,6 +297,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
     }
 
     let ast = quote! {
+        #![allow(non_snake_case)]
         use crate::{
             SyntaxNode, SyntaxToken, SyntaxKind::{self, *},
             ast::{self, AstNode, AstChildren, support},
@@ -356,21 +357,24 @@ fn generate_syntax_kinds(grammar: KindsSrc<'_>) -> String {
     let punctuation =
         grammar.punct.iter().map(|(_token, name)| format_ident!("{}", name)).collect::<Vec<_>>();
 
-    let full_keywords_values = &grammar.keywords;
-    let full_keywords =
-        full_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(kw)));
+    let x = |&name| match name {
+        "Self" => format_ident!("SELF_TYPE_KW"),
+        name => format_ident!("{}_KW", to_upper_snake_case(name)),
+    };
+    let full_keywords_values = grammar.keywords;
+    let full_keywords = full_keywords_values.iter().map(x);
 
     let contextual_keywords_values = &grammar.contextual_keywords;
-    let contextual_keywords =
-        contextual_keywords_values.iter().map(|kw| format_ident!("{}_KW", to_upper_snake_case(kw)));
+    let contextual_keywords = contextual_keywords_values.iter().map(x);
 
-    let all_keywords_values =
-        grammar.keywords.iter().chain(grammar.contextual_keywords.iter()).collect::<Vec<_>>();
-    let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
-    let all_keywords = all_keywords_values
+    let all_keywords_values = grammar
+        .keywords
         .iter()
-        .map(|name| format_ident!("{}_KW", to_upper_snake_case(name)))
+        .chain(grammar.contextual_keywords.iter())
+        .copied()
         .collect::<Vec<_>>();
+    let all_keywords_idents = all_keywords_values.iter().map(|kw| format_ident!("{}", kw));
+    let all_keywords = all_keywords_values.iter().map(x).collect::<Vec<_>>();
 
     let literals =
         grammar.literals.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();

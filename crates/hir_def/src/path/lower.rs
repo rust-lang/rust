@@ -53,6 +53,10 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx) -> Option<Path> {
                     }
                 }
             }
+            ast::PathSegmentKind::SelfTypeKw => {
+                segments.push(name![Self]);
+                generic_args.push(None)
+            }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 assert!(path.qualifier().is_none()); // this can only occur at the first segment
 

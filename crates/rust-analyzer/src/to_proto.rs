@@ -55,7 +55,9 @@ pub(crate) fn symbol_kind(symbol_kind: SymbolKind) -> lsp_types::SymbolKind {
         | SymbolKind::Attribute
         | SymbolKind::Derive => lsp_types::SymbolKind::FUNCTION,
         SymbolKind::Module | SymbolKind::ToolModule => lsp_types::SymbolKind::MODULE,
-        SymbolKind::TypeAlias | SymbolKind::TypeParam => lsp_types::SymbolKind::TYPE_PARAMETER,
+        SymbolKind::TypeAlias | SymbolKind::TypeParam | SymbolKind::SelfType => {
+            lsp_types::SymbolKind::TYPE_PARAMETER
+        }
         SymbolKind::Field => lsp_types::SymbolKind::FIELD,
         SymbolKind::Static => lsp_types::SymbolKind::CONSTANT,
         SymbolKind::Const => lsp_types::SymbolKind::CONSTANT,
@@ -124,6 +126,7 @@ pub(crate) fn completion_item_kind(
             SymbolKind::Macro => lsp_types::CompletionItemKind::FUNCTION,
             SymbolKind::Module => lsp_types::CompletionItemKind::MODULE,
             SymbolKind::SelfParam => lsp_types::CompletionItemKind::VALUE,
+            SymbolKind::SelfType => lsp_types::CompletionItemKind::TYPE_PARAMETER,
             SymbolKind::Static => lsp_types::CompletionItemKind::VALUE,
             SymbolKind::Struct => lsp_types::CompletionItemKind::STRUCT,
             SymbolKind::Trait => lsp_types::CompletionItemKind::INTERFACE,
@@ -483,6 +486,7 @@ fn semantic_token_type_and_modifiers(
             SymbolKind::Label => semantic_tokens::LABEL,
             SymbolKind::ValueParam => lsp_types::SemanticTokenType::PARAMETER,
             SymbolKind::SelfParam => semantic_tokens::SELF_KEYWORD,
+            SymbolKind::SelfType => semantic_tokens::SELF_TYPE_KEYWORD,
             SymbolKind::Local => lsp_types::SemanticTokenType::VARIABLE,
             SymbolKind::Function => {
                 if highlight.mods.contains(HlMod::Associated) {

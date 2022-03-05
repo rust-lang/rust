@@ -141,6 +141,7 @@ impl HlTag {
                 SymbolKind::Macro => "macro",
                 SymbolKind::Module => "module",
                 SymbolKind::SelfParam => "self_keyword",
+                SymbolKind::SelfType => "self_type_keyword",
                 SymbolKind::Static => "static",
                 SymbolKind::Struct => "struct",
                 SymbolKind::ToolModule => "tool_module",

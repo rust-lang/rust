@@ -185,7 +185,7 @@ pub(crate) fn generic_arg_list() -> ast::GenericArgList {
 }
 
 pub fn path_segment(name_ref: ast::NameRef) -> ast::PathSegment {
-    ast_from_text(&format!("use {};", name_ref))
+    ast_from_text(&format!("type __ = {};", name_ref))
 }
 
 pub fn path_segment_ty(type_ref: ast::Type, trait_ref: Option<ast::PathType>) -> ast::PathSegment {
@@ -209,7 +209,7 @@ pub fn path_segment_crate() -> ast::PathSegment {
 }
 
 pub fn path_unqualified(segment: ast::PathSegment) -> ast::Path {
-    ast_from_text(&format!("use {}", segment))
+    ast_from_text(&format!("type __ = {};", segment))
 }
 
 pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
@@ -217,7 +217,7 @@ pub fn path_qualified(qual: ast::Path, segment: ast::PathSegment) -> ast::Path {
 }
 // FIXME: path concatenation operation doesn't make sense as AST op.
 pub fn path_concat(first: ast::Path, second: ast::Path) -> ast::Path {
-    ast_from_text(&format!("{}::{}", first, second))
+    ast_from_text(&format!("type __ = {}::{};", first, second))
 }
 
 pub fn path_from_segments(
@@ -234,7 +234,7 @@ pub fn path_from_segments(
 
 pub fn join_paths(paths: impl IntoIterator<Item = ast::Path>) -> ast::Path {
     let paths = paths.into_iter().map(|it| it.syntax().clone()).join("::");
-    ast_from_text(&format!("use {};", paths))
+    ast_from_text(&format!("type __ = {};", paths))
 }
 
 // FIXME: should not be pub
@@ -782,6 +782,7 @@ pub fn struct_(
     ))
 }
 
+#[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
     let parse = SourceFile::parse(text);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {

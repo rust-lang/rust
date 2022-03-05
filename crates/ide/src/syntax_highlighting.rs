@@ -118,6 +118,7 @@ pub struct HlRange {
 // parameter:: Emitted for non-self function parameters.
 // property:: Emitted for struct and union fields.
 // selfKeyword:: Emitted for the self function parameter and self path-specifier.
+// selfTypeKeyword:: Emitted for the Self type parameter.
 // toolModule:: Emitted for tool modules.
 // typeParameter:: Emitted for type parameters.
 // unresolvedReference:: Emitted for unresolved references, names that rust-analyzer can't find the definition of.
@@ -327,7 +328,7 @@ fn traverse(
                     // as otherwise we won't ever visit them
                     match (token.kind(), parent.kind()) {
                         (T![ident], NAME | NAME_REF) => parent.into(),
-                        (T![self] | T![super] | T![crate], NAME_REF) => parent.into(),
+                        (T![self] | T![super] | T![crate] | T![Self], NAME_REF) => parent.into(),
                         (INT_NUMBER, NAME_REF) => parent.into(),
                         (LIFETIME_IDENT, LIFETIME) => parent.into(),
                         _ => token.into(),

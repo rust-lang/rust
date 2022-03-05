@@ -1295,6 +1295,11 @@
                 "superType": "keyword"
             },
             {
+                "id": "selfTypeKeyword",
+                "description": "Style for the self type keyword",
+                "superType": "keyword"
+            },
+            {
                 "id": "semicolon",
                 "description": "Style for ;",
                 "superType": "punctuation"

@@ -59,11 +59,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
 <span class="brace">}</span>
 
-<span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="keyword">where</span> <span class="type_param">Self</span><span class="colon">:</span> <span class="brace">{</span>
+<span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
-<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="keyword">where</span> <span class="self_type">Self</span><span class="colon">:</span> <span class="brace">{</span>
+<span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="brace">{</span>
     <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
@@ -210,7 +210,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 <span class="keyword">impl</span> <span class="enum public">Bool</span> <span class="brace">{</span>
     <span class="keyword">pub</span> <span class="keyword">const</span> <span class="keyword">fn</span> <span class="function associated consuming declaration public">to_primitive</span><span class="parenthesis">(</span><span class="self_keyword declaration">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">bool</span> <span class="brace">{</span>
-        <span class="unresolved_reference">matches</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="keyword">self</span><span class="comma">,</span> Self<span class="colon">:</span><span class="colon">:</span>True<span class="parenthesis">)</span>
+        <span class="bool_literal">true</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
 <span class="keyword">const</span> <span class="constant declaration">USAGE_OF_BOOL</span><span class="colon">:</span><span class="builtin_type">bool</span> <span class="operator">=</span> <span class="enum public">Bool</span><span class="operator">::</span><span class="enum_variant public">True</span><span class="operator">.</span><span class="function associated consuming public">to_primitive</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>

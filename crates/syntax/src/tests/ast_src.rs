@@ -67,8 +67,8 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
     keywords: &[
         "as", "async", "await", "box", "break", "const", "continue", "crate", "dyn", "else",
         "enum", "extern", "false", "fn", "for", "if", "impl", "in", "let", "loop", "macro",
-        "match", "mod", "move", "mut", "pub", "ref", "return", "self", "static", "struct", "super",
-        "trait", "true", "try", "type", "unsafe", "use", "where", "while", "yield",
+        "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self", "static", "struct",
+        "super", "trait", "true", "try", "type", "unsafe", "use", "where", "while", "yield",
     ],
     contextual_keywords: &["auto", "default", "existential", "union", "raw", "macro_rules"],
     literals: &["INT_NUMBER", "FLOAT_NUMBER", "CHAR", "BYTE", "STRING", "BYTE_STRING"],
