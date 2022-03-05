@@ -337,6 +337,24 @@ impl TcpStream {
         Ok(raw as u32)
     }
 
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)?;
+        Ok(raw as u32)
+    }
+
+    pub fn set_multicast_hlim_v6(&self, limit: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
+    }
+
+    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)?;
+        Ok(raw as u32)
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
@@ -434,6 +452,24 @@ impl TcpListener {
 
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)?;
+        Ok(raw as u32)
+    }
+
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)?;
+        Ok(raw as u32)
+    }
+
+    pub fn set_multicast_hlim_v6(&self, limit: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
+    }
+
+    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)?;
         Ok(raw as u32)
     }
 
@@ -641,7 +677,7 @@ impl UdpSocket {
         Ok(raw as u32)
     }
 
-    pub fn set_hop_limit_v6(&self, limit: i32) -> io::Result<()> {
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int)
     }
 
@@ -650,7 +686,7 @@ impl UdpSocket {
         Ok(raw as u32)
     }
 
-    pub fn set_multicast_hlim_v6(&self, limit: i32) -> io::Result<()> {
+    pub fn set_multicast_hlim_v6(&self, limit: u32) -> io::Result<()> {
         setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int)
     }
 

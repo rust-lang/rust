@@ -569,7 +569,7 @@ impl UdpSocket {
     /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
-    pub fn set_hop_limit_v6(&self, limit: i32) -> io::Result<()> {
+    pub fn set_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
         self.0.set_hop_limit_v6(limit)
     }
 
@@ -607,7 +607,7 @@ impl UdpSocket {
     /// socket.set_multicast_hlim_v6(88).expect("set_multicast_hlim_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
-    pub fn set_multicast_hlim_v6(&self, limit: i32) -> io::Result<()> {
+    pub fn set_multicast_hlim_v6(&self, limit: u32) -> io::Result<()> {
         self.0.set_multicast_hlim_v6(limit)
     }
 
