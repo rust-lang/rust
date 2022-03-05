@@ -500,14 +500,14 @@ impl ExprCollector<'_> {
             }
             ast::Expr::MacroCall(e) => {
                 let macro_ptr = AstPtr::new(&e);
-                let mut ids = vec![];
+                let mut ids = None;
                 self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
-                    ids.push(match expansion {
+                    ids.get_or_insert(match expansion {
                         Some(it) => this.collect_expr(it),
                         None => this.alloc_expr(Expr::Missing, syntax_ptr.clone()),
-                    })
+                    });
                 });
-                ids[0]
+                ids.unwrap_or_else(|| self.alloc_expr(Expr::Missing, syntax_ptr.clone()))
             }
             ast::Expr::MacroStmts(e) => {
                 e.statements().for_each(|s| self.collect_stmt(s));
@@ -523,7 +523,7 @@ impl ExprCollector<'_> {
 
     fn collect_macro_call<F: FnMut(&mut Self, Option<T>), T: ast::AstNode>(
         &mut self,
-        e: ast::MacroCall,
+        mcall: ast::MacroCall,
         syntax_ptr: AstPtr<ast::MacroCall>,
         record_diagnostics: bool,
         mut collector: F,
@@ -531,8 +531,8 @@ impl ExprCollector<'_> {
         // File containing the macro call. Expansion errors will be attached here.
         let outer_file = self.expander.current_file_id;
 
-        let macro_call = self.expander.to_source(AstPtr::new(&e));
-        let res = self.expander.enter_expand(self.db, e);
+        let macro_call_ptr = self.expander.to_source(AstPtr::new(&mcall));
+        let res = self.expander.enter_expand(self.db, mcall);
 
         let res = match res {
             Ok(res) => res,
@@ -567,7 +567,7 @@ impl ExprCollector<'_> {
 
         match res.value {
             Some((mark, expansion)) => {
-                self.source_map.expansions.insert(macro_call, self.expander.current_file_id);
+                self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id);
 
                 let id = collector(self, Some(expansion));
                 self.expander.exit(self.db, mark);

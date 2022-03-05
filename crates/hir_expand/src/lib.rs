@@ -894,7 +894,7 @@ impl ExpandTo {
             | CLOSURE_EXPR | BREAK_EXPR | RETURN_EXPR | MATCH_EXPR | MATCH_ARM | MATCH_GUARD
             | RECORD_EXPR_FIELD | CALL_EXPR | INDEX_EXPR | METHOD_CALL_EXPR | FIELD_EXPR
             | AWAIT_EXPR | CAST_EXPR | REF_EXPR | PREFIX_EXPR | RANGE_EXPR | BIN_EXPR
-            | LET_EXPR => ExpandTo::Expr,
+            | LET_EXPR | IF_EXPR | WHILE_EXPR => ExpandTo::Expr,
             LET_STMT => {
                 // FIXME: Handle LHS Pattern
                 ExpandTo::Expr
