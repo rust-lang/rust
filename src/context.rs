@@ -85,7 +85,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
 
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
@@ -195,7 +195,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             function_instances: Default::default(),
             vtables: Default::default(),
             const_globals: Default::default(),
-            const_cstr_cache: Default::default(),
+            const_str_cache: Default::default(),
             globals: Default::default(),
             scalar_types: Default::default(),
             types: Default::default(),
