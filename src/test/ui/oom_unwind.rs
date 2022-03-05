@@ -2,6 +2,7 @@
 // run-pass
 // no-prefer-dynamic
 // needs-unwind
+// only-linux
 
 #![feature(bench_black_box)]
 
