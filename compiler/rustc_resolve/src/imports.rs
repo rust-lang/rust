@@ -720,7 +720,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     note: Vec::new(),
                     suggestion: None,
                 };
-                errors.push((path, err));
+                if path.contains("::") {
+                    errors.push((path, err))
+                }
             }
         }
 
