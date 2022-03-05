@@ -163,6 +163,7 @@ pub enum SymbolKind {
     Macro,
     Module,
     SelfParam,
+    SelfType,
     Static,
     Struct,
     ToolModule,

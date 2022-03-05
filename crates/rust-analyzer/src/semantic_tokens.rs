@@ -66,6 +66,7 @@ define_semantic_token_types![
     (PARENTHESIS, "parenthesis"),
     (PUNCTUATION, "punctuation"),
     (SELF_KEYWORD, "selfKeyword"),
+    (SELF_TYPE_KEYWORD, "selfTypeKeyword"),
     (SEMICOLON, "semicolon"),
     (TYPE_ALIAS, "typeAlias"),
     (TOOL_MODULE, "toolModule"),

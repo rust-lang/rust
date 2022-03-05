@@ -118,6 +118,7 @@ pub struct HlRange {
 // parameter:: Emitted for non-self function parameters.
 // property:: Emitted for struct and union fields.
 // selfKeyword:: Emitted for the self function parameter and self path-specifier.
+// selfTypeKeyword:: Emitted for the Self type parameter.
 // toolModule:: Emitted for tool modules.
 // typeParameter:: Emitted for type parameters.
 // unresolvedReference:: Emitted for unresolved references, names that rust-analyzer can't find the definition of.

@@ -190,6 +190,7 @@ fn keyword(
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![true] | T![false] => HlTag::BoolLiteral.into(),
+        T![Self] => return Some(HlTag::Symbol(SymbolKind::SelfType).into()),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
         // self, crate and super are handled as either a Name or NameRef already, unless they
