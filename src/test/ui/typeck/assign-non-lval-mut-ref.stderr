@@ -1,15 +1,15 @@
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/issue-93486.rs:3:36
+  --> $DIR/assign-non-lval-mut-ref.rs:5:27
    |
-LL |         vec![].last_mut().unwrap() = 3_u8;
-   |         -------------------------- ^
-   |         |
-   |         cannot assign to this expression
+LL |     x.last_mut().unwrap() = 2usize;
+   |     --------------------- ^
+   |     |
+   |     cannot assign to this expression
    |
 help: consider dereferencing here to assign to the mutable borrowed piece of memory
    |
-LL |         *vec![].last_mut().unwrap() = 3_u8;
-   |         +
+LL |     *x.last_mut().unwrap() = 2usize;
+   |     +
 
 error: aborting due to previous error
 

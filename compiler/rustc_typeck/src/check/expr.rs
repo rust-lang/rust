@@ -836,6 +836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lhs: &'tcx hir::Expr<'tcx>,
         err_code: &'static str,
         op_span: Span,
+        adjust_err: impl FnOnce(&mut DiagnosticBuilder<'tcx, ErrorGuaranteed>),
     ) {
         if lhs.is_syntactic_place_expr() {
             return;
@@ -857,6 +858,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         });
+
+        adjust_err(&mut err);
 
         err.emit();
     }
@@ -1050,9 +1053,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", span);
-
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
+
+        self.check_lhs_assignable(lhs, "E0070", span, |err| {
+            let rhs_ty = self.check_expr(&rhs);
+
+            if let ty::Ref(_, lhs_inner_ty, hir::Mutability::Mut) = lhs_ty.kind() {
+                if self.can_coerce(rhs_ty, *lhs_inner_ty) {
+                    err.span_suggestion_verbose(
+                        lhs.span.shrink_to_lo(),
+                        "consider dereferencing here to assign to the mutable \
+                    borrowed piece of memory",
+                        "*".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            }
+        });
+
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
 
         self.require_type_is_sized(lhs_ty, lhs.span, traits::AssignmentLhsSized);
