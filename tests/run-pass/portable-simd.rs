@@ -68,6 +68,13 @@ fn simd_ops_i32() {
     assert_eq!(a.lanes_lt(i32x4::splat(5)*b), Mask::from_int(i32x4::from_array([0, 0, -1, 0])));
     assert_eq!(a.lanes_ge(i32x4::splat(5)*b), Mask::from_int(i32x4::from_array([-1, -1, 0, -1])));
     assert_eq!(a.lanes_gt(i32x4::splat(5)*b), Mask::from_int(i32x4::from_array([-1, 0, 0, -1])));
+
+    assert_eq!(a.horizontal_and(), 10);
+    assert_eq!(b.horizontal_and(), 0);
+    assert_eq!(a.horizontal_or(), 10);
+    assert_eq!(b.horizontal_or(), -1);
+    assert_eq!(a.horizontal_xor(), 0);
+    assert_eq!(b.horizontal_xor(), -4);
 }
 
 fn simd_intrinsics() {
