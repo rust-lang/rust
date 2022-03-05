@@ -5981,7 +5981,8 @@ public:
       return;
     }
 
-    if (funcName == "MPI_Send" || funcName == "MPI_Ssend") {
+    if (funcName == "MPI_Send" || funcName == "MPI_Ssend" ||
+        funcName == "PMPI_Send" || funcName == "PMPI_Ssend") {
       if (Mode == DerivativeMode::ReverseModeGradient ||
           Mode == DerivativeMode::ReverseModeCombined ||
           Mode == DerivativeMode::ForwardMode) {
@@ -6004,6 +6005,12 @@ public:
 
         Type *statusType = nullptr;
         if (Function *recvfn = called->getParent()->getFunction("MPI_Recv")) {
+          auto statusArg = recvfn->arg_end();
+          statusArg--;
+          if (auto PT = dyn_cast<PointerType>(statusArg->getType()))
+            statusType = PT->getPointerElementType();
+        } else if (Function *recvfn =
+                       called->getParent()->getFunction("PMPI_Recv")) {
           auto statusArg = recvfn->arg_end();
           statusArg--;
           if (auto PT = dyn_cast<PointerType>(statusArg->getType()))

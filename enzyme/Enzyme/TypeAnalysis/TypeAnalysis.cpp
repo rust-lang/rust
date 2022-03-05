@@ -3627,7 +3627,9 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
     if (funcName == "MPI_Send" || funcName == "MPI_Ssend" ||
         funcName == "MPI_Bsend" || funcName == "MPI_Recv" ||
-        funcName == "MPI_Brecv") {
+        funcName == "MPI_Brecv" || funcName == "PMPI_Send" ||
+        funcName == "PMPI_Ssend" || funcName == "PMPI_Bsend" ||
+        funcName == "PMPI_Recv" || funcName == "PMPI_Brecv") {
       TypeTree buf = TypeTree(BaseType::Pointer);
 
       if (Constant *C = dyn_cast<Constant>(call.getOperand(2))) {
