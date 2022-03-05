@@ -26,7 +26,6 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
             &format!("can't pass `{}` to variadic function", self.ty),
             self.code(),
         );
-        
 
         if self.ty.references_error() {
             err.downgrade_to_delayed_bug();
