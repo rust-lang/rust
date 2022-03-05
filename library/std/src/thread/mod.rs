@@ -1293,6 +1293,23 @@ impl<'scope, T> Drop for Packet<'scope, T> {
             // panicked, and nobody consumed the panic payload, we make sure
             // the scope function will panic.
             let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+            // Drop the result before decrementing the number of running
+            // threads, because the Drop implementation might still use things
+            // it borrowed from 'scope.
+            // This is only relevant for threads that aren't join()ed, as
+            // join() will take the `result` and set it to None, such that
+            // there is nothing left to drop here.
+            // If this drop panics, that just results in an abort, because
+            // we're outside of the outermost `catch_unwind` of our thread.
+            // The same happens for detached non-scoped threads when dropping
+            // their ignored return value (or panic payload) panics, so
+            // there's no need to try to do anything better.
+            // (And even if we tried to handle it, we'd also need to handle
+            // the case where the panic payload we get out of it also panics
+            // on drop, and so on. See issue #86027.)
+            *self.result.get_mut() = None;
+            // Now that there will be no more user code running on this thread
+            // that can use 'scope, mark the thread as 'finished'.
             scope.decrement_num_running_threads(unhandled_panic);
         }
     }
