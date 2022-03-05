@@ -204,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
 pub fn is_primitive(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => true,
-        ty::Ref(_, t, _) => is_primitive(t),
+        ty::Ref(_, t, _) => is_primitive(*t),
         _ => false,
     }
 }
@@ -212,7 +212,7 @@ pub fn is_primitive(ty: Ty<'_>) -> bool {
 pub fn is_array(ty: Ty<'_>) -> bool {
     match ty.kind() {
         ty::Array(..) | ty::Slice(..) => true,
-        ty::Ref(_, t, _) => is_array(t),
+        ty::Ref(_, t, _) => is_array(*t),
         _ => false,
     }
 }
