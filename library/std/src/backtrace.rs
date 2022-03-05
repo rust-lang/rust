@@ -162,7 +162,7 @@ enum RawFrame {
     Fake,
 }
 
-struct BacktraceSymbol {
+pub struct BacktraceSymbol {
     pub name: Option<Vec<u8>>,
     pub filename: Option<BytesOrWide>,
     pub lineno: Option<u32>,
