@@ -11,8 +11,6 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use build_helper::{self, output, t};
-
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::compile;
@@ -22,7 +20,7 @@ use crate::flags::Subcommand;
 use crate::native;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
-use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var};
+use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
 use crate::Crate as CargoCrate;
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
@@ -2306,9 +2304,7 @@ impl Step for Distcheck {
                 .current_dir(&dir),
         );
         builder.run(
-            Command::new(build_helper::make(&builder.config.build.triple))
-                .arg("check")
-                .current_dir(&dir),
+            Command::new(util::make(&builder.config.build.triple)).arg("check").current_dir(&dir),
         );
 
         // Now make sure that rust-src has all of libstd's dependencies

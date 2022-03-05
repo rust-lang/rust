@@ -14,15 +14,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::{output, t};
-
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
-use crate::util::{exe, is_dylib, timeit};
+use crate::util::{exe, is_dylib, output, t, timeit};
 use crate::{Compiler, DependencyType, Mode, LLVM_TOOLS};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
@@ -632,14 +630,6 @@ impl Step for RustcDev {
             builder,
             &builder.src,
             &["compiler"],
-            &[],
-            &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
-        );
-        // This particular crate is used as a build dependency of the above.
-        copy_src_dirs(
-            builder,
-            &builder.src,
-            &["src/build_helper"],
             &[],
             &tarball.image_dir().join("lib/rustlib/rustc-src/rust"),
         );

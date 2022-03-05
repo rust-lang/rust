@@ -34,7 +34,6 @@ path = "bin/llvm-config-wrapper.rs"
 test = false
 
 [dependencies]
-build_helper = { path = "../build_helper" }
 cmake = "0.1.38"
 filetime = "0.2"
 getopts = "0.2.19"

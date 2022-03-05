@@ -116,12 +116,13 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use filetime::FileTime;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{exe, libdir, CiEnv};
+use crate::util::{
+    exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed, CiEnv,
+};
 
 mod builder;
 mod cache;
@@ -1301,13 +1302,10 @@ impl Build {
                 }
                 // Don't include optional deps if their features are not
                 // enabled. Ideally this would be computed from `cargo
-                // metadata --features …`, but that is somewhat slow. Just
-                // skip `build_helper` since there aren't any operations we
-                // want to perform on it. In the future, we may want to
-                // consider just filtering all build and dev dependencies in
-                // metadata::build.
+                // metadata --features …`, but that is somewhat slow. In
+                // the future, we may want to consider just filtering all
+                // build and dev dependencies in metadata::build.
                 if visited.insert(dep)
-                    && dep != "build_helper"
                     && (dep != "profiler_builtins"
                         || target
                             .map(|t| self.config.profiler_enabled(t))
