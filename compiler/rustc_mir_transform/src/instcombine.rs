@@ -6,7 +6,7 @@ use rustc_middle::mir::{
     BinOp, Body, Constant, LocalDecls, Operand, Place, ProjectionElem, Rvalue, SourceInfo,
     Statement, StatementKind, Terminator, TerminatorKind, UnOp,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{self, TyCtxt};
 
 pub struct InstCombine;
 
@@ -168,7 +168,7 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
         let ty::Ref(_region, inner_ty, Mutability::Not) = *arg_ty.kind()
         else { return };
 
-        if !is_trivially_pure_copy(self.tcx, inner_ty) {
+        if !inner_ty.is_trivially_pure_clone_copy() {
             return;
         }
 
@@ -200,15 +200,5 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
             )),
         });
         terminator.kind = TerminatorKind::Goto { target: destination_block };
-    }
-}
-
-fn is_trivially_pure_copy<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    use TyKind::*;
-    match *ty.kind() {
-        Bool | Char | Int(..) | Uint(..) | Float(..) => true,
-        Array(element_ty, _len) => is_trivially_pure_copy(tcx, element_ty),
-        Tuple(field_tys) => field_tys.iter().all(|x| is_trivially_pure_copy(tcx, x)),
-        _ => false,
     }
 }
