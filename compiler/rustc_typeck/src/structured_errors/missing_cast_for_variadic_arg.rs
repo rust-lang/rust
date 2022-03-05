@@ -39,10 +39,8 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
                     format!("{} as {}", snippet, self.cast_ty),
                     Applicability::MachineApplicable,
                 )
-                .help("a function item is zero-sized and needs to be casted \
-                    to a function pointer to be used in FFI")
-                .note("for more information on function items, visit \
-                    https://doc.rust-lang.org/reference/types/function-item.html");
+                .help("a function item is zero-sized and needs to be casted to a function pointer to be used in FFI")
+                .note("for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html");
             } else {
                 err.span_suggestion(
                     self.span,
