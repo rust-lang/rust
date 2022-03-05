@@ -19,7 +19,7 @@ pub trait CacheSelector<K, V> {
 
 pub trait QueryStorage {
     type Value: Debug;
-    type Stored: Clone;
+    type Stored: Copy;
 
     /// Store a value without putting it in the cache.
     /// This is meant to be used with cycle errors.
@@ -49,7 +49,7 @@ pub trait QueryCache: QueryStorage + Sized {
 
 pub struct DefaultCacheSelector;
 
-impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
+impl<K: Eq + Hash, V: Copy> CacheSelector<K, V> for DefaultCacheSelector {
     type Cache = DefaultCache<K, V>;
 }
 
@@ -66,7 +66,7 @@ impl<K, V> Default for DefaultCache<K, V> {
     }
 }
 
-impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
+impl<K: Eq + Hash, V: Copy + Debug> QueryStorage for DefaultCache<K, V> {
     type Value = V;
     type Stored = V;
 
@@ -80,7 +80,7 @@ impl<K: Eq + Hash, V: Clone + Debug> QueryStorage for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: Eq + Hash + Clone + Debug,
-    V: Clone + Debug,
+    V: Copy + Debug,
 {
     type Key = K;
 

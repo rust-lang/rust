@@ -124,7 +124,7 @@ fn mk_cycle<CTX, V, R>(
 where
     CTX: QueryContext,
     V: std::fmt::Debug,
-    R: Clone,
+    R: Copy,
 {
     let error = report_cycle(tcx.dep_context().sess(), error);
     let value = handle_cycle_error(tcx, error);
@@ -296,32 +296,6 @@ where
 
     /// Trying to execute the query resulted in a cycle.
     Cycle(CycleError),
-}
-
-/// Checks if the query is already computed and in the cache.
-/// It returns the shard index and a lock guard to the shard,
-/// which will be used if the query is not in the cache and we need
-/// to compute it.
-#[inline]
-pub fn try_get_cached<'a, CTX, C, R, OnHit>(
-    tcx: CTX,
-    cache: &'a C,
-    key: &C::Key,
-    // `on_hit` can be called while holding a lock to the query cache
-    on_hit: OnHit,
-) -> Result<R, ()>
-where
-    C: QueryCache,
-    CTX: DepContext,
-    OnHit: FnOnce(&C::Stored) -> R,
-{
-    cache.lookup(&key, |value, index| {
-        if unlikely!(tcx.profiler().enabled()) {
-            tcx.profiler().query_cache_hit(index.into());
-        }
-        tcx.dep_graph().read_index(index);
-        on_hit(value)
-    })
 }
 
 fn try_execute_query<CTX, C>(
@@ -686,6 +660,18 @@ where
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
+    let cached = Q::query_cache(tcx).lookup(&key, |value, index| {
+        if unlikely!(tcx.dep_context().profiler().enabled()) {
+            tcx.dep_context().profiler().query_cache_hit(index.into());
+        }
+        tcx.dep_context().dep_graph().read_index(index);
+        *value
+    });
+    match cached {
+        Ok(value) => return Some(value),
+        Err(()) => (),
+    }
+
     let query = Q::make_vtable(tcx, &key);
     let dep_node = if let QueryMode::Ensure = mode {
         let (must_run, dep_node) = ensure_must_run(tcx, &key, &query);

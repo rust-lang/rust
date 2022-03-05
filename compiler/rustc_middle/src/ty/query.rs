@@ -102,16 +102,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Helper for `TyCtxtEnsure` to avoid a closure.
-#[inline(always)]
-fn noop<T>(_: &T) {}
-
-/// Helper to ensure that queries only return `Copy` types.
-#[inline(always)]
-fn copy<T: Copy>(x: &T) -> T {
-    *x
-}
-
 macro_rules! query_helper_param_ty {
     (DefId) => { impl IntoQueryParam<DefId> };
     ($K:ty) => { $K };
@@ -220,13 +210,6 @@ macro_rules! define_callbacks {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
 
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
-
-                match cached {
-                    Ok(()) => return,
-                    Err(()) => (),
-                }
-
                 self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
             })*
         }
@@ -248,13 +231,6 @@ macro_rules! define_callbacks {
             {
                 let key = key.into_query_param();
                 opt_remap_env_constness!([$($modifiers)*][key]);
-
-                let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
-
-                match cached {
-                    Ok(value) => return value,
-                    Err(()) => (),
-                }
 
                 self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
             })*

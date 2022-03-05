@@ -16,7 +16,7 @@ pub trait QueryConfig {
 
     type Key: Eq + Hash + Clone + Debug;
     type Value;
-    type Stored: Clone;
+    type Stored: Copy;
 }
 
 pub struct QueryVtable<CTX: QueryContext, K, V> {
