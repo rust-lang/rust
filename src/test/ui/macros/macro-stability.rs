@@ -14,7 +14,7 @@ macro_rules! local_unstable { () => () }
 macro local_unstable_modern() {}
 
 #[stable(feature = "deprecated_macros", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", note = "local deprecation note")]
+#[deprecated(since = "1.0.0", note = "local deprecation note")]
 #[macro_export]
 macro_rules! local_deprecated{ () => () }
 

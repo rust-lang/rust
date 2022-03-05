@@ -665,6 +665,7 @@ where
 {
     let mut depr: Option<(Deprecation, Span)> = None;
     let diagnostic = &sess.parse_sess.span_diagnostic;
+    let is_rustc = sess.features_untracked().staged_api;
 
     'outer: for attr in attrs_iter {
         if !(attr.has_name(sym::deprecated) || attr.has_name(sym::rustc_deprecated)) {
@@ -790,7 +791,7 @@ where
             }
         }
 
-        if attr.has_name(sym::rustc_deprecated) {
+        if is_rustc {
             if since.is_none() {
                 handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
                 continue;
@@ -802,8 +803,10 @@ where
             }
         }
 
-        let is_since_rustc_version = attr.has_name(sym::rustc_deprecated);
-        depr = Some((Deprecation { since, note, suggestion, is_since_rustc_version }, attr.span));
+        depr = Some((
+            Deprecation { since, note, suggestion, is_since_rustc_version: is_rustc },
+            attr.span,
+        ));
     }
 
     depr
