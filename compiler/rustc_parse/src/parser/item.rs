@@ -449,6 +449,16 @@ impl<'a> Parser<'a> {
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
         }
+        if end.meta_kind().is_some() {
+            if self.token.kind == TokenKind::Semi {
+                err.span_suggestion_verbose(
+                    self.token.span,
+                    "consider removing this semicolon",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
         if let [.., penultimate, _] = attrs {
             err.span_label(start.span.to(penultimate.span), "other attributes here");
         }
