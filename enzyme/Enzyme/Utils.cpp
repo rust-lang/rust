@@ -489,7 +489,6 @@ llvm::Function *getOrInsertDifferentialWaitallSave(llvm::Module &M,
 
   B.SetInsertPoint(endBlock);
   B.CreateRet(ret);
-  llvm::errs() << *F << "\n";
   return F;
 }
 

@@ -1022,6 +1022,55 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                     oldB) != reverseBlocks[fwd].end();
     }
 
+    auto eraseBlocks = [&](const SmallVectorImpl<BasicBlock *> &blocks,
+                           BasicBlock *bret) {
+      SmallVector<BasicBlock *, 2> revtopo;
+      {
+        SmallPtrSet<BasicBlock *, 2> seen;
+        std::function<void(BasicBlock *)> dfs = [&](BasicBlock *B) {
+          if (seen.count(B))
+            return;
+          seen.insert(B);
+          if (B->getTerminator())
+            for (auto S : successors(B))
+              if (!seen.count(S))
+                dfs(S);
+          revtopo.push_back(B);
+        };
+        for (auto B : blocks)
+          dfs(B);
+        if (!seen.count(bret))
+          revtopo.insert(revtopo.begin(), bret);
+      }
+
+      SmallVector<Instruction *, 4> toErase;
+      for (auto B : revtopo) {
+        if (B == bret)
+          continue;
+        for (auto &I : llvm::reverse(*B)) {
+          toErase.push_back(&I);
+        }
+        unwrap_cache.erase(B);
+        lookup_cache.erase(B);
+        if (reverseBlocks.size() > 0) {
+          auto tfwd = reverseBlockToPrimal[B];
+          assert(tfwd);
+          auto rfound = reverseBlocks.find(tfwd);
+          assert(rfound != reverseBlocks.end());
+          auto &tlst = rfound->second;
+          auto found = std::find(tlst.begin(), tlst.end(), B);
+          if (found != tlst.end())
+            tlst.erase(found);
+          reverseBlockToPrimal.erase(B);
+        }
+      }
+      for (auto I : toErase) {
+        erase(I);
+      }
+      for (auto B : revtopo)
+        B->eraseFromParent();
+    };
+
     if (targetToPreds.size() == 3) {
       for (auto block : blocks) {
         if (!DT.dominates(block, phi->getParent()))
@@ -1186,26 +1235,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                     getOpFull(BuilderM, phi->getIncomingValueForBlock(PB), PB));
 
               if (!vals[i]) {
-                for (size_t j = 0; j <= i; j++) {
-                  if (inReverseBlocks)
-                    reverseBlocks[fwd].erase(
-                        std::find(reverseBlocks[fwd].begin(),
-                                  reverseBlocks[fwd].end(), blocks[j]));
-                  reverseBlockToPrimal.erase(blocks[j]);
-                  unwrap_cache.erase(blocks[j]);
-                  lookup_cache.erase(blocks[j]);
-                  SmallVector<Instruction *, 4> toErase;
-                  for (auto &I : *blocks[j]) {
-                    toErase.push_back(&I);
-                  }
-                  for (auto I : toErase) {
-                    erase(I);
-                  }
-                }
-                bret->eraseFromParent();
-                for (size_t j = 0; j <= i; j++) {
-                  blocks[j]->eraseFromParent();
-                };
+                eraseBlocks(blocks, bret);
                 assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
                 goto endCheck;
               }
@@ -1370,28 +1400,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             vals.push_back(phi->getIncomingValueForBlock(PB));
 
           if (!vals[i]) {
-            for (size_t j = 0; j <= i; j++) {
-              if (reverseBlocks.size() > 0) {
-                if (inReverseBlocks)
-                  reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                     reverseBlocks[fwd].end(),
-                                                     blocks[j]));
-                reverseBlockToPrimal.erase(blocks[j]);
-              }
-              unwrap_cache.erase(blocks[j]);
-              lookup_cache.erase(blocks[j]);
-              SmallVector<Instruction *, 4> toErase;
-              for (auto &I : llvm::reverse(*blocks[j])) {
-                toErase.push_back(&I);
-              }
-              for (auto I : toErase) {
-                erase(I);
-              }
-            }
-            bret->eraseFromParent();
-            for (size_t j = 0; j <= i; j++) {
-              blocks[j]->eraseFromParent();
-            };
+            eraseBlocks(blocks, bret);
             assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
             goto endCheck;
           }
@@ -1411,28 +1420,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                        ConstantInt::get(prevIdx->getType(), 0));
 
         if (blocks[0]->size() == 1 && blocks[1]->size() == 1) {
-          for (size_t j = 0; j < blocks.size(); j++) {
-            if (reverseBlocks.size() > 0) {
-              if (inReverseBlocks)
-                reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                   reverseBlocks[fwd].end(),
-                                                   blocks[j]));
-              reverseBlockToPrimal.erase(blocks[j]);
-            }
-            unwrap_cache.erase(blocks[j]);
-            lookup_cache.erase(blocks[j]);
-            SmallVector<Instruction *, 4> toErase;
-            for (auto &I : llvm::reverse(*blocks[j])) {
-              toErase.push_back(&I);
-            }
-            for (auto I : toErase) {
-              erase(I);
-            }
-          }
-          bret->eraseFromParent();
-          for (size_t j = 0; j < blocks.size(); j++) {
-            blocks[j]->eraseFromParent();
-          };
+          eraseBlocks(blocks, bret);
           Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
                                                phi->getName() + "_unwrap");
           if (permitCache) {
@@ -1587,28 +1575,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           vals.push_back(phi->getIncomingValueForBlock(PB));
 
         if (!vals[i]) {
-          for (size_t j = 0; j <= i; j++) {
-            if (reverseBlocks.size() > 0) {
-              if (inReverseBlocks)
-                reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                   reverseBlocks[fwd].end(),
-                                                   blocks[j]));
-              reverseBlockToPrimal.erase(blocks[j]);
-            }
-            unwrap_cache.erase(blocks[j]);
-            lookup_cache.erase(blocks[j]);
-            SmallVector<Instruction *, 4> toErase;
-            for (auto &I : *blocks[j]) {
-              toErase.push_back(&I);
-            }
-            for (auto I : toErase) {
-              erase(I);
-            }
-          }
-          bret->eraseFromParent();
-          for (size_t j = 0; j <= i; j++) {
-            blocks[j]->eraseFromParent();
-          };
+          eraseBlocks(blocks, bret);
           assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
           goto endCheck;
         }
@@ -1621,28 +1588,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       // were made in the two blocks
       if (isa<BranchInst>(equivalentTerminator) && blocks[0]->size() == 1 &&
           blocks[1]->size() == 1) {
-        for (size_t j = 0; j < blocks.size(); j++) {
-          if (reverseBlocks.size() > 0) {
-            if (inReverseBlocks)
-              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                 reverseBlocks[fwd].end(),
-                                                 blocks[j]));
-            reverseBlockToPrimal.erase(blocks[j]);
-          }
-          unwrap_cache.erase(blocks[j]);
-          lookup_cache.erase(blocks[j]);
-          SmallVector<Instruction *, 4> toErase;
-          for (auto &I : *blocks[j]) {
-            toErase.push_back(&I);
-          }
-          for (auto I : toErase) {
-            erase(I);
-          }
-        }
-        bret->eraseFromParent();
-        for (size_t j = 0; j < blocks.size(); j++) {
-          blocks[j]->eraseFromParent();
-        };
+        eraseBlocks(blocks, bret);
         Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
                                              phi->getName() + "_unwrap");
         if (permitCache) {
@@ -1656,28 +1602,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       }
 
       if (BuilderM.GetInsertPoint() != oldB->end()) {
-        for (size_t j = 0; j < blocks.size(); j++) {
-          if (reverseBlocks.size() > 0) {
-            if (inReverseBlocks)
-              reverseBlocks[fwd].erase(std::find(reverseBlocks[fwd].begin(),
-                                                 reverseBlocks[fwd].end(),
-                                                 blocks[j]));
-            reverseBlockToPrimal.erase(blocks[j]);
-          }
-          unwrap_cache.erase(blocks[j]);
-          lookup_cache.erase(blocks[j]);
-          SmallVector<Instruction *, 4> toErase;
-          for (auto &I : llvm::reverse(*blocks[j])) {
-            toErase.push_back(&I);
-          }
-          for (auto I : toErase) {
-            erase(I);
-          }
-        }
-        bret->eraseFromParent();
-        for (size_t j = 0; j < blocks.size(); j++) {
-          blocks[j]->eraseFromParent();
-        };
+        eraseBlocks(blocks, bret);
         assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
         goto endCheck;
       }
@@ -6572,7 +6497,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
           srco = Builder2.CreatePointerCast(srco, secretpt);
 
         if (mode == DerivativeMode::ForwardModeSplit) {
-          CallInst *call;
 #if LLVM_VERSION_MAJOR >= 11
           MaybeAlign dalign;
           if (dstalign)
@@ -6586,9 +6510,9 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
 #endif
 
           if (intrinsic == Intrinsic::memmove) {
-            call = Builder2.CreateMemMove(dsto, dalign, srco, salign, length);
+            Builder2.CreateMemMove(dsto, dalign, srco, salign, length);
           } else {
-            call = Builder2.CreateMemCpy(dsto, dalign, srco, salign, length);
+            Builder2.CreateMemCpy(dsto, dalign, srco, salign, length);
           }
         } else {
           Value *args[]{
