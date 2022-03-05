@@ -1752,10 +1752,7 @@ fn test_windows_absolute() {
     unchanged!(r"\\?\path.\to/file..");
 
     assert_eq!(absolute(r"C:\path..\to.\file.").unwrap(), Path::new(r"C:\path..\to\file"));
-    assert_eq!(absolute(r"C:\path\to\COM1").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\COM1.txt").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\COM1  .txt").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\cOnOuT$").unwrap(), Path::new(r"\\.\cOnOuT$"));
+    assert_eq!(absolute(r"COM1").unwrap().as_os_str(), Path::new(r"\\.\COM1").as_os_str());
 }
 
 #[bench]
