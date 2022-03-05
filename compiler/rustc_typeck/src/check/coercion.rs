@@ -58,7 +58,8 @@ use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
 
 use smallvec::{smallvec, SmallVec};
@@ -960,6 +961,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         coerce
             .autoderef(rustc_span::DUMMY_SP, expr_ty)
             .find_map(|(ty, steps)| self.probe(|_| coerce.unify(ty, target)).ok().map(|_| steps))
+    }
+
+    /// Given a type, this function will calculate and return the type given
+    /// for `<Ty as Deref>::Target` only if `Ty` also implements `DerefMut`.
+    ///
+    /// This function is for diagnostics only, since it does not register
+    /// trait or region sub-obligations. (presumably we could, but it's not
+    /// particularly important for diagnostics...)
+    pub fn deref_once_mutably_for_diagnostic(&self, expr_ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        self.autoderef(rustc_span::DUMMY_SP, expr_ty).nth(1).and_then(|(deref_ty, _)| {
+            self.infcx
+                .type_implements_trait(
+                    self.infcx.tcx.lang_items().deref_mut_trait()?,
+                    expr_ty,
+                    ty::List::empty(),
+                    self.param_env,
+                )
+                .may_apply()
+                .then(|| deref_ty)
+        })
     }
 
     /// Given some expressions, their known unified type and another expression,
