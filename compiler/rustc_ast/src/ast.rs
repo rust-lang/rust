@@ -2677,6 +2677,8 @@ pub struct Trait {
 ///   //                 ^^^^^^^^^^^^^^ first where clause
 ///   //                                     ^^^^^^^^^^^^^^ second where clause
 /// }
+///
+/// If there is no where clause, then this is `false` with `DUMMY_SP`.
 /// ```
 #[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
 pub struct TyAliasWhereClause(pub bool, pub Span);
