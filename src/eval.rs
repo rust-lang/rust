@@ -86,6 +86,8 @@ pub struct MiriConfig {
     pub ignore_leaks: bool,
     /// Environment variables that should always be isolated from the host.
     pub excluded_env_vars: Vec<String>,
+    /// Environment variables that should always be forwarded from the host.
+    pub forwarded_env_vars: Vec<String>,
     /// Command-line arguments passed to the interpreted program.
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
@@ -122,6 +124,7 @@ impl Default for MiriConfig {
             isolated_op: IsolatedOp::Reject(RejectOpWith::Abort),
             ignore_leaks: false,
             excluded_env_vars: vec![],
+            forwarded_env_vars: vec![],
             args: vec![],
             seed: None,
             tracked_pointer_tag: None,
@@ -157,7 +160,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         MemoryExtra::new(&config),
     );
     // Complete initialization.
-    EnvVars::init(&mut ecx, config.excluded_env_vars)?;
+    EnvVars::init(&mut ecx, config.excluded_env_vars, config.forwarded_env_vars)?;
     MemoryExtra::init_extern_statics(&mut ecx)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.

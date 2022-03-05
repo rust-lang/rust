@@ -399,6 +399,11 @@ fn main() {
                         .excluded_env_vars
                         .push(arg.strip_prefix("-Zmiri-env-exclude=").unwrap().to_owned());
                 }
+                arg if arg.starts_with("-Zmiri-env-forward=") => {
+                    miri_config
+                        .forwarded_env_vars
+                        .push(arg.strip_prefix("-Zmiri-env-forward=").unwrap().to_owned());
+                }
                 arg if arg.starts_with("-Zmiri-track-pointer-tag=") => {
                     let id: u64 =
                         match arg.strip_prefix("-Zmiri-track-pointer-tag=").unwrap().parse() {

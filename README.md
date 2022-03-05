@@ -236,10 +236,13 @@ environment variable:
   execution with a "permission denied" error being returned to the program.
   `warn` prints a full backtrace when that happen; `warn-nobacktrace` is less
   verbose. `hide` hides the warning entirely.
-* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from
-  the host so that it cannot be accessed by the program.  Can be used multiple
-  times to exclude several variables.  On Windows, the `TERM` environment
-  variable is excluded by default.
+* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from the host so that it
+  cannot be accessed by the program. Can be used multiple times to exclude several variables. On
+  Windows, the `TERM` environment variable is excluded by default. This has no effect unless
+  `-Zmiri-disable-validation` is also set.
+* `-Zmiri-env-forward=<var>` forwards the `var` environment variable to the interpreted program. Can
+  be used multiple times to forward several variables. This has no effect if
+  `-Zmiri-disable-validation` is set.
 * `-Zmiri-ignore-leaks` disables the memory leak checker, and also allows some
   remaining threads to exist when the main thread exits.
 * `-Zmiri-measureme=<name>` enables `measureme` profiling for the interpreted program.
