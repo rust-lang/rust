@@ -24,7 +24,7 @@ Name =
   'ident' | 'self'
 
 NameRef =
-  'ident' | 'int_number' | 'self' | 'super' | 'crate'
+  'ident' | 'int_number' | 'self' | 'super' | 'crate' | 'Self'
 
 Lifetime =
   'lifetime_ident'
