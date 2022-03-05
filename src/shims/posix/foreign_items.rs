@@ -55,8 +55,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // File related shims
             "open" | "open64" => {
-                let &[ref path, ref flag, ref mode] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.open(path, flag, mode)?;
+                // `open` is variadic, the third argument is only present when the second argument has O_CREAT (or on linux O_TMPFILE, but miri doesn't support that) set
+                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
+                let result = this.open(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "fcntl" => {
