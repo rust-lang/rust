@@ -277,6 +277,7 @@
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]
 #![feature(intra_doc_pointers)]
+#![feature(ipv6_hop_limit)]
 #![feature(lang_items)]
 #![feature(linkage)]
 #![feature(log_syntax)]
