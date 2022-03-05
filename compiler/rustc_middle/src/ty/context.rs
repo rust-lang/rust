@@ -367,6 +367,16 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub expr: Option<hir::HirId>,
 }
 
+// This type holds diagnostic information on generators and async functions across crate boundaries
+// and is used to provide better error messages
+#[derive(TyEncodable, TyDecodable, Clone, Debug, HashStable)]
+pub struct GeneratorDiagnosticData<'tcx> {
+    pub generator_interior_types: ty::Binder<'tcx, Vec<GeneratorInteriorTypeCause<'tcx>>>,
+    pub hir_owner: DefId,
+    pub nodes_types: ItemLocalMap<Ty<'tcx>>,
+    pub adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
+}
+
 #[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
@@ -621,6 +631,28 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_types_mut(&mut self) -> LocalTableInContextMut<'_, Ty<'tcx>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_types }
+    }
+
+    pub fn get_generator_diagnostic_data(&self) -> GeneratorDiagnosticData<'tcx> {
+        let generator_interior_type = self.generator_interior_types.map_bound_ref(|vec| {
+            vec.iter()
+                .map(|item| {
+                    GeneratorInteriorTypeCause {
+                        ty: item.ty,
+                        span: item.span,
+                        scope_span: item.scope_span,
+                        yield_span: item.yield_span,
+                        expr: None, //FIXME: Passing expression over crate boundaries is impossible at the moment
+                    }
+                })
+                .collect::<Vec<_>>()
+        });
+        GeneratorDiagnosticData {
+            generator_interior_types: generator_interior_type,
+            hir_owner: self.hir_owner.to_def_id(),
+            nodes_types: self.node_types.clone(),
+            adjustments: self.adjustments.clone(),
+        }
     }
 
     pub fn node_type(&self, id: hir::HirId) -> Ty<'tcx> {
