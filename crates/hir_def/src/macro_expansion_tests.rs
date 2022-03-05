@@ -302,6 +302,7 @@ fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&TokenMap>) -> Str
             (T![fn], T!['(']) => "",
             (T![']'], _) if curr_kind.is_keyword() => " ",
             (T![']'], T![#]) => "\n",
+            (T![Self], T![::]) => "",
             _ if prev_kind.is_keyword() => " ",
             _ => "",
         };
