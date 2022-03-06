@@ -208,7 +208,8 @@ macro_rules! define_callbacks {
             #[must_use]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
-                self.at(DUMMY_SP).$name(key)
+                let key = key.into_query_param();
+                self.queries.$name(self, DUMMY_SP, key, QueryMode::Get).unwrap()
             })*
         }
 
