@@ -4,7 +4,10 @@ use base_db::{AnchoredPath, Edition, FileId};
 use cfg::CfgExpr;
 use either::Either;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
-use syntax::ast::{self, AstToken};
+use syntax::{
+    ast::{self, AstToken},
+    SmolStr,
+};
 
 use crate::{
     db::AstDatabase, name, quote, AstId, CrateId, ExpandError, ExpandResult, MacroCallId,
@@ -130,6 +133,9 @@ register_builtin! {
     (option_env, OptionEnv) => option_env_expand
 }
 
+const DOLLAR_CRATE: tt::Ident =
+    tt::Ident { text: SmolStr::new_inline("$crate"), id: tt::TokenId::unspecified() };
+
 fn module_path_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
@@ -202,7 +208,6 @@ fn assert_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> ExpandResult<tt::Subtree> {
-    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
     let args = parse_exprs_with_sep(tt, ',');
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
@@ -218,7 +223,7 @@ fn assert_expand(
             let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
             quote! {{
                 if !#cond {
-                    #krate::panic!(##panic_args);
+                    #DOLLAR_CRATE::panic!(##panic_args);
                 }
             }}
         }
@@ -293,15 +298,13 @@ fn asm_expand(
     // We expand all assembly snippets to `format_args!` invocations to get format syntax
     // highlighting for them.
 
-    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
-
     let mut literals = Vec::new();
     for tt in tt.token_trees.chunks(2) {
         match tt {
             [tt::TokenTree::Leaf(tt::Leaf::Literal(lit))]
             | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', id: _, spacing: _ }))] =>
             {
-                let krate = krate.clone();
+                let krate = DOLLAR_CRATE.clone();
                 literals.push(quote!(#krate::format_args!(#lit);));
             }
             _ => break,
@@ -343,11 +346,10 @@ fn panic_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     // Expand to a macro call `$crate::panic::panic_{edition}`
-    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
     let mut call = if db.crate_graph()[loc.krate].edition >= Edition::Edition2021 {
-        quote!(#krate::panic::panic_2021!)
+        quote!(#DOLLAR_CRATE::panic::panic_2021!)
     } else {
-        quote!(#krate::panic::panic_2015!)
+        quote!(#DOLLAR_CRATE::panic::panic_2015!)
     };
 
     // Pass the original arguments
@@ -362,11 +364,10 @@ fn unreachable_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     // Expand to a macro call `$crate::panic::unreachable_{edition}`
-    let krate = tt::Ident { text: "$crate".into(), id: tt::TokenId::unspecified() };
     let mut call = if db.crate_graph()[loc.krate].edition >= Edition::Edition2021 {
-        quote!(#krate::panic::unreachable_2021!)
+        quote!(#DOLLAR_CRATE::panic::unreachable_2021!)
     } else {
-        quote!(#krate::panic::unreachable_2015!)
+        quote!(#DOLLAR_CRATE::panic::unreachable_2015!)
     };
 
     // Pass the original arguments
