@@ -29,8 +29,8 @@ impl Injector {
         self.buf.push_str(text);
     }
 
-    pub(super) fn text(&self) -> &str {
-        &self.buf
+    pub(super) fn take_text(&mut self) -> String {
+        std::mem::take(&mut self.buf)
     }
 
     pub(super) fn map_range_up(&self, range: TextRange) -> impl Iterator<Item = TextRange> + '_ {

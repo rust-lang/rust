@@ -9,7 +9,7 @@ use ide_db::{
     SymbolKind,
 };
 use syntax::{
-    ast::{self, AstNode, IsString},
+    ast::{self, AstNode, IsString, QuoteOffsets},
     AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
 };
 
@@ -61,7 +61,7 @@ pub(super) fn ra_fixture(
         }
     }
 
-    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.text().to_string());
+    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
     for mut hl_range in analysis.highlight(tmp_file_id).unwrap() {
         for range in inj.map_range_up(hl_range.range) {
@@ -85,31 +85,19 @@ const RUSTDOC_FENCE: &'static str = "```";
 pub(super) fn doc_comment(
     hl: &mut Highlights,
     sema: &Semantics<RootDatabase>,
-    node: InFile<&SyntaxNode>,
+    InFile { file_id: src_file_id, value: node }: InFile<&SyntaxNode>,
 ) {
-    let (attributes, def) = match doc_attributes(sema, node.value) {
+    let (attributes, def) = match doc_attributes(sema, node) {
         Some(it) => it,
         None => return,
     };
 
-    let mut inj = Injector::default();
-    inj.add_unmapped("fn doctest() {\n");
-
-    let attrs_source_map = attributes.source_map(sema.db);
-
-    let mut is_codeblock = false;
-    let mut is_doctest = false;
-
-    // Replace the original, line-spanning comment ranges by new, only comment-prefix
-    // spanning comment ranges.
-    let mut new_comments = Vec::new();
-    let mut string;
-
+    // Extract intra-doc links and emit highlights for them.
     if let Some((docs, doc_mapping)) = attributes.docs_with_rangemap(sema.db) {
         extract_definitions_from_docs(&docs)
             .into_iter()
             .filter_map(|(range, link, ns)| {
-                doc_mapping.map(range).filter(|mapping| mapping.file_id == node.file_id).and_then(
+                doc_mapping.map(range).filter(|mapping| mapping.file_id == src_file_id).and_then(
                     |InFile { value: mapped_range, .. }| {
                         Some(mapped_range).zip(resolve_doc_path_for_def(sema.db, def, &link, ns))
                     },
@@ -127,31 +115,49 @@ pub(super) fn doc_comment(
             });
     }
 
+    // Extract doc-test sources from the docs and calculate highlighting for them.
+
+    let mut inj = Injector::default();
+    inj.add_unmapped("fn doctest() {\n");
+
+    let attrs_source_map = attributes.source_map(sema.db);
+
+    let mut is_codeblock = false;
+    let mut is_doctest = false;
+
+    let mut new_comments = Vec::new();
+    let mut string;
+
     for attr in attributes.by_key("doc").attrs() {
         let InFile { file_id, value: src } = attrs_source_map.source_of(attr);
-        if file_id != node.file_id {
+        if file_id != src_file_id {
             continue;
         }
-        let (line, range, prefix) = match &src {
+        let (line, range) = match &src {
             Either::Left(it) => {
                 string = match find_doc_string_in_attr(attr, it) {
                     Some(it) => it,
                     None => continue,
                 };
-                let text_range = string.syntax().text_range();
-                let text_range = TextRange::new(
-                    text_range.start() + TextSize::from(1),
-                    text_range.end() - TextSize::from(1),
-                );
                 let text = string.text();
-                (&text[1..text.len() - 1], text_range, "")
+                let text_range = string.syntax().text_range();
+                match string.quote_offsets() {
+                    Some(QuoteOffsets { contents, .. }) => {
+                        (&text[contents - text_range.start()], contents)
+                    }
+                    None => (text, text_range),
+                }
             }
             Either::Right(comment) => {
-                (comment.text(), comment.syntax().text_range(), comment.prefix())
+                let value = comment.prefix().len();
+                let range = comment.syntax().text_range();
+                (
+                    &comment.text()[value..],
+                    TextRange::new(range.start() + TextSize::try_from(value).unwrap(), range.end()),
+                )
             }
         };
 
-        let mut pos = TextSize::from(prefix.len() as u32);
         let mut range_start = range.start();
         for line in line.split('\n') {
             let line_len = TextSize::from(line.len() as u32);
@@ -159,8 +165,7 @@ pub(super) fn doc_comment(
                 let next_range_start = range_start + line_len + TextSize::from(1);
                 mem::replace(&mut range_start, next_range_start)
             };
-            // only first line has the prefix so take it away for future iterations
-            let mut pos = mem::take(&mut pos);
+            let mut pos = TextSize::from(0);
 
             match line.find(RUSTDOC_FENCE) {
                 Some(idx) => {
@@ -196,13 +201,13 @@ pub(super) fn doc_comment(
 
     inj.add_unmapped("\n}");
 
-    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.text().to_string());
+    let (analysis, tmp_file_id) = Analysis::from_single_file(inj.take_text());
 
-    for HlRange { range, highlight, binding_hash } in
-        analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)).unwrap()
-    {
-        for range in inj.map_range_up(range) {
-            hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });
+    if let Ok(ranges) = analysis.with_db(|db| super::highlight(db, tmp_file_id, None, true)) {
+        for HlRange { range, highlight, binding_hash } in ranges {
+            for range in inj.map_range_up(range) {
+                hl.add(HlRange { range, highlight: highlight | HlMod::Injected, binding_hash });
+            }
         }
     }
 
