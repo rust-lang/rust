@@ -13,7 +13,6 @@ use super::abi::usercalls;
 const DEFAULT_FAKE_TTL: u32 = 64;
 const DEFAULT_FAKE_HLIM: u32 = 64;
 
-
 #[derive(Debug, Clone)]
 pub struct Socket {
     inner: Arc<FileDesc>,
