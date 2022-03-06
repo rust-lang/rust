@@ -143,11 +143,14 @@ impl Buffer {
     }
 }
 
-fn comma_sep<T: fmt::Display>(items: impl Iterator<Item = T>) -> impl fmt::Display {
+fn comma_sep<T: fmt::Display>(
+    items: impl Iterator<Item = T>,
+    space_after_comma: bool,
+) -> impl fmt::Display {
     display_fn(move |f| {
         for (i, item) in items.enumerate() {
             if i != 0 {
-                write!(f, ", ")?;
+                write!(f, ",{}", if space_after_comma { " " } else { "" })?;
             }
             fmt::Display::fmt(&item, f)?;
         }
@@ -248,9 +251,9 @@ impl clean::Generics {
             }
 
             if f.alternate() {
-                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx))))
+                write!(f, "<{:#}>", comma_sep(real_params.map(|g| g.print(cx)), true))
             } else {
-                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx))))
+                write!(f, "&lt;{}&gt;", comma_sep(real_params.map(|g| g.print(cx)), true))
             }
         })
     }
@@ -266,10 +269,80 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
     end_newline: bool,
 ) -> impl fmt::Display + 'a + Captures<'tcx> {
     display_fn(move |f| {
-        if gens.where_predicates.is_empty() {
+        let mut where_predicates = gens.where_predicates.iter().filter(|pred| {
+            !matches!(pred, clean::WherePredicate::BoundPredicate { bounds, .. } if bounds.is_empty())
+        }).map(|pred| {
+            display_fn(move |f| {
+                if f.alternate() {
+                    f.write_str(" ")?;
+                } else {
+                    f.write_str("<br>")?;
+                }
+
+                match pred {
+                    clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
+                        let bounds = bounds;
+                        let for_prefix = if bound_params.is_empty() {
+                            String::new()
+                        } else if f.alternate() {
+                            format!(
+                                "for&lt;{:#}&gt; ",
+                                comma_sep(bound_params.iter().map(|lt| lt.print()), true)
+                            )
+                        } else {
+                            format!(
+                                "for&lt;{}&gt; ",
+                                comma_sep(bound_params.iter().map(|lt| lt.print()), true)
+                            )
+                        };
+
+                        if f.alternate() {
+                            write!(
+                                f,
+                                "{}{:#}: {:#}",
+                                for_prefix,
+                                ty.print(cx),
+                                print_generic_bounds(bounds, cx)
+                            )
+                        } else {
+                            write!(
+                                f,
+                                "{}{}: {}",
+                                for_prefix,
+                                ty.print(cx),
+                                print_generic_bounds(bounds, cx)
+                            )
+                        }
+                    }
+                    clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
+                        write!(
+                            f,
+                            "{}: {}",
+                            lifetime.print(),
+                            bounds
+                                .iter()
+                                .map(|b| b.print(cx).to_string())
+                                .collect::<Vec<_>>()
+                                .join(" + ")
+                        )
+                    }
+                    clean::WherePredicate::EqPredicate { lhs, rhs } => {
+                        if f.alternate() {
+                            write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx),)
+                        } else {
+                            write!(f, "{} == {}", lhs.print(cx), rhs.print(cx),)
+                        }
+                    }
+                }
+            })
+        }).peekable();
+
+        if where_predicates.peek().is_none() {
             return Ok(());
         }
+
         let mut clause = String::new();
+
         if f.alternate() {
             clause.push_str(" where");
         } else {
@@ -279,72 +352,11 @@ crate fn print_where_clause<'a, 'tcx: 'a>(
                 clause.push_str(" <span class=\"where\">where");
             }
         }
-        for (i, pred) in gens.where_predicates.iter().enumerate() {
-            if f.alternate() {
-                clause.push(' ');
-            } else {
-                clause.push_str("<br>");
-            }
 
-            match pred {
-                clean::WherePredicate::BoundPredicate { ty, bounds, bound_params } => {
-                    let bounds = bounds;
-                    let for_prefix = match bound_params.len() {
-                        0 => String::new(),
-                        _ if f.alternate() => {
-                            format!(
-                                "for&lt;{:#}&gt; ",
-                                comma_sep(bound_params.iter().map(|lt| lt.print()))
-                            )
-                        }
-                        _ => format!(
-                            "for&lt;{}&gt; ",
-                            comma_sep(bound_params.iter().map(|lt| lt.print()))
-                        ),
-                    };
-
-                    if f.alternate() {
-                        clause.push_str(&format!(
-                            "{}{:#}: {:#}",
-                            for_prefix,
-                            ty.print(cx),
-                            print_generic_bounds(bounds, cx)
-                        ));
-                    } else {
-                        clause.push_str(&format!(
-                            "{}{}: {}",
-                            for_prefix,
-                            ty.print(cx),
-                            print_generic_bounds(bounds, cx)
-                        ));
-                    }
-                }
-                clean::WherePredicate::RegionPredicate { lifetime, bounds } => {
-                    clause.push_str(&format!(
-                        "{}: {}",
-                        lifetime.print(),
-                        bounds
-                            .iter()
-                            .map(|b| b.print(cx).to_string())
-                            .collect::<Vec<_>>()
-                            .join(" + ")
-                    ));
-                }
-                clean::WherePredicate::EqPredicate { lhs, rhs } => {
-                    if f.alternate() {
-                        clause.push_str(&format!("{:#} == {:#}", lhs.print(cx), rhs.print(cx),));
-                    } else {
-                        clause.push_str(&format!("{} == {}", lhs.print(cx), rhs.print(cx),));
-                    }
-                }
-            }
-
-            if i < gens.where_predicates.len() - 1 || end_newline {
-                clause.push(',');
-            }
-        }
+        clause.push_str(&comma_sep(where_predicates, false).to_string());
 
         if end_newline {
+            clause.push(',');
             // add a space so stripping <br> tags and breaking spaces still renders properly
             if f.alternate() {
                 clause.push(' ');
@@ -394,13 +406,13 @@ impl clean::PolyTrait {
                     write!(
                         f,
                         "for<{:#}> ",
-                        comma_sep(self.generic_params.iter().map(|g| g.print(cx)))
+                        comma_sep(self.generic_params.iter().map(|g| g.print(cx)), true)
                     )?;
                 } else {
                     write!(
                         f,
                         "for&lt;{}&gt; ",
-                        comma_sep(self.generic_params.iter().map(|g| g.print(cx)))
+                        comma_sep(self.generic_params.iter().map(|g| g.print(cx)), true)
                     )?;
                 }
             }
@@ -424,7 +436,8 @@ impl clean::GenericBound {
                 let modifier_str = match modifier {
                     hir::TraitBoundModifier::None => "",
                     hir::TraitBoundModifier::Maybe => "?",
-                    hir::TraitBoundModifier::MaybeConst => "~const",
+                    // ~const is experimental; do not display those bounds in rustdoc
+                    hir::TraitBoundModifier::MaybeConst => "",
                 };
                 if f.alternate() {
                     write!(f, "{}{:#}", modifier_str, ty.print(cx))
@@ -1111,7 +1124,7 @@ impl clean::BareFunctionDecl {
                 write!(
                     f,
                     "for&lt;{}&gt; ",
-                    comma_sep(self.generic_params.iter().map(|g| g.print(cx)))
+                    comma_sep(self.generic_params.iter().map(|g| g.print(cx)), true)
                 )
             } else {
                 Ok(())
