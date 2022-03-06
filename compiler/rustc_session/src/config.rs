@@ -2628,11 +2628,10 @@ fn parse_pretty(debugging_opts: &DebuggingOptions, efmt: ErrorOutputType) -> Opt
         name => early_error(
             efmt,
             &format!(
-                "argument to `unpretty` must be one of `normal`, \
-                            `expanded`, `identified`, `expanded,identified`, \
-                            `expanded,hygiene`, `everybody_loops`, \
+                "argument to `unpretty` must be one of `normal`, `identified`, \
+                            `expanded`, `expanded,identified`, `expanded,hygiene`, \
                             `ast-tree`, `ast-tree,expanded`, `hir`, `hir,identified`, \
-                            `hir,typed`, `hir-tree`, `mir` or `mir-cfg`; got {}",
+                            `hir,typed`, `hir-tree`, `thir-tree`, `mir` or `mir-cfg`; got {}",
                 name
             ),
         ),
