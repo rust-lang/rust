@@ -345,7 +345,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 bug!("simd_fabs operand is not a float")
                             };
                             let op = op.to_scalar()?;
-                            // FIXME: Using host floats.
                             match float_ty {
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
@@ -438,12 +437,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             }
                         }
                         Op::FMax => {
-                            assert!(matches!(dest.layout.ty.kind(), ty::Float(_)));
-                            this.max_op(&left, &right)?.to_scalar()?
+                            fmax_op(&left, &right)?
                         }
                         Op::FMin => {
-                            assert!(matches!(dest.layout.ty.kind(), ty::Float(_)));
-                            this.min_op(&left, &right)?.to_scalar()?
+                            fmin_op(&left, &right)?
                         }
                     };
                     this.write_scalar(val, &dest.into())?;
@@ -499,10 +496,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             this.binary_op(mir_op, &res, &op)?
                         }
                         Op::Max => {
-                            this.max_op(&res, &op)?
+                            if matches!(res.layout.ty.kind(), ty::Float(_)) {
+                                ImmTy::from_scalar(fmax_op(&res, &op)?, res.layout)
+                            } else {
+                                // Just boring integers, so NaNs to worry about
+                                if this.binary_op(BinOp::Ge, &res, &op)?.to_scalar()?.to_bool()? {
+                                    res
+                                } else {
+                                    op
+                                }
+                            }
                         }
                         Op::Min => {
-                            this.min_op(&res, &op)?
+                            if matches!(res.layout.ty.kind(), ty::Float(_)) {
+                                ImmTy::from_scalar(fmin_op(&res, &op)?, res.layout)
+                            } else {
+                                // Just boring integers, so NaNs to worry about
+                                if this.binary_op(BinOp::Le, &res, &op)?.to_scalar()?.to_bool()? {
+                                    res
+                                } else {
+                                    op
+                                }
+                            }
                         }
                     };
                 }
@@ -1078,30 +1093,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => bug!("`float_to_int_unchecked` called with non-int output type {:?}", dest_ty),
         })
     }
+}
 
-    fn max_op(
-        &self,
-        left: &ImmTy<'tcx, Tag>,
-        right: &ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
-        let this = self.eval_context_ref();
-        Ok(if this.binary_op(BinOp::Gt, left, right)?.to_scalar()?.to_bool()? {
-            *left
-        } else {
-            *right
-        })
-    }
+fn fmax_op<'tcx>(
+    left: &ImmTy<'tcx, Tag>,
+    right: &ImmTy<'tcx, Tag>,
+) -> InterpResult<'tcx, Scalar<Tag>> {
+    assert_eq!(left.layout.ty, right.layout.ty);
+    let ty::Float(float_ty) = left.layout.ty.kind() else {
+        bug!("fmax operand is not a float")
+    };
+    let left = left.to_scalar()?;
+    let right = right.to_scalar()?;
+    Ok(match float_ty {
+        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.max(right.to_f32()?)),
+        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.max(right.to_f64()?)),
+    })
+}
 
-    fn min_op(
-        &self,
-        left: &ImmTy<'tcx, Tag>,
-        right: &ImmTy<'tcx, Tag>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
-        let this = self.eval_context_ref();
-        Ok(if this.binary_op(BinOp::Lt, left, right)?.to_scalar()?.to_bool()? {
-            *left
-        } else {
-            *right
-        })
-    }
+fn fmin_op<'tcx>(
+    left: &ImmTy<'tcx, Tag>,
+    right: &ImmTy<'tcx, Tag>,
+) -> InterpResult<'tcx, Scalar<Tag>> {
+    assert_eq!(left.layout.ty, right.layout.ty);
+    let ty::Float(float_ty) = left.layout.ty.kind() else {
+        bug!("fmin operand is not a float")
+    };
+    let left = left.to_scalar()?;
+    let right = right.to_scalar()?;
+    Ok(match float_ty {
+        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.min(right.to_f32()?)),
+        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.min(right.to_f64()?)),
+    })
 }

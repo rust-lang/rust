@@ -30,6 +30,19 @@ fn simd_ops_f32() {
     assert_eq!(b.horizontal_max(), 3.0);
     assert_eq!(a.horizontal_min(), 10.0);
     assert_eq!(b.horizontal_min(), -4.0);
+
+    assert_eq!(
+        f32x2::from_array([0.0, f32::NAN]).max(f32x2::from_array([f32::NAN, 0.0])),
+        f32x2::from_array([0.0, 0.0])
+    );
+    assert_eq!(f32x2::from_array([0.0, f32::NAN]).horizontal_max(), 0.0);
+    assert_eq!(f32x2::from_array([f32::NAN, 0.0]).horizontal_max(), 0.0);
+    assert_eq!(
+        f32x2::from_array([0.0, f32::NAN]).min(f32x2::from_array([f32::NAN, 0.0])),
+        f32x2::from_array([0.0, 0.0])
+    );
+    assert_eq!(f32x2::from_array([0.0, f32::NAN]).horizontal_min(), 0.0);
+    assert_eq!(f32x2::from_array([f32::NAN, 0.0]).horizontal_min(), 0.0);
 }
 
 fn simd_ops_f64() {
@@ -61,6 +74,19 @@ fn simd_ops_f64() {
     assert_eq!(b.horizontal_max(), 3.0);
     assert_eq!(a.horizontal_min(), 10.0);
     assert_eq!(b.horizontal_min(), -4.0);
+
+    assert_eq!(
+        f64x2::from_array([0.0, f64::NAN]).max(f64x2::from_array([f64::NAN, 0.0])),
+        f64x2::from_array([0.0, 0.0])
+    );
+    assert_eq!(f64x2::from_array([0.0, f64::NAN]).horizontal_max(), 0.0);
+    assert_eq!(f64x2::from_array([f64::NAN, 0.0]).horizontal_max(), 0.0);
+    assert_eq!(
+        f64x2::from_array([0.0, f64::NAN]).min(f64x2::from_array([f64::NAN, 0.0])),
+        f64x2::from_array([0.0, 0.0])
+    );
+    assert_eq!(f64x2::from_array([0.0, f64::NAN]).horizontal_min(), 0.0);
+    assert_eq!(f64x2::from_array([f64::NAN, 0.0]).horizontal_min(), 0.0);
 }
 
 fn simd_ops_i32() {
