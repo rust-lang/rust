@@ -704,7 +704,11 @@ impl<'tcx> Ty<'tcx> {
         tcx_at: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        tcx_at.is_copy_raw(param_env.and(self))
+        if let ty::Uint(ty::UintTy::U32) = self.kind() {
+            true
+        } else {
+            tcx_at.is_copy_raw(param_env.and(self))
+        }
     }
 
     /// Checks whether values of this type `T` have a size known at
