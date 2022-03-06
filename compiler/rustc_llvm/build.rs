@@ -324,9 +324,10 @@ fn main() {
 
     let stdcppname = if target.contains("openbsd") {
         if target.contains("sparc64") { "estdc++" } else { "c++" }
-    } else if target.contains("freebsd") {
-        "c++"
-    } else if target.contains("darwin") {
+    } else if target.contains("darwin")
+        || target.contains("freebsd")
+        || target.contains("windows-gnullvm")
+    {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
@@ -365,7 +366,7 @@ fn main() {
 
     // Libstdc++ depends on pthread which Rust doesn't link on MinGW
     // since nothing else requires it.
-    if target.contains("windows-gnu") {
+    if target.ends_with("windows-gnu") {
         println!("cargo:rustc-link-lib=static:-bundle=pthread");
     }
 }
