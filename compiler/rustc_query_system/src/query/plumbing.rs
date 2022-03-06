@@ -325,8 +325,8 @@ where
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
             let (v, index) = cache
-                .lookup(&key, |value, index| (value.clone(), index))
-                .unwrap_or_else(|_| panic!("value must be in cache after waiting"));
+                .lookup(&key)
+                .unwrap_or_else(|| panic!("value must be in cache after waiting"));
 
             if unlikely!(tcx.dep_context().profiler().enabled()) {
                 tcx.dep_context().profiler().query_cache_hit(index.into());
@@ -660,16 +660,15 @@ where
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    let cached = Q::query_cache(tcx).lookup(&key, |value, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
+    match Q::query_cache(tcx).lookup(&key) {
+        Some((value, index)) => {
+            if unlikely!(tcx.dep_context().profiler().enabled()) {
+                tcx.dep_context().profiler().query_cache_hit(index.into());
+            }
+            tcx.dep_context().dep_graph().read_index(index);
+            return Some(value);
         }
-        tcx.dep_context().dep_graph().read_index(index);
-        *value
-    });
-    match cached {
-        Ok(value) => return Some(value),
-        Err(()) => (),
+        None => {}
     }
 
     let query = Q::make_vtable(tcx, &key);
@@ -708,15 +707,14 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
-    let cached = cache.lookup(&key, |_, index| {
-        if unlikely!(tcx.dep_context().profiler().enabled()) {
-            tcx.dep_context().profiler().query_cache_hit(index.into());
+    match cache.lookup(&key) {
+        Some((_, index)) => {
+            if unlikely!(tcx.dep_context().profiler().enabled()) {
+                tcx.dep_context().profiler().query_cache_hit(index.into());
+            }
+            return;
         }
-    });
-
-    match cached {
-        Ok(()) => return,
-        Err(()) => {}
+        None => {}
     }
 
     let query = Q::make_vtable(tcx, &key);

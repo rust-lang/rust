@@ -33,14 +33,7 @@ pub trait QueryCache: QueryStorage + Sized {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<R, OnHit>(
-        &self,
-        key: &Self::Key,
-        // `on_hit` can be called while holding a lock to the query state shard.
-        on_hit: OnHit,
-    ) -> Result<R, ()>
-    where
-        OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
+    fn lookup(&self, key: &Self::Key) -> Option<(Self::Stored, DepNodeIndex)>;
 
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
@@ -85,10 +78,7 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
-    where
-        OnHit: FnOnce(&V, DepNodeIndex) -> R,
-    {
+    fn lookup(&self, key: &K) -> Option<(Self::Stored, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
         #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key_hash).lock();
@@ -96,12 +86,7 @@ where
         let lock = self.cache.lock();
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
-        if let Some((_, value)) = result {
-            let hit_result = on_hit(&value.0, value.1);
-            Ok(hit_result)
-        } else {
-            Err(())
-        }
+        if let Some((_, value)) = result { Some(*value) } else { None }
     }
 
     #[inline]
@@ -174,10 +159,7 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
-    where
-        OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
-    {
+    fn lookup(&self, key: &K) -> Option<(Self::Stored, DepNodeIndex)> {
         let key_hash = sharded::make_hash(key);
         #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key_hash).lock();
@@ -185,12 +167,7 @@ where
         let lock = self.cache.lock();
         let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
-        if let Some((_, value)) = result {
-            let hit_result = on_hit(&&value.0, value.1);
-            Ok(hit_result)
-        } else {
-            Err(())
-        }
+        if let Some((_, value)) = result { Some((&value.0, value.1)) } else { None }
     }
 
     #[inline]
