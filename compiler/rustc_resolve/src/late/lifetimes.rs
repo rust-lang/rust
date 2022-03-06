@@ -2312,7 +2312,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             self.insert_lifetime(lifetime_ref, def);
         } else {
-            self.emit_undeclared_lifetime_error(lifetime_ref);
+            self.tcx.sess.delay_span_bug(
+                lifetime_ref.span,
+                &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
+            );
         }
     }
 
@@ -3119,18 +3122,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             if let hir::ParamName::Plain(_) = lifetime_i_name {
                 let name = lifetime_i_name.ident().name;
                 if name == kw::UnderscoreLifetime || name == kw::StaticLifetime {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
+                    self.tcx.sess.delay_span_bug(
                         lifetime_i.span,
-                        E0262,
-                        "invalid lifetime parameter name: `{}`",
-                        lifetime_i.name.ident(),
+                        &format!("invalid lifetime parameter name: `{}`", lifetime_i.name.ident()),
                     );
-                    err.span_label(
-                        lifetime_i.span,
-                        format!("{} is a reserved lifetime name", name),
-                    );
-                    err.emit();
                 }
             }
 

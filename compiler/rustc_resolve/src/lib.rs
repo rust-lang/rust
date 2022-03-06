@@ -11,6 +11,7 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
@@ -1358,9 +1359,17 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn next_node_id(&mut self) -> NodeId {
-        let next =
-            self.next_node_id.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        mem::replace(&mut self.next_node_id, ast::NodeId::from_u32(next))
+        let start = self.next_node_id;
+        let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_u32(next);
+        start
+    }
+
+    pub fn next_node_ids(&mut self, count: usize) -> std::ops::Range<NodeId> {
+        let start = self.next_node_id;
+        let end = start.as_usize().checked_add(count).expect("input too large; ran out of NodeIds");
+        self.next_node_id = ast::NodeId::from_usize(end);
+        start..self.next_node_id
     }
 
     pub fn lint_buffer(&mut self) -> &mut LintBuffer {

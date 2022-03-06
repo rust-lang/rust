@@ -484,7 +484,7 @@ enum ParenthesizedGenericArgs {
 /// an "elided" or "underscore" lifetime name. In the future, we probably want to move
 /// everything into HIR lowering.
 #[derive(Copy, Clone, Debug)]
-enum AnonymousLifetimeMode {
+pub enum AnonymousLifetimeMode {
     /// For **Modern** cases, create a new anonymous region parameter
     /// and reference that.
     ///
@@ -2017,16 +2017,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     });
                 let param_name = match lt.name {
                     hir::LifetimeName::Param(param_name) => param_name,
-                    hir::LifetimeName::Implicit(_)
-                    | hir::LifetimeName::Underscore
-                    | hir::LifetimeName::Static => hir::ParamName::Plain(lt.name.ident()),
+                    hir::LifetimeName::Implicit(_) | hir::LifetimeName::Underscore => {
+                        hir::ParamName::Plain(lt.name.ident())
+                    }
                     hir::LifetimeName::ImplicitObjectLifetimeDefault => {
                         self.sess.diagnostic().span_bug(
                             param.ident.span,
                             "object-lifetime-default should not occur here",
                         );
                     }
-                    hir::LifetimeName::Error => ParamName::Error,
+                    hir::LifetimeName::Static | hir::LifetimeName::Error => ParamName::Error,
                 };
 
                 let kind =
@@ -2404,20 +2404,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Report an error on illegal use of `'_` or a `&T` with no explicit lifetime;
     /// return an "error lifetime".
     fn new_error_lifetime(&mut self, id: Option<NodeId>, span: Span) -> hir::Lifetime {
-        let (id, msg, label) = match id {
-            Some(id) => (id, "`'_` cannot be used here", "`'_` is a reserved lifetime name"),
-
-            None => (
-                self.resolver.next_node_id(),
-                "`&` without an explicit lifetime name cannot be used here",
-                "explicit lifetime name needed here",
-            ),
-        };
-
-        let mut err = struct_span_err!(self.sess, span, E0637, "{}", msg,);
-        err.span_label(span, label);
-        err.emit();
-
+        let id = id.unwrap_or_else(|| self.resolver.next_node_id());
         self.new_named_lifetime(id, span, hir::LifetimeName::Error)
     }
 
