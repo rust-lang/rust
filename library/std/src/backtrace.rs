@@ -169,7 +169,7 @@ pub struct BacktraceSymbol {
     pub colno: Option<u32>,
 }
 
-enum BytesOrWide {
+pub enum BytesOrWide {
     Bytes(Vec<u8>),
     Wide(Vec<u16>),
 }
