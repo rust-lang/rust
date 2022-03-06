@@ -9,7 +9,7 @@ use hir::{
 use ide_db::{
     active_parameter::ActiveParameter,
     base_db::{FilePosition, SourceDatabase},
-    helpers::FamousDefs,
+    famous_defs::FamousDefs,
     RootDatabase,
 };
 use syntax::{

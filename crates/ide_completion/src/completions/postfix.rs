@@ -3,10 +3,7 @@
 mod format_like;
 
 use hir::{Documentation, HasAttrs};
-use ide_db::{
-    helpers::{insert_use::ImportScope, SnippetCap},
-    ty_filter::TryEnum,
-};
+use ide_db::{imports::insert_use::ImportScope, ty_filter::TryEnum, SnippetCap};
 use syntax::{
     ast::{self, AstNode, AstToken},
     SyntaxKind::{EXPR_STMT, STMT_LIST},

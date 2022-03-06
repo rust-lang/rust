@@ -3,12 +3,10 @@
 //! This module uses a bit of static metadata to provide completions for builtin-in attributes and lints.
 
 use ide_db::{
-    helpers::{
-        generated_lints::{
-            Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
-        },
-        parse_tt_as_comma_sep_paths,
+    generated::lints::{
+        Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
     },
+    syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
     SymbolKind,
 };
 use itertools::Itertools;

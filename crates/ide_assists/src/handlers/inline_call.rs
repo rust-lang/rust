@@ -4,9 +4,10 @@ use hir::{db::HirDatabase, PathResolution, Semantics, TypeInfo};
 use ide_db::{
     base_db::{FileId, FileRange},
     defs::Definition,
-    helpers::{insert_use::remove_path_if_in_use_stmt, node_ext::expr_as_name_ref},
+    imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
     search::{FileReference, SearchScope},
+    syntax_helpers::node_ext::expr_as_name_ref,
     RootDatabase,
 };
 use itertools::{izip, Itertools};

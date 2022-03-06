@@ -1,6 +1,6 @@
 //! See [`import_on_the_fly`].
 use hir::ItemInNs;
-use ide_db::helpers::{
+use ide_db::imports::{
     import_assets::{ImportAssets, ImportCandidate, LocatedImport},
     insert_use::ImportScope,
 };

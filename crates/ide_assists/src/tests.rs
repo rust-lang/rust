@@ -5,12 +5,9 @@ use expect_test::expect;
 use hir::{db::DefDatabase, Semantics};
 use ide_db::{
     base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
-    helpers::{
-        insert_use::{ImportGranularity, InsertUseConfig},
-        SnippetCap,
-    },
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
-    RootDatabase,
+    RootDatabase, SnippetCap,
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;

@@ -10,7 +10,8 @@ use hir::{HasSource, Semantics};
 use ide_db::{
     base_db::FileRange,
     defs::{Definition, IdentClass},
-    helpers::{pick_best_token, FamousDefs},
+    famous_defs::FamousDefs,
+    helpers::pick_best_token,
     FxIndexSet, RootDatabase,
 };
 use itertools::Itertools;

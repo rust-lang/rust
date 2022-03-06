@@ -1,6 +1,6 @@
 use std::iter::once;
 
-use ide_db::helpers::node_ext::{is_pattern_cond, single_let};
+use ide_db::syntax_helpers::node_ext::{is_pattern_cond, single_let};
 use syntax::{
     ast::{
         self,

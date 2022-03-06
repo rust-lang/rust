@@ -1,7 +1,4 @@
-use ide_db::{
-    helpers::{mod_path_to_ast, FamousDefs},
-    traits::resolve_target_trait,
-};
+use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast, traits::resolve_target_trait};
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

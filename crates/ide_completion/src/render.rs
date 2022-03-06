@@ -12,10 +12,7 @@ pub(crate) mod struct_literal;
 mod builder_ext;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
-use ide_db::{
-    helpers::{item_name, SnippetCap},
-    RootDatabase, SymbolKind,
-};
+use ide_db::{helpers::item_name, RootDatabase, SnippetCap, SymbolKind};
 use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{

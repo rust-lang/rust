@@ -10,7 +10,7 @@
 //!
 //! Another can of worms are macros:
 //!
-//! ```
+//! ```ignore
 //! macro_rules! m { () => { fn f() {} } }
 //! m!();
 //! fn main() {
@@ -34,9 +34,9 @@ use text_edit::{TextEdit, TextEditBuilder};
 
 use crate::{
     defs::Definition,
-    helpers::node_ext::expr_as_name_ref,
     search::FileReference,
     source_change::{FileSystemEdit, SourceChange},
+    syntax_helpers::node_ext::expr_as_name_ref,
     RootDatabase,
 };
 

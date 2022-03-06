@@ -1,7 +1,9 @@
 //! Various helper functions to work with SyntaxNodes.
+use itertools::Itertools;
+use parser::T;
 use syntax::{
-    ast::{self, PathSegmentKind, VisibilityKind},
-    AstNode, WalkEvent,
+    ast::{self, HasLoopBody, PathSegmentKind, VisibilityKind},
+    AstNode, Preorder, RustLanguage, WalkEvent,
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
@@ -241,4 +243,216 @@ pub fn is_pattern_cond(expr: ast::Expr) -> bool {
         ast::Expr::LetExpr(_) => true,
         _ => false,
     }
+}
+
+/// Calls `cb` on each expression inside `expr` that is at "tail position".
+/// Does not walk into `break` or `return` expressions.
+/// Note that modifying the tree while iterating it will cause undefined iteration which might
+/// potentially results in an out of bounds panic.
+pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
+    match expr {
+        ast::Expr::BlockExpr(b) => {
+            match b.modifier() {
+                Some(
+                    ast::BlockModifier::Async(_)
+                    | ast::BlockModifier::Try(_)
+                    | ast::BlockModifier::Const(_),
+                ) => return cb(expr),
+
+                Some(ast::BlockModifier::Label(label)) => {
+                    for_each_break_expr(Some(label), b.stmt_list(), &mut |b| {
+                        cb(&ast::Expr::BreakExpr(b))
+                    });
+                }
+                Some(ast::BlockModifier::Unsafe(_)) => (),
+                None => (),
+            }
+            if let Some(stmt_list) = b.stmt_list() {
+                if let Some(e) = stmt_list.tail_expr() {
+                    for_each_tail_expr(&e, cb);
+                }
+            }
+        }
+        ast::Expr::IfExpr(if_) => {
+            let mut if_ = if_.clone();
+            loop {
+                if let Some(block) = if_.then_branch() {
+                    for_each_tail_expr(&ast::Expr::BlockExpr(block), cb);
+                }
+                match if_.else_branch() {
+                    Some(ast::ElseBranch::IfExpr(it)) => if_ = it,
+                    Some(ast::ElseBranch::Block(block)) => {
+                        for_each_tail_expr(&ast::Expr::BlockExpr(block), cb);
+                        break;
+                    }
+                    None => break,
+                }
+            }
+        }
+        ast::Expr::LoopExpr(l) => {
+            for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
+                cb(&ast::Expr::BreakExpr(b))
+            })
+        }
+        ast::Expr::MatchExpr(m) => {
+            if let Some(arms) = m.match_arm_list() {
+                arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, cb));
+            }
+        }
+        ast::Expr::ArrayExpr(_)
+        | ast::Expr::AwaitExpr(_)
+        | ast::Expr::BinExpr(_)
+        | ast::Expr::BoxExpr(_)
+        | ast::Expr::BreakExpr(_)
+        | ast::Expr::CallExpr(_)
+        | ast::Expr::CastExpr(_)
+        | ast::Expr::ClosureExpr(_)
+        | ast::Expr::ContinueExpr(_)
+        | ast::Expr::FieldExpr(_)
+        | ast::Expr::ForExpr(_)
+        | ast::Expr::IndexExpr(_)
+        | ast::Expr::Literal(_)
+        | ast::Expr::MacroCall(_)
+        | ast::Expr::MacroStmts(_)
+        | ast::Expr::MethodCallExpr(_)
+        | ast::Expr::ParenExpr(_)
+        | ast::Expr::PathExpr(_)
+        | ast::Expr::PrefixExpr(_)
+        | ast::Expr::RangeExpr(_)
+        | ast::Expr::RecordExpr(_)
+        | ast::Expr::RefExpr(_)
+        | ast::Expr::ReturnExpr(_)
+        | ast::Expr::TryExpr(_)
+        | ast::Expr::TupleExpr(_)
+        | ast::Expr::WhileExpr(_)
+        | ast::Expr::LetExpr(_)
+        | ast::Expr::UnderscoreExpr(_)
+        | ast::Expr::YieldExpr(_) => cb(expr),
+    }
+}
+
+pub fn for_each_break_and_continue_expr(
+    label: Option<ast::Label>,
+    body: Option<ast::StmtList>,
+    cb: &mut dyn FnMut(ast::Expr),
+) {
+    let label = label.and_then(|lbl| lbl.lifetime());
+    if let Some(b) = body {
+        let tree_depth_iterator = TreeWithDepthIterator::new(b);
+        for (expr, depth) in tree_depth_iterator {
+            match expr {
+                ast::Expr::BreakExpr(b)
+                    if (depth == 0 && b.lifetime().is_none())
+                        || eq_label_lt(&label, &b.lifetime()) =>
+                {
+                    cb(ast::Expr::BreakExpr(b));
+                }
+                ast::Expr::ContinueExpr(c)
+                    if (depth == 0 && c.lifetime().is_none())
+                        || eq_label_lt(&label, &c.lifetime()) =>
+                {
+                    cb(ast::Expr::ContinueExpr(c));
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+fn for_each_break_expr(
+    label: Option<ast::Label>,
+    body: Option<ast::StmtList>,
+    cb: &mut dyn FnMut(ast::BreakExpr),
+) {
+    let label = label.and_then(|lbl| lbl.lifetime());
+    if let Some(b) = body {
+        let tree_depth_iterator = TreeWithDepthIterator::new(b);
+        for (expr, depth) in tree_depth_iterator {
+            match expr {
+                ast::Expr::BreakExpr(b)
+                    if (depth == 0 && b.lifetime().is_none())
+                        || eq_label_lt(&label, &b.lifetime()) =>
+                {
+                    cb(b);
+                }
+                _ => (),
+            }
+        }
+    }
+}
+
+fn eq_label_lt(lt1: &Option<ast::Lifetime>, lt2: &Option<ast::Lifetime>) -> bool {
+    lt1.as_ref().zip(lt2.as_ref()).map_or(false, |(lt, lbl)| lt.text() == lbl.text())
+}
+
+struct TreeWithDepthIterator {
+    preorder: Preorder<RustLanguage>,
+    depth: u32,
+}
+
+impl TreeWithDepthIterator {
+    fn new(body: ast::StmtList) -> Self {
+        let preorder = body.syntax().preorder();
+        Self { preorder, depth: 0 }
+    }
+}
+
+impl<'a> Iterator for TreeWithDepthIterator {
+    type Item = (ast::Expr, u32);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(event) = self.preorder.find_map(|ev| match ev {
+            WalkEvent::Enter(it) => ast::Expr::cast(it).map(WalkEvent::Enter),
+            WalkEvent::Leave(it) => ast::Expr::cast(it).map(WalkEvent::Leave),
+        }) {
+            match event {
+                WalkEvent::Enter(
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
+                ) => {
+                    self.depth += 1;
+                }
+                WalkEvent::Leave(
+                    ast::Expr::LoopExpr(_) | ast::Expr::WhileExpr(_) | ast::Expr::ForExpr(_),
+                ) => {
+                    self.depth -= 1;
+                }
+                WalkEvent::Enter(ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                    self.depth += 1;
+                }
+                WalkEvent::Leave(ast::Expr::BlockExpr(e)) if e.label().is_some() => {
+                    self.depth -= 1;
+                }
+                WalkEvent::Enter(expr) => return Some((expr, self.depth)),
+                _ => (),
+            }
+        }
+        None
+    }
+}
+
+/// Parses the input token tree as comma separated plain paths.
+pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Path>> {
+    let r_paren = input.r_paren_token();
+    let tokens =
+        input.syntax().children_with_tokens().skip(1).map_while(|it| match it.into_token() {
+            // seeing a keyword means the attribute is unclosed so stop parsing here
+            Some(tok) if tok.kind().is_keyword() => None,
+            // don't include the right token tree parenthesis if it exists
+            tok @ Some(_) if tok == r_paren => None,
+            // only nodes that we can find are other TokenTrees, those are unexpected in this parse though
+            None => None,
+            Some(tok) => Some(tok),
+        });
+    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
+    let paths = input_expressions
+        .into_iter()
+        .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+        .filter_map(|mut tokens| {
+            syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
+                ast::Expr::PathExpr(it) => it.path(),
+                _ => None,
+            })
+        })
+        .collect();
+    Some(paths)
 }

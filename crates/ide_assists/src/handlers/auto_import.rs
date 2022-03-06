@@ -1,7 +1,9 @@
-use ide_db::helpers::{
-    import_assets::{ImportAssets, ImportCandidate},
-    insert_use::{insert_use, ImportScope},
-    mod_path_to_ast,
+use ide_db::{
+    helpers::mod_path_to_ast,
+    imports::{
+        import_assets::{ImportAssets, ImportCandidate},
+        insert_use::{insert_use, ImportScope},
+    },
 };
 use syntax::{ast, AstNode, NodeOrToken, SyntaxElement};
 

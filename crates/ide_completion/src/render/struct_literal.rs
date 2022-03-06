@@ -1,7 +1,7 @@
 //! Renderer for `struct` literal.
 
 use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
-use ide_db::helpers::SnippetCap;
+use ide_db::SnippetCap;
 use itertools::Itertools;
 use syntax::SmolStr;
 

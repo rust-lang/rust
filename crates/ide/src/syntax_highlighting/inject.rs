@@ -5,8 +5,7 @@ use std::mem;
 use either::Either;
 use hir::{InFile, Semantics};
 use ide_db::{
-    active_parameter::ActiveParameter, defs::Definition, helpers::rust_doc::is_rust_fence,
-    SymbolKind,
+    active_parameter::ActiveParameter, defs::Definition, rust_doc::is_rust_fence, SymbolKind,
 };
 use syntax::{
     ast::{self, AstNode, IsString, QuoteOffsets},

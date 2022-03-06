@@ -6,9 +6,7 @@ use itertools::Itertools;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HirDisplay, Semantics};
-use ide_db::{
-    helpers::FamousDefs, helpers::SnippetCap, path_transform::PathTransform, RootDatabase,
-};
+use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
 use stdx::format_to;
 use syntax::{
     ast::{

@@ -44,7 +44,7 @@ pub struct LintGroup {
 
     let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
 
-    let destination = project_root().join("crates/ide_db/src/helpers/generated_lints.rs");
+    let destination = project_root().join("crates/ide_db/src/generated/lints.rs");
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
 }
 

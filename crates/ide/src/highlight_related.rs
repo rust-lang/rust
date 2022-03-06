@@ -2,10 +2,9 @@ use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FilePosition},
     defs::{Definition, IdentClass},
-    helpers::{
-        for_each_break_and_continue_expr, for_each_tail_expr, node_ext::walk_expr, pick_best_token,
-    },
+    helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
+    syntax_helpers::node_ext::{for_each_break_and_continue_expr, for_each_tail_expr, walk_expr},
     RootDatabase,
 };
 use rustc_hash::FxHashSet;

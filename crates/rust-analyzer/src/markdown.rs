@@ -1,5 +1,5 @@
 //! Transforms markdown
-use ide_db::helpers::rust_doc::is_rust_fence;
+use ide_db::rust_doc::is_rust_fence;
 
 const RUSTDOC_FENCE: &str = "```";
 

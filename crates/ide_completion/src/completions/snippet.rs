@@ -1,7 +1,7 @@
 //! This file provides snippet completions, like `pd` => `eprintln!(...)`.
 
 use hir::Documentation;
-use ide_db::helpers::{insert_use::ImportScope, SnippetCap};
+use ide_db::{imports::insert_use::ImportScope, SnippetCap};
 use syntax::T;
 
 use crate::{

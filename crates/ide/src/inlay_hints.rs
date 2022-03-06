@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
-use ide_db::{base_db::FileRange, helpers::FamousDefs, RootDatabase};
+use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{

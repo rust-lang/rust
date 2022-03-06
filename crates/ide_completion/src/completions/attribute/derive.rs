@@ -1,7 +1,7 @@
 //! Completion for derives
 use hir::{HasAttrs, MacroDef, MacroKind};
 use ide_db::{
-    helpers::{import_assets::ImportAssets, insert_use::ImportScope},
+    imports::{import_assets::ImportAssets, insert_use::ImportScope},
     SymbolKind,
 };
 use itertools::Itertools;

@@ -4,7 +4,7 @@
 //! module, and we use to statically check that we only produce snippet
 //! assists if we are allowed to.
 
-use ide_db::helpers::{insert_use::InsertUseConfig, SnippetCap};
+use ide_db::{imports::insert_use::InsertUseConfig, SnippetCap};
 
 use crate::AssistKind;
 

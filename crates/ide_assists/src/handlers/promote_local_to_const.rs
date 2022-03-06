@@ -2,7 +2,7 @@ use hir::{HirDisplay, ModuleDef, PathResolution, Semantics};
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
-    helpers::node_ext::preorder_expr,
+    syntax_helpers::node_ext::preorder_expr,
     RootDatabase,
 };
 use stdx::to_upper_snake_case;

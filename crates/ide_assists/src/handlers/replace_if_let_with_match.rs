@@ -3,7 +3,7 @@ use std::iter::{self, successors};
 use either::Either;
 use ide_db::{
     defs::NameClass,
-    helpers::node_ext::{is_pattern_cond, single_let},
+    syntax_helpers::node_ext::{is_pattern_cond, single_let},
     ty_filter::TryEnum,
     RootDatabase,
 };

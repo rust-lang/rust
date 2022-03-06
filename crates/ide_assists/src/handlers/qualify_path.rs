@@ -1,11 +1,11 @@
 use std::iter;
 
 use hir::AsAssocItem;
-use ide_db::helpers::{
-    import_assets::{ImportCandidate, LocatedImport},
-    mod_path_to_ast,
-};
 use ide_db::RootDatabase;
+use ide_db::{
+    helpers::mod_path_to_ast,
+    imports::import_assets::{ImportCandidate, LocatedImport},
+};
 use syntax::{
     ast,
     ast::{make, HasArgList},

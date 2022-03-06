@@ -2,8 +2,8 @@ use std::iter::{self, Peekable};
 
 use either::Either;
 use hir::{Adt, Crate, HasAttrs, HasSource, ModuleDef, Semantics};
-use ide_db::helpers::{mod_path_to_ast, FamousDefs};
 use ide_db::RootDatabase;
+use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ast::{self, make, AstNode, HasName, MatchArmList, MatchExpr, Pat};
 

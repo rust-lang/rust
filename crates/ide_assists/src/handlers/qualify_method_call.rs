@@ -1,7 +1,7 @@
 use hir::{ItemInNs, ModuleDef};
 use ide_db::{
     assists::{AssistId, AssistKind},
-    helpers::import_assets::item_for_path_search,
+    imports::import_assets::item_for_path_search,
 };
 use syntax::{ast, AstNode};
 
