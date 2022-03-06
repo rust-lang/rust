@@ -712,7 +712,7 @@ impl<'a> InFile<&'a SyntaxNode> {
         self,
         db: &dyn db::AstDatabase,
     ) -> impl Iterator<Item = InFile<SyntaxNode>> + '_ {
-        iter::successors(Some(self.cloned()), move |node| match node.value.parent() {
+        let succ = move |node: &InFile<SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let parent_node = node.file_id.call_node(db)?;
@@ -724,7 +724,8 @@ impl<'a> InFile<&'a SyntaxNode> {
                     Some(parent_node)
                 }
             }
-        })
+        };
+        iter::successors(succ(&self.cloned()), succ)
     }
 
     /// Falls back to the macro call range if the node cannot be mapped up fully.
