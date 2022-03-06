@@ -726,13 +726,14 @@ Function *CreateMPIWrapper(Function *F) {
 #endif
   return W;
 }
+template <typename T>
 static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
   DominatorTree &DT = FAM.getResult<DominatorTreeAnalysis>(NewF);
-  SmallVector<CallInst *, 4> Todo;
-  SmallVector<CallInst *, 0> OMPBounds;
+  SmallVector<T *, 4> Todo;
+  SmallVector<T *, 0> OMPBounds;
   for (auto &BB : NewF) {
     for (auto &I : BB) {
-      if (auto CI = dyn_cast<CallInst>(&I)) {
+      if (auto CI = dyn_cast<T>(&I)) {
         Function *Fn = CI->getCalledFunction();
         if (Fn == nullptr)
           continue;
@@ -751,6 +752,8 @@ static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
       }
     }
   }
+  if (Todo.size() == 0 && OMPBounds.size() == 0)
+    return;
   for (auto CI : Todo) {
     IRBuilder<> B(CI);
     Value *arg[] = {CI->getArgOperand(0)};
@@ -802,7 +805,11 @@ static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
         }
       }
     }
-    B.SetInsertPoint(res->getNextNode());
+    if (auto II = dyn_cast<InvokeInst>(res)) {
+      B.SetInsertPoint(II->getNormalDest()->getFirstNonPHI());
+    } else {
+      B.SetInsertPoint(res->getNextNode());
+    }
     B.CreateStore(res, storePointer);
   }
   for (auto Bound : OMPBounds) {
@@ -818,7 +825,11 @@ static void SimplifyMPIQueries(Function &NewF, FunctionAnalysisManager &FAM) {
       B.CreateStore(B.CreateLoad(AI), AI2);
 #endif
       Bound->setArgOperand(i, AI2);
-      B.SetInsertPoint(Bound->getNextNode());
+      if (auto II = dyn_cast<InvokeInst>(Bound)) {
+        B.SetInsertPoint(II->getNormalDest()->getFirstNonPHI());
+      } else {
+        B.SetInsertPoint(Bound->getNextNode());
+      }
 #if LLVM_VERSION_MAJOR > 7
       B.CreateStore(B.CreateLoad(AI2->getAllocatedType(), AI2), AI);
 #else
@@ -1191,7 +1202,8 @@ Function *PreProcessCache::preprocessForClone(Function *F,
       ConstantFoldTerminator(BE);
   }
 
-  SimplifyMPIQueries(*NewF, FAM);
+  SimplifyMPIQueries<CallInst>(*NewF, FAM);
+  SimplifyMPIQueries<InvokeInst>(*NewF, FAM);
 
   if (EnzymeLowerGlobals) {
     std::vector<CallInst *> Calls;
