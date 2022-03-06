@@ -970,6 +970,7 @@ impl Handler {
 
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
+    #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
         assert!(
             self.inner.borrow().unstable_expect_diagnostics.is_empty(),
