@@ -5,6 +5,7 @@ mod cast_precision_loss;
 mod cast_ptr_alignment;
 mod cast_ref_to_mut;
 mod cast_sign_loss;
+mod cast_slice_different_sizes;
 mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
@@ -409,6 +410,50 @@ declare_clippy_lint! {
     "casts from an enum type to an integral type which will truncate the value"
 }
 
+declare_clippy_lint! {
+    /// Checks for `as` casts between raw pointers to slices with differently sized elements.
+    ///
+    /// ### Why is this bad?
+    /// The produced raw pointer to a slice does not update its length metadata. The produced
+    /// pointer will point to a different number of bytes than the original pointer because the
+    /// length metadata of a raw slice pointer is in elements rather than bytes.
+    /// Producing a slice reference from the raw pointer will either create a slice with
+    /// less data (which can be surprising) or create a slice with more data and cause Undefined Behavior.
+    ///
+    /// ### Example
+    /// // Missing data
+    /// ```rust
+    /// let a = [1_i32, 2, 3, 4];
+    /// let p = &a as *const [i32] as *const [u8];
+    /// unsafe {
+    ///     println!("{:?}", &*p);
+    /// }
+    /// ```
+    /// // Undefined Behavior (note: also potential alignment issues)
+    /// ```rust
+    /// let a = [1_u8, 2, 3, 4];
+    /// let p = &a as *const [u8] as *const [u32];
+    /// unsafe {
+    ///     println!("{:?}", &*p);
+    /// }
+    /// ```
+    /// Instead use `ptr::slice_from_raw_parts` to construct a slice from a data pointer and the correct length
+    /// ```rust
+    /// let a = [1_i32, 2, 3, 4];
+    /// let old_ptr = &a as *const [i32];
+    /// // The data pointer is cast to a pointer to the target `u8` not `[u8]`
+    /// // The length comes from the known length of 4 i32s times the 4 bytes per i32
+    /// let new_ptr = core::ptr::slice_from_raw_parts(old_ptr as *const u8, 16);
+    /// unsafe {
+    ///     println!("{:?}", &*new_ptr);
+    /// }
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub CAST_SLICE_DIFFERENT_SIZES,
+    correctness,
+    "casting using `as` between raw pointers to slices of types with different sizes"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -428,6 +473,7 @@ impl_lint_pass!(Casts => [
     CAST_LOSSLESS,
     CAST_REF_TO_MUT,
     CAST_PTR_ALIGNMENT,
+    CAST_SLICE_DIFFERENT_SIZES,
     UNNECESSARY_CAST,
     FN_TO_NUMERIC_CAST_ANY,
     FN_TO_NUMERIC_CAST,
@@ -478,6 +524,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         cast_ref_to_mut::check(cx, expr);
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
+        ptr_as_ptr::check(cx, expr, &self.msrv);
+        cast_slice_different_sizes::check(cx, expr, &self.msrv);
     }
 
     extract_msrv_attr!(LateContext);
