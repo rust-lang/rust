@@ -1,14 +1,14 @@
-SOURCE_FILE@0..13
-  USE@0..12
-    USE_KW@0..3 "use"
-    WHITESPACE@3..4 " "
-    USE_TREE@4..11
-      PATH@4..11
-        PATH@4..9
-          PATH_SEGMENT@4..9
-            NAME_REF@4..9
-              CRATE_KW@4..9 "crate"
-        COLON2@9..11 "::"
-    SEMICOLON@11..12 ";"
-  WHITESPACE@12..13 "\n"
-error 11..11: expected identifier
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              CRATE_KW "crate"
+        COLON2 "::"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 11: expected identifier

@@ -1,37 +1,37 @@
-SOURCE_FILE@0..65
-  MACRO_RULES@0..64
-    COMMENT@0..13 "/// Some docs"
-    WHITESPACE@13..14 "\n"
-    ATTR@14..29
-      POUND@14..15 "#"
-      L_BRACK@15..16 "["
-      META@16..28
-        PATH@16..28
-          PATH_SEGMENT@16..28
-            NAME_REF@16..28
-              IDENT@16..28 "macro_export"
-      R_BRACK@28..29 "]"
-    WHITESPACE@29..30 "\n"
-    MACRO_RULES_KW@30..41 "macro_rules"
-    BANG@41..42 "!"
-    WHITESPACE@42..43 " "
-    NAME@43..46
-      IDENT@43..46 "foo"
-    WHITESPACE@46..47 " "
-    TOKEN_TREE@47..64
-      L_CURLY@47..48 "{"
-      WHITESPACE@48..53 "\n    "
-      TOKEN_TREE@53..55
-        L_PAREN@53..54 "("
-        R_PAREN@54..55 ")"
-      WHITESPACE@55..56 " "
-      EQ@56..57 "="
-      R_ANGLE@57..58 ">"
-      WHITESPACE@58..59 " "
-      TOKEN_TREE@59..61
-        L_CURLY@59..60 "{"
-        R_CURLY@60..61 "}"
-      SEMICOLON@61..62 ";"
-      WHITESPACE@62..63 "\n"
-      R_CURLY@63..64 "}"
-  WHITESPACE@64..65 "\n"
+SOURCE_FILE
+  MACRO_RULES
+    COMMENT "/// Some docs"
+    WHITESPACE "\n"
+    ATTR
+      POUND "#"
+      L_BRACK "["
+      META
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "macro_export"
+      R_BRACK "]"
+    WHITESPACE "\n"
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      TOKEN_TREE
+        L_PAREN "("
+        R_PAREN ")"
+      WHITESPACE " "
+      EQ "="
+      R_ANGLE ">"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+      SEMICOLON ";"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

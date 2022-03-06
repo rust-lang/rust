@@ -1,14 +1,14 @@
-SOURCE_FILE@0..13
-  TYPE_ALIAS@0..12
-    TYPE_KW@0..4 "type"
-    WHITESPACE@4..5 " "
-    NAME@5..6
-      IDENT@5..6 "T"
-    WHITESPACE@6..7 " "
-    EQ@7..8 "="
-    WHITESPACE@8..9 " "
-    TUPLE_TYPE@9..11
-      L_PAREN@9..10 "("
-      R_PAREN@10..11 ")"
-    SEMICOLON@11..12 ";"
-  WHITESPACE@12..13 "\n"
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    TUPLE_TYPE
+      L_PAREN "("
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

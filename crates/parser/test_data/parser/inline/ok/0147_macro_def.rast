@@ -1,19 +1,19 @@
-SOURCE_FILE@0..21
-  MACRO_DEF@0..20
-    MACRO_KW@0..5 "macro"
-    WHITESPACE@5..6 " "
-    NAME@6..7
-      IDENT@6..7 "m"
-    TOKEN_TREE@7..20
-      TOKEN_TREE@7..17
-        L_PAREN@7..8 "("
-        DOLLAR@8..9 "$"
-        IDENT@9..10 "i"
-        COLON@10..11 ":"
-        IDENT@11..16 "ident"
-        R_PAREN@16..17 ")"
-      WHITESPACE@17..18 " "
-      TOKEN_TREE@18..20
-        L_CURLY@18..19 "{"
-        R_CURLY@19..20 "}"
-  WHITESPACE@20..21 "\n"
+SOURCE_FILE
+  MACRO_DEF
+    MACRO_KW "macro"
+    WHITESPACE " "
+    NAME
+      IDENT "m"
+    TOKEN_TREE
+      TOKEN_TREE
+        L_PAREN "("
+        DOLLAR "$"
+        IDENT "i"
+        COLON ":"
+        IDENT "ident"
+        R_PAREN ")"
+      WHITESPACE " "
+      TOKEN_TREE
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

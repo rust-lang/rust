@@ -1,21 +1,21 @@
-SOURCE_FILE@0..19
-  STATIC@0..18
-    STATIC_KW@0..6 "static"
-    WHITESPACE@6..7 " "
-    ERROR@7..8
-      UNDERSCORE@7..8 "_"
-    COLON@8..9 ":"
-    WHITESPACE@9..10 " "
-    PATH_TYPE@10..13
-      PATH@10..13
-        PATH_SEGMENT@10..13
-          NAME_REF@10..13
-            IDENT@10..13 "i32"
-    WHITESPACE@13..14 " "
-    EQ@14..15 "="
-    WHITESPACE@15..16 " "
-    LITERAL@16..17
-      INT_NUMBER@16..17 "5"
-    SEMICOLON@17..18 ";"
-  WHITESPACE@18..19 "\n"
-error 7..7: expected a name
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    ERROR
+      UNDERSCORE "_"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "i32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "5"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 7: expected a name

@@ -1,175 +1,175 @@
-SOURCE_FILE@0..156
-  FN@0..155
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..155
-      STMT_LIST@9..155
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..15 "\n    "
-        LET_STMT@15..29
-          LET_KW@15..18 "let"
-          WHITESPACE@18..19 " "
-          RECORD_PAT@19..23
-            PATH@19..20
-              PATH_SEGMENT@19..20
-                NAME_REF@19..20
-                  IDENT@19..20 "S"
-            WHITESPACE@20..21 " "
-            RECORD_PAT_FIELD_LIST@21..23
-              L_CURLY@21..22 "{"
-              R_CURLY@22..23 "}"
-          WHITESPACE@23..24 " "
-          EQ@24..25 "="
-          WHITESPACE@25..26 " "
-          TUPLE_EXPR@26..28
-            L_PAREN@26..27 "("
-            R_PAREN@27..28 ")"
-          SEMICOLON@28..29 ";"
-        WHITESPACE@29..34 "\n    "
-        LET_STMT@34..62
-          LET_KW@34..37 "let"
-          WHITESPACE@37..38 " "
-          RECORD_PAT@38..56
-            PATH@38..39
-              PATH_SEGMENT@38..39
-                NAME_REF@38..39
-                  IDENT@38..39 "S"
-            WHITESPACE@39..40 " "
-            RECORD_PAT_FIELD_LIST@40..56
-              L_CURLY@40..41 "{"
-              WHITESPACE@41..42 " "
-              RECORD_PAT_FIELD@42..43
-                IDENT_PAT@42..43
-                  NAME@42..43
-                    IDENT@42..43 "f"
-              COMMA@43..44 ","
-              WHITESPACE@44..45 " "
-              RECORD_PAT_FIELD@45..54
-                IDENT_PAT@45..54
-                  REF_KW@45..48 "ref"
-                  WHITESPACE@48..49 " "
-                  MUT_KW@49..52 "mut"
-                  WHITESPACE@52..53 " "
-                  NAME@53..54
-                    IDENT@53..54 "g"
-              WHITESPACE@54..55 " "
-              R_CURLY@55..56 "}"
-          WHITESPACE@56..57 " "
-          EQ@57..58 "="
-          WHITESPACE@58..59 " "
-          TUPLE_EXPR@59..61
-            L_PAREN@59..60 "("
-            R_PAREN@60..61 ")"
-          SEMICOLON@61..62 ";"
-        WHITESPACE@62..67 "\n    "
-        LET_STMT@67..90
-          LET_KW@67..70 "let"
-          WHITESPACE@70..71 " "
-          RECORD_PAT@71..84
-            PATH@71..72
-              PATH_SEGMENT@71..72
-                NAME_REF@71..72
-                  IDENT@71..72 "S"
-            WHITESPACE@72..73 " "
-            RECORD_PAT_FIELD_LIST@73..84
-              L_CURLY@73..74 "{"
-              WHITESPACE@74..75 " "
-              RECORD_PAT_FIELD@75..79
-                NAME_REF@75..76
-                  IDENT@75..76 "h"
-                COLON@76..77 ":"
-                WHITESPACE@77..78 " "
-                WILDCARD_PAT@78..79
-                  UNDERSCORE@78..79 "_"
-              COMMA@79..80 ","
-              WHITESPACE@80..81 " "
-              REST_PAT@81..83
-                DOT2@81..83 ".."
-              R_CURLY@83..84 "}"
-          WHITESPACE@84..85 " "
-          EQ@85..86 "="
-          WHITESPACE@86..87 " "
-          TUPLE_EXPR@87..89
-            L_PAREN@87..88 "("
-            R_PAREN@88..89 ")"
-          SEMICOLON@89..90 ";"
-        WHITESPACE@90..95 "\n    "
-        LET_STMT@95..116
-          LET_KW@95..98 "let"
-          WHITESPACE@98..99 " "
-          RECORD_PAT@99..110
-            PATH@99..100
-              PATH_SEGMENT@99..100
-                NAME_REF@99..100
-                  IDENT@99..100 "S"
-            WHITESPACE@100..101 " "
-            RECORD_PAT_FIELD_LIST@101..110
-              L_CURLY@101..102 "{"
-              WHITESPACE@102..103 " "
-              RECORD_PAT_FIELD@103..107
-                NAME_REF@103..104
-                  IDENT@103..104 "h"
-                COLON@104..105 ":"
-                WHITESPACE@105..106 " "
-                WILDCARD_PAT@106..107
-                  UNDERSCORE@106..107 "_"
-              COMMA@107..108 ","
-              WHITESPACE@108..109 " "
-              R_CURLY@109..110 "}"
-          WHITESPACE@110..111 " "
-          EQ@111..112 "="
-          WHITESPACE@112..113 " "
-          TUPLE_EXPR@113..115
-            L_PAREN@113..114 "("
-            R_PAREN@114..115 ")"
-          SEMICOLON@115..116 ";"
-        WHITESPACE@116..121 "\n    "
-        LET_STMT@121..153
-          LET_KW@121..124 "let"
-          WHITESPACE@124..125 " "
-          RECORD_PAT@125..147
-            PATH@125..126
-              PATH_SEGMENT@125..126
-                NAME_REF@125..126
-                  IDENT@125..126 "S"
-            WHITESPACE@126..127 " "
-            RECORD_PAT_FIELD_LIST@127..147
-              L_CURLY@127..128 "{"
-              WHITESPACE@128..129 " "
-              REST_PAT@129..145
-                ATTR@129..142
-                  POUND@129..130 "#"
-                  L_BRACK@130..131 "["
-                  META@131..141
-                    PATH@131..134
-                      PATH_SEGMENT@131..134
-                        NAME_REF@131..134
-                          IDENT@131..134 "cfg"
-                    TOKEN_TREE@134..141
-                      L_PAREN@134..135 "("
-                      IDENT@135..138 "any"
-                      TOKEN_TREE@138..140
-                        L_PAREN@138..139 "("
-                        R_PAREN@139..140 ")"
-                      R_PAREN@140..141 ")"
-                  R_BRACK@141..142 "]"
-                WHITESPACE@142..143 " "
-                DOT2@143..145 ".."
-              WHITESPACE@145..146 " "
-              R_CURLY@146..147 "}"
-          WHITESPACE@147..148 " "
-          EQ@148..149 "="
-          WHITESPACE@149..150 " "
-          TUPLE_EXPR@150..152
-            L_PAREN@150..151 "("
-            R_PAREN@151..152 ")"
-          SEMICOLON@152..153 ";"
-        WHITESPACE@153..154 "\n"
-        R_CURLY@154..155 "}"
-  WHITESPACE@155..156 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                IDENT_PAT
+                  NAME
+                    IDENT "f"
+              COMMA ","
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                IDENT_PAT
+                  REF_KW "ref"
+                  WHITESPACE " "
+                  MUT_KW "mut"
+                  WHITESPACE " "
+                  NAME
+                    IDENT "g"
+              WHITESPACE " "
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                NAME_REF
+                  IDENT "h"
+                COLON ":"
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+              COMMA ","
+              WHITESPACE " "
+              REST_PAT
+                DOT2 ".."
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_PAT_FIELD
+                NAME_REF
+                  IDENT "h"
+                COLON ":"
+                WHITESPACE " "
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+              COMMA ","
+              WHITESPACE " "
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          RECORD_PAT
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_PAT_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              REST_PAT
+                ATTR
+                  POUND "#"
+                  L_BRACK "["
+                  META
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "cfg"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      IDENT "any"
+                      TOKEN_TREE
+                        L_PAREN "("
+                        R_PAREN ")"
+                      R_PAREN ")"
+                  R_BRACK "]"
+                WHITESPACE " "
+                DOT2 ".."
+              WHITESPACE " "
+              R_CURLY "}"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

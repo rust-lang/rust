@@ -1,39 +1,39 @@
-SOURCE_FILE@0..32
-  STRUCT@0..31
-    STRUCT_KW@0..6 "struct"
-    WHITESPACE@6..7 " "
-    NAME@7..8
-      IDENT@7..8 "S"
-    GENERIC_PARAM_LIST@8..17
-      L_ANGLE@8..9 "<"
-      TYPE_PARAM@9..16
-        NAME@9..10
-          IDENT@9..10 "T"
-        COLON@10..11 ":"
-        WHITESPACE@11..12 " "
-        TYPE_BOUND_LIST@12..16
-          TYPE_BOUND@12..16
-            PATH_TYPE@12..16
-              PATH@12..16
-                PATH_SEGMENT@12..16
-                  NAME_REF@12..16
-                    IDENT@12..16 "Copy"
-      R_ANGLE@16..17 ">"
-    WHITESPACE@17..18 " "
-    RECORD_FIELD_LIST@18..31
-      L_CURLY@18..19 "{"
-      WHITESPACE@19..24 "\n    "
-      RECORD_FIELD@24..28
-        NAME@24..25
-          IDENT@24..25 "f"
-        COLON@25..26 ":"
-        WHITESPACE@26..27 " "
-        PATH_TYPE@27..28
-          PATH@27..28
-            PATH_SEGMENT@27..28
-              NAME_REF@27..28
-                IDENT@27..28 "T"
-      COMMA@28..29 ","
-      WHITESPACE@29..30 "\n"
-      R_CURLY@30..31 "}"
-  WHITESPACE@31..32 "\n"
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+      R_ANGLE ">"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "f"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "T"
+      COMMA ","
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

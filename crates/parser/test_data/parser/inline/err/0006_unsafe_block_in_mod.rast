@@ -1,37 +1,37 @@
-SOURCE_FILE@0..33
-  FN@0..10
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    BLOCK_EXPR@8..10
-      STMT_LIST@8..10
-        L_CURLY@8..9 "{"
-        R_CURLY@9..10 "}"
-  WHITESPACE@10..11 " "
-  ERROR@11..17
-    UNSAFE_KW@11..17 "unsafe"
-  WHITESPACE@17..18 " "
-  ERROR@18..21
-    L_CURLY@18..19 "{"
-    WHITESPACE@19..20 " "
-    R_CURLY@20..21 "}"
-  WHITESPACE@21..22 " "
-  FN@22..32
-    FN_KW@22..24 "fn"
-    WHITESPACE@24..25 " "
-    NAME@25..28
-      IDENT@25..28 "bar"
-    PARAM_LIST@28..30
-      L_PAREN@28..29 "("
-      R_PAREN@29..30 ")"
-    BLOCK_EXPR@30..32
-      STMT_LIST@30..32
-        L_CURLY@30..31 "{"
-        R_CURLY@31..32 "}"
-  WHITESPACE@32..33 "\n"
-error 11..11: expected an item
-error 18..18: expected an item
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE " "
+  ERROR
+    UNSAFE_KW "unsafe"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE " "
+    R_CURLY "}"
+  WHITESPACE " "
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "bar"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 11: expected an item
+error 18: expected an item

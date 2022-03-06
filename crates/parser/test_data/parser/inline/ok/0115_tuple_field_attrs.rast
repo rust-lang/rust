@@ -1,28 +1,28 @@
-SOURCE_FILE@0..24
-  STRUCT@0..23
-    STRUCT_KW@0..6 "struct"
-    WHITESPACE@6..7 " "
-    NAME@7..8
-      IDENT@7..8 "S"
-    WHITESPACE@8..9 " "
-    TUPLE_FIELD_LIST@9..22
-      L_PAREN@9..10 "("
-      TUPLE_FIELD@10..21
-        ATTR@10..17
-          POUND@10..11 "#"
-          L_BRACK@11..12 "["
-          META@12..16
-            PATH@12..16
-              PATH_SEGMENT@12..16
-                NAME_REF@12..16
-                  IDENT@12..16 "attr"
-          R_BRACK@16..17 "]"
-        WHITESPACE@17..18 " "
-        PATH_TYPE@18..21
-          PATH@18..21
-            PATH_SEGMENT@18..21
-              NAME_REF@18..21
-                IDENT@18..21 "f32"
-      R_PAREN@21..22 ")"
-    SEMICOLON@22..23 ";"
-  WHITESPACE@23..24 "\n"
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        ATTR
+          POUND "#"
+          L_BRACK "["
+          META
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "attr"
+          R_BRACK "]"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "f32"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

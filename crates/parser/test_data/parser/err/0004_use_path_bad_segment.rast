@@ -1,15 +1,15 @@
-SOURCE_FILE@0..12
-  USE@0..12
-    USE_KW@0..3 "use"
-    WHITESPACE@3..4 " "
-    USE_TREE@4..11
-      PATH@4..11
-        PATH@4..7
-          PATH_SEGMENT@4..7
-            NAME_REF@4..7
-              IDENT@4..7 "foo"
-        COLON2@7..9 "::"
-        ERROR@9..11
-          INT_NUMBER@9..11 "92"
-    SEMICOLON@11..12 ";"
-error 9..9: expected identifier
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "foo"
+        COLON2 "::"
+        ERROR
+          INT_NUMBER "92"
+    SEMICOLON ";"
+error 9: expected identifier

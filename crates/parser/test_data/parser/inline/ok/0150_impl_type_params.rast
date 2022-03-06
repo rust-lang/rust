@@ -1,38 +1,38 @@
-SOURCE_FILE@0..29
-  IMPL@0..28
-    IMPL_KW@0..4 "impl"
-    GENERIC_PARAM_LIST@4..18
-      L_ANGLE@4..5 "<"
-      CONST_PARAM@5..17
-        CONST_KW@5..10 "const"
-        WHITESPACE@10..11 " "
-        NAME@11..12
-          IDENT@11..12 "N"
-        COLON@12..13 ":"
-        WHITESPACE@13..14 " "
-        PATH_TYPE@14..17
-          PATH@14..17
-            PATH_SEGMENT@14..17
-              NAME_REF@14..17
-                IDENT@14..17 "u32"
-      R_ANGLE@17..18 ">"
-    WHITESPACE@18..19 " "
-    PATH_TYPE@19..25
-      PATH@19..25
-        PATH_SEGMENT@19..25
-          NAME_REF@19..22
-            IDENT@19..22 "Bar"
-          GENERIC_ARG_LIST@22..25
-            L_ANGLE@22..23 "<"
-            TYPE_ARG@23..24
-              PATH_TYPE@23..24
-                PATH@23..24
-                  PATH_SEGMENT@23..24
-                    NAME_REF@23..24
-                      IDENT@23..24 "N"
-            R_ANGLE@24..25 ">"
-    WHITESPACE@25..26 " "
-    ASSOC_ITEM_LIST@26..28
-      L_CURLY@26..27 "{"
-      R_CURLY@27..28 "}"
-  WHITESPACE@28..29 "\n"
+SOURCE_FILE
+  IMPL
+    IMPL_KW "impl"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      CONST_PARAM
+        CONST_KW "const"
+        WHITESPACE " "
+        NAME
+          IDENT "N"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      R_ANGLE ">"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Bar"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "N"
+            R_ANGLE ">"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"

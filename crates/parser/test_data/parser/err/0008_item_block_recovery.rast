@@ -1,81 +1,80 @@
-SOURCE_FILE@0..95
-  FN@0..12
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..12
-      STMT_LIST@9..12
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..11 "\n"
-        R_CURLY@11..12 "}"
-  WHITESPACE@12..14 "\n\n"
-  MACRO_CALL@14..19
-    PATH@14..17
-      PATH_SEGMENT@14..17
-        NAME_REF@14..17
-          IDENT@14..17 "bar"
-    TOKEN_TREE@17..19
-      L_PAREN@17..18 "("
-      R_PAREN@18..19 ")"
-  WHITESPACE@19..20 " "
-  ERROR@20..80
-    L_CURLY@20..21 "{"
-    WHITESPACE@21..26 "\n    "
-    IF_EXPR@26..78
-      IF_KW@26..28 "if"
-      WHITESPACE@28..29 " "
-      CONDITION@29..33
-        LITERAL@29..33
-          TRUE_KW@29..33 "true"
-      WHITESPACE@33..34 " "
-      BLOCK_EXPR@34..51
-        STMT_LIST@34..51
-          L_CURLY@34..35 "{"
-          WHITESPACE@35..44 "\n        "
-          LITERAL@44..45
-            INT_NUMBER@44..45 "1"
-          WHITESPACE@45..50 "\n    "
-          R_CURLY@50..51 "}"
-      WHITESPACE@51..52 " "
-      ELSE_KW@52..56 "else"
-      WHITESPACE@56..57 " "
-      BLOCK_EXPR@57..78
-        STMT_LIST@57..78
-          L_CURLY@57..58 "{"
-          WHITESPACE@58..67 "\n        "
-          BIN_EXPR@67..72
-            LITERAL@67..68
-              INT_NUMBER@67..68 "2"
-            WHITESPACE@68..69 " "
-            PLUS@69..70 "+"
-            WHITESPACE@70..71 " "
-            LITERAL@71..72
-              INT_NUMBER@71..72 "3"
-          WHITESPACE@72..77 "\n    "
-          R_CURLY@77..78 "}"
-    WHITESPACE@78..79 "\n"
-    R_CURLY@79..80 "}"
-  WHITESPACE@80..82 "\n\n"
-  FN@82..94
-    FN_KW@82..84 "fn"
-    WHITESPACE@84..85 " "
-    NAME@85..88
-      IDENT@85..88 "baz"
-    PARAM_LIST@88..90
-      L_PAREN@88..89 "("
-      R_PAREN@89..90 ")"
-    WHITESPACE@90..91 " "
-    BLOCK_EXPR@91..94
-      STMT_LIST@91..94
-        L_CURLY@91..92 "{"
-        WHITESPACE@92..93 "\n"
-        R_CURLY@93..94 "}"
-  WHITESPACE@94..95 "\n"
-error 17..17: expected BANG
-error 19..19: expected SEMICOLON
-error 20..20: expected an item
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bar"
+    TOKEN_TREE
+      L_PAREN "("
+      R_PAREN ")"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE "\n    "
+    IF_EXPR
+      IF_KW "if"
+      WHITESPACE " "
+      LITERAL
+        TRUE_KW "true"
+      WHITESPACE " "
+      BLOCK_EXPR
+        STMT_LIST
+          L_CURLY "{"
+          WHITESPACE "\n        "
+          LITERAL
+            INT_NUMBER "1"
+          WHITESPACE "\n    "
+          R_CURLY "}"
+      WHITESPACE " "
+      ELSE_KW "else"
+      WHITESPACE " "
+      BLOCK_EXPR
+        STMT_LIST
+          L_CURLY "{"
+          WHITESPACE "\n        "
+          BIN_EXPR
+            LITERAL
+              INT_NUMBER "2"
+            WHITESPACE " "
+            PLUS "+"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "3"
+          WHITESPACE "\n    "
+          R_CURLY "}"
+    WHITESPACE "\n"
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "baz"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 17: expected BANG
+error 19: expected SEMICOLON
+error 20: expected an item

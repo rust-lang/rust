@@ -1,111 +1,111 @@
-SOURCE_FILE@0..108
-  FN@0..107
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..12
-      IDENT@3..12 "print_all"
-    GENERIC_PARAM_LIST@12..89
-      L_ANGLE@12..13 "<"
-      TYPE_PARAM@13..88
-        NAME@13..14
-          IDENT@13..14 "T"
-        COLON@14..15 ":"
-        WHITESPACE@15..16 " "
-        TYPE_BOUND_LIST@16..88
-          TYPE_BOUND@16..88
-            PATH_TYPE@16..88
-              PATH@16..88
-                PATH_SEGMENT@16..88
-                  NAME_REF@16..24
-                    IDENT@16..24 "Iterator"
-                  GENERIC_ARG_LIST@24..88
-                    L_ANGLE@24..25 "<"
-                    TYPE_ARG@25..29
-                      PATH_TYPE@25..29
-                        PATH@25..29
-                          PATH_SEGMENT@25..29
-                            NAME_REF@25..29
-                              IDENT@25..29 "Item"
-                    COMMA@29..30 ","
-                    WHITESPACE@30..31 " "
-                    TYPE_ARG@31..41
-                      PATH_TYPE@31..41
-                        PATH@31..41
-                          PATH@31..35
-                            PATH_SEGMENT@31..35
-                              NAME_REF@31..35
-                                IDENT@31..35 "Item"
-                          COLON2@35..37 "::"
-                          PATH_SEGMENT@37..41
-                            NAME_REF@37..41
-                              IDENT@37..41 "Item"
-                    COMMA@41..42 ","
-                    WHITESPACE@42..43 " "
-                    TYPE_ARG@43..55
-                      PATH_TYPE@43..55
-                        PATH@43..55
-                          PATH_SEGMENT@43..55
-                            NAME_REF@43..47
-                              IDENT@43..47 "Item"
-                            GENERIC_ARG_LIST@47..55
-                              COLON2@47..49 "::"
-                              L_ANGLE@49..50 "<"
-                              CONST_ARG@50..54
-                                LITERAL@50..54
-                                  TRUE_KW@50..54 "true"
-                              R_ANGLE@54..55 ">"
-                    COMMA@55..56 ","
-                    WHITESPACE@56..57 " "
-                    ASSOC_TYPE_ARG@57..70
-                      NAME_REF@57..61
-                        IDENT@57..61 "Item"
-                      COLON@61..62 ":"
-                      WHITESPACE@62..63 " "
-                      TYPE_BOUND_LIST@63..70
-                        TYPE_BOUND@63..70
-                          PATH_TYPE@63..70
-                            PATH@63..70
-                              PATH_SEGMENT@63..70
-                                NAME_REF@63..70
-                                  IDENT@63..70 "Display"
-                    COMMA@70..71 ","
-                    WHITESPACE@71..72 " "
-                    ASSOC_TYPE_ARG@72..87
-                      NAME_REF@72..76
-                        IDENT@72..76 "Item"
-                      GENERIC_ARG_LIST@76..80
-                        L_ANGLE@76..77 "<"
-                        LIFETIME_ARG@77..79
-                          LIFETIME@77..79
-                            LIFETIME_IDENT@77..79 "'a"
-                        R_ANGLE@79..80 ">"
-                      WHITESPACE@80..81 " "
-                      EQ@81..82 "="
-                      WHITESPACE@82..83 " "
-                      PATH_TYPE@83..87
-                        PATH@83..87
-                          PATH_SEGMENT@83..87
-                            NAME_REF@83..87
-                              IDENT@83..87 "Item"
-                    R_ANGLE@87..88 ">"
-      R_ANGLE@88..89 ">"
-    PARAM_LIST@89..104
-      L_PAREN@89..90 "("
-      PARAM@90..103
-        IDENT_PAT@90..100
-          NAME@90..100
-            IDENT@90..100 "printables"
-        COLON@100..101 ":"
-        WHITESPACE@101..102 " "
-        PATH_TYPE@102..103
-          PATH@102..103
-            PATH_SEGMENT@102..103
-              NAME_REF@102..103
-                IDENT@102..103 "T"
-      R_PAREN@103..104 ")"
-    WHITESPACE@104..105 " "
-    BLOCK_EXPR@105..107
-      STMT_LIST@105..107
-        L_CURLY@105..106 "{"
-        R_CURLY@106..107 "}"
-  WHITESPACE@107..108 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "print_all"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Iterator"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    TYPE_ARG
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Item"
+                    COMMA ","
+                    WHITESPACE " "
+                    TYPE_ARG
+                      PATH_TYPE
+                        PATH
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "Item"
+                          COLON2 "::"
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Item"
+                    COMMA ","
+                    WHITESPACE " "
+                    TYPE_ARG
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Item"
+                            GENERIC_ARG_LIST
+                              COLON2 "::"
+                              L_ANGLE "<"
+                              CONST_ARG
+                                LITERAL
+                                  TRUE_KW "true"
+                              R_ANGLE ">"
+                    COMMA ","
+                    WHITESPACE " "
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "Item"
+                      COLON ":"
+                      WHITESPACE " "
+                      TYPE_BOUND_LIST
+                        TYPE_BOUND
+                          PATH_TYPE
+                            PATH
+                              PATH_SEGMENT
+                                NAME_REF
+                                  IDENT "Display"
+                    COMMA ","
+                    WHITESPACE " "
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "Item"
+                      GENERIC_ARG_LIST
+                        L_ANGLE "<"
+                        LIFETIME_ARG
+                          LIFETIME
+                            LIFETIME_IDENT "'a"
+                        R_ANGLE ">"
+                      WHITESPACE " "
+                      EQ "="
+                      WHITESPACE " "
+                      PATH_TYPE
+                        PATH
+                          PATH_SEGMENT
+                            NAME_REF
+                              IDENT "Item"
+                    R_ANGLE ">"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      PARAM
+        IDENT_PAT
+          NAME
+            IDENT "printables"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "T"
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

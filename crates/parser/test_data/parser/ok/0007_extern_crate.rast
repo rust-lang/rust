@@ -1,40 +1,40 @@
-SOURCE_FILE@0..69
-  EXTERN_CRATE@0..17
-    EXTERN_KW@0..6 "extern"
-    WHITESPACE@6..7 " "
-    CRATE_KW@7..12 "crate"
-    WHITESPACE@12..13 " "
-    NAME_REF@13..16
-      IDENT@13..16 "foo"
-    SEMICOLON@16..17 ";"
-  WHITESPACE@17..18 "\n"
-  EXTERN_CRATE@18..42
-    EXTERN_KW@18..24 "extern"
-    WHITESPACE@24..25 " "
-    CRATE_KW@25..30 "crate"
-    WHITESPACE@30..31 " "
-    NAME_REF@31..34
-      IDENT@31..34 "foo"
-    WHITESPACE@34..35 " "
-    RENAME@35..41
-      AS_KW@35..37 "as"
-      WHITESPACE@37..38 " "
-      NAME@38..41
-        IDENT@38..41 "bar"
-    SEMICOLON@41..42 ";"
-  WHITESPACE@42..43 "\n"
-  EXTERN_CRATE@43..68
-    EXTERN_KW@43..49 "extern"
-    WHITESPACE@49..50 " "
-    CRATE_KW@50..55 "crate"
-    WHITESPACE@55..56 " "
-    NAME_REF@56..60
-      SELF_KW@56..60 "self"
-    WHITESPACE@60..61 " "
-    RENAME@61..67
-      AS_KW@61..63 "as"
-      WHITESPACE@63..64 " "
-      NAME@64..67
-        IDENT@64..67 "baz"
-    SEMICOLON@67..68 ";"
-  WHITESPACE@68..69 "\n"
+SOURCE_FILE
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      IDENT "foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      IDENT "foo"
+    WHITESPACE " "
+    RENAME
+      AS_KW "as"
+      WHITESPACE " "
+      NAME
+        IDENT "bar"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  EXTERN_CRATE
+    EXTERN_KW "extern"
+    WHITESPACE " "
+    CRATE_KW "crate"
+    WHITESPACE " "
+    NAME_REF
+      SELF_KW "self"
+    WHITESPACE " "
+    RENAME
+      AS_KW "as"
+      WHITESPACE " "
+      NAME
+        IDENT "baz"
+    SEMICOLON ";"
+  WHITESPACE "\n"

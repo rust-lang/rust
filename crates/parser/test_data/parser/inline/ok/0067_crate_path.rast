@@ -1,16 +1,16 @@
-SOURCE_FILE@0..16
-  USE@0..15
-    USE_KW@0..3 "use"
-    WHITESPACE@3..4 " "
-    USE_TREE@4..14
-      PATH@4..14
-        PATH@4..9
-          PATH_SEGMENT@4..9
-            NAME_REF@4..9
-              CRATE_KW@4..9 "crate"
-        COLON2@9..11 "::"
-        PATH_SEGMENT@11..14
-          NAME_REF@11..14
-            IDENT@11..14 "foo"
-    SEMICOLON@14..15 ";"
-  WHITESPACE@15..16 "\n"
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              CRATE_KW "crate"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"

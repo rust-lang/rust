@@ -1,65 +1,65 @@
-SOURCE_FILE@0..55
-  USE@0..15
-    USE_KW@0..3 "use"
-    WHITESPACE@3..4 " "
-    USE_TREE@4..14
-      PATH@4..7
-        PATH_SEGMENT@4..7
-          NAME_REF@4..7
-            IDENT@4..7 "foo"
-      WHITESPACE@7..8 " "
-      RENAME@8..14
-        AS_KW@8..10 "as"
-        WHITESPACE@10..11 " "
-        NAME@11..14
-          IDENT@11..14 "bar"
-    SEMICOLON@14..15 ";"
-  WHITESPACE@15..16 "\n"
-  USE@16..54
-    USE_KW@16..19 "use"
-    WHITESPACE@19..20 " "
-    USE_TREE@20..53
-      PATH@20..23
-        PATH_SEGMENT@20..23
-          NAME_REF@20..23
-            IDENT@20..23 "foo"
-      COLON2@23..25 "::"
-      USE_TREE_LIST@25..53
-        L_CURLY@25..26 "{"
-        USE_TREE@26..32
-          PATH@26..27
-            PATH_SEGMENT@26..27
-              NAME_REF@26..27
-                IDENT@26..27 "a"
-          WHITESPACE@27..28 " "
-          RENAME@28..32
-            AS_KW@28..30 "as"
-            WHITESPACE@30..31 " "
-            NAME@31..32
-              IDENT@31..32 "b"
-        COMMA@32..33 ","
-        WHITESPACE@33..34 " "
-        USE_TREE@34..35
-          STAR@34..35 "*"
-        COMMA@35..36 ","
-        WHITESPACE@36..37 " "
-        USE_TREE@37..40
-          COLON2@37..39 "::"
-          STAR@39..40 "*"
-        COMMA@40..41 ","
-        WHITESPACE@41..42 " "
-        USE_TREE@42..52
-          PATH@42..47
-            PATH_SEGMENT@42..47
-              COLON2@42..44 "::"
-              NAME_REF@44..47
-                IDENT@44..47 "foo"
-          WHITESPACE@47..48 " "
-          RENAME@48..52
-            AS_KW@48..50 "as"
-            WHITESPACE@50..51 " "
-            NAME@51..52
-              IDENT@51..52 "x"
-        R_CURLY@52..53 "}"
-    SEMICOLON@53..54 ";"
-  WHITESPACE@54..55 "\n"
+SOURCE_FILE
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+      WHITESPACE " "
+      RENAME
+        AS_KW "as"
+        WHITESPACE " "
+        NAME
+          IDENT "bar"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  USE
+    USE_KW "use"
+    WHITESPACE " "
+    USE_TREE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+      COLON2 "::"
+      USE_TREE_LIST
+        L_CURLY "{"
+        USE_TREE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "a"
+          WHITESPACE " "
+          RENAME
+            AS_KW "as"
+            WHITESPACE " "
+            NAME
+              IDENT "b"
+        COMMA ","
+        WHITESPACE " "
+        USE_TREE
+          STAR "*"
+        COMMA ","
+        WHITESPACE " "
+        USE_TREE
+          COLON2 "::"
+          STAR "*"
+        COMMA ","
+        WHITESPACE " "
+        USE_TREE
+          PATH
+            PATH_SEGMENT
+              COLON2 "::"
+              NAME_REF
+                IDENT "foo"
+          WHITESPACE " "
+          RENAME
+            AS_KW "as"
+            WHITESPACE " "
+            NAME
+              IDENT "x"
+        R_CURLY "}"
+    SEMICOLON ";"
+  WHITESPACE "\n"

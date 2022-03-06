@@ -1,39 +1,39 @@
-SOURCE_FILE@0..40
-  STRUCT@0..39
-    STRUCT_KW@0..6 "struct"
-    WHITESPACE@6..7 " "
-    NAME@7..8
-      IDENT@7..8 "S"
-    WHITESPACE@8..9 " "
-    RECORD_FIELD_LIST@9..39
-      L_CURLY@9..10 "{"
-      WHITESPACE@10..15 "\n    "
-      RECORD_FIELD@15..21
-        NAME@15..16
-          IDENT@15..16 "a"
-        COLON@16..17 ":"
-        WHITESPACE@17..18 " "
-        PATH_TYPE@18..21
-          PATH@18..21
-            PATH_SEGMENT@18..21
-              NAME_REF@18..21
-                IDENT@18..21 "i32"
-      COMMA@21..22 ","
-      WHITESPACE@22..27 "\n    "
-      RECORD_FIELD@27..36
-        NAME@27..28
-          IDENT@27..28 "b"
-        COLON@28..29 ":"
-        WHITESPACE@29..30 " "
-        PATH_TYPE@30..36
-          PATH@30..36
-            PATH_SEGMENT@30..36
-              NAME_REF@30..36
-                IDENT@30..36 "String"
-      COMMA@36..37 ","
-      WHITESPACE@37..38 "\n"
-      R_CURLY@38..39 "}"
-  ERROR@39..40
-    SEMICOLON@39..40 ";"
-error 39..39: expected item, found `;`
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "a"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+      COMMA ","
+      WHITESPACE "\n    "
+      RECORD_FIELD
+        NAME
+          IDENT "b"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "String"
+      COMMA ","
+      WHITESPACE "\n"
+      R_CURLY "}"
+  ERROR
+    SEMICOLON ";"
+error 39: expected item, found `;`
 consider removing this semicolon

@@ -1,29 +1,29 @@
-SOURCE_FILE@0..40
-  FN@0..39
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..39
-      STMT_LIST@9..39
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..15 "\n    "
-        EXPR_STMT@15..22
-          RETURN_EXPR@15..21
-            RETURN_KW@15..21 "return"
-          SEMICOLON@21..22 ";"
-        WHITESPACE@22..27 "\n    "
-        EXPR_STMT@27..37
-          RETURN_EXPR@27..36
-            RETURN_KW@27..33 "return"
-            WHITESPACE@33..34 " "
-            LITERAL@34..36
-              INT_NUMBER@34..36 "92"
-          SEMICOLON@36..37 ";"
-        WHITESPACE@37..38 "\n"
-        R_CURLY@38..39 "}"
-  WHITESPACE@39..40 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RETURN_EXPR
+            RETURN_KW "return"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RETURN_EXPR
+            RETURN_KW "return"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,26 +1,26 @@
-SOURCE_FILE@0..21
-  FN@0..20
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..20
-      STMT_LIST@9..20
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..15 "\n    "
-        EXPR_STMT@15..18
-          TRY_EXPR@15..17
-            PATH_EXPR@15..16
-              PATH@15..16
-                PATH_SEGMENT@15..16
-                  NAME_REF@15..16
-                    IDENT@15..16 "x"
-            QUESTION@16..17 "?"
-          SEMICOLON@17..18 ";"
-        WHITESPACE@18..19 "\n"
-        R_CURLY@19..20 "}"
-  WHITESPACE@20..21 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          TRY_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            QUESTION "?"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
