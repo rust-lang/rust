@@ -14,10 +14,10 @@ mod snippet;
 use completions::flyimport::position_for_import;
 use ide_db::{
     base_db::FilePosition,
-    helpers::{
+    helpers::mod_path_to_ast,
+    imports::{
         import_assets::NameToImport,
         insert_use::{self, ImportScope},
-        mod_path_to_ast,
     },
     items_locator, RootDatabase,
 };

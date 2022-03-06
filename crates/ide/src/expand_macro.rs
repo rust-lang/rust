@@ -1,6 +1,6 @@
 use hir::Semantics;
 use ide_db::{
-    helpers::{insert_whitespace_into_node::insert_ws_into, pick_best_token},
+    helpers::pick_best_token, syntax_helpers::insert_whitespace_into_node::insert_ws_into,
     RootDatabase,
 };
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};

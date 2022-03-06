@@ -102,7 +102,7 @@ use std::ops::Deref;
 // }
 // ----
 
-use ide_db::helpers::{import_assets::LocatedImport, insert_use::ImportScope};
+use ide_db::imports::{import_assets::LocatedImport, insert_use::ImportScope};
 use itertools::Itertools;
 use syntax::{ast, AstNode, GreenNode, SyntaxNode};
 

@@ -4,10 +4,8 @@ use either::Either;
 use hir::{Module, ModuleDef, Name, Variant};
 use ide_db::{
     defs::Definition,
-    helpers::{
-        insert_use::{insert_use, ImportScope, InsertUseConfig},
-        mod_path_to_ast,
-    },
+    helpers::mod_path_to_ast,
+    imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
     search::FileReference,
     RootDatabase,
 };

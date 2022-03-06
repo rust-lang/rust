@@ -1,4 +1,7 @@
-use ide_db::helpers::{for_each_tail_expr, node_ext::walk_expr, FamousDefs};
+use ide_db::{
+    famous_defs::FamousDefs,
+    syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
+};
 use itertools::Itertools;
 use syntax::{
     ast::{self, Expr},

@@ -1,6 +1,6 @@
 //! Completes identifiers in format string literals.
 
-use ide_db::helpers::format_string::is_format_string;
+use ide_db::syntax_helpers::format_string::is_format_string;
 use itertools::Itertools;
 use syntax::{ast, AstToken, TextRange, TextSize};
 

@@ -5,7 +5,7 @@ use std::mem;
 use hir::Semantics;
 use ide_db::{
     base_db::{AnchoredPathBuf, FileId, FileRange},
-    helpers::SnippetCap,
+    SnippetCap,
 };
 use ide_db::{
     label::Label,

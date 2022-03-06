@@ -1,5 +1,5 @@
 use either::Either;
-use ide_db::helpers::node_ext::walk_ty;
+use ide_db::syntax_helpers::node_ext::walk_ty;
 use itertools::Itertools;
 use syntax::{
     ast::{self, edit::IndentLevel, AstNode, HasGenericParams, HasName},

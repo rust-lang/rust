@@ -5,13 +5,11 @@ use either::Either;
 use hir::{HirDisplay, InFile, Local, ModuleDef, Semantics, TypeInfo};
 use ide_db::{
     defs::{Definition, NameRefClass},
-    helpers::{
-        insert_use::{insert_use, ImportScope},
-        mod_path_to_ast,
-        node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
-        FamousDefs,
-    },
+    famous_defs::FamousDefs,
+    helpers::mod_path_to_ast,
+    imports::insert_use::{insert_use, ImportScope},
     search::{FileReference, ReferenceCategory, SearchScope},
+    syntax_helpers::node_ext::{preorder_expr, walk_expr, walk_pat, walk_patterns_in_expr},
     FxIndexSet, RootDatabase,
 };
 use itertools::Itertools;

@@ -14,8 +14,8 @@ use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, HighlightRelatedConfig,
     HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
 };
-use ide_db::helpers::{
-    insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
+use ide_db::{
+    imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
 use lsp_types::{ClientCapabilities, MarkupKind};

@@ -1,5 +1,4 @@
-use ide_db::helpers::FamousDefs;
-use ide_db::RootDatabase;
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind, Assists};

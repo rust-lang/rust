@@ -1,9 +1,7 @@
 use hir::{InFile, ModuleDef};
 use ide_db::{
-    helpers::{
-        import_assets::NameToImport, insert_whitespace_into_node::insert_ws_into, mod_path_to_ast,
-    },
-    items_locator,
+    helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into,
 };
 use itertools::Itertools;
 use syntax::{

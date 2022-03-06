@@ -7,7 +7,7 @@ use syntax::{
     ted,
 };
 
-use crate::helpers::node_ext::vis_eq;
+use crate::syntax_helpers::node_ext::vis_eq;
 
 /// What type of merges are allowed.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

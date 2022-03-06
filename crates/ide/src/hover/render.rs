@@ -6,10 +6,8 @@ use hir::{AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Seman
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
-    helpers::{
-        generated_lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
-        FamousDefs,
-    },
+    famous_defs::FamousDefs,
+    generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     RootDatabase,
 };
 use itertools::Itertools;

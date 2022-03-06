@@ -3,7 +3,7 @@ use hir::{
     db::{AstDatabase, HirDatabase},
     known, AssocItem, HirDisplay, InFile, Type,
 };
-use ide_db::{assists::Assist, helpers::FamousDefs, source_change::SourceChange};
+use ide_db::{assists::Assist, famous_defs::FamousDefs, source_change::SourceChange};
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{

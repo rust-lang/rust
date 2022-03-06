@@ -12,7 +12,7 @@ use syntax::{
 };
 
 use crate::{
-    helpers::merge_imports::{
+    imports::merge_imports::{
         common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_path_cmp, MergeBehavior,
     },
     RootDatabase,

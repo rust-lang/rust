@@ -1,9 +1,8 @@
 use hir::{known, AsAssocItem, Semantics};
 use ide_db::{
-    helpers::{
-        for_each_tail_expr,
-        node_ext::{block_as_lone_tail, is_pattern_cond, preorder_expr},
-        FamousDefs,
+    famous_defs::FamousDefs,
+    syntax_helpers::node_ext::{
+        block_as_lone_tail, for_each_tail_expr, is_pattern_cond, preorder_expr,
     },
     RootDatabase,
 };

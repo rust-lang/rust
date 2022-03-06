@@ -1,5 +1,5 @@
 //! Completion for lints
-use ide_db::{helpers::generated_lints::Lint, SymbolKind};
+use ide_db::{generated::lints::Lint, SymbolKind};
 use syntax::{ast, T};
 
 use crate::{context::CompletionContext, item::CompletionItem, Completions};

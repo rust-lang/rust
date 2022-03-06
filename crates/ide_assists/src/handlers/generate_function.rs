@@ -1,12 +1,11 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use hir::{HasSource, HirDisplay, Module, Semantics, TypeInfo};
-use ide_db::helpers::FamousDefs;
 use ide_db::{
     base_db::FileId,
     defs::{Definition, NameRefClass},
-    helpers::SnippetCap,
-    RootDatabase,
+    famous_defs::FamousDefs,
+    RootDatabase, SnippetCap,
 };
 use stdx::to_lower_snake_case;
 use syntax::{

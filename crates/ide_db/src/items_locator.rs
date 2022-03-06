@@ -13,7 +13,7 @@ use syntax::{ast, AstNode, SyntaxKind::NAME};
 
 use crate::{
     defs::{Definition, NameClass},
-    helpers::import_assets::NameToImport,
+    imports::import_assets::NameToImport,
     symbol_index, RootDatabase,
 };
 

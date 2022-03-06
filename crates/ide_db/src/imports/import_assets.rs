@@ -12,11 +12,10 @@ use syntax::{
 };
 
 use crate::{
+    helpers::item_name,
     items_locator::{self, AssocItemSearch, DEFAULT_QUERY_SEARCH_LIMIT},
     RootDatabase,
 };
-
-use super::item_name;
 
 /// A candidate for import, derived during various IDE activities:
 /// * completion with imports on the fly proposals

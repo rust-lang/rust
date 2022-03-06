@@ -13,8 +13,8 @@
 use std::sync::Arc;
 
 use ide::{Change, CompletionConfig, FilePosition, TextSize};
-use ide_db::helpers::{
-    insert_use::{ImportGranularity, InsertUseConfig},
+use ide_db::{
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
 };
 use project_model::CargoConfig;

@@ -1,6 +1,6 @@
 //! Syntax highlighting for format macro strings.
 use ide_db::{
-    helpers::format_string::{is_format_string, lex_format_specifiers, FormatSpecifier},
+    syntax_helpers::format_string::{is_format_string, lex_format_specifiers, FormatSpecifier},
     SymbolKind,
 };
 use syntax::{ast, TextRange};

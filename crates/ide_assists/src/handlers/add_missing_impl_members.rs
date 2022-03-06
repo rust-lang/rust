@@ -1,5 +1,7 @@
 use hir::HasSource;
-use ide_db::{helpers::insert_whitespace_into_node::insert_ws_into, traits::resolve_target_trait};
+use ide_db::{
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, traits::resolve_target_trait,
+};
 use syntax::ast::{self, make, AstNode};
 
 use crate::{

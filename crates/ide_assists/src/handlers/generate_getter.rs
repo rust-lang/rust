@@ -1,4 +1,4 @@
-use ide_db::helpers::FamousDefs;
+use ide_db::famous_defs::FamousDefs;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::ast::{self, AstNode, HasName, HasVisibility};
 

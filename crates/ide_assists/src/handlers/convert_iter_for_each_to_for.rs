@@ -1,5 +1,5 @@
 use hir::known;
-use ide_db::helpers::FamousDefs;
+use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
     ast::{self, edit_in_place::Indent, make, HasArgList, HasLoopBody},

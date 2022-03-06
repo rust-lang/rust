@@ -3,7 +3,7 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
-    helpers::FamousDefs,
+    famous_defs::FamousDefs,
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;

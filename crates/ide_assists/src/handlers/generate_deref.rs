@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ide_db::{helpers::FamousDefs, RootDatabase};
+use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::{
     ast::{self, HasName},
     AstNode, SyntaxNode,

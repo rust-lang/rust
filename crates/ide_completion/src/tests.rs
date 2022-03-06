@@ -27,11 +27,8 @@ use std::mem;
 use hir::{db::DefDatabase, PrefixKind, Semantics};
 use ide_db::{
     base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
-    helpers::{
-        insert_use::{ImportGranularity, InsertUseConfig},
-        SnippetCap,
-    },
-    RootDatabase,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
+    RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};

@@ -1,5 +1,7 @@
 use hir::{db::AstDatabase, TypeInfo};
-use ide_db::{assists::Assist, helpers::for_each_tail_expr, source_change::SourceChange};
+use ide_db::{
+    assists::Assist, source_change::SourceChange, syntax_helpers::node_ext::for_each_tail_expr,
+};
 use syntax::AstNode;
 use text_edit::TextEdit;
 

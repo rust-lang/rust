@@ -1,4 +1,4 @@
-use ide_db::helpers::node_ext::vis_eq;
+use ide_db::syntax_helpers::node_ext::vis_eq;
 use rustc_hash::FxHashSet;
 
 use syntax::{
