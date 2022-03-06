@@ -324,12 +324,22 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 assert_eq!(dest_len, op_len);
 
+                enum Op {
+                    MirOp(mir::UnOp),
+                    Abs,
+                }
+                let which = match intrinsic_name {
+                    "simd_neg" => Op::MirOp(mir::UnOp::Neg),
+                    "simd_fabs" => Op::Abs,
+                    _ => unreachable!(),
+                };
+
                 for i in 0..dest_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
-                    let val = match intrinsic_name {
-                        "simd_neg" => this.unary_op(mir::UnOp::Neg, &op)?.to_scalar()?,
-                        "simd_fabs" => {
+                    let val = match which {
+                        Op::MirOp(mir_op) => this.unary_op(mir_op, &op)?.to_scalar()?,
+                        Op::Abs => {
                             // Works for f32 and f64.
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
                                 bug!("simd_fabs operand is not a float")
@@ -341,7 +351,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
                             }
                         }
-                        _ => bug!(),
                     };
                     this.write_scalar(val, &dest.into())?;
                 }
@@ -373,7 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
 
-                let op = match intrinsic_name {
+                let mir_op = match intrinsic_name {
                     "simd_add" => BinOp::Add,
                     "simd_sub" => BinOp::Sub,
                     "simd_mul" => BinOp::Mul,
@@ -397,8 +406,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
-                    let (val, overflowed, ty) = this.overflowing_binary_op(op, &left, &right)?;
-                    if matches!(op, BinOp::Shl | BinOp::Shr) {
+                    let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                    if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
                         // Shifts have extra UB as SIMD operations that the MIR binop does not have.
                         // See <https://github.com/rust-lang/rust/issues/91237>.
                         if overflowed {
@@ -406,7 +415,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
                         }
                     }
-                    if matches!(op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
+                    if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                         // Special handling for boolean-returning operations
                         assert_eq!(ty, this.tcx.types.bool);
                         let val = val.to_bool().unwrap();
@@ -419,28 +428,70 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                 }
             }
-            "simd_reduce_any" | "simd_reduce_all" => {
+            #[rustfmt::skip]
+            | "simd_reduce_and"
+            | "simd_reduce_or"
+            | "simd_reduce_xor"
+            | "simd_reduce_any"
+            | "simd_reduce_all" => {
+                use mir::BinOp;
+
                 let &[ref op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
 
-                // the neutral element
-                let mut res = match intrinsic_name {
-                    "simd_reduce_any" => false,
-                    "simd_reduce_all" => true,
-                    _ => bug!(),
+                let imm_from_bool =
+                    |b| ImmTy::from_scalar(Scalar::from_bool(b), this.machine.layouts.bool);
+
+                enum Op {
+                    MirOp(BinOp),
+                    MirOpBool(BinOp),
+                }
+                // The initial value is the neutral element.
+                let (which, init) = match intrinsic_name {
+                    "simd_reduce_and" => (Op::MirOp(BinOp::BitAnd), ImmTy::from_int(-1, dest.layout)),
+                    "simd_reduce_or" => (Op::MirOp(BinOp::BitOr), ImmTy::from_int(0, dest.layout)),
+                    "simd_reduce_xor" => (Op::MirOp(BinOp::BitXor), ImmTy::from_int(0, dest.layout)),
+                    "simd_reduce_any" => (Op::MirOpBool(BinOp::BitOr), imm_from_bool(false)),
+                    "simd_reduce_all" => (Op::MirOpBool(BinOp::BitAnd), imm_from_bool(true)),
+                    _ => unreachable!(),
                 };
 
+                let mut res = init;
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
-                    let val = simd_element_to_bool(op)?;
-                    res = match intrinsic_name {
-                        "simd_reduce_any" => res | val,
-                        "simd_reduce_all" => res & val,
-                        _ => bug!(),
+                    res = match which {
+                        Op::MirOp(mir_op) => {
+                            this.binary_op(mir_op, &res, &op)?
+                        }
+                        Op::MirOpBool(mir_op) => {
+                            let op = imm_from_bool(simd_element_to_bool(op)?);
+                            this.binary_op(mir_op, &res, &op)?
+                        }
                     };
                 }
+                this.write_immediate(*res, dest)?;
+            }
+            #[rustfmt::skip]
+            | "simd_reduce_add_ordered"
+            | "simd_reduce_mul_ordered" => {
+                use mir::BinOp;
 
-                this.write_scalar(Scalar::from_bool(res), dest)?;
+                let &[ref op, ref init] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let init = this.read_immediate(init)?;
+
+                let mir_op = match intrinsic_name {
+                    "simd_reduce_add_ordered" => BinOp::Add,
+                    "simd_reduce_mul_ordered" => BinOp::Mul,
+                    _ => unreachable!(),
+                };
+
+                let mut res = init;
+                for i in 0..op_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    res = this.binary_op(mir_op, &res, &op)?;
+                }
+                this.write_immediate(*res, dest)?;
             }
             "simd_select" => {
                 let &[ref mask, ref yes, ref no] = check_arg_count(args)?;

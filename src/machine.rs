@@ -267,6 +267,7 @@ pub struct PrimitiveLayouts<'tcx> {
     pub u8: TyAndLayout<'tcx>,
     pub u32: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
+    pub bool: TyAndLayout<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
@@ -279,6 +280,7 @@ impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
             u8: layout_cx.layout_of(layout_cx.tcx.types.u8)?,
             u32: layout_cx.layout_of(layout_cx.tcx.types.u32)?,
             usize: layout_cx.layout_of(layout_cx.tcx.types.usize)?,
+            bool: layout_cx.layout_of(layout_cx.tcx.types.bool)?,
         })
     }
 }
