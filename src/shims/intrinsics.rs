@@ -433,7 +433,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_reduce_or"
             | "simd_reduce_xor"
             | "simd_reduce_any"
-            | "simd_reduce_all" => {
+            | "simd_reduce_all"
+            | "simd_reduce_max"
+            | "simd_reduce_min" => {
                 use mir::BinOp;
 
                 let &[ref op] = check_arg_count(args)?;
@@ -445,19 +447,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 enum Op {
                     MirOp(BinOp),
                     MirOpBool(BinOp),
+                    Max,
+                    Min,
                 }
-                // The initial value is the neutral element.
-                let (which, init) = match intrinsic_name {
-                    "simd_reduce_and" => (Op::MirOp(BinOp::BitAnd), ImmTy::from_int(-1, dest.layout)),
-                    "simd_reduce_or" => (Op::MirOp(BinOp::BitOr), ImmTy::from_int(0, dest.layout)),
-                    "simd_reduce_xor" => (Op::MirOp(BinOp::BitXor), ImmTy::from_int(0, dest.layout)),
-                    "simd_reduce_any" => (Op::MirOpBool(BinOp::BitOr), imm_from_bool(false)),
-                    "simd_reduce_all" => (Op::MirOpBool(BinOp::BitAnd), imm_from_bool(true)),
+                let which = match intrinsic_name {
+                    "simd_reduce_and" => Op::MirOp(BinOp::BitAnd),
+                    "simd_reduce_or" => Op::MirOp(BinOp::BitOr),
+                    "simd_reduce_xor" => Op::MirOp(BinOp::BitXor),
+                    "simd_reduce_any" => Op::MirOpBool(BinOp::BitOr),
+                    "simd_reduce_all" => Op::MirOpBool(BinOp::BitAnd),
+                    "simd_reduce_max" => Op::Max,
+                    "simd_reduce_min" => Op::Min,
                     _ => unreachable!(),
                 };
 
-                let mut res = init;
-                for i in 0..op_len {
+                // Initialize with first lane, then proceed with the rest.
+                let mut res = this.read_immediate(&this.mplace_index(&op, 0)?.into())?;
+                if matches!(which, Op::MirOpBool(_)) {
+                    // Convert to `bool` scalar.
+                    res = imm_from_bool(simd_element_to_bool(res)?);
+                }
+                for i in 1..op_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
                     res = match which {
                         Op::MirOp(mir_op) => {
@@ -466,6 +476,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
                             this.binary_op(mir_op, &res, &op)?
+                        }
+                        Op::Max => {
+                            // if `op > res`...
+                            if this.binary_op(BinOp::Gt, &op, &res)?.to_scalar()?.to_bool()? {
+                                // update accumulator
+                                op
+                            } else {
+                                // no change
+                                res
+                            }
+                        }
+                        Op::Min => {
+                            // if `op < res`...
+                            if this.binary_op(BinOp::Lt, &op, &res)?.to_scalar()?.to_bool()? {
+                                // update accumulator
+                                op
+                            } else {
+                                // no change
+                                res
+                            }
                         }
                     };
                 }

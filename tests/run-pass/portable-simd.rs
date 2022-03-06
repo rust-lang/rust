@@ -24,6 +24,10 @@ fn simd_ops_f32() {
     assert_eq!(b.horizontal_sum(), 2.0);
     assert_eq!(a.horizontal_product(), 100.0 * 100.0);
     assert_eq!(b.horizontal_product(), -24.0);
+    assert_eq!(a.horizontal_max(), 10.0);
+    assert_eq!(b.horizontal_max(), 3.0);
+    assert_eq!(a.horizontal_min(), 10.0);
+    assert_eq!(b.horizontal_min(), -4.0);
 }
 
 fn simd_ops_f64() {
@@ -49,6 +53,10 @@ fn simd_ops_f64() {
     assert_eq!(b.horizontal_sum(), 2.0);
     assert_eq!(a.horizontal_product(), 100.0 * 100.0);
     assert_eq!(b.horizontal_product(), -24.0);
+    assert_eq!(a.horizontal_max(), 10.0);
+    assert_eq!(b.horizontal_max(), 3.0);
+    assert_eq!(a.horizontal_min(), 10.0);
+    assert_eq!(b.horizontal_min(), -4.0);
 }
 
 fn simd_ops_i32() {
@@ -86,6 +94,10 @@ fn simd_ops_i32() {
     assert_eq!(b.horizontal_sum(), 2);
     assert_eq!(a.horizontal_product(), 100 * 100);
     assert_eq!(b.horizontal_product(), -24);
+    assert_eq!(a.horizontal_max(), 10);
+    assert_eq!(b.horizontal_max(), 3);
+    assert_eq!(a.horizontal_min(), 10);
+    assert_eq!(b.horizontal_min(), -4);
 }
 
 fn simd_mask() {
