@@ -2,7 +2,9 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{
+    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+};
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
@@ -260,6 +262,12 @@ fn check_other_call_arg<'tcx>(
         // `Target = T`.
         if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
         let n_refs = max(n_refs, if is_copy(cx, receiver_ty) { 0 } else { 1 });
+        // If the trait is `AsRef` and the input type variable `T` occurs in the output type, then
+        // `T` must not be instantiated with a reference
+        // (https://github.com/rust-lang/rust-clippy/issues/8507).
+        if (n_refs == 0 && !receiver_ty.is_ref())
+            || trait_predicate.def_id() != as_ref_trait_id
+            || !contains_ty(fn_sig.output(), input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
