@@ -29,7 +29,7 @@ impl<T> Windows<T> {
 }
 
 impl<T> Iter for Windows<T> {
-    type Item<'a> where T: 'a = &'a mut [T];
+    type Item<'a> = &'a mut [T] where T: 'a;
 
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
         let slice = self.items.get_mut(self.start..self.start + self.len)?;

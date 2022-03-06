@@ -11,8 +11,8 @@ trait Iterable {
 
 // Impl for struct type
 impl<T> Iterable for Vec<T> {
-    type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item;
-    type Iter<'a> where T: 'a = std::slice::Iter<'a, T>;
+    type Item<'a> = <std::slice::Iter<'a, T> as Iterator>::Item where T: 'a;
+    type Iter<'a> = std::slice::Iter<'a, T> where T: 'a;
 
     fn iter<'a>(&'a self) -> Self::Iter<'a> {
         self[..].iter()
@@ -21,8 +21,8 @@ impl<T> Iterable for Vec<T> {
 
 // Impl for a primitive type
 impl<T> Iterable for [T] {
-    type Item<'a> where T: 'a = <std::slice::Iter<'a, T> as Iterator>::Item;
-    type Iter<'a> where T: 'a = std::slice::Iter<'a, T>;
+    type Item<'a> = <std::slice::Iter<'a, T> as Iterator>::Item where T: 'a;
+    type Iter<'a> = std::slice::Iter<'a, T> where T: 'a;
 
     fn iter<'a>(&'a self) -> Self::Iter<'a> {
         self.iter()

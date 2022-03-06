@@ -3127,6 +3127,7 @@ declare_lint_pass! {
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         UNEXPECTED_CFGS,
+        DEPRECATED_WHERE_CLAUSE_LOCATION,
     ]
 }
 
@@ -3736,4 +3737,37 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
         reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
     };
+}
+
+declare_lint! {
+    /// The `deprecated_where_clause_location` lint detects when a where clause in front of the equals
+    /// in an associated type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(generic_associated_types)]
+    ///
+    /// trait Trait {
+    ///   type Assoc<'a> where Self: 'a;
+    /// }
+    ///
+    /// impl Trait for () {
+    ///   type Assoc<'a> where Self: 'a = ();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred location for where clauses on associated types in impls
+    /// is after the type. However, for most of generic associated types development,
+    /// it was only accepted before the equals. To provide a transition period and
+    /// further evaluate this change, both are currently accepted. At some point in
+    /// the future, this may be disallowed at an edition boundary; but, that is
+    /// undecided currently.
+    pub DEPRECATED_WHERE_CLAUSE_LOCATION,
+    Warn,
+    "deprecated where clause location"
 }

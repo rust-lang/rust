@@ -427,6 +427,7 @@ pub enum BuiltinLintDiagnostics {
     NamedAsmLabel(String),
     UnicodeTextFlow(Span, String),
     UnexpectedCfg((Symbol, Span), Option<(Symbol, Span)>),
+    DeprecatedWhereclauseLocation(Span, String),
 }
 
 /// Lints that are buffered up early on in the `Session` before the
