@@ -575,7 +575,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IPV6_UNICAST_HOPS` option on this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_hop_limit_ipv6`].
+    /// For more information about this option, see [`UdpSocket::set_hop_limit_v6`].
     ///
     /// # Examples
     ///
@@ -613,7 +613,7 @@ impl UdpSocket {
 
     /// Gets the value of the `IPV6_MULTICAST_HOPS` option on this socket.
     ///
-    /// For more information about this option, see [`UdpSocket::set_hop_limit_ipv6`].
+    /// For more information about this option, see [`UdpSocket::set_multicast_hlim_v6`].
     ///
     /// # Examples
     ///
