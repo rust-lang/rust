@@ -451,7 +451,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                     },
                 )
             }
-            ty::GenericParamDefKind::Const { has_default, .. } => (
+            ty::GenericParamDefKind::Const { has_default } => (
                 self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,

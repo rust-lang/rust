@@ -2064,17 +2064,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )),
                 _ => None,
             });
-            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes, .. } =
-                itctx
-            {
+            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes } = itctx {
                 capturable_lifetimes.extend(lt_def_names.clone());
             }
 
             let res = this.lower_trait_ref(&p.trait_ref, itctx.reborrow());
 
-            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes, .. } =
-                itctx
-            {
+            if let ImplTraitContext::TypeAliasesOpaqueTy { ref mut capturable_lifetimes } = itctx {
                 for param in lt_def_names {
                     capturable_lifetimes.remove(&param);
                 }
