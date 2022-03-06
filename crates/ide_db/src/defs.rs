@@ -116,6 +116,7 @@ impl Definition {
     }
 }
 
+#[derive(Debug)]
 pub enum IdentClass {
     NameClass(NameClass),
     NameRefClass(NameRefClass),
@@ -143,6 +144,15 @@ impl IdentClass {
     ) -> Option<IdentClass> {
         let parent = token.parent()?;
         Self::classify_node(sema, &parent)
+    }
+
+    pub fn classify_lifetime(
+        sema: &Semantics<RootDatabase>,
+        lifetime: &ast::Lifetime,
+    ) -> Option<IdentClass> {
+        NameClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameClass).or_else(|| {
+            NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass)
+        })
     }
 
     pub fn definitions(self) -> ArrayVec<Definition, 2> {

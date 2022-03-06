@@ -1,5 +1,5 @@
 //! Syntax highlighting for macro_rules!.
-use syntax::{SyntaxElement, SyntaxKind, SyntaxToken, TextRange, T};
+use syntax::{SyntaxKind, SyntaxToken, TextRange, T};
 
 use crate::{HlRange, HlTag};
 
@@ -19,10 +19,10 @@ impl MacroHighlighter {
         }
     }
 
-    pub(super) fn highlight(&self, element: &SyntaxElement) -> Option<HlRange> {
+    pub(super) fn highlight(&self, token: &SyntaxToken) -> Option<HlRange> {
         if let Some(state) = self.state.as_ref() {
             if matches!(state.rule_state, RuleState::Matcher | RuleState::Expander) {
-                if let Some(range) = is_metavariable(element) {
+                if let Some(range) = is_metavariable(token) {
                     return Some(HlRange {
                         range,
                         highlight: HlTag::UnresolvedReference.into(),
@@ -115,12 +115,11 @@ fn update_macro_state(state: &mut MacroMatcherParseState, tok: &SyntaxToken) {
     }
 }
 
-fn is_metavariable(element: &SyntaxElement) -> Option<TextRange> {
-    let tok = element.as_token()?;
-    match tok.kind() {
+fn is_metavariable(token: &SyntaxToken) -> Option<TextRange> {
+    match token.kind() {
         kind if kind == SyntaxKind::IDENT || kind.is_keyword() => {
-            if let Some(_dollar) = tok.prev_token().filter(|t| t.kind() == T![$]) {
-                return Some(tok.text_range());
+            if let Some(_dollar) = token.prev_token().filter(|t| t.kind() == T![$]) {
+                return Some(token.text_range());
             }
         }
         _ => (),
