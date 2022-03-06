@@ -188,7 +188,7 @@ https://github.blog/2015-06-08-how-to-undo-almost-anything-with-git/#redo-after-
 fn deny_clippy(path: &Path, text: &str) {
     let ignore = &[
         // The documentation in string literals may contain anything for its own purposes
-        "ide_db/src/helpers/generated_lints.rs",
+        "ide_db/src/generated/lints.rs",
         // The tests test clippy lint hovers
         "ide/src/hover/tests.rs",
         // The tests test clippy lint completions
@@ -279,7 +279,7 @@ fn check_todo(path: &Path, text: &str) {
         // `ast::make`.
         "ast/make.rs",
         // The documentation in string literals may contain anything for its own purposes
-        "ide_db/src/helpers/generated_lints.rs",
+        "ide_db/src/generated/lints.rs",
         "ide_assists/src/utils/gen_trait_fn_body.rs",
         "ide_assists/src/tests/generated.rs",
         // The tests for missing fields
@@ -315,7 +315,7 @@ fn check_dbg(path: &Path, text: &str) {
         "ide_completion/src/tests/proc_macros.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide_completion/src/lib.rs",
-        "ide_db/src/helpers/generated_lints.rs",
+        "ide_db/src/generated/lints.rs",
         // test for doc test for remove_dbg
         "src/tests/generated.rs",
     ];
