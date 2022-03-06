@@ -1,7 +1,7 @@
 error[E0726]: implicit elided lifetime not allowed here
   --> $DIR/trait-elided.rs:5:6
    |
-LL | impl MyTrait for u32 {
+LL | impl MyTrait for u32 {}
    |      ^^^^^^^- help: indicate the anonymous lifetime: `<'_>`
    |
    = note: assuming a `'static` lifetime...

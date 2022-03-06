@@ -18,5 +18,7 @@ type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
 //~^ ERROR use of undeclared lifetime name `'a`
 
 fn my_fun() -> Return<()> {}
+//~^ ERROR non-defining opaque type use in defining scope
+//~| ERROR non-defining opaque type use in defining scope
 
 fn main() {}
