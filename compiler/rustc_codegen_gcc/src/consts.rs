@@ -7,7 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::mir::interpret::{self, Allocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
+use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
@@ -284,7 +284,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Allocation) -> RValue<'gcc> {
+pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAllocation<'tcx>) -> RValue<'gcc> {
+    let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
@@ -338,7 +339,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Alloca
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id: DefId) -> Result<(RValue<'gcc>, &'tcx Allocation), ErrorHandled> {
+pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id: DefId) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }

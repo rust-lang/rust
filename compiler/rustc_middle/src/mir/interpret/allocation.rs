@@ -2,11 +2,13 @@
 
 use std::borrow::Cow;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::iter;
 use std::ops::{Deref, Range};
 use std::ptr;
 
 use rustc_ast::Mutability;
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
@@ -45,6 +47,34 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
     pub mutability: Mutability,
     /// Extra state for the machine.
     pub extra: Extra,
+}
+
+/// Interned types generally have an `Outer` type and an `Inner` type, where
+/// `Outer` is a newtype around `Interned<Inner>`, and all the operations are
+/// done on `Outer`, because all occurrences are interned. E.g. `Ty` is an
+/// outer type and `TyS` is its inner type.
+///
+/// Here things are different because only const allocations are interned. This
+/// means that both the inner type (`Allocation`) and the outer type
+/// (`ConstAllocation`) are used quite a bit.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct ConstAllocation<'tcx, Tag = AllocId, Extra = ()>(
+    pub Interned<'tcx, Allocation<Tag, Extra>>,
+);
+
+impl<'tcx> fmt::Debug for ConstAllocation<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This matches how `Allocation` is printed. We print it like this to
+        // avoid having to update expected output in a lot of tests.
+        write!(f, "{:?}", self.inner())
+    }
+}
+
+impl<'tcx, Tag, Extra> ConstAllocation<'tcx, Tag, Extra> {
+    pub fn inner(self) -> &'tcx Allocation<Tag, Extra> {
+        self.0.0
+    }
 }
 
 /// We have our own error type that does not know about the `AllocId`; that information

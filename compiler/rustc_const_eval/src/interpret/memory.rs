@@ -525,12 +525,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
         M::before_access_global(&self.extra, id, alloc, def_id, is_write)?;
-        let alloc = Cow::Borrowed(alloc);
         // We got tcx memory. Let the machine initialize its "extra" stuff.
         let alloc = M::init_allocation_extra(
             self,
             id, // always use the ID we got as input, not the "hidden" one.
-            alloc,
+            Cow::Borrowed(alloc.inner()),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
         );
         Ok(alloc)
@@ -711,6 +710,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
+                let alloc = alloc.inner();
                 Ok((alloc.size(), alloc.align))
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
@@ -867,7 +867,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                                 &mut *fmt,
                                 self.mem.tcx,
                                 &mut allocs_to_print,
-                                alloc,
+                                alloc.inner(),
                             )?;
                         }
                         Some(GlobalAlloc::Function(func)) => {

@@ -23,7 +23,10 @@ use rustc_middle::ty::{self, layout::TyAndLayout, Ty};
 
 use rustc_ast::Mutability;
 
-use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, ValueVisitor};
+use super::{
+    AllocId, Allocation, ConstAllocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy,
+    ValueVisitor,
+};
 use crate::const_eval;
 
 pub trait CompileTimeMachine<'mir, 'tcx, T> = Machine<
@@ -131,8 +134,8 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx, const_eval:
         alloc.mutability = Mutability::Not;
     };
     // link the alloc id to the actual allocation
-    let alloc = tcx.intern_const_alloc(alloc);
     leftover_allocations.extend(alloc.relocations().iter().map(|&(_, alloc_id)| alloc_id));
+    let alloc = tcx.intern_const_alloc(alloc);
     tcx.set_alloc_id_memory(alloc_id, alloc);
     None
 }
@@ -393,7 +396,7 @@ pub fn intern_const_alloc_recursive<
             }
             let alloc = tcx.intern_const_alloc(alloc);
             tcx.set_alloc_id_memory(alloc_id, alloc);
-            for &(_, alloc_id) in alloc.relocations().iter() {
+            for &(_, alloc_id) in alloc.inner().relocations().iter() {
                 if leftover_allocations.insert(alloc_id) {
                     todo.push(alloc_id);
                 }
@@ -425,7 +428,7 @@ impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
             &mut InterpCx<'mir, 'tcx, M>,
             &PlaceTy<'tcx, M::PointerTag>,
         ) -> InterpResult<'tcx, ()>,
-    ) -> InterpResult<'tcx, &'tcx Allocation> {
+    ) -> InterpResult<'tcx, ConstAllocation<'tcx>> {
         let dest = self.allocate(layout, MemoryKind::Stack)?;
         f(self, &dest.into())?;
         let mut alloc = self.memory.alloc_map.remove(&dest.ptr.provenance.unwrap()).unwrap().1;

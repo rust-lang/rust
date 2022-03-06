@@ -11,7 +11,7 @@ use rustc_ast::Mutability;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::ScalarInt;
 use rustc_span::symbol::Symbol;
@@ -249,6 +249,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
+                        let alloc = alloc.inner();
                         let value = match alloc.mutability {
                             Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
                             _ => self.static_addr_of(init, alloc.align, None),
@@ -285,24 +286,25 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: &Allocation) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_llvm(self, alloc)
     }
 
     fn from_const_alloc(
         &self,
         layout: TyAndLayout<'tcx>,
-        alloc: &Allocation,
+        alloc: ConstAllocation<'tcx>,
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
-        assert_eq!(alloc.align, layout.align.abi);
+        let alloc_align = alloc.inner().align;
+        assert_eq!(alloc_align, layout.align.abi);
         let llty = self.type_ptr_to(layout.llvm_type(self));
         let llval = if layout.size == Size::ZERO {
-            let llval = self.const_usize(alloc.align.bytes());
+            let llval = self.const_usize(alloc_align.bytes());
             unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
         } else {
             let init = const_alloc_to_llvm(self, alloc);
-            let base_addr = self.static_addr_of(init, alloc.align, None);
+            let base_addr = self.static_addr_of(init, alloc_align, None);
 
             let llval = unsafe {
                 llvm::LLVMRustConstInBoundsGEP2(

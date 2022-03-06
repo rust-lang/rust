@@ -1267,7 +1267,7 @@ pub trait PrettyPrinter<'tcx>:
                 Some(GlobalAlloc::Memory(alloc)) => {
                     let len = int.assert_bits(self.tcx().data_layout.pointer_size);
                     let range = AllocRange { start: offset, size: Size::from_bytes(len) };
-                    if let Ok(byte_str) = alloc.get_bytes(&self.tcx(), range) {
+                    if let Ok(byte_str) = alloc.inner().get_bytes(&self.tcx(), range) {
                         p!(pretty_print_byte_str(byte_str))
                     } else {
                         p!("<too short allocation>")
@@ -1424,7 +1424,8 @@ pub trait PrettyPrinter<'tcx>:
                 // The `inspect` here is okay since we checked the bounds, and there are
                 // no relocations (we have an active slice reference here). We don't use
                 // this result to affect interpreter execution.
-                let byte_str = data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                let byte_str =
+                    data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end);
                 self.pretty_print_byte_str(byte_str)
             }
             (
@@ -1434,7 +1435,8 @@ pub trait PrettyPrinter<'tcx>:
                 // The `inspect` here is okay since we checked the bounds, and there are no
                 // relocations (we have an active `str` reference here). We don't use this
                 // result to affect interpreter execution.
-                let slice = data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                let slice =
+                    data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end);
                 p!(write("{:?}", String::from_utf8_lossy(slice)));
                 Ok(self)
             }
@@ -1443,7 +1445,7 @@ pub trait PrettyPrinter<'tcx>:
                 // cast is ok because we already checked for pointer size (32 or 64 bit) above
                 let range = AllocRange { start: offset, size: Size::from_bytes(n) };
 
-                let byte_str = alloc.get_bytes(&self.tcx(), range).unwrap();
+                let byte_str = alloc.inner().get_bytes(&self.tcx(), range).unwrap();
                 p!("*");
                 p!(pretty_print_byte_str(byte_str));
                 Ok(self)

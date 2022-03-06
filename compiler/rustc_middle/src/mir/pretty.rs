@@ -12,7 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::interpret::{
-    read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, Pointer, Provenance,
+    read_target_uint, AllocId, Allocation, ConstAllocation, ConstValue, GlobalAlloc, Pointer,
+    Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
@@ -652,8 +653,10 @@ pub fn write_allocations<'tcx>(
     body: &Body<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    fn alloc_ids_from_alloc(alloc: &Allocation) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.relocations().values().map(|id| *id)
+    fn alloc_ids_from_alloc(
+        alloc: ConstAllocation<'_>,
+    ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
+        alloc.inner().relocations().values().map(|id| *id)
     }
     fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
@@ -686,14 +689,14 @@ pub fn write_allocations<'tcx>(
     let mut todo: Vec<_> = seen.iter().copied().collect();
     while let Some(id) = todo.pop() {
         let mut write_allocation_track_relocs =
-            |w: &mut dyn Write, alloc: &Allocation| -> io::Result<()> {
+            |w: &mut dyn Write, alloc: ConstAllocation<'tcx>| -> io::Result<()> {
                 // `.rev()` because we are popping them from the back of the `todo` vector.
                 for id in alloc_ids_from_alloc(alloc).rev() {
                     if seen.insert(id) {
                         todo.push(id);
                     }
                 }
-                write!(w, "{}", display_allocation(tcx, alloc))
+                write!(w, "{}", display_allocation(tcx, alloc.inner()))
             };
         write!(w, "\n{}", id)?;
         match tcx.get_global_alloc(id) {
