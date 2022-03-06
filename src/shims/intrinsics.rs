@@ -515,6 +515,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_immediate(*val, &dest.into())?;
                 }
             }
+            #[rustfmt::skip]
+            "simd_cast" | "simd_as" => {
+                let &[ref op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                let safe_cast = intrinsic_name == "simd_as";
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
+                        // Int-to-(int|float): always safe
+                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-float: always safe
+                        (ty::Float(_), ty::Float(_)) =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-int in safe mode
+                        (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-int in unchecked mode
+                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                            this.float_to_int_unchecked(op.to_scalar()?.to_f32()?, dest.layout.ty)?.into(),
+                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                            this.float_to_int_unchecked(op.to_scalar()?.to_f64()?, dest.layout.ty)?.into(),
+                        _ =>
+                            throw_unsup_format!(
+                                "Unsupported SIMD cast from element type {} to {}",
+                                op.layout.ty,
+                                dest.layout.ty
+                            ),
+                    };
+                    this.write_immediate(val, &dest.into())?;
+                }
+            }
 
             // Atomic operations
             "atomic_load" => this.atomic_load(args, dest, AtomicReadOp::SeqCst)?,
