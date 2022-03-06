@@ -1,4 +1,5 @@
 use crate::io::prelude::*;
+use crate::mem::MaybeUninit;
 
 #[bench]
 fn bench_read_slice(b: &mut test::Bencher) {
@@ -44,7 +45,21 @@ fn bench_read_vec(b: &mut test::Bencher) {
 
 #[bench]
 fn bench_write_vec(b: &mut test::Bencher) {
-    let mut buf = Vec::with_capacity(1024);
+    let mut buf = Vec::<u8>::with_capacity(1024);
+    let src = [5; 128];
+
+    b.iter(|| {
+        let mut wr = &mut buf[..];
+        for _ in 0..8 {
+            let _ = wr.write_all(&src);
+            test::black_box(&wr);
+        }
+    })
+}
+
+#[bench]
+fn bench_write_maybeuninit(b: &mut test::Bencher) {
+    let mut buf = [MaybeUninit::<u8>::uninit(); 1024];
     let src = [5; 128];
 
     b.iter(|| {

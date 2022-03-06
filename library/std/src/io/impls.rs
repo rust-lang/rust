@@ -7,7 +7,7 @@ use crate::fmt;
 use crate::io::{
     self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
 };
-use crate::mem;
+use crate::{mem, ptr};
 
 // =============================================================================
 // Forwarding implementations
@@ -403,6 +403,62 @@ impl<A: Allocator> Write for Vec<u8, A> {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend_from_slice(buf);
         Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Write is implemented for `&mut [MaybeUninit<u8>]` by copying into the slice, overwriting
+/// its data. After a write, the sucessfully written elements are guaranteed to be initialized.
+///
+/// Note that writing updates the slice to point to the yet unwritten part.
+/// The slice will be empty when it has been completely overwritten.
+///
+/// If the number of bytes to be written exceeds the size of the slice, write operations will
+/// return short writes: ultimately, `Ok(0)`; in this situation, `write_all` returns an error of
+/// kind `ErrorKind::WriteZero`.
+#[stable(feature = "write_maybeuninit", since = "1.60.0")]
+impl Write for &mut [mem::MaybeUninit<u8>] {
+    #[inline]
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        let amt = cmp::min(data.len(), self.len());
+        let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
+        // SAFETY: since self is a mutable slice, the aliasing rules prevent overlap
+        unsafe {
+            ptr::copy_nonoverlapping(data.as_ptr(), a.as_mut_ptr() as *mut u8, amt);
+        }
+        *self = b;
+        Ok(amt)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            nwritten += self.write(buf)?;
+            if self.is_empty() {
+                break;
+            }
+        }
+
+        Ok(nwritten)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
+        if self.write(data)? == data.len() {
+            Ok(())
+        } else {
+            Err(io::const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer"))
+        }
     }
 
     #[inline]
