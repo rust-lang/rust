@@ -1,32 +1,32 @@
-SOURCE_FILE@0..34
-  FN@0..33
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..7
-      IDENT@3..7 "main"
-    PARAM_LIST@7..9
-      L_PAREN@7..8 "("
-      R_PAREN@8..9 ")"
-    WHITESPACE@9..10 " "
-    BLOCK_EXPR@10..33
-      STMT_LIST@10..33
-        L_CURLY@10..11 "{"
-        WHITESPACE@11..16 "\n    "
-        FN@16..31
-          CONST_KW@16..21 "const"
-          WHITESPACE@21..22 " "
-          FN_KW@22..24 "fn"
-          WHITESPACE@24..25 " "
-          NAME@25..26
-            IDENT@25..26 "f"
-          PARAM_LIST@26..28
-            L_PAREN@26..27 "("
-            R_PAREN@27..28 ")"
-          WHITESPACE@28..29 " "
-          BLOCK_EXPR@29..31
-            STMT_LIST@29..31
-              L_CURLY@29..30 "{"
-              R_CURLY@30..31 "}"
-        WHITESPACE@31..32 "\n"
-        R_CURLY@32..33 "}"
-  WHITESPACE@33..34 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        FN
+          CONST_KW "const"
+          WHITESPACE " "
+          FN_KW "fn"
+          WHITESPACE " "
+          NAME
+            IDENT "f"
+          PARAM_LIST
+            L_PAREN "("
+            R_PAREN ")"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

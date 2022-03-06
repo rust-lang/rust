@@ -1,19 +1,19 @@
-SOURCE_FILE@0..16
-  TYPE_ALIAS@0..15
-    TYPE_KW@0..4 "type"
-    WHITESPACE@4..5 " "
-    NAME@5..6
-      IDENT@5..6 "T"
-    WHITESPACE@6..7 " "
-    EQ@7..8 "="
-    WHITESPACE@8..9 " "
-    PAREN_TYPE@9..14
-      L_PAREN@9..10 "("
-      PATH_TYPE@10..13
-        PATH@10..13
-          PATH_SEGMENT@10..13
-            NAME_REF@10..13
-              IDENT@10..13 "i32"
-      R_PAREN@13..14 ")"
-    SEMICOLON@14..15 ";"
-  WHITESPACE@15..16 "\n"
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PAREN_TYPE
+      L_PAREN "("
+      PATH_TYPE
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "i32"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

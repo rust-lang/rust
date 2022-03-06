@@ -1,56 +1,56 @@
-SOURCE_FILE@0..43
-  STRUCT@0..11
-    STRUCT_KW@0..6 "struct"
-    WHITESPACE@6..7 " "
-    NAME@7..8
-      IDENT@7..8 "S"
-    GENERIC_PARAM_LIST@8..11
-      L_ANGLE@8..9 "<"
-      ERROR@9..11
-        INT_NUMBER@9..11 "90"
-  WHITESPACE@11..12 " "
-  ERROR@12..13
-    PLUS@12..13 "+"
-  WHITESPACE@13..14 " "
-  ERROR@14..15
-    INT_NUMBER@14..15 "2"
-  ERROR@15..16
-    R_ANGLE@15..16 ">"
-  WHITESPACE@16..17 " "
-  ERROR@17..31
-    L_CURLY@17..18 "{"
-    WHITESPACE@18..23 "\n    "
-    EXPR_STMT@23..24
-      PATH_EXPR@23..24
-        PATH@23..24
-          PATH_SEGMENT@23..24
-            NAME_REF@23..24
-              IDENT@23..24 "f"
-    ERROR@24..25
-      COLON@24..25 ":"
-    WHITESPACE@25..26 " "
-    PATH_EXPR@26..29
-      PATH@26..29
-        PATH_SEGMENT@26..29
-          NAME_REF@26..29
-            IDENT@26..29 "u32"
-    WHITESPACE@29..30 "\n"
-    R_CURLY@30..31 "}"
-  WHITESPACE@31..33 "\n\n"
-  STRUCT@33..42
-    STRUCT_KW@33..39 "struct"
-    WHITESPACE@39..40 " "
-    NAME@40..41
-      IDENT@40..41 "T"
-    SEMICOLON@41..42 ";"
-  WHITESPACE@42..43 "\n"
-error 9..9: expected type parameter
-error 11..11: expected COMMA
-error 11..11: expected R_ANGLE
-error 11..11: expected `;`, `{`, or `(`
-error 12..12: expected an item
-error 14..14: expected an item
-error 15..15: expected an item
-error 17..17: expected an item
-error 24..24: expected SEMICOLON
-error 24..24: expected expression
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      ERROR
+        INT_NUMBER "90"
+  WHITESPACE " "
+  ERROR
+    PLUS "+"
+  WHITESPACE " "
+  ERROR
+    INT_NUMBER "2"
+  ERROR
+    R_ANGLE ">"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE "\n    "
+    EXPR_STMT
+      PATH_EXPR
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "f"
+    ERROR
+      COLON ":"
+    WHITESPACE " "
+    PATH_EXPR
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE "\n"
+    R_CURLY "}"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 9: expected type parameter
+error 11: expected COMMA
+error 11: expected R_ANGLE
+error 11: expected `;`, `{`, or `(`
+error 12: expected an item
+error 14: expected an item
+error 15: expected an item
+error 17: expected an item
+error 24: expected SEMICOLON
+error 24: expected expression

@@ -1,21 +1,21 @@
-SOURCE_FILE@0..16
-  FN@0..2
-    FN_KW@0..2 "fn"
-  WHITESPACE@2..4 "\n\n"
-  FN@4..15
-    FN_KW@4..6 "fn"
-    WHITESPACE@6..7 " "
-    NAME@7..10
-      IDENT@7..10 "foo"
-    PARAM_LIST@10..12
-      L_PAREN@10..11 "("
-      R_PAREN@11..12 ")"
-    WHITESPACE@12..13 " "
-    BLOCK_EXPR@13..15
-      STMT_LIST@13..15
-        L_CURLY@13..14 "{"
-        R_CURLY@14..15 "}"
-  WHITESPACE@15..16 "\n"
-error 2..2: expected a name
-error 2..2: expected function arguments
-error 2..2: expected a block
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 2: expected a name
+error 2: expected function arguments
+error 2: expected a block

@@ -1,49 +1,49 @@
-SOURCE_FILE@0..62
-  STRUCT@0..20
-    VISIBILITY@0..10
-      PUB_KW@0..3 "pub"
-      L_PAREN@3..4 "("
-      PATH@4..9
-        PATH_SEGMENT@4..9
-          NAME_REF@4..9
-            CRATE_KW@4..9 "crate"
-      R_PAREN@9..10 ")"
-    WHITESPACE@10..11 " "
-    STRUCT_KW@11..17 "struct"
-    WHITESPACE@17..18 " "
-    NAME@18..19
-      IDENT@18..19 "S"
-    SEMICOLON@19..20 ";"
-  WHITESPACE@20..21 "\n"
-  STRUCT@21..40
-    VISIBILITY@21..30
-      PUB_KW@21..24 "pub"
-      L_PAREN@24..25 "("
-      PATH@25..29
-        PATH_SEGMENT@25..29
-          NAME_REF@25..29
-            SELF_KW@25..29 "self"
-      R_PAREN@29..30 ")"
-    WHITESPACE@30..31 " "
-    STRUCT_KW@31..37 "struct"
-    WHITESPACE@37..38 " "
-    NAME@38..39
-      IDENT@38..39 "S"
-    SEMICOLON@39..40 ";"
-  WHITESPACE@40..41 "\n"
-  STRUCT@41..61
-    VISIBILITY@41..51
-      PUB_KW@41..44 "pub"
-      L_PAREN@44..45 "("
-      PATH@45..50
-        PATH_SEGMENT@45..50
-          NAME_REF@45..50
-            SUPER_KW@45..50 "super"
-      R_PAREN@50..51 ")"
-    WHITESPACE@51..52 " "
-    STRUCT_KW@52..58 "struct"
-    WHITESPACE@58..59 " "
-    NAME@59..60
-      IDENT@59..60 "S"
-    SEMICOLON@60..61 ";"
-  WHITESPACE@61..62 "\n"
+SOURCE_FILE
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            CRATE_KW "crate"
+      R_PAREN ")"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            SELF_KW "self"
+      R_PAREN ")"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+      L_PAREN "("
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            SUPER_KW "super"
+      R_PAREN ")"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"

@@ -1,79 +1,79 @@
-SOURCE_FILE@0..71
-  TYPE_ALIAS@0..26
-    TYPE_KW@0..4 "type"
-    WHITESPACE@4..5 " "
-    NAME@5..6
-      IDENT@5..6 "X"
-    WHITESPACE@6..7 " "
-    EQ@7..8 "="
-    WHITESPACE@8..9 " "
-    PATH_TYPE@9..25
-      PATH@9..25
-        PATH@9..17
-          PATH_SEGMENT@9..17
-            L_ANGLE@9..10 "<"
-            PATH_TYPE@10..11
-              PATH@10..11
-                PATH_SEGMENT@10..11
-                  NAME_REF@10..11
-                    IDENT@10..11 "A"
-            WHITESPACE@11..12 " "
-            AS_KW@12..14 "as"
-            WHITESPACE@14..15 " "
-            PATH_TYPE@15..16
-              PATH@15..16
-                PATH_SEGMENT@15..16
-                  NAME_REF@15..16
-                    IDENT@15..16 "B"
-            R_ANGLE@16..17 ">"
-        COLON2@17..19 "::"
-        PATH_SEGMENT@19..25
-          NAME_REF@19..25
-            IDENT@19..25 "Output"
-    SEMICOLON@25..26 ";"
-  WHITESPACE@26..27 "\n"
-  FN@27..70
-    FN_KW@27..29 "fn"
-    WHITESPACE@29..30 " "
-    NAME@30..33
-      IDENT@30..33 "foo"
-    PARAM_LIST@33..35
-      L_PAREN@33..34 "("
-      R_PAREN@34..35 ")"
-    WHITESPACE@35..36 " "
-    BLOCK_EXPR@36..70
-      STMT_LIST@36..70
-        L_CURLY@36..37 "{"
-        WHITESPACE@37..38 " "
-        EXPR_STMT@38..68
-          CALL_EXPR@38..67
-            PATH_EXPR@38..65
-              PATH@38..65
-                PATH@38..56
-                  PATH_SEGMENT@38..56
-                    L_ANGLE@38..39 "<"
-                    PATH_TYPE@39..44
-                      PATH@39..44
-                        PATH_SEGMENT@39..44
-                          NAME_REF@39..44
-                            IDENT@39..44 "usize"
-                    WHITESPACE@44..45 " "
-                    AS_KW@45..47 "as"
-                    WHITESPACE@47..48 " "
-                    PATH_TYPE@48..55
-                      PATH@48..55
-                        PATH_SEGMENT@48..55
-                          NAME_REF@48..55
-                            IDENT@48..55 "Default"
-                    R_ANGLE@55..56 ">"
-                COLON2@56..58 "::"
-                PATH_SEGMENT@58..65
-                  NAME_REF@58..65
-                    IDENT@58..65 "default"
-            ARG_LIST@65..67
-              L_PAREN@65..66 "("
-              R_PAREN@66..67 ")"
-          SEMICOLON@67..68 ";"
-        WHITESPACE@68..69 " "
-        R_CURLY@69..70 "}"
-  WHITESPACE@70..71 "\n"
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "X"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            L_ANGLE "<"
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "A"
+            WHITESPACE " "
+            AS_KW "as"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "B"
+            R_ANGLE ">"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Output"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        EXPR_STMT
+          CALL_EXPR
+            PATH_EXPR
+              PATH
+                PATH
+                  PATH_SEGMENT
+                    L_ANGLE "<"
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "usize"
+                    WHITESPACE " "
+                    AS_KW "as"
+                    WHITESPACE " "
+                    PATH_TYPE
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Default"
+                    R_ANGLE ">"
+                COLON2 "::"
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "default"
+            ARG_LIST
+              L_PAREN "("
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

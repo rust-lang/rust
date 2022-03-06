@@ -1,39 +1,39 @@
-SOURCE_FILE@0..40
-  FN@0..39
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..39
-      STMT_LIST@9..39
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..15 "\n    "
-        EXPR_STMT@15..18
-          TUPLE_EXPR@15..17
-            L_PAREN@15..16 "("
-            R_PAREN@16..17 ")"
-          SEMICOLON@17..18 ";"
-        WHITESPACE@18..23 "\n    "
-        EXPR_STMT@23..27
-          PAREN_EXPR@23..26
-            L_PAREN@23..24 "("
-            LITERAL@24..25
-              INT_NUMBER@24..25 "1"
-            R_PAREN@25..26 ")"
-          SEMICOLON@26..27 ";"
-        WHITESPACE@27..32 "\n    "
-        EXPR_STMT@32..37
-          TUPLE_EXPR@32..36
-            L_PAREN@32..33 "("
-            LITERAL@33..34
-              INT_NUMBER@33..34 "1"
-            COMMA@34..35 ","
-            R_PAREN@35..36 ")"
-          SEMICOLON@36..37 ";"
-        WHITESPACE@37..38 "\n"
-        R_CURLY@38..39 "}"
-  WHITESPACE@39..40 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          TUPLE_EXPR
+            L_PAREN "("
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          PAREN_EXPR
+            L_PAREN "("
+            LITERAL
+              INT_NUMBER "1"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          TUPLE_EXPR
+            L_PAREN "("
+            LITERAL
+              INT_NUMBER "1"
+            COMMA ","
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

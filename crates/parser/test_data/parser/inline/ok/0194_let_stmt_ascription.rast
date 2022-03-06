@@ -1,31 +1,31 @@
-SOURCE_FILE@0..23
-  FN@0..22
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..4
-      IDENT@3..4 "f"
-    PARAM_LIST@4..6
-      L_PAREN@4..5 "("
-      R_PAREN@5..6 ")"
-    WHITESPACE@6..7 " "
-    BLOCK_EXPR@7..22
-      STMT_LIST@7..22
-        L_CURLY@7..8 "{"
-        WHITESPACE@8..9 " "
-        LET_STMT@9..20
-          LET_KW@9..12 "let"
-          WHITESPACE@12..13 " "
-          IDENT_PAT@13..14
-            NAME@13..14
-              IDENT@13..14 "x"
-          COLON@14..15 ":"
-          WHITESPACE@15..16 " "
-          PATH_TYPE@16..19
-            PATH@16..19
-              PATH_SEGMENT@16..19
-                NAME_REF@16..19
-                  IDENT@16..19 "i32"
-          SEMICOLON@19..20 ";"
-        WHITESPACE@20..21 " "
-        R_CURLY@21..22 "}"
-  WHITESPACE@22..23 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "x"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "i32"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"

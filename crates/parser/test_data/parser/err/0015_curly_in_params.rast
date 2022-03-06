@@ -1,24 +1,24 @@
-SOURCE_FILE@0..14
-  FN@0..7
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..7
-      L_PAREN@6..7 "("
-  ERROR@7..8
-    R_CURLY@7..8 "}"
-  ERROR@8..9
-    R_PAREN@8..9 ")"
-  WHITESPACE@9..10 " "
-  ERROR@10..13
-    L_CURLY@10..11 "{"
-    WHITESPACE@11..12 "\n"
-    R_CURLY@12..13 "}"
-  WHITESPACE@13..14 "\n"
-error 7..7: expected value parameter
-error 7..7: expected R_PAREN
-error 7..7: expected a block
-error 7..7: unmatched `}`
-error 8..8: expected an item
-error 10..10: expected an item
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+  ERROR
+    R_CURLY "}"
+  ERROR
+    R_PAREN ")"
+  WHITESPACE " "
+  ERROR
+    L_CURLY "{"
+    WHITESPACE "\n"
+    R_CURLY "}"
+  WHITESPACE "\n"
+error 7: expected value parameter
+error 7: expected R_PAREN
+error 7: expected a block
+error 7: unmatched `}`
+error 8: expected an item
+error 10: expected an item

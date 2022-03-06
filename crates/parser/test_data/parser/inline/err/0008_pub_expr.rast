@@ -1,26 +1,26 @@
-SOURCE_FILE@0..21
-  FN@0..20
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..20
-      STMT_LIST@9..20
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..11 " "
-        ERROR@11..14
-          VISIBILITY@11..14
-            PUB_KW@11..14 "pub"
-        WHITESPACE@14..15 " "
-        EXPR_STMT@15..18
-          LITERAL@15..17
-            INT_NUMBER@15..17 "92"
-          SEMICOLON@17..18 ";"
-        WHITESPACE@18..19 " "
-        R_CURLY@19..20 "}"
-  WHITESPACE@20..21 "\n"
-error 14..14: expected an item
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE " "
+        ERROR
+          VISIBILITY
+            PUB_KW "pub"
+        WHITESPACE " "
+        EXPR_STMT
+          LITERAL
+            INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE " "
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 14: expected an item

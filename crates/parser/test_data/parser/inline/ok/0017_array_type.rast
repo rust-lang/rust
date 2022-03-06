@@ -1,21 +1,21 @@
-SOURCE_FILE@0..19
-  TYPE_ALIAS@0..18
-    TYPE_KW@0..4 "type"
-    WHITESPACE@4..5 " "
-    NAME@5..6
-      IDENT@5..6 "T"
-    WHITESPACE@6..7 " "
-    EQ@7..8 "="
-    WHITESPACE@8..9 " "
-    ARRAY_TYPE@9..17
-      L_BRACK@9..10 "["
-      TUPLE_TYPE@10..12
-        L_PAREN@10..11 "("
-        R_PAREN@11..12 ")"
-      SEMICOLON@12..13 ";"
-      WHITESPACE@13..14 " "
-      LITERAL@14..16
-        INT_NUMBER@14..16 "92"
-      R_BRACK@16..17 "]"
-    SEMICOLON@17..18 ";"
-  WHITESPACE@18..19 "\n"
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    ARRAY_TYPE
+      L_BRACK "["
+      TUPLE_TYPE
+        L_PAREN "("
+        R_PAREN ")"
+      SEMICOLON ";"
+      WHITESPACE " "
+      LITERAL
+        INT_NUMBER "92"
+      R_BRACK "]"
+    SEMICOLON ";"
+  WHITESPACE "\n"

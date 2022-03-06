@@ -1,36 +1,36 @@
-SOURCE_FILE@0..47
-  FN@0..45
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..45
-      STMT_LIST@9..45
-        L_CURLY@9..10 "{"
-        WHITESPACE@10..15 "\n    "
-        EXPR_STMT@15..24
-          BLOCK_EXPR@15..23
-            ASYNC_KW@15..20 "async"
-            WHITESPACE@20..21 " "
-            STMT_LIST@21..23
-              L_CURLY@21..22 "{"
-              R_CURLY@22..23 "}"
-          SEMICOLON@23..24 ";"
-        WHITESPACE@24..29 "\n    "
-        EXPR_STMT@29..43
-          BLOCK_EXPR@29..42
-            ASYNC_KW@29..34 "async"
-            WHITESPACE@34..35 " "
-            MOVE_KW@35..39 "move"
-            WHITESPACE@39..40 " "
-            STMT_LIST@40..42
-              L_CURLY@40..41 "{"
-              R_CURLY@41..42 "}"
-          SEMICOLON@42..43 ";"
-        WHITESPACE@43..44 "\n"
-        R_CURLY@44..45 "}"
-  WHITESPACE@45..47 "\n\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            ASYNC_KW "async"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n\n"

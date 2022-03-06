@@ -1,79 +1,79 @@
-SOURCE_FILE@0..87
-  IMPL@0..12
-    IMPL_KW@0..4 "impl"
-    WHITESPACE@4..5 " "
-    PATH_TYPE@5..9
-      PATH@5..9
-        PATH_SEGMENT@5..9
-          NAME_REF@5..9
-            IDENT@5..9 "Type"
-    WHITESPACE@9..10 " "
-    ASSOC_ITEM_LIST@10..12
-      L_CURLY@10..11 "{"
-      R_CURLY@11..12 "}"
-  WHITESPACE@12..13 "\n"
-  IMPL@13..33
-    IMPL_KW@13..17 "impl"
-    WHITESPACE@17..18 " "
-    PATH_TYPE@18..24
-      PATH@18..24
-        PATH_SEGMENT@18..24
-          NAME_REF@18..24
-            IDENT@18..24 "Trait1"
-    WHITESPACE@24..25 " "
-    FOR_KW@25..28 "for"
-    WHITESPACE@28..29 " "
-    PATH_TYPE@29..30
-      PATH@29..30
-        PATH_SEGMENT@29..30
-          NAME_REF@29..30
-            IDENT@29..30 "T"
-    WHITESPACE@30..31 " "
-    ASSOC_ITEM_LIST@31..33
-      L_CURLY@31..32 "{"
-      R_CURLY@32..33 "}"
-  WHITESPACE@33..34 "\n"
-  IMPL@34..38
-    IMPL_KW@34..38 "impl"
-  WHITESPACE@38..39 " "
-  IMPL@39..54
-    IMPL_KW@39..43 "impl"
-    WHITESPACE@43..44 " "
-    PATH_TYPE@44..51
-      PATH@44..51
-        PATH_SEGMENT@44..51
-          NAME_REF@44..51
-            IDENT@44..51 "NotType"
-    WHITESPACE@51..52 " "
-    ASSOC_ITEM_LIST@52..54
-      L_CURLY@52..53 "{"
-      R_CURLY@53..54 "}"
-  WHITESPACE@54..55 "\n"
-  IMPL@55..70
-    IMPL_KW@55..59 "impl"
-    WHITESPACE@59..60 " "
-    PATH_TYPE@60..66
-      PATH@60..66
-        PATH_SEGMENT@60..66
-          NAME_REF@60..66
-            IDENT@60..66 "Trait2"
-    WHITESPACE@66..67 " "
-    FOR_KW@67..70 "for"
-  WHITESPACE@70..71 " "
-  IMPL@71..86
-    IMPL_KW@71..75 "impl"
-    WHITESPACE@75..76 " "
-    PATH_TYPE@76..83
-      PATH@76..83
-        PATH_SEGMENT@76..83
-          NAME_REF@76..83
-            IDENT@76..83 "NotType"
-    WHITESPACE@83..84 " "
-    ASSOC_ITEM_LIST@84..86
-      L_CURLY@84..85 "{"
-      R_CURLY@85..86 "}"
-  WHITESPACE@86..87 "\n"
-error 38..38: expected trait or type
-error 38..38: expected `{`
-error 70..70: expected trait or type
-error 70..70: expected `{`
+SOURCE_FILE
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Type"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Trait1"
+    WHITESPACE " "
+    FOR_KW "for"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+  WHITESPACE " "
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "NotType"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Trait2"
+    WHITESPACE " "
+    FOR_KW "for"
+  WHITESPACE " "
+  IMPL
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "NotType"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+error 38: expected trait or type
+error 38: expected `{`
+error 70: expected trait or type
+error 70: expected `{`

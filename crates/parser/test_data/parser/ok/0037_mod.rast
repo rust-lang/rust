@@ -1,16 +1,16 @@
-SOURCE_FILE@0..93
-  COMMENT@0..60 "// https://github.com ..."
-  WHITESPACE@60..62 "\n\n"
-  COMMENT@62..70 "//! docs"
-  WHITESPACE@70..71 "\n"
-  MODULE@71..93
-    COMMENT@71..82 "// non-docs"
-    WHITESPACE@82..83 "\n"
-    MOD_KW@83..86 "mod"
-    WHITESPACE@86..87 " "
-    NAME@87..90
-      IDENT@87..90 "foo"
-    WHITESPACE@90..91 " "
-    ITEM_LIST@91..93
-      L_CURLY@91..92 "{"
-      R_CURLY@92..93 "}"
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-analyzer/rust-analyzer/issues/357"
+  WHITESPACE "\n\n"
+  COMMENT "//! docs"
+  WHITESPACE "\n"
+  MODULE
+    COMMENT "// non-docs"
+    WHITESPACE "\n"
+    MOD_KW "mod"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"

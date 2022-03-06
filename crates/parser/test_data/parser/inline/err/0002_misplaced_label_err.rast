@@ -1,28 +1,28 @@
-SOURCE_FILE@0..30
-  FN@0..29
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..7
-      IDENT@3..7 "main"
-    PARAM_LIST@7..9
-      L_PAREN@7..8 "("
-      R_PAREN@8..9 ")"
-    WHITESPACE@9..10 " "
-    BLOCK_EXPR@10..29
-      STMT_LIST@10..29
-        L_CURLY@10..11 "{"
-        WHITESPACE@11..16 "\n    "
-        ERROR@16..22
-          LABEL@16..22
-            LIFETIME@16..21
-              LIFETIME_IDENT@16..21 "'loop"
-            COLON@21..22 ":"
-        WHITESPACE@22..23 " "
-        IMPL@23..27
-          IMPL_KW@23..27 "impl"
-        WHITESPACE@27..28 "\n"
-        R_CURLY@28..29 "}"
-  WHITESPACE@29..30 "\n"
-error 22..22: expected a loop
-error 27..27: expected type
-error 27..27: expected `{`
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        ERROR
+          LABEL
+            LIFETIME
+              LIFETIME_IDENT "'loop"
+            COLON ":"
+        WHITESPACE " "
+        IMPL
+          IMPL_KW "impl"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 22: expected a loop
+error 27: expected type
+error 27: expected `{`

@@ -1,38 +1,38 @@
-SOURCE_FILE@0..28
-  FN@0..27
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    GENERIC_PARAM_LIST@6..23
-      L_ANGLE@6..7 "<"
-      TYPE_PARAM@7..22
-        NAME@7..8
-          IDENT@7..8 "T"
-        COLON@8..9 ":"
-        WHITESPACE@9..10 " "
-        TYPE_BOUND_LIST@10..22
-          TYPE_BOUND@10..15
-            PATH_TYPE@10..15
-              PATH@10..15
-                PATH_SEGMENT@10..15
-                  NAME_REF@10..15
-                    IDENT@10..15 "Clone"
-          WHITESPACE@15..16 " "
-          PLUS@16..17 "+"
-          WHITESPACE@17..18 " "
-          TYPE_BOUND@18..22
-            PATH_TYPE@18..22
-              PATH@18..22
-                PATH_SEGMENT@18..22
-                  NAME_REF@18..22
-                    IDENT@18..22 "Copy"
-      R_ANGLE@22..23 ">"
-    PARAM_LIST@23..25
-      L_PAREN@23..24 "("
-      R_PAREN@24..25 ")"
-    BLOCK_EXPR@25..27
-      STMT_LIST@25..27
-        L_CURLY@25..26 "{"
-        R_CURLY@26..27 "}"
-  WHITESPACE@27..28 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Clone"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+      R_ANGLE ">"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"

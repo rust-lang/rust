@@ -1,31 +1,31 @@
-SOURCE_FILE@0..30
-  TRAIT@0..29
-    TRAIT_KW@0..5 "trait"
-    WHITESPACE@5..6 " "
-    NAME@6..7
-      IDENT@6..7 "T"
-    WHITESPACE@7..8 " "
-    ASSOC_ITEM_LIST@8..29
-      L_CURLY@8..9 "{"
-      WHITESPACE@9..10 " "
-      FN@10..27
-        FN_KW@10..12 "fn"
-        WHITESPACE@12..13 " "
-        NAME@13..16
-          IDENT@13..16 "new"
-        PARAM_LIST@16..18
-          L_PAREN@16..17 "("
-          R_PAREN@17..18 ")"
-        WHITESPACE@18..19 " "
-        RET_TYPE@19..26
-          THIN_ARROW@19..21 "->"
-          WHITESPACE@21..22 " "
-          PATH_TYPE@22..26
-            PATH@22..26
-              PATH_SEGMENT@22..26
-                NAME_REF@22..26
-                  IDENT@22..26 "Self"
-        SEMICOLON@26..27 ";"
-      WHITESPACE@27..28 " "
-      R_CURLY@28..29 "}"
-  WHITESPACE@29..30 "\n"
+SOURCE_FILE
+  TRAIT
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      FN
+        FN_KW "fn"
+        WHITESPACE " "
+        NAME
+          IDENT "new"
+        PARAM_LIST
+          L_PAREN "("
+          R_PAREN ")"
+        WHITESPACE " "
+        RET_TYPE
+          THIN_ARROW "->"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  SELF_TYPE_KW "Self"
+        SEMICOLON ";"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n"

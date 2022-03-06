@@ -1,44 +1,44 @@
-SOURCE_FILE@0..94
-  FN@0..55
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..7
-      IDENT@3..7 "main"
-    PARAM_LIST@7..9
-      L_PAREN@7..8 "("
-      R_PAREN@8..9 ")"
-    WHITESPACE@9..10 " "
-    BLOCK_EXPR@10..55
-      STMT_LIST@10..55
-        L_CURLY@10..11 "{"
-        WHITESPACE@11..16 "\n    "
-        MACRO_CALL@16..49
-          PATH@16..19
-            PATH_SEGMENT@16..19
-              NAME_REF@16..19
-                IDENT@16..19 "foo"
-          BANG@19..20 "!"
-          WHITESPACE@20..21 " "
-          TOKEN_TREE@21..49
-            L_PAREN@21..22 "("
-            WHITESPACE@22..31 "\n        "
-            IDENT@31..34 "bar"
-            COMMA@34..35 ","
-            WHITESPACE@35..36 " "
-            STRING@36..41 "\"baz\""
-            COMMA@41..42 ","
-            WHITESPACE@42..43 " "
-            INT_NUMBER@43..44 "1"
-            COMMA@44..45 ","
-            WHITESPACE@45..46 " "
-            FLOAT_NUMBER@46..49 "2.0"
-        WHITESPACE@49..54 "\n    "
-        R_CURLY@54..55 "}"
-  WHITESPACE@55..56 " "
-  COMMENT@56..91 "//~ ERROR incorrect c ..."
-  WHITESPACE@91..92 "\n"
-  ERROR@92..93
-    R_CURLY@92..93 "}"
-  WHITESPACE@93..94 "\n"
-error 49..49: unmatched `}`
-error 92..92: unmatched `}`
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "main"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        MACRO_CALL
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "foo"
+          BANG "!"
+          WHITESPACE " "
+          TOKEN_TREE
+            L_PAREN "("
+            WHITESPACE "\n        "
+            IDENT "bar"
+            COMMA ","
+            WHITESPACE " "
+            STRING "\"baz\""
+            COMMA ","
+            WHITESPACE " "
+            INT_NUMBER "1"
+            COMMA ","
+            WHITESPACE " "
+            FLOAT_NUMBER "2.0"
+        WHITESPACE "\n    "
+        R_CURLY "}"
+  WHITESPACE " "
+  COMMENT "//~ ERROR incorrect close delimiter"
+  WHITESPACE "\n"
+  ERROR
+    R_CURLY "}"
+  WHITESPACE "\n"
+error 49: unmatched `}`
+error 92: unmatched `}`

@@ -1,18 +1,18 @@
-SOURCE_FILE@0..21
-  ERROR@0..2
-    IF_KW@0..2 "if"
-  WHITESPACE@2..3 " "
-  ERROR@3..8
-    MATCH_KW@3..8 "match"
-  WHITESPACE@8..10 "\n\n"
-  STRUCT@10..21
-    STRUCT_KW@10..16 "struct"
-    WHITESPACE@16..17 " "
-    NAME@17..18
-      IDENT@17..18 "S"
-    WHITESPACE@18..19 " "
-    RECORD_FIELD_LIST@19..21
-      L_CURLY@19..20 "{"
-      R_CURLY@20..21 "}"
-error 0..0: expected an item
-error 3..3: expected an item
+SOURCE_FILE
+  ERROR
+    IF_KW "if"
+  WHITESPACE " "
+  ERROR
+    MATCH_KW "match"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+error 0: expected an item
+error 3: expected an item

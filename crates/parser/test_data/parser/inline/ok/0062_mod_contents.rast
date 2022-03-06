@@ -1,65 +1,65 @@
-SOURCE_FILE@0..70
-  FN@0..11
-    FN_KW@0..2 "fn"
-    WHITESPACE@2..3 " "
-    NAME@3..6
-      IDENT@3..6 "foo"
-    PARAM_LIST@6..8
-      L_PAREN@6..7 "("
-      R_PAREN@7..8 ")"
-    WHITESPACE@8..9 " "
-    BLOCK_EXPR@9..11
-      STMT_LIST@9..11
-        L_CURLY@9..10 "{"
-        R_CURLY@10..11 "}"
-  WHITESPACE@11..12 "\n"
-  MACRO_RULES@12..31
-    MACRO_RULES_KW@12..23 "macro_rules"
-    BANG@23..24 "!"
-    WHITESPACE@24..25 " "
-    NAME@25..28
-      IDENT@25..28 "foo"
-    WHITESPACE@28..29 " "
-    TOKEN_TREE@29..31
-      L_CURLY@29..30 "{"
-      R_CURLY@30..31 "}"
-  WHITESPACE@31..32 "\n"
-  MACRO_CALL@32..44
-    PATH@32..40
-      PATH@32..35
-        PATH_SEGMENT@32..35
-          NAME_REF@32..35
-            IDENT@32..35 "foo"
-      COLON2@35..37 "::"
-      PATH_SEGMENT@37..40
-        NAME_REF@37..40
-          IDENT@37..40 "bar"
-    BANG@40..41 "!"
-    TOKEN_TREE@41..43
-      L_PAREN@41..42 "("
-      R_PAREN@42..43 ")"
-    SEMICOLON@43..44 ";"
-  WHITESPACE@44..45 "\n"
-  MACRO_CALL@45..59
-    PATH@45..55
-      PATH@45..50
-        PATH_SEGMENT@45..50
-          NAME_REF@45..50
-            SUPER_KW@45..50 "super"
-      COLON2@50..52 "::"
-      PATH_SEGMENT@52..55
-        NAME_REF@52..55
-          IDENT@52..55 "baz"
-    BANG@55..56 "!"
-    WHITESPACE@56..57 " "
-    TOKEN_TREE@57..59
-      L_CURLY@57..58 "{"
-      R_CURLY@58..59 "}"
-  WHITESPACE@59..60 "\n"
-  STRUCT@60..69
-    STRUCT_KW@60..66 "struct"
-    WHITESPACE@66..67 " "
-    NAME@67..68
-      IDENT@67..68 "S"
-    SEMICOLON@68..69 ";"
-  WHITESPACE@69..70 "\n"
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  MACRO_RULES
+    MACRO_RULES_KW "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  MACRO_CALL
+    PATH
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "foo"
+      COLON2 "::"
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "bar"
+    BANG "!"
+    TOKEN_TREE
+      L_PAREN "("
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  MACRO_CALL
+    PATH
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            SUPER_KW "super"
+      COLON2 "::"
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "baz"
+    BANG "!"
+    WHITESPACE " "
+    TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S"
+    SEMICOLON ";"
+  WHITESPACE "\n"

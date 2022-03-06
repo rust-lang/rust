@@ -16,7 +16,7 @@ use crate::{LexedStr, TopEntryPoint};
 fn lex_ok() {
     for case in TestCase::list("lexer/ok") {
         let actual = lex(&case.text);
-        expect_file![case.txt].assert_eq(&actual)
+        expect_file![case.rast].assert_eq(&actual)
     }
 }
 
@@ -24,7 +24,7 @@ fn lex_ok() {
 fn lex_err() {
     for case in TestCase::list("lexer/err") {
         let actual = lex(&case.text);
-        expect_file![case.txt].assert_eq(&actual)
+        expect_file![case.rast].assert_eq(&actual)
     }
 }
 
@@ -48,7 +48,7 @@ fn parse_ok() {
     for case in TestCase::list("parser/ok") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
-        expect_file![case.txt].assert_eq(&actual);
+        expect_file![case.rast].assert_eq(&actual);
     }
 }
 
@@ -57,7 +57,7 @@ fn parse_inline_ok() {
     for case in TestCase::list("parser/inline/ok") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(!errors, "errors in an OK file {}:\n{}", case.rs.display(), actual);
-        expect_file![case.txt].assert_eq(&actual);
+        expect_file![case.rast].assert_eq(&actual);
     }
 }
 
@@ -66,7 +66,7 @@ fn parse_err() {
     for case in TestCase::list("parser/err") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
-        expect_file![case.txt].assert_eq(&actual)
+        expect_file![case.rast].assert_eq(&actual)
     }
 }
 
@@ -75,7 +75,7 @@ fn parse_inline_err() {
     for case in TestCase::list("parser/inline/err") {
         let (actual, errors) = parse(TopEntryPoint::SourceFile, &case.text);
         assert!(errors, "no errors in an ERR file {}:\n{}", case.rs.display(), actual);
-        expect_file![case.txt].assert_eq(&actual)
+        expect_file![case.rast].assert_eq(&actual)
     }
 }
 
@@ -137,7 +137,7 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct TestCase {
     rs: PathBuf,
-    txt: PathBuf,
+    rast: PathBuf,
     text: String,
 }
 
@@ -155,9 +155,9 @@ impl TestCase {
             let path = file.path();
             if path.extension().unwrap_or_default() == "rs" {
                 let rs = path;
-                let txt = rs.with_extension("txt");
+                let rast = rs.with_extension("rast");
                 let text = fs::read_to_string(&rs).unwrap();
-                res.push(TestCase { rs, txt, text });
+                res.push(TestCase { rs, rast, text });
             }
         }
         res.sort();

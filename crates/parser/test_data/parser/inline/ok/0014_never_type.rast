@@ -1,13 +1,13 @@
-SOURCE_FILE@0..16
-  TYPE_ALIAS@0..15
-    TYPE_KW@0..4 "type"
-    WHITESPACE@4..5 " "
-    NAME@5..10
-      IDENT@5..10 "Never"
-    WHITESPACE@10..11 " "
-    EQ@11..12 "="
-    WHITESPACE@12..13 " "
-    NEVER_TYPE@13..14
-      BANG@13..14 "!"
-    SEMICOLON@14..15 ";"
-  WHITESPACE@15..16 "\n"
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Never"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    NEVER_TYPE
+      BANG "!"
+    SEMICOLON ";"
+  WHITESPACE "\n"

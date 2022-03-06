@@ -1,13 +1,13 @@
-SOURCE_FILE@0..19
-  ERROR@0..6
-    ABI@0..6
-      EXTERN_KW@0..6 "extern"
-  WHITESPACE@6..7 " "
-  STRUCT@7..18
-    STRUCT_KW@7..13 "struct"
-    WHITESPACE@13..14 " "
-    NAME@14..17
-      IDENT@14..17 "Foo"
-    SEMICOLON@17..18 ";"
-  WHITESPACE@18..19 "\n"
-error 6..6: expected existential, fn, trait or impl
+SOURCE_FILE
+  ERROR
+    ABI
+      EXTERN_KW "extern"
+  WHITESPACE " "
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 6: expected existential, fn, trait or impl
