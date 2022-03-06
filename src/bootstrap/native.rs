@@ -650,8 +650,16 @@ impl Step for Lld {
         // there's probably a lot of reasons you can't do that other than this.
         let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
 
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for lld.
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+
         cfg.out_dir(&out_dir)
-            .profile("Release")
+            .profile(profile)
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
