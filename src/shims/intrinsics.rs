@@ -371,7 +371,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_lt"
             | "simd_le"
             | "simd_gt"
-            | "simd_ge" => {
+            | "simd_ge"
+            | "simd_fmax"
+            | "simd_fmin" => {
                 use mir::BinOp;
 
                 let &[ref left, ref right] = check_arg_count(args)?;
@@ -382,23 +384,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
 
-                let mir_op = match intrinsic_name {
-                    "simd_add" => BinOp::Add,
-                    "simd_sub" => BinOp::Sub,
-                    "simd_mul" => BinOp::Mul,
-                    "simd_div" => BinOp::Div,
-                    "simd_rem" => BinOp::Rem,
-                    "simd_shl" => BinOp::Shl,
-                    "simd_shr" => BinOp::Shr,
-                    "simd_and" => BinOp::BitAnd,
-                    "simd_or" => BinOp::BitOr,
-                    "simd_xor" => BinOp::BitXor,
-                    "simd_eq" => BinOp::Eq,
-                    "simd_ne" => BinOp::Ne,
-                    "simd_lt" => BinOp::Lt,
-                    "simd_le" => BinOp::Le,
-                    "simd_gt" => BinOp::Gt,
-                    "simd_ge" => BinOp::Ge,
+                enum Op {
+                    MirOp(BinOp),
+                    FMax,
+                    FMin,
+                }
+                let which = match intrinsic_name {
+                    "simd_add" => Op::MirOp(BinOp::Add),
+                    "simd_sub" => Op::MirOp(BinOp::Sub),
+                    "simd_mul" => Op::MirOp(BinOp::Mul),
+                    "simd_div" => Op::MirOp(BinOp::Div),
+                    "simd_rem" => Op::MirOp(BinOp::Rem),
+                    "simd_shl" => Op::MirOp(BinOp::Shl),
+                    "simd_shr" => Op::MirOp(BinOp::Shr),
+                    "simd_and" => Op::MirOp(BinOp::BitAnd),
+                    "simd_or" => Op::MirOp(BinOp::BitOr),
+                    "simd_xor" => Op::MirOp(BinOp::BitXor),
+                    "simd_eq" => Op::MirOp(BinOp::Eq),
+                    "simd_ne" => Op::MirOp(BinOp::Ne),
+                    "simd_lt" => Op::MirOp(BinOp::Lt),
+                    "simd_le" => Op::MirOp(BinOp::Le),
+                    "simd_gt" => Op::MirOp(BinOp::Gt),
+                    "simd_ge" => Op::MirOp(BinOp::Ge),
+                    "simd_fmax" => Op::FMax,
+                    "simd_fmin" => Op::FMin,
                     _ => unreachable!(),
                 };
 
@@ -406,26 +415,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
-                    let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
-                    if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
-                        // Shifts have extra UB as SIMD operations that the MIR binop does not have.
-                        // See <https://github.com/rust-lang/rust/issues/91237>.
-                        if overflowed {
-                            let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
-                            throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                    let val = match which {
+                        Op::MirOp(mir_op) => {
+                            let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                            if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
+                                // Shifts have extra UB as SIMD operations that the MIR binop does not have.
+                                // See <https://github.com/rust-lang/rust/issues/91237>.
+                                if overflowed {
+                                    let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
+                                    throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                                }
+                            }
+                            if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
+                                // Special handling for boolean-returning operations
+                                assert_eq!(ty, this.tcx.types.bool);
+                                let val = val.to_bool().unwrap();
+                                bool_to_simd_element(val, dest.layout.size)
+                            } else {
+                                assert_ne!(ty, this.tcx.types.bool);
+                                assert_eq!(ty, dest.layout.ty);
+                                val
+                            }
                         }
-                    }
-                    if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
-                        // Special handling for boolean-returning operations
-                        assert_eq!(ty, this.tcx.types.bool);
-                        let val = val.to_bool().unwrap();
-                        let val = bool_to_simd_element(val, dest.layout.size);
-                        this.write_scalar(val, &dest.into())?;
-                    } else {
-                        assert_ne!(ty, this.tcx.types.bool);
-                        assert_eq!(ty, dest.layout.ty);
-                        this.write_scalar(val, &dest.into())?;
-                    }
+                        Op::FMax => {
+                            assert!(matches!(dest.layout.ty.kind(), ty::Float(_)));
+                            this.max_op(&left, &right)?.to_scalar()?
+                        }
+                        Op::FMin => {
+                            assert!(matches!(dest.layout.ty.kind(), ty::Float(_)));
+                            this.min_op(&left, &right)?.to_scalar()?
+                        }
+                    };
+                    this.write_scalar(val, &dest.into())?;
                 }
             }
             #[rustfmt::skip]
@@ -478,24 +499,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             this.binary_op(mir_op, &res, &op)?
                         }
                         Op::Max => {
-                            // if `op > res`...
-                            if this.binary_op(BinOp::Gt, &op, &res)?.to_scalar()?.to_bool()? {
-                                // update accumulator
-                                op
-                            } else {
-                                // no change
-                                res
-                            }
+                            this.max_op(&res, &op)?
                         }
                         Op::Min => {
-                            // if `op < res`...
-                            if this.binary_op(BinOp::Lt, &op, &res)?.to_scalar()?.to_bool()? {
-                                // update accumulator
-                                op
-                            } else {
-                                // no change
-                                res
-                            }
+                            this.min_op(&res, &op)?
                         }
                     };
                 }
@@ -1069,6 +1076,32 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
             // Nothing else
             _ => bug!("`float_to_int_unchecked` called with non-int output type {:?}", dest_ty),
+        })
+    }
+
+    fn max_op(
+        &self,
+        left: &ImmTy<'tcx, Tag>,
+        right: &ImmTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+        let this = self.eval_context_ref();
+        Ok(if this.binary_op(BinOp::Gt, left, right)?.to_scalar()?.to_bool()? {
+            *left
+        } else {
+            *right
+        })
+    }
+
+    fn min_op(
+        &self,
+        left: &ImmTy<'tcx, Tag>,
+        right: &ImmTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
+        let this = self.eval_context_ref();
+        Ok(if this.binary_op(BinOp::Lt, left, right)?.to_scalar()?.to_bool()? {
+            *left
+        } else {
+            *right
         })
     }
 }

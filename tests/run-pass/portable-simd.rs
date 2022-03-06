@@ -12,6 +12,8 @@ fn simd_ops_f32() {
     assert_eq!(a / f32x4::splat(2.0), f32x4::splat(5.0));
     assert_eq!(a % b, f32x4::from_array([0.0, 0.0, 1.0, 2.0]));
     assert_eq!(b.abs(), f32x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    assert_eq!(a.max(b * f32x4::splat(4.0)), f32x4::from_array([10.0, 10.0, 12.0, 10.0]));
+    assert_eq!(a.min(b * f32x4::splat(4.0)), f32x4::from_array([4.0, 8.0, 10.0, -16.0]));
 
     assert_eq!(a.lanes_eq(f32x4::splat(5.0) * b), Mask::from_array([false, true, false, false]));
     assert_eq!(a.lanes_ne(f32x4::splat(5.0) * b), Mask::from_array([true, false, true, true]));
@@ -41,6 +43,8 @@ fn simd_ops_f64() {
     assert_eq!(a / f64x4::splat(2.0), f64x4::splat(5.0));
     assert_eq!(a % b, f64x4::from_array([0.0, 0.0, 1.0, 2.0]));
     assert_eq!(b.abs(), f64x4::from_array([1.0, 2.0, 3.0, 4.0]));
+    assert_eq!(a.max(b * f64x4::splat(4.0)), f64x4::from_array([10.0, 10.0, 12.0, 10.0]));
+    assert_eq!(a.min(b * f64x4::splat(4.0)), f64x4::from_array([4.0, 8.0, 10.0, -16.0]));
 
     assert_eq!(a.lanes_eq(f64x4::splat(5.0) * b), Mask::from_array([false, true, false, false]));
     assert_eq!(a.lanes_ne(f64x4::splat(5.0) * b), Mask::from_array([true, false, true, true]));
@@ -71,6 +75,12 @@ fn simd_ops_i32() {
     assert_eq!(i32x2::splat(i32::MIN) / i32x2::splat(-1), i32x2::splat(i32::MIN));
     assert_eq!(a % b, i32x4::from_array([0, 0, 1, 2]));
     assert_eq!(i32x2::splat(i32::MIN) % i32x2::splat(-1), i32x2::splat(0));
+    assert_eq!(b.abs(), i32x4::from_array([1, 2, 3, 4]));
+    // FIXME not a per-lane method (https://github.com/rust-lang/rust/issues/94682)
+    // assert_eq!(a.max(b * i32x4::splat(4)), i32x4::from_array([10, 10, 12, 10]));
+    // assert_eq!(a.min(b * i32x4::splat(4)), i32x4::from_array([4, 8, 10, -16]));
+
+    assert_eq!(!b, i32x4::from_array([!1, !2, !3, !-4]));
     assert_eq!(b << i32x4::splat(2), i32x4::from_array([4, 8, 12, -16]));
     assert_eq!(b >> i32x4::splat(1), i32x4::from_array([0, 1, 1, -2]));
     assert_eq!(b & i32x4::splat(2), i32x4::from_array([0, 2, 2, 0]));
@@ -84,12 +94,6 @@ fn simd_ops_i32() {
     assert_eq!(a.lanes_ge(i32x4::splat(5) * b), Mask::from_array([true, true, false, true]));
     assert_eq!(a.lanes_gt(i32x4::splat(5) * b), Mask::from_array([true, false, false, true]));
 
-    assert_eq!(a.horizontal_and(), 10);
-    assert_eq!(b.horizontal_and(), 0);
-    assert_eq!(a.horizontal_or(), 10);
-    assert_eq!(b.horizontal_or(), -1);
-    assert_eq!(a.horizontal_xor(), 0);
-    assert_eq!(b.horizontal_xor(), -4);
     assert_eq!(a.horizontal_sum(), 40);
     assert_eq!(b.horizontal_sum(), 2);
     assert_eq!(a.horizontal_product(), 100 * 100);
@@ -98,6 +102,13 @@ fn simd_ops_i32() {
     assert_eq!(b.horizontal_max(), 3);
     assert_eq!(a.horizontal_min(), 10);
     assert_eq!(b.horizontal_min(), -4);
+
+    assert_eq!(a.horizontal_and(), 10);
+    assert_eq!(b.horizontal_and(), 0);
+    assert_eq!(a.horizontal_or(), 10);
+    assert_eq!(b.horizontal_or(), -1);
+    assert_eq!(a.horizontal_xor(), 0);
+    assert_eq!(b.horizontal_xor(), -4);
 }
 
 fn simd_mask() {
