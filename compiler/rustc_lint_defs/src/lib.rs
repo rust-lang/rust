@@ -54,7 +54,7 @@ pub enum Applicability {
 /// Expected `Diagnostic`s get the lint level `Expect` which stores the `LintExpectationId`
 /// to match it with the actual expectation later on.
 ///
-/// The `LintExpectationId` has to be has stable between compilations, as diagnostic
+/// The `LintExpectationId` has to be stable between compilations, as diagnostic
 /// instances might be loaded from cache. Lint messages can be emitted during an
 /// `EarlyLintPass` operating on the AST and during a `LateLintPass` traversing the
 /// HIR tree. The AST doesn't have enough information to create a stable id. The
@@ -71,7 +71,7 @@ pub enum Applicability {
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable)]
 pub enum LintExpectationId {
     /// Used for lints emitted during the `EarlyLintPass`. This id is not
-    /// has stable and should not be cached.
+    /// hash stable and should not be cached.
     Unstable { attr_id: AttrId, lint_index: Option<u16> },
     /// The [`HirId`] that the lint expectation is attached to. This id is
     /// stable and can be cached. The additional index ensures that nodes with
@@ -113,7 +113,9 @@ impl<HCX: rustc_hir::HashStableContext> HashStable<HCX> for LintExpectationId {
                 lint_index.hash_stable(hcx, hasher);
             }
             _ => {
-                unreachable!("HashStable should only be called for a filled `LintExpectationId`")
+                unreachable!(
+                    "HashStable should only be called for filled and stable `LintExpectationId`"
+                )
             }
         }
     }
