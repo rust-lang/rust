@@ -127,17 +127,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         // Shift ops can have an RHS with a different numeric type.
         if bin_op == Shl || bin_op == Shr {
-            let signed = left_layout.abi.is_signed();
             let size = u128::from(left_layout.size.bits());
+            // Even if `r` is signed, we treat it as if it was unsigned (i.e., we use its
+            // zero-extended form). This matches the codegen backend:
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/base.rs#L315-L317>.
+            // The overflow check is also ignorant to the sign:
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/mir/rvalue.rs#L728>.
+            // This would behave rather strangely if we had integer types of size 256: a shift by
+            // -1i8 would actually shift by 255, but that would *not* be considered overflowing. A
+            // shift by -1i16 though would be considered overflowing. If we had integers of size
+            // 512, then a shift by -1i8 would even produce a different result than one by -1i16:
+            // the first shifts by 255, the latter by u16::MAX % 512 = 511. Lucky enough, our
+            // integers are maximally 128bits wide, so negative shifts *always* overflow and we have
+            // consistent results for the same value represented at different bit widths.
+            assert!(size <= 128);
             let overflow = r >= size;
             // The shift offset is implicitly masked to the type size, to make sure this operation
             // is always defined. This is the one MIR operator that does *not* directly map to a
             // single LLVM operation. See
-            // <https://github.com/rust-lang/rust/blob/a3b9405ae7bb6ab4e8103b414e75c44598a10fd2/compiler/rustc_codegen_ssa/src/common.rs#L131-L158>
+            // <https://github.com/rust-lang/rust/blob/c274e4969f058b1c644243181ece9f829efa7594/compiler/rustc_codegen_ssa/src/common.rs#L131-L158>
             // for the corresponding truncation in our codegen backends.
             let r = r % size;
             let r = u32::try_from(r).unwrap(); // we masked so this will always fit
-            let result = if signed {
+            let result = if left_layout.abi.is_signed() {
                 let l = self.sign_extend(l, left_layout) as i128;
                 let result = match bin_op {
                     Shl => l.checked_shl(r).unwrap(),
