@@ -382,7 +382,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
 
-                let op = match intrinsic_name {
+                let mir_op = match intrinsic_name {
                     "simd_add" => BinOp::Add,
                     "simd_sub" => BinOp::Sub,
                     "simd_mul" => BinOp::Mul,
@@ -406,8 +406,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
-                    let (val, overflowed, ty) = this.overflowing_binary_op(op, &left, &right)?;
-                    if matches!(op, BinOp::Shl | BinOp::Shr) {
+                    let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                    if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
                         // Shifts have extra UB as SIMD operations that the MIR binop does not have.
                         // See <https://github.com/rust-lang/rust/issues/91237>.
                         if overflowed {
@@ -415,7 +415,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
                         }
                     }
-                    if matches!(op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
+                    if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
                         // Special handling for boolean-returning operations
                         assert_eq!(ty, this.tcx.types.bool);
                         let val = val.to_bool().unwrap();
@@ -469,7 +469,28 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         }
                     };
                 }
+                this.write_immediate(*res, dest)?;
+            }
+            #[rustfmt::skip]
+            | "simd_reduce_add_ordered"
+            | "simd_reduce_mul_ordered" => {
+                use mir::BinOp;
 
+                let &[ref op, ref init] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let init = this.read_immediate(init)?;
+
+                let mir_op = match intrinsic_name {
+                    "simd_reduce_add_ordered" => BinOp::Add,
+                    "simd_reduce_mul_ordered" => BinOp::Mul,
+                    _ => unreachable!(),
+                };
+
+                let mut res = init;
+                for i in 0..op_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    res = this.binary_op(mir_op, &res, &op)?;
+                }
                 this.write_immediate(*res, dest)?;
             }
             "simd_select" => {
