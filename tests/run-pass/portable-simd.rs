@@ -20,6 +20,11 @@ fn simd_ops_f32() {
     assert_eq!(a.lanes_lt(f32x4::splat(5.0)*b), Mask::from_int(i32x4::from_array([0, 0, -1, 0])));
     assert_eq!(a.lanes_ge(f32x4::splat(5.0)*b), Mask::from_int(i32x4::from_array([-1, -1, 0, -1])));
     assert_eq!(a.lanes_gt(f32x4::splat(5.0)*b), Mask::from_int(i32x4::from_array([-1, 0, 0, -1])));
+
+    assert_eq!(a.horizontal_sum(), 40.0);
+    assert_eq!(b.horizontal_sum(), 2.0);
+    assert_eq!(a.horizontal_product(), 100.0*100.0);
+    assert_eq!(b.horizontal_product(), -24.0);
 }
 
 fn simd_ops_f64() {
@@ -41,6 +46,11 @@ fn simd_ops_f64() {
     assert_eq!(a.lanes_lt(f64x4::splat(5.0)*b), Mask::from_int(i64x4::from_array([0, 0, -1, 0])));
     assert_eq!(a.lanes_ge(f64x4::splat(5.0)*b), Mask::from_int(i64x4::from_array([-1, -1, 0, -1])));
     assert_eq!(a.lanes_gt(f64x4::splat(5.0)*b), Mask::from_int(i64x4::from_array([-1, 0, 0, -1])));
+
+    assert_eq!(a.horizontal_sum(), 40.0);
+    assert_eq!(b.horizontal_sum(), 2.0);
+    assert_eq!(a.horizontal_product(), 100.0*100.0);
+    assert_eq!(b.horizontal_product(), -24.0);
 }
 
 fn simd_ops_i32() {
@@ -78,7 +88,7 @@ fn simd_ops_i32() {
     assert_eq!(a.horizontal_sum(), 40);
     assert_eq!(b.horizontal_sum(), 2);
     assert_eq!(a.horizontal_product(), 100*100);
-    assert_eq!(b.horizontal_product(), 6*-4);
+    assert_eq!(b.horizontal_product(), -24);
 }
 
 fn simd_intrinsics() {
