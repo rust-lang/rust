@@ -3,6 +3,9 @@
 
 use std::ops::ControlFlow;
 
+// Due to some changes in MIR, `ConstProp` no longer propagates the discriminant value, and so the
+// tests show no change. This will hopefully be fixed by future enhancements to `ConstProp`.
+
 // EMIT_MIR separate_const_switch.too_complex.SeparateConstSwitch.diff
 // EMIT_MIR separate_const_switch.too_complex.ConstProp.diff
 // EMIT_MIR separate_const_switch.too_complex.PreCodegen.after.mir
