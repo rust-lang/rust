@@ -43,7 +43,7 @@ rustc-workspace-hack = "1.0"
 clippy_utils = { path = "clippy_utils" }
 derive-new = "0.5"
 if_chain = "1.0"
-itertools = "0.10"
+itertools = "0.10.1"
 quote = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 syn = { version = "1.0", features = ["full"] }

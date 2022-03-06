@@ -12,7 +12,7 @@ edition = "2021"
 cargo_metadata = "0.14"
 clippy_utils = { path = "../clippy_utils" }
 if_chain = "1.0"
-itertools = "0.10"
+itertools = "0.10.1"
 pulldown-cmark = { version = "0.9", default-features = false }
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.6"
