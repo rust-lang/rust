@@ -18,6 +18,20 @@
    sodipodi:docname="rust analyzer.svg">
   <defs
      id="defs2" />
+  <style>
+    #text3715 {
+      fill: #000000;
+      stroke: #ffffff;
+      stroke-width: 0.5;
+      paint-order: stroke;
+    }
+    @media (prefers-color-scheme: dark) {
+      #text3715 {
+        fill: #ffffff;
+        stroke: none;
+      }
+    }
+  </style>
   <sodipodi:namedview
      id="base"
      pagecolor="#ffffff"
@@ -55,7 +69,7 @@
      transform="translate(-29.534624,-59.398722)">
     <g
        aria-label="rust."
-       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:#ffffff;stroke-width:0.5;paint-order:stroke"
+       style="font-style:normal;font-weight:normal;font-size:10.58333302px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px"
        id="text3715">
       <path
          d="m 35.95077,62.913236 c -0.588719,-0.01704 -1.180779,0.251078 -1.524352,0.735632 -0.163943,0.198364 -0.296317,0.499384 -0.394954,0.683311 -0.101099,-0.416482 -0.202198,-0.832963 -0.303298,-1.249444 -0.671965,0 -1.343931,0 -2.015897,0 0,0.370348 0,0.740695 0,1.111043 0.246841,0 0.493682,0 0.740523,0 0,1.128958 0,2.257916 0,3.386873 -0.246841,0 -0.493682,0 -0.740523,0 0,0.373965 0,0.747931 0,1.121896 1.174777,0 2.349555,0 3.524332,0 0,-0.373965 0,-0.747931 0,-1.121896 -0.37052,0 -0.74104,0 -1.11156,0 0,-0.536229 0,-1.072458 0,-1.608687 0.190283,-0.586609 0.512347,-1.195617 1.085749,-1.482555 0.177393,-0.100673 0.369604,-0.139934 0.305898,0.108135 0,0.278134 0,0.556268 0,0.834401 0.349332,0 0.698665,0 1.047998,0 0.104041,-0.78307 0.208084,-1.56614 0.312125,-2.34921 -0.293304,-0.117432 -0.610556,-0.17161 -0.926041,-0.169499 z"
