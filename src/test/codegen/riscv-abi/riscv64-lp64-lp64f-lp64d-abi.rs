@@ -10,6 +10,14 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+impl Copy for bool {}
+impl Copy for i8 {}
+impl Copy for u8 {}
+impl Copy for i32 {}
+impl Copy for i64 {}
+impl Copy for u64 {}
+impl Copy for f32 {}
+impl Copy for f64 {}
 
 // CHECK: define void @f_void()
 #[no_mangle]
