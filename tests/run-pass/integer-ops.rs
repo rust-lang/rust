@@ -1,12 +1,23 @@
+// compile-flags: -Coverflow-checks=off
 #![allow(arithmetic_overflow)]
 
 pub fn main() {
-    // This tests that do (not) do sign extension properly when loading integers
+    // This tests that we do (not) do sign extension properly when loading integers
     assert_eq!(u32::MAX as i64, 4294967295);
     assert_eq!(i32::MIN as i64, -2147483648);
 
     assert_eq!(i8::MAX, 127);
     assert_eq!(i8::MIN, -128);
+
+    // Shifts with negative offsets are subtle.
+    assert_eq!(13 << -2i8, 13 << 254);
+    assert_eq!(13 << i8::MIN, 13);
+    assert_eq!(13 << -1i16, 13 << u16::MAX);
+    assert_eq!(13 << i16::MIN, 13);
+    assert_eq!(13i128 << -2i8, 13i128 << 254);
+    assert_eq!(13i128 << i8::MIN, 13);
+    assert_eq!(13i128 << -1i16, 13i128 << u16::MAX);
+    assert_eq!(13i128 << i16::MIN, 13);
 
     assert_eq!(i32::from_str_radix("A", 16), Ok(10));
 
