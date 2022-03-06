@@ -337,7 +337,7 @@ dependencies = [
  "humantime 2.0.1",
  "ignore",
  "im-rc",
- "itertools 0.10.1",
+ "itertools",
  "jobserver",
  "lazy_static",
  "lazycell",
@@ -442,7 +442,7 @@ dependencies = [
  "flate2",
  "git2",
  "glob",
- "itertools 0.10.1",
+ "itertools",
  "lazy_static",
  "remove_dir_all",
  "serde_json",
@@ -560,7 +560,7 @@ dependencies = [
  "chalk-ir",
  "ena",
  "indexmap",
- "itertools 0.10.1",
+ "itertools",
  "petgraph",
  "rustc-hash",
  "tracing",
@@ -624,7 +624,7 @@ dependencies = [
  "filetime",
  "futures 0.3.19",
  "if_chain",
- "itertools 0.10.1",
+ "itertools",
  "num_cpus",
  "parking_lot",
  "quote",
@@ -647,7 +647,7 @@ dependencies = [
  "cargo_metadata",
  "clap 2.34.0",
  "indoc",
- "itertools 0.10.1",
+ "itertools",
  "opener",
  "regex",
  "shell-escape",
@@ -661,7 +661,7 @@ dependencies = [
  "cargo_metadata",
  "clippy_utils",
  "if_chain",
- "itertools 0.10.1",
+ "itertools",
  "pulldown-cmark",
  "quine-mc_cluskey",
  "regex-syntax",
@@ -1781,15 +1781,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if 1.0.0",
-]
-
-[[package]]
-name = "itertools"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "284f18f85651fe11e8a991b2adb42cb078325c996ed026d994719efcfca1d54b"
-dependencies = [
- "either",
 ]
 
 [[package]]
@@ -3138,7 +3129,7 @@ dependencies = [
  "futures 0.3.19",
  "heck",
  "home",
- "itertools 0.10.1",
+ "itertools",
  "jsonrpc-core",
  "lazy_static",
  "log",
@@ -3180,7 +3171,7 @@ dependencies = [
  "derive-new",
  "env_logger 0.9.0",
  "fst",
- "itertools 0.10.1",
+ "itertools",
  "json",
  "lazy_static",
  "log",
@@ -3411,7 +3402,7 @@ dependencies = [
 name = "rustc_ast_passes"
 version = "0.0.0"
 dependencies = [
- "itertools 0.10.1",
+ "itertools",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr",
@@ -3454,7 +3445,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "either",
- "itertools 0.10.1",
+ "itertools",
  "polonius-engine",
  "rustc_const_eval",
  "rustc_data_structures",
@@ -3536,7 +3527,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "cc",
- "itertools 0.10.1",
+ "itertools",
  "jobserver",
  "libc",
  "object 0.28.1",
@@ -4019,7 +4010,7 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 dependencies = [
  "coverage_test_macros",
- "itertools 0.10.1",
+ "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_const_eval",
@@ -4419,7 +4410,7 @@ dependencies = [
  "askama",
  "atty",
  "expect-test",
- "itertools 0.10.1",
+ "itertools",
  "minifier",
  "pulldown-cmark",
  "rayon",
@@ -4501,7 +4492,7 @@ dependencies = [
  "env_logger 0.8.4",
  "getopts",
  "ignore",
- "itertools 0.9.0",
+ "itertools",
  "lazy_static",
  "log",
  "regex",
@@ -5181,7 +5172,7 @@ checksum = "744e9ed5b352340aa47ce033716991b5589e23781acb97cad37d4ea70560f55b"
 dependencies = [
  "combine",
  "indexmap",
- "itertools 0.10.1",
+ "itertools",
  "kstring",
  "serde",
 ]
