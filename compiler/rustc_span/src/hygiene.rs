@@ -85,9 +85,16 @@ rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
     pub struct LocalExpnId {
         ENCODABLE = custom
+        ORD_IMPL = custom
         DEBUG_FORMAT = "expn{}"
     }
 }
+
+// To ensure correctness of incremental compilation,
+// `LocalExpnId` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for LocalExpnId {}
+impl !PartialOrd for LocalExpnId {}
 
 /// Assert that the provided `HashStableContext` is configured with the 'default'
 /// `HashingControls`. We should always have bailed out before getting to here
