@@ -455,6 +455,7 @@ const BOOL_TYS: TyS<'static> = TyS {
 };
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TyS<'tcx> {
+    #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let TyS {
             kind,
