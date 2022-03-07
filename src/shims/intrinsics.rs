@@ -345,7 +345,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 bug!("simd_fabs operand is not a float")
                             };
                             let op = op.to_scalar()?;
-                            // FIXME: Using host floats.
                             match float_ty {
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
@@ -371,7 +370,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_lt"
             | "simd_le"
             | "simd_gt"
-            | "simd_ge" => {
+            | "simd_ge"
+            | "simd_fmax"
+            | "simd_fmin" => {
                 use mir::BinOp;
 
                 let &[ref left, ref right] = check_arg_count(args)?;
@@ -382,23 +383,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 assert_eq!(dest_len, left_len);
                 assert_eq!(dest_len, right_len);
 
-                let mir_op = match intrinsic_name {
-                    "simd_add" => BinOp::Add,
-                    "simd_sub" => BinOp::Sub,
-                    "simd_mul" => BinOp::Mul,
-                    "simd_div" => BinOp::Div,
-                    "simd_rem" => BinOp::Rem,
-                    "simd_shl" => BinOp::Shl,
-                    "simd_shr" => BinOp::Shr,
-                    "simd_and" => BinOp::BitAnd,
-                    "simd_or" => BinOp::BitOr,
-                    "simd_xor" => BinOp::BitXor,
-                    "simd_eq" => BinOp::Eq,
-                    "simd_ne" => BinOp::Ne,
-                    "simd_lt" => BinOp::Lt,
-                    "simd_le" => BinOp::Le,
-                    "simd_gt" => BinOp::Gt,
-                    "simd_ge" => BinOp::Ge,
+                enum Op {
+                    MirOp(BinOp),
+                    FMax,
+                    FMin,
+                }
+                let which = match intrinsic_name {
+                    "simd_add" => Op::MirOp(BinOp::Add),
+                    "simd_sub" => Op::MirOp(BinOp::Sub),
+                    "simd_mul" => Op::MirOp(BinOp::Mul),
+                    "simd_div" => Op::MirOp(BinOp::Div),
+                    "simd_rem" => Op::MirOp(BinOp::Rem),
+                    "simd_shl" => Op::MirOp(BinOp::Shl),
+                    "simd_shr" => Op::MirOp(BinOp::Shr),
+                    "simd_and" => Op::MirOp(BinOp::BitAnd),
+                    "simd_or" => Op::MirOp(BinOp::BitOr),
+                    "simd_xor" => Op::MirOp(BinOp::BitXor),
+                    "simd_eq" => Op::MirOp(BinOp::Eq),
+                    "simd_ne" => Op::MirOp(BinOp::Ne),
+                    "simd_lt" => Op::MirOp(BinOp::Lt),
+                    "simd_le" => Op::MirOp(BinOp::Le),
+                    "simd_gt" => Op::MirOp(BinOp::Gt),
+                    "simd_ge" => Op::MirOp(BinOp::Ge),
+                    "simd_fmax" => Op::FMax,
+                    "simd_fmin" => Op::FMin,
                     _ => unreachable!(),
                 };
 
@@ -406,26 +414,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
                     let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
-                    let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
-                    if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
-                        // Shifts have extra UB as SIMD operations that the MIR binop does not have.
-                        // See <https://github.com/rust-lang/rust/issues/91237>.
-                        if overflowed {
-                            let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
-                            throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                    let val = match which {
+                        Op::MirOp(mir_op) => {
+                            let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
+                            if matches!(mir_op, BinOp::Shl | BinOp::Shr) {
+                                // Shifts have extra UB as SIMD operations that the MIR binop does not have.
+                                // See <https://github.com/rust-lang/rust/issues/91237>.
+                                if overflowed {
+                                    let r_val = right.to_scalar()?.to_bits(right.layout.size)?;
+                                    throw_ub_format!("overflowing shift by {} in `{}` in SIMD lane {}", r_val, intrinsic_name, i);
+                                }
+                            }
+                            if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
+                                // Special handling for boolean-returning operations
+                                assert_eq!(ty, this.tcx.types.bool);
+                                let val = val.to_bool().unwrap();
+                                bool_to_simd_element(val, dest.layout.size)
+                            } else {
+                                assert_ne!(ty, this.tcx.types.bool);
+                                assert_eq!(ty, dest.layout.ty);
+                                val
+                            }
                         }
-                    }
-                    if matches!(mir_op, BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
-                        // Special handling for boolean-returning operations
-                        assert_eq!(ty, this.tcx.types.bool);
-                        let val = val.to_bool().unwrap();
-                        let val = bool_to_simd_element(val, dest.layout.size);
-                        this.write_scalar(val, &dest.into())?;
-                    } else {
-                        assert_ne!(ty, this.tcx.types.bool);
-                        assert_eq!(ty, dest.layout.ty);
-                        this.write_scalar(val, &dest.into())?;
-                    }
+                        Op::FMax => {
+                            fmax_op(&left, &right)?
+                        }
+                        Op::FMin => {
+                            fmin_op(&left, &right)?
+                        }
+                    };
+                    this.write_scalar(val, &dest.into())?;
                 }
             }
             #[rustfmt::skip]
@@ -433,7 +451,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_reduce_or"
             | "simd_reduce_xor"
             | "simd_reduce_any"
-            | "simd_reduce_all" => {
+            | "simd_reduce_all"
+            | "simd_reduce_max"
+            | "simd_reduce_min" => {
                 use mir::BinOp;
 
                 let &[ref op] = check_arg_count(args)?;
@@ -445,19 +465,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 enum Op {
                     MirOp(BinOp),
                     MirOpBool(BinOp),
+                    Max,
+                    Min,
                 }
-                // The initial value is the neutral element.
-                let (which, init) = match intrinsic_name {
-                    "simd_reduce_and" => (Op::MirOp(BinOp::BitAnd), ImmTy::from_int(-1, dest.layout)),
-                    "simd_reduce_or" => (Op::MirOp(BinOp::BitOr), ImmTy::from_int(0, dest.layout)),
-                    "simd_reduce_xor" => (Op::MirOp(BinOp::BitXor), ImmTy::from_int(0, dest.layout)),
-                    "simd_reduce_any" => (Op::MirOpBool(BinOp::BitOr), imm_from_bool(false)),
-                    "simd_reduce_all" => (Op::MirOpBool(BinOp::BitAnd), imm_from_bool(true)),
+                let which = match intrinsic_name {
+                    "simd_reduce_and" => Op::MirOp(BinOp::BitAnd),
+                    "simd_reduce_or" => Op::MirOp(BinOp::BitOr),
+                    "simd_reduce_xor" => Op::MirOp(BinOp::BitXor),
+                    "simd_reduce_any" => Op::MirOpBool(BinOp::BitOr),
+                    "simd_reduce_all" => Op::MirOpBool(BinOp::BitAnd),
+                    "simd_reduce_max" => Op::Max,
+                    "simd_reduce_min" => Op::Min,
                     _ => unreachable!(),
                 };
 
-                let mut res = init;
-                for i in 0..op_len {
+                // Initialize with first lane, then proceed with the rest.
+                let mut res = this.read_immediate(&this.mplace_index(&op, 0)?.into())?;
+                if matches!(which, Op::MirOpBool(_)) {
+                    // Convert to `bool` scalar.
+                    res = imm_from_bool(simd_element_to_bool(res)?);
+                }
+                for i in 1..op_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
                     res = match which {
                         Op::MirOp(mir_op) => {
@@ -466,6 +494,30 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Op::MirOpBool(mir_op) => {
                             let op = imm_from_bool(simd_element_to_bool(op)?);
                             this.binary_op(mir_op, &res, &op)?
+                        }
+                        Op::Max => {
+                            if matches!(res.layout.ty.kind(), ty::Float(_)) {
+                                ImmTy::from_scalar(fmax_op(&res, &op)?, res.layout)
+                            } else {
+                                // Just boring integers, so NaNs to worry about
+                                if this.binary_op(BinOp::Ge, &res, &op)?.to_scalar()?.to_bool()? {
+                                    res
+                                } else {
+                                    op
+                                }
+                            }
+                        }
+                        Op::Min => {
+                            if matches!(res.layout.ty.kind(), ty::Float(_)) {
+                                ImmTy::from_scalar(fmin_op(&res, &op)?, res.layout)
+                            } else {
+                                // Just boring integers, so NaNs to worry about
+                                if this.binary_op(BinOp::Le, &res, &op)?.to_scalar()?.to_bool()? {
+                                    res
+                                } else {
+                                    op
+                                }
+                            }
                         }
                     };
                 }
@@ -513,6 +565,45 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let mask = simd_element_to_bool(mask)?;
                     let val = if mask { yes } else { no };
                     this.write_immediate(*val, &dest.into())?;
+                }
+            }
+            #[rustfmt::skip]
+            "simd_cast" | "simd_as" => {
+                let &[ref op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, op_len);
+
+                let safe_cast = intrinsic_name == "simd_as";
+
+                for i in 0..dest_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
+                        // Int-to-(int|float): always safe
+                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-float: always safe
+                        (ty::Float(_), ty::Float(_)) =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-int in safe mode
+                        (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
+                            this.misc_cast(&op, dest.layout.ty)?,
+                        // Float-to-int in unchecked mode
+                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                            this.float_to_int_unchecked(op.to_scalar()?.to_f32()?, dest.layout.ty)?.into(),
+                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if !safe_cast =>
+                            this.float_to_int_unchecked(op.to_scalar()?.to_f64()?, dest.layout.ty)?.into(),
+                        _ =>
+                            throw_unsup_format!(
+                                "Unsupported SIMD cast from element type {} to {}",
+                                op.layout.ty,
+                                dest.layout.ty
+                            ),
+                    };
+                    this.write_immediate(val, &dest.into())?;
                 }
             }
 
@@ -1002,4 +1093,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => bug!("`float_to_int_unchecked` called with non-int output type {:?}", dest_ty),
         })
     }
+}
+
+fn fmax_op<'tcx>(
+    left: &ImmTy<'tcx, Tag>,
+    right: &ImmTy<'tcx, Tag>,
+) -> InterpResult<'tcx, Scalar<Tag>> {
+    assert_eq!(left.layout.ty, right.layout.ty);
+    let ty::Float(float_ty) = left.layout.ty.kind() else {
+        bug!("fmax operand is not a float")
+    };
+    let left = left.to_scalar()?;
+    let right = right.to_scalar()?;
+    Ok(match float_ty {
+        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.max(right.to_f32()?)),
+        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.max(right.to_f64()?)),
+    })
+}
+
+fn fmin_op<'tcx>(
+    left: &ImmTy<'tcx, Tag>,
+    right: &ImmTy<'tcx, Tag>,
+) -> InterpResult<'tcx, Scalar<Tag>> {
+    assert_eq!(left.layout.ty, right.layout.ty);
+    let ty::Float(float_ty) = left.layout.ty.kind() else {
+        bug!("fmin operand is not a float")
+    };
+    let left = left.to_scalar()?;
+    let right = right.to_scalar()?;
+    Ok(match float_ty {
+        FloatTy::F32 => Scalar::from_f32(left.to_f32()?.min(right.to_f32()?)),
+        FloatTy::F64 => Scalar::from_f64(left.to_f64()?.min(right.to_f64()?)),
+    })
 }
