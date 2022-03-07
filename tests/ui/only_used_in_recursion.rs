@@ -86,6 +86,16 @@ impl B for A {
     }
 }
 
+trait C {
+    fn hello(a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { Self::hello(a - 1, b + 1) }
+    }
+
+    fn hello2(&self, a: usize, b: usize) -> usize {
+        if a == 0 { 1 } else { self.hello2(a - 1, b + 1) }
+    }
+}
+
 fn ignore(a: usize, _: usize) -> usize {
     if a == 1 { 1 } else { ignore(a - 1, 0) }
 }
