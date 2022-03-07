@@ -398,7 +398,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 diag.message = initial_diag.styled_message().clone();
                 diag.span = initial_diag.span.clone();
 
-                mbcx.buffer_error(diag);
+                mbcx.buffer_non_error_diag(diag);
             },
         );
         initial_diag.cancel();
@@ -2317,6 +2317,11 @@ mod error {
             t.buffer(&mut self.buffered);
         }
 
+        // For diagnostics we must not set `tainted_by_errors`.
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_>) {
+            t.buffer(&mut self.buffered);
+        }
+
         pub fn set_tainted_by_errors(&mut self) {
             self.tainted_by_errors = Some(ErrorReported {});
         }
@@ -2325,6 +2330,10 @@ mod error {
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             self.errors.buffer_error(t);
+        }
+
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_>) {
+            self.errors.buffer_non_error_diag(t);
         }
 
         pub fn buffer_move_error(
