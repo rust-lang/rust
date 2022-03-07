@@ -7,7 +7,6 @@
 
 #![feature(staged_api)]
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 #![stable(since = "1", feature = "foo")]
 
 trait Tr {

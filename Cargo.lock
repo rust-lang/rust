@@ -2273,9 +2273,9 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.0.42"
+version = "0.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "55a1388517eda8a68875243b650c26997e055a33d82571b5a0349129faef7d99"
+checksum = "d81352bda6f4d04af1720afaa762054f66e16caffd93c1f86461a1c0ac4e695e"
 dependencies = [
  "macro-utils",
 ]

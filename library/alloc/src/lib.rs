@@ -140,7 +140,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_sanitize)]
 #![feature(const_deref)]
-#![feature(const_fn_trait_bound)]
+#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
 #![feature(const_mut_refs)]
 #![feature(const_ptr_write)]
 #![feature(const_precise_live_drops)]

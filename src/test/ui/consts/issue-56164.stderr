@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/issue-56164.rs:3:18
+  --> $DIR/issue-56164.rs:1:18
    |
 LL | const fn foo() { (||{})() }
    |                  ^^^^^^^^
@@ -8,7 +8,7 @@ LL | const fn foo() { (||{})() }
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error: function pointers are not allowed in const fn
-  --> $DIR/issue-56164.rs:7:5
+  --> $DIR/issue-56164.rs:5:5
    |
 LL |     input()
    |     ^^^^^^^

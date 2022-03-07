@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![feature(const_fn_trait_bound, const_trait_impl, inline_const, negative_impls)]
+#![feature(const_trait_impl, inline_const, negative_impls)]
 
 const fn f<T: ~const Drop>(x: T) {}
 
