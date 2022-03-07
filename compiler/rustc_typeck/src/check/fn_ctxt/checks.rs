@@ -281,6 +281,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.demand_suptype(provided_arg.span, formal_input_ty, coerced_ty);
         };
 
+        let minimum_input_count = formal_input_tys.len();
+
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -303,7 +305,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             }
 
-            let minimum_input_count = formal_input_tys.len();
             for (idx, arg) in provided_args.iter().enumerate() {
                 // Warn only for the first loop (the "no closures" one).
                 // Closure arguments themselves can't be diverging, but
@@ -456,17 +457,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.emit();
         }
 
-        // We also need to make sure we at least write the ty of the other
-        // arguments which we skipped above.
-        if c_variadic {
-            fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
-                use crate::structured_errors::MissingCastForVariadicArg;
+        for arg in provided_args.iter().skip(minimum_input_count) {
+            let arg_ty = self.check_expr(&arg);
 
-                MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
-            }
+            if c_variadic {
+                // We also need to make sure we at least write the ty of the other
+                // arguments which we skipped above, either because they were additional
+                // c_variadic args, or because we had an argument count mismatch.
+                fn variadic_error<'tcx>(sess: &Session, span: Span, ty: Ty<'tcx>, cast_ty: &str) {
+                    use crate::structured_errors::MissingCastForVariadicArg;
 
-            for arg in provided_args.iter().skip(expected_arg_count) {
-                let arg_ty = self.check_expr(&arg);
+                    MissingCastForVariadicArg { sess, span, ty, cast_ty }.diagnostic().emit();
+                }
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
