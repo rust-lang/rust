@@ -219,48 +219,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::saturating_add | sym::saturating_sub => {
                 let l = self.read_immediate(&args[0])?;
                 let r = self.read_immediate(&args[1])?;
-                let is_add = intrinsic_name == sym::saturating_add;
-                let (val, overflowed, _ty) = self.overflowing_binary_op(
-                    if is_add { BinOp::Add } else { BinOp::Sub },
+                let val = self.saturating_arith(
+                    if intrinsic_name == sym::saturating_add { BinOp::Add } else { BinOp::Sub },
                     &l,
                     &r,
                 )?;
-                let val = if overflowed {
-                    let size = l.layout.size;
-                    let num_bits = size.bits();
-                    if l.layout.abi.is_signed() {
-                        // For signed ints the saturated value depends on the sign of the first
-                        // term since the sign of the second term can be inferred from this and
-                        // the fact that the operation has overflowed (if either is 0 no
-                        // overflow can occur)
-                        let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
-                        let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
-                        if first_term_positive {
-                            // Negative overflow not possible since the positive first term
-                            // can only increase an (in range) negative term for addition
-                            // or corresponding negated positive term for subtraction
-                            Scalar::from_uint(
-                                (1u128 << (num_bits - 1)) - 1, // max positive
-                                Size::from_bits(num_bits),
-                            )
-                        } else {
-                            // Positive overflow not possible for similar reason
-                            // max negative
-                            Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
-                        }
-                    } else {
-                        // unsigned
-                        if is_add {
-                            // max unsigned
-                            Scalar::from_uint(size.unsigned_int_max(), Size::from_bits(num_bits))
-                        } else {
-                            // underflow to 0
-                            Scalar::from_uint(0u128, Size::from_bits(num_bits))
-                        }
-                    }
-                } else {
-                    val
-                };
                 self.write_scalar(val, dest)?;
             }
             sym::discriminant_value => {
@@ -506,6 +469,49 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
         self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
+    }
+
+    pub fn saturating_arith(
+        &self,
+        mir_op: BinOp,
+        l: &ImmTy<'tcx, M::PointerTag>,
+        r: &ImmTy<'tcx, M::PointerTag>,
+    ) -> InterpResult<'tcx, Scalar<M::PointerTag>> {
+        assert!(matches!(mir_op, BinOp::Add | BinOp::Sub));
+        let (val, overflowed, _ty) = self.overflowing_binary_op(mir_op, l, r)?;
+        Ok(if overflowed {
+            let size = l.layout.size;
+            let num_bits = size.bits();
+            if l.layout.abi.is_signed() {
+                // For signed ints the saturated value depends on the sign of the first
+                // term since the sign of the second term can be inferred from this and
+                // the fact that the operation has overflowed (if either is 0 no
+                // overflow can occur)
+                let first_term: u128 = l.to_scalar()?.to_bits(l.layout.size)?;
+                let first_term_positive = first_term & (1 << (num_bits - 1)) == 0;
+                if first_term_positive {
+                    // Negative overflow not possible since the positive first term
+                    // can only increase an (in range) negative term for addition
+                    // or corresponding negated positive term for subtraction
+                    Scalar::from_int(size.signed_int_max(), size)
+                } else {
+                    // Positive overflow not possible for similar reason
+                    // max negative
+                    Scalar::from_int(size.signed_int_min(), size)
+                }
+            } else {
+                // unsigned
+                if matches!(mir_op, BinOp::Add) {
+                    // max unsigned
+                    Scalar::from_uint(size.unsigned_int_max(), size)
+                } else {
+                    // underflow to 0
+                    Scalar::from_uint(0u128, size)
+                }
+            }
+        } else {
+            val
+        })
     }
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
