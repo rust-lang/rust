@@ -842,6 +842,30 @@ fn foo() {
 }
 
 #[test]
+fn test_operators() {
+    check_highlighting(
+        r##"
+fn main() {
+    1 + 1 - 1 * 1 / 1 % 1 | 1 & 1 ! 1 ^ 1 >> 1 << 1;
+    let mut a = 0;
+    a += 1;
+    a -= 1;
+    a *= 1;
+    a /= 1;
+    a %= 1;
+    a |= 1;
+    a &= 1;
+    a ^= 1;
+    a >>= 1;
+    a <<= 1;
+}
+"##,
+        expect_file!["./test_data/highlight_operators.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_rainbow_highlighting() {
     check_highlighting(
         r#"

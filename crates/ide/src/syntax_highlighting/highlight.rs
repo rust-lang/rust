@@ -123,12 +123,12 @@ fn punctuation(sema: &Semantics<RootDatabase>, token: SyntaxToken, kind: SyntaxK
             }
             .into()
         }
-        (T![+] | T![-] | T![*] | T![/], BIN_EXPR) => HlOperator::Arithmetic.into(),
-        (T![+=] | T![-=] | T![*=] | T![/=], BIN_EXPR) => {
+        (T![+] | T![-] | T![*] | T![/] | T![%], BIN_EXPR) => HlOperator::Arithmetic.into(),
+        (T![+=] | T![-=] | T![*=] | T![/=] | T![%=], BIN_EXPR) => {
             Highlight::from(HlOperator::Arithmetic) | HlMod::Mutable
         }
-        (T![|] | T![&] | T![!] | T![^], BIN_EXPR) => HlOperator::Bitwise.into(),
-        (T![|=] | T![&=] | T![^=], BIN_EXPR) => {
+        (T![|] | T![&] | T![!] | T![^] | T![>>] | T![<<], BIN_EXPR) => HlOperator::Bitwise.into(),
+        (T![|=] | T![&=] | T![^=] | T![>>=] | T![<<=], BIN_EXPR) => {
             Highlight::from(HlOperator::Bitwise) | HlMod::Mutable
         }
         (T![&&] | T![||], BIN_EXPR) => HlOperator::Logical.into(),
