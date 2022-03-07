@@ -448,8 +448,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 self.mir_hir_id(),
                                 rustc_infer::traits::ObligationCauseCode::MiscObligation,
                             );
-                            fulfill_cx.register_bound(&infcx, self.param_env, ty, copy_did, cause);
-                            let errors = fulfill_cx.select_where_possible(&infcx);
+                            fulfill_cx.register_bound(
+                                &infcx,
+                                self.param_env,
+                                // Erase any region vids from the type, which may not be resolved
+                                infcx.tcx.erase_regions(ty),
+                                copy_did,
+                                cause,
+                            );
+                            // Select all, including ambiguous predicates
+                            let errors = fulfill_cx.select_all_or_error(&infcx);
 
                             // Only emit suggestion if all required predicates are on generic
                             errors
