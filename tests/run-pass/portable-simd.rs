@@ -102,9 +102,26 @@ fn simd_ops_i32() {
     assert_eq!(a % b, i32x4::from_array([0, 0, 1, 2]));
     assert_eq!(i32x2::splat(i32::MIN) % i32x2::splat(-1), i32x2::splat(0));
     assert_eq!(b.abs(), i32x4::from_array([1, 2, 3, 4]));
-    // FIXME not a per-lane method (https://github.com/rust-lang/rust/issues/94682)
+    // FIXME not a per-lane method (https://github.com/rust-lang/portable-simd/issues/247)
     // assert_eq!(a.max(b * i32x4::splat(4)), i32x4::from_array([10, 10, 12, 10]));
     // assert_eq!(a.min(b * i32x4::splat(4)), i32x4::from_array([4, 8, 10, -16]));
+
+    assert_eq!(
+        i8x4::from_array([i8::MAX, -23, 23, i8::MIN]).saturating_add(i8x4::from_array([1, i8::MIN, i8::MAX, 28])),
+        i8x4::from_array([i8::MAX, i8::MIN, i8::MAX, -100])
+    );
+    assert_eq!(
+        i8x4::from_array([i8::MAX, -28, 27, 42]).saturating_sub(i8x4::from_array([1, i8::MAX, i8::MAX, -80])),
+        i8x4::from_array([126, i8::MIN, -100, 122])
+    );
+    assert_eq!(
+        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_add(u8x4::from_array([1, 1, u8::MAX, 200])),
+        u8x4::from_array([u8::MAX, 1, u8::MAX, 242])
+    );
+    assert_eq!(
+        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_sub(u8x4::from_array([1, 1, u8::MAX, 200])),
+        u8x4::from_array([254, 0, 0, 0])
+    );
 
     assert_eq!(!b, i32x4::from_array([!1, !2, !3, !-4]));
     assert_eq!(b << i32x4::splat(2), i32x4::from_array([4, 8, 12, -16]));
