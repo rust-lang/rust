@@ -233,27 +233,34 @@ pub enum InlayHints {}
 impl Request for InlayHints {
     type Params = InlayHintsParams;
     type Result = Vec<InlayHint>;
-    const METHOD: &'static str = "rust-analyzer/inlayHints";
+    const METHOD: &'static str = "experimental/inlayHints";
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintsParams {
     pub text_document: TextDocumentIdentifier,
+    pub range: Option<lsp_types::Range>,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
-pub enum InlayKind {
-    TypeHint,
-    ParameterHint,
-    ChainingHint,
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct InlayHintKind(u8);
+
+impl InlayHintKind {
+    pub const TYPE: InlayHintKind = InlayHintKind(1);
+    pub const PARAMETER: InlayHintKind = InlayHintKind(2);
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InlayHint {
-    pub range: Range,
-    pub kind: InlayKind,
     pub label: String,
+    pub position: Position,
+    pub kind: Option<InlayHintKind>,
+    pub tooltip: Option<String>,
+    pub padding_left: Option<bool>,
+    pub padding_right: Option<bool>,
 }
 
 pub enum Ssr {}

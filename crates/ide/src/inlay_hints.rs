@@ -5,7 +5,7 @@ use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasName, UnaryOp},
-    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, TextRange, T,
+    match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
 use crate::FileId;
@@ -58,6 +58,7 @@ pub struct InlayHint {
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
+    range_limit: Option<FileRange>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = profile::span("inlay_hints");
@@ -65,25 +66,50 @@ pub(crate) fn inlay_hints(
     let file = sema.parse(file_id);
     let file = file.syntax();
 
-    let mut res = Vec::new();
+    let mut hints = Vec::new();
 
-    for node in file.descendants() {
-        if let Some(expr) = ast::Expr::cast(node.clone()) {
-            get_chaining_hints(&mut res, &sema, config, &expr);
-            match expr {
-                ast::Expr::CallExpr(it) => {
-                    get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
+    if let Some(range_limit) = range_limit {
+        let range_limit = range_limit.range;
+        match file.covering_element(range_limit) {
+            NodeOrToken::Token(_) => return hints,
+            NodeOrToken::Node(n) => {
+                for node in n
+                    .descendants()
+                    .filter(|descendant| range_limit.contains_range(descendant.text_range()))
+                {
+                    get_hints(&mut hints, &sema, config, node);
                 }
-                ast::Expr::MethodCallExpr(it) => {
-                    get_param_name_hints(&mut res, &sema, config, ast::Expr::from(it));
-                }
-                _ => (),
             }
-        } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
-            get_bind_pat_hints(&mut res, &sema, config, &it);
+        }
+    } else {
+        for node in file.descendants() {
+            get_hints(&mut hints, &sema, config, node);
         }
     }
-    res
+
+    hints
+}
+
+fn get_hints(
+    hints: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    config: &InlayHintsConfig,
+    node: SyntaxNode,
+) {
+    if let Some(expr) = ast::Expr::cast(node.clone()) {
+        get_chaining_hints(hints, sema, config, &expr);
+        match expr {
+            ast::Expr::CallExpr(it) => {
+                get_param_name_hints(hints, sema, config, ast::Expr::from(it));
+            }
+            ast::Expr::MethodCallExpr(it) => {
+                get_param_name_hints(hints, sema, config, ast::Expr::from(it));
+            }
+            _ => (),
+        }
+    } else if let Some(it) = ast::IdentPat::cast(node) {
+        get_bind_pat_hints(hints, sema, config, &it);
+    }
 }
 
 fn get_chaining_hints(
@@ -541,6 +567,8 @@ fn get_callable(
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
+    use ide_db::base_db::FileRange;
+    use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};
@@ -604,7 +632,7 @@ mod tests {
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
-        let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
+        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
         let actual =
             inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
         assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
@@ -613,7 +641,7 @@ mod tests {
     #[track_caller]
     fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
-        let inlay_hints = analysis.inlay_hints(&config, file_id).unwrap();
+        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
         expect.assert_debug_eq(&inlay_hints)
     }
 
@@ -1043,6 +1071,55 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn check_hint_range_limit() {
+        let fixture = r#"
+        //- minicore: fn, sized
+        fn foo() -> impl Fn() { loop {} }
+        fn foo1() -> impl Fn(f64) { loop {} }
+        fn foo2() -> impl Fn(f64, f64) { loop {} }
+        fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
+        fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
+        fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
+        fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
+        fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
+
+        fn main() {
+            let foo = foo();
+            let foo = foo1();
+            let foo = foo2();
+            let foo = foo3();
+             // ^^^ impl Fn(f64, f64) -> u32
+            let foo = foo4();
+             // ^^^ &dyn Fn(f64, f64) -> u32
+            let foo = foo5();
+            let foo = foo6();
+            let foo = foo7();
+        }
+        "#;
+        let (analysis, file_id) = fixture::file(fixture);
+        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+        let inlay_hints = analysis
+            .inlay_hints(
+                &InlayHintsConfig {
+                    parameter_hints: false,
+                    type_hints: true,
+                    chaining_hints: false,
+                    hide_named_constructor_hints: false,
+                    max_length: None,
+                },
+                file_id,
+                Some(FileRange {
+                    file_id,
+                    range: TextRange::new(TextSize::from(500), TextSize::from(600)),
+                }),
+            )
+            .unwrap();
+        let actual =
+            inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
+        assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
     }
 
     #[test]

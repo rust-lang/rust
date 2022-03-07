@@ -112,6 +112,7 @@ impl StaticIndex<'_> {
                     max_length: Some(25),
                 },
                 file_id,
+                None,
             )
             .unwrap();
         // hovers

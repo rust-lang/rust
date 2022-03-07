@@ -115,6 +115,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,
+            "inlayHints": true,
             "joinLines": true,
             "matchingBrace": true,
             "moveItem": true,
