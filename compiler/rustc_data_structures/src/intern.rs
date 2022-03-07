@@ -160,9 +160,7 @@ impl<T: Hash> Hash for InTy<T> {
 
 impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for InTy<T> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        let stable_hash = self.stable_hash;
-
-        if stable_hash == Fingerprint::ZERO {
+        if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
             // No cached hash available. This can only mean that incremental is disabled.
             // We don't cache stable hashes in non-incremental mode, because they are used
             // so rarely that the performance actually suffers.
@@ -174,9 +172,15 @@ impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for InTy<T
                 hcx.with_def_path_and_no_spans(|hcx| self.internee.hash_stable(hcx, &mut hasher));
                 hasher.finish()
             };
+            if cfg!(debug_assertions) && self.stable_hash != Fingerprint::ZERO {
+                assert_eq!(
+                    stable_hash, self.stable_hash,
+                    "cached stable hash does not match freshly computed stable hash"
+                );
+            }
             stable_hash.hash_stable(hcx, hasher);
         } else {
-            stable_hash.hash_stable(hcx, hasher);
+            self.stable_hash.hash_stable(hcx, hasher);
         }
     }
 }
