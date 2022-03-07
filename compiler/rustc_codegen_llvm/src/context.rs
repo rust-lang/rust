@@ -55,7 +55,7 @@ pub struct CodegenCx<'ll, 'tcx> {
     pub vtables:
         RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     ///
@@ -415,7 +415,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             codegen_unit,
             instances: Default::default(),
             vtables: Default::default(),
-            const_cstr_cache: Default::default(),
+            const_str_cache: Default::default(),
             const_unsized: Default::default(),
             const_globals: Default::default(),
             statics_to_rauw: RefCell::new(Vec::new()),

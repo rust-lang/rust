@@ -106,32 +106,6 @@ impl<'ll> CodegenCx<'ll, '_> {
         bytes_in_context(self.llcx, bytes)
     }
 
-    fn const_cstr(&self, s: Symbol, null_terminated: bool) -> &'ll Value {
-        unsafe {
-            if let Some(&llval) = self.const_cstr_cache.borrow().get(&s) {
-                return llval;
-            }
-
-            let s_str = s.as_str();
-            let sc = llvm::LLVMConstStringInContext(
-                self.llcx,
-                s_str.as_ptr() as *const c_char,
-                s_str.len() as c_uint,
-                !null_terminated as Bool,
-            );
-            let sym = self.generate_local_symbol_name("str");
-            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
-                bug!("symbol `{}` is already defined", sym);
-            });
-            llvm::LLVMSetInitializer(g, sc);
-            llvm::LLVMSetGlobalConstant(g, True);
-            llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
-
-            self.const_cstr_cache.borrow_mut().insert(s, g);
-            g
-        }
-    }
-
     pub fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
         unsafe {
             assert_eq!(idx as c_uint as u64, idx);
@@ -204,9 +178,23 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_str(&self, s: Symbol) -> (&'ll Value, &'ll Value) {
-        let len = s.as_str().len();
+        let s_str = s.as_str();
+        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
+            let sc = self.const_bytes(s_str.as_bytes());
+            let sym = self.generate_local_symbol_name("str");
+            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
+                bug!("symbol `{}` is already defined", sym);
+            });
+            unsafe {
+                llvm::LLVMSetInitializer(g, sc);
+                llvm::LLVMSetGlobalConstant(g, True);
+                llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
+            }
+            g
+        });
+        let len = s_str.len();
         let cs = consts::ptrcast(
-            self.const_cstr(s, false),
+            str_global,
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).llvm_type(self)),
         );
         (cs, self.const_usize(len as u64))

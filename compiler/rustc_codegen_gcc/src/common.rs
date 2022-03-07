@@ -26,18 +26,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         bytes_in_context(self, bytes)
     }
 
-    fn const_cstr(&self, symbol: Symbol, _null_terminated: bool) -> LValue<'gcc> {
-        // TODO(antoyo): handle null_terminated.
-        if let Some(&value) = self.const_cstr_cache.borrow().get(&symbol) {
-            return value;
-        }
-
-        let global = self.global_string(symbol.as_str());
-
-        self.const_cstr_cache.borrow_mut().insert(symbol, global);
-        global
-    }
-
     fn global_string(&self, string: &str) -> LValue<'gcc> {
         // TODO(antoyo): handle non-null-terminated strings.
         let string = self.context.new_string_literal(&*string);
@@ -171,8 +159,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
-        let len = s.as_str().len();
-        let cs = self.const_ptrcast(self.const_cstr(s, false).get_address(None),
+        let s_str = s.as_str();
+        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
+            self.global_string(s_str)
+        });
+        let len = s_str.len();
+        let cs = self.const_ptrcast(str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
         (cs, self.const_usize(len as u64))
