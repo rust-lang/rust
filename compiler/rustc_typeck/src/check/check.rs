@@ -742,12 +742,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                     impl_trait_ref,
                     &impl_.items,
                 );
-                let trait_def_id = impl_trait_ref.def_id;
-                check_on_unimplemented(tcx, trait_def_id, it);
+                check_on_unimplemented(tcx, it);
             }
         }
         hir::ItemKind::Trait(_, _, _, _, ref items) => {
-            check_on_unimplemented(tcx, it.def_id.to_def_id(), it);
+            check_on_unimplemented(tcx, it);
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
@@ -857,9 +856,9 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     }
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item<'_>) {
+pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item.def_id.to_def_id());
+    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
