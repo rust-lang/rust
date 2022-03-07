@@ -418,7 +418,9 @@ pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_e
         label: inlay_hint.label.to_string(),
         position: match inlay_hint.kind {
             InlayKind::ParameterHint => position(line_index, inlay_hint.range.start()),
-            _ => position(line_index, inlay_hint.range.end()),
+            InlayKind::TypeHint | InlayKind::ChainingHint => {
+                position(line_index, inlay_hint.range.end())
+            }
         },
         kind: match inlay_hint.kind {
             InlayKind::ParameterHint => Some(lsp_ext::InlayHintKind::PARAMETER),
@@ -426,8 +428,16 @@ pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_e
             InlayKind::ChainingHint => None,
         },
         tooltip: None,
-        padding_left: Some(true),
-        padding_right: Some(true),
+        padding_left: Some(match inlay_hint.kind {
+            InlayKind::TypeHint => true,
+            InlayKind::ParameterHint => false,
+            InlayKind::ChainingHint => true,
+        }),
+        padding_right: Some(match inlay_hint.kind {
+            InlayKind::TypeHint => false,
+            InlayKind::ParameterHint => true,
+            InlayKind::ChainingHint => false,
+        }),
     }
 }
 
