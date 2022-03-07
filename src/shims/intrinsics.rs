@@ -372,7 +372,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_gt"
             | "simd_ge"
             | "simd_fmax"
-            | "simd_fmin" => {
+            | "simd_fmin"
+            | "simd_saturating_add"
+            | "simd_saturating_sub" => {
                 use mir::BinOp;
 
                 let &[ref left, ref right] = check_arg_count(args)?;
@@ -385,6 +387,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 enum Op {
                     MirOp(BinOp),
+                    SaturatingOp(BinOp),
                     FMax,
                     FMin,
                 }
@@ -407,6 +410,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_ge" => Op::MirOp(BinOp::Ge),
                     "simd_fmax" => Op::FMax,
                     "simd_fmin" => Op::FMin,
+                    "simd_saturating_add" => Op::SaturatingOp(BinOp::Add),
+                    "simd_saturating_sub" => Op::SaturatingOp(BinOp::Sub),
                     _ => unreachable!(),
                 };
 
@@ -441,6 +446,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         }
                         Op::FMin => {
                             fmin_op(&left, &right)?
+                        }
+                        Op::SaturatingOp(mir_op) => {
+                            this.saturating_arith(mir_op, &left, &right)?
                         }
                     };
                     this.write_scalar(val, &dest.into())?;
