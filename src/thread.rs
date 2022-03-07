@@ -574,7 +574,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let allocation = tcx.eval_static_initializer(def_id)?;
             // Create a fresh allocation with this content.
             let new_alloc =
-                this.memory.allocate_with(allocation.clone(), MiriMemoryKind::Tls.into());
+                this.memory.allocate_with(allocation.inner().clone(), MiriMemoryKind::Tls.into());
             this.machine.threads.set_thread_local_alloc(def_id, new_alloc);
             Ok(new_alloc)
         }
