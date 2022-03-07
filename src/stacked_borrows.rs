@@ -535,7 +535,7 @@ impl Stacks {
                 MiriMemoryKind::Global
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls
-                | MiriMemoryKind::Env
+                | MiriMemoryKind::Runtime
                 | MiriMemoryKind::Machine,
             ) => (extra.base_tag(id), Permission::SharedReadWrite),
             // Heap allocations we only track precisely when raw pointers are tagged, for now.

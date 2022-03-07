@@ -71,8 +71,9 @@ pub enum MiriMemoryKind {
     /// Memory for args, errno, and other parts of the machine-managed environment.
     /// This memory may leak.
     Machine,
-    /// Memory for env vars. Separate from `Machine` because we clean it up and leak-check it.
-    Env,
+    /// Memory allocated by the runtime (e.g. env vars). Separate from `Machine`
+    /// because we clean it up and leak-check it.
+    Runtime,
     /// Globals copied from `tcx`.
     /// This memory may leak.
     Global,
@@ -96,7 +97,7 @@ impl MayLeak for MiriMemoryKind {
     fn may_leak(self) -> bool {
         use self::MiriMemoryKind::*;
         match self {
-            Rust | C | WinHeap | Env => false,
+            Rust | C | WinHeap | Runtime => false,
             Machine | Global | ExternStatic | Tls => true,
         }
     }
@@ -110,7 +111,7 @@ impl fmt::Display for MiriMemoryKind {
             C => write!(f, "C heap"),
             WinHeap => write!(f, "Windows heap"),
             Machine => write!(f, "machine-managed memory"),
-            Env => write!(f, "environment variable"),
+            Runtime => write!(f, "language runtime memory"),
             Global => write!(f, "global (static or const)"),
             ExternStatic => write!(f, "extern static"),
             Tls => write!(f, "thread-local static"),
