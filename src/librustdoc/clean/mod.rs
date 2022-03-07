@@ -402,16 +402,7 @@ fn projection_to_path_segment(ty: ty::ProjectionTy<'_>, cx: &mut DocContext<'_>)
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
-            args: ty.substs[generics.parent_count..]
-                .iter()
-                .map(|ty| match ty.unpack() {
-                    ty::subst::GenericArgKind::Lifetime(lt) => {
-                        GenericArg::Lifetime(lt.clean(cx).unwrap())
-                    }
-                    ty::subst::GenericArgKind::Type(ty) => GenericArg::Type(ty.clean(cx)),
-                    ty::subst::GenericArgKind::Const(c) => GenericArg::Const(Box::new(c.clean(cx))),
-                })
-                .collect(),
+            args: substs_to_args(cx, &ty.substs[generics.parent_count..], false),
             bindings: Default::default(),
         },
     }
@@ -451,7 +442,7 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                     },
                 )
             }
-            ty::GenericParamDefKind::Const { has_default, .. } => (
+            ty::GenericParamDefKind::Const { has_default } => (
                 self.name,
                 GenericParamDefKind::Const {
                     did: self.def_id,
@@ -1379,11 +1370,7 @@ fn maybe_expand_private_type_alias(cx: &mut DocContext<'_>, path: &hir::Path<'_>
                 });
                 if let Some(lt) = lifetime.cloned() {
                     let lt_def_id = cx.tcx.hir().local_def_id(param.hir_id);
-                    let cleaned = if !lt.is_elided() {
-                        lt.clean(cx)
-                    } else {
-                        self::types::Lifetime::elided()
-                    };
+                    let cleaned = if !lt.is_elided() { lt.clean(cx) } else { Lifetime::elided() };
                     substs.insert(lt_def_id.to_def_id(), SubstParam::Lifetime(cleaned));
                 }
                 indices.lifetimes += 1;

@@ -660,7 +660,7 @@ pub fn write_allocations<'tcx>(
     }
     fn alloc_ids_from_const(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
-            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _size)) => {
+            ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
                 Either::Left(Either::Left(std::iter::once(ptr.provenance)))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => {

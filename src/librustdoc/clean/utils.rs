@@ -77,16 +77,12 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, primitives, external_traits: cx.external_traits.clone() }
 }
 
-fn external_generic_args(
+crate fn substs_to_args(
     cx: &mut DocContext<'_>,
-    did: DefId,
-    has_self: bool,
-    bindings: Vec<TypeBinding>,
-    substs: SubstsRef<'_>,
-) -> GenericArgs {
-    let mut skip_self = has_self;
-    let mut ty_kind = None;
-    let args: Vec<_> = substs
+    substs: &[ty::subst::GenericArg<'_>],
+    mut skip_first: bool,
+) -> Vec<GenericArg> {
+    substs
         .iter()
         .filter_map(|kind| match kind.unpack() {
             GenericArgKind::Lifetime(lt) => match *lt {
@@ -95,23 +91,32 @@ fn external_generic_args(
                 }
                 _ => lt.clean(cx).map(GenericArg::Lifetime),
             },
-            GenericArgKind::Type(_) if skip_self => {
-                skip_self = false;
+            GenericArgKind::Type(_) if skip_first => {
+                skip_first = false;
                 None
             }
-            GenericArgKind::Type(ty) => {
-                ty_kind = Some(ty.kind());
-                Some(GenericArg::Type(ty.clean(cx)))
-            }
+            GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
             GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
         })
-        .collect();
+        .collect()
+}
+
+fn external_generic_args(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    has_self: bool,
+    bindings: Vec<TypeBinding>,
+    substs: SubstsRef<'_>,
+) -> GenericArgs {
+    let args = substs_to_args(cx, &substs, has_self);
 
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
-        let inputs = match ty_kind.unwrap() {
-            ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
-            _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
-        };
+        let inputs =
+            // The trait's first substitution is the one after self, if there is one.
+            match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
+                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
+            };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
         // match types[1].kind {

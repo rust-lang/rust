@@ -681,18 +681,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
-        let tag_val = tag_val.to_scalar()?;
-        trace!("tag value: {:?}", tag_val);
+        trace!("tag value: {}", tag_val);
 
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_encoding {
             TagEncoding::Direct => {
+                // Generate a specific error if `tag_val` is not an integer.
+                // (`tag_bits` itself is only used for error messages below.)
                 let tag_bits = tag_val
+                    .to_scalar()?
                     .try_to_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
                     .assert_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
-                let discr_val = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
+                // After the checks we did above, this cannot fail.
+                let discr_val =
+                    self.misc_cast(&tag_val, discr_layout.ty).unwrap().to_scalar().unwrap();
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *op.layout.ty.kind() {
@@ -712,6 +716,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (discr_val, index.0)
             }
             TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+                let tag_val = tag_val.to_scalar()?;
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();

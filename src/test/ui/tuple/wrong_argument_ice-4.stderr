@@ -1,0 +1,15 @@
+error[E0057]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/wrong_argument_ice-4.rs:2:5
+   |
+LL |       (|| {})(|| {
+   |  _____^^^^^^^_-
+   | |     |
+   | |     expected 0 arguments
+LL | |
+LL | |         let b = 1;
+LL | |     });
+   | |_____- supplied 1 argument
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0057`.
