@@ -493,23 +493,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     // Negative overflow not possible since the positive first term
                     // can only increase an (in range) negative term for addition
                     // or corresponding negated positive term for subtraction
-                    Scalar::from_uint(
-                        (1u128 << (num_bits - 1)) - 1, // max positive
-                        Size::from_bits(num_bits),
-                    )
+                    Scalar::from_int(size.signed_int_max(), size)
                 } else {
                     // Positive overflow not possible for similar reason
                     // max negative
-                    Scalar::from_uint(1u128 << (num_bits - 1), Size::from_bits(num_bits))
+                    Scalar::from_int(size.signed_int_min(), size)
                 }
             } else {
                 // unsigned
                 if matches!(mir_op, BinOp::Add) {
                     // max unsigned
-                    Scalar::from_uint(size.unsigned_int_max(), Size::from_bits(num_bits))
+                    Scalar::from_uint(size.unsigned_int_max(), size)
                 } else {
                     // underflow to 0
-                    Scalar::from_uint(0u128, Size::from_bits(num_bits))
+                    Scalar::from_uint(0u128, size)
                 }
             }
         } else {
