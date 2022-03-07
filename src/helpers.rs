@@ -490,6 +490,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 TimedOut => "ETIMEDOUT",
                 AlreadyExists => "EEXIST",
                 WouldBlock => "EWOULDBLOCK",
+                DirectoryNotEmpty => "ENOTEMPTY",
                 _ => {
                     throw_unsup_format!(
                         "io error {:?} cannot be translated into a raw os error",
