@@ -325,6 +325,12 @@ pub fn suggest_constraining_type_params<'a>(
             }
         }
 
+        // This check is always run on non-valid code
+        // to not trigger ICE
+        if constraints.is_empty() && suggestions.is_empty() {
+            return false;
+        }
+
         if constraints.is_empty() {
             continue;
         }
