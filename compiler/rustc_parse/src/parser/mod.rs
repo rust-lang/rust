@@ -463,6 +463,7 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    #[inline]
     fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
         loop {
             let (mut next, spacing) = if self.desugar_doc_comments {
@@ -998,7 +999,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance the parser by one token using provided token as the next one.
-    fn bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
+    fn bump_with(&mut self, next: (Token, Spacing)) {
+        self.inlined_bump_with(next)
+    }
+
+    /// This always-inlined version should only be used on hot code paths.
+    #[inline(always)]
+    fn inlined_bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
         // Bumping after EOF is a bad sign, usually an infinite loop.
         if self.prev_token.kind == TokenKind::Eof {
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
@@ -1016,7 +1023,7 @@ impl<'a> Parser<'a> {
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
         let next_token = self.next_tok(self.token.span);
-        self.bump_with(next_token);
+        self.inlined_bump_with(next_token);
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
