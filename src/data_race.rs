@@ -743,7 +743,7 @@ impl VClockAlloc {
             MemoryKind::Machine(
                 MiriMemoryKind::Global
                 | MiriMemoryKind::Machine
-                | MiriMemoryKind::Env
+                | MiriMemoryKind::Runtime
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
