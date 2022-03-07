@@ -338,14 +338,8 @@ declare_features! (
     (active, const_extern_fn, "1.40.0", Some(64926), None),
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
-    /// Allows using and casting function pointers in a `const fn`.
-    (active, const_fn_fn_ptr_basics, "1.48.0", Some(57563), None),
-    /// Allows trait bounds in `const fn`.
-    (active, const_fn_trait_bound, "1.53.0", Some(93706), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
-    /// Allows argument and return position `impl Trait` in a `const fn`.
-    (active, const_impl_trait, "1.48.0", Some(77463), None),
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
     /// Be more precise when looking for live drops in a const context.

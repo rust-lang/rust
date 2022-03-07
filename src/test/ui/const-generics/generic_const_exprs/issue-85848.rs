@@ -1,4 +1,4 @@
-#![feature(const_fn_trait_bound, generic_const_exprs)]
+#![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
 
 trait _Contains<T> {

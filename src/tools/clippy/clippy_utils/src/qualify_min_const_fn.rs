@@ -32,32 +32,12 @@ pub fn is_min_const_fn<'a, 'tcx>(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, msrv: 
                 | ty::PredicateKind::Projection(_)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
+                | ty::PredicateKind::Trait(..)
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => continue,
                 ty::PredicateKind::ObjectSafe(_) => panic!("object safe predicate on function: {:#?}", predicate),
                 ty::PredicateKind::ClosureKind(..) => panic!("closure kind predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Subtype(_) => panic!("subtype predicate on function: {:#?}", predicate),
                 ty::PredicateKind::Coerce(_) => panic!("coerce predicate on function: {:#?}", predicate),
-                ty::PredicateKind::Trait(pred) => {
-                    if Some(pred.def_id()) == tcx.lang_items().sized_trait() {
-                        continue;
-                    }
-                    match pred.self_ty().kind() {
-                        ty::Param(ref p) => {
-                            let generics = tcx.generics_of(current);
-                            let def = generics.type_param(p, tcx);
-                            let span = tcx.def_span(def.def_id);
-                            return Err((
-                                span,
-                                "trait bounds other than `Sized` \
-                                 on const fn parameters are unstable"
-                                    .into(),
-                            ));
-                        },
-                        // other kinds of bounds are either tautologies
-                        // or cause errors in other passes
-                        _ => continue,
-                    }
-                },
             }
         }
         match predicates.parent {

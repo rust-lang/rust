@@ -1,17 +1,17 @@
 error[E0277]: the trait bound `NonConstImpl: ~const ConstDefaultFn` is not satisfied
-  --> $DIR/const-default-method-bodies.rs:25:18
+  --> $DIR/const-default-method-bodies.rs:24:18
    |
 LL |     NonConstImpl.a();
    |                  ^^^ the trait `~const ConstDefaultFn` is not implemented for `NonConstImpl`
    |
 note: the trait `ConstDefaultFn` is implemented for `NonConstImpl`, but that implementation is not `const`
-  --> $DIR/const-default-method-bodies.rs:25:18
+  --> $DIR/const-default-method-bodies.rs:24:18
    |
 LL |     NonConstImpl.a();
    |                  ^^^
 
 error[E0015]: cannot call non-const fn `<NonConstImpl as ConstDefaultFn>::a` in constant functions
-  --> $DIR/const-default-method-bodies.rs:25:18
+  --> $DIR/const-default-method-bodies.rs:24:18
    |
 LL |     NonConstImpl.a();
    |                  ^^^

@@ -1,7 +1,6 @@
 // revisions: stock precise
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
-#![feature(const_fn_trait_bound)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::PhantomData;

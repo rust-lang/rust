@@ -1,4 +1,3 @@
-#![feature(const_impl_trait)]
 #![feature(type_alias_impl_trait)]
 
 type Bar = impl Send;

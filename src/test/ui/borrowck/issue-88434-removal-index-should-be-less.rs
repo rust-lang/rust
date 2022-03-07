@@ -1,4 +1,3 @@
-#![feature(const_fn_trait_bound)]
 // Regression test for issue 88434
 
 const _CONST: &[u8] = &f(&[], |_| {});
