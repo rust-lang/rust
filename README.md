@@ -144,19 +144,36 @@ endian-sensitive code.
 ### Running Miri on CI
 
 To run Miri on CI, make sure that you handle the case where the latest nightly
-does not ship the Miri component because it currently does not build.  For
-example, you can use the following snippet to always test with the latest
-nightly that *does* come with Miri:
+does not ship the Miri component because it currently does not build. `rustup
+toolchain install --component` knows how to handle this situation, so the
+following snippet should always work:
 
 ```sh
-MIRI_NIGHTLY=nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)
-echo "Installing latest nightly with Miri: $MIRI_NIGHTLY"
-rustup set profile minimal
-rustup override set "$MIRI_NIGHTLY"
-rustup component add miri
+rustup toolchain install nightly --component miri
+rustup override set nightly
 
 cargo miri test
 ```
+
+Here is an example job for GitHub Actions:
+
+```yaml
+  miri:
+    name: "Miri"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Miri
+        run: |
+          rustup toolchain install nightly --component miri
+          rustup override set nightly
+          cargo miri setup
+      - name: Test with Miri
+        run: cargo miri test
+```
+
+The explicit `cargo miri setup` helps to keep the output of the actual test step
+clean.
 
 ### Common Problems
 
