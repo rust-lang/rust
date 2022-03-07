@@ -1,0 +1,53 @@
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:18:5
+   |
+LL | /     match x {
+LL | |         0 => 0,
+LL | |         1 => 1,
+LL | |         2 => 2,
+LL | |         _ => x,
+LL | |     }
+   | |_____^ help: replace it with: `x`
+   |
+   = note: `-D clippy::nop-match` implied by `-D warnings`
+
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:27:5
+   |
+LL | /     match se {
+LL | |         SampleEnum::A => SampleEnum::A,
+LL | |         SampleEnum::B => SampleEnum::B,
+LL | |         SampleEnum::C => SampleEnum::C,
+LL | |     }
+   | |_____^ help: replace it with: `se`
+
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:44:5
+   |
+LL | /     match Some(1) {
+LL | |         Some(a) => Some(a),
+LL | |         None => None,
+LL | |     }
+   | |_____^ help: replace it with: `Some(1)`
+
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:51:5
+   |
+LL | /     match Ok(1) {
+LL | |         Ok(a) => Ok(a),
+LL | |         Err(err) => Err(err),
+LL | |     }
+   | |_____^ help: replace it with: `Ok(1)`
+
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:58:13
+   |
+LL |       let _ = match func_ret_err(0_i32) {
+   |  _____________^
+LL | |         Ok(a) => Ok(a),
+LL | |         Err(err) => Err(err),
+LL | |     };
+   | |_____^ help: replace it with: `func_ret_err(0_i32)`
+
+error: aborting due to 5 previous errors
+

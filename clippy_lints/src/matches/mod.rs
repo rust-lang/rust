@@ -16,12 +16,12 @@ mod match_same_arms;
 mod match_single_binding;
 mod match_wild_enum;
 mod match_wild_err_arm;
+mod nop_match;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
 mod single_match;
 mod wild_in_or_pats;
-mod nop_match;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -569,7 +569,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for unnecessary `match` or match-like `if let` returns for `Option` and `Result` 
+    /// Checks for unnecessary `match` or match-like `if let` returns for `Option` and `Result`
     /// when function signatures are the same.
     ///
     /// ### Why is this bad?
@@ -583,7 +583,7 @@ declare_clippy_lint! {
     ///         Err(err) => Err(err),
     ///     }
     /// }
-    /// 
+    ///
     /// fn bar() -> Option<i32> {
     ///     if let Some(val) = option {
     ///         Some(val)
@@ -594,12 +594,12 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Could be replaced as
-    /// 
+    ///
     /// ```rust,ignore
     /// fn foo() -> Result<(), i32> {
     ///     result
     /// }
-    /// 
+    ///
     /// fn bar() -> Option<i32> {
     ///     option
     /// }
