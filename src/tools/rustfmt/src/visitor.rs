@@ -916,9 +916,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_str(&ident_str);
 
         if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans) = mod_kind {
-            let ast::ModSpans{
+            let ast::ModSpans {
                 inner_span,
-                inject_use_span: _
+                inject_use_span: _,
             } = *spans;
             match self.config.brace_style() {
                 BraceStyle::AlwaysNextLine => {
