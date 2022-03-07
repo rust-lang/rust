@@ -19,6 +19,34 @@ RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
 RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
     --edition=2021 --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
 
+cp -r /tmp/rustc-perf ./
+chown -R $(whoami): ./rustc-perf
+cd rustc-perf
+
+# Build the collector ahead of time, which is needed to make sure the rustc-fake
+# binary used by the collector is present.
+RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
+RUSTC_BOOTSTRAP=1 \
+/checkout/obj/build/$PGO_HOST/stage0/bin/cargo build -p collector
+
+# Gather LLVM PGO profiles from real-world crates.
+# Benchmark using profile_local with eprintln, which essentially just means
+# don't actually benchmark -- just make sure we run rustc a bunch of times.
+RUST_LOG=collector=debug \
+RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
+RUSTC_BOOTSTRAP=1 \
+/checkout/obj/build/$PGO_HOST/stage0/bin/cargo run -p collector --bin collector -- \
+        profile_local \
+        eprintln \
+        /checkout/obj/build/$PGO_HOST/stage2/bin/rustc \
+        Test \
+        --builds Debug,Opt \
+        --cargo /checkout/obj/build/$PGO_HOST/stage0/bin/cargo \
+        --runs All \
+        --include syn,cargo,serde,ripgrep,regex,clap-rs,hyper-2
+
+cd /checkout/obj
+
 # Merge the profile data we gathered for LLVM
 # Note that this uses the profdata from the clang we used to build LLVM,
 # which likely has a different version than our in-tree clang.
@@ -42,18 +70,8 @@ RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
 RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
     --edition=2021 --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
 
-cp -r /tmp/rustc-perf ./
-chown -R $(whoami): ./rustc-perf
 cd rustc-perf
 
-# Build the collector ahead of time, which is needed to make sure the rustc-fake
-# binary used by the collector is present.
-RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
-RUSTC_BOOTSTRAP=1 \
-/checkout/obj/build/$PGO_HOST/stage0/bin/cargo build -p collector
-
-# benchmark using profile_local with eprintln, which essentially just means
-# don't actually benchmark -- just make sure we run rustc a bunch of times.
 RUST_LOG=collector=debug \
 RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
 RUSTC_BOOTSTRAP=1 \
