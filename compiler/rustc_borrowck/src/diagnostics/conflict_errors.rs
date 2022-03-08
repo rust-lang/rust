@@ -66,6 +66,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             location, desired_action, moved_place, used_place, span, mpi
         );
 
+        let tcx = self.infcx.tcx;
         let use_spans =
             self.move_spans(moved_place, location).or_else(|| self.borrow_spans(span, location));
         let span = use_spans.args_or_use();
@@ -243,11 +244,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.body, self.infcx.tcx).ty;
+            let ty = used_place.ty(self.body, tcx).ty;
             let needs_note = match ty.kind() {
                 ty::Closure(id, _) => {
-                    let tables = self.infcx.tcx.typeck(id.expect_local());
-                    let hir_id = self.infcx.tcx.hir().local_def_id_to_hir_id(id.expect_local());
+                    let tables = tcx.typeck(id.expect_local());
+                    let hir_id = tcx.hir().local_def_id_to_hir_id(id.expect_local());
 
                     tables.closure_kind_origins().get(hir_id).is_none()
                 }
@@ -256,7 +257,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             let mpi = self.move_data.moves[move_out_indices[0]].path;
             let place = &self.move_data.move_paths[mpi].place;
-            let ty = place.ty(self.body, self.infcx.tcx).ty;
+            let ty = place.ty(self.body, tcx).ty;
 
             // If we're in pattern, we do nothing in favor of the previous suggestion (#80913).
             if is_loop_move & !in_pattern {
@@ -285,7 +286,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 };
 
                 // Try to find predicates on *generic params* that would allow copying `ty`
-                let tcx = self.infcx.tcx;
                 let generics = tcx.generics_of(self.mir_def_id());
                 if let Some(hir_generics) = tcx
                     .typeck_root_def_id(self.mir_def_id().to_def_id())
@@ -329,7 +329,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ));
 
                 // Check first whether the source is accessible (issue #87060)
-                if self.infcx.tcx.sess.source_map().span_to_snippet(deref_target).is_ok() {
+                if tcx.sess.source_map().span_to_snippet(deref_target).is_ok() {
                     err.span_note(deref_target, "deref defined here");
                 }
             }
@@ -1012,6 +1012,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             location, name, borrow, drop_span, borrow_spans
         );
 
+        let tcx = self.infcx.tcx;
         let borrow_span = borrow_spans.var_or_use_path_span();
         if let BorrowExplanation::MustBeValidFor {
             category,
@@ -1048,19 +1049,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 format!(
                     "...but `{}` will be dropped here, when the {} returns",
                     name,
-                    self.infcx
-                        .tcx
-                        .hir()
+                    tcx.hir()
                         .opt_name(fn_hir_id)
                         .map(|name| format!("function `{}`", name))
                         .unwrap_or_else(|| {
-                            match &self
-                                .infcx
-                                .tcx
-                                .typeck(self.mir_def_id())
-                                .node_type(fn_hir_id)
-                                .kind()
-                            {
+                            match &tcx.typeck(self.mir_def_id()).node_type(fn_hir_id).kind() {
                                 ty::Closure(..) => "enclosing closure",
                                 ty::Generator(..) => "enclosing generator",
                                 kind => bug!("expected closure or generator, found {:?}", kind),
@@ -1082,7 +1075,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let BorrowExplanation::MustBeValidFor { .. } = explanation {
             } else {
                 explanation.add_explanation_to_diagnostic(
-                    self.infcx.tcx,
+                    tcx,
                     &self.body,
                     &self.local_names,
                     &mut err,
@@ -1100,7 +1093,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_spans.args_span_label(&mut err, format!("value captured here{}", within));
 
             explanation.add_explanation_to_diagnostic(
-                self.infcx.tcx,
+                tcx,
                 &self.body,
                 &self.local_names,
                 &mut err,
