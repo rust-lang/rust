@@ -8,6 +8,7 @@ use crate::io::{
     self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
 };
 use crate::mem;
+use crate::sync::Arc;
 
 // =============================================================================
 // Forwarding implementations
@@ -217,6 +218,96 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     #[inline]
     fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_line(buf)
+    }
+}
+#[stable(feature = "io_traits_arc", since = "1.61.0")]
+impl<R: ?Sized> Read for Arc<R>
+where
+    for<'a> &'a R: Read,
+{
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (&**self).read(buf)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
+        (&**self).read_buf(buf)
+    }
+
+    #[inline]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        (&**self).read_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        (&**self).is_read_vectored()
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        (&**self).read_to_end(buf)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        (&**self).read_to_string(buf)
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        (&**self).read_exact(buf)
+    }
+}
+#[stable(feature = "io_traits_arc", since = "1.61.0")]
+impl<W: ?Sized> Write for Arc<W>
+where
+    for<'a> &'a W: Write,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        (&**self).write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        (&**self).write_vectored(bufs)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        (&**self).is_write_vectored()
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        (&**self).flush()
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        (&**self).write_all(buf)
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        (&**self).write_fmt(fmt)
+    }
+}
+#[stable(feature = "io_traits_arc", since = "1.61.0")]
+impl<S: ?Sized> Seek for Arc<S>
+where
+    for<'a> &'a S: Seek,
+{
+    #[inline]
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        (&**self).seek(pos)
+    }
+
+    #[inline]
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&**self).stream_position()
     }
 }
 
