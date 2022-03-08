@@ -43,7 +43,6 @@ use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc_session::parse::feature_err;
-use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
@@ -2010,8 +2009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
-            err.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
-            err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
+            err.help_use_latest_edition();
         }
 
         err.emit();

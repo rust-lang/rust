@@ -7,6 +7,7 @@ use crate::SuggestionStyle;
 use crate::ToolMetadata;
 use rustc_lint_defs::Applicability;
 use rustc_serialize::json::Json;
+use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -339,6 +340,18 @@ impl Diagnostic {
     /// This is like [`Diagnostic::help()`], but it gets its own span.
     pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
+        self
+    }
+
+    /// Help the user upgrade to the latest edition.
+    /// This is factored out to make sure it does the right thing with `Cargo.toml`.
+    pub fn help_use_latest_edition(&mut self) -> &mut Self {
+        if std::env::var_os("CARGO").is_some() {
+            self.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
+        } else {
+            self.help(&format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION));
+        }
+        self.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         self
     }
 
